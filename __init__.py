@@ -2,7 +2,6 @@ import os
 import sys
 import tempfile
 
-import tables
 import numpy as np
 
 from db import flats as dbflats
