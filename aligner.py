@@ -4,18 +4,18 @@ import sys
 import numpy as np
 import nibabel
 
-try:
-    from traits.api import HasTraits, Instance, Array, Bool, Dict, Range, Float, Enum, Color, on_trait_change
-    from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
+#try:
+from traits.api import HasTraits, Instance, Array, Bool, Dict, Range, Float, Enum, Color, on_trait_change
+from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
-    from tvtk.api import tvtk
-    from tvtk.pyface.scene import Scene
+from tvtk.api import tvtk
+from tvtk.pyface.scene import Scene
 
-    from mayavi import mlab
-    from mayavi.core.ui import lut_manager
-    from mayavi.core.api import PipelineBase, Source, Filter, Module
-    from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
-except ImportError:
+from mayavi import mlab
+from mayavi.core.ui import lut_manager
+from mayavi.core.api import PipelineBase, Source, Filter, Module
+from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
+'''except ImportError:
     from enthought.traits.api import HasTraits, Instance, Array, Bool, Dict, Float, Enum, Range, Color, on_trait_change
     from enthought.traits.ui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
@@ -26,7 +26,7 @@ except ImportError:
     from enthought.mayavi.core.ui import lut_manager
     from enthought.mayavi.core.api import PipelineBase, Source, Filter, Module
     from enthought.mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
-
+'''
 class RotationWidget(HasTraits):
     radius = Float(value=1)
     angle = Float(value=0)
@@ -139,6 +139,7 @@ class ThreeDScene(MayaviScene):
             self.aligner.update_slab()
         else:
             super(ThreeDScene, self).OnKeyDown(evt)
+        self.aligner.scene3d.renderer.reset_camera_clipping_range()
         self.aligner.scene3d.render()
 
 class FlatScene(Scene):
@@ -174,6 +175,7 @@ class Align(HasTraits):
     contrast = Range(0., 2., value=1.)
     opacity = Range(0., 1.)
     colormap = Enum(*lut_manager.lut_mode_list())
+    fliplut = Bool
     ptcolor = Color(value="white")
 
     # The 4 views displayed
@@ -517,12 +519,16 @@ class Align(HasTraits):
     def update_opacity(self):
         self.surf.actor.property.opacity = self.opacity
     
-    @on_trait_change("colormap")
+    @on_trait_change("colormap, fliplut")
     def update_colormap(self):
         self.ipw_3d_z.parent.scalar_lut_manager.lut_mode = self.colormap
         self.ipw_x.parent.scalar_lut_manager.lut_mode = self.colormap
         self.ipw_y.parent.scalar_lut_manager.lut_mode = self.colormap
         self.ipw_z.parent.scalar_lut_manager.lut_mode = self.colormap
+        self.ipw_3d_z.parent.scalar_lut_manager.reverse_lut = self.fliplut
+        self.ipw_x.parent.scalar_lut_manager.reverse_lut = self.fliplut
+        self.ipw_y.parent.scalar_lut_manager.reverse_lut = self.fliplut
+        self.ipw_z.parent.scalar_lut_manager.reverse_lut = self.fliplut
     
     @on_trait_change("flip_ud")
     def update_flipud(self):
@@ -600,6 +606,7 @@ class Align(HasTraits):
                             editor=ImageEnumEditor(values=lut_manager.lut_mode_list(),
                                               cols=6,
                                               path=lut_manager.lut_image_dir)),
+                        "fliplut",
                         "_", "flip_ud", "flip_lr", "flip_fb", 
                         "_", Item('ptcolor', editor=ColorEditor())
 
@@ -637,23 +644,51 @@ def align(subject, xfmname, epi=None, xfm=None):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="Align a fiducial surface to an epi image")
-    parser.add_argument("epi", type=str)
-
+    parser.add_argument("--epi", type=str,
+        help="Epi image to align to (in nifti format). Not required if using the database")
+    
+    group = parser.add_mutually_exclusive_group(required=True)
+    
     #these next two arguments must be mutually exclusive, whether we draw from database or not
-    parser.add_argument("--subject", metavar="S", type=str)
-    parser.add_argument("--fiducials", type=str)
+    group.add_argument("--subject", "-S", dest="subject", type=str, 
+        help="Subject name (draws from database)")
+    group.add_argument("--fiducials", "-F", nargs=2, 
+        help="Pair of fiducial VTK's. Mutually exclusive with --subject!")
 
     #following only applies without the database
-    parser.add_argument("--transform", metavar="T", type=str) #optional
-    parser.add_argument("--out", type=str) #mandatory
+    parser.add_argument("--transform", "-T", dest="transform", type=str,
+        help="Initial transform without database. Must be in magnet space.") #optional
+    parser.add_argument("--out", "-o", dest="out", type=str,
+        help="Output file without database. Transform will be in magnet space") #mandatory
 
     #following only applies with the database
-    parser.add_argument("--name", type=str)
+    parser.add_argument("--name", type=str,
+        help="Transform name within the database")
 
     args = parser.parse_args()
 
     if args.subject is not None:
-        pass
+        assert args.name is not None, "Please provide the transform name for the database!"
+        if args.fiducials is not None:
+            print "Fiducials ignored -- drawing from database"
+        if args.transform is not None:
+            print "Transform ignored -- drawing from database"
+        if args.out is not None:
+            print "Output file ignored -- drawing from database"
+        align(args.subject, args.name, epi=args.epi)
+    else:
+        assert args.fiducials is not None, "Please provide surfaces to align!"
+        assert args.out is not None, "Please provide an output file!"
+        assert args.epi is not None, "Please provide an epi file to align to!"
+        import vtkutils
+        pts, polys, norms = vtkutils .read(args.fiducials)
+        xfm = None
+        if args.transform is not None:
+            xfm = np.loadtxt(args.transform)
+        m = Align(pts, polys, args.epi, xfm=xfm)
+        m.configure_traits()
+        xfm = m.get_xfm("magnet")
+        np.savetxt(args.out, xfm, fmt="%.6f")
 
     
     #/auto/k7/james/docdb/13611980401580143636.nii

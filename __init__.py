@@ -41,12 +41,6 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
 
     return output
 
-def flatmap(data, subject='JG', show=True):
-    pass
-
-def flatmap_hist(corrs, experiment, subject='JG', bins=100):
-    pass
-
 def detrend_volume_poly(data, polyorder = 10, mask=None):
     from scipy.special import legendre
     polys = [legendre(i) for i in range(polyorder)]
@@ -69,13 +63,6 @@ def detrend_volume_poly(data, polyorder = 10, mask=None):
     else:
         return detrended.reshape(*s)
 
-def flatten(data, subject="JG", reference="20110909JG_dust"):
-    xfm = dbflats["xfms"][subject][reference]
-    if "raw" in dbflats[subject]:
-        pts, polys = dbflats[subject]['raw']['fiducial']
-    else:
-        pts, polys = vtkread([dbflats[subject]['L']['fiducial'], dbflats[subject]['R']['fiducial']])
-        dbflats[subject]['raw'] = dict(fiducial=(pts, polys))
-
-    coords = np.dot(xfm, np.append(pts, np.ones((len(pts),1)), axis=-1).T)[:-1]
-    return np.array([data[tuple(c)] for c in coords.T.round().astype(int)])
+def flatten(data, subject="JG", xfmname="20110909JG_dust"):
+    import view
+    view.show(data, subject, xfmname)

@@ -60,23 +60,23 @@ class Surf(object):
         self.offset = np.array(offset)
 
     def get(self, hemisphere="both"):
-        import vtk
+        import vtkutils
         if hemisphere == "both":
-            return vtk.read([self.lh, self.rh])
+            return vtkutils.read([self.lh, self.rh])
         elif hemisphere.lower() in ["l", "lh", "left"]:
-            return vtk.read([self.lh])
+            return vtkutils.read([self.lh])
         elif hemisphere.lower() in ["r", "rh", "right"]:
-            return vtk.read([self.rh])
+            return vtkutils.read([self.rh])
         raise AttributeError
     
     def show(self, hemisphere="both"):
-        import vtk
+        import vtkutils
         if hemisphere == "both":
-            vtk.show([self.lh, self.rh])
+            vtkutils.show([self.lh, self.rh])
         elif hemisphere.lower() in ["l", "lh", "left"]:
-            vtk.show([self.lh])
+            vtkutils.show([self.lh])
         elif hemisphere.lower() in ["r", "rh", "right"]:
-            vtk.show([self.rh])
+            vtkutils.show([self.rh])
             
 class XfmDB(object):
     def __init__(self, subj, conn, cur):
@@ -223,7 +223,7 @@ class Database(object):
             return np.fromstring(xfm).reshape(4,4), filename
 
     def getVTK(self, subject, type, hemisphere="both", date=None):
-        import vtk
+        import vtkutils
         query = "SELECT filename, offset FROM surfaces WHERE subject=? AND type=? AND hemisphere=?"
         if self.cur.execute(query, (subject, type, "lh")).fetchone() is None:
             #Subject / type does not exist in the database
@@ -233,10 +233,10 @@ class Database(object):
             lh, offset = self.cur.execute(query, (subject, type, 'lh')).fetchone()
             rh, offset = self.cur.execute(query, (subject, type, 'rh')).fetchone()
             offset = [float(d) for d in offset.split()]
-            return vtk.read([lh, rh])
+            return vtkutils.read([lh, rh])
         else:
             d, offset = self.cur.execute(query, (subject, type, hemisphere)).fetchone()
-            return vtk.read([d])
+            return vtkutils.read([d])
 
 flats = Database()
 
