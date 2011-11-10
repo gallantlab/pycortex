@@ -7,7 +7,7 @@ if __name__ == "__main__":
 		os.unlink(fpath)
 
 	from db import flats
-	names = 'AH,AV,DS,JG,ML,MO,NB,SN,TC,TN,WH'.split(',')
-	path = '/auto/data/archive/mri_flats/%s/'
+	names = 'AH,AV,DS,JG,ML,NB,SN,TC,WH'.split(',')
+	path = '/home/james/flatmaps/%s/'
 	for n in names:
 		flats.loadVTKdir(path%n, n)

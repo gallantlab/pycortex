@@ -62,17 +62,17 @@ class Surf(object):
     def get(self, hemisphere="both"):
         import vtk
         if hemisphere == "both":
-            return vtk.read([self.lh, self.rh], offset=self.offset)
+            return vtk.read([self.lh, self.rh])
         elif hemisphere.lower() in ["l", "lh", "left"]:
-            return vtk.read([self.lh], offset=-self.offset)
+            return vtk.read([self.lh])
         elif hemisphere.lower() in ["r", "rh", "right"]:
-            return vtk.read([self.rh], offset=self.offset)
+            return vtk.read([self.rh])
         raise AttributeError
     
     def show(self, hemisphere="both"):
         import vtk
         if hemisphere == "both":
-            vtk.show([self.lh, self.rh], offset=self.offset)
+            vtk.show([self.lh, self.rh])
         elif hemisphere.lower() in ["l", "lh", "left"]:
             vtk.show([self.lh])
         elif hemisphere.lower() in ["r", "rh", "right"]:
@@ -102,11 +102,24 @@ class XfmSet(object):
         self.name = name
         query = "SELECT type, xfm FROM transforms WHERE subject=? and name=?"
         self.data = dict(cur.execute(query, (subj, name)).fetchall())
+        query = "SELECT filename FROM transforms WHERE subject=? and name=?"
+        self.filename, = cur.execute(query, (subj, name)).fetchone()
     
     def __getattr__(self, attr):
         if attr in self.data:
             return np.fromstring(self.data[attr]).reshape(4,4)
         raise AttributeError
+    
+    def __repr__(self):
+        return "Types: {types}".format(types=", ".join(self.data.keys()))
+    
+    def setFile(self, filename):
+        assert os.path.exists(filename)
+        filename = os.path.abspath(filename)
+        query = "UPDATE transforms SET filename=? WHERE subject=? and name=?"
+        self.cur.execute(query, (filename, self.subject, self.name))
+        self.conn.commit()
+        self.filename = filename
     
     def remove(self):
         print "Are you sure? (Y/N)"
@@ -185,7 +198,7 @@ class Database(object):
         result = self.cur.execute(query, (subject, name, xfmtype)).fetchone()
         if result is not None:
             print 'There is already a transform for this subject by the name of "%s". Overwrite? (Y/N)'
-            if sys.stdin.readline().lower() in ("y", "yes") or override:
+            if override or sys.stdin.readline().lower() in ("y", "yes"):
                 query = "UPDATE transforms SET xfm=? WHERE subject=? AND name=? and type=?"
                 self.cur.execute(query, (sqlite3.Binary(xfm.tostring()), subject, name, xfmtype))
                 self.conn.commit()
@@ -200,7 +213,7 @@ class Database(object):
             self.cur.execute(query, data)
             self.conn.commit()
     
-    def getXfm(self, subject, name, xfmtype="epicoord"):
+    def getXfm(self, subject, name, xfmtype="coord"):
         query = "SELECT xfm, filename FROM transforms WHERE subject=? AND name=? and type=?"
         data = self.cur.execute(query, (subject, name, xfmtype)).fetchone()
         if data is None:
@@ -220,7 +233,7 @@ class Database(object):
             lh, offset = self.cur.execute(query, (subject, type, 'lh')).fetchone()
             rh, offset = self.cur.execute(query, (subject, type, 'rh')).fetchone()
             offset = [float(d) for d in offset.split()]
-            return vtk.read([lh, rh], offset=offset)
+            return vtk.read([lh, rh])
         else:
             d, offset = self.cur.execute(query, (subject, type, hemisphere)).fetchone()
             return vtk.read([d])

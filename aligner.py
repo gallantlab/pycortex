@@ -1,4 +1,6 @@
 #/usr/bin/env python
+import os
+import sys
 import numpy as np
 import nibabel
 
@@ -151,12 +153,13 @@ class FlatScene(Scene):
         if self.invert:
             moves = {314:(0,-2,0), 315:(2,0,0), 316:(0,2,0), 317:(-2,0,0)}
         
+        mult = (1,.25)[evt.ShiftDown()]
         if key in moves:
-            self.handle.move(moves[key])
+            self.handle.move(np.array(moves[key])*mult)
         elif key == 366:
-            self.handle.move(angle=np.pi / 120.*i)
+            self.handle.move(angle=np.pi / 120.*i*mult)
         elif key == 367:
-            self.handle.move(angle=-np.pi / 120.*i)
+            self.handle.move(angle=-np.pi / 120.*i*mult)
         elif chr(key % 256) == "h":
             self.outline.visible = not self.outline.visible
         else:
@@ -219,7 +222,7 @@ class Align(HasTraits):
         self.base = base
         self.origin = base[:3, -1]
         self.spacing = np.diag(base)[:3]
-        self.startxfm = xfm 
+        self.startxfm = np.dot(np.dot(base, np.linalg.inv(self.affine)), xfm)
         if xfm is None:
             self.startxfm = np.dot(base, np.linalg.inv(self.affine))
         self.center = self.spacing*nii.get_shape() / 2 + self.origin
@@ -608,7 +611,7 @@ class Align(HasTraits):
 
 def align(subject, xfmname, epi=None, xfm=None):
     import db
-    data = db.flats.getXfm(subject, xfmname)
+    data = db.flats.getXfm(subject, xfmname, xfmtype='magnet')
     if data is None:
         assert epi is not None, "Unknown transform"
         data = db.flats.getVTK(subject, 'fiducial')
@@ -624,8 +627,11 @@ def align(subject, xfmname, epi=None, xfm=None):
     
     magnet = m.get_xfm("magnet")
     shortcut = m.get_xfm("coord")
-    db.loadXfm(subject, xfmname, magnet, type='magnet', filename=epi, override=True)
-    db.loadXfm(subject, xfmname, coord, type='coord', filename=epi, override=True)
+    epi = os.path.abspath(epi)
+    print "Save? (Y/N)"
+    if sys.stdin.readline().lower() in ["y", "yes"]:
+        db.flats.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
+        db.flats.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
 
 ################################################################################
 if __name__ == '__main__':

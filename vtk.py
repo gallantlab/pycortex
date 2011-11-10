@@ -20,7 +20,7 @@ def read(vtks, offset=(0,0,0)):
         poly = vfr.outputs[0].polys.data.to_array().reshape(-1,4)[:,1:]
         polys.append(poly+llen)
         p = vfr.outputs[0].points.to_array()
-        pts.append(p + (-1,1)[i%2])
+        pts.append(p + (-1,1)[i%2]*np.array(offset))
         llen = len(p)
         if vfr.outputs[0].point_data.normals is not None:
             normals.append(vfr.outputs[0].point_data.normals.to_array())
@@ -34,8 +34,8 @@ def show(vtks, offset=(0,0,0)):
     fig.scene.background = (0,0,0)
     fig.scene.interactor.interactor_style = \
                                 tvtk.InteractorStyleTerrain()
-    for vtk in vtks:
+    for i, vtk in enumerate(vtks):
         vfr = get(vtk)
-        vfr.outputs[0].points = vfr.outputs[0].points.to_array() + offset
+        vfr.outputs[0].points = vfr.outputs[0].points.to_array() + (-1,1)[i%2]*np.array(offset)
         fig.parent.add_source(vfr)
         mlab.pipeline.surface(vfr, figure=fig)

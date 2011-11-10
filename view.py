@@ -1,7 +1,6 @@
 try:
     from traits.api import HasTraits, Instance, Array, Bool, Dict, Range, Any, Color, on_trait_change
     from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
-    from traitsui.key_bindings import KeyBinding, KeyBindings
 
     from tvtk.api import tvtk
     from tvtk.pyface.scene import Scene
@@ -13,7 +12,6 @@ try:
 except ImportError:
     from enthought.traits.api import HasTraits, Instance, Array, Bool, Dict, Any, Range, Color, on_trait_change
     from enthought.traits.ui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor, Handler
-    from enthought.traits.ui.key_bindings import KeyBinding, KeyBindings
 
     from enthought.tvtk.api import tvtk
     from enthought.tvtk.pyface.scene import Scene
@@ -27,7 +25,7 @@ import multiprocessing as mp
 import numpy as np
 from scipy.interpolate import interp1d, Rbf
 
-class Bored(HasTraits):
+class Iron(HasTraits):
     points = Any
     polys = Array(shape=(None, 3))
 
@@ -70,118 +68,36 @@ class Bored(HasTraits):
         show_labels=False
     ), resizable=True, title="Mixer")
 
+def view(data, subject, xfm, types=('inflated',), hemisphere="both"):
+    '''View epi data, transformed into the space given by xfm. 
+    Types indicates which surfaces to add to the interpolater. Always includes fiducial and flat'''
+    import db
+    types = ("fiducial",) + types + ("flat",)
+    pts = []
+    for t in types:
+        pt, polys, norm = db.flats.getVTK(subject, t, hemisphere=hemisphere)
+        pts.append(pt)
+    #flip the flats to be on the X-Z plane
+    flatpts = np.zeros_like(pts[-1])
+    flatpts[:,[0,2]] = pts[-1][:,:2]
+    pts[-1] = flatpts
 
-class mpInterp(object):
-    def __init__(self, data):
-        cpus = mp.cpu_count()
-        frames = np.linspace(0, 1, len(data))
-        length = data.shape[1] / float(cpus)
+    if hasattr(data, "get_affine"):
+        #this is a nibabel file -- it has the nifti headers intact!
+        if isinstance(xfm, str):
+            xfm = db.flats.getXfm(subject, xfm, xfmtype="magnet")
+            assert xfm is not None, "Cannot find transform by this name!"
+            xfm = np.dot(np.linalg.inv(data.get_affine()), xfm[0])
+        data = data.get_data()
+    else:
+        xfm = db.flats.getXfm(subject, xfm, xfmtype="coord")
+        assert xfm is not None, "Cannot find coord transform, please provide the nifti!"
+        xfm = xfm[0]
+    assert xfm.shape == (4, 4), "Not a transform matrix!"
 
-        self.status = mp.Value('f', 0)
-        self.runproc = []
-        self.data = mp.Queue()
-
-        self.procs = []
-        for i in range(cpus):
-            interp = interp1d(frames, data[:,i*length:(i+1)*length], axis=0)
-            evt = mp.Event()
-            def _run(status, run, data):
-                while status.value >= 0:
-                    run.wait()
-                    data.put((i, interp(status.value)))
-                    run.clear()
-                    
-            p = mp.Process(target=_run, args=(self.status, evt, self.data))
-            p.start()
-            self.procs.append(p)
-            self.runproc.append(evt)
-    
-    def __call__(self, mix):
-        self.status.value = mix
-        for evt in self.runproc:
-            evt.set()
-        
-        data = [[]]*len(self.procs)
-        for _ in range(len(self.procs)):
-            i, d = self.data.get()
-            data[i] = d
-        return np.vstack(data)
-    
-    def __del__(self):
-        self.status.value = -1
-
-if __name__ == "__main__":
-    from utils.mri import vtk
-    print "reading..."
-    start_pts, tmp, norms = vtk.vtkread(['/auto/k5/nbilenko/MRI/caret/JG/Human.JG.L.Fiducial.vtk'])
-    mid_pts,   tmp, norms = vtk.vtkread(['/auto/k5/nbilenko/MRI/caret/JG/Human.JG.L.Inflated.vtk'])
-    #mid_pts1,   tmp = vtk.vtkread(['/auto/k5/nbilenko/MRI/caret/JG/Human.JG.L.VeryInflated.vtk'])
-    #mid_pts2,   tmp = vtk.vtkread(['/auto/k5/nbilenko/MRI/caret/JG/Human.JG.L.Ellipsoidal.vtk'])
-    end_pts,polys, norms = vtk.vtkread(['/auto/k5/nbilenko/MRI/caret/JG/Human.JG.L.FLAT.vtk'])
-    print "done"
-    flat_pts = np.zeros_like(end_pts)
-    flat_pts[:, 1] = -end_pts[:,0]
-    flat_pts[:, 2] = end_pts[:,1]
-    flat_pts *= 0.5
-    stackpts = np.array([start_pts, mid_pts, flat_pts])
-    '''
-    import cPickle
-    #cPickle.dump((stackpts, polys), open("flats.pkl", "w"), 2)
-    stackpts, polys = cPickle.load(open("flats.pkl"))
-    '''
-    print "interpolating..."
-    #interp = mpInterp(stackpts)
-    #interp = Rbf(linspace(0,1,len(stackpts)), stackpts, function)
-    interp = interp1d(np.linspace(0, 1, len(stackpts)), stackpts, axis=0)
-    print "starting..."
-    m = Bored(points=interp, polys=polys)
+    wpts = np.append(pts[0], np.zeros((len(pts[0]),1)), axis=-1).T
+    scalars = np.array([data.T[tuple(p)] for p in np.dot(xfm, wpts)[:3].T])
+    interp = interp1d(np.linspace(0,1,len(pts)), pts, axis=0)
+    m = Iron(points=interp, polys=polys)
     m.edit_traits()
-    m.set(np.load("flatten_motor.npy"))
-
-
-
-
-
-
-
-'''
-class tInterp(object):
-    def __init__(self, data, n=4):
-        frames = range(len(data))
-        length = data.shape[1] / float(n)
-
-        self.status = 0
-        self.runproc = []
-        self.data = np.empty_like(data[0])
-        self.done = []
-        self.ready = threading.Event()
-
-        self.threads = []
-        for i in range(n):
-            interp = interp1d(frames, data[:,i*length:(i+1)*length], axis=0)
-            evt = threading.Event()
-            thread = threading.Thread(target=self._run, args=(self.status, evt))
-            thread.start()
-            self.runproc.append(evt)
-            self.threads.append(thread)
-    
-    def _run(self, status, evt):
-        while status >= 0:
-            evt.wait()
-            self.data[i*length:(i+1)*length] = interp(status)
-            if len(self.done) + 1 == len(self.threads):
-                self.ready.set()
-                self.done = []
-            else:
-                self.done.append(None)
-            evt.clear()
-    
-    def __call__(self, mix):
-        self.status = mix
-        for evt in self.runproc:
-            evt.set()
-        
-        self.ready.wait()
-        self.ready.clear()
-        return self.data
-'''
+    m.set(scalars)
