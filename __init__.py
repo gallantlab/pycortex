@@ -5,6 +5,8 @@ import tempfile
 import tables
 import numpy as np
 
+from db import flats as dbflats
+
 def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     '''mosaic(data, xy=(6, 5), trim=10, skip=1)
 
@@ -41,53 +43,10 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     return output
 
 def flatmap(data, subject='JG', show=True):
-    '''A completely silly wrapper around matlab's brain2flatmap function...'''
-    global runner
-    if runner is None:
-        runner = matlab.runner()
-
-    subjects = dict(JG=18)
-    import tables
-
-    assert len(data.shape) == 3, "Not the right shape, did you mean mri.flatmap(mri.unmask(mask, data))?"
-    tf = tempfile.NamedTemporaryFile()
-    h5 = tables.openFile(tf.name, "w")
-    h5.createArray("/", "data", data)
-    h5.close()
-
-    cmd = """
-        data = h5read('{tf}', '/data'); 
-        map = brain2flatmap(data, {subj}); 
-        h5create('{tf}', '/map', size(map));
-        h5write('{tf}', '/map', map);
-    """.format(tf=tf.name, subj=subjects[subject])
-    runner(cmd)
-
-    h5 = tables.openFile(tf.name, "r")
-    fm = h5.root.map[:]
-    h5.close()
-    tf.close()
-    if show:
-        import matplotlib.pyplot as plt
-        from matplotlib import cm
-
-        fmpos = fm.T.copy()
-        fmpos[fmpos < 0] = 0
-        plt.imshow(fmpos, aspect='equal', cmap=cm.hot)
-        plt.colorbar()
-
-    return fm.T
+    pass
 
 def flatmap_hist(corrs, experiment, subject='JG', bins=100):
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-
-    fm = flatmap(unmask(experiment, corrs), subject='JG', show=False)
-    fm[fm < 0] = 0
-    fig = plt.figure()
-    mappable = fig.add_subplot(2,1,1).imshow(fm, aspect='equal', cmap=cm.hot)
-    fig.colorbar(mappable)
-    fig.add_subplot(2,1,2).hist(corrs, bins)
+    pass
 
 def detrend_volume_poly(data, polyorder = 10, mask=None):
     from scipy.special import legendre
