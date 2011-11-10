@@ -4,18 +4,18 @@ import sys
 import numpy as np
 import nibabel
 
-#try:
-from traits.api import HasTraits, Instance, Array, Bool, Dict, Range, Float, Enum, Color, on_trait_change
-from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
+try:
+    from traits.api import HasTraits, Instance, Array, Bool, Dict, Range, Float, Enum, Color, on_trait_change
+    from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
-from tvtk.api import tvtk
-from tvtk.pyface.scene import Scene
+    from tvtk.api import tvtk
+    from tvtk.pyface.scene import Scene
 
-from mayavi import mlab
-from mayavi.core.ui import lut_manager
-from mayavi.core.api import PipelineBase, Source, Filter, Module
-from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
-'''except ImportError:
+    from mayavi import mlab
+    from mayavi.core.ui import lut_manager
+    from mayavi.core.api import PipelineBase, Source, Filter, Module
+    from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
+except ImportError:
     from enthought.traits.api import HasTraits, Instance, Array, Bool, Dict, Float, Enum, Range, Color, on_trait_change
     from enthought.traits.ui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
@@ -26,7 +26,7 @@ from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
     from enthought.mayavi.core.ui import lut_manager
     from enthought.mayavi.core.api import PipelineBase, Source, Filter, Module
     from enthought.mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
-'''
+
 class RotationWidget(HasTraits):
     radius = Float(value=1)
     angle = Float(value=0)
@@ -224,9 +224,10 @@ class Align(HasTraits):
         self.base = base
         self.origin = base[:3, -1]
         self.spacing = np.diag(base)[:3]
-        self.startxfm = np.dot(np.dot(base, np.linalg.inv(self.affine)), xfm)
         if xfm is None:
             self.startxfm = np.dot(base, np.linalg.inv(self.affine))
+        else:
+            self.startxfm = np.dot(np.dot(base, np.linalg.inv(self.affine)), xfm)
         self.center = self.spacing*nii.get_shape() / 2 + self.origin
 
         self.epi = epi - epi.min()
@@ -636,9 +637,12 @@ def align(subject, xfmname, epi=None, xfm=None):
     shortcut = m.get_xfm("coord")
     epi = os.path.abspath(epi)
     print "Save? (Y/N)"
-    if sys.stdin.readline().lower() in ["y", "yes"]:
+    if sys.stdin.readline().strip().lower() in ["y", "yes"]:
+        print "Saving..."
         db.flats.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
         db.flats.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
+        print "Complete!"
+    return magnet
 
 ################################################################################
 if __name__ == '__main__':
@@ -671,11 +675,12 @@ if __name__ == '__main__':
         assert args.name is not None, "Please provide the transform name for the database!"
         if args.fiducials is not None:
             print "Fiducials ignored -- drawing from database"
+        xfm = None
         if args.transform is not None:
-            print "Transform ignored -- drawing from database"
+            xfm = np.loadtxt(args.transform)
+        xfm = align(args.subject, args.name, epi=args.epi, xfm=xfm)
         if args.out is not None:
-            print "Output file ignored -- drawing from database"
-        align(args.subject, args.name, epi=args.epi)
+            np.savetxt(args.out, xfm, fmt="%.6f")
     else:
         assert args.fiducials is not None, "Please provide surfaces to align!"
         assert args.out is not None, "Please provide an output file!"

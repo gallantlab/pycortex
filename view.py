@@ -61,6 +61,7 @@ class Mixer(HasTraits):
     def _mix_changed(self):
         self.data_src.data.points.from_array(self.points(self.mix))
         self.figure.renderer.reset_camera_clipping_range()
+        self.figure.render()
         #def func():
         #    self.data_src.data.points = self.points(self.mix)
         #    GUI.invoke_later(self.data_src.data.update)
@@ -100,8 +101,9 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
     #flip the flats to be on the X-Z plane
     flatpts = np.zeros_like(pts[-1])
     flatpts[:,[0,2]] = pts[-1][:,:2]
+    flatpts[:,1] = pts[-2].min(0)[1]
     pts[-1] = flatpts
-
+    
     if hasattr(data, "get_affine"):
         #this is a nibabel file -- it has the nifti headers intact!
         if isinstance(xfm, str):
