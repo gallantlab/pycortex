@@ -96,7 +96,8 @@ def view(data, subject, xfm, types=('inflated',), hemisphere="both"):
     assert xfm.shape == (4, 4), "Not a transform matrix!"
 
     wpts = np.append(pts[0], np.zeros((len(pts[0]),1)), axis=-1).T
-    scalars = np.array([data.T[tuple(p)] for p in np.dot(xfm, wpts)[:3].T])
+    coords = np.dot(xfm, wpts)[:3].T.round().astype(int)
+    scalars = np.array([data.T[tuple(p)] for p in coords])
     interp = interp1d(np.linspace(0,1,len(pts)), pts, axis=0)
     m = Iron(points=interp, polys=polys)
     m.edit_traits()
