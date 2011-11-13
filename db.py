@@ -149,7 +149,7 @@ class Database(object):
     def __repr__(self):
         subjs = ", ".join(sorted(list(self.subjects)))
         pairs = self.cur.execute("SELECT subject, name from transforms").fetchall()
-        xfms = "[%s]"%", ".join('(%s, %s)'% p for p in pairs)
+        xfms = "[%s]"%", ".join('(%s, %s)'% p for p in set(pairs))
         return """Flatmapping database
         Subjects:   {subjs}
         Transforms: {xfms}""".format(subjs=subjs, xfms=xfms)
@@ -247,6 +247,10 @@ if __name__ == "__main__":
     parser.add_argument("vtkdir", type=str, help="Directory with VTK's")
     args = parser.parse_args()
 
+
+    db.flats.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
+    db.flats.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
+    
     try:
         flats.loadVTKdir(args.vtkdir, args.subject)
         print "Success!"

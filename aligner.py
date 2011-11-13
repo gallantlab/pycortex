@@ -5,7 +5,7 @@ import numpy as np
 import nibabel
 
 try:
-    from traits.api import HasTraits, Instance, Array, Bool, Dict, Range, Float, Enum, Color, on_trait_change
+    from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, on_trait_change
     from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
     from tvtk.api import tvtk
@@ -16,7 +16,7 @@ try:
     from mayavi.core.api import PipelineBase, Source, Filter, Module
     from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 except ImportError:
-    from enthought.traits.api import HasTraits, Instance, Array, Bool, Dict, Float, Enum, Range, Color, on_trait_change
+    from enthought.traits.api import HasTraits, List, Instance, Array, Bool, Dict, Float, Enum, Range, Color, on_trait_change
     from enthought.traits.ui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
     from enthought.tvtk.api import tvtk
@@ -27,6 +27,7 @@ except ImportError:
     from enthought.mayavi.core.api import PipelineBase, Source, Filter, Module
     from enthought.mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 
+#m.scene3d.scene_editor.control.SetFocusFromKbd()
 class RotationWidget(HasTraits):
     radius = Float(value=1)
     angle = Float(value=0)
@@ -144,7 +145,7 @@ class ThreeDScene(MayaviScene):
 
 class FlatScene(Scene):
     handle = Instance(RotationWidget)
-    outline = Instance(PipelineBase)
+    aligner = Instance("Align")
     invert = Bool(value=False)
 
     def OnKeyDown(self, evt):
@@ -162,7 +163,8 @@ class FlatScene(Scene):
         elif key == 367:
             self.handle.move(angle=-np.pi / 120.*i*mult)
         elif chr(key % 256) == "h":
-            self.outline.visible = not self.outline.visible
+            for o in self.aligner.outlines:
+                o.visible = not o.visible
         else:
             super(FlatScene, self).OnKeyDown(evt)         
 
@@ -176,6 +178,7 @@ class Align(HasTraits):
     opacity = Range(0., 1.)
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
+    outlines = List
     ptcolor = Color(value="white")
 
     # The 4 views displayed
@@ -209,7 +212,7 @@ class Align(HasTraits):
     #---------------------------------------------------------------------------
     # Object interface
     #---------------------------------------------------------------------------
-    def __init__(self, pts, polys, epi, xfm=None, **traits):
+    def __init__(self, pts, polys, epi, xfm=None, xfmtype='magnet', **traits):
         '''
         Parameters
         ----------
@@ -339,6 +342,7 @@ class Align(HasTraits):
             figure=scene.mayavi_scene)
         glyph.glyph.glyph_source.glyph_source.filled = True
         setattr(self, "outline_%s"%axis_name, pts)
+        self.outlines.append(pts)
 
         # Extract the spacing of the side_src to convert coordinates
         # into indices
@@ -372,6 +376,9 @@ class Align(HasTraits):
 
         # 2D interaction: only pan and zoom
         scene.scene.interactor.interactor_style = tvtk.InteractorStyleImage()
+        def focusfunc(vtkobj, i):
+            scene.scene_editor.control.SetFocusFromKbd()
+        scene.scene.interactor.add_observer("MouseMoveEvent", focusfunc)
         scene.scene.background = (0, 0, 0)
 
         # Some text:
@@ -441,20 +448,20 @@ class Align(HasTraits):
     def display_scene_x(self):
         self.make_side_view('x')
         self.scene_x.scene_editor.handle = self.handle_x
-        self.scene_x.scene_editor.outline = self.outline_x
+        self.scene_x.scene_editor.aligner = self
 
     @on_trait_change('scene_y.activated')
     def display_scene_y(self):
         self.make_side_view('y')
         self.scene_y.scene_editor.handle = self.handle_y
         self.scene_y.scene_editor.invert = True
-        self.scene_y.scene_editor.outline = self.outline_y
+        self.scene_y.scene_editor.aligner = self
 
     @on_trait_change('scene_z.activated')
     def display_scene_z(self):
         self.make_side_view('z')
         self.scene_z.scene_editor.handle = self.handle_z
-        self.scene_z.scene_editor.outline = self.outline_z
+        self.scene_z.scene_editor.aligner = self
 
     #---------------------------------------------------------------------------
     # Traits callback
@@ -621,6 +628,10 @@ def align(subject, xfmname, epi=None, xfm=None):
     import db
     data = db.flats.getXfm(subject, xfmname, xfmtype='magnet')
     if data is None:
+        data = db.flats.getXfm(subject, xfmname, xfmtype='coord')
+        if data is not None:
+            dbxfm, epi = data
+            nibabel
         assert epi is not None, "Unknown transform"
         data = db.flats.getVTK(subject, 'fiducial')
         assert data is not None, "Cannot find subject"
@@ -631,7 +642,7 @@ def align(subject, xfmname, epi=None, xfm=None):
         data = db.flats.getVTK(subject, 'fiducial')
         assert data is not None, "Cannot find subject"
         m = Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm)
-        m.configure_traits()
+        m.edit_traits()
     
     magnet = m.get_xfm("magnet")
     shortcut = m.get_xfm("coord")
@@ -642,6 +653,7 @@ def align(subject, xfmname, epi=None, xfm=None):
         db.flats.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
         db.flats.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
         print "Complete!"
+    return m
     return magnet
 
 ################################################################################
