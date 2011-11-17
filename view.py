@@ -96,8 +96,9 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
     types = ("fiducial",) + types + ("flat",)
     pts = []
     for t in types:
-        pt, polys, norm = db.flats.getVTK(subject, t, hemisphere=hemisphere)
+        pt, polys, norm = db.surfs.getVTK(subject, t, hemisphere=hemisphere)
         pts.append(pt)
+        
     #flip the flats to be on the X-Z plane
     flatpts = np.zeros_like(pts[-1])
     flatpts[:,[0,2]] = pts[-1][:,:2]
@@ -107,12 +108,12 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
     if hasattr(data, "get_affine"):
         #this is a nibabel file -- it has the nifti headers intact!
         if isinstance(xfm, str):
-            xfm = db.flats.getXfm(subject, xfm, xfmtype="magnet")
+            xfm = db.surfs.getXfm(subject, xfm, xfmtype="magnet")
             assert xfm is not None, "Cannot find transform by this name!"
             xfm = np.dot(np.linalg.inv(data.get_affine()), xfm[0])
         data = data.get_data()
     else:
-        xfm = db.flats.getXfm(subject, xfm, xfmtype="coord")
+        xfm = db.surfs.getXfm(subject, xfm, xfmtype="coord")
         assert xfm is not None, "Cannot find coord transform, please provide a nifti!"
         xfm = xfm[0]
     assert xfm.shape == (4, 4), "Not a transform matrix!"

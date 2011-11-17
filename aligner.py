@@ -473,12 +473,13 @@ class Align(HasTraits):
         """
         self.disable_render = True
         origin = self.origin * np.sign(self.spacing)
-        
+        offset = np.abs(self.spacing) / 2
+
         for axis_name, axis_number in self._axis_names.iteritems():
             ipw3d = getattr(self, 'ipw_3d_%s' % axis_name)
-            ipw3d.ipw.slice_position = self.position[axis_number]+origin[axis_number]
+            ipw3d.ipw.slice_position = self.position[axis_number]+origin[axis_number] + offset[axis_number]
             
-            p = list(self.position)
+            p = list(self.position + offset)
             p.pop(axis_number)
             if axis_name is 'y':
                 p = p[::-1]
@@ -494,7 +495,7 @@ class Align(HasTraits):
         origin = self.origin * np.sign(self.spacing)
         limit = self.epi_src.scalar_data.shape * abs(self.spacing) + origin
         xfmpts = self.xfm.outputs[0].points.to_array()
-
+        
         for axis_name, axis_number in self._axis_names.items():
             ipw3d = getattr(self, 'ipw_3d_%s' % axis_name)
             slab = getattr(self, 'slab_%s' % axis_name)
@@ -511,7 +512,7 @@ class Align(HasTraits):
             pts = xfmpts[mask][:,idx] - origin[idx]
             pts = np.hstack([pts, [1,-1,1][axis_number]*np.ones((len(mask), 1))])
             outline.data.points = pts
-        
+
         self.disable_render = False
 
     @on_trait_change('disable_render')
@@ -585,7 +586,14 @@ class Align(HasTraits):
             xfm = self.xfm.transform.matrix.to_array()
             return np.dot(self.affine, np.dot(ibase, xfm))
     
-    def set_xfm(self, matrix):
+    def set_xfm(self, matrix, xfmtype='magnet'):
+        assert xfmtype in "magnet coord base".split(), "Unknown transform type"
+        if xfmtype == "coord":
+            matrix = np.dot(self.base, matrix)
+        elif xfmtype == "magnet":
+            iaff = np.linalg.inv(self.affine)
+            matrix = np.dot(self.base, np.dot(iaff, matrix))
+
         self.xfm.transform.set_matrix(matrix.ravel())
         self.xfm.widget.set_transform(self.xfm.transform)
         self.xfm.update_pipeline()
@@ -626,20 +634,20 @@ class Align(HasTraits):
 
 def align(subject, xfmname, epi=None, xfm=None):
     import db
-    data = db.flats.getXfm(subject, xfmname, xfmtype='magnet')
+    data = db.surfs.getXfm(subject, xfmname, xfmtype='magnet')
     if data is None:
-        data = db.flats.getXfm(subject, xfmname, xfmtype='coord')
+        data = db.surfs.getXfm(subject, xfmname, xfmtype='coord')
         if data is not None:
             dbxfm, epi = data
             nibabel
         assert epi is not None, "Unknown transform"
-        data = db.flats.getVTK(subject, 'fiducial')
+        data = db.surfs.getVTK(subject, 'fiducial')
         assert data is not None, "Cannot find subject"
         m = Align(data[0], data[1], epi, xfm=xfm)
         m.configure_traits()
     else:
         dbxfm, epi = data
-        data = db.flats.getVTK(subject, 'fiducial')
+        data = db.surfs.getVTK(subject, 'fiducial')
         assert data is not None, "Cannot find subject"
         m = Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm)
         m.edit_traits()
@@ -650,8 +658,8 @@ def align(subject, xfmname, epi=None, xfm=None):
     print "Save? (Y/N)"
     if sys.stdin.readline().strip().lower() in ["y", "yes"]:
         print "Saving..."
-        db.flats.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
-        db.flats.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
+        db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
+        db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
         print "Complete!"
     return m
     return magnet

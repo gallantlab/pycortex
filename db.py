@@ -193,7 +193,8 @@ class Database(object):
         self.conn.commit()
     
     def loadXfm(self, subject, name, xfm, xfmtype="magnet", filename=None, override=False):
-        assert xfmtype in ["magnet", "coord", "base"]
+        """Load a transform into the surface database"""
+        assert xfmtype in ["magnet", "coord", "base"], "Unknown transform type"
         query = "SELECT name FROM transforms WHERE subject=? and name=? and type=?"
         result = self.cur.execute(query, (subject, name, xfmtype)).fetchone()
         if result is not None:
@@ -238,7 +239,7 @@ class Database(object):
             d, offset = self.cur.execute(query, (subject, type, hemisphere)).fetchone()
             return vtkutils.read([d])
 
-flats = Database()
+surfs = Database()
 
 if __name__ == "__main__":
     import argparse
@@ -248,11 +249,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
 
-    db.flats.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
-    db.flats.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
+    #surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
+    #surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
     
     try:
-        flats.loadVTKdir(args.vtkdir, args.subject)
+        surfs.loadVTKdir(args.vtkdir, args.subject)
         print "Success!"
     except Exception, e:
         print "Error with processing: ", e
