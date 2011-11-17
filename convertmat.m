@@ -12,7 +12,8 @@ files = {
 	struct('subject', 'TC', 'name', 'TC_huth','xfm','/auto/k1/huth/text/movie/data/temptr_TC.mat'),
 	struct('subject', 'TC', 'name', 'TC_shinji','xfm','/auto/data/shinji/MRI/voxels/voxelsTC/tr/tr_20101001TC_anatKat2.mat'),
 	struct('subject', 'NB', 'name', 'NB_huth','xfm','/auto/k1/huth/text/movie/data/temptr_NB.mat'),
-	struct('subject', 'WH', 'name', 'WH_huth','xfm','/auto/k1/huth/text/movie/data/temptr_WH.mat')
+	struct('subject', 'WH', 'name', 'WH_huth','xfm','/auto/k1/huth/text/movie/data/temptr_WH.mat'), 
+	struct('subject', 'NB', 'name', 'NB_cukur', 'xfm', '/auto/k6/cukur/flatmap/alignments/temptr_NB2.mat')
 };
 
 for i=1:length(files)
@@ -29,3 +30,4 @@ for i=1:length(files)
 
 	files{i}.xfm = mat;
 end
+save /tmp/xfmmats.mat files

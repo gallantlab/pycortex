@@ -26,7 +26,6 @@ except ImportError:
     from enthought.mayavi.core.api import PipelineBase, Source, Filter, Module
     from enthought.mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 
-#m.scene3d.scene_editor.control.SetFocusFromKbd()
 class RotationWidget(HasTraits):
     radius = Float(value=1)
     angle = Float(value=0)
@@ -130,7 +129,7 @@ class ThreeDScene(MayaviScene):
         elif key == "5":
             self.aligner.scene3d.parallel_projection = not self.aligner.scene3d.parallel_projection
         elif key == "7":
-            self.aligner.scene3d.camera.position = focus + [0, 0, self.state[2]*500]
+            self.aligner.scene3d.camera.position = focus + [0, 1e-6, self.state[2]*500]
             self.state[2] = -self.state[2]
         elif key == "\x1a" and evt.CmdDown() and hasattr(self.aligner, "_last_transform"):
             self.aligner.xfm.transform.set_matrix(self.aligner._last_transform.ravel())
@@ -178,7 +177,7 @@ class Align(HasTraits):
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
     outlines = List
-    ptcolor = Color(value="white")
+    ptcolor = Color(value="navy")
 
     # The 4 views displayed
     scene3d = Instance(MlabSceneModel, ())
@@ -638,7 +637,6 @@ def align(subject, xfmname, epi=None, xfm=None):
         data = db.surfs.getXfm(subject, xfmname, xfmtype='coord')
         if data is not None:
             dbxfm, epi = data
-            nibabel
         assert epi is not None, "Unknown transform"
         data = db.surfs.getVTK(subject, 'fiducial')
         assert data is not None, "Cannot find subject"
@@ -654,11 +652,14 @@ def align(subject, xfmname, epi=None, xfm=None):
     magnet = m.get_xfm("magnet")
     shortcut = m.get_xfm("coord")
     epi = os.path.abspath(epi)
-    if raw_input("Save? (Y/N) ") in ["y", "yes"]:
+    resp = raw_input("Save? (Y/N) ")
+    if resp.lower().strip() in ["y", "yes"]:
         print "Saving..."
         db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
         db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
         print "Complete!"
+    else:
+        print "Cancelled... %s"%resp
     
     return magnet
 

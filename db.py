@@ -121,7 +121,7 @@ class XfmSet(object):
         self.filename = filename
     
     def remove(self): 
-        if raw_input("Are you sure? (Y/N)") in ["y", "yes"]:
+        if raw_input("Are you sure? (Y/N) ").lower().strip() in ["y", "yes"]:
             query = "DELETE FROM transforms WHERE subject=? AND name=?"
             self.cur.execute(query, (self.subject, self.name))
             self.conn.commit()
@@ -190,17 +190,28 @@ class Database(object):
 
         self.conn.commit()
     
-    def loadXfm(self, subject, name, xfm, xfmtype="magnet", filename=None, override=False):
+    def loadXfm(self, subject, name, xfm, xfmtype="magnet", filename=None, override=None):
         """Load a transform into the surface database"""
         assert xfmtype in ["magnet", "coord", "base"], "Unknown transform type"
         query = "SELECT name FROM transforms WHERE subject=? and name=? and type=?"
         result = self.cur.execute(query, (subject, name, xfmtype)).fetchone()
         if result is not None:
             prompt = 'There is already a transform for this subject by the name of "%s". Overwrite? (Y/N)'%subject
-            if override or raw_input(prompt) in ("y", "yes"):
-                query = "UPDATE transforms SET xfm=? WHERE subject=? AND name=? and type=?"
-                self.cur.execute(query, (sqlite3.Binary(xfm.tostring()), subject, name, xfmtype))
+            if override is not None and override or (
+                override is None and raw_input(prompt).lower().strip() in ("y", "yes")):
+
+                query = "UPDATE transforms SET xfm=?%s WHERE subject=? AND name=? and type=?"
+                if filename is not None:
+                    query = query%", filename=? "
+                    data = (sqlite3.Binary(xfm.tostring()), filename, subject, name, xfmtype)
+                else:
+                    query = query%""
+                    data = (sqlite3.Binary(xfm.tostring()), subject, name, xfmtype)
+                    
+                self.cur.execute(query, data)
                 self.conn.commit()
+            else:
+                print "Override: skipping %s"%name
         else:
             fields = "subject,name,date,type,xfm".split(",")
             data = (subject, name, time.time(), xfmtype, sqlite3.Binary(xfm.tostring()))
