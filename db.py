@@ -1,5 +1,4 @@
 import os
-import sys
 import glob
 import sqlite3
 import time
@@ -121,9 +120,8 @@ class XfmSet(object):
         self.conn.commit()
         self.filename = filename
     
-    def remove(self):
-        print "Are you sure? (Y/N)"
-        if sys.stdin.readline().strip().lower() in ["y", "yes"]:
+    def remove(self): 
+        if raw_input("Are you sure? (Y/N)") in ["y", "yes"]:
             query = "DELETE FROM transforms WHERE subject=? AND name=?"
             self.cur.execute(query, (self.subject, self.name))
             self.conn.commit()
@@ -198,8 +196,8 @@ class Database(object):
         query = "SELECT name FROM transforms WHERE subject=? and name=? and type=?"
         result = self.cur.execute(query, (subject, name, xfmtype)).fetchone()
         if result is not None:
-            print 'There is already a transform for this subject by the name of "%s". Overwrite? (Y/N)'
-            if override or sys.stdin.readline().strip().lower() in ("y", "yes"):
+            prompt = 'There is already a transform for this subject by the name of "%s". Overwrite? (Y/N)'%subject
+            if override or raw_input(prompt) in ("y", "yes"):
                 query = "UPDATE transforms SET xfm=? WHERE subject=? AND name=? and type=?"
                 self.cur.execute(query, (sqlite3.Binary(xfm.tostring()), subject, name, xfmtype))
                 self.conn.commit()

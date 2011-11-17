@@ -1,6 +1,5 @@
 #/usr/bin/env python
 import os
-import sys
 import numpy as np
 import nibabel
 
@@ -650,18 +649,17 @@ def align(subject, xfmname, epi=None, xfm=None):
         data = db.surfs.getVTK(subject, 'fiducial')
         assert data is not None, "Cannot find subject"
         m = Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm)
-        m.edit_traits()
+        m.configure_traits()
     
     magnet = m.get_xfm("magnet")
     shortcut = m.get_xfm("coord")
     epi = os.path.abspath(epi)
-    print "Save? (Y/N)"
-    if sys.stdin.readline().strip().lower() in ["y", "yes"]:
+    if raw_input("Save? (Y/N) ") in ["y", "yes"]:
         print "Saving..."
         db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
         db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
         print "Complete!"
-    return m
+    
     return magnet
 
 ################################################################################

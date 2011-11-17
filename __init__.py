@@ -4,7 +4,7 @@ import tempfile
 
 import numpy as np
 
-from db import surfs as dbsurfs
+from db import surfs
 
 def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     '''mosaic(data, xy=(6, 5), trim=10, skip=1)
