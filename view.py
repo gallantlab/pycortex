@@ -50,12 +50,16 @@ class Mixer(HasTraits):
     @on_trait_change("figure.activated")
     def _start(self):
         self.figure.scene.background = (0,0,0)
+        self.figure.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
+        self.figure.scene.render_window.stereo_type = "anaglyph"
+        self.figure.camera.view_up = [0,0,1]
+        self.figure.camera.position = [0,-1600,0]
+        self.figure.camera.focal_point = [0,0,0]
+
         self.colormap = "RdBu"
         self.fliplut = True
         self.data_src
         self.surf
-        self.figure.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
-        self.figure.scene.render_window.stereo_type = "anaglyph"
 
     #@on_trait_change('mix')
     def _mix_changed(self):
@@ -98,13 +102,13 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
     for t in types:
         pt, polys, norm = db.surfs.getVTK(subject, t, hemisphere=hemisphere)
         pts.append(pt)
-        
+
     #flip the flats to be on the X-Z plane
     flatpts = np.zeros_like(pts[-1])
     flatpts[:,[0,2]] = pts[-1][:,:2]
     flatpts[:,1] = pts[-2].min(0)[1]
     pts[-1] = flatpts
-    
+
     if hasattr(data, "get_affine"):
         #this is a nibabel file -- it has the nifti headers intact!
         if isinstance(xfm, str):

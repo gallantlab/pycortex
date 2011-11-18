@@ -32,6 +32,7 @@ class SubjectDB(object):
 class SurfaceDB(object):
     def __init__(self, subj, conn, cur):
         self.subject = subj
+        self.conn, self.cur = conn, cur
         query = "SELECT type, hemisphere, filename, offset FROM surfaces WHERE subject=?"
         results = cur.execute(query, (subj,))
         types = {}
@@ -39,7 +40,10 @@ class SurfaceDB(object):
             if row[0] not in types:
                 types[row[0]] = {}
             types[row[0]][row[1]] = row[2]
-            types[row[0]]['offset'] = [float(r) for r in row[3].split()]
+            offset = row[3]
+            if offset is not None and len(offset) > 0:
+                offset = [float(r) for r in offset.split()]
+            types[row[0]]['offset'] = offset
         self.types = types
     
     def __repr__(self):
@@ -50,18 +54,23 @@ class SurfaceDB(object):
 
     def __getattr__(self, attr):
         if attr in self.types:
-            return Surf(self.types[attr]['lh'], self.types[attr]['rh'], self.types[attr]['offset'])
+            return Surf(
+                self.types[attr]['lh'], 
+                self.types[attr]['rh'], 
+                self.conn, self.cur,
+                self.types[attr]['offset'])
         raise AttributeError
 
 class Surf(object):
-    def __init__(self, lh, rh, offset=(0,0,0)):
+    def __init__(self, lh, rh, conn, cur, offset=None):
         self.lh, self.rh = lh, rh
-        self.offset = np.array(offset)
+        self.conn, self.cur = conn, cur
+        self.offset = None if offset is None else np.array(offset)
 
     def get(self, hemisphere="both"):
         import vtkutils
         if hemisphere == "both":
-            return vtkutils.read([self.lh, self.rh])
+            return vtkutils.read([self.lh, self.rh], offset=self.offset)
         elif hemisphere.lower() in ["l", "lh", "left"]:
             return vtkutils.read([self.lh])
         elif hemisphere.lower() in ["r", "rh", "right"]:
@@ -71,11 +80,22 @@ class Surf(object):
     def show(self, hemisphere="both"):
         import vtkutils
         if hemisphere == "both":
-            vtkutils.show([self.lh, self.rh])
+            return vtkutils.show([self.lh, self.rh], offset=self.offset)
         elif hemisphere.lower() in ["l", "lh", "left"]:
-            vtkutils.show([self.lh])
+            return vtkutils.show([self.lh])
         elif hemisphere.lower() in ["r", "rh", "right"]:
-            vtkutils.show([self.rh])
+            return vtkutils.show([self.rh])
+    
+    def __setattr__(self, attr, val):
+        if not hasattr(self, attr):
+            super(Surf, self).__setattr__(attr, val)
+            return
+        
+        if attr == "offset":
+            query = "UPDATE surfaces SET offset=? WHERE lh=? OR rh=?"
+            self.cur.execute(query, (val, self.lh, self.rh))
+            self.conn.commit()
+            super(Surf, self).__setattr__(attr, val)
             
 class XfmDB(object):
     def __init__(self, subj, conn, cur):
@@ -171,7 +191,7 @@ class Database(object):
             data = subject, "anatomical", "both", anat[-1], "0 0 0"
             self.cur.execute(query, data)
         
-        coords = "0 0 0"
+        coords = None
         if os.path.exists(os.path.join(flatdir, "coords")):
             coords = open(os.path.join(flatdir, "coords")).read()
         
@@ -181,9 +201,9 @@ class Database(object):
                 fpath = os.path.join(flatdir, fname)
                 if os.path.exists(fpath):
                     print fpath
-                    data = [subject, t, d, fpath, coords]
                     if t == "fiducial":
-                        data[-1] = "0 0 0"
+                        coord = "0 0 0"
+                    data = [subject, t, d, fpath, coords]
                     self.cur.execute(query, data)
                 else:
                     print "couldn't find %s"%fpath
@@ -207,7 +227,7 @@ class Database(object):
                 else:
                     query = query%""
                     data = (sqlite3.Binary(xfm.tostring()), subject, name, xfmtype)
-                    
+
                 self.cur.execute(query, data)
                 self.conn.commit()
             else:
@@ -242,8 +262,9 @@ class Database(object):
         if hemisphere == "both":
             lh, offset = self.cur.execute(query, (subject, type, 'lh')).fetchone()
             rh, offset = self.cur.execute(query, (subject, type, 'rh')).fetchone()
-            offset = [float(d) for d in offset.split()]
-            return vtkutils.read([lh, rh])
+            if offset is not None and len(offset) > 0:
+                offset = np.array([float(d) for d in offset.split()])
+            return vtkutils.read([lh, rh], offset=offset)
         else:
             d, offset = self.cur.execute(query, (subject, type, hemisphere)).fetchone()
             return vtkutils.read([d])

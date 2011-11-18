@@ -54,7 +54,7 @@ def detrend_volume_poly(data, polyorder = 10, mask=None):
     
     A = np.vstack([[p(i) for i in lins] for p in polys]).T
     x, res, rank, sing = np.linalg.lstsq(A, b)
-    
+
     detrended = b.ravel() - np.dot(A, x).ravel()
     if mask is not None:
         filled = np.zeros_like(mask)
@@ -65,4 +65,4 @@ def detrend_volume_poly(data, polyorder = 10, mask=None):
 
 def flatten(data, subject="JG", xfmname="20110909JG_dust"):
     import view
-    view.show(data, subject, xfmname)
+    return view.show(data, subject, xfmname)
