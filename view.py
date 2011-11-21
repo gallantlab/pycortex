@@ -28,6 +28,7 @@ from scipy.interpolate import interp1d, Rbf
 class Mixer(HasTraits):
     points = Any
     polys = Array(shape=(None, 3))
+    data = Any
 
     mix = Range(0., 1., value=1)
     figure = Instance(MlabSceneModel, ())
@@ -39,9 +40,12 @@ class Mixer(HasTraits):
 
     def _data_src_default(self):
         pts = self.points(1)
-        return mlab.pipeline.triangular_mesh_source(
+        src = mlab.pipeline.triangular_mesh_source(
             pts[:,0], pts[:,1], pts[:,2],
             self.polys, figure=self.figure.mayavi_scene)
+        if self.data is not None:
+            src.mlab_source.scalars = self.data
+        return src
 
     def _surf_default(self):
         n = mlab.pipeline.poly_data_normals(self.data_src, figure=self.figure.mayavi_scene)
@@ -80,22 +84,20 @@ class Mixer(HasTraits):
         self.data_src.mlab_source.scalars = data
 
     view = View(
-    HGroup(
-        Group(
-            Item("figure", editor=SceneEditor(scene_class=MayaviScene)),
-            "mix",
-            show_labels=False),
-        Group(
-            Item('colormap',
-                 editor=ImageEnumEditor(values=lut_manager.lut_mode_list(),
-                 cols=6, path=lut_manager.lut_image_dir)),
-            "fliplut"),
-    show_labels=False),
-    resizable=True, title="Mixer")
+        HGroup(
+            Group(
+                Item("figure", editor=SceneEditor(scene_class=MayaviScene)),
+                "mix",
+                show_labels=False),
+            Group(
+                Item('colormap',
+                     editor=ImageEnumEditor(values=lut_manager.lut_mode_list(),
+                     cols=6, path=lut_manager.lut_image_dir)),
+                "fliplut"),
+        show_labels=False),
+        resizable=True, title="Mixer")
 
-def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
-    '''View epi data, transformed into the space given by xfm. 
-    Types indicates which surfaces to add to the interpolater. Always includes fiducial and flat'''
+def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
     import db
     types = ("fiducial",) + types + ("flat",)
     pts = []
@@ -108,6 +110,14 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
     flatpts[:,[0,2]] = pts[-1][:,:2]
     flatpts[:,1] = pts[-2].min(0)[1]
     pts[-1] = flatpts
+
+    interp = interp1d(np.linspace(0,1,len(pts)), pts, axis=0)
+    return interp, polys
+
+def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
+    '''View epi data, transformed into the space given by xfm. 
+    Types indicates which surfaces to add to the interpolater. Always includes fiducial and flat'''
+    interp, polys = _get_surf_interp(subject, types, hemisphere)
 
     if hasattr(data, "get_affine"):
         #this is a nibabel file -- it has the nifti headers intact!
@@ -122,11 +132,11 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
         xfm = xfm[0]
     assert xfm.shape == (4, 4), "Not a transform matrix!"
 
-    wpts = np.append(pts[0], np.ones((len(pts[0]),1)), axis=-1).T
+    pts = interp(0)
+    wpts = np.append(pts, np.ones((len(pts),1)), axis=-1).T
     coords = np.dot(xfm, wpts)[:3].T.round().astype(int)
     scalars = np.array([data.T[tuple(p)] for p in coords])
-
-    interp = interp1d(np.linspace(0,1,len(pts)), pts, axis=0)
+    
     m = Mixer(points=interp, polys=polys)
     m.edit_traits()
     m.set(scalars)
