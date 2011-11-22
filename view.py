@@ -210,9 +210,9 @@ class Mixer(HasTraits):
         self.figure.set_size((width, height))
         self.figure.interactor.update_size(int(width), int(height))
         self.figure.off_screen_rendering = True
-        self.reset_view(center=center)
 
         if os.path.splitext(filename)[-1].lower() == ".svg":
+            self.reset_view(center=False)
             tf = tempfile.NamedTemporaryFile()
             self.figure.save_png(tf.name)
             pngdata = binascii.b2a_base64(tf.read())
@@ -220,6 +220,7 @@ class Mixer(HasTraits):
             with open(filename, "w") as svgfile:
                 svgfile.write(svg_format.format(width=width, height=height, pngdata=pngdata))
         else:
+            self.reset_view(center=True)
             self.figure.save_png(filename)
         
 
