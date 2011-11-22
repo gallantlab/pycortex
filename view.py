@@ -1,16 +1,17 @@
 import os
-import cStringIO
 import binascii
 import tempfile
-import Image
+import cStringIO
 import subprocess as sp
 import multiprocessing as mp
-import numpy as np
 from xml.dom.minidom import parse as xmlparse
+
+import Image
+import numpy as np
 from scipy.interpolate import interp1d, Rbf
 
 try:
-    from traits.api import HasTraits, Instance, Array, Float, Bool, Dict, Range, Any, Color,Enum, Callable, on_trait_change
+    from traits.api import HasTraits, Instance, Array, Float, Str, Bool, Dict, Range, Any, Color,Enum, Callable, on_trait_change
     from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
     from tvtk.api import tvtk
@@ -22,7 +23,7 @@ try:
     from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
     from mayavi.sources.array_source import ArraySource
 except ImportError:
-    from enthought.traits.api import HasTraits, Instance, Array, Float, Bool, Dict, Any, Range, Color,Enum, Callable, on_trait_change
+    from enthought.traits.api import HasTraits, Instance, Array, Float, Str, Bool, Dict, Any, Range, Color,Enum, Callable, on_trait_change
     from enthought.traits.ui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor, Handler
 
     from enthought.tvtk.api import tvtk
@@ -120,8 +121,12 @@ class Mixer(HasTraits):
     polys = Array(shape=(None, 3))
     data = Array
     linewidth = Float(5.)
+    texres = Float(1024.)
 
     svg = Instance("xml.dom.minidom.Document")
+    svgfile = Str
+
+    tex = Instance(ArraySource, ())
 
     mix = Range(0., 1., value=1)
     figure = Instance(MlabSceneModel, ())
@@ -130,6 +135,8 @@ class Mixer(HasTraits):
 
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
+
+    showlabels = Bool
 
     def _data_src_default(self):
         pts = self.points(1)
@@ -178,6 +185,10 @@ class Mixer(HasTraits):
         #    self.data_src.data.points = self.points(self.mix)
         #    GUI.invoke_later(self.data_src.data.update)
         #threading.Thread(target=func).start()
+    
+    def _tex_changed(self):
+        self.surf.actor.texture_source_object = self.tex
+        self.surf.actor.enable_texture = True
     
     @on_trait_change("colormap, fliplut")
     def _update_colors(self):
@@ -242,6 +253,17 @@ class Mixer(HasTraits):
         self.figure.off_screen_rendering = False
         self.figure.render
     
+    def append_svg(self, name="data"):
+        assert self.svgfile is not None, "Cannot find current ROI svg"
+        #self.svg deletes the images -- we want to save those, so let's load it again
+        svg = xmlparse(self.svgfile)
+        imgs = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == "data"]
+        assert len(imgs) > 0, "Invalid file, cannot find data layer!"
+        imgs = imgs[0]
+        layer = svg.createElement("g")
+        
+    
+    @on_trait_change("svgfile")
     def import_roi(self, filename):
         svg = xmlparse(filename)
         #Remove the roi images -- we don't need to render them for the texture
@@ -256,7 +278,7 @@ class Mixer(HasTraits):
         self.rois = dict([(r.getAttribute("inkscape:label"), r.getElementsByTagName("path")) 
             for r in rois[0].getElementsByTagName("g")])
         
-        #Set all the path lengths
+        #Set all the path widths
         for name, paths in self.rois.items():
             style = "fill:none;stroke:#000000;stroke-width:{lw}px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1".format(lw=self.linewidth)
             for path in paths:
@@ -265,14 +287,21 @@ class Mixer(HasTraits):
         #use traits callback to update the texture
         self.svg = svg
     
-    def _svg_changed(self):
-        #convert to png
+    @on_trait_change("svg, texres")
+    def update_texture(self):
+        '''Updates the current texture as found in self.svg. Converts it to PNG and applies it to the image'''
+        #set the current size of the texture
+        svg = self.svg.getElementsByTagName("svg")[0]
+        h = float(svg.getAttribute("height"))
+        w = float(svg.getAttribute("width"))
+        svg.setAttribute("height", self.texres)
+        svg.setAttribute("width", w/h*self.texres)
+        
         convert = sp.Popen("convert - png:-".split(), stdin=sp.PIPE, stdout=sp.PIPE)
         tex = cStringIO.StringIO(convert.communicate(self.svg.toxml())[0])
         tex = np.asarray(Image.open(tex)).astype(float).swapaxes(0,1)[:,::-1]
-        self.tex = ArraySource(scalar_data= 1. - tex[...,0] / 255.)
-        self.surf.actor.texture_source_object = self.tex
-        self.surf.actor.enable_texture = True
+        self.tex.scalar_data = 1. - tex[...,0] / 255.
+        
 
     view = View(
         HGroup(
