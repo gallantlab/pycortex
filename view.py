@@ -1,4 +1,5 @@
 import os
+import binascii
 import tempfile
 import multiprocessing as mp
 import numpy as np
@@ -91,11 +92,7 @@ svg_format = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
        inkscape:label="_data"
        style="display:inline"
        sodipodi:insensitive="true">
-      <image
-         y="0"
-         x="0"
-         height="{height}"
-         width="{width}"
+      <image x="0" y="0" width="{width}" height="{height}"
          id="image3115"
          xlink:href="data:image/png;base64,{pngdata}"/>
     </g>
@@ -216,7 +213,12 @@ class Mixer(HasTraits):
         self.reset_view(center=center)
 
         if os.path.splitext(filename)[-1].lower() == ".svg":
-            
+            tf = tempfile.NamedTemporaryFile()
+            self.figure.save_png(tf.name)
+            pngdata = binascii.b2a_base64(tf.read())
+            tf.close()
+            with open(filename, "w") as svgfile:
+                svgfile.write(svg_format.format(width=width, height=height, pngdata=pngdata))
         else:
             self.figure.save_png(filename)
         
