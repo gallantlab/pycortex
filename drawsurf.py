@@ -142,5 +142,5 @@ if __name__ == "__main__":
     from scipy.interpolate import interp1d
     x, y, polys = cPickle.load(open("../../Dropbox/mesh.pkl"))
     interp = interp1d(x, y)
-    m = DrawOnTex(points=interp, polys=polys)
+    m = view.Mixer(points=interp, polys=polys)
     m.edit_traits()

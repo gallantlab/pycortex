@@ -1,12 +1,16 @@
 import os
+import cStringIO
 import binascii
 import tempfile
+import Image
+import subprocess as sp
 import multiprocessing as mp
 import numpy as np
+from xml.dom.minidom import parse as xmlparse
 from scipy.interpolate import interp1d, Rbf
 
 try:
-    from traits.api import HasTraits, Instance, Array, Bool, Dict, Range, Any, Color,Enum, Callable, on_trait_change
+    from traits.api import HasTraits, Instance, Array, Float, Bool, Dict, Range, Any, Color,Enum, Callable, on_trait_change
     from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
     from tvtk.api import tvtk
@@ -16,8 +20,9 @@ try:
     from mayavi.core.ui import lut_manager
     from mayavi.core.api import PipelineBase, Source, Filter, Module
     from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
+    from mayavi.sources.array_source import ArraySource
 except ImportError:
-    from enthought.traits.api import HasTraits, Instance, Array, Bool, Dict, Any, Range, Color,Enum, Callable, on_trait_change
+    from enthought.traits.api import HasTraits, Instance, Array, Float, Bool, Dict, Any, Range, Color,Enum, Callable, on_trait_change
     from enthought.traits.ui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor, Handler
 
     from enthought.tvtk.api import tvtk
@@ -27,6 +32,7 @@ except ImportError:
     from enthought.mayavi.core.ui import lut_manager
     from enthought.mayavi.core.api import PipelineBase, Source, Filter, Module
     from enthought.mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
+    from enthought.mayavi.sources.array_source import ArraySource
 
 import db
 
@@ -113,6 +119,9 @@ class Mixer(HasTraits):
     points = Any
     polys = Array(shape=(None, 3))
     data = Array
+    linewidth = Float(5.)
+
+    svg = Instance("xml.dom.minidom.Document")
 
     mix = Range(0., 1., value=1)
     figure = Instance(MlabSceneModel, ())
@@ -231,7 +240,39 @@ class Mixer(HasTraits):
         self.figure.camera.position, self.figure.camera.focal_point = lastpos
         self.figure.renderer.reset_camera_clipping_range()
         self.figure.off_screen_rendering = False
-        self.figure.render()
+        self.figure.render
+    
+    def import_roi(self, filename):
+        svg = xmlparse(filename)
+        #Remove the roi images -- we don't need to render them for the texture
+        rmnode = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == "data"]
+        if len(rmnode) > 0:
+            rmnode[0].parentNode.removeChild(rmnode[0])
+        del rmnode
+
+        #Set up the ROI dict
+        rois = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == "rois"]
+        assert len(rois) == 1, "This svg does not conform to expected roi format. Please generate a new one with saveflat"
+        self.rois = dict([(r.getAttribute("inkscape:label"), r.getElementsByTagName("path")) 
+            for r in rois[0].getElementsByTagName("g")])
+        
+        #Set all the path lengths
+        for name, paths in self.rois.items():
+            style = "fill:none;stroke:#000000;stroke-width:{lw}px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1".format(lw=self.linewidth)
+            for path in paths:
+                path.setAttribute("style", style)
+
+        #use traits callback to update the texture
+        self.svg = svg
+    
+    def _svg_changed(self):
+        #convert to png
+        convert = sp.Popen("convert - png:-".split(), stdin=sp.PIPE, stdout=sp.PIPE)
+        tex = cStringIO.StringIO(convert.communicate(self.svg.toxml())[0])
+        tex = np.asarray(Image.open(tex)).astype(float).swapaxes(0,1)[:,::-1]
+        self.tex = ArraySource(scalar_data= 1. - tex[...,0] / 255.)
+        self.surf.actor.texture_source_object = self.tex
+        self.surf.actor.enable_texture = True
 
     view = View(
         HGroup(
