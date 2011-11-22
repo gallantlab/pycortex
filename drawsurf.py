@@ -50,10 +50,6 @@ class MouseDownScene(MayaviScene):
         if self.move:
             return super(MouseDownScene, self).OnButtonUp(evt)
 
-clear_white_black = np.tile(0, [85, 4]), np.tile(255, [86, 4]), np.tile(0, [85, 4]),
-clear_white_black[-1][:,-1] = 255
-clear_white_black = np.vstack(clear_white_black)
-
 class DrawOnTex(view.Mixer):
     texpath = Str
     tex = Instance(ArraySource)
@@ -65,26 +61,6 @@ class DrawOnTex(view.Mixer):
         ctx = cairo.Context(self.csurf)
         ctx.set_line_width(5)
         return ctx
-
-    def _data_src_default(self):
-        src = super(DrawOnTex, self)._data_src_default()
-        #Generate texture coordinates from the flatmap coordinates
-        pts = self.points(1)
-        pts -= pts.min(0)
-        pts /= pts.max(0)
-        src.data.point_data.t_coords = pts[:,[0,2]]
-        return src
-
-    def _surf_default(self):
-        surf = super(DrawOnTex, self)._surf_default()
-        surf.actor.enable_texture = True
-        surf.actor.texture_source_object = self.tex
-        surf.actor.texture.interpolate = True
-        surf.actor.texture.repeat = False
-        surf.actor.texture.lookup_table = tvtk.LookupTable(
-            table=clear_white_black, range=(-1,1))
-        return surf
-    
 
     def _tex_default(self):
         return ArraySource(scalar_data=np.zeros((2048,1024)))
