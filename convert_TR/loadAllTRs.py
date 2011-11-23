@@ -13,7 +13,7 @@ epis = dict(
 
 if __name__ == "__main__":
 	import numpy as np
-	from db import surfs
+	from utils.mri.db import surfs
 	import scipy.io as sio
 	import nibabel
 	trs = sio.loadmat(sys.argv[1])['files']
@@ -23,7 +23,7 @@ if __name__ == "__main__":
 		if s == "JV":
 			s = "AV"
 		args = [s, str(t[0]['name'][0][0][0]), t[0]['xfm'][0][0]]
-		kwargs = dict(xfmtype='coord', filename=epis[s], override=(s=="NB"))
+		kwargs = dict(xfmtype='coord', epifile=epis[s], override=(s=="NB"))
 		surfs.loadXfm(*args, **kwargs)
 
 		nii = nibabel.load(epis[s])

@@ -1,11 +1,12 @@
 import os
+import glob
 
 from utils.mri.db import surfs
 
 def loadVTKdir(vtkdir, subject):
     types = ['raw','fiducial','inflated','veryinflated', 'superinflated',
              'hyperinflated','ellipsoid','flat'];
-    anat = glob.glob(os.path.join(flatdir, "anatomical*"))
+    anat = glob.glob(os.path.join(vtkdir, "anatomical*"))
     if len(anat) > 0:
         surfs.loadVTK(anat[-1], subject, "anatomical", "both", None)
     
@@ -23,7 +24,7 @@ def loadVTKdir(vtkdir, subject):
                     offset = "0 0 0"
                 else:
                     offset = None
-                surfs.loadVTK(fpath, suject, t, d, offset)
+                surfs.loadVTK(fpath, subject, t, d, offset)
             else:
                 print "couldn't find %s"%fpath
 
@@ -36,4 +37,4 @@ if __name__ == "__main__":
     names = "AH,AV,DS,JG,ML,MO,NB,SN,TC,TN,WH".split(",")
     path = "/auto/data/archive/mri_flats/%s/"
     for n in names:
-        surfs.loadVTKdir(path%n, n)
+        loadVTKdir(path%n, n)

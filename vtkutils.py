@@ -15,7 +15,7 @@ def get(vtk):
 
 def read(vtk):
     normals = None
-    vfr = get(fname)
+    vfr = get(vtk)
     polys = vfr.outputs[0].polys.data.to_array().reshape(-1,4)[:,1:]
     pts = vfr.outputs[0].points.to_array()
     if vfr.outputs[0].point_data.normals is not None:

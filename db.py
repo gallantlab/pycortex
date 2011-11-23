@@ -1,14 +1,14 @@
 import os
-import glob
 import time
 import json
 import shutil
 import sqlite3
 import numpy as np
 
-options = json.load(open("defaults.json"))
+cwd = os.path.split(os.path.abspath(__file__))[0]
+options = json.load(open(os.path.join(cwd, "defaults.json")))
 filestore = options['file_store']
-dbfile = "database.sql"
+dbfile = os.path.join(cwd, "database.sql")
 
 class SubjectDB(object):
     def __init__(self, subj, conn, cur):
@@ -43,7 +43,10 @@ class SurfaceDB(object):
             if row[0] not in types:
                 types[row[0]] = {}
             types[row[0]][row[1]] = row[2]
-        self.types = types
+        self.types = {}
+        for k, v in types.items():
+            if "lh" in v and "rh" in v:
+                self.types[k] = Surf(subj, k, v['lh'], v['rh'], conn, cur)
     
     def __repr__(self):
         return "Surfaces: [{surfs}]".format(surfs=', '.join(self.types.keys()))
@@ -53,13 +56,12 @@ class SurfaceDB(object):
 
     def __getattr__(self, attr):
         if attr in self.types:
-            return Surf(self.subject, attr, self.types[attr]['lh'], self.types[attr]['rh'], 
-                self.conn, self.cur)
-        raise AttributeError
+            return self.types[attr]
+        raise AttributeError(attr)
 
 class Surf(object):
-    def __init__(self, subject, type, lh, rh, conn, cur):
-        self.subject, self.surftype = subject, type
+    def __init__(self, subject, surftype, lh, rh, conn, cur):
+        self.subject, self.surftype = subject, surftype
         self.lh, self.rh = lh, rh
         self.conn, self.cur = conn, cur
 
@@ -82,7 +84,7 @@ class Surf(object):
             return vtkutils.show([self.rh])
     
     def __dir__(self):
-        return super(Surf, self).__dir__() + ["loffset", "roffset"]
+        return self.__dict__.keys() + ["loffset", "roffset"]
     
     def __getattr__(self, attr):
         if attr == "loffset":
@@ -93,10 +95,6 @@ class Surf(object):
             self.cur.execute(query, (self.lh,)).fetchone()
     
     def __setattr__(self, attr, val):
-        if not hasattr(self, attr):
-            super(Surf, self).__setattr__(attr, val)
-            return
-        
         if attr == "loffset":
             query = "UPDATE surfaces SET offset=? WHERE lh=?"
             self.cur.execute(query, (val, self.lh))
@@ -105,6 +103,8 @@ class Surf(object):
             query = "UPDATE surfaces SET offset=? WHERE rh=?"
             self.cur.execute(query, (val, self.rh))
             self.conn.commit()
+        else:
+            super(Surf, self).__setattr__(attr, val)
             
 class XfmDB(object):
     def __init__(self, subj, conn, cur):
@@ -155,7 +155,7 @@ class Database(object):
         self.cur = self.conn.cursor()
         self._setup()
         subjects = self.cur.execute("SELECT subject FROM surfaces").fetchall()
-        self.subjects = set([n[0] for n in subjects])
+        self.subjects = dict([(n[0], SubjectDB(n[0], self.conn, self.cur)) for n in subjects])
     
     def _setup(self):
         schema = dict(surfaces='subject, type, hemisphere, filename, offset',
@@ -167,7 +167,7 @@ class Database(object):
         self.conn.commit()
     
     def __repr__(self):
-        subjs = ", ".join(sorted(list(self.subjects)))
+        subjs = ", ".join(sorted(self.subjects.keys()))
         pairs = self.cur.execute("SELECT subject, name from transforms").fetchall()
         xfms = "[%s]"%", ".join('(%s, %s)'% p for p in set(pairs))
         return """Flatmapping database
@@ -176,29 +176,32 @@ class Database(object):
     
     def __getattr__(self, attr):
         if attr in self.subjects:
-            return SubjectDB(attr, self.conn, self.cur)
+            return self.subjects[attr]
         else:
             raise AttributeError
     
     def __dir__(self):
-        return ["loadXfm","getXfm", "loadVTKdir", "getVTK"] + list(self.subjects)
+        return ["loadXfm","getXfm", "loadVTK", "getVTK"] + self.subjects.keys()
 
     def loadVTK(self, vtkfile, subject, surftype, hemisphere, offset=None):
         '''Load a vtk file into the database and copy it into the filestore'''
-        assert os.path.splitext(vtkfile)[1] == ".vtk", "Not a VTK file"
-        assert hemisphere in ["lh", "rh"], "Invalid hemisphere name, must be 'lh' or 'rh'"
+        #assert os.path.splitext(vtkfile)[1] == ".vtk", "Not a VTK file"
+        assert hemisphere in ["lh", "rh", "both"], "Invalid hemisphere name, must be 'lh' or 'rh'"
 
         #Let's delete any possible duplicates
         query = "DELETE FROM surfaces WHERE subject=? and type=? and hemisphere=?"
         self.cur.execute(query, (subject, surftype, hemisphere))
+        self.conn.commit()
 
         query = "INSERT into surfaces (subject, type, hemisphere, filename, offset) VALUES (?,?,?,?,?)"
-        filename = "{subj}_{type}_{hemi}.vtk".format(subj=subject, type=surftype, hemi=hemisphere)
-        #Copy the vtk file into the filestore
-        shutil.copy2(vtkfile, os.path.join(filestore, "surfaces", filename))
+        ext = os.path.splitext(vtkfile)[1].lower()
+        filename = "{subj}_{type}_{hemi}{ext}".format(subj=subject, type=surftype, hemi=hemisphere, ext=ext)
 
         self.cur.execute(query, (subject, surftype, hemisphere, filename, offset))
         self.conn.commit()
+
+        #Copy the vtk file into the filestore
+        shutil.copy2(vtkfile, os.path.join(filestore, "surfaces", filename))
     
     def loadXfm(self, subject, name, xfm, xfmtype="magnet", epifile=None, override=None):
         """Load a transform into the surface database. If the transform exists already, update it
@@ -223,7 +226,9 @@ class Database(object):
             assert epifile is not None, "Please specify a reference epi"
             assert os.path.splitext(epifile)[1].lower() == ".nii", "Reference epi must be a nifti"
             filename = "{subj}_{name}_refepi.nii".format(subj=subject, name=name)
-            shutil.copy2(filename, os.path.join(filestore, "surfaces", filename))
+            fpath = os.path.join(filestore, "references", filename)
+            if not os.path.exists(fpath):
+                shutil.copy2(epifile, fpath)
 
             fields = "subject,name,date,type,xfm,filename"
             data = (subject, name, time.time(), xfmtype, sqlite3.Binary(xfm.tostring()), filename)
