@@ -8,11 +8,11 @@ from xml.dom.minidom import parse as xmlparse
 
 import Image
 import numpy as np
-from scipy.interpolate import interp1d, Rbf
+from scipy.interpolate import interp1d, griddata
 
 try:
     from traits.api import HasTraits, Instance, Array, Float, Str, Bool, Dict, Range, Any, Color,Enum, Callable, on_trait_change
-    from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
+    from traitsui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor
 
     from tvtk.api import tvtk
     from tvtk.pyface.scene import Scene
@@ -24,7 +24,7 @@ try:
     from mayavi.sources.array_source import ArraySource
 except ImportError:
     from enthought.traits.api import HasTraits, Instance, Array, Float, Str, Bool, Dict, Any, Range, Color,Enum, Callable, on_trait_change
-    from enthought.traits.ui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor, Handler
+    from enthought.traits.ui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor, Handler
 
     from enthought.tvtk.api import tvtk
     from enthought.tvtk.pyface.scene import Scene
@@ -49,14 +49,11 @@ svg_format = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="{width}"
-   height="{height}"
-   id="svg2"
-   version="1.1"
+   width="{width}" height="{height}"
+   id="svg2" version="1.1"
    inkscape:version="0.48.1 r9760"
-   sodipodi:docname="drawing.svg">
-  <defs
-     id="defs4" />
+   sodipodi:docname="rois.svg">
+  <defs id="defs4" />
   <sodipodi:namedview
      id="base"
      pagecolor="#ffffff"
@@ -75,58 +72,42 @@ svg_format = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
      inkscape:window-x="0"
      inkscape:window-y="35"
      inkscape:window-maximized="0" />
-  <metadata
-     id="metadata7">
+  <metadata id="metadata7">
     <rdf:RDF>
-      <cc:Work
-         rdf:about="">
+      <cc:Work rdf:about="">
         <dc:format>image/svg+xml</dc:format>
-        <dc:type
-           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
-  <g
-     inkscape:label="data"
-     inkscape:groupmode="layer"
-     id="layer1"
-     transform="translate(0,0)"
+  <g inkscape:label="data" inkscape:groupmode="layer"
+     id="datalayer" transform="translate(0,0)"
      style="display:inline">
-    <g
-       inkscape:groupmode="layer"
-       id="layer4"
-       inkscape:label="_data"
-       style="display:inline"
-       sodipodi:insensitive="true">
-      <image x="0" y="0" width="{width}" height="{height}"
-         id="image3115"
-         xlink:href="data:image/png;base64,{pngdata}"/>
-    </g>
   </g>
-  <g
-     inkscape:groupmode="layer"
-     id="layer3"
-     inkscape:label="rois"
-     transform="translate(0,0)"
+  <g inkscape:label="rois" inkscape:groupmode="layer"
+     id="roilayer" transform="translate(0,0)"
      style="display:inline" />
 </svg>"""
 
-clear_white_black = np.tile(0, [85, 4]), np.tile(255, [86, 4]), np.tile(0, [85, 4]),
-clear_white_black[-1][:,-1] = 255
-clear_white_black = np.vstack(clear_white_black)
+top = np.vstack([np.tile(255,[3,128]), np.arange(0,256,2)])
+bottom = np.vstack([np.tile(np.arange(256)[-2::-2], [3,1]), [np.tile(255,128)]])
+clear_white_black = np.vstack([top.T, bottom.T])
 
 class Mixer(HasTraits):
     points = Any
     polys = Array(shape=(None, 3))
     data = Array
     linewidth = Float(5.)
+    roifill = Str("none")
     texres = Float(1024.)
 
     svg = Instance("xml.dom.minidom.Document")
     svgfile = Str
+    rois = Dict
 
     tex = Instance(ArraySource, ())
+    roilabels = Dict
 
     mix = Range(0., 1., value=1)
     figure = Instance(MlabSceneModel, ())
@@ -136,7 +117,9 @@ class Mixer(HasTraits):
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
 
-    showlabels = Bool
+    showlabels = Bool(True)
+    labelwidth = Float(0.05)
+    showrois = Bool(True)
 
     def _data_src_default(self):
         pts = self.points(1)
@@ -178,8 +161,11 @@ class Mixer(HasTraits):
     
     #@on_trait_change('mix')
     def _mix_changed(self):
+        self.figure.disable_render = True
         self.data_src.data.points.from_array(self.points(self.mix))
         self.figure.renderer.reset_camera_clipping_range()
+        self.update_roilabels()
+        self.figure.disable_render = False
         self.figure.render()
         #def func():
         #    self.data_src.data.points = self.points(self.mix)
@@ -188,7 +174,10 @@ class Mixer(HasTraits):
     
     def _tex_changed(self):
         self.surf.actor.texture_source_object = self.tex
-        self.surf.actor.enable_texture = True
+        self.surf.actor.enable_texture = self.showrois
+    
+    def _showrois_changed(self):
+        self.surf.actor.enable_texture = self.showrois    
     
     @on_trait_change("colormap, fliplut")
     def _update_colors(self):
@@ -214,7 +203,7 @@ class Mixer(HasTraits):
         self.figure.renderer.reset_camera_clipping_range()
         self.figure.render()
     
-    def saveflat(self, filename, height=1024):
+    def saveflat(self, filename=None, height=1024):
         #Save the current view to restore
         startmix = self.mix
         lastpos = self.figure.camera.position, self.figure.camera.focal_point
@@ -231,18 +220,14 @@ class Mixer(HasTraits):
         self.figure.interactor.update_size(int(width), int(height))
         self.figure.off_screen_rendering = True
 
-        if os.path.splitext(filename)[-1].lower() == ".svg":
+        if filename is None:
             self.reset_view(center=False)
             tf = tempfile.NamedTemporaryFile()
             self.figure.save_png(tf.name)
             pngdata = binascii.b2a_base64(tf.read())
-            tf.close()
-            with open(filename, "w") as svgfile:
-                svgfile.write(svg_format.format(width=width, height=height, pngdata=pngdata))
         else:
             self.reset_view(center=True)
             self.figure.save_png(filename)
-        
 
         #Restore the last view, turn off offscreen rendering
         self.figure.interactor.update_size(x, y)
@@ -251,22 +236,56 @@ class Mixer(HasTraits):
         self.figure.camera.position, self.figure.camera.focal_point = lastpos
         self.figure.renderer.reset_camera_clipping_range()
         self.figure.off_screen_rendering = False
-        self.figure.render
-    
+        self.figure.render()
+
+        if filename is None:
+            return (width, height), pngdata
+        
+    def create_svg(self, filename, name="data"):
+        (width, height), pngdata = self.saveflat()
+        with open(filename, "w") as xml:
+            xml.write(svg_format.format(width=width, height=height))
+        
+        self.svgfile = filename
+        self.append_svg(name)
+
     def append_svg(self, name="data"):
         assert self.svgfile is not None, "Cannot find current ROI svg"
         #self.svg deletes the images -- we want to save those, so let's load it again
         svg = xmlparse(self.svgfile)
         imgs = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == "data"]
         assert len(imgs) > 0, "Invalid file, cannot find data layer!"
-        imgs = imgs[0]
+        imglayer = imgs[0]
+
+        (width, height), pngdata = self.saveflat()
+
         layer = svg.createElement("g")
-        
+        layer.setAttribute("id", "layer_%s"%name)
+        layer.setAttribute("inkscape:label", name)
+        layer.setAttribute("sodipodi:insensitive", "true")
+        img = svg.createElement("image")
+        img.setAttribute("id", "img_%s"%name)
+        img.setAttribute("x", "0")
+        img.setAttribute("y", "0")
+        img.setAttribute("width", str(width))
+        img.setAttribute("height", str(height))
+        img.setAttribute("xlink:href", "data:image/png;base64,%s"%pngdata)
+        layer.appendChild(img)
+        imglayer.appendChild(layer)
+        with open(self.svgfile, "w") as xml:
+            xml.write(svg.toprettyxml())
     
-    @on_trait_change("svgfile")
-    def import_roi(self, filename):
-        svg = xmlparse(filename)
-        #Remove the roi images -- we don't need to render them for the texture
+    def import_rois(self, filename):
+        self.svgfile = filename
+    
+    def _svgfile_changed(self):
+        svg = xmlparse(self.svgfile)
+        svgdoc = svg.getElementsByTagName("svg")[0]
+        w = float(svgdoc.getAttribute("width"))
+        h = float(svgdoc.getAttribute("height"))
+        self.svgshape = w, h
+
+        #Remove the base images -- we don't need to render them for the texture
         rmnode = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == "data"]
         if len(rmnode) > 0:
             rmnode[0].parentNode.removeChild(rmnode[0])
@@ -275,33 +294,70 @@ class Mixer(HasTraits):
         #Set up the ROI dict
         rois = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == "rois"]
         assert len(rois) == 1, "This svg does not conform to expected roi format. Please generate a new one with saveflat"
-        self.rois = dict([(r.getAttribute("inkscape:label"), r.getElementsByTagName("path")) 
+        rois = dict([(r.getAttribute("inkscape:label"), r.getElementsByTagName("path")) 
             for r in rois[0].getElementsByTagName("g")])
         
-        #Set all the path widths
-        for name, paths in self.rois.items():
-            style = "fill:none;stroke:#000000;stroke-width:{lw}px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1".format(lw=self.linewidth)
-            for path in paths:
-                path.setAttribute("style", style)
-
-        #use traits callback to update the texture
+        #use traits callbacks to update the lines and textures
+        self.rois = rois
         self.svg = svg
+        self.roilabels = {}
+        self.update_roilabels()
     
-    @on_trait_change("svg, texres")
+    def _showlabels_changed(self):
+        for name, labels in self.roilabels.items():
+            for l in labels:
+                l.visible = self.showlabels
+    
+    def _labelwidth_changed(self):
+        for name, labels in self.roilabels.items():
+            for l in labels:
+                l.width = self.labelwidth
+    
+    def update_roilabels(self):
+        for name, paths in self.rois.items():
+            if name not in self.roilabels:
+                self.roilabels[name] = []
+            for i, path in enumerate(paths):
+                #Set up or edit the labels
+                pts = _parse_svg_pts(path.getAttribute("d"))
+                pts /= self.svgshape
+                pts[:,1] = 1 - pts[:,1]
+                tcoords = self.data_src.data.point_data.t_coords.to_array()
+                pos = self.data_src.data.points.to_array()
+                labelpos = griddata(tcoords, pos, pts, method="nearest").mean(0)
+                if len(self.roilabels[name]) <= i:
+                    txt = mlab.text(labelpos[0], labelpos[1], name, z=labelpos[2], 
+                        figure=self.figure.mayavi_scene)
+                    txt.set(visible=self.showlabels, width=self.labelwidth)
+                    txt.property.set(color=(0,0,0), bold=True)
+                    txt.actor.text_scale_mode = "none"
+                    self.roilabels[name].append(txt)
+                else:
+                    self.roilabels[name][i].set(x_position=labelpos[0], 
+                        y_position=labelpos[1], z_position=labelpos[2])
+    
+    @on_trait_change("rois, linewidth, roifill")
+    def update_rois(self):
+        for name, paths in self.rois.items():
+            style = "fill:{fill};stroke:#000000;stroke-width:{lw}px;"+\
+                    "stroke-linecap:butt;stroke-linejoin:miter;"+\
+                    "stroke-opacity:1"
+            style = style.format(fill=self.roifill, lw=self.linewidth)
+
+            for i, path in enumerate(paths):
+                #Set the fill and stroke
+                path.setAttribute("style", style)
+    
+    @on_trait_change("svg, texres, linewidth, roifill")
     def update_texture(self):
         '''Updates the current texture as found in self.svg. Converts it to PNG and applies it to the image'''
         #set the current size of the texture
-        svg = self.svg.getElementsByTagName("svg")[0]
-        h = float(svg.getAttribute("height"))
-        w = float(svg.getAttribute("width"))
-        svg.setAttribute("height", self.texres)
-        svg.setAttribute("width", w/h*self.texres)
-        
-        convert = sp.Popen("convert - png:-".split(), stdin=sp.PIPE, stdout=sp.PIPE)
+        w, h = self.svgshape
+        cmd = "convert -density {dpi} - png:-".format(dpi=self.texres / h * 72)
+        convert = sp.Popen(cmd.split(), stdin=sp.PIPE, stdout=sp.PIPE)
         tex = cStringIO.StringIO(convert.communicate(self.svg.toxml())[0])
         tex = np.asarray(Image.open(tex)).astype(float).swapaxes(0,1)[:,::-1]
-        self.tex.scalar_data = 1. - tex[...,0] / 255.
-        
+        self.tex = ArraySource(scalar_data=1. - tex[...,0] / 255.)
 
     view = View(
         HGroup(
@@ -313,9 +369,16 @@ class Mixer(HasTraits):
                 Item('colormap',
                      editor=ImageEnumEditor(values=lut_manager.lut_mode_list(),
                      cols=6, path=lut_manager.lut_image_dir)),
-                "fliplut"),
+                "fliplut", "_", "showlabels", "showrois"),
         show_labels=False),
         resizable=True, title="Mixer")
+
+def _parse_svg_pts(data):
+    data = data.split()
+    assert data[0] == "m", "Unknown path format"
+    offset = np.array([float(x) for x in data[1].split(',')])
+    pts = [[float(x) for x in p.split(',')] for p in data[2:] if len(p) > 1][2::3]
+    return np.array(pts).cumsum(0) + offset
 
 def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
     types = ("fiducial",) + types + ("flat",)
