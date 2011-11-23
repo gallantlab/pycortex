@@ -1,8 +1,8 @@
 import os
-import sys
-import tempfile
-
+import json
 import numpy as np
+
+options = json.load(open("./defaults.json"))
 
 from db import surfs
 
@@ -63,6 +63,8 @@ def detrend_volume_poly(data, polyorder = 10, mask=None):
     else:
         return detrended.reshape(*s)
 
-def flatten(data, subject="JG", xfmname="20110909JG_dust"):
+def flatten(data, subject=None, xfmname=None):
     import view
-    return view.show(data, subject, xfmname)
+    return view.show(data, 
+        subject or options['default_subject'],
+        xfmname or options['default_xfm'])
