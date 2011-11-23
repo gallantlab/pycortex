@@ -65,7 +65,7 @@ svg_format = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
      inkscape:cx="932.14286"
      inkscape:cy="448.57143"
      inkscape:document-units="px"
-     inkscape:current-layer="layer3"
+     inkscape:current-layer="roilayer"
      showgrid="false"
      inkscape:window-width="1918"
      inkscape:window-height="1163"
@@ -257,15 +257,18 @@ class Mixer(HasTraits):
         assert len(imgs) > 0, "Invalid file, cannot find data layer!"
         imglayer = imgs[0]
 
+        show = self.showrois, self.showlabels
+        self.showrois, self.showlabels = False, False
         (width, height), pngdata = self.saveflat()
+        self.showrois, self.showlabels = show
 
         layer = svg.createElement("g")
-        layer.setAttribute("id", "layer_%s"%name)
+        layer.setAttribute("id", "layer_%s"%name
+        layer.setAttribute("style", "display:inline;")
         layer.setAttribute("inkscape:label", name)
         layer.setAttribute("inkscape:groupmode", "layer")
-        layer.setAttribute("sodipodi:insensitive", "true")
         img = svg.createElement("image")
-        img.setAttribute("id", "img_%s"%name)
+        img.setAttribute("id", "image_%s"%name)
         img.setAttribute("x", "0")
         img.setAttribute("y", "0")
         img.setAttribute("width", str(width))
