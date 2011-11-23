@@ -262,6 +262,7 @@ class Mixer(HasTraits):
         layer = svg.createElement("g")
         layer.setAttribute("id", "layer_%s"%name)
         layer.setAttribute("inkscape:label", name)
+        layer.setAttribute("inkscape:groupmode", "layer")
         layer.setAttribute("sodipodi:insensitive", "true")
         img = svg.createElement("image")
         img.setAttribute("id", "img_%s"%name)
