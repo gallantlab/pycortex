@@ -76,31 +76,32 @@ class Surf(object):
     
     def show(self, hemisphere="both"):
         import vtkutils
+        lh, rh = map(lambda x:os.path.join(filestore, "surfaces", x), [self.lh, self.rh])
         if hemisphere == "both":
-            return vtkutils.show([self.lh, self.rh])
+            return vtkutils.show([lh, rh])
         elif hemisphere.lower() in ["l", "lh", "left"]:
-            return vtkutils.show([self.lh])
+            return vtkutils.show([lh])
         elif hemisphere.lower() in ["r", "rh", "right"]:
-            return vtkutils.show([self.rh])
+            return vtkutils.show([rh])
     
     def __dir__(self):
         return self.__dict__.keys() + ["loffset", "roffset"]
     
     def __getattr__(self, attr):
         if attr == "loffset":
-            query = "SELECT offset FROM surfaces WHERE lh=?"
-            self.cur.execute(query, (self.lh,)).fetchone()
+            query = "SELECT offset FROM surfaces WHERE hemisphere='lh' and filename=?"
+            return self.cur.execute(query, (self.lh,)).fetchone()[0]
         elif attr == "roffset":
-            query = "SELECT offset FROM surfaces WHERE rh=?"
-            self.cur.execute(query, (self.lh,)).fetchone()
+            query = "SELECT offset FROM surfaces WHERE hemisphere='rh' and filename=?"
+            return self.cur.execute(query, (self.rh,)).fetchone()[0]
     
     def __setattr__(self, attr, val):
         if attr == "loffset":
-            query = "UPDATE surfaces SET offset=? WHERE lh=?"
+            query = "UPDATE surfaces SET offset=? WHERE hemisphere='lh' and filename=?"
             self.cur.execute(query, (val, self.lh))
             self.conn.commit()
         elif attr == "roffset":
-            query = "UPDATE surfaces SET offset=? WHERE rh=?"
+            query = "UPDATE surfaces SET offset=? WHERE hemisphere='rh' and filename=?"
             self.cur.execute(query, (val, self.rh))
             self.conn.commit()
         else:
@@ -187,7 +188,8 @@ class Database(object):
         '''Load a vtk file into the database and copy it into the filestore'''
         #assert os.path.splitext(vtkfile)[1] == ".vtk", "Not a VTK file"
         assert hemisphere in ["lh", "rh", "both"], "Invalid hemisphere name, must be 'lh' or 'rh'"
-
+        if surftype == "fiducial":
+            offset = "0 0 0"
         #Let's delete any possible duplicates
         query = "DELETE FROM surfaces WHERE subject=? and type=? and hemisphere=?"
         self.cur.execute(query, (subject, surftype, hemisphere))
@@ -210,7 +212,9 @@ class Database(object):
         query = "SELECT name FROM transforms WHERE subject=? and name=? and type=?"
         result = self.cur.execute(query, (subject, name, xfmtype)).fetchone()
         if result is not None:
-            assert epifile is None, "Cannot change reference epi for existing transform"
+            #assert epifile is None, 
+            if epifile is not None:
+                print "Cannot change reference epi for existing transform"
             prompt = 'There is already a transform for this subject by the name of "%s". Overwrite? (Y/N)'%subject
             if override is not None and override or \
                 override is None and raw_input(prompt).lower().strip() in ("y", "yes"):
@@ -258,6 +262,7 @@ class Database(object):
             loff, roff = map(_convert_offset, [loff, roff])
             lpts, lpolys, lnorms = vtkutils.read(os.path.join(filestore, "surfaces", lh))
             rpts, rpolys, rnorms = vtkutils.read(os.path.join(filestore, "surfaces", rh))
+
             if loff is None and roff is None:
                 lpts[:,0] -= lpts.max(0)[0]
                 rpts[:,0] -= rpts.min(0)[0]

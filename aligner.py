@@ -655,8 +655,8 @@ def align(subject, xfmname, epi=None, xfm=None):
     resp = raw_input("Save? (Y/N) ")
     if resp.lower().strip() in ["y", "yes"]:
         print "Saving..."
-        db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
-        db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
+        db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi, override=True)
+        db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', epifile=epi, override=True)
         print "Complete!"
     else:
         print "Cancelled... %s"%resp

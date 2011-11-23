@@ -16,10 +16,10 @@ def get(vtk):
 def read(vtk):
     normals = None
     vfr = get(vtk)
-    polys = vfr.outputs[0].polys.data.to_array().reshape(-1,4)[:,1:]
-    pts = vfr.outputs[0].points.to_array()
-    if vfr.outputs[0].point_data.normals is not None:
-        normals = vfr.outputs[0].point_data.normals.to_array()
+    polys = vfr.reader.output.polys.data.to_array().reshape(-1,4)[:,1:]
+    pts = vfr.reader.output.points.to_array()
+    if vfr.reader.output.point_data.normals is not None:
+        normals = vfr.reader.output.point_data.normals.to_array()
     
     return pts, polys, normals
 
@@ -29,10 +29,12 @@ def show(vtks):
     fig.scene.interactor.interactor_style = \
                                 tvtk.InteractorStyleTerrain()
     fig.scene.disable_render = True
+    pts = []
     for i, vtk in enumerate(vtks):
         vfr = get(vtk)
         fig.parent.add_source(vfr)
         mlab.pipeline.surface(vfr, figure=fig)
+        pts.append(vfr.reader.output)
     
     if len(pts) > 1:
         p = pts[0].points.to_array()
