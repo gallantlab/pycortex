@@ -333,7 +333,7 @@ class Mixer(HasTraits):
                     txt = mlab.text(labelpos[0], labelpos[1], name, z=labelpos[2], 
                         figure=self.figure.mayavi_scene)
                     txt.set(visible=self.showlabels, width=self.labelwidth)
-                    txt.property.set(color=(0,0,0), bold=True)
+                    txt.property.set(color=(0,0,0), bold=True, justification="center")
                     txt.actor.text_scale_mode = "none"
                     self.roilabels[name].append(txt)
                 else:
