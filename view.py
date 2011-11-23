@@ -263,7 +263,7 @@ class Mixer(HasTraits):
         self.showrois, self.showlabels = show
 
         layer = svg.createElement("g")
-        layer.setAttribute("id", "layer_%s"%name
+        layer.setAttribute("id", "layer_%s"%name)
         layer.setAttribute("style", "display:inline;")
         layer.setAttribute("inkscape:label", name)
         layer.setAttribute("inkscape:groupmode", "layer")
