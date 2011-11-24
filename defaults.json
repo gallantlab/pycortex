@@ -1,5 +1,10 @@
 {
     "default_subject": "JG", 
     "default_xfm": "20110909JG_dust", 
-    "file_store": "/auto/k2/share/mritools_store/"
+    "file_store": "/home/james/code/mritools_store/",
+    "label_size": 16,
+    "texture_res": 1024,
+    "line_width": 5,
+    "renderheight": 496,
+    "use_offscreen": false
 }

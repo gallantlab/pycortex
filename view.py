@@ -1,4 +1,5 @@
 import os
+import json
 import binascii
 import tempfile
 import cStringIO
@@ -11,7 +12,7 @@ import numpy as np
 from scipy.interpolate import interp1d, griddata
 
 try:
-    from traits.api import HasTraits, Instance, Array, Float, Str, Bool, Dict, Range, Any, Color,Enum, Callable, on_trait_change
+    from traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Range, Any, Color,Enum, Callable, on_trait_change
     from traitsui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor
 
     from tvtk.api import tvtk
@@ -23,7 +24,7 @@ try:
     from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
     from mayavi.sources.array_source import ArraySource
 except ImportError:
-    from enthought.traits.api import HasTraits, Instance, Array, Float, Str, Bool, Dict, Any, Range, Color,Enum, Callable, on_trait_change
+    from enthought.traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Any, Range, Color,Enum, Callable, on_trait_change
     from enthought.traits.ui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor, Handler
 
     from enthought.tvtk.api import tvtk
@@ -94,13 +95,20 @@ top = np.vstack([np.tile(255,[3,128]), np.arange(0,256,2)])
 bottom = np.vstack([np.tile(np.arange(256)[-2::-2], [3,1]), [np.tile(255,128)]])
 clear_white_black = np.vstack([top.T, bottom.T])
 
+cwd = os.path.split(os.path.abspath(__file__))[0]
+options = json.load(open(os.path.join(cwd, "defaults.json")))
+default_texres = options['texture_res'] if 'texure_res' in options else 1024.
+default_lw = options['line_width'] if 'line_width' in options else 5.
+default_labelsize = options['label_size'] if 'label_size' in options else 16
+default_renderheight = options['renderheight'] if 'renderheight' in options else 1024.
+
 class Mixer(HasTraits):
     points = Any
     polys = Array(shape=(None, 3))
     data = Array
-    linewidth = Float(5.)
+    linewidth = Float(default_lw)
     roifill = Str("none")
-    texres = Float(1024.)
+    texres = Float(default_texres)
 
     svg = Instance("xml.dom.minidom.Document")
     svgfile = Str
@@ -118,7 +126,7 @@ class Mixer(HasTraits):
     fliplut = Bool
 
     showlabels = Bool(True)
-    labelwidth = Float(0.05)
+    labelsize = Int(default_labelsize)
     showrois = Bool(True)
 
     def _data_src_default(self):
@@ -145,6 +153,14 @@ class Mixer(HasTraits):
         surf.actor.texture.lookup_table = tvtk.LookupTable(
             table=clear_white_black, range=(-1,1))
         return surf
+    
+    def _fix_label_vis(self):
+        fpos = self.figure.camera.focal_point
+        vec = self.figure.camera.position - fpos
+        for k, texts in self.roilabels.items():
+            for t in texts:
+                tpos = np.array((t.x_position, t.y_position, t.z_position))
+                t.visible = np.dot(vec, tpos - fpos) >= -1e-4
 
     @on_trait_change("figure.activated")
     def _start(self):
@@ -153,6 +169,8 @@ class Mixer(HasTraits):
         self.figure.scene.render_window.stereo_type = "anaglyph"
         self.figure.camera.view_up = [0,0,1]
         self.reset_view()
+
+        self.figure.camera.on_trait_change(self._fix_label_vis, "position")
 
         self.data_src
         self.surf
@@ -203,7 +221,7 @@ class Mixer(HasTraits):
         self.figure.renderer.reset_camera_clipping_range()
         self.figure.render()
     
-    def saveflat(self, filename=None, height=1024):
+    def saveflat(self, filename=None, height=default_renderheight):
         #Save the current view to restore
         startmix = self.mix
         lastpos = self.figure.camera.position, self.figure.camera.focal_point
@@ -218,8 +236,9 @@ class Mixer(HasTraits):
         width = height * aspect
         self.figure.set_size((width, height))
         self.figure.interactor.update_size(int(width), int(height))
-        self.figure.off_screen_rendering = True
-
+        if 'use_offscreen' not in options or options['use_offscreen']:
+            print "Using offscreen rendering"
+            self.figure.off_screen_rendering = True
         if filename is None:
             self.reset_view(center=False)
             tf = tempfile.NamedTemporaryFile()
@@ -235,16 +254,17 @@ class Mixer(HasTraits):
         self.mix = startmix
         self.figure.camera.position, self.figure.camera.focal_point = lastpos
         self.figure.renderer.reset_camera_clipping_range()
-        self.figure.off_screen_rendering = False
-        self.figure.render()
+        if 'use_offscreen' not in options or options['use_offscreen']:
+            self.figure.off_screen_rendering = False
 
         if filename is None:
             return (width, height), pngdata
         
     def create_svg(self, filename, name="data"):
-        (width, height), pngdata = self.saveflat()
+        #it's a good idea to standardize the height, otherwise stroke widths are not right
+        (w, h), pngdata = self.saveflat()
         with open(filename, "w") as xml:
-            xml.write(svg_format.format(width=width, height=height))
+            xml.write(svg_format.format(width=w / h * 1024, height=1024))
         
         self.svgfile = filename
         self.append_svg(name)
@@ -253,29 +273,28 @@ class Mixer(HasTraits):
         assert self.svgfile is not None, "Cannot find current ROI svg"
         #self.svg deletes the images -- we want to save those, so let's load it again
         svg = xmlparse(self.svgfile)
-        imgs = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == "data"]
-        assert len(imgs) > 0, "Invalid file, cannot find data layer!"
-        imglayer = imgs[0]
+        imglayer = _find_layer(svg, "data")
+        _make_layer(_find_layer(svg, "rois"), name)
+
+        #Hide all the other layers in the image
+        for layer in imglayer.getElementsByTagName("g"):
+            layer.setAttribute("style", "display:hidden;")
 
         show = self.showrois, self.showlabels
         self.showrois, self.showlabels = False, False
         (width, height), pngdata = self.saveflat()
         self.showrois, self.showlabels = show
 
-        layer = svg.createElement("g")
-        layer.setAttribute("id", "layer_%s"%name)
-        layer.setAttribute("style", "display:inline;")
-        layer.setAttribute("inkscape:label", name)
-        layer.setAttribute("inkscape:groupmode", "layer")
+        layer = _make_layer(imglayer, name, prefix="img_")
         img = svg.createElement("image")
         img.setAttribute("id", "image_%s"%name)
         img.setAttribute("x", "0")
         img.setAttribute("y", "0")
-        img.setAttribute("width", str(width))
-        img.setAttribute("height", str(height))
+        img.setAttribute("width", str(self.svgshape[0]))
+        img.setAttribute("height", str(self.svgshape[1]))
         img.setAttribute("xlink:href", "data:image/png;base64,%s"%pngdata)
         layer.appendChild(img)
-        imglayer.appendChild(layer)
+
         with open(self.svgfile, "w") as xml:
             xml.write(svg.toprettyxml())
     
@@ -290,16 +309,13 @@ class Mixer(HasTraits):
         self.svgshape = w, h
 
         #Remove the base images -- we don't need to render them for the texture
-        rmnode = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == "data"]
-        if len(rmnode) > 0:
-            rmnode[0].parentNode.removeChild(rmnode[0])
-        del rmnode
+        rmnode = _find_layer(svg, "data")
+        rmnode.parentNode.removeChild(rmnode)
 
         #Set up the ROI dict
-        rois = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == "rois"]
-        assert len(rois) == 1, "This svg does not conform to expected roi format. Please generate a new one with saveflat"
+        rois = _find_layer(svg, "rois")
         rois = dict([(r.getAttribute("inkscape:label"), r.getElementsByTagName("path")) 
-            for r in rois[0].getElementsByTagName("g")])
+            for r in rois.getElementsByTagName("g")])
         
         #use traits callbacks to update the lines and textures
         self.rois = rois
@@ -312,10 +328,10 @@ class Mixer(HasTraits):
             for l in labels:
                 l.visible = self.showlabels
     
-    def _labelwidth_changed(self):
+    def _labelsize_changed(self):
         for name, labels in self.roilabels.items():
             for l in labels:
-                l.width = self.labelwidth
+                l.property.font_size = self.labelsize
     
     def update_roilabels(self):
         for name, paths in self.rois.items():
@@ -330,11 +346,15 @@ class Mixer(HasTraits):
                 pos = self.data_src.data.points.to_array()
                 labelpos = griddata(tcoords, pos, pts, method="nearest").mean(0)
                 if len(self.roilabels[name]) <= i:
+                    lastshow = self.figure.disable_render
+                    self.figure.disable_render = True
                     txt = mlab.text(labelpos[0], labelpos[1], name, z=labelpos[2], 
                         figure=self.figure.mayavi_scene)
-                    txt.set(visible=self.showlabels, width=self.labelwidth)
-                    txt.property.set(color=(0,0,0), bold=True, justification="center")
+                    txt.set(visible=self.showlabels)
+                    txt.property.set(color=(0,0,0), bold=True, justification="center", 
+                        vertical_justification="center", font_size=self.labelsize)
                     txt.actor.text_scale_mode = "none"
+                    self.figure.disable_render = lastshow
                     self.roilabels[name].append(txt)
                 else:
                     self.roilabels[name][i].set(x_position=labelpos[0], 
@@ -377,12 +397,46 @@ class Mixer(HasTraits):
         show_labels=False),
         resizable=True, title="Mixer")
 
+def _find_layer(svg, label):
+    layers = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == label]
+    assert len(layers) > 0, "Cannot find layer %s"%label
+    return layers[0]
+
+def _make_layer(parent, name, prefix=""):
+    layer = parent.ownerDocument.createElement("g")
+    layer.setAttribute("id", "%s%s"%(prefix,name))
+    layer.setAttribute("style", "display:inline;")
+    layer.setAttribute("inkscape:label", "%s%s"%(prefix,name))
+    layer.setAttribute("inkscape:groupmode", "layer")
+    parent.appendChild(layer)
+    return layer
+
 def _parse_svg_pts(data):
     data = data.split()
     assert data[0] == "m", "Unknown path format"
     offset = np.array([float(x) for x in data[1].split(',')])
-    pts = [[float(x) for x in p.split(',')] for p in data[2:] if len(p) > 1][2::3]
-    return np.array(pts).cumsum(0) + offset
+    data = data[2:]
+    mode = "l"
+    pts = [[offset[0], offset[1]]]
+    while len(data) > 0:
+        d = data.pop(0)
+        if isinstance(d, (unicode, str)) and len(d) == 1:
+            mode = d
+            continue
+        
+        if mode == "l":
+            offset += map(float, d.split(','))
+        elif mode == "L":
+            offset = np.array(map(float, d.split(',')))
+        elif mode == "c":
+            data.pop(0)
+            offset += map(float, data.pop(0).split(','))
+        elif mode == "C":
+            data.pop(0)
+            offset = np.array(map(float, data.pop(0).split(',')))
+        pts.append([offset[0],offset[1]])
+
+    return np.array(pts)
 
 def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
     types = ("fiducial",) + types + ("flat",)
