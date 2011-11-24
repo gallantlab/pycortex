@@ -38,61 +38,8 @@ except ImportError:
 
 import db
 
-svg_format = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-
-<svg
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:xlink="http://www.w3.org/1999/xlink"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="{width}" height="{height}"
-   id="svg2" version="1.1"
-   inkscape:version="0.48.1 r9760"
-   sodipodi:docname="rois.svg">
-  <defs id="defs4" />
-  <sodipodi:namedview
-     id="base"
-     pagecolor="#ffffff"
-     bordercolor="#666666"
-     borderopacity="1.0"
-     inkscape:pageopacity="0.0"
-     inkscape:pageshadow="2"
-     inkscape:zoom="0.35"
-     inkscape:cx="932.14286"
-     inkscape:cy="448.57143"
-     inkscape:document-units="px"
-     inkscape:current-layer="roilayer"
-     showgrid="false"
-     inkscape:window-width="1918"
-     inkscape:window-height="1163"
-     inkscape:window-x="0"
-     inkscape:window-y="35"
-     inkscape:window-maximized="0" />
-  <metadata id="metadata7">
-    <rdf:RDF>
-      <cc:Work rdf:about="">
-        <dc:format>image/svg+xml</dc:format>
-        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
-      </cc:Work>
-    </rdf:RDF>
-  </metadata>
-  <g inkscape:label="data" inkscape:groupmode="layer"
-     id="datalayer" transform="translate(0,0)"
-     style="display:inline">
-  </g>
-  <g inkscape:label="rois" inkscape:groupmode="layer"
-     id="roilayer" transform="translate(0,0)"
-     style="display:inline" />
-</svg>"""
-
-top = np.vstack([np.tile(255,[3,128]), np.arange(0,256,2)])
-bottom = np.vstack([np.tile(np.arange(256)[-2::-2], [3,1]), [np.tile(255,128)]])
+_top = np.vstack([np.tile(255,[3,128]), np.arange(0,256,2)])
+_bottom = np.vstack([np.tile(np.arange(256)[-2::-2], [3,1]), [np.tile(255,128)]])
 clear_white_black = np.vstack([top.T, bottom.T])
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
@@ -308,17 +255,8 @@ class Mixer(HasTraits):
 
         if filename is None:
             return (width, height), pngdata
-        
-    def create_svg(self, filename, name="data"):
-        #it's a good idea to standardize the height, otherwise stroke widths are not right
-        (w, h), pngdata = self.saveflat()
-        with open(filename, "w") as xml:
-            xml.write(svg_format.format(width=w / h * 1024, height=1024))
-        
-        self.svgfile = filename
-        self.append_svg(name)
 
-    def append_svg(self, name="data"):
+    def add_roi(self, name):
         assert self.svgfile is not None, "Cannot find current ROI svg"
         #self.svg deletes the images -- we want to save those, so let's load it again
         svg = xmlparse(self.svgfile)
@@ -346,6 +284,9 @@ class Mixer(HasTraits):
 
         with open(self.svgfile, "w") as xml:
             xml.write(svg.toprettyxml())
+            
+        sp.call(["inkscape",self.svgfile])
+        self._svgfile_changed()
     
     def import_rois(self, filename):
         self.svgfile = filename
@@ -499,6 +440,59 @@ def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
     interp = interp1d(np.linspace(0,1,len(pts)), pts, axis=0)
     return interp, polys
 
+svg_format = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="{width}" height="{height}"
+   id="svg2" version="1.1"
+   inkscape:version="0.48.1 r9760"
+   sodipodi:docname="rois.svg">
+  <defs id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.35"
+     inkscape:cx="932.14286"
+     inkscape:cy="448.57143"
+     inkscape:document-units="px"
+     inkscape:current-layer="roilayer"
+     showgrid="false"
+     inkscape:window-width="1918"
+     inkscape:window-height="1163"
+     inkscape:window-x="0"
+     inkscape:window-y="35"
+     inkscape:window-maximized="0" />
+  <metadata id="metadata7">
+    <rdf:RDF>
+      <cc:Work rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g inkscape:label="data" inkscape:groupmode="layer"
+     id="datalayer" transform="translate(0,0)"
+     style="display:inline">
+  </g>
+  <g inkscape:label="rois" inkscape:groupmode="layer"
+     id="roilayer" transform="translate(0,0)"
+     style="display:inline" />
+</svg>"""
+
 def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
     '''View epi data, transformed into the space given by xfm. 
     Types indicates which surfaces to add to the interpolater. Always includes fiducial and flat'''
@@ -516,12 +510,17 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
         assert xfm is not None, "Cannot find coord transform, please provide a nifti!"
         xfm = xfm[0]
     assert xfm.shape == (4, 4), "Not a transform matrix!"
-
-    m = Mixer(points=interp, polys=polys, xfm=xfm, data=data)
-    svgfile = None
+    
     overlay = os.path.join(options['file_store'], "overlays", "%s_rois.svg"%subject)
-    if os.path.exists(overlay):
-        m.svgfile = overlay
+    if not os.path.exists(overlay):
+        #Can't find the roi overlay, create a new one!
+        pts = interp(1)
+        size = pts.max(0) - pts.min(0)
+        aspect = size[0] / size[-1]
+        with open(overlay, "w") as xml:
+            xml.write(svg_format.format(width=aspect * 1024, height=1024))
+        
+    m = Mixer(points=interp, polys=polys, xfm=xfm, data=data, svgfile=overlay)
     m.edit_traits()
     return m
 
