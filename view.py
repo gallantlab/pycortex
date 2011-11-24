@@ -103,21 +103,12 @@ default_labelsize = options['label_size'] if 'label_size' in options else 16
 default_renderheight = options['renderheight'] if 'renderheight' in options else 1024.
 
 class Mixer(HasTraits):
-    points = Any
+    points = Instance(interp1d)
     polys = Array(shape=(None, 3))
+    xfm = Array(shape=(4,4))
     data = Array
-    linewidth = Float(default_lw)
-    roifill = Str("none")
-    texres = Float(default_texres)
-
-    svg = Instance("xml.dom.minidom.Document")
-    svgfile = Str
-    rois = Dict
-
-    tex = Instance(ArraySource, ())
-    roilabels = Dict
-
     mix = Range(0., 1., value=1)
+
     figure = Instance(MlabSceneModel, ())
     data_src = Instance(Source)
     surf = Instance(Module)
@@ -125,9 +116,28 @@ class Mixer(HasTraits):
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
 
-    showlabels = Bool(True)
+    svg = Instance("xml.dom.minidom.Document")
+    svgfile = Str
+    rois = Dict
+    roilabels = Dict
+
+    tex = Instance(ArraySource, ())
+    texres = Float(default_texres)
+
+    showrois = Bool(False)
+    showlabels = Bool(False)
     labelsize = Int(default_labelsize)
-    showrois = Bool(True)
+    linewidth = Float(default_lw)
+    roifill = Str("none")
+
+    def __init__(self, points, polys, xfm, data=None, svgfile=None, **kwargs):
+        #special init function must be used because points must be set before data can be set
+        super(Mixer, self).__init__(polys=polys, xfm=xfm, **kwargs)
+        self.points = points
+        if data is not None:
+            self.data = data
+        if svgfile is not None:
+            self.svgfile = svgfile
 
     def _data_src_default(self):
         pts = self.points(1)
@@ -138,38 +148,28 @@ class Mixer(HasTraits):
         pts -= pts.min(0)
         pts /= pts.max(0)
         src.data.point_data.t_coords = pts[:,[0,2]]
-
-        if self.data is not None:
-            src.mlab_source.scalars = self.data
         return src
 
     def _surf_default(self):
         n = mlab.pipeline.poly_data_normals(self.data_src, figure=self.figure.mayavi_scene)
         surf = mlab.pipeline.surface(n, figure=self.figure.mayavi_scene)
-        #surf.actor.enable_texture = True
-        #surf.actor.texture_source_object = self.tex
         surf.actor.texture.interpolate = True
         surf.actor.texture.repeat = False
         surf.actor.texture.lookup_table = tvtk.LookupTable(
             table=clear_white_black, range=(-1,1))
+        surf.actor.enable_texture = self.showrois
         return surf
-    
-    def _fix_label_vis(self):
-        fpos = self.figure.camera.focal_point
-        vec = self.figure.camera.position - fpos
-        for k, texts in self.roilabels.items():
-            for t in texts:
-                tpos = np.array((t.x_position, t.y_position, t.z_position))
-                t.visible = np.dot(vec, tpos - fpos) >= -1e-4
 
     @on_trait_change("figure.activated")
     def _start(self):
+        #initialize the figure
         self.figure.scene.background = (0,0,0)
         self.figure.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
         self.figure.scene.render_window.stereo_type = "anaglyph"
         self.figure.camera.view_up = [0,0,1]
         self.reset_view()
 
+        #Add traits callbacks to update label visibility and positions
         self.figure.camera.on_trait_change(self._fix_label_vis, "position")
 
         self.data_src
@@ -177,12 +177,30 @@ class Mixer(HasTraits):
         self.colormap = "RdBu"
         self.fliplut = True
     
-    #@on_trait_change('mix')
+    def _update_label_pos(self):
+        '''Creates and/or updates the position of the text to match the surface'''
+        for name, labels in self.roilabels.items():
+            for t, pts in labels:
+                tpos = self._lookup_tex_world(pts).mean(0)
+                t.set(x_position=tpos[0], y_position=tpos[1], z_position=tpos[2])
+    
+    def _fix_label_vis(self):
+        '''Use backface culling behind the focal_point to hide labels behind the brain'''
+        if self.showlabels:
+            self.figure.disable_render = True
+            fpos = self.figure.camera.focal_point
+            vec = self.figure.camera.position - fpos
+            for name, labels in self.roilabels.items():
+                for t, pts in labels:
+                    tpos = np.array((t.x_position, t.y_position, t.z_position))
+                    t.visible = np.dot(vec, tpos - fpos) >= -1e-4
+            self.figure.disable_render = False
+    
     def _mix_changed(self):
         self.figure.disable_render = True
         self.data_src.data.points.from_array(self.points(self.mix))
         self.figure.renderer.reset_camera_clipping_range()
-        self.update_roilabels()
+        self._update_label_pos()
         self.figure.disable_render = False
         self.figure.render()
         #def func():
@@ -190,17 +208,48 @@ class Mixer(HasTraits):
         #    GUI.invoke_later(self.data_src.data.update)
         #threading.Thread(target=func).start()
     
+    def _points_changed(self):
+        pts = self.points(0)
+        wpts = np.append(pts, np.ones((len(pts),1)), axis=-1).T
+        self.coords = np.dot(self.xfm, wpts)[:3].T.round().astype(int)
+    
+    def _data_changed(self):
+        '''Trait callback for transforming the data and applying it to data'''
+        scalars = np.array([self.data.T[tuple(p)] for p in self.coords])
+        self.data_src.mlab_source.scalars = scalars
+    
     def _tex_changed(self):
+        self.figure.disable_render = True
         self.surf.actor.texture_source_object = self.tex
+        #Enable_Texture doesn't actually reflect whether it's visible or not unless you flip it!
+        self.surf.actor.enable_texture = not self.showrois
         self.surf.actor.enable_texture = self.showrois
+        self.disable_render = False
     
     def _showrois_changed(self):
         self.surf.actor.enable_texture = self.showrois    
+    
+    def _showlabels_changed(self):
+        self.figure.disable_render = True
+        for name, labels in self.roilabels.items():
+            for l, pts in labels:
+                l.visible = self.showlabels
+        self.figure.disable_render = False
+    
+    def _labelsize_changed(self):
+        for name, labels in self.roilabels.items():
+            for l, pts in labels:
+                l.property.font_size = self.labelsize
     
     @on_trait_change("colormap, fliplut")
     def _update_colors(self):
         self.surf.parent.scalar_lut_manager.lut_mode = self.colormap
         self.surf.parent.scalar_lut_manager.reverse_lut = self.fliplut
+    
+    def _lookup_tex_world(self, pts):
+        tcoords = self.data_src.data.point_data.t_coords.to_array()
+        pos = self.data_src.data.points.to_array()
+        return griddata(tcoords, pos, pts, method="nearest")
     
     def reset_view(self, center=True):
         '''Sets the view so that the flatmap is centered'''
@@ -312,53 +361,45 @@ class Mixer(HasTraits):
         rmnode = _find_layer(svg, "data")
         rmnode.parentNode.removeChild(rmnode)
 
+        def make_path_pos(path):
+            pts = _parse_svg_pts(path.getAttribute("d"))
+            pts /= self.svgshape
+            pts[:,1] = 1 - pts[:,1]
+            return pts
+
         #Set up the ROI dict
         rois = _find_layer(svg, "rois")
-        rois = dict([(r.getAttribute("inkscape:label"), r.getElementsByTagName("path")) 
+        rois = dict([(r.getAttribute("inkscape:label"), r.getElementsByTagName("path"))
             for r in rois.getElementsByTagName("g")])
         
         #use traits callbacks to update the lines and textures
         self.rois = rois
         self.svg = svg
+        self._create_roilabels()
+    
+    def _create_roilabels(self):
+        self.figure.disable_render = True
+        #Delete the existing roilabels, if there are any
+        for name, roi in self.roilabels.items():
+            for l in roi:
+                l.remove()
+
         self.roilabels = {}
-        self.update_roilabels()
-    
-    def _showlabels_changed(self):
-        for name, labels in self.roilabels.items():
-            for l in labels:
-                l.visible = self.showlabels
-    
-    def _labelsize_changed(self):
-        for name, labels in self.roilabels.items():
-            for l in labels:
-                l.property.font_size = self.labelsize
-    
-    def update_roilabels(self):
         for name, paths in self.rois.items():
-            if name not in self.roilabels:
-                self.roilabels[name] = []
-            for i, path in enumerate(paths):
-                #Set up or edit the labels
+            self.roilabels[name] = []
+            for path in paths:
                 pts = _parse_svg_pts(path.getAttribute("d"))
                 pts /= self.svgshape
                 pts[:,1] = 1 - pts[:,1]
-                tcoords = self.data_src.data.point_data.t_coords.to_array()
-                pos = self.data_src.data.points.to_array()
-                labelpos = griddata(tcoords, pos, pts, method="nearest").mean(0)
-                if len(self.roilabels[name]) <= i:
-                    lastshow = self.figure.disable_render
-                    self.figure.disable_render = True
-                    txt = mlab.text(labelpos[0], labelpos[1], name, z=labelpos[2], 
-                        figure=self.figure.mayavi_scene)
-                    txt.set(visible=self.showlabels)
-                    txt.property.set(color=(0,0,0), bold=True, justification="center", 
-                        vertical_justification="center", font_size=self.labelsize)
-                    txt.actor.text_scale_mode = "none"
-                    self.figure.disable_render = lastshow
-                    self.roilabels[name].append(txt)
-                else:
-                    self.roilabels[name][i].set(x_position=labelpos[0], 
-                        y_position=labelpos[1], z_position=labelpos[2])
+
+                tpos = self._lookup_tex_world(pts).mean(0)
+                txt = mlab.text(tpos[0], tpos[1], name, z=tpos[2], 
+                        figure=self.figure.mayavi_scene, name=name)
+                txt.set(visible=self.showlabels)
+                txt.property.set(color=(0,0,0), bold=True, justification="center", 
+                    vertical_justification="center", font_size=self.labelsize)
+                txt.actor.text_scale_mode = "none"
+                self.roilabels[name].append((txt, pts))
     
     @on_trait_change("rois, linewidth, roifill")
     def update_rois(self):
@@ -374,7 +415,8 @@ class Mixer(HasTraits):
     
     @on_trait_change("svg, texres, linewidth, roifill")
     def update_texture(self):
-        '''Updates the current texture as found in self.svg. Converts it to PNG and applies it to the image'''
+        '''Updates the current texture as found in self.svg. 
+        Converts it to PNG and applies it to the image'''
         #set the current size of the texture
         w, h = self.svgshape
         cmd = "convert -density {dpi} - png:-".format(dpi=self.texres / h * 72)
@@ -397,6 +439,9 @@ class Mixer(HasTraits):
         show_labels=False),
         resizable=True, title="Mixer")
 
+###################################################################################
+# SVG Helper functions
+###################################################################################
 def _find_layer(svg, label):
     layers = [l for l in svg.getElementsByTagName("g") if l.getAttribute("inkscape:label") == label]
     assert len(layers) > 0, "Cannot find layer %s"%label
@@ -472,12 +517,11 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
         xfm = xfm[0]
     assert xfm.shape == (4, 4), "Not a transform matrix!"
 
-    pts = interp(0)
-    wpts = np.append(pts, np.ones((len(pts),1)), axis=-1).T
-    coords = np.dot(xfm, wpts)[:3].T.round().astype(int)
-    scalars = np.array([data.T[tuple(p)] for p in coords])
-    
-    m = Mixer(points=interp, polys=polys, data=scalars)
+    m = Mixer(points=interp, polys=polys, xfm=xfm, data=data)
+    svgfile = None
+    overlay = os.path.join(options['file_store'], "overlays", "%s_rois.svg"%subject)
+    if os.path.exists(overlay):
+        m.svgfile = overlay
     m.edit_traits()
     return m
 
