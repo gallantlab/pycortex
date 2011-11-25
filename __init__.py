@@ -66,6 +66,6 @@ def detrend_volume_poly(data, polyorder = 10, mask=None):
 
 def flatten(data, subject=None, xfmname=None):
     import view
-    return view.show(data, 
+    return view.quickflat(data, 
         subject or options['default_subject'],
         xfmname or options['default_xfm'])
