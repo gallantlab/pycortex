@@ -12,19 +12,19 @@ cwd = os.path.split(os.path.abspath(__file__))[0]
 options = json.load(open(os.path.join(cwd, "defaults.json")))
 
 def _gen_flat_mask(pts, polys, height=1024):
-    import sys
+    import polyutils
     import Image
     import ImageDraw
+    pts = pts.copy()
     pts -= pts.min(0)
     pts *= height / pts.max(0)[1]
     im = Image.new('L', pts.max(0), 0)
     draw = ImageDraw.Draw(im)
 
-    for i, poly in enumerate(polys):
-        draw.polygon([tuple(pts[p]) for p in poly], outline=None, fill=255)
-        if i % 10000 == 0:
-            print "%0.3f%%...\r"%(100 * float(i) / len(polys)),
-            sys.stdout.flush()
+    left, right = polyutils.trace_both(pts, polys)
+    draw.polygon(pts[left], outline=None, fill=255)
+    draw.polygon(pts[right], outline=None, fill=255)
+    
     del draw
     return np.array(im) > 0
 
