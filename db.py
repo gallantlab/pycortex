@@ -262,7 +262,7 @@ class Database(object):
             loff, roff = map(_convert_offset, [loff, roff])
             lpts, lpolys, lnorms = vtkutils.read(os.path.join(filestore, "surfaces", lh))
             rpts, rpolys, rnorms = vtkutils.read(os.path.join(filestore, "surfaces", rh))
-
+            
             if loff is None and roff is None:
                 lpts[:,0] -= lpts.max(0)[0]
                 rpts[:,0] -= rpts.min(0)[0]
@@ -275,7 +275,7 @@ class Database(object):
             return np.vstack([lpts, rpts]), np.vstack([lpolys, rpolys]), np.vstack([lnorms, rnorms])
         else:
             d, offset = self.cur.execute(query, (subject, type, hemisphere)).fetchone()
-            pts, polys, norms = vtkutils.read(d)
+            pts, polys, norms = vtkutils.read(os.path.join(filestore, "surfaces", d))
             if offset is not None:
                 pts += _convert_offset(offset)
             return pts, polys, norms

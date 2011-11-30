@@ -60,6 +60,7 @@ class Mixer(HasTraits):
 
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
+    show_colorbar = Bool
 
     svg = Instance("xml.dom.minidom.Document")
     svgfile = Str
@@ -103,6 +104,7 @@ class Mixer(HasTraits):
         surf.actor.texture.lookup_table = tvtk.LookupTable(
             table=clear_white_black, range=(-1,1))
         surf.actor.enable_texture = self.showrois
+        surf.module_manager.scalar_lut_manager.scalar_bar.title = None
         return surf
 
     @on_trait_change("figure.activated")
@@ -132,14 +134,14 @@ class Mixer(HasTraits):
     def _fix_label_vis(self):
         '''Use backface culling behind the focal_point to hide labels behind the brain'''
         if self.showlabels:
-            self.figure.disable_render = True
+            #self.figure.disable_render = True
             fpos = self.figure.camera.focal_point
             vec = self.figure.camera.position - fpos
             for name, labels in self.roilabels.items():
                 for t, pts in labels:
                     tpos = np.array((t.x_position, t.y_position, t.z_position))
                     t.visible = np.dot(vec, tpos - fpos) >= -1e-4
-            self.figure.disable_render = False
+            #self.figure.disable_render = False
     
     def _mix_changed(self):
         self.figure.disable_render = True
@@ -185,6 +187,9 @@ class Mixer(HasTraits):
         for name, labels in self.roilabels.items():
             for l, pts in labels:
                 l.property.font_size = self.labelsize
+    
+    def _show_colorbar_changed(self):
+        self.surf.module_manager.scalar_lut_manager.show_legend = self.show_colorbar
     
     @on_trait_change("colormap, fliplut")
     def _update_colors(self):
@@ -374,9 +379,16 @@ class Mixer(HasTraits):
                 Item('colormap',
                      editor=ImageEnumEditor(values=lut_manager.lut_mode_list(),
                      cols=6, path=lut_manager.lut_image_dir)),
-                "fliplut", "_", "showlabels", "showrois"),
+                "fliplut", "show_colorbar", "_", "showlabels", "showrois"),
         show_labels=False),
         resizable=True, title="Mixer")
+    
+    def load_colormap(self, cmap):
+        if cmap.max() <= 1:
+            cmap = cmap.copy() * 255
+        if cmap.shape[-1] < 4:
+            cmap = np.hstack([cmap, np.ones((len(cmap), 1))])
+        self.surf.module_manager.scalar_lut_manager.lut.table = cmap
 
 ###################################################################################
 # SVG Helper functions
@@ -397,7 +409,7 @@ def _make_layer(parent, name, prefix=""):
 
 def _parse_svg_pts(data):
     data = data.split()
-    assert data[0] == "m", "Unknown path format"
+    assert data[0].lower() == "m", "Unknown path format"
     offset = np.array([float(x) for x in data[1].split(',')])
     data = data[2:]
     mode = "l"
