@@ -367,6 +367,8 @@ class Mixer(HasTraits):
         convert = sp.Popen(cmd.split(), stdin=sp.PIPE, stdout=sp.PIPE)
         tex = cStringIO.StringIO(convert.communicate(self.svg.toxml())[0])
         tex = np.asarray(Image.open(tex)).astype(float).swapaxes(0,1)[:,::-1]
+        if len(tex.shape) < 3:
+            tex = tex[:,:,np.newaxis]
         self.tex = ArraySource(scalar_data=1. - tex[...,0] / 255.)
 
     view = View(

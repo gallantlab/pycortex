@@ -61,6 +61,7 @@ def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
 def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
     '''View epi data, transformed into the space given by xfm. 
     Types indicates which surfaces to add to the interpolater. Always includes fiducial and flat'''
+    global mshow
     interp, polys = _get_surf_interp(subject, types, hemisphere)
 
     if hasattr(data, "get_affine"):
@@ -87,6 +88,7 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
             xml.write(xmlbase.format(width=aspect * 1024, height=1024))
     
     import mixer
+    mshow = mixer.mlab.show
     m = mixer.Mixer(points=interp, polys=polys, xfm=xfm, data=data, svgfile=overlay)
     m.edit_traits()
     return m
