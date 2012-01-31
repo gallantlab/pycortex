@@ -4,7 +4,7 @@ import json
 import glob
 import cPickle
 import numpy as np
-from scipy.interpolate import interp1d, griddata
+from scipy.interpolate import interp1d
 
 import db
 
@@ -29,6 +29,7 @@ def _gen_flat_mask(pts, polys, height=1024):
     return np.array(im) > 0
 
 def _make_flat_cache(interp, xfm, height=1024):
+    from scipy.interpolate import griddata
     fiducial, flat = interp(0), interp(1)
     wpts = np.append(fiducial, np.ones((len(fiducial), 1)), axis=-1).T
     coords = np.dot(xfm, wpts)[:3].T
