@@ -391,6 +391,9 @@ class Mixer(HasTraits):
         if cmap.shape[-1] < 4:
             cmap = np.hstack([cmap, np.ones((len(cmap), 1))])
         self.surf.module_manager.scalar_lut_manager.lut.table = cmap
+    
+    def show(self):
+        return mlab.show()
 
 ###################################################################################
 # SVG Helper functions
