@@ -109,6 +109,12 @@ class Mixer(HasTraits):
 
     @on_trait_change("figure.activated")
     def _start(self):
+        def picker(picker):
+            print self.coords[picker.point_id]
+        
+        picker = self.figure.mayavi_scene.on_mouse_pick(picker)
+        picker.tolerance = 0.005
+
         #initialize the figure
         self.figure.scene.background = (0,0,0)
         self.figure.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
