@@ -111,9 +111,6 @@ class Mixer(HasTraits):
     def _start(self):
         def picker(picker):
             print self.coords[picker.point_id]
-        
-        picker = self.figure.mayavi_scene.on_mouse_pick(picker)
-        picker.tolerance = 0.005
 
         #initialize the figure
         self.figure.scene.background = (0,0,0)
@@ -121,6 +118,9 @@ class Mixer(HasTraits):
         self.figure.scene.render_window.stereo_type = "anaglyph"
         self.figure.camera.view_up = [0,0,1]
         self.reset_view()
+
+        picker = self.figure.mayavi_scene.on_mouse_pick(picker)
+        picker.tolerance = 0.005
 
         #Add traits callbacks to update label visibility and positions
         self.figure.camera.on_trait_change(self._fix_label_vis, "position")
