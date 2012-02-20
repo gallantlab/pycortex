@@ -143,11 +143,13 @@ class Mixer(HasTraits):
     
     def _update_label_pos(self):
         '''Creates and/or updates the position of the text to match the surface'''
+        self.figure.disable_render = True
         for name, labels in self.roilabels.items():
             for t, pts in labels:
                 wpos, norm = self._lookup_tex_world(pts)
                 x, y, z = _labelpos(wpos)
                 t.set(x_position=x, y_position=y, z_position=z, norm=tuple(norm.mean(0)))
+        self.figure.disable_render = False
     
     def _fix_label_vis(self):
         '''Use backface culling behind the focal_point to hide labels behind the brain'''
@@ -171,18 +173,21 @@ class Mixer(HasTraits):
                     self.figure.disable_render = False
     
     def _mix_changed(self):
+        pts = self.points(self.mix)
+        self.figure.disable_render = True
+        self.data_src.data.points.from_array(pts)
+        self.figure.camera.focal_point = pts.mean(0)
+        self.figure.renderer.reset_camera_clipping_range()
+        self._update_label_pos()
+        self.figure.disable_render = False
+        self.figure.render()
+        '''
         def func():
-            pts = self.points(self.mix)
             def update():
-                self.figure.disable_render = True
-                self.data_src.data.points.from_array(pts)
-                self.figure.camera.focal_point = pts.mean(0)
-                self.figure.renderer.reset_camera_clipping_range()
-                self._update_label_pos()
-                self.figure.disable_render = False
-                self.figure.render()
+                pass
             GUI.invoke_later(update)
         threading.Thread(target=func).start()
+        '''
     
     def _points_changed(self):
         pts = self.points(0)
@@ -463,7 +468,8 @@ def _labelpos(pts):
     sp = np.diag(s)
     sp[-1,-1] = 0
     x, y = _center_pts(np.dot(ptm, np.dot(v.T, sp))[:,:2])
-    pt = np.dot(np.dot(np.array([x,y,0]), np.diag(1./s)), v)
+    sp = np.diag(1./(s+np.finfo(float).eps))
+    pt = np.dot(np.dot(np.array([x,y,0]), sp), v)
     return pt + pts.mean(0)
 
 ###################################################################################
