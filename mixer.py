@@ -3,6 +3,7 @@ import json
 import binascii
 import tempfile
 import cStringIO
+import threading
 import subprocess as sp
 from xml.dom.minidom import parse as xmlparse
 
@@ -18,6 +19,8 @@ try:
     from tvtk.api import tvtk
     from tvtk.pyface.scene import Scene
 
+    from pyface.api import GUI
+
     from mayavi import mlab
     from mayavi.core.ui import lut_manager
     from mayavi.core.api import PipelineBase, Source, Filter, Module
@@ -29,6 +32,8 @@ except ImportError:
 
     from enthought.tvtk.api import tvtk
     from enthought.tvtk.pyface.scene import Scene
+
+    from enthought.pyface.api import GUI
 
     from enthought.mayavi import mlab
     from enthought.mayavi.core.ui import lut_manager
@@ -133,6 +138,7 @@ class Mixer(HasTraits):
         self.surf
         self.colormap = "RdBu"
         self.fliplut = True
+        self.figure.camera.focal_point = self.data_src.data.points.to_array().mean(0)
     
     def _update_label_pos(self):
         '''Creates and/or updates the position of the text to match the surface'''
@@ -150,20 +156,22 @@ class Mixer(HasTraits):
             for name, labels in self.roilabels.items():
                 for t, pts in labels:
                     tpos = np.array((t.x_position, t.y_position, t.z_position))
-                    t.property.opacity = (0.1, 0.8)[np.dot(vec, tpos - fpos) >= -1e-4]
+                    t.property.opacity = (0.1, 0.8)[np.dot(vec, tpos - fpos) >= 1e-4]
             #self.figure.disable_render = False
     
     def _mix_changed(self):
-        self.figure.disable_render = True
-        self.data_src.data.points.from_array(self.points(self.mix))
-        self.figure.renderer.reset_camera_clipping_range()
-        self._update_label_pos()
-        self.figure.disable_render = False
-        self.figure.render()
-        #def func():
-        #    self.data_src.data.points = self.points(self.mix)
-        #    GUI.invoke_later(self.data_src.data.update)
-        #threading.Thread(target=func).start()
+        def func():
+            pts = self.points(self.mix)
+            self.figure.disable_render = True
+            self.figure.camera.focal_point = pts.mean(0)
+            def update():
+                self.data_src.data.points.from_array(pts)
+                self.figure.renderer.reset_camera_clipping_range()
+                self._update_label_pos()
+                self.figure.disable_render = False
+                self.figure.render()
+            GUI.invoke_later(update)
+        threading.Thread(target=func).start()
     
     def _points_changed(self):
         pts = self.points(0)
@@ -348,7 +356,6 @@ class Mixer(HasTraits):
                 pts[:,1] = 1 - pts[:,1]
 
                 tpos = _labelpos(self._lookup_tex_world(pts))
-                print tpos
                 txt = mlab.text(tpos[0], tpos[1], name, z=tpos[2], 
                         figure=self.figure.mayavi_scene, name=name)
                 txt.set(visible=self.showlabels)
@@ -410,18 +417,37 @@ class Mixer(HasTraits):
         return mlab.show()
 
 try:
-    from shapely.geometry import Blah
-    def _labelpos(pts):
+    from shapely.geometry import Polygon
+    def _center_pts(pts):
         '''Fancy label position generator, using erosion to get label coordinate'''
+        min = pts.min(0)
+        pts -= min
+        max = pts.max(0)
+        pts /= max
+
         poly = Polygon([tuple(p) for p in pts])
-        for i in np.linspace(0, 1000, 0.1):
+        for i in np.linspace(0,1,100):
             if poly.buffer(-i).is_empty:
-                print list(poly.buffer(-i+0.1).centroid.coords)
-                return list(poly.buffer(-i+0.1).centroid.coords)[0]
+                return  list(poly.buffer(-i+0.01).centroid.coords)[0] * max + min
+
+        print "unable to find zero centroid..."
+        return list(poly.buffer(-100).centroid.coords)[0] * max + min
 
 except ImportError:
-    def _labelpos(pts):
+    print "Cannot find shapely, using simple label placement"
+    def _center_pts(pts):
         return pts.mean(0)
+
+def _labelpos(pts):
+    ptm = pts.copy().astype(float)
+    ptm -= ptm.mean(0)
+    u, s, v = np.linalg.svd(ptm, full_matrices=False)
+    sp = np.diag(s)
+    sp[-1,-1] = 0
+    x, y = _center_pts(np.dot(ptm, np.dot(v.T, sp))[:,:2])
+    pt = np.dot(np.dot(np.array([x,y,0]), np.diag(1./s)), v)
+    return pt + pts.mean(0)
+
 ###################################################################################
 # SVG Helper functions
 ###################################################################################
