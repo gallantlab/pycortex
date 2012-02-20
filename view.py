@@ -58,6 +58,19 @@ def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
     interp = interp1d(np.linspace(0,1,len(pts)), pts, axis=0)
     return interp, polys
 
+def _tcoords(subject, hemisphere="both"):
+    pts, polys, norm = db.surfs.getVTK(subject, "flat", hemisphere="both")
+    pts = pts[:,:2] - pts[:,:2].min(0)
+    pts /= pts.max(0)
+    if hemisphere == "both":
+        return pts
+    elif hemisphere == "rh":
+        h, polys, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
+        return pts[-len(h):]
+    elif hemisphere == "lh":
+        h, polys, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
+        return pts[len(h):]
+
 def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
     '''View epi data, transformed into the space given by xfm. 
     Types indicates which surfaces to add to the interpolater. Always includes fiducial and flat'''
@@ -86,8 +99,12 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
             xmlbase = open(os.path.join(cwd, "svgbase.xml")).read()
             xml.write(xmlbase.format(width=aspect * 1024, height=1024))
     
+    kwargs = dict(points=interp, polys=polys, xfm=xfm, data=data, svgfile=overlay)
+    if hemisphere != "both":
+        kwargs['tcoords'] = _tcoords(subject, hemisphere)
+
     import mixer
-    m = mixer.Mixer(points=interp, polys=polys, xfm=xfm, data=data, svgfile=overlay)
+    m = mixer.Mixer(**kwargs)
     m.edit_traits()
     return m
 

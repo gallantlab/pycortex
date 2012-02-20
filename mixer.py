@@ -44,7 +44,7 @@ cwd = os.path.split(os.path.abspath(__file__))[0]
 options = json.load(open(os.path.join(cwd, "defaults.json")))
 default_texres = options['texture_res'] if 'texure_res' in options else 1024.
 default_lw = options['line_width'] if 'line_width' in options else 5.
-default_labelsize = options['label_size'] if 'label_size' in options else 16
+default_labelsize = options['label_size'] if 'label_size' in options else 24
 default_renderheight = options['renderheight'] if 'renderheight' in options else 1024.
 
 class Mixer(HasTraits):
@@ -52,6 +52,7 @@ class Mixer(HasTraits):
     polys = Array(shape=(None, 3))
     xfm = Array(shape=(4,4))
     data = Array
+    tcoords = Array
     mix = Range(0., 1., value=1)
 
     figure = Instance(MlabSceneModel, ())
@@ -91,9 +92,12 @@ class Mixer(HasTraits):
             pts[:,0], pts[:,1], pts[:,2],
             self.polys, figure=self.figure.mayavi_scene)
         #Set the texture coordinates
-        pts -= pts.min(0)
-        pts /= pts.max(0)
-        src.data.point_data.t_coords = pts[:,[0,2]]
+        if self.tcoords is None:
+            pts -= pts.min(0)
+            pts /= pts.max(0)
+            src.data.point_data.t_coords = pts[:,[0,2]]
+        else:
+            src.data.point_data.t_coords = self.tcoords
         return src
 
     def _surf_default(self):
@@ -146,7 +150,7 @@ class Mixer(HasTraits):
             for name, labels in self.roilabels.items():
                 for t, pts in labels:
                     tpos = np.array((t.x_position, t.y_position, t.z_position))
-                    t.visible = np.dot(vec, tpos - fpos) >= -1e-4
+                    t.property.opacity = (0.1, 0.8)[np.dot(vec, tpos - fpos) >= -1e-4]
             #self.figure.disable_render = False
     
     def _mix_changed(self):
@@ -320,7 +324,8 @@ class Mixer(HasTraits):
         #Set up the ROI dict
         rois = _find_layer(svg, "rois")
         rois = dict([(r.getAttribute("inkscape:label"), r.getElementsByTagName("path"))
-            for r in rois.getElementsByTagName("g")])
+            for r in rois.getElementsByTagName("g") 
+            if not r.hasAttribute("style") or "display:none" not in r.attributes['style'].value])
         
         #use traits callbacks to update the lines and textures
         self.rois = rois
@@ -331,7 +336,7 @@ class Mixer(HasTraits):
         self.figure.disable_render = True
         #Delete the existing roilabels, if there are any
         for name, roi in self.roilabels.items():
-            for l in roi:
+            for l, pts in roi:
                 l.remove()
 
         self.roilabels = {}
@@ -342,7 +347,8 @@ class Mixer(HasTraits):
                 pts /= self.svgshape
                 pts[:,1] = 1 - pts[:,1]
 
-                tpos = self._lookup_tex_world(pts).mean(0)
+                tpos = _labelpos(self._lookup_tex_world(pts))
+                print tpos
                 txt = mlab.text(tpos[0], tpos[1], name, z=tpos[2], 
                         figure=self.figure.mayavi_scene, name=name)
                 txt.set(visible=self.showlabels)
@@ -354,7 +360,7 @@ class Mixer(HasTraits):
     @on_trait_change("rois, linewidth, roifill")
     def update_rois(self):
         for name, paths in self.rois.items():
-            style = "fill:{fill};stroke:#000000;stroke-width:{lw}px;"+\
+            style = "fill:{fill};fill-opacity:0.5;stroke:#000000;stroke-width:{lw}px;"+\
                     "stroke-linecap:butt;stroke-linejoin:miter;"+\
                     "stroke-opacity:1"
             style = style.format(fill=self.roifill, lw=self.linewidth)
@@ -370,8 +376,10 @@ class Mixer(HasTraits):
         #set the current size of the texture
         w, h = self.svgshape
         cmd = "convert -density {dpi} - png:-".format(dpi=self.texres / h * 72)
-        convert = sp.Popen(cmd.split(), stdin=sp.PIPE, stdout=sp.PIPE)
-        tex = cStringIO.StringIO(convert.communicate(self.svg.toxml())[0])
+        convert = sp.Popen(cmd.split(), stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
+        raw = convert.communicate(self.svg.toxml())
+        print raw[1]
+        tex = cStringIO.StringIO(raw[0])
         tex = np.asarray(Image.open(tex)).astype(float).swapaxes(0,1)[:,::-1]
         if len(tex.shape) < 3:
             tex = tex[:,:,np.newaxis]
@@ -401,6 +409,19 @@ class Mixer(HasTraits):
     def show(self):
         return mlab.show()
 
+try:
+    from shapely.geometry import Blah
+    def _labelpos(pts):
+        '''Fancy label position generator, using erosion to get label coordinate'''
+        poly = Polygon([tuple(p) for p in pts])
+        for i in np.linspace(0, 1000, 0.1):
+            if poly.buffer(-i).is_empty:
+                print list(poly.buffer(-i+0.1).centroid.coords)
+                return list(poly.buffer(-i+0.1).centroid.coords)[0]
+
+except ImportError:
+    def _labelpos(pts):
+        return pts.mean(0)
 ###################################################################################
 # SVG Helper functions
 ###################################################################################
