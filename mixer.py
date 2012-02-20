@@ -51,6 +51,7 @@ default_texres = options['texture_res'] if 'texure_res' in options else 1024.
 default_lw = options['line_width'] if 'line_width' in options else 5.
 default_labelsize = options['label_size'] if 'label_size' in options else 24
 default_renderheight = options['renderheight'] if 'renderheight' in options else 1024.
+default_labelhide = options['labelhide'] if 'labelhide' in options else True
 
 class Mixer(HasTraits):
     points = Instance("scipy.interpolate.interpolate.interp1d")
@@ -97,7 +98,7 @@ class Mixer(HasTraits):
             pts[:,0], pts[:,1], pts[:,2],
             self.polys, figure=self.figure.mayavi_scene)
         #Set the texture coordinates
-        if self.tcoords is None:
+        if len(self.tcoords) < 1:
             pts -= pts.min(0)
             pts /= pts.max(0)
             src.data.point_data.t_coords = pts[:,[0,2]]
@@ -118,9 +119,6 @@ class Mixer(HasTraits):
 
     @on_trait_change("figure.activated")
     def _start(self):
-        def picker(picker):
-            print self.coords[picker.point_id]
-
         #initialize the figure
         self.figure.scene.background = (0,0,0)
         self.figure.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
@@ -128,8 +126,11 @@ class Mixer(HasTraits):
         self.figure.camera.view_up = [0,0,1]
         self.reset_view()
 
-        picker = self.figure.mayavi_scene.on_mouse_pick(picker)
-        picker.tolerance = 0.005
+        if hasattr(self.figure.mayavi_scene, "on_mouse_pick"):
+            def picker(picker):
+                print self.coords[picker.point_id]
+            picker = self.figure.mayavi_scene.on_mouse_pick(picker)
+            picker.tolerance = 0.005
 
         #Add traits callbacks to update label visibility and positions
         self.figure.camera.on_trait_change(self._fix_label_vis, "position")
@@ -144,28 +145,38 @@ class Mixer(HasTraits):
         '''Creates and/or updates the position of the text to match the surface'''
         for name, labels in self.roilabels.items():
             for t, pts in labels:
-                tpos = self._lookup_tex_world(pts).mean(0)
-                t.set(x_position=tpos[0], y_position=tpos[1], z_position=tpos[2])
+                wpos, norm = self._lookup_tex_world(pts)
+                x, y, z = _labelpos(wpos)
+                t.set(x_position=x, y_position=y, z_position=z, norm=tuple(norm.mean(0)))
     
     def _fix_label_vis(self):
         '''Use backface culling behind the focal_point to hide labels behind the brain'''
         if self.showlabels:
-            #self.figure.disable_render = True
+            flipme = []
             fpos = self.figure.camera.focal_point
-            vec = self.figure.camera.position - fpos
             for name, labels in self.roilabels.items():
                 for t, pts in labels:
                     tpos = np.array((t.x_position, t.y_position, t.z_position))
-                    t.property.opacity = (0.1, 0.8)[np.dot(vec, tpos - fpos) >= 1e-4]
-            #self.figure.disable_render = False
+                    cam = self.figure.camera.position
+                    state = np.dot(cam-tpos, t.norm) >= 1e-4 and np.dot(cam-fpos, tpos-fpos) >= -1e-4
+                    if t.visible != state:
+                        flipme.append(t)
+            
+            if len(flipme) > 0:
+                if default_labelhide:
+                    self.figure.disable_render = True
+                for t in flipme:
+                    t.visible = not t.visible
+                if default_labelhide:
+                    self.figure.disable_render = False
     
     def _mix_changed(self):
         def func():
             pts = self.points(self.mix)
-            self.figure.disable_render = True
-            self.figure.camera.focal_point = pts.mean(0)
             def update():
+                self.figure.disable_render = True
                 self.data_src.data.points.from_array(pts)
+                self.figure.camera.focal_point = pts.mean(0)
                 self.figure.renderer.reset_camera_clipping_range()
                 self._update_label_pos()
                 self.figure.disable_render = False
@@ -216,8 +227,11 @@ class Mixer(HasTraits):
     
     def _lookup_tex_world(self, pts):
         tcoords = self.data_src.data.point_data.t_coords.to_array()
-        pos = self.data_src.data.points.to_array()
-        return griddata(tcoords, pos, pts, method="nearest")
+        idx = np.arange(len(tcoords))
+        interp = griddata(tcoords, idx, pts, method="nearest")
+        pos = self.data_src.data.points.to_array()[interp]
+        nor = self.data_src.children[0].outputs[0].point_data.normals.to_array()[interp]
+        return pos, nor
     
     def reset_view(self, center=True):
         '''Sets the view so that the flatmap is centered'''
@@ -355,13 +369,16 @@ class Mixer(HasTraits):
                 pts /= self.svgshape
                 pts[:,1] = 1 - pts[:,1]
 
-                tpos = _labelpos(self._lookup_tex_world(pts))
+                wpos, norm = self._lookup_tex_world(pts)
+                tpos = _labelpos(wpos)
                 txt = mlab.text(tpos[0], tpos[1], name, z=tpos[2], 
                         figure=self.figure.mayavi_scene, name=name)
                 txt.set(visible=self.showlabels)
                 txt.property.set(color=(0,0,0), bold=True, justification="center", 
                     vertical_justification="center", font_size=self.labelsize)
                 txt.actor.text_scale_mode = "none"
+                txt.add_trait("norm", tuple)
+                txt.norm = tuple(norm.mean(0))
                 self.roilabels[name].append((txt, pts))
     
     @on_trait_change("rois, linewidth, roifill")
@@ -428,7 +445,8 @@ try:
         poly = Polygon([tuple(p) for p in pts])
         for i in np.linspace(0,1,100):
             if poly.buffer(-i).is_empty:
-                return  list(poly.buffer(-i+0.01).centroid.coords)[0] * max + min
+                return list(poly.buffer(-last_i).centroid.coords)[0] * max + min
+            last_i = i
 
         print "unable to find zero centroid..."
         return list(poly.buffer(-100).centroid.coords)[0] * max + min
