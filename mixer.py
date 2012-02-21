@@ -143,13 +143,13 @@ class Mixer(HasTraits):
     
     def _update_label_pos(self):
         '''Creates and/or updates the position of the text to match the surface'''
-        self.figure.disable_render = True
+        self.figure.scene.disable_render = True
         for name, labels in self.roilabels.items():
             for t, pts in labels:
                 wpos, norm = self._lookup_tex_world(pts)
                 x, y, z = _labelpos(wpos)
                 t.set(x_position=x, y_position=y, z_position=z, norm=tuple(norm.mean(0)))
-        self.figure.disable_render = False
+        self.figure.scene.disable_render = False
     
     def _fix_label_vis(self):
         '''Use backface culling behind the focal_point to hide labels behind the brain'''
@@ -160,27 +160,26 @@ class Mixer(HasTraits):
                 for t, pts in labels:
                     tpos = np.array((t.x_position, t.y_position, t.z_position))
                     cam = self.figure.camera.position
-                    state = np.dot(cam-tpos, t.norm) >= 1e-4 and np.dot(cam-fpos, tpos-fpos) >= -1e-4
+                    state = np.dot(cam-tpos, t.norm) >= 1e-4 and np.dot(cam-fpos, tpos-fpos) >= -1
                     if t.visible != state:
                         flipme.append(t)
             
             if len(flipme) > 0:
                 if default_labelhide:
-                    self.figure.disable_render = True
+                    self.figure.scene.disable_render = True
                 for t in flipme:
                     t.visible = not t.visible
                 if default_labelhide:
-                    self.figure.disable_render = False
+                    self.figure.scene.disable_render = False
     
     def _mix_changed(self):
         pts = self.points(self.mix)
-        self.figure.disable_render = True
+        self.figure.scene.disable_render = True
         self.data_src.data.points.from_array(pts)
-        self.figure.camera.focal_point = pts.mean(0)
         self.figure.renderer.reset_camera_clipping_range()
         self._update_label_pos()
-        self.figure.disable_render = False
-        self.figure.render()
+        self.figure.camera.focal_point = pts.mean(0)
+        #self.figure.render()
         '''
         def func():
             def update():
@@ -200,7 +199,7 @@ class Mixer(HasTraits):
         self.data_src.mlab_source.scalars = scalars
     
     def _tex_changed(self):
-        self.figure.disable_render = True
+        self.figure.scene.disable_render = True
         self.surf.actor.texture_source_object = self.tex
         #Enable_Texture doesn't actually reflect whether it's visible or not unless you flip it!
         self.surf.actor.enable_texture = not self.showrois
@@ -211,11 +210,11 @@ class Mixer(HasTraits):
         self.surf.actor.enable_texture = self.showrois    
     
     def _showlabels_changed(self):
-        self.figure.disable_render = True
+        self.figure.scene.disable_render = True
         for name, labels in self.roilabels.items():
             for l, pts in labels:
                 l.visible = self.showlabels
-        self.figure.disable_render = False
+        self.figure.scene.disable_render = False
     
     def _labelsize_changed(self):
         for name, labels in self.roilabels.items():
@@ -360,7 +359,7 @@ class Mixer(HasTraits):
         self._create_roilabels()
     
     def _create_roilabels(self):
-        self.figure.disable_render = True
+        self.figure.scene.disable_render = True
         #Delete the existing roilabels, if there are any
         for name, roi in self.roilabels.items():
             for l, pts in roi:
@@ -389,7 +388,7 @@ class Mixer(HasTraits):
     @on_trait_change("rois, linewidth, roifill")
     def update_rois(self):
         for name, paths in self.rois.items():
-            style = "fill:{fill};fill-opacity:0.5;stroke:#000000;stroke-width:{lw}px;"+\
+            style = "fill:{fill};fill-opacity:0.1;stroke:#000000;stroke-width:{lw}px;"+\
                     "stroke-linecap:butt;stroke-linejoin:miter;"+\
                     "stroke-opacity:1"
             style = style.format(fill=self.roifill, lw=self.linewidth)
