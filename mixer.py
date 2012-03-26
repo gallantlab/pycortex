@@ -13,7 +13,7 @@ from scipy.interpolate import griddata
 import Image
 
 try:
-    from traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Range, Any, Color,Enum, Callable, on_trait_change
+    from traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Range, Any, Color,Enum, Callable, Tuple, on_trait_change
     from traitsui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor
 
     from tvtk.api import tvtk
@@ -25,9 +25,10 @@ try:
     from mayavi.core.ui import lut_manager
     from mayavi.core.api import PipelineBase, Source, Filter, Module
     from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
-    from mayavi.sources.array_source import ArraySource
+    from mayavi.sources.image_reader import ImageReader
+
 except ImportError:
-    from enthought.traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Any, Range, Color,Enum, Callable, on_trait_change
+    from enthought.traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Any, Range, Color,Enum, Callable, Tuple, on_trait_change
     from enthought.traits.ui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor, Handler
 
     from enthought.tvtk.api import tvtk
@@ -39,16 +40,16 @@ except ImportError:
     from enthought.mayavi.core.ui import lut_manager
     from enthought.mayavi.core.api import PipelineBase, Source, Filter, Module
     from enthought.mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
-    from enthought.mayavi.sources.array_source import ArraySource
+    from enthought.mayavi.sources.image_reader import ImageReader
 
-_top = np.vstack([np.tile(255,[3,128]), np.arange(0,256,2)])
-_bottom = np.vstack([np.tile(np.arange(256)[-2::-2], [3,1]), [np.tile(255,128)]])
-clear_white_black = np.vstack([_top.T, _bottom.T])
+#_top = np.vstack([np.tile(255,[3,128]), np.arange(0,256,2)])
+#_bottom = np.vstack([np.tile(np.arange(256)[-2::-2], [3,1]), [np.tile(255,128)]])
+#clear_white_black = np.vstack([_top.T, _bottom.T])
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 options = json.load(open(os.path.join(cwd, "defaults.json")))
 default_texres = options['texture_res'] if 'texure_res' in options else 1024.
-default_lw = options['line_width'] if 'line_width' in options else 5.
+default_lw = options['line_width'] if 'line_width' in options else 3.
 default_labelsize = options['label_size'] if 'label_size' in options else 24
 default_renderheight = options['renderheight'] if 'renderheight' in options else 1024.
 default_labelhide = options['labelhide'] if 'labelhide' in options else True
@@ -74,14 +75,15 @@ class Mixer(HasTraits):
     rois = Dict
     roilabels = Dict
 
-    tex = Instance(ArraySource, ())
+    tex = Instance(ImageReader, ())
     texres = Float(default_texres)
 
     showrois = Bool(False)
     showlabels = Bool(False)
     labelsize = Int(default_labelsize)
     linewidth = Float(default_lw)
-    roifill = Str("none")
+    linecolor = Tuple((0,0,0,1.))
+    roifill = Tuple((0,0,0,0.2))
 
     def __init__(self, points, polys, xfm, data=None, svgfile=None, **kwargs):
         #special init function must be used because points must be set before data can be set
@@ -111,8 +113,9 @@ class Mixer(HasTraits):
         surf = mlab.pipeline.surface(n, figure=self.figure.mayavi_scene)
         surf.actor.texture.interpolate = True
         surf.actor.texture.repeat = False
-        surf.actor.texture.lookup_table = tvtk.LookupTable(
-            table=clear_white_black, range=(-1,1))
+        surf.actor.texture.blending_mode = 1
+        #surf.actor.texture.lookup_table = tvtk.LookupTable(
+        #    table=clear_white_black, range=(-1,1))
         surf.actor.enable_texture = self.showrois
         surf.module_manager.scalar_lut_manager.scalar_bar.title = None
         return surf
@@ -120,9 +123,10 @@ class Mixer(HasTraits):
     @on_trait_change("figure.activated")
     def _start(self):
         #initialize the figure
+        self.figure.render_window.set(alpha_bit_planes=1, stereo_type="anaglyph", multi_samples=0)
+        self.figure.renderer.set(use_depth_peeling=1, maximum_number_of_peels=100, occlusion_ratio=0.1)
         self.figure.scene.background = (0,0,0)
         self.figure.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
-        self.figure.scene.render_window.stereo_type = "anaglyph"
         self.figure.camera.view_up = [0,0,1]
         self.reset_view()
 
@@ -256,6 +260,13 @@ class Mixer(HasTraits):
         self.figure.renderer.reset_camera_clipping_range()
         self.figure.render()
     
+    def show_curvature(self):
+        self.figure.disable_render = True
+        self.mix = 0
+        curve = mlab.pipeline.user_defined(self.data_src, filter="Curvatures")
+        curve.filter.curvature_type = "mean"
+        self.data_src.mlab_source.scalars = curve.filter.get_output().point_data.scalars.to_array()
+    
     def saveflat(self, filename=None, height=default_renderheight):
         #Save the current view to restore
         startmix = self.mix
@@ -385,33 +396,40 @@ class Mixer(HasTraits):
                 txt.norm = tuple(norm.mean(0))
                 self.roilabels[name].append((txt, pts))
     
-    @on_trait_change("rois, linewidth, roifill")
+    @on_trait_change("rois, linewidth, linecolor, roifill")
     def update_rois(self):
         for name, paths in self.rois.items():
-            style = "fill:{fill};fill-opacity:0.1;stroke:#000000;stroke-width:{lw}px;"+\
+            style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
                     "stroke-linecap:butt;stroke-linejoin:miter;"+\
-                    "stroke-opacity:1"
-            style = style.format(fill=self.roifill, lw=self.linewidth)
+                    "stroke:{lc};stroke-opacity:{lo}"
+            style = style.format(
+                fill="rgb(%d,%d,%d)"%self.roifill[:-1], fo=self.roifill[-1],
+                lc="rgb(%d,%d,%d)"%self.linecolor[:-1], lo=self.linecolor[-1], 
+                lw=self.linewidth)
 
             for i, path in enumerate(paths):
                 #Set the fill and stroke
                 path.setAttribute("style", style)
     
-    @on_trait_change("svg, texres, linewidth, roifill")
+    @on_trait_change("svg, texres, linewidth, roifill, linecolor")
     def update_texture(self):
         '''Updates the current texture as found in self.svg. 
         Converts it to PNG and applies it to the image'''
         #set the current size of the texture
         w, h = self.svgshape
-        cmd = "convert -density {dpi} - png:-".format(dpi=self.texres / h * 72)
+        cmd = "convert -depth 8 -density {dpi} - png32:-".format(dpi=self.texres / h * 72)
         convert = sp.Popen(cmd.split(), stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
         raw = convert.communicate(self.svg.toxml())
-        print raw[1]
-        tex = cStringIO.StringIO(raw[0])
-        tex = np.asarray(Image.open(tex)).astype(float).swapaxes(0,1)[:,::-1]
-        if len(tex.shape) < 3:
-            tex = tex[:,:,np.newaxis]
-        self.tex = ArraySource(scalar_data=1. - tex[...,0] / 255.)
+        pngfile = tempfile.NamedTemporaryFile(suffix=".png")
+        pngfile.write(raw[0])
+        pngfile.flush()
+        #tex = cStringIO.StringIO(raw[0])
+        #tex = np.asarray(Image.open(tex)).astype(float).swapaxes(0,1)[:,::-1]
+        #if len(tex.shape) < 3:
+        #    tex = tex[:,:,np.newaxis]
+        #self.tex = ArraySource(scalar_data=1. - tex[...,0] / 255.)
+        self.tex = ImageReader(file_list=[pngfile.name])
+        #pngfile.close()
 
     view = View(
         HGroup(
