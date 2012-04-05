@@ -29,7 +29,7 @@ class SubjectDB(object):
     def __getattr__(self, attr):
         if attr == "anatomical" and self.anatfile is not None:
             import nibabel
-            return nibabel.load(self.anatfile)
+            return nibabel.load(os.path.join(filestore, "surfaces",self.anatfile))
         raise AttributeError
 
 class SurfaceDB(object):

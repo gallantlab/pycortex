@@ -1,5 +1,6 @@
 import os
 import json
+import tempfile
 import numpy as np
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
@@ -39,6 +40,8 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     if show:
         from matplotlib import pyplot as plt
         plt.imshow(output, **kwargs)
+        plt.xticks([])
+        plt.yticks([])
 
     return output
 
@@ -69,3 +72,45 @@ def flatten(data, subject=None, xfmname=None):
     return view.quickflat(data, 
         subject or options['default_subject'],
         xfmname or options['default_xfm'])
+
+def epi_to_anat(data, subject=None, xfmname=None):
+    '''/usr/share/fsl/4.1/bin/flirt -in /tmp/epidat.nii -applyxfm -init /tmp/coordmat.mat -out /tmp/realign.nii.gz -paddingsize 0.0 -interp trilinear -ref /tmp/anat.nii'''
+    import nifti
+    import shlex
+    import subprocess as sp
+    epifile = tempfile.mktemp(suffix=".nii")
+    anatfile = tempfile.mktemp(suffix=".nii")
+    xfmfile = tempfile.mktemp()
+    outfile = tempfile.mktemp(suffix=".nii")
+
+    #load up relevant data, get transforms
+    anatdat = surfs.subjects[subject].anatomical
+    anataff = anatdat.get_affine()
+    epixfm = np.linalg.inv(surfs.getXfm(subject, xfmname)[0])
+    xfm = np.dot(np.abs(anataff), epixfm)
+    np.savetxt(xfmfile, xfm, "%f")
+
+    #save the epi data and the anatomical (probably in hdr/img) into nifti
+    nifti.NiftiImage(data).save(epifile)
+    nifti.NiftiImage(np.array(anatdat.get_data()).T).save(anatfile)
+
+    cmd = "fsl4.1-flirt -in {epi} -applyxfm -init {xfm} -out {out} -paddingsize 0.0 -interp trilinear -ref {anat}"
+    sp.Popen(shlex.split(cmd.format(epi=epifile, xfm=xfmfile, anat=anatfile, out=outfile))).wait()
+    output = nifti.NiftiImage(outfile).data
+
+    os.unlink(epifile)
+    os.unlink(anatfile)
+    os.unlink(xfmfile)
+    return output
+
+def get_cortical_mask(subject, xfmname, shape=(31, 100, 100)):
+    data = np.zeros(shape)
+    fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
+    wpts = np.append(fiducial, np.ones((len(fiducial), 1)), axis=-1).T
+    xfm, epi = surfs.getXfm(subject, xfmname)
+    coords = np.dot(xfm, wpts)[:3].T
+
+    for c in coords.round().astype(int):
+        data[tuple(c[::-1])] = 1
+
+    return data
