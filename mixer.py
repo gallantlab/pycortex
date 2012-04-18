@@ -257,6 +257,20 @@ class Mixer(HasTraits):
     def lindata_to_points(self, linarr, mask):
         '''Maps the given 1D data array [linarr] to vertices on the mesh, but first
         maps the 1D data into 3D space via the given [mask].
+
+        Parameters
+        ----------
+        linarr : (N,) array, float
+            A vector containing a floating point value for each voxel.
+        mask : (Z,Y,X) array, binary
+            A 3D mask that is True wherever a voxel value should be mapped to
+            the surface.
+
+        Returns
+        -------
+        pointdata : (M,) array, float
+            A new vector that contains, for each vertex, the value of the voxel
+            that vertex lies inside.
         '''
         datavol = mask.copy().astype(linarr.dtype)
         datavol[mask>0] = linarr
