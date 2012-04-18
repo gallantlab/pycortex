@@ -163,7 +163,7 @@ class Mixer(HasTraits):
     
     def _fix_label_vis(self):
         '''Use backface culling behind the focal_point to hide labels behind the brain'''
-        if self.showlabels:
+        if self.showlabels and self.mix != 1:
             flipme = []
             fpos = self.figure.camera.focal_point
             for name, labels in self.roilabels.items():
