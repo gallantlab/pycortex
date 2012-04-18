@@ -13,7 +13,7 @@ from scipy.interpolate import griddata
 import Image
 
 try:
-    from traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Range, Any, Color,Enum, Callable, Tuple, on_trait_change
+    from traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Range, Any, Color,Enum, Callable, Tuple, Button, on_trait_change
     from traitsui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor
 
     from tvtk.api import tvtk
@@ -28,8 +28,8 @@ try:
     from mayavi.sources.image_reader import ImageReader
 
 except ImportError:
-    from enthought.traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Any, Range, Color,Enum, Callable, Tuple, on_trait_change
-    from enthought.traits.ui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor, Handler
+    from enthought.traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Any, Range, Color,Enum, Callable, Tuple, Button, on_trait_change
+    from enthought.traits.ui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor
 
     from enthought.tvtk.api import tvtk
     from enthought.tvtk.pyface.scene import Scene
@@ -84,6 +84,8 @@ class Mixer(HasTraits):
     linewidth = Float(default_lw)
     linecolor = Tuple((0,0,0,1.))
     roifill = Tuple((0,0,0,0.2))
+
+    reset_btn = Button(label="Reset View")
 
     def __init__(self, points, polys, xfm, data=None, svgfile=None, **kwargs):
         #special init function must be used because points must be set before data can be set
@@ -151,7 +153,10 @@ class Mixer(HasTraits):
         for name, labels in self.roilabels.items():
             for t, pts in labels:
                 wpos, norm = self._lookup_tex_world(pts)
-                x, y, z = _labelpos(wpos)
+                try:
+                    x, y, z = _labelpos(wpos)
+                except:
+                    x, y, z = wpos.mean(0)
                 t.set(x_position=x, y_position=y, z_position=z, norm=tuple(norm.mean(0)))
         self.figure.scene.disable_render = False
     
@@ -241,6 +246,7 @@ class Mixer(HasTraits):
         nor = self.data_src.children[0].outputs[0].point_data.normals.to_array()[interp]
         return pos, nor
     
+    @on_trait_change("reset_btn")
     def reset_view(self, center=True):
         '''Sets the view so that the flatmap is centered'''
         #set up the flatmap view
@@ -385,7 +391,12 @@ class Mixer(HasTraits):
                 pts[:,1] = 1 - pts[:,1]
 
                 wpos, norm = self._lookup_tex_world(pts)
-                tpos = _labelpos(wpos)
+                try:
+                    tpos = _labelpos(wpos)
+                except:
+                    print "unable to find point for %s, using mean"%name
+                    tpos = wpos.mean(0)
+
                 txt = mlab.text(tpos[0], tpos[1], name, z=tpos[2], 
                         figure=self.figure.mayavi_scene, name=name)
                 txt.set(visible=self.showlabels)
@@ -441,7 +452,9 @@ class Mixer(HasTraits):
                 Item('colormap',
                      editor=ImageEnumEditor(values=lut_manager.lut_mode_list(),
                      cols=6, path=lut_manager.lut_image_dir)),
-                "fliplut", "show_colorbar", "_", "showlabels", "showrois"),
+                "fliplut", "show_colorbar", "_", "showlabels", "showrois",
+                "reset_btn"
+                ),
         show_labels=False),
         resizable=True, title="Mixer")
     
@@ -484,7 +497,11 @@ def _labelpos(pts):
     u, s, v = np.linalg.svd(ptm, full_matrices=False)
     sp = np.diag(s)
     sp[-1,-1] = 0
-    x, y = _center_pts(np.dot(ptm, np.dot(v.T, sp))[:,:2])
+    try:
+        x, y = _center_pts(np.dot(ptm, np.dot(v.T, sp))[:,:2])
+    except:
+        print pts, u, s, v
+
     sp = np.diag(1./(s+np.finfo(float).eps))
     pt = np.dot(np.dot(np.array([x,y,0]), sp), v)
     return pt + pts.mean(0)
