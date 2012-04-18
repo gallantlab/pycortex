@@ -55,7 +55,8 @@ default_renderheight = options['renderheight'] if 'renderheight' in options else
 default_labelhide = options['labelhide'] if 'labelhide' in options else True
 
 class Mixer(HasTraits):
-    points = Instance("scipy.interpolate.interpolate.interp1d")
+    points = Any
+    #points = Instance("scipy.interpolate.interpolate.interp1d")
     polys = Array(shape=(None, 3))
     xfm = Array(shape=(4,4))
     data = Array
@@ -135,8 +136,8 @@ class Mixer(HasTraits):
         if hasattr(self.figure.mayavi_scene, "on_mouse_pick"):
             def picker(picker):
                 print self.coords[picker.point_id]
-            picker = self.figure.mayavi_scene.on_mouse_pick(picker)
-            picker.tolerance = 0.005
+            self.picker = self.figure.mayavi_scene.on_mouse_pick(picker)
+            self.picker.tolerance = 0.005
 
         #Add traits callbacks to update label visibility and positions
         self.figure.camera.on_trait_change(self._fix_label_vis, "position")
@@ -188,6 +189,8 @@ class Mixer(HasTraits):
         self.figure.renderer.reset_camera_clipping_range()
         self._update_label_pos()
         self.figure.camera.focal_point = pts.mean(0)
+        #self.figure.render()
+        #self.figure.scene.disable_render = False
         #self.figure.render()
         '''
         def func():
@@ -245,6 +248,19 @@ class Mixer(HasTraits):
         pos = self.data_src.data.points.to_array()[interp]
         nor = self.data_src.children[0].outputs[0].point_data.normals.to_array()[interp]
         return pos, nor
+
+    def data_to_points(self, arr):
+        '''Maps the given 3D data array [arr] to vertices on the mesh.
+        '''
+        return np.array([arr.T[tuple(p)] for p in self.coords])
+
+    def lindata_to_points(self, linarr, mask):
+        '''Maps the given 1D data array [linarr] to vertices on the mesh, but first
+        maps the 1D data into 3D space via the given [mask].
+        '''
+        datavol = mask.copy().astype(linarr.dtype)
+        datavol[mask>0] = linarr
+        return self.data_to_points(datavol)
     
     @on_trait_change("reset_btn")
     def reset_view(self, center=True):
