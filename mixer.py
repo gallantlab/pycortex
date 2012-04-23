@@ -207,7 +207,8 @@ class Mixer(HasTraits):
     
     def _data_changed(self):
         '''Trait callback for transforming the data and applying it to data'''
-        scalars = np.array([self.data.T[tuple(p)] for p in self.coords])
+        coords = np.array([np.clip(c, 0, l-1) for c, l in zip(self.coords.T, self.data.T.shape)]).T
+        scalars = np.array([self.data.T[tuple(p)] for p in coords])
         self.data_src.mlab_source.scalars = scalars
     
     def _tex_changed(self):
