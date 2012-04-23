@@ -1,6 +1,31 @@
 import os
 import tornado.ioloop
 import tornado.web
+import struct
+
+import sys
+cwd = os.path.split(os.path.abspath(__file__))[0]
+sys.path.insert(0, os.path.join(cwd, ".."))
+
+import numpy as np
+
+import db
+
+def get_binary_pts(subj, types, hemi):
+    types = ("fiducial",) + types + ("flat",)
+    pts = []
+    for t in types:
+        pt, polys, norm = db.surfs.getVTK(subj, t, hemisphere=hemi)
+        pts.append(pt)
+
+    #flip the flats to be on the X-Z plane
+    flatpts = np.zeros_like(pts[-1])
+    flatpts[:,[0,2]] = pts[-1][:,:2]
+    flatpts[:,1] = pts[-2].min(0)[1]
+    pts[-1] = flatpts
+
+    header = ''.join([struct.pack( "i", p.size) for p in pts])
+    struct.pack()
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self, path):
@@ -11,7 +36,17 @@ class MainHandler(tornado.web.RequestHandler):
         else:
             self.write_error(404)
 
+class BinarySurface(tornado.web.RequestHandler):
+    def get(self, subj, hemi):
+        self.set_header("Content-Type", "text/plain")
+        self.write(get_binary_pts(subj, ("inflated",), hemi or "both"))
+
+    def post(self, subj, hemi):
+        types = self.get_argument("types").split(",")
+        self.write(get_binary_pts(subj, types, hemi or "both"))
+
 application = tornado.web.Application([
+    (r"/surfaces/(\w+)/?(\w+)?/?", BinarySurface),
     (r"/(.*)", MainHandler),
 ])
 
