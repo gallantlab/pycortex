@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>three.js webgl - loaders - vtk loader</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <style>
+            body {
+                font-family: Monospace;
+                background-color: #000;
+                color: #fff;
+                margin: 0px;
+                overflow: hidden;
+            }
+            #info {
+                color: #fff;
+                position: absolute;
+                top: 10px;
+                width: 100%;
+                text-align: center;
+                z-index: 100;
+                display:block;
+            }
+            #info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
+        </style>
+    </head>
+
+    <body>
+        <script src="resources/js/Three.js"></script>
+        <script src="resources/js/surfload.js"></script>
+        <script>
+
+
+            var container, stats;
+
+            var camera, controls, scene, renderer;
+
+            var cross;
+
+
+            // scene and camera
+
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 1e5 );
+            camera.position.x = 200;
+            camera.position.y = 200;
+
+            scene.add( camera );
+
+            controls = new THREE.TrackballControls( camera );
+
+            controls.rotateSpeed = 5.0;
+            controls.zoomSpeed = 20;
+            controls.panSpeed = 2;
+
+            controls.noZoom = false;
+            controls.noPan = false;
+
+            controls.staticMoving = true;
+            controls.dynamicDampingFactor = 0.3;
+
+            // light
+
+            var dirLight = new THREE.DirectionalLight( 0xffffff );
+            dirLight.position.set( 200, 200, 1000 ).normalize();
+            camera.add( dirLight );
+            camera.add( dirLight.target );
+
+            // renderer
+
+            renderer = new THREE.WebGLRenderer( { antialias: false } );
+            renderer.setClearColorHex( 0x000000, 1 );
+            renderer.setSize( window.innerWidth, window.innerHeight );
+
+            container = document.createElement( 'div' );
+            document.body.appendChild( container );
+            container.appendChild( renderer.domElement );
+
+            var material =  new THREE.MeshLambertMaterial( { color:0xffffff} );
+
+            var loader=new THREE.VTKLoader();
+            loader.load ("models/JG_inflated_lh.vtk", function(geom){
+                var mesh = new THREE.Mesh(geom, material );
+                mesh.doubleSided=true;
+                mesh.position.setY(-0.09);
+                scene.add( mesh );
+                animate();
+                });
+
+            function animate() {
+
+                requestAnimationFrame( animate );
+                controls.update();
+                renderer.render( scene, camera );
+
+            }
+        </script>
+
+    </body>
+</html>
