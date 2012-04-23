@@ -36,7 +36,7 @@
         </script>
         <script type="x-shader/x-fragment" id="fragmentshader">
             varying vec3 vNormal;
-            
+
             uniform vec3 color;
             uniform sampler2D texture;
 
@@ -108,7 +108,7 @@
             var material =  new THREE.MeshLambertMaterial( { color:0xffffff} );
 
             var loader=new THREE.BinSurfLoader();
-            loader.load ("/surfaces/JG/", function(data){
+            loader.load ("/surfaces/AH/", function(data){
                 var geom = data['geometry'];
                 var attrib = data['attributes'];
 

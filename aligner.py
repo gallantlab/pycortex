@@ -657,8 +657,8 @@ def align(subject, xfmname, epi=None, xfm=None):
         data = db.surfs.getVTK(subject, 'fiducial')
         assert data is not None, "Cannot find subject"
         m = Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm)
-        m.edit_traits()
-    '''
+        m.configure_traits()
+    
     magnet = m.get_xfm("magnet")
     shortcut = m.get_xfm("coord")
     epi = os.path.abspath(epi)
@@ -670,7 +670,7 @@ def align(subject, xfmname, epi=None, xfm=None):
         print "Complete!"
     else:
         print "Cancelled... %s"%resp
-    '''
+    
     return m
 
 ################################################################################
