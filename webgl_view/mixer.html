@@ -12,25 +12,53 @@
                 margin: 0px;
                 overflow: hidden;
             }
-            #info {
-                color: #fff;
-                position: absolute;
-                top: 10px;
-                width: 100%;
-                text-align: center;
-                z-index: 100;
-                display:block;
-            }
-            #info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
         </style>
+        <script src="resources/js/Three.js"></script>
+        <script src="resources/js/surfload.js"></script>
+        <script type="x-shader/x-vertex" id="vertexshader">
+            uniform float mix;
+
+            attribute float pts0;
+            attribute float pts1;
+
+            varying vec3 vNormal;
+
+            void main() {
+
+                vNormal = normal;
+                vUv = ( 0.5 + amplitude ) * uv + vec2( amplitude );
+
+                vec3 newPosition = position + amplitude * normal * vec3( displacement );
+                gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );
+
+            }
+
+        </script>
+        <script type="x-shader/x-fragment" id="fragmentshader">
+            varying vec3 vNormal;
+            
+            uniform vec3 color;
+            uniform sampler2D texture;
+
+            void main() {
+
+                vec3 light = vec3( 0.5, 0.2, 1.0 );
+                light = normalize( light );
+
+                float dProd = dot( vNormal, light ) * 0.5 + 0.5;
+
+                vec4 tcolor = texture2D( texture, vUv );
+                vec4 gray = vec4( vec3( tcolor.r * 0.3 + tcolor.g * 0.59 + tcolor.b * 0.11 ), 1.0 );
+
+                gl_FragColor = gray * vec4( vec3( dProd ) * vec3( color ), 1.0 );
+
+            }
+
+        </script>
     </head>
 
     <body>
-        <script src="resources/js/Three.js"></script>
-        <script src="resources/js/surfload.js"></script>
         <script>
-
-
             var container, stats;
 
             var camera, controls, scene, renderer;
@@ -79,14 +107,17 @@
 
             var material =  new THREE.MeshLambertMaterial( { color:0xffffff} );
 
-            var loader=new THREE.VTKLoader();
-            loader.load ("models/JG_inflated_lh.vtk", function(geom){
-                var mesh = new THREE.Mesh(geom, material );
+            var loader=new THREE.BinSurfLoader();
+            loader.load ("/surfaces/JG/", function(data){
+                var geom = data['geometry'];
+                var attrib = data['attributes'];
+
+                var mesh = new THREE.Mesh(geom , material);
                 mesh.doubleSided=true;
                 mesh.position.setY(-0.09);
                 scene.add( mesh );
                 animate();
-                });
+            });
 
             function animate() {
 

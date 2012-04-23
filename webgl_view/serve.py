@@ -2,6 +2,7 @@ import os
 import tornado.ioloop
 import tornado.web
 import struct
+import mimetypes
 
 import sys
 cwd = os.path.split(os.path.abspath(__file__))[0]
@@ -24,14 +25,16 @@ def get_binary_pts(subj, types, hemi):
     flatpts[:,1] = pts[-2].min(0)[1]
     pts[-1] = flatpts
 
-    header = ''.join([struct.pack( "i", p.size) for p in pts])
-    struct.pack()
+    header = struct.pack('2I', len(types), pts[0].size)
+    ptstr = ''.join([p.astype(np.float32).tostring() for p in pts])
+    return header+ptstr+polys.astype(np.uint32).tostring()
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self, path):
         if path == '':
             self.write(open("mixer.html").read())
         elif os.path.isfile(path):
+            self.set_header("Content-Type", mimetypes.guess_type(path)[0])
             self.write(open(path).read())
         else:
             self.write_error(404)

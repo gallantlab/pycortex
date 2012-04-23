@@ -207,7 +207,7 @@ class Mixer(HasTraits):
     
     def _data_changed(self):
         '''Trait callback for transforming the data and applying it to data'''
-        coords = np.array([np.clip(c, 0, l-1) for c, l in zip(self.coords.T, self.data.shape)]).T
+        coords = np.array([np.clip(c, 0, l-1) for c, l in zip(self.coords.T, self.data.T.shape)]).T
         scalars = np.array([self.data.T[tuple(p)] for p in coords])
         self.data_src.mlab_source.scalars = scalars
     
