@@ -31,6 +31,7 @@ class RotationWidget(HasTraits):
     angle = Float(value=0)
     pos = Array(value=[0,0,0])
     enabled = Bool(value=True)
+    constrain = Bool(value=False)
 
     def __init__(self, figure, callback, **traits):
         self._t = np.linspace(0, 2*np.pi, 32)
@@ -80,11 +81,16 @@ class RotationWidget(HasTraits):
     def _move_edge(self, obj=None, evt=None):
         c = self.center.representation.world_position
         r = self.edge.representation.world_position
-        self.edge.representation.world_position = r[0], r[1], c[2]
+
         r -= c
 
         angle = np.arctan2(r[1], r[0])
-        self.set(angle=angle, radius=np.sqrt(np.sum(r**2)))
+        radius = np.sqrt(np.sum(r**2))
+        if self.constrain:
+            radius = self.startmove[-1]
+
+        self.edge.representation.world_position = r[0], r[1], c[2]
+        self.set(angle=angle, radius=radius)
     
     def _gen_circle(self):
         t = self._t+self.angle
@@ -163,6 +169,10 @@ class FlatScene(Scene):
         elif chr(key % 256) == "h":
             for o in self.aligner.outlines:
                 o.visible = not o.visible
+        elif evt.ShiftDown():
+            self.handle.constrain = True
+        elif evt.ShiftUp():
+            self.handle.constrain = False
         else:
             super(FlatScene, self).OnKeyDown(evt)         
 
@@ -647,8 +657,8 @@ def align(subject, xfmname, epi=None, xfm=None):
         data = db.surfs.getVTK(subject, 'fiducial')
         assert data is not None, "Cannot find subject"
         m = Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm)
-        m.configure_traits()
-    
+        m.edit_traits()
+    '''
     magnet = m.get_xfm("magnet")
     shortcut = m.get_xfm("coord")
     epi = os.path.abspath(epi)
@@ -660,8 +670,8 @@ def align(subject, xfmname, epi=None, xfm=None):
         print "Complete!"
     else:
         print "Cancelled... %s"%resp
-    
-    return magnet
+    '''
+    return m
 
 ################################################################################
 if __name__ == '__main__':
