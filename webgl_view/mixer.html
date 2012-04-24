@@ -12,49 +12,20 @@
                 overflow: hidden;
             }
         </style>
-        <script src="resources/js/Three.js"></script>
+        <script src="https://raw.github.com/gero3/three.js/morphTargets2/build/Three.js"></script>
         <script src="resources/js/surfload.js"></script>
         <script src='resources/js/jquery-1.7.2.min.js'></script>
         <script src='resources/js/LandscapeControls.js'></script>
-        <script type="x-shader/x-vertex" id="vertexshader">
-            uniform float fidwt;
-            uniform float pts1wt;
-            uniform float flatwt;
-
-            attribute vec3 pts1;
-            attribute vec3 flat;
-
-            varying vec3 vNormal;
-
-            void main() {
-                vNormal = normal;
-
-                vec3 newPosition = fidwt*position + pts1wt*pts1 + flatwt*flat;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );
-            }
-        </script>
-        <script type="x-shader/x-fragment" id="fragmentshader">
-            varying vec3 vNormal;
-
-            void main() {
-                vec3 light = vec3( 0.5, 0.2, 1.0 );
-                light = normalize( light );
-
-                float dProd = dot( vNormal, light ) * 0.5 + 0.5;
-
-                vec3 color = vec3(1.0);
-                gl_FragColor = vec4( vec3( dProd ) * vec3( color ), 1.0 );
-            }
-        </script>
         <script type='text/javascript'>
         function init() {
             // scene and camera
             var scene = new THREE.Scene();
 
-            var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 1e5 );
+            camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 5e4 );
             camera.position.x = 200;
             camera.position.y = 200;
             camera.position.z = 0;
+            camera.lookAt(new THREE.Vector3(0,0,0));
 
             scene.add( camera );
 
@@ -70,6 +41,11 @@
             controls.staticMoving = true;
             controls.dynamicDampingFactor = 0.3;
 
+            var dirLight = new THREE.DirectionalLight( 0xffffff );
+            dirLight.position.set( 200, 200, 1000 ).normalize();
+            camera.add( dirLight );
+            camera.add( dirLight.target );
+
             // renderer
             renderer = new THREE.WebGLRenderer( { antialias: false } );
             renderer.setClearColorHex( 0x000000, 1 );
@@ -77,22 +53,13 @@
 
             $("#threeDview").append( renderer.domElement );
 
+            material = new THREE.MeshLambertMaterial( { color: 0xFFFFFF, morphTargets: true, morphNormals: true } )
             var loader=new THREE.BinSurfLoader();
-            loader.load ("/surfaces/JG/", function(data){
-                geom = data['geometry'];
-                bleh = data['attributes'];
-                material = new THREE.ShaderMaterial({
-                    uniforms: {
-                        fidwt:  {type:'f', value:0.0},
-                        pts1wt:   {type:'f', value:1},
-                        flatwt: {type:'f', value:0},
-                    }, 
-                    attributes: data['attributes'],
-                    vertexShader: $("#vertexshader").text(),
-                    fragmentShader: $("#fragmentshader").text()
-                })
-                var mesh = new THREE.Mesh(geom, material);
+            loader.load ("/surfaces/JG/", function(geom){
+                geometry = geom;
+                mesh = new THREE.Mesh(geom, material);
                 mesh.doubleSided=true;
+                mesh.rotation.x = -Math.PI/2;
                 scene.add( mesh );
                 animate();
             });
@@ -105,14 +72,16 @@
         }
         $(document).ready(init)
         function setMix(val) {
-            var names = ["fidwt", "pts1wt", "flatwt"];
-            for (var i=0; i < names.length; i++)
-                material.uniforms[names[i]].value = 0;
+            var num = 3-1;
+            for (var i=0; i < num; i++)
+                mesh.morphTargetInfluences[i] = 0;
 
-            var n1 = names[Math.floor(val%1 * (names.length-1))];
-            var n2 = names[Math.ceil(val%1 * (names.length-1))];
-            material.uniforms[n2].value = (val%1 * (names.length-1))%1;
-            material.uniforms[n1].value = 1 - (val%1 * (names.length-1))%1;
+            var n1 = Math.floor(val * num)-1;
+            var n2 = Math.ceil(val * num)-1;
+            mesh.morphTargetInfluences[n2] = (val * num)%1;
+            if (n1 >= 0)
+                mesh.morphTargetInfluences[n1] = 1 - (val * num)%1;
+            
         }
         $(document).ready(function() {
             $("#mix").width(window.innerWidth);
@@ -126,6 +95,6 @@
     <body>
         <div id='threeDview'>
         </div>
-        <input id="mix" type="range" min="0" max="10000">
+        <input id="mix" type="range" min="0" max="10000" value="0">
     </body>
 </html>

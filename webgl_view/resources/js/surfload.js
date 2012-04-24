@@ -40,32 +40,29 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
     var attrib = {};
     var pts = fdata.subarray(2,ptlen+2);
 
-    for (var i = 1; i < numsurfs-1; i++) {
-        attrib['pts'+i] = {type:'v3'}
-        attrib['pts'+i]['value'] = makeVector(fdata.subarray(i*ptlen+2, (i+1)*ptlen+2));
-    }
-    var flat = fdata.subarray((numsurfs-1)*ptlen+2, numsurfs*ptlen+2);
-    attrib['flat'] = {type:'v3', value:makeVector(flat)};
-
     var geometry = new THREE.Geometry();
-
     for (var i=0; i<ptlen; i+=3) {
-        geometry.vertices.push(new THREE.Vector3(pts[i], pts[i+1], pts[i+2]))
+        geometry.vertices.push(new THREE.Vector3(pts[i], pts[i+1], pts[i+2]));
     }
+
+    for (var i = 1; i < numsurfs-1; i++) {
+        var ptdat = fdata.subarray(i*ptlen+2, (i+1)*ptlen+2);
+        geometry.morphTargets.push({name:"surf"+(i-1), vertices:makeVector(ptdat)})
+    }
+
+    var flat = fdata.subarray((numsurfs-1)*ptlen+2, numsurfs*ptlen+2);
+    geometry.morphTargets.push({name:"flat", vertices:makeVector(flat)})
 
     var polys = idata.subarray(numsurfs*ptlen+2);
-
     for (var i=0; i < polys.length; i+=3) {
         geometry.faces.push(new THREE.Face3(polys[i], polys[i+1], polys[i+2]))
     }
-
-    verts = geometry.vertices;
-    faces = geometry.faces;
-
+    
     geometry.computeCentroids();
     geometry.computeFaceNormals();
     geometry.computeVertexNormals();
+    geometry.computeMorphNormals();
     geometry.computeBoundingSphere();
     
-    return {geometry:geometry, attributes:attrib};
+    return geometry;
 }
