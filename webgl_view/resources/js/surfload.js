@@ -38,7 +38,7 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
     var numsurfs = idata[0];
     var ptlen = idata[1];
     var attrib = {};
-
+    console.log(numsurfs);
     var geometry = new THREE.Geometry();
 
     var pts = fdata.subarray(2,ptlen+2);
@@ -51,9 +51,10 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
     for (var i = 1; i < numsurfs-1; i++) {
         verts = [];
         ptdat = fdata.subarray(i*ptlen+2, (i+1)*ptlen+2);
-        for (var i=0; i < ptdat.length; i+=3)
-            verts.push(new THREE.Vector3(ptdat[i], ptdat[i+1], ptdat[i+2]));
+        for (var j=0; j < ptdat.length; j+=3)
+            verts.push(new THREE.Vector3(ptdat[j], ptdat[j+1], ptdat[j+2]));
         geometry.morphTargets.push({name:"surf"+(i-1), vertices:verts});
+        console.log("Pushed surf"+(i-1));
     }
     console.log("Got morphs");
 
@@ -98,7 +99,7 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
     geometry.computeVertexNormals();
     geometry.computeMorphNormals();
     geometry.computeBoundingSphere();
-    //geometry.mergeVertices();
+
     console.log("finished model!");
     return geometry;
 }

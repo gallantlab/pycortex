@@ -17,7 +17,7 @@
                 font-family:sans-serif;
             }
         </style>
-        <script src="https://raw.github.com/gero3/three.js/morphTargets2/build/Three.js"></script>
+        <script src="https://raw.github.com/mrdoob/three.js/dev/build/Three.js"></script>
         <script src="resources/js/surfload.js"></script>
         <script src='resources/js/jquery-1.7.2.min.js'></script>
         <script src='resources/js/LandscapeControls.js'></script>
@@ -90,7 +90,7 @@
                 loader.load ("/surfaces/"+subj+"/", types, function(geom){
                     console.log("Retrieved geometry", geom);
                     _this.geometry = geom;
-                    _this.mesh = new THREE.Mesh(geom, _this.material);
+                    _this.mesh = new THREE.Mesh(geom, _this.shader);
                     _this.mesh.doubleSided=true;
                     _this.mesh.rotation.x = -Math.PI/2;
                     _this.scene.add( _this.mesh );

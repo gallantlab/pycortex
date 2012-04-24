@@ -49,6 +49,7 @@ class BinarySurface(tornado.web.RequestHandler):
     def post(self, subj, hemi):
         self.set_header("Content-Type", "text/plain")
         types = self.get_argument("types").split(",")
+        print "loading %r"%types
         data = get_binary_pts(subj, tuple(types), hemi or "both")
         self.write(data)
 
