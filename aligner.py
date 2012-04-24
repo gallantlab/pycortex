@@ -400,6 +400,9 @@ class Align(HasTraits):
 
         rotaxis = ['rotate_x', 'rotate_y', 'rotate_z']
         def handlemove(pos, angle, radius):
+            self._last_transform = self.xfm.transform.matrix.to_array()
+            np.save("/tmp/last_xfm.npy", self._last_transform)
+
             signs = np.sign(np.diag(self.xfm.transform.matrix.to_array()))
             if this_axis_number == 1:
                 trans = np.insert(pos[:2][::-1], this_axis_number, 0)
