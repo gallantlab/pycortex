@@ -6,26 +6,23 @@
         <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
         <style>
             body {
-                background-color: #000;
+                background-color: #888;
                 color: #fff;
                 margin: 0px;
                 overflow: hidden;
-            }
-            div#threeDview {
-                width:100%;
-                height:100%;
             }
         </style>
         <script src="resources/js/Three.js"></script>
         <script src="resources/js/surfload.js"></script>
         <script src='resources/js/jquery-1.7.2.min.js'></script>
+        <script src='resources/js/LandscapeControls.js'></script>
         <script type="x-shader/x-vertex" id="vertexshader">
             uniform float fidwt;
             uniform float pts1wt;
             uniform float flatwt;
 
-            attribute float pts1;
-            attribute float flat;
+            attribute vec3 pts1;
+            attribute vec3 flat;
 
             varying vec3 vNormal;
 
@@ -45,9 +42,8 @@
 
                 float dProd = dot( vNormal, light ) * 0.5 + 0.5;
 
-                vec3 color = vec3(0.5, 0.5, 0.5);
+                vec3 color = vec3(1.0);
                 gl_FragColor = vec4( vec3( dProd ) * vec3( color ), 1.0 );
-
             }
         </script>
         <script type='text/javascript'>
@@ -62,7 +58,7 @@
 
             scene.add( camera );
 
-            var controls = new THREE.TrackballControls( camera );
+            controls = new THREE.LandscapeControls( camera, $("#threeDview")[0] );
 
             controls.rotateSpeed = 5.0;
             controls.zoomSpeed = 20;
@@ -75,24 +71,28 @@
             controls.dynamicDampingFactor = 0.3;
 
             // renderer
-            var renderer = new THREE.WebGLRenderer( { antialias: false } );
+            renderer = new THREE.WebGLRenderer( { antialias: false } );
             renderer.setClearColorHex( 0x000000, 1 );
-            renderer.setSize( window.innerWidth, window.innerHeight );
+            renderer.setSize( window.innerWidth,window.innerHeight-50);
 
-            container = document.createElement( 'div' );
-            document.body.appendChild( container );
-            container.appendChild( renderer.domElement );
-
-            var material =  new THREE.MeshLambertMaterial( { color:0xffffff} );
+            $("#threeDview").append( renderer.domElement );
 
             var loader=new THREE.BinSurfLoader();
-            loader.load ("/surfaces/AH/", function(data){
-                var geom = data['geometry'];
-                var attrib = data['attributes'];
-
-                var mesh = new THREE.Mesh(geom , material);
+            loader.load ("/surfaces/JG/", function(data){
+                geom = data['geometry'];
+                bleh = data['attributes'];
+                material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        fidwt:  {type:'f', value:0.0},
+                        pts1wt:   {type:'f', value:1},
+                        flatwt: {type:'f', value:0},
+                    }, 
+                    attributes: data['attributes'],
+                    vertexShader: $("#vertexshader").text(),
+                    fragmentShader: $("#fragmentshader").text()
+                })
+                var mesh = new THREE.Mesh(geom, material);
                 mesh.doubleSided=true;
-                mesh.position.setY(-0.09);
                 scene.add( mesh );
                 animate();
             });
@@ -103,12 +103,29 @@
                 renderer.render( scene, camera );
             }
         }
+        $(document).ready(init)
+        function setMix(val) {
+            var names = ["fidwt", "pts1wt", "flatwt"];
+            for (var i=0; i < names.length; i++)
+                material.uniforms[names[i]].value = 0;
+
+            var n1 = names[Math.floor(val%1 * (names.length-1))];
+            var n2 = names[Math.ceil(val%1 * (names.length-1))];
+            material.uniforms[n2].value = (val%1 * (names.length-1))%1;
+            material.uniforms[n1].value = 1 - (val%1 * (names.length-1))%1;
+        }
+        $(document).ready(function() {
+            $("#mix").width(window.innerWidth);
+            $("#mix").change(function() {
+                setMix(this.value / 10000);
+            })
+        })
         </script>
     </head>
-    
+
     <body>
         <div id='threeDview'>
         </div>
-        <input type="range" min="0" max="1", value="1"><input type='text' value='1'>
+        <input id="mix" type="range" min="0" max="10000">
     </body>
 </html>

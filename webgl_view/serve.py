@@ -3,6 +3,7 @@ import tornado.ioloop
 import tornado.web
 import struct
 import mimetypes
+import zlib
 
 import sys
 cwd = os.path.split(os.path.abspath(__file__))[0]
@@ -23,7 +24,7 @@ def get_binary_pts(subj, types, hemi):
     flatpts = np.zeros_like(pts[-1])
     flatpts[:,[0,2]] = pts[-1][:,:2]
     flatpts[:,1] = pts[-2].min(0)[1]
-    pts[-1] = flatpts
+    pts[-1] = flatpts*.66
 
     header = struct.pack('2I', len(types), pts[0].size)
     ptstr = ''.join([p.astype(np.float32).tostring() for p in pts])
@@ -42,16 +43,19 @@ class MainHandler(tornado.web.RequestHandler):
 class BinarySurface(tornado.web.RequestHandler):
     def get(self, subj, hemi):
         self.set_header("Content-Type", "text/plain")
-        self.write(get_binary_pts(subj, ("inflated",), hemi or "both"))
+        data = get_binary_pts(subj, ("inflated",), hemi or "both")
+        self.write(data)
 
     def post(self, subj, hemi):
+        self.set_header("Content-Type", "text/plain")
         types = self.get_argument("types").split(",")
-        self.write(get_binary_pts(subj, types, hemi or "both"))
+        data = get_binary_pts(subj, types, hemi or "both")
+        self.write(data)
 
 application = tornado.web.Application([
     (r"/surfaces/(\w+)/?(\w+)?/?", BinarySurface),
     (r"/(.*)", MainHandler),
-])
+], gzip=True)
 
 if __name__ == "__main__":
     application.listen(8888)

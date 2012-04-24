@@ -24,6 +24,14 @@ THREE.BinSurfLoader.prototype.load = function ( url, callback ) {
     xhr.send( null );
 };
 
+function makeVector(data) {
+    var output = [];
+    for (var i=0; i < data.length; i+=3) {
+        output.push(new THREE.Vector3(data[i], data[i+1], data[i+2]))
+    }
+    return output
+}
+
 THREE.BinSurfLoader.prototype.parse = function ( data ) {
     var idata = new Uint32Array(data);
     var fdata = new Float32Array(data);
@@ -33,10 +41,11 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
     var pts = fdata.subarray(2,ptlen+2);
 
     for (var i = 1; i < numsurfs-1; i++) {
-        attrib['pts'+i] = {type:'f'}
-        attrib['pts'+i]['value'] = fdata.subarray(i*ptlen+2, (i+1)*ptlen+2);
+        attrib['pts'+i] = {type:'v3'}
+        attrib['pts'+i]['value'] = makeVector(fdata.subarray(i*ptlen+2, (i+1)*ptlen+2));
     }
-    attrib['flat'] = {type:'f', value:fdata.subarray((numsurfs-1)*ptlen+2, numsurfs*ptlen+2)}
+    var flat = fdata.subarray((numsurfs-1)*ptlen+2, numsurfs*ptlen+2);
+    attrib['flat'] = {type:'v3', value:makeVector(flat)};
 
     var geometry = new THREE.Geometry();
 
@@ -52,7 +61,7 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
 
     verts = geometry.vertices;
     faces = geometry.faces;
-    
+
     geometry.computeCentroids();
     geometry.computeFaceNormals();
     geometry.computeVertexNormals();
