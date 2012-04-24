@@ -6,77 +6,63 @@
         <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
         <style>
             body {
-                font-family: Monospace;
                 background-color: #000;
                 color: #fff;
                 margin: 0px;
                 overflow: hidden;
             }
+            div#threeDview {
+                width:100%;
+                height:100%;
+            }
         </style>
         <script src="resources/js/Three.js"></script>
         <script src="resources/js/surfload.js"></script>
+        <script src='resources/js/jquery-1.7.2.min.js'></script>
         <script type="x-shader/x-vertex" id="vertexshader">
-            uniform float mix;
+            uniform float fidwt;
+            uniform float pts1wt;
+            uniform float flatwt;
 
-            attribute float pts0;
             attribute float pts1;
+            attribute float flat;
 
             varying vec3 vNormal;
 
             void main() {
-
                 vNormal = normal;
-                vUv = ( 0.5 + amplitude ) * uv + vec2( amplitude );
 
-                vec3 newPosition = position + amplitude * normal * vec3( displacement );
+                vec3 newPosition = fidwt*position + pts1wt*pts1 + flatwt*flat;
                 gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );
-
             }
-
         </script>
         <script type="x-shader/x-fragment" id="fragmentshader">
             varying vec3 vNormal;
 
-            uniform vec3 color;
-            uniform sampler2D texture;
-
             void main() {
-
                 vec3 light = vec3( 0.5, 0.2, 1.0 );
                 light = normalize( light );
 
                 float dProd = dot( vNormal, light ) * 0.5 + 0.5;
 
-                vec4 tcolor = texture2D( texture, vUv );
-                vec4 gray = vec4( vec3( tcolor.r * 0.3 + tcolor.g * 0.59 + tcolor.b * 0.11 ), 1.0 );
-
-                gl_FragColor = gray * vec4( vec3( dProd ) * vec3( color ), 1.0 );
+                vec3 color = vec3(0.5, 0.5, 0.5);
+                gl_FragColor = vec4( vec3( dProd ) * vec3( color ), 1.0 );
 
             }
-
         </script>
-    </head>
-
-    <body>
-        <script>
-            var container, stats;
-
-            var camera, controls, scene, renderer;
-
-            var cross;
-
-
+        <script type='text/javascript'>
+        function init() {
             // scene and camera
+            var scene = new THREE.Scene();
 
-            scene = new THREE.Scene();
-
-            camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 1e5 );
+            var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 1e5 );
             camera.position.x = 200;
             camera.position.y = 200;
+            camera.position.z = 0;
 
             scene.add( camera );
 
-            controls = new THREE.TrackballControls( camera );
+            var controls = new THREE.TrackballControls( camera );
 
             controls.rotateSpeed = 5.0;
             controls.zoomSpeed = 20;
@@ -88,16 +74,8 @@
             controls.staticMoving = true;
             controls.dynamicDampingFactor = 0.3;
 
-            // light
-
-            var dirLight = new THREE.DirectionalLight( 0xffffff );
-            dirLight.position.set( 200, 200, 1000 ).normalize();
-            camera.add( dirLight );
-            camera.add( dirLight.target );
-
             // renderer
-
-            renderer = new THREE.WebGLRenderer( { antialias: false } );
+            var renderer = new THREE.WebGLRenderer( { antialias: false } );
             renderer.setClearColorHex( 0x000000, 1 );
             renderer.setSize( window.innerWidth, window.innerHeight );
 
@@ -120,13 +98,17 @@
             });
 
             function animate() {
-
                 requestAnimationFrame( animate );
                 controls.update();
                 renderer.render( scene, camera );
-
             }
+        }
         </script>
-
+    </head>
+    
+    <body>
+        <div id='threeDview'>
+        </div>
+        <input type="range" min="0" max="1", value="1"><input type='text' value='1'>
     </body>
 </html>

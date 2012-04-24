@@ -32,10 +32,11 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
     var attrib = {};
     var pts = fdata.subarray(2,ptlen+2);
 
-    for (var i = 1; i < numsurfs; i++) {
+    for (var i = 1; i < numsurfs-1; i++) {
         attrib['pts'+i] = {type:'f'}
         attrib['pts'+i]['value'] = fdata.subarray(i*ptlen+2, (i+1)*ptlen+2);
     }
+    attrib['flat'] = {type:'f', value:fdata.subarray((numsurfs-1)*ptlen+2, numsurfs*ptlen+2)}
 
     var geometry = new THREE.Geometry();
 
@@ -44,15 +45,13 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
     }
 
     var polys = idata.subarray(numsurfs*ptlen+2);
-    console.log(numsurfs*ptlen+2);
-    console.log(idata.length);
+
     for (var i=0; i < polys.length; i+=3) {
         geometry.faces.push(new THREE.Face3(polys[i], polys[i+1], polys[i+2]))
     }
 
     verts = geometry.vertices;
     faces = geometry.faces;
-
     
     geometry.computeCentroids();
     geometry.computeFaceNormals();

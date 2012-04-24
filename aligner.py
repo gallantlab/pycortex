@@ -285,6 +285,7 @@ class Align(HasTraits):
         xfm = mlab.pipeline.transform_data(self.surf_src, figure=self.scene3d.mayavi_scene)
         def savexfm(info, evt):
             self._last_transform = xfm.transform.matrix.to_array()
+            np.save("/tmp/last_xfm.npy", self._last_transform)
         xfm.widget.add_observer("StartInteractionEvent", savexfm)
         xfm.widget.add_observer("EndInteractionEvent", self.update_slab)
         xfm.transform.set_matrix(self.startxfm.ravel())
