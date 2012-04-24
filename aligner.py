@@ -662,14 +662,21 @@ def align(subject, xfmname, epi=None, xfm=None):
     magnet = m.get_xfm("magnet")
     shortcut = m.get_xfm("coord")
     epi = os.path.abspath(epi)
-    resp = raw_input("Save? (Y/N) ")
-    if resp.lower().strip() in ["y", "yes"]:
-        print "Saving..."
-        db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi, override=True)
-        db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', epifile=epi, override=True)
-        print "Complete!"
-    else:
-        print "Cancelled... %s"%resp
+
+    checked = False
+    while not checked:
+        resp = raw_input("Save? (Y/N) ").lower().strip()
+        if resp in ["y", "yes", "n", "no"]:
+            checked = True
+            if resp in ["y", "yes"]:
+                print "Saving..."
+                db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi, override=True)
+                db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', epifile=epi, override=True)
+                print "Complete!"
+            else:
+                print "Cancelled... %s"%resp
+        else:
+            print "Didn't get that, please try again.."
     
     return m
 
