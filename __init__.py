@@ -114,3 +114,38 @@ def get_cortical_mask(subject, xfmname, shape=(31, 100, 100)):
         data[tuple(c[::-1])] = 1
 
     return data
+
+
+def get_vox_dist(subject, xfmname, shape=(31, 100, 100), parts=100):
+    '''Get the distance (in mm) from each functional voxel to the closest
+    point on the surface.
+
+    Parameters
+    ----------
+    subject : str
+        Name of the subject
+    xfmname : str
+        Name of the transform
+    shape : tuple
+        Output shape for the mask
+
+    Returns
+    -------
+    dist : ndarray
+        Distance (in mm) to the closest point on the surface
+
+    argdist : ndarray
+        Point index for the closest point
+    '''
+    from scipy.spatial import cKDTree
+    fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
+    xfm, epi = surfs.getXfm(subject, xfmname)
+    idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
+    widx = np.append(idx[:,::-1], np.ones((len(idx),1)), axis=-1).T
+    mm = np.dot(np.linalg.inv(xfm), widx)[:3].T
+
+    tree = cKDTree(fiducial)
+    dist, argdist = tree.query(mm)
+    dist.shape = shape
+    argdist.shape = shape
+    return dist, argdist

@@ -11,89 +11,122 @@
                 margin: 0px;
                 overflow: hidden;
             }
+            #threeDview {
+                text-align:center;
+                font-size:48pt;
+                font-family:sans-serif;
+            }
         </style>
-        <script src="https://raw.github.com/gero3/three.js/morphTargets2/build/Three.js"></script>
+        <script src="https://raw.github.com/mrdoob/three.js/dev/build/Three.js"></script>
         <script src="resources/js/surfload.js"></script>
         <script src='resources/js/jquery-1.7.2.min.js'></script>
         <script src='resources/js/LandscapeControls.js'></script>
         <script type='text/javascript'>
-        function init() {
+        function MRIview(obj, slider) {
+            this.container = $(obj)
             // scene and camera
-            var scene = new THREE.Scene();
+            this.scene = new THREE.Scene();
 
-            camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 5e4 );
-            camera.position.x = 200;
-            camera.position.y = 200;
-            camera.position.z = 0;
-            camera.lookAt(new THREE.Vector3(0,0,0));
+            this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight-50), 0.5, 5e4 );
+            this.camera.position.x = 200;
+            this.camera.position.y = 200;
+            this.camera.position.z = 0;
+            this.camera.lookAt(new THREE.Vector3(0,0,0));
 
-            scene.add( camera );
+            this.scene.add( this.camera );
 
-            controls = new THREE.LandscapeControls( camera, $("#threeDview")[0] );
+            this.controls = new THREE.LandscapeControls( this.camera, this.container[0] );
 
-            controls.rotateSpeed = 5.0;
-            controls.zoomSpeed = 20;
-            controls.panSpeed = 2;
+            this.controls.rotateSpeed = 5.0;
+            this.controls.zoomSpeed = 20;
+            this.controls.panSpeed = 2;
 
-            controls.noZoom = false;
-            controls.noPan = false;
+            this.controls.noZoom = false;
+            this.controls.noPan = false;
 
-            controls.staticMoving = true;
-            controls.dynamicDampingFactor = 0.3;
+            this.controls.staticMoving = true;
+            this.controls.dynamicDampingFactor = 0.3;
 
             var dirLight = new THREE.DirectionalLight( 0xffffff );
             dirLight.position.set( 200, 200, 1000 ).normalize();
-            camera.add( dirLight );
-            camera.add( dirLight.target );
+            this.camera.add( dirLight );
+            this.camera.add( dirLight.target );
+            this.light = dirLight;
 
             // renderer
-            renderer = new THREE.WebGLRenderer( { antialias: false } );
-            renderer.setClearColorHex( 0x000000, 1 );
-            renderer.setSize( window.innerWidth,window.innerHeight-50);
+            this.renderer = new THREE.WebGLRenderer( { antialias: true } );
+            this.renderer.setClearColorHex( 0x000000, 1 );
+            this.renderer.setSize( window.innerWidth,window.innerHeight-50);
 
-            $("#threeDview").append( renderer.domElement );
+            this.shader = new THREE.MeshLambertMaterial( { color: 0xFFFFFF, morphTargets: true, morphNormals: true } );
 
-            material = new THREE.MeshLambertMaterial( { color: 0xFFFFFF, morphTargets: true, morphNormals: true } )
-            var loader=new THREE.BinSurfLoader();
-            loader.load ("/surfaces/JG/", function(geom){
-                geometry = geom;
-                mesh = new THREE.Mesh(geom, material);
-                mesh.doubleSided=true;
-                mesh.rotation.x = -Math.PI/2;
-                scene.add( mesh );
-                animate();
+            var _this = this;
+            this.container.html( this.renderer.domElement );
+            $(window).resize(function() {_this.resize()});
+            this.slider = $(slider).width(window.innerWidth);
+            this.slider.change(function() {
+                _this.setMix(this.value/10000);
             });
+        }
+        MRIview.prototype = { 
+            draw: function () {
+                var _this = this;
+                requestAnimationFrame( function() { _this.draw(); } );
+                this.controls.update();
+                this.renderer.render( this.scene, this.camera );
+            },
+            load: function(subj, types) {
+                $(this.renderer.domElement).remove();
+                this.container.html("Loading...");
+                if (!types)
+                    types = "inflated"
+                if (this.geometry) {
+                    this.scene.remove(this.mesh);
+                    delete this.geometry;
+                    delete this.mesh;
+                }
+                var _this = this;
+                var loader=new THREE.BinSurfLoader();
+                loader.load ("/surfaces/"+subj+"/", types, function(geom){
+                    console.log("Retrieved geometry", geom);
+                    _this.geometry = geom;
+                    _this.mesh = new THREE.Mesh(geom, _this.shader);
+                    _this.mesh.doubleSided=true;
+                    _this.mesh.rotation.x = -Math.PI/2;
+                    _this.scene.add( _this.mesh );
+                    _this.container.html(_this.renderer.domElement);
+                    _this.draw();
+                });
+            },
+            resize: function() {
+                this.renderer.setSize(window.innerWidth, window.innerHeight-50);
+                this.camera.aspect = window.innerWidth / (window.innerHeight-50);
+                this.camera.updateProjectionMatrix();
+                this.slider.width(window.innerWidth);
+            },
+            setMix: function(val) {
+                var num = this.geometry.morphTargets.length;
+                for (var i=0; i < num; i++)
+                    this.mesh.morphTargetInfluences[i] = 0;
 
-            function animate() {
-                requestAnimationFrame( animate );
-                controls.update();
-                renderer.render( scene, camera );
+                var n1 = Math.floor(val * num)-1;
+                var n2 = Math.ceil(val * num)-1;
+                this.mesh.morphTargetInfluences[n2] = (val * num)%1;
+                if (n1 >= 0)
+                    this.mesh.morphTargetInfluences[n1] = 1 - (val * num)%1;
             }
         }
-        $(document).ready(init)
-        function setMix(val) {
-            var num = 3-1;
-            for (var i=0; i < num; i++)
-                mesh.morphTargetInfluences[i] = 0;
-
-            var n1 = Math.floor(val * num)-1;
-            var n2 = Math.ceil(val * num)-1;
-            mesh.morphTargetInfluences[n2] = (val * num)%1;
-            if (n1 >= 0)
-                mesh.morphTargetInfluences[n1] = 1 - (val * num)%1;
-            
-        }
+        var viewer;
         $(document).ready(function() {
-            $("#mix").width(window.innerWidth);
-            $("#mix").change(function() {
-                setMix(this.value / 10000);
-            })
-        })
+            viewer = new MRIview("#threeDview", "#mix");
+            //viewer.load("JG", "inflated,veryinflated");
+        });
         </script>
     </head>
 
     <body>
         <div id='threeDview'>
+            Loading...
         </div>
         <input id="mix" type="range" min="0" max="10000" value="0">
     </body>
