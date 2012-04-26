@@ -117,25 +117,45 @@ def get_cortical_mask(subject, xfmname, shape=(31, 100, 100)):
 
 
 def get_vox_dist(subject, xfmname, shape=(31, 100, 100), parts=100):
+    '''Get the distance (in mm) from each functional voxel to the closest
+    point on the surface.
+
+    Parameters
+    ----------
+    subject : str
+        Name of the subject
+    xfmname : str
+        Name of the transform
+    shape : tuple
+        Output shape for the mask
+
+    Returns
+    -------
+    dist : ndarray
+        Distance (in mm) to the closest point on the surface
+
+    argdist : ndarray
+        Point index for the closest point
+    '''
+    import nibabel
     from scipy.spatial import KDTree
     fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
-    wpts = np.append(fiducial, np.ones((len(fiducial), 1)), axis=-1).T
     xfm, epi = surfs.getXfm(subject, xfmname)
-    coords = np.dot(xfm, wpts)[:3].T
-
-    tree = KDTree(coords[:,::-1]) #must flip coords, for zyx ordering...
     idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
+    widx = np.append(idx[:,::-1], np.ones((len(idx),1)), axis=-1).T
+    mm = np.dot(np.linalg.inv(xfm), widx)[:3].T
 
+    tree = KDTree(fiducial)
     '''
     #For parallel processing using James's mp.map function
     from utils import mp
     blocks = np.linspace(0, len(idx), parts+1)
-    ind = mp.map(tree.query, [idx[s:e] for s, e in zip(blocks[:-1], blocks[1:])])
+    ind = mp.map(tree.query, [mm[s:e] for s, e in zip(blocks[:-1], blocks[1:])])
     dist = np.vstack([i[0] for i in ind])
     argdist = np.vstack([i[1] for i in ind])
     '''
 
-    dist, argdist = tree.query(idx)
+    dist, argdist = tree.query(mm)
     dist.shape = shape
     argdist.shape = shape
     return dist, argdist
