@@ -26,6 +26,7 @@ try:
     from mayavi.core.api import PipelineBase, Source, Filter, Module
     from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
     from mayavi.sources.image_reader import ImageReader
+    from mayavi.sources.array_source import Source
 
 except ImportError:
     from enthought.traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Any, Range, Color,Enum, Callable, Tuple, Button, on_trait_change
@@ -76,7 +77,8 @@ class Mixer(HasTraits):
     rois = Dict
     roilabels = Dict
 
-    tex = Instance(ImageReader, ())
+    #tex = Instance(ImageReader, ())
+    tex = Instance(Source, ())
     texres = Float(default_texres)
 
     showrois = Bool(False)
@@ -150,6 +152,7 @@ class Mixer(HasTraits):
     
     def _update_label_pos(self):
         '''Creates and/or updates the position of the text to match the surface'''
+        currender = self.figure.scene.disable_render
         self.figure.scene.disable_render = True
         for name, labels in self.roilabels.items():
             for t, pts in labels:
@@ -159,7 +162,7 @@ class Mixer(HasTraits):
                 except:
                     x, y, z = wpos.mean(0)
                 t.set(x_position=x, y_position=y, z_position=z, norm=tuple(norm.mean(0)))
-        self.figure.scene.disable_render = False
+        self.figure.scene.disable_render = currender
     
     def _fix_label_vis(self):
         '''Use backface culling behind the focal_point to hide labels behind the brain'''
@@ -297,12 +300,46 @@ class Mixer(HasTraits):
         self.figure.renderer.reset_camera_clipping_range()
         self.figure.render()
     
-    def show_curvature(self):
-        self.figure.disable_render = True
+    def get_curvature(self):
+        '''Compute the curvature at each vertex on the surface and return it.
+        The curvature is NEGATIVE for vertices where the surface is concave,
+        e.g. inside sulci. The curvature is POSITIVE for vertices where the
+        surface is convex, e.g. on gyri.
+        '''
+        currender = self.figure.scene.disable_render
+        self.figure.scene.disable_render = True
+        curmix = float(self.mix)
         self.mix = 0
+        #smooth = mlab.pipeline.user_defined(self.data_src, filter="SmoothPolyDataFilter")
         curve = mlab.pipeline.user_defined(self.data_src, filter="Curvatures")
         curve.filter.curvature_type = "mean"
-        self.data_src.mlab_source.scalars = curve.filter.get_output().point_data.scalars.to_array()
+        #self.data_src.mlab_source.scalars = curve.filter.get_output().point_data.scalars.to_array()
+        curvature = -1 * curve.filter.get_output().point_data.scalars.to_array()
+        self.mix = curmix
+        self.figure.scene.disable_render = currender
+
+        return curvature
+
+    def show_curvature(self, thresh=False):
+        '''Replace the current data with surface curvature. By default this
+        function sets the data range to (-3..3), which works well for most
+        cases.
+
+        If [thresh] is set to True, curvature will be thresholded.
+        '''
+        currender = self.figure.scene.disable_render
+        self.figure.scene.disable_render = True
+        ## Load the curvature onto the surface
+        curv = self.get_curvature()
+        if thresh:
+            curv[curv>0] = 1
+            curv[curv<0] = -1
+        self.data_src.mlab_source.scalars = curv
+        ## Set the colormap to gray
+        self.colormap = "gray"
+        ## Set the data range appropriately
+        self.surf.module_manager.scalar_lut_manager.data_range = (-3, 3)
+        self.figure.scene.disable_render = currender
     
     def saveflat(self, filename=None, height=default_renderheight):
         #Save the current view to restore
