@@ -102,6 +102,7 @@
                 this.renderer.setSize(window.innerWidth, window.innerHeight-50);
                 this.camera.aspect = window.innerWidth / (window.innerHeight-50);
                 this.camera.updateProjectionMatrix();
+                this.slider.width(window.innerWidth);
             },
             setMix: function(val) {
                 var num = this.geometry.morphTargets.length;

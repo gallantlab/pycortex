@@ -114,3 +114,28 @@ def get_cortical_mask(subject, xfmname, shape=(31, 100, 100)):
         data[tuple(c[::-1])] = 1
 
     return data
+
+
+def get_vox_dist(subject, xfmname, shape=(31, 100, 100), parts=100):
+    from scipy.spatial import KDTree
+    fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
+    wpts = np.append(fiducial, np.ones((len(fiducial), 1)), axis=-1).T
+    xfm, epi = surfs.getXfm(subject, xfmname)
+    coords = np.dot(xfm, wpts)[:3].T
+
+    tree = KDTree(coords[:,::-1]) #must flip coords, for zyx ordering...
+    idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
+
+    '''
+    #For parallel processing using James's mp.map function
+    from utils import mp
+    blocks = np.linspace(0, len(idx), parts+1)
+    ind = mp.map(tree.query, [idx[s:e] for s, e in zip(blocks[:-1], blocks[1:])])
+    dist = np.vstack([i[0] for i in ind])
+    argdist = np.vstack([i[1] for i in ind])
+    '''
+
+    dist, argdist = tree.query(idx)
+    dist.shape = shape
+    argdist.shape = shape
+    return dist, argdist

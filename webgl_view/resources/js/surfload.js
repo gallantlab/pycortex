@@ -38,14 +38,13 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
     var numsurfs = idata[0];
     var ptlen = idata[1];
     var attrib = {};
-    console.log(numsurfs);
+
     var geometry = new THREE.Geometry();
 
     var pts = fdata.subarray(2,ptlen+2);
     for (var i=0; i<ptlen; i+=3) {
         geometry.vertices.push(new THREE.Vector3(pts[i], pts[i+1], pts[i+2]));
     }
-    console.log("Got points");
 
     var ptdat, verts;
     for (var i = 1; i < numsurfs-1; i++) {
@@ -54,9 +53,7 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
         for (var j=0; j < ptdat.length; j+=3)
             verts.push(new THREE.Vector3(ptdat[j], ptdat[j+1], ptdat[j+2]));
         geometry.morphTargets.push({name:"surf"+(i-1), vertices:verts});
-        console.log("Pushed surf"+(i-1));
     }
-    console.log("Got morphs");
 
     var flat = fdata.subarray((numsurfs-1)*ptlen+2, numsurfs*ptlen+2);
     var min = [1000,1000], max = [0,0], verts = [], pt;
@@ -69,13 +66,11 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
         else if (max[1] > pt.z) max[0] = pt.z;
     }
     geometry.morphTargets.push({name:"flat", vertices:verts});
-    console.log("Got flats");
 
     var polys = idata.subarray(numsurfs*ptlen+2);
     for (var i=0; i < polys.length; i+=3) {
         geometry.faces.push(new THREE.Face3(polys[i], polys[i+1], polys[i+2]));
     }
-    console.log("Got faces");
 
     
     //Generate the UV coordinates
@@ -91,8 +86,6 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
         }
         geometry.faceVertexUvs.push(tcoords);
     }
-    console.log("Got UVs");
-
     
     geometry.computeCentroids();
     geometry.computeFaceNormals();
@@ -100,6 +93,5 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
     geometry.computeMorphNormals();
     geometry.computeBoundingSphere();
 
-    console.log("finished model!");
     return geometry;
 }
