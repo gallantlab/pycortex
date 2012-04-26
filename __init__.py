@@ -138,14 +138,14 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100), parts=100):
         Point index for the closest point
     '''
     import nibabel
-    from scipy.spatial import KDTree
+    from scipy.spatial import cKDTree
     fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
     xfm, epi = surfs.getXfm(subject, xfmname)
     idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
     widx = np.append(idx[:,::-1], np.ones((len(idx),1)), axis=-1).T
     mm = np.dot(np.linalg.inv(xfm), widx)[:3].T
 
-    tree = KDTree(fiducial)
+    tree = cKDTree(fiducial)
     '''
     #For parallel processing using James's mp.map function
     from utils import mp
