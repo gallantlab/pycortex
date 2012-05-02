@@ -83,7 +83,7 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
             assert xfm is not None, "Cannot find transform by this name!"
             xfm = np.dot(np.linalg.inv(data.get_affine()), xfm[0])
         data = data.get_data()
-    else:
+    elif isinstance(xfm, str):
         xfm = db.surfs.getXfm(subject, xfm, xfmtype="coord")
         assert xfm is not None, "Cannot find coord transform, please provide a nifti!"
         xfm = xfm[0]
