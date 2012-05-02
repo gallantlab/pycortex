@@ -118,7 +118,6 @@ class Mixer(HasTraits):
         surf = mlab.pipeline.surface(n, figure=self.figure.mayavi_scene)
         surf.actor.texture.interpolate = True
         surf.actor.texture.repeat = False
-        surf.actor.texture.blending_mode = 1
         #surf.actor.texture.lookup_table = tvtk.LookupTable(
         #    table=clear_white_black, range=(-1,1))
         surf.actor.enable_texture = self.showrois
@@ -532,7 +531,7 @@ class Mixer(HasTraits):
         if cmap.max() <= 1:
             cmap = cmap.copy() * 255
         if cmap.shape[-1] < 4:
-            cmap = np.hstack([cmap, np.ones((len(cmap), 1))])
+            cmap = np.hstack([cmap, 255 * np.ones((len(cmap), 1))])
         self.surf.module_manager.scalar_lut_manager.lut.table = cmap
     
     def show(self):
