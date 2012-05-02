@@ -118,7 +118,6 @@ class Mixer(HasTraits):
         surf = mlab.pipeline.surface(n, figure=self.figure.mayavi_scene)
         surf.actor.texture.interpolate = True
         surf.actor.texture.repeat = False
-        surf.actor.texture.blending_mode = 1
         #surf.actor.texture.lookup_table = tvtk.LookupTable(
         #    table=clear_white_black, range=(-1,1))
         surf.actor.enable_texture = self.showrois
@@ -212,7 +211,14 @@ class Mixer(HasTraits):
         '''Trait callback for transforming the data and applying it to data'''
         coords = np.array([np.clip(c, 0, l-1) for c, l in zip(self.coords.T, self.data.T.shape)]).T
         scalars = np.array([self.data.T[tuple(p)] for p in coords])
-        self.data_src.mlab_source.scalars = scalars
+        if self.data.dtype == np.uint8 and len(self.data.shape) > 3:
+            vtk_data = tvtk.UnsignedCharArray()
+            vtk_data.from_array(scalars)
+            vtk_data.name = "scalars"
+            self.data_src.data.point_data.scalars = vtk_data
+        else:
+            self.data_src.mlab_source.scalars = scalars
+
     
     def _tex_changed(self):
         self.figure.scene.disable_render = True
