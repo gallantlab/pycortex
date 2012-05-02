@@ -229,7 +229,7 @@ class Align(HasTraits):
             (epi with slice affine)
         '''
         nii = nibabel.load(epi)
-        epi = nii.get_data()
+        epi = nii.get_data().astype(float)
         self.affine = nii.get_affine()
         base = nii.get_header().get_base_affine()
         self.base = base
@@ -557,7 +557,7 @@ class Align(HasTraits):
         flip = np.eye(4)
         flip[2,2] = -1
         mat = self.xfm.transform.matrix.to_array()
-        self.set_xfm(np.dot(mat, flip))
+        self.set_xfm(np.dot(mat, flip), "base")
     
     @on_trait_change("flip_lr")
     def update_fliplr(self):
@@ -565,7 +565,7 @@ class Align(HasTraits):
         flip = np.eye(4)
         flip[0,0] = -1
         mat = self.xfm.transform.matrix.to_array()
-        self.set_xfm(np.dot(mat, flip))
+        self.set_xfm(np.dot(mat, flip), "base")
     
     @on_trait_change("flip_fb")
     def update_flipfb(self):
@@ -573,7 +573,7 @@ class Align(HasTraits):
         flip = np.eye(4)
         flip[1,1] = -1
         mat = self.xfm.transform.matrix.to_array()
-        self.set_xfm(np.dot(mat, flip))
+        self.set_xfm(np.dot(mat, flip), "base")
     
     @on_trait_change("ptcolor")
     def update_ptcolor(self):

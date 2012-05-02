@@ -1,3 +1,4 @@
+import numpy as np
 def unmask(mask, data):
     '''unmask(mask, data)
 
@@ -19,5 +20,7 @@ def unmask(mask, data):
 
     if isinstance(mask, docdb.orm.ImageDoc):
         mask = mask.get_data()[:]
-    mask[mask > 0] = data
-    return mask
+
+    output = np.zeros_like(mask)
+    output[mask > 0] = data
+    return output
