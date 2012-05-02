@@ -239,9 +239,11 @@ class Mixer(HasTraits):
         self.figure.scene.disable_render = False
     
     def _labelsize_changed(self):
+        self.figure.scene.disable_render = True
         for name, labels in self.roilabels.items():
             for l, pts in labels:
                 l.property.font_size = self.labelsize
+        self.figure.scene.disable_render = False
     
     def _show_colorbar_changed(self):
         self.surf.module_manager.scalar_lut_manager.show_legend = self.show_colorbar
