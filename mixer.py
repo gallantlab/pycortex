@@ -538,7 +538,7 @@ class Mixer(HasTraits):
         if cmap.max() <= 1:
             cmap = cmap.copy() * 255
         if cmap.shape[-1] < 4:
-            cmap = np.hstack([cmap, np.ones((len(cmap), 1))])
+            cmap = np.hstack([cmap, 255 * np.ones((len(cmap), 1))])
         self.surf.module_manager.scalar_lut_manager.lut.table = cmap
     
     def show(self):
