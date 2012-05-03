@@ -49,11 +49,18 @@ def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
         pt, polys, norm = db.surfs.getVTK(subject, t, hemisphere=hemisphere)
         pts.append(pt)
 
-    #flip the flats to be on the X-Z plane
-    flatpts = np.zeros_like(pts[-1])
-    flatpts[:,[0,2]] = pts[-1][:,:2]
-    flatpts[:,1] = pts[-2].min(0)[1]
-    pts[-1] = flatpts
+    if hemisphere == "both":
+        #flip the flats to be on the X-Z plane
+        flatpts = np.zeros_like(pts[-1])
+        flatpts[:,[0,2]] = pts[-1][:,:2]
+        flatpts[:,1] = pts[-2].min(0)[1]
+        pts[-1] = flatpts
+    else:
+        #only one hemisphere, put it on y-z plane
+        flatpts = np.zeros_like(pts[-1])
+        flatpts[:,[1,2]] = pts[-1][:,:2]
+        flatpts[:,1] = pts[-2].mean(0)[1]
+        pts[-1] = flatpts
 
     interp = interp1d(np.linspace(0,1,len(pts)), pts, axis=0)
     return interp, polys
