@@ -106,7 +106,8 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
             xmlbase = open(os.path.join(cwd, "svgbase.xml")).read()
             xml.write(xmlbase.format(width=aspect * 1024, height=1024))
     
-    kwargs = dict(points=interp, polys=polys, xfm=xfm, data=data, svgfile=overlay)
+    kwargs = dict(points=interp, polys=polys, xfm=xfm, 
+        data=data, svgfile=overlay, nstops=len(types)+2)
     if hemisphere != "both":
         kwargs['tcoords'] = _tcoords(subject, hemisphere)
 

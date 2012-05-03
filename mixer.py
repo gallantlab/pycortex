@@ -4,11 +4,13 @@ import binascii
 import tempfile
 import cStringIO
 import threading
+import traceback
 import subprocess as sp
 
 import numpy as np
+from scipy.interpolate import interp1d
 
-import Image
+import svgroi
 
 try:
     from traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Range, Any, Color,Enum, Callable, Tuple, Button, on_trait_change
@@ -73,6 +75,9 @@ class Mixer(HasTraits):
     #tex = Instance(ImageReader, ())
     tex = Instance(Source, ())
     texres = Float(default_texres)
+    rois = Any
+    roilabels = Dict
+    labelsize = Int(default_labelsize)
 
     showrois = Bool(False)
     showlabels = Bool(False)
@@ -81,25 +86,26 @@ class Mixer(HasTraits):
 
     def __init__(self, points, polys, xfm, data=None, svgfile=None, **kwargs):
         #special init function must be used because points must be set before data can be set
-        super(Mixer, self).__init__(polys=polys, xfm=xfm, **kwargs)
         self.points = points
+        super(Mixer, self).__init__(polys=polys, xfm=xfm, **kwargs)
         if data is not None:
             self.data = data
-        if svgfile is not None:
-            self.svgfile = svgfile
 
+        if svgfile is not None:
+            self.rois = svgroi.ROIpack(self.tcoords, svgfile)
+            
     def _data_src_default(self):
         pts = self.points(1)
         src = mlab.pipeline.triangular_mesh_source(
             pts[:,0], pts[:,1], pts[:,2],
             self.polys, figure=self.figure.mayavi_scene)
         #Set the texture coordinates
-        if len(self.tcoords) > 0:
-            src.data.point_data.t_coords = self.tcoords
-        else:
+
+        if len(self.tcoords) == 0:
             pts -= pts.min(0)
             pts /= pts.max(0)
-            src.data.point_data.t_coords = pts[:,[0,2]]
+            self.tcoords = pts[:,[0,2]]
+        src.data.point_data.t_coords = self.tcoords
             
         return src
 
@@ -129,7 +135,7 @@ class Mixer(HasTraits):
             self.picker.tolerance = 0.005
 
         #Add traits callbacks to update label visibility and positions
-        self.figure.camera.on_trait_change(self._fix_label_vis, "position")
+        #self.figure.camera.on_trait_change(self._fix_label_vis, "position")
 
         self.data_src
         self.surf
@@ -141,14 +147,9 @@ class Mixer(HasTraits):
         '''Creates and/or updates the position of the text to match the surface'''
         currender = self.figure.scene.disable_render
         self.figure.scene.disable_render = True
-        for name, labels in self.roilabels.items():
-            for t, pts in labels:
-                wpos, norm = self._lookup_tex_world(pts)
-                try:
-                    x, y, z = _labelpos(wpos)
-                except:
-                    x, y, z = wpos.mean(0)
-                t.set(x_position=x, y_position=y, z_position=z, norm=tuple(norm.mean(0)))
+        for name, (interp, labels) in self.roilabels.items():
+            for t, (x,y,z) in zip(labels, interp(self.mix)):
+                t.set(x_position=x, y_position=y, z_position=z)
         self.figure.scene.disable_render = currender
     
     def _fix_label_vis(self):
@@ -198,8 +199,9 @@ class Mixer(HasTraits):
     def _data_changed(self):
         '''Trait callback for transforming the data and applying it to data'''
         coords = np.array([np.clip(c, 0, l-1) for c, l in zip(self.coords.T, self.data.T.shape)]).T
-        scalars = np.array([self.data.T[tuple(p)] for p in coords])
+        scalars = self.data.T[tuple(coords.T)]
         if self.data.dtype == np.uint8 and len(self.data.shape) > 3:
+            print "setting raw color data..."
             vtk_data = tvtk.UnsignedCharArray()
             vtk_data.from_array(scalars)
             vtk_data.name = "scalars"
@@ -221,8 +223,8 @@ class Mixer(HasTraits):
     
     def _showlabels_changed(self):
         self.figure.scene.disable_render = True
-        for name, labels in self.roilabels.items():
-            for l, pts in labels:
+        for name, (interp, labels) in self.roilabels.items():
+            for l in labels:
                 l.visible = self.showlabels
         self.figure.scene.disable_render = False
     
@@ -241,14 +243,6 @@ class Mixer(HasTraits):
         self.surf.parent.scalar_lut_manager.lut_mode = self.colormap
         self.surf.parent.scalar_lut_manager.reverse_lut = self.fliplut
     
-    def _lookup_tex_world(self, pts):
-        tcoords = self.data_src.data.point_data.t_coords.to_array()
-        idx = np.arange(len(tcoords))
-        interp = griddata(tcoords, idx, pts, method="nearest")
-        pos = self.data_src.data.points.to_array()[interp]
-        nor = self.data_src.children[0].outputs[0].point_data.normals.to_array()[interp]
-        return pos, nor
-
     def data_to_points(self, arr):
         '''Maps the given 3D data array [arr] to vertices on the mesh.
         '''
@@ -381,41 +375,42 @@ class Mixer(HasTraits):
             
         sp.call(["inkscape",self.svgfile])
         self._svgfile_changed()
-
-    @on_trait_change("svg, texres, linewidth, roifill, linecolor")
+    
+    @on_trait_change("rois, texres")
     def update_texture(self):
-        return ImageReader(file_list=[pngfile.name])
-
+        texfile = self.rois.get_texture(self.texres)
+        self.tex = ImageReader(file_list=[texfile.name])
+    
+    @on_trait_change("rois")
     def _create_roilabels(self):
         #Delete the existing roilabels, if there are any
-        for name, roi in self.roilabels.items():
-            for l, pts in roi:
+        for name, (interp, labels) in self.roilabels.items():
+            for l in labels:
                 l.remove()
+        
+        mixes = np.linspace(0, 1, self.nstops)
+        interps = dict([(name,[]) for name in self.rois.names])
+        for mix in mixes:
+            pos = self.rois.get_labelpos(self.points(mix))
+            for name, ps in pos.items():
+                interps[name].append(ps)
+        
+        self.roilabels = dict()
+        for name, pos in interps.items():
+            interp = interp1d(mixes, pos, axis=0)
+            self.roilabels[name] = interp, []
 
-        self.roilabels = {}
-        for name, paths in self.rois.items():
-            self.roilabels[name] = []
-            for path in paths:
-                pts = _parse_svg_pts(path.getAttribute("d"))
-                pts /= self.svgshape
-                pts[:,1] = 1 - pts[:,1]
-
-                wpos, norm = self._lookup_tex_world(pts)
-                try:
-                    tpos = _labelpos(wpos)
-                except:
-                    print "unable to find point for %s, using mean"%name
-                    tpos = wpos.mean(0)
-
-                txt = mlab.text(tpos[0], tpos[1], name, z=tpos[2], 
+            for x,y,z in interp(self.mix):
+                txt = mlab.text(x, y, name, z=z, 
                         figure=self.figure.mayavi_scene, name=name)
                 txt.set(visible=self.showlabels)
                 txt.property.set(color=(0,0,0), bold=True, justification="center", 
                     vertical_justification="center", font_size=self.labelsize)
                 txt.actor.text_scale_mode = "none"
-                txt.add_trait("norm", tuple)
-                txt.norm = tuple(norm.mean(0))
-                self.roilabels[name].append((txt, pts))
+                #txt.add_trait("norm", tuple)
+                #txt.norm = tuple(norm.mean(0))
+                self.roilabels[name][1].append(txt)
+            
     
     def load_colormap(self, cmap):
         if cmap.max() <= 1:

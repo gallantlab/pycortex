@@ -2,57 +2,36 @@ import tempfile
 import subprocess as sp
 from xml.dom.minidom import parse as xmlparse
 
-import Image
 import numpy as np
 import traits.api as traits
 from scipy.interpolate import griddata
+from matplotlib.pyplot import imread
 
-class ROIpack(traits.HasTraits):
-    svg = traits.Instance("xml.dom.minidom.Document")
-    svgfile = traits.Str
-    rois = traits.Dict
+class ROI(traits.HasTraits):
+    name = traits.Str
 
-    linewidth = traits.Float(5)
-    labelsize = traits.Int(24)
+    hide = traits.Bool(False)
     linewidth = traits.Float(5)
     linecolor = traits.Tuple((0.,0.,0.,1.))
     roifill = traits.Tuple((0.,0.,0.,0.2))
 
-    def __init__(self, flat, svgfile):
-        self.flat = flat.copy()
-        self.svgfile = svgfile
-        flat -= flat.min(0)
-        flat /= flat.max(0)
-        self.tcoords = flat
+    def __init__(self, parent, xml, **kwargs):
+        super(ROI, self).__init__(**kwargs)
+        self.parent = parent
+        self.name = xml.getAttribute("inkscape:label")
+        self.paths = xml.getElementsByTagName("path")
+        pts = [ self._parse_svg_pts(path.getAttribute("d")) for path in self.paths]
+        self.coords = [ griddata(parent.tcoords, np.arange(len(parent.tcoords)), p, "nearest") for p in pts ]
+        self.hide = xml.hasAttribute("style") and "display:none" in xml.attributes['style'].value
 
-        svg = xmlparse(self.svgfile)
-        svgdoc = svg.getElementsByTagName("svg")[0]
-        w = float(svgdoc.getAttribute("width"))
-        h = float(svgdoc.getAttribute("height"))
-        self.svgshape = w, h
-
-        #Remove the base images -- we don't need to render them for the texture
-        rmnode = _find_layer(svg, "data")
-        rmnode.parentNode.removeChild(rmnode)
-
-        #Set up the ROI dict
-        rois = {}
-        cidx = np.arange(len(self.tcoords))
-        for r in _find_layer(svg, "rois").getElementsByTagName("g"):
-            if not r.hasAttribute("style") or "display:none" not in r.attributes['style'].value:
-                name = r.getAttribute("inkscape:label")
-                paths = r.getElementsByTagName("path")
-                pts = [ self._parse_svg_pts(path.getAttribute("d")) for path in paths]
-                coords = [ griddata(self.tcoords, cidx, p, "nearest") for p in pts ]
-                rois[name] = zip(paths, coords)
-        
-        #use traits callbacks to update the lines and textures
-        self.rois = rois
-        self.svg = svg
-
+        self.linewidth = self.parent.linewidth
+        self.linecolor = self.parent.linecolor
+        self.roifill = self.parent.roifill
+    
     def _parse_svg_pts(self, data):
         data = data.split()
-        assert data[0].lower() == "m", "Unknown path format"
+        if data[0].lower() != "m":
+            raise ValueError("Unknown path format")
         offset = np.array([float(x) for x in data[1].split(',')])
         data = data[2:]
         mode = "l"
@@ -73,10 +52,71 @@ class ROIpack(traits.HasTraits):
                 data.pop(0)
                 offset = np.array(map(float, data.pop(0).split(',')))
             pts.append([offset[0],offset[1]])
+
         pts = np.array(pts)
-        pts /= self.svgshape
+        pts /= self.parent.svgshape
         pts[:,1] = 1-pts[:,1]
         return pts
+    
+    @traits.on_trait_change("linewidth, linecolor, roifill, hide")
+    def update_attribs(self):
+        print "update attribs for %s"%self.name
+        style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
+                    "stroke-linecap:butt;stroke-linejoin:miter;"+\
+                    "stroke:{lc};stroke-opacity:{lo}; {hide}"
+        roifill = np.array(self.roifill)*255
+        linecolor = np.array(self.linecolor)*255
+        hide = "display:none;" if self.hide else ""
+        style = style.format(
+            fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=self.roifill[-1],
+            lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=self.linecolor[-1], 
+            lw=self.linewidth, hide=hide)
+        for path in self.paths:
+            path.setAttribute("style", style)
+    
+    def get_labelpos(self, pts, fancy=True):
+        if fancy:
+            labels = []
+            for coord in self.coords:
+                try:
+                    labels.append(_labelpos(pts[coord]))
+                except:
+                    labels.append(pts[coord].mean(0))
+            return labels
+        return [pts[coord].mean(0) for coord in self.coords]
+
+class ROIpack(traits.HasTraits):
+    svg = traits.Instance("xml.dom.minidom.Document")
+    svgfile = traits.Str
+
+    linewidth = traits.Float(5)
+    linecolor = traits.Tuple((0.,0.,0.,1.))
+    roifill = traits.Tuple((0.,0.,0.,0.2))
+
+    def __init__(self, tcoords, svgfile):
+        if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
+            tcoords -= tcoords.min(0)
+            tcoords /= tcoords.max(0)
+        self.tcoords = tcoords
+        self.svgfile = svgfile
+        self.reload()
+
+    def reload(self):
+        self.svg = xmlparse(self.svgfile)
+        svgdoc = self.svg.getElementsByTagName("svg")[0]
+        w = float(svgdoc.getAttribute("width"))
+        h = float(svgdoc.getAttribute("height"))
+        self.svgshape = w, h
+
+        #Remove the base images -- we don't need to render them for the texture
+        rmnode = _find_layer(self.svg, "data")
+        rmnode.parentNode.removeChild(rmnode)
+
+        #Set up the ROI dict
+        self.rois = {}
+        for r in _find_layer(self.svg, "rois").getElementsByTagName("g"):
+            roi = ROI(self, r)
+            self.rois[roi.name] = roi
 
     def add_roi(self, name, pngdata):
         #self.svg deletes the images -- we want to save those, so let's load it again
@@ -101,49 +141,53 @@ class ROIpack(traits.HasTraits):
         with open(self.svgfile, "w") as xml:
             xml.write(svg.toprettyxml())
 
-    @traits.on_trait_change("rois, linewidth, linecolor, roifill")
-    def update_rois(self):
-        for name, paths in self.rois.items():
-            style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
-                    "stroke-linecap:butt;stroke-linejoin:miter;"+\
-                    "stroke:{lc};stroke-opacity:{lo}; {hide}"
-            roifill = np.array(self.roifill)*255
-            linecolor = np.array(self.linecolor)*255
-            style = style.format(
-                fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=self.roifill[-1],
-                lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=self.linecolor[-1], 
-                lw=self.linewidth, hide="")
+    @traits.on_trait_change("linewidth, linecolor, roifill")
+    def update_style(self):
+        for roi in self.rois.values():
+            roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill)
 
-            for path, coords in paths:
-                path.setAttribute("style", style)
-
-    def get_texture(self, texres):
-        '''Renders the current roimap as a texture map'''
+    def get_texture(self, texres, bits=32):
+        '''Renders the current roimap as a png'''
         #set the current size of the texture
         w, h = self.svgshape
-        cmd = "convert -depth 8 -density {dpi} - png32:-".format(dpi=texres / h * 72)
+        dpi = texres / h * 72
+        cmd = "convert -depth 8 -density {dpi} - png{bits}:-".format(dpi=dpi, bits=bits)
         convert = sp.Popen(cmd.split(), stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
         raw = convert.communicate(self.svg.toxml())
+        
         pngfile = tempfile.NamedTemporaryFile(suffix=".png")
         pngfile.write(raw[0])
         pngfile.flush()
         return pngfile
 
     def get_labelpos(self, pts, fancy=True):
-        labels = dict()
-        for name, paths in self.rois.items():
-            if fancy:
-                labels[name] = [_labelpos(pts[coords]) for path, coords in paths]
-            else:
-                labels[name] = [pts[coords].mean(0) for path, coords in paths]
-        return labels
+        return dict([(name, roi.get_labelpos(pts, fancy)) for name, roi in self.rois.items()])
 
-    def get_roi(self):
-        im = self.get_texture(self.svgshape[1])
+    def get_roi(self, roiname):
+        state = dict()
+        for name, roi in self.rois.items():
+            #Store what the ROI style so we can restore
+            state[name] = dict(linewidth=roi.linewidth, roifill=roi.roifill, hide=roi.hide)
+            if name == roiname:
+                roi.set(linewidth=0, roifill=(0,0,0,1), hide=False)
+            else:
+                roi.hide = True
+        
+        im = self.get_texture(self.svgshape[1], bits=8)
         im.seek(0)
-        imdat = np.array(Image(im))
+        imdat = imread(im)[...,0]
         idx = (self.tcoords*(np.array(self.svgshape)-1)).round().astype(int)[:,::-1]
-        return np.nonzero(imdat[idx] == 0)[0]
+        roiidx = np.nonzero(imdat[tuple(idx.T)] != 1)[0]
+
+        #restore the old roi settings
+        for name, roi in self.rois.items():
+            roi.set(**state[name])
+
+        return roiidx
+    
+    @property
+    def names(self):
+        return self.rois.keys()
 
 ###################################################################################
 # SVG Helper functions
@@ -204,4 +248,4 @@ def _labelpos(pts):
 def test():
     import db
     pts, polys, norms = db.surfs.getVTK("JG", "flat")
-    return ROIpack(pts[:,:2], "/auto/k2/share/mritools_store/overlays/JG_rois.svg")
+    return ROIpack(pts[:,:2], "/home/james/code/mritools_store/overlays/JG_rois.svg")
