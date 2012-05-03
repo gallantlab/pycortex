@@ -384,14 +384,18 @@ class Mixer(HasTraits):
     @on_trait_change("rois")
     def _create_roilabels(self):
         #Delete the existing roilabels, if there are any
+        self.figure.scene.disable_render = True
+
         for name, (interp, labels) in self.roilabels.items():
             for l in labels:
                 l.remove()
-        
+                
+        smix = self.mix
         mixes = np.linspace(0, 1, self.nstops)
         interps = dict([(name,[]) for name in self.rois.names])
         for mix in mixes:
-            pos = self.rois.get_labelpos(self.points(mix))
+            self.mix = mix
+            pos = self.rois.get_labelpos(, )
             for name, ps in pos.items():
                 interps[name].append(ps)
         

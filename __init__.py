@@ -96,7 +96,7 @@ def epi_to_anat(data, subject=None, xfmname=None):
 
     cmd = "fsl4.1-flirt -in {epi} -applyxfm -init {xfm} -out {out} -paddingsize 0.0 -interp trilinear -ref {anat}"
     sp.Popen(shlex.split(cmd.format(epi=epifile, xfm=xfmfile, anat=anatfile, out=outfile))).wait()
-    output = nifti.NiftiImage(outfile).data
+    output = nifti.NiftiImage(outfile).data.copy()
 
     os.unlink(epifile)
     os.unlink(anatfile)

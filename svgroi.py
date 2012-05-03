@@ -74,16 +74,16 @@ class ROI(traits.HasTraits):
         for path in self.paths:
             path.setAttribute("style", style)
     
-    def get_labelpos(self, pts, fancy=True):
+    def get_labelpos(self, pts, norms, fancy=True):
         if fancy:
             labels = []
             for coord in self.coords:
                 try:
-                    labels.append(_labelpos(pts[coord]))
+                    labels.append((_labelpos(pts[coord]), norms[coord].mean(0)))
                 except:
-                    labels.append(pts[coord].mean(0))
+                    labels.append((pts[coord].mean(0), norms[coord].mean(0)))
             return labels
-        return [pts[coord].mean(0) for coord in self.coords]
+        return [(pts[coord].mean(0), norms[coord].mean(0) for coord in self.coords]
 
 class ROIpack(traits.HasTraits):
     svg = traits.Instance("xml.dom.minidom.Document")
@@ -160,8 +160,8 @@ class ROIpack(traits.HasTraits):
         pngfile.flush()
         return pngfile
 
-    def get_labelpos(self, pts, fancy=True):
-        return dict([(name, roi.get_labelpos(pts, fancy)) for name, roi in self.rois.items()])
+    def get_labelpos(self, pts, norms, fancy=True):
+        return dict([(name, roi.get_labelpos(pts, norms, fancy)) for name, roi in self.rois.items()])
 
     def get_roi(self, roiname):
         state = dict()
