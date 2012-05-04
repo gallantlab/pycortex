@@ -86,8 +86,10 @@ class Mixer(HasTraits):
 
     def __init__(self, points, polys, xfm, data=None, svgfile=None, **kwargs):
         #special init function must be used because points must be set before data can be set
+        self.xfm = xfm
         self.points = points
         super(Mixer, self).__init__(polys=polys, xfm=xfm, **kwargs)
+        
         if data is not None:
             self.data = data
 
@@ -106,7 +108,7 @@ class Mixer(HasTraits):
             pts /= pts.max(0)
             self.tcoords = pts[:,[0,2]]
         src.data.point_data.t_coords = self.tcoords
-            
+        
         return src
 
     def _surf_default(self):
@@ -135,7 +137,7 @@ class Mixer(HasTraits):
             self.picker.tolerance = 0.005
 
         #Add traits callbacks to update label visibility and positions
-        #self.figure.camera.on_trait_change(self._fix_label_vis, "position")
+        self.figure.camera.on_trait_change(self._fix_label_vis, "position")
 
         self.data_src
         self.surf
@@ -148,8 +150,8 @@ class Mixer(HasTraits):
         currender = self.figure.scene.disable_render
         self.figure.scene.disable_render = True
         for name, (interp, labels) in self.roilabels.items():
-            for t, (x,y,z) in zip(labels, interp(self.mix)):
-                t.set(x_position=x, y_position=y, z_position=z)
+            for t, (pos, norm) in zip(labels, interp(self.mix)):
+                t.set(x_position=pos[0], y_position=pos[1], z_position=pos[2], norm=tuple(norm))
         self.figure.scene.disable_render = currender
     
     def _fix_label_vis(self):
@@ -157,8 +159,8 @@ class Mixer(HasTraits):
         if self.showlabels and self.mix != 1:
             flipme = []
             fpos = self.figure.camera.focal_point
-            for name, labels in self.roilabels.items():
-                for t, pts in labels:
+            for name, (interp, labels) in self.roilabels.items():
+                for t in labels:
                     tpos = np.array((t.x_position, t.y_position, t.z_position))
                     cam = self.figure.camera.position
                     state = np.dot(cam-tpos, t.norm) >= 1e-4 and np.dot(cam-fpos, tpos-fpos) >= -1
@@ -390,30 +392,33 @@ class Mixer(HasTraits):
             for l in labels:
                 l.remove()
                 
-        smix = self.mix
         mixes = np.linspace(0, 1, self.nstops)
         interps = dict([(name,[]) for name in self.rois.names])
         for mix in mixes:
-            self.mix = mix
-            pos = self.rois.get_labelpos(, )
-            for name, ps in pos.items():
-                interps[name].append(ps)
+            pts = self.points(mix)
+            self.data_src.data.points.from_array(pts)
+            norms = self.surf.parent.parent.outputs[0].point_data.normals.to_array()
+            for name, posnorm in self.rois.get_labelpos(pts, norms).items():
+                interps[name].append(posnorm)
         
         self.roilabels = dict()
         for name, pos in interps.items():
             interp = interp1d(mixes, pos, axis=0)
             self.roilabels[name] = interp, []
 
-            for x,y,z in interp(self.mix):
-                txt = mlab.text(x, y, name, z=z, 
+            for pos, norm in interp(self.mix):
+                txt = mlab.text(pos[0], pos[1], name, z=pos[2], 
                         figure=self.figure.mayavi_scene, name=name)
                 txt.set(visible=self.showlabels)
                 txt.property.set(color=(0,0,0), bold=True, justification="center", 
                     vertical_justification="center", font_size=self.labelsize)
                 txt.actor.text_scale_mode = "none"
-                #txt.add_trait("norm", tuple)
-                #txt.norm = tuple(norm.mean(0))
+                txt.add_trait("norm", tuple)
+                txt.norm = tuple(norm)
                 self.roilabels[name][1].append(txt)
+
+        self.data_src.data.points.from_array(self.points(self.mix))
+        self.figure.scene.disable_render = False
             
     
     def load_colormap(self, cmap):

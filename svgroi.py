@@ -60,7 +60,6 @@ class ROI(traits.HasTraits):
     
     @traits.on_trait_change("linewidth, linecolor, roifill, hide")
     def update_attribs(self):
-        print "update attribs for %s"%self.name
         style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
                     "stroke-linecap:butt;stroke-linejoin:miter;"+\
                     "stroke:{lc};stroke-opacity:{lo}; {hide}"
@@ -83,7 +82,7 @@ class ROI(traits.HasTraits):
                 except:
                     labels.append((pts[coord].mean(0), norms[coord].mean(0)))
             return labels
-        return [(pts[coord].mean(0), norms[coord].mean(0) for coord in self.coords]
+        return [(pts[coord].mean(0), norms[coord].mean(0)) for coord in self.coords]
 
 class ROIpack(traits.HasTraits):
     svg = traits.Instance("xml.dom.minidom.Document")
@@ -94,6 +93,7 @@ class ROIpack(traits.HasTraits):
     roifill = traits.Tuple((0.,0.,0.,0.2))
 
     def __init__(self, tcoords, svgfile):
+        super(ROIpack, self).__init__()
         if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
             tcoords -= tcoords.min(0)
             tcoords /= tcoords.max(0)
@@ -175,9 +175,9 @@ class ROIpack(traits.HasTraits):
         
         im = self.get_texture(self.svgshape[1], bits=8)
         im.seek(0)
-        imdat = imread(im)[...,0]
+        imdat = imread(im)[::-1,:,0]
         idx = (self.tcoords*(np.array(self.svgshape)-1)).round().astype(int)[:,::-1]
-        roiidx = np.nonzero(imdat[tuple(idx.T)] != 1)[0]
+        roiidx = np.nonzero(imdat[tuple(idx.T)] == 0)[0]
 
         #restore the old roi settings
         for name, roi in self.rois.items():
@@ -188,6 +188,9 @@ class ROIpack(traits.HasTraits):
     @property
     def names(self):
         return self.rois.keys()
+
+    def __getitem__(self, name):
+        return self.rois[name]
 
 ###################################################################################
 # SVG Helper functions

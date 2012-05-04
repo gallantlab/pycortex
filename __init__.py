@@ -149,3 +149,34 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100), parts=100):
     dist.shape = shape
     argdist.shape = shape
     return dist, argdist
+
+def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
+    import svgroi
+    fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
+    flat, polys, norms = surfs.getVTK(subject, "flat")
+    valid = np.unique(polys)
+    flat, fiducial = flat[valid], fiducial[valid]
+    
+    wpts = np.append(fiducial, np.ones((len(fiducial), 1)), axis=-1).T
+    xfm, epi = surfs.getXfm(subject, xfmname)
+    coords = np.dot(xfm, wpts)[:3].T.round().astype(int)
+
+    svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
+    rois = svgroi.ROIpack(flat[:,:2], svgfile)
+
+    #return rois, flat, coords
+
+    if roi is None:
+        roi = rois.names
+
+    if isinstance(roi, str):
+        mask = np.zeros(shape, dtype=bool)
+        mask.T[tuple(coords[rois.get_roi(roi)].T)] = True
+        return mask
+    elif isinstance(roi, list):
+        idx = dict()
+        mask = np.zeros(shape, dtype=np.uint8)
+        for i, name in enumerate(roi):
+            idx[name] = i+1
+            mask.T[tuple(coords[rois.get_roi(name)].T)] = i+1
+        return mask, idx

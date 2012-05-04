@@ -45,9 +45,12 @@ def _make_flat_cache(interp, xfm, height=1024):
 def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
     types = ("fiducial",) + types + ("flat",)
     pts = []
+    #flat, poly, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
+    #valid = np.unique(poly)
     for t in types:
         pt, polys, norm = db.surfs.getVTK(subject, t, hemisphere=hemisphere)
         pts.append(pt)
+    #pts.append(flat[valid])
 
     if hemisphere == "both":
         #flip the flats to be on the X-Z plane
@@ -105,7 +108,7 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
         with open(overlay, "w") as xml:
             xmlbase = open(os.path.join(cwd, "svgbase.xml")).read()
             xml.write(xmlbase.format(width=aspect * 1024, height=1024))
-    
+
     kwargs = dict(points=interp, polys=polys, xfm=xfm, 
         data=data, svgfile=overlay, nstops=len(types)+2)
     if hemisphere != "both":
