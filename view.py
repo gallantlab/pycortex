@@ -45,15 +45,25 @@ def _make_flat_cache(interp, xfm, height=1024):
 def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
     types = ("fiducial",) + types + ("flat",)
     pts = []
+    #flat, poly, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
+    #valid = np.unique(poly)
     for t in types:
         pt, polys, norm = db.surfs.getVTK(subject, t, hemisphere=hemisphere)
         pts.append(pt)
+    #pts.append(flat[valid])
 
-    #flip the flats to be on the X-Z plane
-    flatpts = np.zeros_like(pts[-1])
-    flatpts[:,[0,2]] = pts[-1][:,:2]
-    flatpts[:,1] = pts[-2].min(0)[1]
-    pts[-1] = flatpts
+    if hemisphere == "both":
+        #flip the flats to be on the X-Z plane
+        flatpts = np.zeros_like(pts[-1])
+        flatpts[:,[0,2]] = pts[-1][:,:2]
+        flatpts[:,1] = pts[-2].min(0)[1]
+        pts[-1] = flatpts
+    else:
+        #only one hemisphere, put it on y-z plane
+        flatpts = np.zeros_like(pts[-1])
+        flatpts[:,[1,2]] = pts[-1][:,:2]
+        flatpts[:,1] = pts[-2].mean(0)[1]
+        pts[-1] = flatpts
 
     interp = interp1d(np.linspace(0,1,len(pts)), pts, axis=0)
     return interp, polys
@@ -98,8 +108,9 @@ def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
         with open(overlay, "w") as xml:
             xmlbase = open(os.path.join(cwd, "svgbase.xml")).read()
             xml.write(xmlbase.format(width=aspect * 1024, height=1024))
-    
-    kwargs = dict(points=interp, polys=polys, xfm=xfm, data=data, svgfile=overlay)
+
+    kwargs = dict(points=interp, polys=polys, xfm=xfm, 
+        data=data, svgfile=overlay, nstops=len(types)+2)
     if hemisphere != "both":
         kwargs['tcoords'] = _tcoords(subject, hemisphere)
 
