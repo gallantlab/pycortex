@@ -26,6 +26,14 @@ def unmask(mask, data):
     output[mask > 0] = data
     return output
 
+def detrend_volume_median(data, kernel=15):
+    from scipy.signal import medfilt
+    lowfreq = medfilt(data, [1, kernel, kernel])
+    return data - lowfreq
+
+def detrend_volume_gradient(data, diff=3):
+    return (np.array(np.gradient(data, 1, diff, diff))**2).sum(0)
+
 def detrend_volume_poly(data, polyorder = 10, mask=None):
     from scipy.special import legendre
     polys = [legendre(i) for i in range(polyorder)]

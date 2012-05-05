@@ -133,6 +133,7 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100), parts=100):
     return dist, argdist
 
 def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
+    '''Return a bitmask for the given ROIs'''
     import svgroi
     fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
     flat, polys, norms = surfs.getVTK(subject, "flat")
@@ -156,9 +157,10 @@ def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
         mask.T[tuple(coords[rois.get_roi(roi)].T)] = True
         return mask
     elif isinstance(roi, list):
+        assert len(roi) < 64, "Too many rois for roimask, select a few"
         idx = dict()
-        mask = np.zeros(shape, dtype=np.uint8)
+        mask = np.zeros(shape, dtype=np.uint64)
         for i, name in enumerate(roi):
-            idx[name] = i+1
-            mask.T[tuple(coords[rois.get_roi(name)].T)] = i+1
+            idx[name] = 1<<i
+            mask.T[tuple(coords[rois.get_roi(name)].T)] |= 1<<i
         return mask, idx

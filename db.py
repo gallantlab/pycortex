@@ -94,7 +94,11 @@ class XfmSet(object):
         self.name = name
         fname = "{subj}_{name}.xfm".format(subj=subj, name=name)
         self.jsdat = json.load(open(os.path.join(filestore, "transforms", fname)))
-        self.filename = self.jsdat['epifile']
+        self.reffile = os.path.join(filestore, "references", self.jsdat['epifile'])
+    
+    def get_ref(self):
+        import nibabel
+        return nibabel.load(self.reffile).get_data()
     
     def __getattr__(self, attr):
         if attr in self.jsdat:
