@@ -1,12 +1,12 @@
 import os
 import json
-import tempfile
 import numpy as np
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 options = json.load(open(os.path.join(cwd, "defaults.json")))
 
 from db import surfs
+import view
 
 def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     '''mosaic(data, xy=(6, 5), trim=10, skip=1)
@@ -45,38 +45,20 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
 
     return output
 
-def detrend_volume_poly(data, polyorder = 10, mask=None):
-    from scipy.special import legendre
-    polys = [legendre(i) for i in range(polyorder)]
-    s = data.shape
-    b = data.ravel()[:,np.newaxis]
-    lins = np.mgrid[-1:1:s[0]*1j, -1:1:s[1]*1j, -1:1:s[2]*1j].reshape(3,-1)
-
-    if mask is not None:
-        lins = lins[:,mask.ravel() > 0]
-        b = b[mask.ravel() > 0]
-    
-    A = np.vstack([[p(i) for i in lins] for p in polys]).T
-    x, res, rank, sing = np.linalg.lstsq(A, b)
-
-    detrended = b.ravel() - np.dot(A, x).ravel()
-    if mask is not None:
-        filled = np.zeros_like(mask)
-        filled[mask > 0] = detrended
-        return filled
-    else:
-        return detrended.reshape(*s)
-
-def flatten(data, subject=None, xfmname=None):
+def flatten(data, subject=None, xfmname=None, **kwargs):
     import view
-    return view.quickflat(data, 
+    import matplotlib.pyplot as plt
+    data = view.quickflat(data, 
         subject or options['default_subject'],
         xfmname or options['default_xfm'])
+    plt.imshow(data, aspect='equal', **kwargs)
+    return data
 
 def epi_to_anat(data, subject=None, xfmname=None):
     '''/usr/share/fsl/4.1/bin/flirt -in /tmp/epidat.nii -applyxfm -init /tmp/coordmat.mat -out /tmp/realign.nii.gz -paddingsize 0.0 -interp trilinear -ref /tmp/anat.nii'''
     import nifti
     import shlex
+    import tempfile
     import subprocess as sp
     epifile = tempfile.mktemp(suffix=".nii")
     anatfile = tempfile.mktemp(suffix=".nii")

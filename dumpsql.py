@@ -4,6 +4,7 @@ import cStringIO
 import sqlite3
 
 import numpy as np
+import db
 
 def main():
     names = dict()
@@ -12,7 +13,7 @@ def main():
     cur = conn.cursor()
     fetched = cur.execute("SELECT subject, name, xfm, filename, type from transforms")
     for subj, xfmname, xfm, filename, tname in fetched.fetchall():
-        xfm = 
+        xfm = np.fromstring(xfm).reshape(4,4)
         if xfmname not in names:
             names[xfmname] = dict(epifile=filename, subject=subj)
 
