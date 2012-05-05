@@ -1,4 +1,5 @@
 import os
+import glob
 import time
 import json
 import shutil
@@ -11,14 +12,14 @@ filestore = options['file_store']
 dbfile = os.path.join(cwd, "database.sql")
 
 class SubjectDB(object):
-    def __init__(self, subj, conn, cur):
-        self.transforms = XfmDB(subj, conn, cur)
-        self.surfaces = SurfaceDB(subj, conn, cur)
+    def __init__(self, subj):
+        self.transforms = XfmDB(subj)
+        self.surfaces = SurfaceDB(subj)
         self.anatfile = None
-        query = "SELECT filename FROM surfaces WHERE subject=? and type=?"
-        data = cur.execute(query, (subj, "anatomical")).fetchone()
-        if data is not None:
-            self.anatfile = data[0]
+        anatname = "{subj}_anatomical_both.*".format(subj=subj)
+        anatname = glob.glob(os.path.join(filestore, "surfaces", anatname))
+        if len(anatname) > 0:
+            self.anatfile = anatname[0]
     
     def __dir__(self):
         names = ["transforms", "surfaces"]
@@ -29,7 +30,7 @@ class SubjectDB(object):
     def __getattr__(self, attr):
         if attr == "anatomical" and self.anatfile is not None:
             import nibabel
-            return nibabel.load(os.path.join(filestore, "surfaces",self.anatfile))
+            return nibabel.load(os.path.join(filestore, "surfaces", self.anatfile))
         raise AttributeError
 
 class SurfaceDB(object):
@@ -151,21 +152,9 @@ class XfmSet(object):
 
 class Database(object):
     def __init__(self):
-        self.conn = sqlite3.connect(dbfile)
-        self.conn.text_factory = str
-        self.cur = self.conn.cursor()
-        self._setup()
-        subjects = self.cur.execute("SELECT subject FROM surfaces").fetchall()
-        self.subjects = dict([(n[0], SubjectDB(n[0], self.conn, self.cur)) for n in subjects])
-    
-    def _setup(self):
-        schema = dict(surfaces='subject, type, hemisphere, filename, offset',
-                    transforms='subject, name, date, type, filename, xfm BLOB')
-        for table, types in schema.items():
-            c = self.cur.execute("select name from sqlite_master where name=?", (table,))
-            if c.fetchone() is None:
-                self.cur.execute("create table {0} ({1})".format(table, types))
-        self.conn.commit()
+        vtks = glob.glob(os.path.join(filestore, "surfaces", "*.vtk"))
+        subjs = set([os.path.split(vtk)[1].split('_')[0] for vtk in vtks])
+        self.subjects = []
     
     def __repr__(self):
         subjs = ", ".join(sorted(self.subjects.keys()))
@@ -183,49 +172,22 @@ class Database(object):
     
     def __dir__(self):
         return ["loadXfm","getXfm", "loadVTK", "getVTK"] + self.subjects.keys()
-
-    def loadVTK(self, vtkfile, subject, surftype, hemisphere, offset=None):
-        '''Load a vtk file into the database and copy it into the filestore'''
-        #assert os.path.splitext(vtkfile)[1] == ".vtk", "Not a VTK file"
-        assert hemisphere in ["lh", "rh", "both"], "Invalid hemisphere name, must be 'lh' or 'rh'"
-        if surftype == "fiducial":
-            offset = "0 0 0"
-        #Let's delete any possible duplicates
-        query = "DELETE FROM surfaces WHERE subject=? and type=? and hemisphere=?"
-        self.cur.execute(query, (subject, surftype, hemisphere))
-        self.conn.commit()
-
-        query = "INSERT into surfaces (subject, type, hemisphere, filename, offset) VALUES (?,?,?,?,?)"
-        ext = os.path.splitext(vtkfile)[1].lower()
-        filename = "{subj}_{type}_{hemi}{ext}".format(subj=subject, type=surftype, hemi=hemisphere, ext=ext)
-
-        self.cur.execute(query, (subject, surftype, hemisphere, filename, offset))
-        self.conn.commit()
-
-        #Copy the vtk file into the filestore
-        shutil.copy2(vtkfile, os.path.join(filestore, "surfaces", filename))
     
-    def loadXfm(self, subject, name, xfm, xfmtype="magnet", epifile=None, override=None):
+    def loadXfm(self, subject, name, xfm, xfmtype="magnet", epifile=None, override=False):
         """Load a transform into the surface database. If the transform exists already, update it
         If it does not exist, copy the reference epi into the filestore and insert."""
         assert xfmtype in ["magnet", "coord", "base"], "Unknown transform type"
-        query = "SELECT name FROM transforms WHERE subject=? and name=? and type=?"
-        result = self.cur.execute(query, (subject, name, xfmtype)).fetchone()
-        if result is not None:
-            #assert epifile is None, 
+        result = glob.glob(os.path.join(filestore, "transforms", "{name}.xfm".format(name=name)))
+        if len(result) > 0:
             if epifile is not None:
-                print "Cannot change reference epi for existing transform"
-            prompt = 'There is already a transform for this subject by the name of "%s". Overwrite? (Y/N)'%subject
-            if override is not None and override or \
-                override is None and raw_input(prompt).lower().strip() in ("y", "yes"):
+                raise ValueError("Cannot change reference epi for existing transform")
 
-                query = "UPDATE transforms SET xfm=? WHERE subject=? AND name=? and type=?"
-                data = (sqlite3.Binary(xfm.tostring()), subject, name, xfmtype)
-
-                self.cur.execute(query, data)
-                self.conn.commit()
-            else:
-                print "Override: skipping %s"%name
+            jsdict = json.load(open(result[0]))
+            if xfmtype in jsdict:
+                prompt = 'There is already a transform for this subject by the name of "%s". Overwrite? (Y/N)'%subject
+                if not override and raw_input(prompt).lower().strip() not in ("y", "yes"):
+                    print "Not saving..."
+                    return
         else:
             assert epifile is not None, "Please specify a reference epi"
             assert os.path.splitext(epifile)[1].lower() == ".nii", "Reference epi must be a nifti"
@@ -234,71 +196,41 @@ class Database(object):
             if not os.path.exists(fpath):
                 shutil.copy2(epifile, fpath)
 
-            fields = "subject,name,date,type,xfm,filename"
-            data = (subject, name, time.time(), xfmtype, sqlite3.Binary(xfm.tostring()), filename)
-            query = "INSERT into transforms ({fields}) values (?,?,?,?,?,?)".format(fields=fields)
-            self.cur.execute(query, data)
-            self.conn.commit()
+            jsdict = dict(epifile=filename, subject=subject)
+
+        jsdict[xfmtype] = xfm.tolist()
+        json.dump(jsdict, open(result[0], "w"), sort_keys=True, indent=4)
     
     def getXfm(self, subject, name, xfmtype="coord"):
-        query = "SELECT xfm, filename FROM transforms WHERE subject=? AND name=? and type=?"
-        data = self.cur.execute(query, (subject, name, xfmtype)).fetchone()
-        if data is None:
-            return
-        else:
-            xfm, filename = data
-            return np.fromstring(xfm).reshape(4,4), os.path.join(filestore, "references", filename)
+        fname = os.path.join(filestore, "transforms", "{name}.xfm".format(name=name))
+        xfmdict = json.load(open(fname))
+        assert xfmdict['subject'] == subject, "Incorrect subject for the name"
+        return xfmdict[xfmtype], xfmdict['epifile']
 
     def getVTK(self, subject, type, hemisphere="both"):
         import vtkutils
-        query = "SELECT filename, offset FROM surfaces WHERE subject=? AND type=? AND hemisphere=?"
-        if self.cur.execute(query, (subject, type, "lh")).fetchone() is None:
-            #Subject / type does not exist in the database
-            raise ValueError("Cannot find subject/type in the database")
+        fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
 
         if hemisphere == "both":
-            lh, loff = self.cur.execute(query, (subject, type, 'lh')).fetchone()
-            rh, roff = self.cur.execute(query, (subject, type, 'rh')).fetchone()
-            loff, roff = map(_convert_offset, [loff, roff])
+            lh = fname.format(subj=subject, type=type, hemi="lh")
+            rh = fname.format(subj=subject, type=type, hemi="rh")
             lpts, lpolys, lnorms = vtkutils.read(os.path.join(filestore, "surfaces", lh))
             rpts, rpolys, rnorms = vtkutils.read(os.path.join(filestore, "surfaces", rh))
             
-            if loff is None and roff is None:
-                lpts[:,0] -= lpts.max(0)[0]
-                rpts[:,0] -= rpts.min(0)[0]
-            if loff is not None:
-                lpts += loff
-            if roff is not None:
-                rpts += roff
+            lpts[:,0] -= lpts.max(0)[0]
+            rpts[:,0] -= rpts.min(0)[0]
             
             rpolys += len(lpts)
             return np.vstack([lpts, rpts]), np.vstack([lpolys, rpolys]), np.vstack([lnorms, rnorms])
         else:
-            d, offset = self.cur.execute(query, (subject, type, hemisphere)).fetchone()
-            pts, polys, norms = vtkutils.read(os.path.join(filestore, "surfaces", d))
-            if offset is not None:
-                pts += _convert_offset(offset)
-            return pts, polys, norms
+            if hemisphere.lower() in ("lh", "left"):
+                hemi = "lh"
+            elif hemisphere.lower() in ("rh", "right"):
+                hemi = "rh"
+            else:
+                raise TypeError("Not a valid hemisphere name")
 
-def _convert_offset(offset):
-    if offset is not None and len(offset) > 0:
-        return np.array([float(d) for d in offset.split()])
+            return vtkutils.read(fname.format(subj=subject, type=type, hemi=hemi))
+
 
 surfs = Database()
-
-# if __name__ == "__main__":
-#     import argparse
-#     parser = argparse.ArgumentParser(description="Load a directory of flatmaps into the database")
-#     parser.add_argument("subject", type=str, help="Subject name (two letter abbreviation)")
-#     parser.add_argument("vtkdir", type=str, help="Directory with VTK's")
-#     args = parser.parse_args()
-
-
-#     #surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', filename=epi, override=True)
-#     #surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', filename=epi, override=True)
-    
-#     try:
-#         surfs.loadVTKdir(args.vtkdir, args.subject)
-#         print "Success!"
-#     except Exception, e:
-#         print "Error with processing: ", e
