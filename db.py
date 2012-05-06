@@ -146,7 +146,7 @@ class Database(object):
             if epifile is not None:
                 print "Cannot change reference epi for existing transform"
 
-            jsdict = json.load(open(result[0]))
+            jsdict = json.load(open(fname))
             if xfmtype in jsdict:
                 prompt = 'There is already a transform for this subject by the name of "%s". Overwrite? (Y/N)'%subject
                 if not override and raw_input(prompt).lower().strip() not in ("y", "yes"):
