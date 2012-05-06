@@ -144,7 +144,7 @@ class Database(object):
         fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
         if os.path.exists(fname):
             if epifile is not None:
-                print ValueError("Cannot change reference epi for existing transform")
+                print "Cannot change reference epi for existing transform"
 
             jsdict = json.load(open(result[0]))
             if xfmtype in jsdict:

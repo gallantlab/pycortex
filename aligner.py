@@ -244,8 +244,9 @@ class Align(HasTraits):
         elif xfmtype == "magnet":
             self.startxfm = np.dot(np.dot(base, np.linalg.inv(self.affine)), xfm)
         else:
+            print "using xfmtype %s"%xfmtype
             self.startxfm = xfm
-            
+
         self.center = self.spacing*nii.get_shape()[:3] / 2 + self.origin
 
         self.epi_orig = epi - epi.min()
