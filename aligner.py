@@ -663,7 +663,7 @@ class Align(HasTraits):
                 title='Aligner'
             )
 
-def align(subject, xfmname, epi=None, xfm=None):
+def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
     import db
     data = db.surfs.getXfm(subject, xfmname, xfmtype='magnet')
     if data is None:
@@ -679,7 +679,7 @@ def align(subject, xfmname, epi=None, xfm=None):
         dbxfm, epi = data
         data = db.surfs.getVTK(subject, 'fiducial')
         assert data is not None, "Cannot find subject"
-        m = Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm)
+        m = Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
         m.configure_traits()
     
     magnet = m.get_xfm("magnet")
