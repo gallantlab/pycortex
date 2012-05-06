@@ -243,13 +243,13 @@ class Align(HasTraits):
             self.startxfm = np.dot(base, np.linalg.inv(self.affine))
         else:
             self.startxfm = np.dot(np.dot(base, np.linalg.inv(self.affine)), xfm)
-        self.center = self.spacing*nii.get_shape() / 2 + self.origin
+        self.center = self.spacing*nii.get_shape()[:3] / 2 + self.origin
 
         self.epi_orig = epi - epi.min()
         self.epi_orig /= self.epi_orig.max()
         self.epi_orig *= 2
         self.epi_orig -= 1
-        self.epi = self.epi_orig.copy()
+        self.epi = self.epi_orig.copy().squeeze()
 
         self.pts, self.polys = pts, polys
 

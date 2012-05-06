@@ -167,6 +167,8 @@ class Database(object):
     
     def getXfm(self, subject, name, xfmtype="coord"):
         fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
+        if not os.path.exists(fname):
+            return None
         xfmdict = json.load(open(fname))
         assert xfmdict['subject'] == subject, "Incorrect subject for the name"
         return np.array(xfmdict[xfmtype]), os.path.join(filestore, "references", xfmdict['epifile'])
