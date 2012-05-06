@@ -141,8 +141,8 @@ class Database(object):
         """Load a transform into the surface database. If the transform exists already, update it
         If it does not exist, copy the reference epi into the filestore and insert."""
         assert xfmtype in ["magnet", "coord", "base"], "Unknown transform type"
-        result = glob.glob(os.path.join(filestore, "transforms", "{name}.xfm".format(name=name)))
-        if len(result) > 0:
+        fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(name=name))
+        if os.path.exists(fname):
             if epifile is not None:
                 raise ValueError("Cannot change reference epi for existing transform")
 
@@ -163,7 +163,7 @@ class Database(object):
             jsdict = dict(epifile=filename, subject=subject)
 
         jsdict[xfmtype] = xfm.tolist()
-        json.dump(jsdict, open(result[0], "w"), sort_keys=True, indent=4)
+        json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
     
     def getXfm(self, subject, name, xfmtype="coord"):
         fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
