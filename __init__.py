@@ -26,7 +26,8 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     '''
     assert len(data.shape) == 3, "Are you sure this is volumetric?"
     dat = data.copy()
-    dat = dat[:, trim:-trim, trim:-trim]
+    if trim>0:
+        dat = dat[:, trim:-trim, trim:-trim]
     d = dat.shape[1:]
     output = np.zeros(d*np.array(xy))
     
@@ -116,7 +117,7 @@ def get_cortical_mask(subject, xfmname, shape=(31, 100, 100)):
     return data
 
 
-def get_vox_dist(subject, xfmname, shape=(31, 100, 100), parts=100):
+def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
     '''Get the distance (in mm) from each functional voxel to the closest
     point on the surface.
 
