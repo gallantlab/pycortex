@@ -1,12 +1,12 @@
 import os
 import json
-import tempfile
 import numpy as np
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 options = json.load(open(os.path.join(cwd, "defaults.json")))
 
 from db import surfs
+import view
 
 def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     '''mosaic(data, xy=(6, 5), trim=10, skip=1)
@@ -46,38 +46,20 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
 
     return output
 
-def detrend_volume_poly(data, polyorder = 10, mask=None):
-    from scipy.special import legendre
-    polys = [legendre(i) for i in range(polyorder)]
-    s = data.shape
-    b = data.ravel()[:,np.newaxis]
-    lins = np.mgrid[-1:1:s[0]*1j, -1:1:s[1]*1j, -1:1:s[2]*1j].reshape(3,-1)
-
-    if mask is not None:
-        lins = lins[:,mask.ravel() > 0]
-        b = b[mask.ravel() > 0]
-    
-    A = np.vstack([[p(i) for i in lins] for p in polys]).T
-    x, res, rank, sing = np.linalg.lstsq(A, b)
-
-    detrended = b.ravel() - np.dot(A, x).ravel()
-    if mask is not None:
-        filled = np.zeros_like(mask)
-        filled[mask > 0] = detrended
-        return filled
-    else:
-        return detrended.reshape(*s)
-
-def flatten(data, subject=None, xfmname=None):
+def flatten(data, subject=None, xfmname=None, **kwargs):
     import view
-    return view.quickflat(data, 
+    import matplotlib.pyplot as plt
+    data = view.quickflat(data, 
         subject or options['default_subject'],
         xfmname or options['default_xfm'])
+    plt.imshow(data, aspect='equal', **kwargs)
+    return data
 
 def epi_to_anat(data, subject=None, xfmname=None):
     '''/usr/share/fsl/4.1/bin/flirt -in /tmp/epidat.nii -applyxfm -init /tmp/coordmat.mat -out /tmp/realign.nii.gz -paddingsize 0.0 -interp trilinear -ref /tmp/anat.nii'''
     import nifti
     import shlex
+    import tempfile
     import subprocess as sp
     epifile = tempfile.mktemp(suffix=".nii")
     anatfile = tempfile.mktemp(suffix=".nii")
@@ -97,7 +79,7 @@ def epi_to_anat(data, subject=None, xfmname=None):
 
     cmd = "fsl4.1-flirt -in {epi} -applyxfm -init {xfm} -out {out} -paddingsize 0.0 -interp trilinear -ref {anat}"
     sp.Popen(shlex.split(cmd.format(epi=epifile, xfm=xfmfile, anat=anatfile, out=outfile))).wait()
-    output = nifti.NiftiImage(outfile).data
+    output = nifti.NiftiImage(outfile).data.copy()
 
     os.unlink(epifile)
     os.unlink(anatfile)
@@ -150,3 +132,36 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
     dist.shape = shape
     argdist.shape = shape
     return dist, argdist
+
+def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
+    '''Return a bitmask for the given ROIs'''
+    import svgroi
+    fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
+    flat, polys, norms = surfs.getVTK(subject, "flat")
+    valid = np.unique(polys)
+    flat, fiducial = flat[valid], fiducial[valid]
+    
+    wpts = np.append(fiducial, np.ones((len(fiducial), 1)), axis=-1).T
+    xfm, epi = surfs.getXfm(subject, xfmname)
+    coords = np.dot(xfm, wpts)[:3].T.round().astype(int)
+
+    svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
+    rois = svgroi.ROIpack(flat[:,:2], svgfile)
+
+    #return rois, flat, coords
+
+    if roi is None:
+        roi = rois.names
+
+    if isinstance(roi, str):
+        mask = np.zeros(shape, dtype=bool)
+        mask.T[tuple(coords[rois.get_roi(roi)].T)] = True
+        return mask
+    elif isinstance(roi, list):
+        assert len(roi) < 64, "Too many rois for roimask, select a few"
+        idx = dict()
+        mask = np.zeros(shape, dtype=np.uint64)
+        for i, name in enumerate(roi):
+            idx[name] = 1<<i
+            mask.T[tuple(coords[rois.get_roi(name)].T)] |= 1<<i
+        return mask, idx

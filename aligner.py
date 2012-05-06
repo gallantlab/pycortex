@@ -3,8 +3,10 @@ import os
 import numpy as np
 import nibabel
 
+import utils
+
 try:
-    from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, on_trait_change
+    from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, Int, on_trait_change
     from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
     from tvtk.api import tvtk
@@ -15,7 +17,7 @@ try:
     from mayavi.core.api import PipelineBase, Source, Filter, Module
     from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 except ImportError:
-    from enthought.traits.api import HasTraits, List, Instance, Array, Bool, Dict, Float, Enum, Range, Color, on_trait_change
+    from enthought.traits.api import HasTraits, List, Instance, Array, Bool, Dict, Float, Enum, Range, Color, Int, on_trait_change
     from enthought.traits.ui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
     from enthought.tvtk.api import tvtk
@@ -182,12 +184,14 @@ class Align(HasTraits):
     # The position of the view
     position = Array(shape=(3,))
     brightness = Range(-1., 1., value=0.)
-    contrast = Range(0., 2., value=1.)
+    contrast = Range(0., 3., value=1.)
     opacity = Range(0., 1.)
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
     outlines = List
     ptcolor = Color(value="navy")
+    epi_filter = Enum(None, "median", "gradient")
+    filter_strength = Range(1, 20, value=3)
 
     # The 4 views displayed
     scene3d = Instance(MlabSceneModel, ())
@@ -229,7 +233,7 @@ class Align(HasTraits):
             (epi with slice affine)
         '''
         nii = nibabel.load(epi)
-        epi = nii.get_data()
+        epi = nii.get_data().astype(float)
         self.affine = nii.get_affine()
         base = nii.get_header().get_base_affine()
         self.base = base
@@ -241,10 +245,11 @@ class Align(HasTraits):
             self.startxfm = np.dot(np.dot(base, np.linalg.inv(self.affine)), xfm)
         self.center = self.spacing*nii.get_shape() / 2 + self.origin
 
-        self.epi = epi - epi.min()
-        self.epi /= self.epi.max()
-        self.epi *= 2
-        self.epi -= 1
+        self.epi_orig = epi - epi.min()
+        self.epi_orig /= self.epi_orig.max()
+        self.epi_orig *= 2
+        self.epi_orig -= 1
+        self.epi = self.epi_orig.copy()
 
         self.pts, self.polys = pts, polys
 
@@ -557,7 +562,7 @@ class Align(HasTraits):
         flip = np.eye(4)
         flip[2,2] = -1
         mat = self.xfm.transform.matrix.to_array()
-        self.set_xfm(np.dot(mat, flip))
+        self.set_xfm(np.dot(mat, flip), "base")
     
     @on_trait_change("flip_lr")
     def update_fliplr(self):
@@ -565,7 +570,7 @@ class Align(HasTraits):
         flip = np.eye(4)
         flip[0,0] = -1
         mat = self.xfm.transform.matrix.to_array()
-        self.set_xfm(np.dot(mat, flip))
+        self.set_xfm(np.dot(mat, flip), "base")
     
     @on_trait_change("flip_fb")
     def update_flipfb(self):
@@ -573,7 +578,7 @@ class Align(HasTraits):
         flip = np.eye(4)
         flip[1,1] = -1
         mat = self.xfm.transform.matrix.to_array()
-        self.set_xfm(np.dot(mat, flip))
+        self.set_xfm(np.dot(mat, flip), "base")
     
     @on_trait_change("ptcolor")
     def update_ptcolor(self):
@@ -585,6 +590,18 @@ class Align(HasTraits):
             slab.children[0].children[0].actor.property.color = color
             outline.children[0].children[0].actor.property.color = color
         self.disable_render = False
+    
+    @on_trait_change("epi_filter, filter_strength")
+    def update_epifilter(self):
+        if self.epi_filter is None:
+            self.epi = self.epi_orig.copy()
+        elif self.epi_filter == "median":
+            fstr = np.floor(self.filter_strength / 2)*2+1
+            self.epi = utils.detrend_volume_median(self.epi_orig.T, fstr).T
+        elif self.epi_filter == "gradient":
+            self.epi = utils.detrend_volume_gradient(self.epi_orig.T, self.filter_strength).T
+        
+        self.update_brightness()
     
     def get_xfm(self, xfmtype="magnet"):
         if xfmtype in ["anat->epicoord", "coord"]:
@@ -629,14 +646,16 @@ class Align(HasTraits):
                             editor=SceneEditor(scene_class=ThreeDScene)),
                        show_labels=False,
                   ),
-                  Group("brightness", "contrast", "_", "opacity", "_",
+                  Group("brightness", "contrast", "epi_filter", 
+                        Item('filter_strength', visible_when="epi_filter is not None"),
+                        "_", "opacity", "_",
                         Item('colormap',
                             editor=ImageEnumEditor(values=lut_manager.lut_mode_list(),
                                               cols=6,
                                               path=lut_manager.lut_image_dir)),
                         "fliplut",
                         "_", "flip_ud", "flip_lr", "flip_fb", 
-                        "_", Item('ptcolor', editor=ColorEditor())
+                        "_", Item('ptcolor', editor=ColorEditor()),
 
                   )
                 ), 
