@@ -408,22 +408,25 @@ class Align(HasTraits):
         width = np.min(width) * 0.5
 
         rotaxis = ['rotate_x', 'rotate_y', 'rotate_z']
+        axord = (self.xfm.transform.matrix.to_array()**2).argmax(0)[:-1]
         def handlemove(pos, angle, radius):
+            axnum = axord[this_axis_number]
             self._last_transform = self.xfm.transform.matrix.to_array()
             np.save("/tmp/last_xfm.npy", self._last_transform)
 
-            signs = np.sign(np.diag(self.xfm.transform.matrix.to_array()))
+            signs = np.sign(self.xfm.transform.matrix.to_array()[range(3), axord])
             if this_axis_number == 1:
                 trans = np.insert(pos[:2][::-1], this_axis_number, 0)
             else:
                 trans = np.insert(pos[:2], this_axis_number, 0)
-            trans *= signs[:-1]
-            rot = np.degrees(angle)*-signs[this_axis_number]
+            trans = (trans * signs)[axord]
+            
+            rot = np.degrees(angle)*-signs[axnum]
             scale = np.repeat(radius, 3)
-            scale[this_axis_number] = 1
+            scale[axnum] = 1
 
             self.xfm.transform.translate(trans)
-            getattr(self.xfm.transform, rotaxis[this_axis_number])(rot)
+            getattr(self.xfm.transform, rotaxis[axnum])(rot)
             self.xfm.transform.scale(scale)
             self.xfm.widget.set_transform(self.xfm.filter.transform)
             self.xfm.update_pipeline()
@@ -667,7 +670,7 @@ class Align(HasTraits):
                 title='Aligner'
             )
 
-def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
+def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
     import db
     data = db.surfs.getXfm(subject, xfmname, xfmtype='magnet')
     if data is None:
@@ -675,17 +678,17 @@ def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
         if data is not None:
             dbxfm, epi = data
         assert epi is not None, "Unknown transform"
-        data = db.surfs.getVTK(subject, 'fiducial')
-        assert data is not None, "Cannot find subject"
-        m = Align(data[0], data[1], epi, xfm=xfm)
-        m.configure_traits()
     else:
         dbxfm, epi = data
-        data = db.surfs.getVTK(subject, 'fiducial')
-        assert data is not None, "Cannot find subject"
-        m = Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
-        m.configure_traits()
-    
+
+    data = db.surfs.getVTK(subject, 'fiducial')
+    assert data is not None, "Cannot find subject"
+    return Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
+
+def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
+    m = get_aligner(subject, xfmname, epi=epi, xfm=xfm, xfmtype=xfmtype)
+    m.configure_traits()
+
     magnet = m.get_xfm("magnet")
     shortcut = m.get_xfm("coord")
     epi = os.path.abspath(epi)
