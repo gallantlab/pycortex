@@ -1,5 +1,4 @@
 import os
-import json
 import binascii
 import tempfile
 import cStringIO
@@ -44,9 +43,8 @@ except ImportError:
     from enthought.mayavi.sources.image_reader import ImageReader
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
-options = json.load(open(os.path.join(cwd, "defaults.json")))
+from db import options
 default_texres = options['texture_res'] if 'texure_res' in options else 1024.
-default_lw = options['line_width'] if 'line_width' in options else 3.
 default_labelsize = options['label_size'] if 'label_size' in options else 24
 default_renderheight = options['renderheight'] if 'renderheight' in options else 1024.
 default_labelhide = options['labelhide'] if 'labelhide' in options else True

@@ -198,5 +198,8 @@ class Database(object):
 
             return vtkutils.read(fname.format(subj=subject, type=type, hemi=hemi))
 
+    def get_coords(self, subject, xfm, hemisphere="both"):
+        pass
+
 
 surfs = Database()

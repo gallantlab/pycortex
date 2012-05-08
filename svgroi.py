@@ -7,11 +7,14 @@ import traits.api as traits
 from scipy.interpolate import griddata
 from matplotlib.pyplot import imread
 
+from db import options
+default_lw = options['line_width'] if 'line_width' in options else 3.
+
 class ROI(traits.HasTraits):
     name = traits.Str
 
     hide = traits.Bool(False)
-    linewidth = traits.Float(5)
+    linewidth = traits.Float(default_lw)
     linecolor = traits.Tuple((0.,0.,0.,1.))
     roifill = traits.Tuple((0.,0.,0.,0.2))
 
@@ -117,6 +120,8 @@ class ROIpack(traits.HasTraits):
         for r in _find_layer(self.svg, "rois").getElementsByTagName("g"):
             roi = ROI(self, r)
             self.rois[roi.name] = roi
+
+        self.update_style()
 
     def add_roi(self, name, pngdata):
         #self.svg deletes the images -- we want to save those, so let's load it again
