@@ -711,17 +711,12 @@ def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
             checked = True
             if resp in ["y", "yes"]:
                 print "Saving..."
-<<<<<<< HEAD
                 try:
+                    import db
                     db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi, override=True)
                     db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', epifile=epi, override=True)
                 except Exception as e:
                     print "AN ERROR OCCURRED, THE TRANSFORM WAS NOT SAVED: %s"%e
-=======
-                import db
-                db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi, override=True)
-                db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', epifile=epi, override=True)
->>>>>>> ac7d647699c99dee50e24f8f7a5221c656498d21
                 print "Complete!"
             else:
                 print "Cancelled... %s"%resp

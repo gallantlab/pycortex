@@ -74,10 +74,10 @@ def _tcoords(subject, hemisphere="both"):
     pts /= pts.max(0)
     if hemisphere == "both":
         return pts
-    elif hemisphere == "rh":
+    elif hemisphere in ["rh", "right"]:
         h, polys, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
         return pts[-len(h):]
-    elif hemisphere == "lh":
+    elif hemisphere == ["lh", "left"]:
         h, polys, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
         return pts[len(h):]
 

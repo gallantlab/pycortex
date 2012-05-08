@@ -55,7 +55,7 @@ def flatten(data, subject=None, xfmname=None, **kwargs):
     plt.imshow(data, aspect='equal', **kwargs)
     return data
 
-def epi_to_anat(data, subject=None, xfmname=None):
+def epi_to_anat(data, subject=None, xfmname=None, filename=None):
     '''/usr/share/fsl/4.1/bin/flirt -in /tmp/epidat.nii -applyxfm -init /tmp/coordmat.mat -out /tmp/realign.nii.gz -paddingsize 0.0 -interp trilinear -ref /tmp/anat.nii'''
     import nifti
     import shlex
@@ -64,7 +64,8 @@ def epi_to_anat(data, subject=None, xfmname=None):
     epifile = tempfile.mktemp(suffix=".nii")
     anatfile = tempfile.mktemp(suffix=".nii")
     xfmfile = tempfile.mktemp()
-    outfile = tempfile.mktemp(suffix=".nii")
+    if filename is None:
+        filename = tempfile.mktemp(suffix=".nii")
 
     #load up relevant data, get transforms
     anatdat = surfs.subjects[subject].anatomical
@@ -78,9 +79,9 @@ def epi_to_anat(data, subject=None, xfmname=None):
     nifti.NiftiImage(np.array(anatdat.get_data()).T).save(anatfile)
 
     cmd = "fsl4.1-flirt -in {epi} -applyxfm -init {xfm} -out {out} -paddingsize 0.0 -interp trilinear -ref {anat}"
-    sp.Popen(shlex.split(cmd.format(epi=epifile, xfm=xfmfile, anat=anatfile, out=outfile))).wait()
-    output = nifti.NiftiImage(outfile).data.copy()
-
+    sp.Popen(shlex.split(cmd.format(epi=epifile, xfm=xfmfile, anat=anatfile, out=filename))).wait()
+    output = nifti.NiftiImage(filename).data.copy()
+    print "Saving to %s"%filename
     os.unlink(epifile)
     os.unlink(anatfile)
     os.unlink(xfmfile)
