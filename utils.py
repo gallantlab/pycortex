@@ -10,7 +10,7 @@ def unmask(mask, data):
     mask : array_like or str or docdb.orm.ImageDoc
         The data mask -- if string, assume it's the experiment name and query the
         BrainMaskFSL document. Otherwise, stuff data into mask
-    data : array_lie
+    data : array_like
         Actual MRI data to unmask
     '''
     #assert len(data.shape) == 2, "Are you sure this is masked data?"
