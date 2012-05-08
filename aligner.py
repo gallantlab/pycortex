@@ -139,12 +139,14 @@ class ThreeDScene(MayaviScene):
         elif key == "7":
             self.aligner.scene3d.camera.position = focus + [0, 1e-6, self.state[2]*500]
             self.state[2] = -self.state[2]
-        elif key == "\x1a" and evt.CmdDown() and hasattr(self.aligner, "_last_transform"):
-            self.aligner.xfm.transform.set_matrix(self.aligner._last_transform.ravel())
+        elif key == "\x1a" and evt.CmdDown() and len(self.aligner._undolist):
+            self.aligner._redo = self.aligner._undolist.pop()
+            self.aligner.xfm.transform.set_matrix(self.aligner._undolist[-1].ravel())
             self.aligner.xfm.widget.set_transform(self.aligner.xfm.transform)
             self.aligner.xfm.update_pipeline()
             self.aligner.update_slab()
         else:
+            print evt.key
             super(ThreeDScene, self).OnKeyDown(evt)
         self.aligner.scene3d.renderer.reset_camera_clipping_range()
         self.aligner.scene3d.render()
@@ -234,6 +236,8 @@ class Align(HasTraits):
         '''
         self.load_epi(epi, xfm, xfmtype)
         self.pts, self.polys = pts, polys
+        self._undolist = []
+        self._redo = None
         super(Align, self).__init__(**traits)
         
         # Force the creation of the image_plane_widgets:
@@ -268,7 +272,6 @@ class Align(HasTraits):
         self.epi_orig *= 2
         self.epi_orig -= 1
         self.epi = self.epi_orig.copy()
-        
 
     #---------------------------------------------------------------------------
     # Default values
@@ -300,9 +303,10 @@ class Align(HasTraits):
     def _xfm_default(self):
         xfm = mlab.pipeline.transform_data(self.surf_src, figure=self.scene3d.mayavi_scene)
         def savexfm(info, evt):
-            self._last_transform = xfm.transform.matrix.to_array()
-            np.save("/tmp/last_xfm.npy", self._last_transform)
-        xfm.widget.add_observer("StartInteractionEvent", savexfm)
+            self._undolist.append(xfm.transform.matrix.to_array())
+            np.save("/tmp/last_xfm.npy", self.get_xfm())
+
+        xfm.widget.add_observer("EndInteractionEvent", savexfm)
         xfm.widget.add_observer("EndInteractionEvent", self.update_slab)
         xfm.transform.set_matrix(self.startxfm.ravel())
         xfm.widget.set_transform(xfm.transform)
@@ -415,26 +419,29 @@ class Align(HasTraits):
         width = np.min(width) * 0.5
 
         rotaxis = ['rotate_x', 'rotate_y', 'rotate_z']
+        axord = (self.xfm.transform.matrix.to_array()**2).argmax(0)[:-1]
         def handlemove(pos, angle, radius):
-            self._last_transform = self.xfm.transform.matrix.to_array()
-            np.save("/tmp/last_xfm.npy", self._last_transform)
-
-            signs = np.sign(np.diag(self.xfm.transform.matrix.to_array()))
+            axnum = axord[this_axis_number]
+            signs = np.sign(self.xfm.transform.matrix.to_array()[range(3), axord])
             if this_axis_number == 1:
                 trans = np.insert(pos[:2][::-1], this_axis_number, 0)
             else:
                 trans = np.insert(pos[:2], this_axis_number, 0)
-            trans *= signs[:-1]
-            rot = np.degrees(angle)*-signs[this_axis_number]
+            trans = (trans * signs)[axord]
+            
+            rot = np.degrees(angle)*-signs[axnum]
             scale = np.repeat(radius, 3)
-            scale[this_axis_number] = 1
+            scale[axnum] = 1
 
             self.xfm.transform.translate(trans)
-            getattr(self.xfm.transform, rotaxis[this_axis_number])(rot)
+            getattr(self.xfm.transform, rotaxis[axnum])(rot)
             self.xfm.transform.scale(scale)
             self.xfm.widget.set_transform(self.xfm.filter.transform)
             self.xfm.update_pipeline()
             self.update_slab()
+
+            self._undolist.append(self.xfm.transform.matrix.to_array())
+            np.save("/tmp/last_xfm.npy", self.get_xfm())
 
         handle = RotationWidget(scene.mayavi_scene, handlemove, radius=width, pos=center)
         setattr(self, "handle_%s"%axis_name, handle)
@@ -674,7 +681,7 @@ class Align(HasTraits):
                 title='Aligner'
             )
 
-def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
+def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
     import db
     data = db.surfs.getXfm(subject, xfmname, xfmtype='magnet')
     if data is None:
@@ -682,20 +689,20 @@ def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
         if data is not None:
             dbxfm, epi = data
         assert epi is not None, "Unknown transform"
-        data = db.surfs.getVTK(subject, 'fiducial')
-        assert data is not None, "Cannot find subject"
-        m = Align(data[0], data[1], epi, xfm=xfm)
-        m.configure_traits()
     else:
         dbxfm, epi = data
-        data = db.surfs.getVTK(subject, 'fiducial')
-        assert data is not None, "Cannot find subject"
-        m = Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
-        m.configure_traits()
-    
+
+    data = db.surfs.getVTK(subject, 'fiducial')
+    assert data is not None, "Cannot find subject"
+    return Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
+
+def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
+    m = get_aligner(subject, xfmname, epi=epi, xfm=xfm, xfmtype=xfmtype)
+    m.configure_traits()
+
     magnet = m.get_xfm("magnet")
     shortcut = m.get_xfm("coord")
-    epi = os.path.abspath(epi)
+    epi = os.path.abspath(m.epifile.get_filename())
 
     checked = False
     while not checked:
@@ -704,11 +711,17 @@ def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
             checked = True
             if resp in ["y", "yes"]:
                 print "Saving..."
+<<<<<<< HEAD
                 try:
                     db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi, override=True)
                     db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', epifile=epi, override=True)
                 except Exception as e:
                     print "AN ERROR OCCURRED, THE TRANSFORM WAS NOT SAVED: %s"%e
+=======
+                import db
+                db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi, override=True)
+                db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', epifile=epi, override=True)
+>>>>>>> ac7d647699c99dee50e24f8f7a5221c656498d21
                 print "Complete!"
             else:
                 print "Cancelled... %s"%resp
