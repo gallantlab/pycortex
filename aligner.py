@@ -232,8 +232,22 @@ class Align(HasTraits):
             The initial 4x4 rotation matrix into magnet space 
             (epi with slice affine)
         '''
-        nii = nibabel.load(epi)
-        epi = nii.get_data().astype(float)
+        self.load_epi(epi, xfm, xfmtype)
+        self.pts, self.polys = pts, polys
+        super(Align, self).__init__(**traits)
+        
+        # Force the creation of the image_plane_widgets:
+        self.ipw_3d_x
+        self.ipw_3d_y
+        self.ipw_3d_z
+
+    def load_epi(self, epifilename, xfm=None, xfmtype="magnet"):
+        """Loads the EPI image from the specified epifilename.
+        """
+        nii = nibabel.load(epifilename)
+        epi = nii.get_data().astype(float).squeeze()
+        if epi.ndim>3:
+            epi = epi[:,:,:,0]
         self.affine = nii.get_affine()
         base = nii.get_header().get_base_affine()
         self.base = base
@@ -253,15 +267,8 @@ class Align(HasTraits):
         self.epi_orig /= self.epi_orig.max()
         self.epi_orig *= 2
         self.epi_orig -= 1
-        self.epi = self.epi_orig.copy().squeeze()
-
-        self.pts, self.polys = pts, polys
-
-        super(Align, self).__init__(**traits)
-        # Force the creation of the image_plane_widgets:
-        self.ipw_3d_x
-        self.ipw_3d_y
-        self.ipw_3d_z
+        self.epi = self.epi_orig.copy()
+        
 
     #---------------------------------------------------------------------------
     # Default values
@@ -697,8 +704,11 @@ def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
             checked = True
             if resp in ["y", "yes"]:
                 print "Saving..."
-                db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi, override=True)
-                db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', epifile=epi, override=True)
+                try:
+                    db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi, override=True)
+                    db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', epifile=epi, override=True)
+                except Exception as e:
+                    print "AN ERROR OCCURRED, THE TRANSFORM WAS NOT SAVED: %s"%e
                 print "Complete!"
             else:
                 print "Cancelled... %s"%resp
