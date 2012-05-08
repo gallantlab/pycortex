@@ -368,10 +368,24 @@ class Mixer(HasTraits):
             return (width, height), pngdata
 
     def add_roi(self, name):
-        assert self.svgfile is not None, "Cannot find current ROI svg"
-            
-        sp.call(["inkscape",self.svgfile])
-        self._svgfile_changed()
+        '''Opens Inkscape and adds currently displayed data as a new image layer.
+        When Inkscape closes, the SVG overlay is reloaded.
+        '''
+        ## First get a PNG of the current scene w/out labels
+        last_rois = self.showrois
+        self.showrois = False
+        (w,h),pngdata = self.saveflat()
+        self.showrois = last_rois
+
+        ## Then call add_roi of our SVG object to add the new image layer
+        self.rois.add_roi(name, pngdata)
+
+        ## Then open inkscape
+        sp.call(["inkscape", self.rois.svgfile])
+
+        ## Finally update the ROI overlay based on the new svg
+        self.rois.reload()
+        self.update_texture()
     
     @on_trait_change("rois, texres")
     def update_texture(self):
