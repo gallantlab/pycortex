@@ -10,6 +10,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 import svgroi
+from db import options
 
 try:
     from traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Range, Any, Color,Enum, Callable, Tuple, Button, on_trait_change
@@ -43,7 +44,6 @@ except ImportError:
     from enthought.mayavi.sources.image_reader import ImageReader
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
-from db import options
 default_texres = options['texture_res'] if 'texure_res' in options else 1024.
 default_labelsize = options['label_size'] if 'label_size' in options else 24
 default_renderheight = options['renderheight'] if 'renderheight' in options else 1024.
@@ -177,16 +177,7 @@ class Mixer(HasTraits):
         self.figure.renderer.reset_camera_clipping_range()
         self._update_label_pos()
         self.figure.camera.focal_point = pts.mean(0)
-        #self.figure.render()
         self.figure.scene.disable_render = False
-        #self.figure.render()
-        '''
-        def func():
-            def update():
-                pass
-            GUI.invoke_later(update)
-        threading.Thread(target=func).start()
-        '''
     
     def _points_changed(self):
         pts = self.points(0)
