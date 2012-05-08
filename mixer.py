@@ -50,7 +50,7 @@ except ImportError:
 cwd = os.path.split(os.path.abspath(__file__))[0]
 options = json.load(open(os.path.join(cwd, "defaults.json")))
 default_texres = options['texture_res'] if 'texure_res' in options else 1024.
-default_lw = options['line_width'] if 'line_width' in options else 3.
+#default_lw = options['line_width'] if 'line_width' in options else 3.
 default_labelsize = options['label_size'] if 'label_size' in options else 24
 default_renderheight = options['renderheight'] if 'renderheight' in options else 1024.
 default_labelhide = options['labelhide'] if 'labelhide' in options else True
@@ -373,10 +373,24 @@ class Mixer(HasTraits):
             return (width, height), pngdata
 
     def add_roi(self, name):
-        assert self.svgfile is not None, "Cannot find current ROI svg"
-            
-        sp.call(["inkscape",self.svgfile])
-        self._svgfile_changed()
+        '''Opens Inkscape and adds currently displayed data as a new image layer.
+        When Inkscape closes, the SVG overlay is reloaded.
+        '''
+        ## First get a PNG of the current scene w/out labels
+        last_rois = self.showrois
+        self.showrois = False
+        (w,h),pngdata = self.saveflat()
+        self.showrois = last_rois
+
+        ## Then call add_roi of our SVG object to add the new image layer
+        self.rois.add_roi(name, pngdata)
+
+        ## Then open inkscape
+        sp.call(["inkscape", self.rois.svgfile])
+
+        ## Finally update the ROI overlay based on the new svg
+        self.rois.reload()
+        self.update_texture()
     
     @on_trait_change("rois, texres")
     def update_texture(self):
