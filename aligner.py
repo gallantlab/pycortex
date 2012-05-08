@@ -4,6 +4,7 @@ import numpy as np
 import nibabel
 
 import utils
+from db import options
 
 try:
     from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, Int, on_trait_change
@@ -139,14 +140,13 @@ class ThreeDScene(MayaviScene):
         elif key == "7":
             self.aligner.scene3d.camera.position = focus + [0, 1e-6, self.state[2]*500]
             self.state[2] = -self.state[2]
-        elif key == "\x1a" and evt.CmdDown() and len(self.aligner._undolist):
+        elif key == "\x1a" and evt.CmdDown() and len(self.aligner._undolist) > 0:
             self.aligner._redo = self.aligner._undolist.pop()
             self.aligner.xfm.transform.set_matrix(self.aligner._undolist[-1].ravel())
             self.aligner.xfm.widget.set_transform(self.aligner.xfm.transform)
             self.aligner.xfm.update_pipeline()
             self.aligner.update_slab()
         else:
-            print evt.key
             super(ThreeDScene, self).OnKeyDown(evt)
         self.aligner.scene3d.renderer.reset_camera_clipping_range()
         self.aligner.scene3d.render()
@@ -173,15 +173,19 @@ class FlatScene(Scene):
         elif chr(key % 256) == "h":
             for o in self.aligner.outlines:
                 o.visible = not o.visible
-        elif evt.ShiftDown():
-            self.handle.constrain = True
-        elif evt.ShiftUp():
-            self.handle.constrain = False
         else:
-            super(FlatScene, self).OnKeyDown(evt)         
+            print evt, dir(evt)
+            super(FlatScene, self).OnKeyDown(evt)
+
+    def OnButtonDown(self, evt):
+        if evt.ShiftDown():
+            self.handle.constrain = True
+        else:
+            self.handle.constrain = False
+        super(FlatScene, self).OnButtonDown(evt)
 
 ################################################################################
-# The object implementing the dialog
+
 class Align(HasTraits):
     # The position of the view
     position = Array(shape=(3,))
@@ -191,7 +195,7 @@ class Align(HasTraits):
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
     outlines = List
-    ptcolor = Color(value="navy")
+    ptcolor = Color(value=options['ptcolor'] if 'ptcolor' in options else 'navy')
     epi_filter = Enum(None, "median", "gradient")
     filter_strength = Range(1, 20, value=3)
 
@@ -249,6 +253,7 @@ class Align(HasTraits):
         """Loads the EPI image from the specified epifilename.
         """
         nii = nibabel.load(epifilename)
+        self.epi_file = nii
         epi = nii.get_data().astype(float).squeeze()
         if epi.ndim>3:
             epi = epi[:,:,:,0]
@@ -272,6 +277,7 @@ class Align(HasTraits):
         self.epi_orig *= 2
         self.epi_orig -= 1
         self.epi = self.epi_orig.copy()
+        self.epifile = nii
 
     #---------------------------------------------------------------------------
     # Default values
@@ -477,7 +483,7 @@ class Align(HasTraits):
         self.opacity = 0.1
         self.xfm.widget.enabled = False
         self.update_position()
-        self.colormap = "RdYlGn"
+        self.colormap = options['colormap'] if 'colormap' in options else 'RdBu'
 
     @on_trait_change('scene_x.activated')
     def display_scene_x(self):

@@ -77,9 +77,9 @@ def _tcoords(subject, hemisphere="both"):
     elif hemisphere in ["rh", "right"]:
         h, polys, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
         return pts[-len(h):]
-    elif hemisphere == ["lh", "left"]:
+    elif hemisphere in ["lh", "left"]:
         h, polys, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
-        return pts[len(h):]
+        return pts[:len(h)]
 
 def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
     '''View epi data, transformed into the space given by xfm. 

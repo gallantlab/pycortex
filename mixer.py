@@ -43,10 +43,6 @@ except ImportError:
     from enthought.mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
     from enthought.mayavi.sources.image_reader import ImageReader
 
-#_top = np.vstack([np.tile(255,[3,128]), np.arange(0,256,2)])
-#_bottom = np.vstack([np.tile(np.arange(256)[-2::-2], [3,1]), [np.tile(255,128)]])
-#clear_white_black = np.vstack([_top.T, _bottom.T])
-
 cwd = os.path.split(os.path.abspath(__file__))[0]
 options = json.load(open(os.path.join(cwd, "defaults.json")))
 default_texres = options['texture_res'] if 'texure_res' in options else 1024.
@@ -54,6 +50,7 @@ default_lw = options['line_width'] if 'line_width' in options else 3.
 default_labelsize = options['label_size'] if 'label_size' in options else 24
 default_renderheight = options['renderheight'] if 'renderheight' in options else 1024.
 default_labelhide = options['labelhide'] if 'labelhide' in options else True
+default_cmap = options['colormap'] if 'colormap' in options else "RdBu"
 
 class Mixer(HasTraits):
     points = Any
@@ -141,7 +138,7 @@ class Mixer(HasTraits):
 
         self.data_src
         self.surf
-        self.colormap = "RdBu"
+        self.colormap = default_cmap
         self.fliplut = True
         self.figure.camera.focal_point = self.data_src.data.points.to_array().mean(0)
     
