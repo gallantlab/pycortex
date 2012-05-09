@@ -53,9 +53,9 @@ default_cmap = options['colormap'] if 'colormap' in options else "RdBu"
 class Mixer(HasTraits):
     points = Any
     polys = Any
-    coords = Array
+    coords = Any
     data = Array
-    tcoords = Array
+    tcoords = Any
     mix = Range(0., 1., value=1)
     nstops = Int(3)
 
@@ -184,6 +184,16 @@ class Mixer(HasTraits):
         self.reset_view()
         self.figure.camera.view_up = [0,0,1]
         self.figure.render()
+
+    def picker_to_coord(self, picker):
+        '''Convenience function for handling pickers on multiple surfaces.
+        You give this function a [picker] object (e.g. the one passed to
+        a picker function) and it gives you back an (x,y,z) tuple of the
+        voxel in EPI space that was picked.
+        '''
+        for surf, coord in zip(self.surfs, self.coords):
+            if picker.actor == surf.actor.actor:
+                return coord[picker.point_id]
     
     def _update_label_pos(self):
         '''Creates and/or updates the position of the text to match the surface'''
@@ -230,7 +240,11 @@ class Mixer(HasTraits):
         self.figure.scene.disable_render = False
     
     def _data_changed(self):
-        '''Trait callback for transforming the data and applying it to data'''
+        '''Trait callback for transforming the data and applying it to the surface.
+        The data can be a 3D volume in the EPI space.
+        Or a 4D volume where the first dimension is of length 3, in which case the
+        data will be treated as color values for each voxel.
+        '''
         for data_src, coords in zip(self.data_srcs, self.coords):
             coords = np.array([np.clip(c, 0, l-1) for c, l in zip(coords.T, self.data.T.shape)]).T
             scalars = self.data.T[tuple(coords.T)]
@@ -287,7 +301,9 @@ class Mixer(HasTraits):
     def data_to_points(self, arr):
         '''Maps the given 3D data array [arr] to vertices on the mesh.
         '''
-        return np.array([arr.T[tuple(p)] for p in self.coords])
+        ## This line is broken w/ multiple surfaces
+        #return np.array([arr.T[tuple(p)] for p in self.coords])
+        return np.hstack([[arr.T[tuple(p)] for p in c] for c in self.coords])
 
     def lindata_to_points(self, linarr, mask):
         '''Maps the given 1D data array [linarr] to vertices on the mesh, but first
