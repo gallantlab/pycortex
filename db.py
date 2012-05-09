@@ -173,16 +173,23 @@ class Database(object):
         assert xfmdict['subject'] == subject, "Incorrect subject for the name"
         return np.array(xfmdict[xfmtype]), os.path.join(filestore, "references", xfmdict['epifile'])
 
-    def getVTK(self, subject, type, hemisphere="both"):
+    def getVTK(self, subject, type, hemisphere="both", merge=False):
         import vtkutils
         fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
 
         if hemisphere == "both":
-            ptpoly = [ self.getVTK(subject, type, hemisphere=h)[0] for h in ["lh", "rh"]]
-            if type != "fiducial":
-                ptpoly[0][0][:,0] -= ptpoly[0][0].max(0)[0]
-                ptpoly[1][0][:,0] -= ptpoly[1][0].min(0)[0]
-            return ptpoly
+            left, right = [ self.getVTK(subject, type, hemisphere=h) for h in ["lh", "rh"]]
+            if type not in ("fiducial", "flat"):
+                left[0][:,0] -= left[0].max(0)[0]
+                right[0][:,0] -= right[0].min(0)[0]
+            
+            if merge:
+                pts   = np.vstack([left[0], right[0]])
+                polys = np.vstack([left[1], right[1]+len(left[0])])
+                norms = np.vstack([left[2], right[2]])
+                return pts, polys, norms
+            else:
+                return left, right
         else:
             if hemisphere.lower() in ("lh", "left"):
                 hemi = "lh"
@@ -190,8 +197,12 @@ class Database(object):
                 hemi = "rh"
             else:
                 raise TypeError("Not a valid hemisphere name")
+            
+            vtkfile = fname.format(subj=subject, type=type, hemi=hemi)
+            if not os.path.exists(vtkfile):
+                raise ValueError("Cannot find given subject and type")
 
-            return [vtkutils.read(fname.format(subj=subject, type=type, hemi=hemi))]
+            return vtkutils.read(vtkfile)
 
     def getCoords(self, subject, xfmname, hemisphere="both", magnet=None):
         if magnet is None:
@@ -203,7 +214,7 @@ class Database(object):
         coords = []
         for pts, polys, norms in self.getVTK(subject, "fiducial", hemisphere=hemisphere):
             wpts = np.vstack([pts.T, np.ones(len(pts))])
-            coords.append(np.dot(xfm, wpts)[:3].round().astype(np.uint16).T)
+            coords.append(np.dot(xfm, wpts)[:3].round().astype(np.uint32).T)
 
         return coords
 

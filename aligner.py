@@ -698,8 +698,7 @@ def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
     else:
         dbxfm, epi = data
 
-    data = db.surfs.getVTK(subject, 'fiducial')
-    assert data is not None, "Cannot find subject"
+    data = db.surfs.getVTK(subject, 'fiducial', merge=True)
     return Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
 
 def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):

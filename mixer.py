@@ -84,12 +84,16 @@ class Mixer(HasTraits):
 
     def __init__(self, points, polys, coords, data=None, svgfile=None, **kwargs):
         super(Mixer, self).__init__(points=points, polys=polys, coords=coords, **kwargs)
-        
         if data is not None:
             self.data = data
+        self.svgfile = svgfile
 
-        if svgfile is not None:
-            self.set(rois=svgroi.ROIpack(np.vstack(self.tcoords), svgfile), trait_change_notify=False)
+        self.pivinterp = None
+        if len(points) > 1:
+            pint = np.zeros(self.nstops)
+            pint[-1] = -180
+            self.pivinterp = interp1d(np.linspace(0, 1, self.nstops), pint)
+
         self.update_crange()
     
     def _data_srcs_default(self):
@@ -154,8 +158,7 @@ class Mixer(HasTraits):
         self.figure.scene.background = (0,0,0)
         self.figure.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
         self.figure.camera.view_up = [0,0,1]
-        self.reset_view()
-
+        
         if hasattr(self.figure.mayavi_scene, "on_mouse_pick"):
             def picker(picker):
                 for surf, coord in zip(self.surfs, self.coords):
@@ -173,12 +176,12 @@ class Mixer(HasTraits):
         self.colormap = default_cmap
         self.fliplut = True
 
+        if self.svgfile is not None:
+            self.rois = svgroi.ROIpack(np.vstack(self.tcoords), self.svgfile)
+
         for surf in self.surfs:
             surf.parent.parent.parent.widget.enabled = False
-        mlab.view(distance="auto", figure=self.figure)
-
-        if self.rois is not None:
-            self._create_roilabels()
+        self.reset_view()
     
     def _update_label_pos(self):
         '''Creates and/or updates the position of the text to match the surface'''
@@ -214,10 +217,13 @@ class Mixer(HasTraits):
         self.figure.scene.disable_render = True
         for data_src, points in zip(self.data_srcs, self.points):
             data_src.data.points.from_array(points(self.mix))
+        
+        if self.pivinterp is not None:
+            self.pivot(self.pivinterp(self.mix))
 
         self.figure.renderer.reset_camera_clipping_range()
         self._update_label_pos()
-        mlab.view(distance="auto", figure=self.figure)
+        self.figure.reset_zoom()
         #self.figure.camera.focal_point = pts.mean(0)
         self.figure.scene.disable_render = False
     
@@ -304,7 +310,7 @@ class Mixer(HasTraits):
         '''Sets the view so that the flatmap is centered'''
         #set up the flatmap view
         self.mix = 1
-        pts = np.vstack([data_src.data.points.to_array() for data_src in self.data_srcs])
+        pts = np.vstack([surf.parent.parent.outputs[0].points.to_array() for surf in self.surfs])
         size = pts.max(0)-pts.min(0)
         focus = size / 2 + pts.min(0)
         if center:
@@ -432,6 +438,7 @@ class Mixer(HasTraits):
     def _create_roilabels(self):
         #Delete the existing roilabels, if there are any
         self.figure.scene.disable_render = True
+        startmix = self.mix
 
         for name, (interp, labels) in self.roilabels.items():
             for l in labels:
@@ -440,10 +447,11 @@ class Mixer(HasTraits):
         mixes = np.linspace(0, 1, self.nstops)
         interps = dict([(name,[]) for name in self.rois.names])
         for mix in mixes:
+            self.mix = mix
             allpts, allnorms = [], []
             for data_src, surf, points in zip(self.data_srcs, self.surfs, self.points):
-                pts = points(mix)
-                data_src.data.points.from_array(pts)
+                data_src.children[0].update_pipeline()
+                pts = surf.parent.parent.outputs[0].points.to_array()
                 norms = surf.parent.parent.outputs[0].point_data.normals.to_array()
                 allpts.append(pts)
                 allnorms.append(norms)
@@ -467,9 +475,7 @@ class Mixer(HasTraits):
                 txt.norm = tuple(norm)
                 self.roilabels[name][1].append(txt)
 
-        for data_src, points in zip(self.data_srcs, self.points):
-            data_src.data.points.from_array(points(self.mix))
-
+        self.mix = startmix
         self.figure.scene.disable_render = False
             
     
@@ -483,6 +489,41 @@ class Mixer(HasTraits):
             surf.module_manager.scalar_lut_manager.lut.table = cmap
         self.figure.render()
     
+    def pivot(self, pivot):
+        '''Pivots the brain halves away from each other by pivot degrees'''
+        left, right = self.data_srcs
+        lxfm, rxfm, txfm = np.eye(4), np.eye(4), np.eye(4)
+        p = np.radians(pivot/2)
+        rot = np.array([
+                [np.cos(p),-np.sin(p), 0, 0 ],
+                [np.sin(p), np.cos(p), 0, 0 ],
+                [   0,         0,      1, 0 ],
+                [   0,         0,      0, 1]])
+        if pivot > 0:
+            lmove = left.data.points.to_array()[:,1].max()
+            rmove = right.data.points.to_array()[:,1].max()
+            lrot = rot.copy()
+            rrot = rot.copy()
+            lrot[[0,1], [1,0]] = -lrot[[0,1], [1,0]]
+        elif pivot < 0:
+            lmove = left.data.points.to_array()[:,1].min()
+            rmove = right.data.points.to_array()[:,1].min()
+            rrot = rot.copy()
+            lrot = rot.copy()
+            lrot[[0,1], [1,0]] = -lrot[[0,1], [1,0]]
+            #rrot[[0,1],[1,0]] = -rrot[[0,1],[1,0]]
+
+        if pivot != 0:
+            lxfm[1,-1] = -lmove
+            txfm[1,-1] = lmove
+            lxfm = np.dot(txfm, np.dot(lrot, lxfm))
+            rxfm[1,-1] = -rmove
+            txfm[1,-1] = rmove
+            rxfm = np.dot(txfm, np.dot(rrot, rxfm))
+
+        left.children[0].transform.matrix.from_array(lxfm)
+        right.children[0].transform.matrix.from_array(rxfm)
+
     def show(self):
         return mlab.show()
 

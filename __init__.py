@@ -89,13 +89,8 @@ def epi_to_anat(data, subject=None, xfmname=None, filename=None):
 
 def get_cortical_mask(subject, xfmname, shape=(31, 100, 100)):
     data = np.zeros(shape)
-    fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
-    wpts = np.append(fiducial, np.ones((len(fiducial), 1)), axis=-1).T
-    xfm, epi = surfs.getXfm(subject, xfmname)
-    coords = np.dot(xfm, wpts)[:3].T
-
-    for c in coords.round().astype(int):
-        data[tuple(c[::-1])] = 1
+    coords = np.vstack(surfs.getCoords(subject, xfmname))
+    data[tuple(coords.T)] = 1
 
     return data
 

@@ -28,8 +28,9 @@ def _gen_flat_mask(pts, polys, height=1024):
     del draw
     return np.array(im) > 0
 
-def _make_flat_cache(interp, xfm, height=1024):
+def _make_flat_cache(subject, xfmname, height=1024):
     from scipy.interpolate import griddata
+    coords = db.surfs.getCoords(subject, xfmname)
     fiducial, flat = interp(0), interp(1)
     wpts = np.append(fiducial, np.ones((len(fiducial), 1)), axis=-1).T
     coords = np.dot(xfm, wpts)[:3].T
@@ -42,39 +43,45 @@ def _make_flat_cache(interp, xfm, height=1024):
     pcoords = griddata(flat[:,[0,2]], coords, flatpos.T, method="nearest")
     return pcoords, (width, height)
 
-def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
+def _get_surf_interp(subject, types=('inflated',)):
     types = ("fiducial",) + types + ("flat",)
     pts = []
     for t in types:
-        ptpolys = db.surfs.getVTK(subject, t, hemisphere=hemisphere)
+        ptpolys = db.surfs.getVTK(subject, t)
         pts.append([p[0] for p in ptpolys])
     polys = [p[1] for p in ptpolys]
 
-    for lt, p in zip(pts[-2], pts[-1]):
+    flatmin = 0
+    for p in pts[-1]:
         flatpts = np.zeros_like(p)
-        if hemisphere == "both":
-            flatpts[:,[0,2]] = p[:,:2]
-            flatpts[:,1] = lt.min(0)[1]
-        else:
-            flatpts[:,[1,2]] = p[:,:2]
-            flatpts[:,1] = lt.mean(0)[1]
+        flatpts[:,[1,2]] = p[:,:2]
+        #flatpts[:,0] = lt.min(0)[1]
         p[:] = flatpts
+        flatmin += p[:,1].min()
+    #We have to flip the left hemisphere to make it expand correctly
+    pts[-1][0][:,1] = -pts[-1][0][:,1]
+    #We also have to put them equally far back for pivot to line up correctly
+    flatmin /= 2.
+    for p in pts[-1]:
+        p[:,1] -= p[:,1].min()
+        p[:,1] += flatmin
 
     interp = [interp1d(np.linspace(0,1,len(pts)), pts, axis=0) for pts in zip(*pts)]
 
     return interp, polys
 
-def _tcoords(subject, ptpolys=None):
-    if ptpolys is None:
-        ptpolys = db.surfs.getVTK(subject, "flat", hemisphere="both")
+def _tcoords(subject):
+    left, right = db.surfs.getVTK(subject, "flat", hemisphere="both")
+    left[0][:,0] -= left[0].max(0)[0]
+    right[0][:,0] -= right[0].min(0)[0]
         
-    fpts = np.vstack([ptpolys[0][0], ptpolys[1][0]])
+    fpts = np.vstack([left[0], right[0]])
     fmin = fpts.min(0)
     fpts -= fmin
     fmax = fpts.max(0)
     
     allpts = []
-    for pts, polys, norms in ptpolys:
+    for pts, polys, norms in [left, right]:
         pts -= fmin
         pts /= fmax
         allpts.append(pts[:,:2])
@@ -131,10 +138,7 @@ def quickflat(data, subject, xfmname, recache=False, height=1024):
             os.unlink(f)
         print "Generating a flatmap cache"
         #pull points and transform from database
-        interp, polys = _get_surf_interp(subject, types=())
-        xfm = db.surfs.getXfm(subject, xfmname, xfmtype="coord")[0]
-        #Generate the lookup coordinates and the mask
-        coords, size = _make_flat_cache(interp, xfm, height=height)
+        coords, size = _make_flat_cache(subject, xfmname, height=height)
         mask = _gen_flat_mask(interp(1)[:,[0,2]], polys, height=height).T
         #save them into the proper file
         date = time.strftime("%Y%m%d")
