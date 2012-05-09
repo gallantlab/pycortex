@@ -157,7 +157,6 @@ class Mixer(HasTraits):
         self.figure.renderer.set(use_depth_peeling=1, maximum_number_of_peels=100, occlusion_ratio=0.1)
         self.figure.scene.background = (0,0,0)
         self.figure.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
-        self.figure.camera.view_up = [0,0,1]
         
         if hasattr(self.figure.mayavi_scene, "on_mouse_pick"):
             def picker(picker):
@@ -173,17 +172,18 @@ class Mixer(HasTraits):
 
         self.data_srcs
         self.surfs
+        for surf in self.surfs:
+            surf.parent.parent.parent.widget.enabled = False
         self.colormap = default_cmap
         self.fliplut = True
 
         if self.svgfile is not None:
             self.rois = svgroi.ROIpack(np.vstack(self.tcoords), self.svgfile)
-
-        for surf in self.surfs:
-            surf.parent.parent.parent.widget.enabled = False
         
         self.figure.reset_zoom()
         self.reset_view()
+        self.figure.camera.view_up = [0,0,1]
+        self.figure.render()
     
     def _update_label_pos(self):
         '''Creates and/or updates the position of the text to match the surface'''
@@ -223,10 +223,10 @@ class Mixer(HasTraits):
         if self.pivinterp is not None:
             self.pivot(self.pivinterp(self.mix))
 
-        self.figure.renderer.reset_camera_clipping_range()
         self._update_label_pos()
+        self.figure.renderer.reset_camera_clipping_range()
         self.figure.reset_zoom()
-        #self.figure.camera.focal_point = pts.mean(0)
+        self.figure.camera.view_up = [0,0,1]
         self.figure.scene.disable_render = False
     
     def _data_changed(self):
@@ -250,11 +250,13 @@ class Mixer(HasTraits):
             #Enable_Texture doesn't actually reflect whether it's visible or not unless you flip it!
             surf.actor.enable_texture = not self.showrois
             surf.actor.enable_texture = self.showrois
-        self.disable_render = False
+        self.figure.disable_render = False
     
     def _showrois_changed(self):
+        self.figure.disable_render = True
         for surf in self.surfs:
-            surf.actor.enable_texture = self.showrois    
+            surf.actor.enable_texture = self.showrois
+        self.figure.disable_render = False
     
     def _showlabels_changed(self):
         self.figure.scene.disable_render = True
@@ -276,9 +278,11 @@ class Mixer(HasTraits):
     
     @on_trait_change("colormap, fliplut")
     def _update_colors(self):
+        self.figure.disable_render = True
         for surf in self.surfs:
             surf.parent.scalar_lut_manager.lut_mode = self.colormap
             surf.parent.scalar_lut_manager.reverse_lut = self.fliplut
+        self.figure.disable_render = False
     
     def data_to_points(self, arr):
         '''Maps the given 3D data array [arr] to vertices on the mesh.
@@ -376,8 +380,6 @@ class Mixer(HasTraits):
         startmix = self.mix
         lastpos = self.figure.camera.position, self.figure.camera.focal_point
         self.mix = 1
-        #Turn on offscreen rendering
-        mlab.options.offscreen = True
         x, y = self.figure.get_size()
         pts = np.vstack([data_src.data.points.to_array() for data_src in self.data_srcs])
         ptmax = pts.max(0)
@@ -389,6 +391,7 @@ class Mixer(HasTraits):
         self.figure.interactor.update_size(int(width), int(height))
         if 'use_offscreen' not in options or options['use_offscreen']:
             print "Using offscreen rendering"
+            mlab.options.offscreen = True
             self.figure.off_screen_rendering = True
         if filename is None:
             self.reset_view(center=False)
@@ -504,16 +507,11 @@ class Mixer(HasTraits):
         if pivot > 0:
             lmove = left.data.points.to_array()[:,1].max()
             rmove = right.data.points.to_array()[:,1].max()
-            lrot = rot.copy()
-            rrot = rot.copy()
-            lrot[[0,1], [1,0]] = -lrot[[0,1], [1,0]]
         elif pivot < 0:
             lmove = left.data.points.to_array()[:,1].min()
             rmove = right.data.points.to_array()[:,1].min()
-            rrot = rot.copy()
-            lrot = rot.copy()
-            lrot[[0,1], [1,0]] = -lrot[[0,1], [1,0]]
-            #rrot[[0,1],[1,0]] = -rrot[[0,1],[1,0]]
+        lrot = rot.copy()
+        lrot[[0,1], [1,0]] = -lrot[[0,1], [1,0]]
 
         if pivot != 0:
             lxfm[1,-1] = -lmove
@@ -521,7 +519,7 @@ class Mixer(HasTraits):
             lxfm = np.dot(txfm, np.dot(lrot, lxfm))
             rxfm[1,-1] = -rmove
             txfm[1,-1] = rmove
-            rxfm = np.dot(txfm, np.dot(rrot, rxfm))
+            rxfm = np.dot(txfm, np.dot(rot, rxfm))
 
         left.children[0].transform.matrix.from_array(lxfm)
         right.children[0].transform.matrix.from_array(rxfm)
