@@ -181,6 +181,8 @@ class Mixer(HasTraits):
 
         for surf in self.surfs:
             surf.parent.parent.parent.widget.enabled = False
+        
+        self.figure.reset_zoom()
         self.reset_view()
     
     def _update_label_pos(self):

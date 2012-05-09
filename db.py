@@ -173,13 +173,13 @@ class Database(object):
         assert xfmdict['subject'] == subject, "Incorrect subject for the name"
         return np.array(xfmdict[xfmtype]), os.path.join(filestore, "references", xfmdict['epifile'])
 
-    def getVTK(self, subject, type, hemisphere="both", merge=False):
+    def getVTK(self, subject, type, hemisphere="both", merge=False, nudge=False):
         import vtkutils
         fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
 
         if hemisphere == "both":
             left, right = [ self.getVTK(subject, type, hemisphere=h) for h in ["lh", "rh"]]
-            if type not in ("fiducial", "flat"):
+            if type != "fiducial" and nudge:
                 left[0][:,0] -= left[0].max(0)[0]
                 right[0][:,0] -= right[0].min(0)[0]
             
@@ -212,7 +212,7 @@ class Database(object):
             xfm = np.dot(np.linalg.inv(magnet), xfm)
 
         coords = []
-        for pts, polys, norms in self.getVTK(subject, "fiducial", hemisphere=hemisphere):
+        for pts, polys, norms in self.getVTK(subject, "fiducial", hemisphere=hemisphere, nudge=False):
             wpts = np.vstack([pts.T, np.ones(len(pts))])
             coords.append(np.dot(xfm, wpts)[:3].round().astype(np.uint32).T)
 

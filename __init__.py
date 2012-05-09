@@ -117,7 +117,7 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
         Point index for the closest point
     '''
     from scipy.spatial import cKDTree
-    fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
+    fiducial, polys, norms = surfs.getVTK(subject, "fiducial", merge=True)
     xfm, epi = surfs.getXfm(subject, xfmname)
     idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
     widx = np.append(idx[:,::-1], np.ones((len(idx),1)), axis=-1).T
@@ -132,14 +132,12 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
 def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
     '''Return a bitmask for the given ROIs'''
     import svgroi
-    fiducial, polys, norms = surfs.getVTK(subject, "fiducial")
-    flat, polys, norms = surfs.getVTK(subject, "flat")
+    flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
-    flat, fiducial = flat[valid], fiducial[valid]
+    flat = flat[valid]
     
-    wpts = np.append(fiducial, np.ones((len(fiducial), 1)), axis=-1).T
-    xfm, epi = surfs.getXfm(subject, xfmname)
-    coords = np.dot(xfm, wpts)[:3].T.round().astype(int)
+    coords = np.vstack(db.surfs.getCoords(subject, xfmname))
+    coords = coords[valid]
 
     svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
     rois = svgroi.ROIpack(flat[:,:2], svgfile)
