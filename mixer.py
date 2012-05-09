@@ -62,10 +62,13 @@ class Mixer(HasTraits):
     figure = Instance(MlabSceneModel, ())
     data_srcs = Any
     surfs = Any
+    dataname = Str
 
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
     show_colorbar = Bool
+    vmin = Float
+    vmax = Float
 
     #tex = Instance(ImageReader, ())
     tex = Instance(Source, ())
@@ -86,7 +89,8 @@ class Mixer(HasTraits):
             self.data = data
 
         if svgfile is not None:
-            self.rois = svgroi.ROIpack(np.vstack(self.tcoords), svgfile)
+            self.set(rois=svgroi.ROIpack(np.vstack(self.tcoords), svgfile), trait_change_notify=False)
+        self.update_crange()
     
     def _data_srcs_default(self):
         sources = []
@@ -95,21 +99,51 @@ class Mixer(HasTraits):
             src = mlab.pipeline.triangular_mesh_source(
                 pts[:,0], pts[:,1], pts[:,2],
                 polys, figure=self.figure.mayavi_scene)
-            #src.data.point_data.tcoords = tcoords
+
+            src.data.point_data.t_coords = tcoords
             sources.append(src)
 
         return sources
 
+    def _vmin_default(self):
+        vmin = np.finfo(self.data.dtype).max
+        for surf in self.surfs:
+            lut = surf.module_manager.scalar_lut_manager
+            if lut.data_range[0] < vmin:
+                vmin = lut.data_range[0]
+        return vmin
+
+    def _vmax_default(self):
+        vmax = np.finfo(self.data.dtype).min
+        for surf in self.surfs:
+            lut = surf.module_manager.scalar_lut_manager
+            if lut.data_range[1] > vmax:
+                vmax = lut.data_range[1]
+        return vmax
+
+    @on_trait_change("vmin, vmax")
+    def update_crange(self):
+        for surf in self.surfs:
+            lut = surf.module_manager.scalar_lut_manager
+            lut.data_range = self.vmin, self.vmax
+
     def _surfs_default(self):
         surfs = []
+        
         for data_src in self.data_srcs:
-            n = mlab.pipeline.poly_data_normals(data_src, figure=self.figure.mayavi_scene)
+            t = mlab.pipeline.transform_data(data_src, figure=self.figure.mayavi_scene)
+            t.widget.enabled = 0
+            n = mlab.pipeline.poly_data_normals(t, figure=self.figure.mayavi_scene)
+            n.filter.splitting = 0
             surf = mlab.pipeline.surface(n, figure=self.figure.mayavi_scene)
             surf.actor.texture.interpolate = True
             surf.actor.texture.repeat = False
             surf.actor.enable_texture = self.showrois
-            surf.module_manager.scalar_lut_manager.scalar_bar.title = None
+            lut = surf.module_manager.scalar_lut_manager
+            lut.scalar_bar.title = self.dataname
+            lut.use_default_range = False
             surfs.append(surf)
+
         return surfs
 
     @on_trait_change("figure.activated")
@@ -124,7 +158,10 @@ class Mixer(HasTraits):
 
         if hasattr(self.figure.mayavi_scene, "on_mouse_pick"):
             def picker(picker):
-                print self.coords[picker.point_id]
+                for surf, coord in zip(self.surfs, self.coords):
+                    if picker.actor == surf.actor.actor:
+                        print coord[picker.point_id]
+
             self.picker = self.figure.mayavi_scene.on_mouse_pick(picker)
             self.picker.tolerance = 0.005
 
@@ -135,7 +172,13 @@ class Mixer(HasTraits):
         self.surfs
         self.colormap = default_cmap
         self.fliplut = True
-        #self.figure.camera.focal_point = self.data_src.data.points.to_array().mean(0)
+
+        for surf in self.surfs:
+            surf.parent.parent.parent.widget.enabled = False
+        mlab.view(distance="auto", figure=self.figure)
+
+        if self.rois is not None:
+            self._create_roilabels()
     
     def _update_label_pos(self):
         '''Creates and/or updates the position of the text to match the surface'''
@@ -174,6 +217,7 @@ class Mixer(HasTraits):
 
         self.figure.renderer.reset_camera_clipping_range()
         self._update_label_pos()
+        mlab.view(distance="auto", figure=self.figure)
         #self.figure.camera.focal_point = pts.mean(0)
         self.figure.scene.disable_render = False
     
@@ -284,15 +328,18 @@ class Mixer(HasTraits):
         self.figure.scene.disable_render = True
         curmix = float(self.mix)
         self.mix = 0
-        #smooth = mlab.pipeline.user_defined(self.data_src, filter="SmoothPolyDataFilter")
-        curve = mlab.pipeline.user_defined(self.data_src, filter="Curvatures")
-        curve.filter.curvature_type = "mean"
-        #self.data_src.mlab_source.scalars = curve.filter.get_output().point_data.scalars.to_array()
-        curvature = -1 * curve.filter.get_output().point_data.scalars.to_array()
+        curves = []
+        for data_src in self.data_srcs:
+            #smooth = mlab.pipeline.user_defined(self.data_src, filter="SmoothPolyDataFilter")
+            curve = mlab.pipeline.user_defined(data_src, filter="Curvatures")
+            curve.filter.curvature_type = "mean"
+            #self.data_src.mlab_source.scalars = curve.filter.get_output().point_data.scalars.to_array()
+            curvature = -1 * curve.filter.get_output().point_data.scalars.to_array()
+            curves.append(curvature)
         self.mix = curmix
         self.figure.scene.disable_render = currender
 
-        return curvature
+        return curves
 
     def show_curvature(self, thresh=False):
         '''Replace the current data with surface curvature. By default this
@@ -305,12 +352,13 @@ class Mixer(HasTraits):
         self.figure.scene.disable_render = True
         ## Load the curvature onto the surface
         curv = self.get_curvature()
-        if thresh:
-            curv[curv>0] = 1
-            curv[curv<0] = -1
-        self.data_src.mlab_source.scalars = curv
-        ## Set the colormap to gray
-        self.colormap = "gray"
+        for curv, data_src in zip(self.get_curvature(), self.data_srcs):
+            if thresh:
+                curv[curv>0] = 1
+                curv[curv<0] = -1
+            data_src.mlab_source.scalars = curv
+            ## Set the colormap to gray
+            self.colormap = "gray"
         ## Set the data range appropriately
         self.surf.module_manager.scalar_lut_manager.data_range = (-3, 3)
         self.figure.scene.disable_render = currender
@@ -392,12 +440,16 @@ class Mixer(HasTraits):
         mixes = np.linspace(0, 1, self.nstops)
         interps = dict([(name,[]) for name in self.rois.names])
         for mix in mixes:
+            allpts, allnorms = [], []
             for data_src, surf, points in zip(self.data_srcs, self.surfs, self.points):
                 pts = points(mix)
                 data_src.data.points.from_array(pts)
                 norms = surf.parent.parent.outputs[0].point_data.normals.to_array()
-                for name, posnorm in self.rois.get_labelpos(pts, norms).items():
-                    interps[name].append(posnorm)
+                allpts.append(pts)
+                allnorms.append(norms)
+
+            for name, posnorm in self.rois.get_labelpos(np.vstack(allpts), np.vstack(allnorms)).items():
+                interps[name].append(posnorm)
         
         self.roilabels = dict()
         for name, pos in interps.items():
@@ -444,8 +496,8 @@ class Mixer(HasTraits):
                 Item('colormap',
                      editor=ImageEnumEditor(values=lut_manager.lut_mode_list(),
                      cols=6, path=lut_manager.lut_image_dir)),
-                "fliplut", "show_colorbar", "_", "showlabels", "showrois",
-                "reset_btn"
+                "fliplut", Item("show_colorbar", name="colorbar"), "vmin", "vmax", "_", 
+                "showlabels", "showrois", "reset_btn"
                 ),
         show_labels=False),
         resizable=True, title="Mixer")

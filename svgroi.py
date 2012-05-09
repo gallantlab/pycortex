@@ -91,7 +91,7 @@ class ROIpack(traits.HasTraits):
     svg = traits.Instance("xml.dom.minidom.Document")
     svgfile = traits.Str
 
-    linewidth = traits.Float(5)
+    linewidth = traits.Float(default_lw)
     linecolor = traits.Tuple((0.,0.,0.,1.))
     roifill = traits.Tuple((0.,0.,0.,0.2))
 
@@ -245,8 +245,8 @@ def _labelpos(pts):
     sp[-1,-1] = 0
     try:
         x, y = _center_pts(np.dot(ptm, np.dot(v.T, sp))[:,:2])
-    except:
-        print pts, u, s, v
+    except Exception as e:
+        print e
 
     sp = np.diag(1./(s+np.finfo(float).eps))
     pt = np.dot(np.dot(np.array([x,y,0]), sp), v)

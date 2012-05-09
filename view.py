@@ -64,13 +64,15 @@ def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
 
     return interp, polys
 
-def _tcoords(subject):
-    ptpolys = db.surfs.getVTK(subject, "flat", hemisphere="both")
-    fpts = np.vstack([ptpolys[0][0], ptpolys[0][1]])
+def _tcoords(subject, ptpolys=None):
+    if ptpolys is None:
+        ptpolys = db.surfs.getVTK(subject, "flat", hemisphere="both")
+        
+    fpts = np.vstack([ptpolys[0][0], ptpolys[1][0]])
     fmin = fpts.min(0)
     fpts -= fmin
     fmax = fpts.max(0)
-
+    
     allpts = []
     for pts, polys, norms in ptpolys:
         pts -= fmin
