@@ -52,16 +52,16 @@ default_cmap = options['colormap'] if 'colormap' in options else "RdBu"
 
 class Mixer(HasTraits):
     points = Any
-    polys = Array(shape=(None, 3))
-    xfm = Array(shape=(4,4))
+    polys = Array
+    coords = Array
     data = Array
     tcoords = Array
     mix = Range(0., 1., value=1)
     nstops = Int(3)
 
     figure = Instance(MlabSceneModel, ())
-    data_src = Instance(Source)
-    surf = Instance(Module)
+    data_srcs = Any
+    surfs = Any
 
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
@@ -79,41 +79,38 @@ class Mixer(HasTraits):
 
     reset_btn = Button(label="Reset View")
 
-    def __init__(self, points, polys, xfm, data=None, svgfile=None, **kwargs):
-        #special init function must be used because points must be set before data can be set
-        self.xfm = xfm
-        self.points = points
-        super(Mixer, self).__init__(polys=polys, xfm=xfm, **kwargs)
+    def __init__(self, points, polys, coords, data=None, svgfile=None, **kwargs):
+        super(Mixer, self).__init__(points=points, polys=polys, coords=coords, **kwargs)
         
         if data is not None:
             self.data = data
 
         if svgfile is not None:
-            self.rois = svgroi.ROIpack(self.tcoords, svgfile)
-            
-    def _data_src_default(self):
-        pts = self.points(1)
-        src = mlab.pipeline.triangular_mesh_source(
-            pts[:,0], pts[:,1], pts[:,2],
-            self.polys, figure=self.figure.mayavi_scene)
-        #Set the texture coordinates
+            self.rois = svgroi.ROIpack(np.vstack(self.tcoords), svgfile)
+    
+    def _data_srcs_default(self):
+        sources = []
+        for points, polys, tcoords in zip(self.points, self.polys, self.tcoords):
+            pts = points(1)
+            src = mlab.pipeline.triangular_mesh_source(
+                pts[:,0], pts[:,1], pts[:,2],
+                polys, figure=self.figure.mayavi_scene)
+            #src.data.point_data.tcoords = tcoords
+            sources.append(src)
 
-        if len(self.tcoords) == 0:
-            pts -= pts.min(0)
-            pts /= pts.max(0)
-            self.tcoords = pts[:,[0,2]]
-        src.data.point_data.t_coords = self.tcoords
-        
-        return src
+        return sources
 
-    def _surf_default(self):
-        n = mlab.pipeline.poly_data_normals(self.data_src, figure=self.figure.mayavi_scene)
-        surf = mlab.pipeline.surface(n, figure=self.figure.mayavi_scene)
-        surf.actor.texture.interpolate = True
-        surf.actor.texture.repeat = False
-        surf.actor.enable_texture = self.showrois
-        surf.module_manager.scalar_lut_manager.scalar_bar.title = None
-        return surf
+    def _surfs_default(self):
+        surfs = []
+        for data_src in self.data_srcs:
+            n = mlab.pipeline.poly_data_normals(data_src, figure=self.figure.mayavi_scene)
+            surf = mlab.pipeline.surface(n, figure=self.figure.mayavi_scene)
+            surf.actor.texture.interpolate = True
+            surf.actor.texture.repeat = False
+            surf.actor.enable_texture = self.showrois
+            surf.module_manager.scalar_lut_manager.scalar_bar.title = None
+            surfs.append(surf)
+        return surfs
 
     @on_trait_change("figure.activated")
     def _start(self):
@@ -134,11 +131,11 @@ class Mixer(HasTraits):
         #Add traits callbacks to update label visibility and positions
         self.figure.camera.on_trait_change(self._fix_label_vis, "position")
 
-        self.data_src
-        self.surf
+        self.data_srcs
+        self.surfs
         self.colormap = default_cmap
         self.fliplut = True
-        self.figure.camera.focal_point = self.data_src.data.points.to_array().mean(0)
+        #self.figure.camera.focal_point = self.data_src.data.points.to_array().mean(0)
     
     def _update_label_pos(self):
         '''Creates and/or updates the position of the text to match the surface'''
@@ -171,43 +168,41 @@ class Mixer(HasTraits):
                     self.figure.scene.disable_render = False
     
     def _mix_changed(self):
-        pts = self.points(self.mix)
         self.figure.scene.disable_render = True
-        self.data_src.data.points.from_array(pts)
+        for data_src, points in zip(self.data_srcs, self.points):
+            data_src.data.points.from_array(points(self.mix))
+
         self.figure.renderer.reset_camera_clipping_range()
         self._update_label_pos()
-        self.figure.camera.focal_point = pts.mean(0)
+        #self.figure.camera.focal_point = pts.mean(0)
         self.figure.scene.disable_render = False
-    
-    def _points_changed(self):
-        pts = self.points(0)
-        wpts = np.append(pts, np.ones((len(pts),1)), axis=-1).T
-        self.coords = np.dot(self.xfm, wpts)[:3].T.round().astype(int)
     
     def _data_changed(self):
         '''Trait callback for transforming the data and applying it to data'''
-        coords = np.array([np.clip(c, 0, l-1) for c, l in zip(self.coords.T, self.data.T.shape)]).T
-        scalars = self.data.T[tuple(coords.T)]
-        if self.data.dtype == np.uint8 and len(self.data.shape) > 3:
-            print "setting raw color data..."
-            vtk_data = tvtk.UnsignedCharArray()
-            vtk_data.from_array(scalars)
-            vtk_data.name = "scalars"
-            self.data_src.data.point_data.scalars = vtk_data
-        else:
-            self.data_src.mlab_source.scalars = scalars
-
+        for data_src, coords in zip(self.data_srcs, self.coords):
+            coords = np.array([np.clip(c, 0, l-1) for c, l in zip(coords.T, self.data.T.shape)]).T
+            scalars = self.data.T[tuple(coords.T)]
+            if self.data.dtype == np.uint8 and len(self.data.shape) > 3:
+                print "setting raw color data..."
+                vtk_data = tvtk.UnsignedCharArray()
+                vtk_data.from_array(scalars)
+                vtk_data.name = "scalars"
+                data_src.data.point_data.scalars = vtk_data
+            else:
+                data_src.mlab_source.scalars = scalars
     
     def _tex_changed(self):
         self.figure.scene.disable_render = True
-        self.surf.actor.texture_source_object = self.tex
-        #Enable_Texture doesn't actually reflect whether it's visible or not unless you flip it!
-        self.surf.actor.enable_texture = not self.showrois
-        self.surf.actor.enable_texture = self.showrois
+        for surf in self.surfs:
+            surf.actor.texture_source_object = self.tex
+            #Enable_Texture doesn't actually reflect whether it's visible or not unless you flip it!
+            surf.actor.enable_texture = not self.showrois
+            surf.actor.enable_texture = self.showrois
         self.disable_render = False
     
     def _showrois_changed(self):
-        self.surf.actor.enable_texture = self.showrois    
+        for surf in self.surfs:
+            surf.actor.enable_texture = self.showrois    
     
     def _showlabels_changed(self):
         self.figure.scene.disable_render = True
@@ -224,12 +219,14 @@ class Mixer(HasTraits):
         self.figure.scene.disable_render = False
     
     def _show_colorbar_changed(self):
-        self.surf.module_manager.scalar_lut_manager.show_legend = self.show_colorbar
+        for surf in self.surfs:
+            surf.module_manager.scalar_lut_manager.show_legend = self.show_colorbar
     
     @on_trait_change("colormap, fliplut")
     def _update_colors(self):
-        self.surf.parent.scalar_lut_manager.lut_mode = self.colormap
-        self.surf.parent.scalar_lut_manager.reverse_lut = self.fliplut
+        for surf in self.surfs:
+            surf.parent.scalar_lut_manager.lut_mode = self.colormap
+            surf.parent.scalar_lut_manager.reverse_lut = self.fliplut
     
     def data_to_points(self, arr):
         '''Maps the given 3D data array [arr] to vertices on the mesh.
@@ -263,10 +260,9 @@ class Mixer(HasTraits):
         '''Sets the view so that the flatmap is centered'''
         #set up the flatmap view
         self.mix = 1
-        ptmax = self.data_src.data.points.to_array().max(0)
-        ptmin = self.data_src.data.points.to_array().min(0)
-        size = ptmax-ptmin
-        focus = size / 2 + ptmin
+        pts = np.vstack([data_src.data.points.to_array() for data_src in self.data_srcs])
+        size = pts.max(0)-pts.min(0)
+        focus = size / 2 + pts.min(0)
         if center:
             focus[[0,2]] = 0
         
@@ -323,12 +319,13 @@ class Mixer(HasTraits):
         #Save the current view to restore
         startmix = self.mix
         lastpos = self.figure.camera.position, self.figure.camera.focal_point
-
+        self.mix = 1
         #Turn on offscreen rendering
         mlab.options.offscreen = True
         x, y = self.figure.get_size()
-        ptmax = self.data_src.data.points.to_array().max(0)
-        ptmin = self.data_src.data.points.to_array().min(0)
+        pts = np.vstack([data_src.data.points.to_array() for data_src in self.data_srcs])
+        ptmax = pts.max(0)
+        ptmin = pts.min(0)
         size = ptmax-ptmin
         aspect = size[0] / size[-1]
         width = height * aspect
@@ -395,11 +392,12 @@ class Mixer(HasTraits):
         mixes = np.linspace(0, 1, self.nstops)
         interps = dict([(name,[]) for name in self.rois.names])
         for mix in mixes:
-            pts = self.points(mix)
-            self.data_src.data.points.from_array(pts)
-            norms = self.surf.parent.parent.outputs[0].point_data.normals.to_array()
-            for name, posnorm in self.rois.get_labelpos(pts, norms).items():
-                interps[name].append(posnorm)
+            for data_src, surf, points in zip(self.data_srcs, self.surfs, self.points):
+                pts = points(mix)
+                data_src.data.points.from_array(pts)
+                norms = surf.parent.parent.outputs[0].point_data.normals.to_array()
+                for name, posnorm in self.rois.get_labelpos(pts, norms).items():
+                    interps[name].append(posnorm)
         
         self.roilabels = dict()
         for name, pos in interps.items():
@@ -417,7 +415,9 @@ class Mixer(HasTraits):
                 txt.norm = tuple(norm)
                 self.roilabels[name][1].append(txt)
 
-        self.data_src.data.points.from_array(self.points(self.mix))
+        for data_src, points in zip(self.data_srcs, self.points):
+            data_src.data.points.from_array(points(self.mix))
+
         self.figure.scene.disable_render = False
             
     
@@ -426,7 +426,9 @@ class Mixer(HasTraits):
             cmap = cmap.copy() * 255
         if cmap.shape[-1] < 4:
             cmap = np.hstack([cmap, 255*np.ones((len(cmap), 1))])
-        self.surf.module_manager.scalar_lut_manager.lut.table = cmap
+
+        for surf in self.surfs:
+            surf.module_manager.scalar_lut_manager.lut.table = cmap
         self.figure.render()
     
     def show(self):

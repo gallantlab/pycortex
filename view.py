@@ -45,74 +45,73 @@ def _make_flat_cache(interp, xfm, height=1024):
 def _get_surf_interp(subject, types=('inflated',), hemisphere="both"):
     types = ("fiducial",) + types + ("flat",)
     pts = []
-    #flat, poly, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
-    #valid = np.unique(poly)
     for t in types:
-        pt, polys, norm = db.surfs.getVTK(subject, t, hemisphere=hemisphere)
-        pts.append(pt)
-    #pts.append(flat[valid])
+        ptpolys = db.surfs.getVTK(subject, t, hemisphere=hemisphere)
+        pts.append([p[0] for p in ptpolys])
+    polys = [p[1] for p in ptpolys]
 
-    if hemisphere == "both":
-        #flip the flats to be on the X-Z plane
-        flatpts = np.zeros_like(pts[-1])
-        flatpts[:,[0,2]] = pts[-1][:,:2]
-        flatpts[:,1] = pts[-2].min(0)[1]
-        pts[-1] = flatpts
-    else:
-        #only one hemisphere, put it on y-z plane
-        flatpts = np.zeros_like(pts[-1])
-        flatpts[:,[1,2]] = pts[-1][:,:2]
-        flatpts[:,1] = pts[-2].mean(0)[1]
-        pts[-1] = flatpts
+    for lt, p in zip(pts[-2], pts[-1]):
+        flatpts = np.zeros_like(p)
+        if hemisphere == "both":
+            flatpts[:,[0,2]] = p[:,:2]
+            flatpts[:,1] = lt.min(0)[1]
+        else:
+            flatpts[:,[1,2]] = p[:,:2]
+            flatpts[:,1] = lt.mean(0)[1]
+        p[:] = flatpts
 
-    interp = interp1d(np.linspace(0,1,len(pts)), pts, axis=0)
+    interp = [interp1d(np.linspace(0,1,len(pts)), pts, axis=0) for pts in zip(*pts)]
+
     return interp, polys
 
-def _tcoords(subject, hemisphere="both"):
-    pts, polys, norm = db.surfs.getVTK(subject, "flat", hemisphere="both")
-    pts = pts[:,:2] - pts[:,:2].min(0)
-    pts /= pts.max(0)
-    if hemisphere == "both":
-        return pts
-    elif hemisphere in ["rh", "right"]:
-        h, polys, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
-        return pts[-len(h):]
-    elif hemisphere in ["lh", "left"]:
-        h, polys, norm = db.surfs.getVTK(subject, "flat", hemisphere=hemisphere)
-        return pts[:len(h)]
+def _tcoords(subject):
+    ptpolys = db.surfs.getVTK(subject, "flat", hemisphere="both")
+    fpts = np.vstack([ptpolys[0][0], ptpolys[0][1]])
+    fmin = fpts.min(0)
+    fpts -= fmin
+    fmax = fpts.max(0)
 
-def show(data, subject, xfm, types=('inflated',), hemisphere="both"):
-    '''View epi data, transformed into the space given by xfm. 
-    Types indicates which surfaces to add to the interpolater. Always includes fiducial and flat'''
-    interp, polys = _get_surf_interp(subject, types, hemisphere)
+    allpts = []
+    for pts, polys, norms in ptpolys:
+        pts -= fmin
+        pts /= fmax
+        allpts.append(pts[:,:2])
+    return allpts
 
-    if hasattr(data, "get_affine"):
-        #this is a nibabel file -- it has the nifti headers intact!
-        if isinstance(xfm, str):
-            xfm = db.surfs.getXfm(subject, xfm, xfmtype="magnet")
-            assert xfm is not None, "Cannot find transform by this name!"
-            xfm = np.dot(np.linalg.inv(data.get_affine()), xfm[0])
-        data = data.get_data()
-    elif isinstance(xfm, str):
-        xfm = db.surfs.getXfm(subject, xfm, xfmtype="coord")
-        assert xfm is not None, "Cannot find coord transform, please provide a nifti!"
-        xfm = xfm[0]
-    assert xfm.shape == (4, 4), "Not a transform matrix!"
+def get_mixer_args(subject, xfmname, types=('inflated',)):
+    coords = db.surfs.getCoords(subject, xfmname)
+    interp, polys = _get_surf_interp(subject, types)
     
     overlay = os.path.join(options['file_store'], "overlays", "%s_rois.svg"%subject)
     if not os.path.exists(overlay):
         #Can't find the roi overlay, create a new one!
-        pts = interp(1)
+        ptpolys = db.surfs.getVTK(subject, "flat", hemisphere="both")
+        pts = np.vstack(ptpolys[0][0][:,:2], ptpolys[0][1][:,:2])
         size = pts.max(0) - pts.min(0)
         aspect = size[0] / size[-1]
         with open(overlay, "w") as xml:
             xmlbase = open(os.path.join(cwd, "svgbase.xml")).read()
             xml.write(xmlbase.format(width=aspect * 1024, height=1024))
 
-    kwargs = dict(points=interp, polys=polys, xfm=xfm, 
-        data=data, svgfile=overlay, nstops=len(types)+2)
-    if hemisphere != "both":
-        kwargs['tcoords'] = _tcoords(subject, hemisphere)
+    return dict(points=interp, polys=polys, coords=coords, tcoords=_tcoords(subject),
+        nstops=len(types)+2, svgfile=overlay)
+
+def show(data, subject, xfm, types=('inflated',)):
+    '''View epi data, transformed into the space given by xfm. 
+    Types indicates which surfaces to add to the interpolater. Always includes fiducial and flat'''
+    kwargs = get_mixer_args(subject, xfm, types)
+
+    if hasattr(data, "get_affine"):
+        #this is a nibabel file -- it has the nifti headers intact!
+        if isinstance(xfm, str):
+            kwargs['coords'] = db.surfs.getCoords(subject, xfm, hemisphere=hemisphere, magnet=data.get_affine())
+        data = data.get_data()
+    elif isinstance(xfm, np.ndarray):
+        ones = np.ones(len(interp[0](0)))
+        coords = [np.dot(xfm, np.hstack([i(0), ones]).T)[:3].T for i in interp ]
+        kwargs['coords'] = [ c.round().astype(np.uint32) for c in coords ]
+
+    kwargs['data'] = data
 
     import mixer
     m = mixer.Mixer(**kwargs)

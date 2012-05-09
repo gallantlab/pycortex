@@ -178,16 +178,11 @@ class Database(object):
         fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
 
         if hemisphere == "both":
-            lh = fname.format(subj=subject, type=type, hemi="lh")
-            rh = fname.format(subj=subject, type=type, hemi="rh")
-            lpts, lpolys, lnorms = vtkutils.read(os.path.join(filestore, "surfaces", lh))
-            rpts, rpolys, rnorms = vtkutils.read(os.path.join(filestore, "surfaces", rh))
-            
-            lpts[:,0] -= lpts.max(0)[0]
-            rpts[:,0] -= rpts.min(0)[0]
-            
-            rpolys += len(lpts)
-            return np.vstack([lpts, rpts]), np.vstack([lpolys, rpolys]), np.vstack([lnorms, rnorms])
+            ptpoly = [ self.getVTK(subject, type, hemisphere=h)[0] for h in ["lh", "rh"]]
+            if type != "fiducial":
+                ptpoly[0][0][:,0] -= ptpoly[0][0].max(0)[0]
+                ptpoly[1][0][:,0] -= ptpoly[1][0].min(0)[0]
+            return ptpoly
         else:
             if hemisphere.lower() in ("lh", "left"):
                 hemi = "lh"
@@ -196,10 +191,20 @@ class Database(object):
             else:
                 raise TypeError("Not a valid hemisphere name")
 
-            return vtkutils.read(fname.format(subj=subject, type=type, hemi=hemi))
+            return [vtkutils.read(fname.format(subj=subject, type=type, hemi=hemi))]
 
-    def get_coords(self, subject, xfm, hemisphere="both"):
-        pass
+    def getCoords(self, subject, xfmname, hemisphere="both", magnet=None):
+        if magnet is None:
+            xfm, epifile = self.getXfm(subject, xfmname, xfmtype="coord")
+        else:
+            xfm, epifile = self.getXfm(subject, xfmname, xfmtype="magnet")
+            xfm = np.dot(np.linalg.inv(magnet), xfm)
 
+        coords = []
+        for pts, polys, norms in self.getVTK(subject, "fiducial", hemisphere=hemisphere):
+            wpts = np.vstack([pts.T, np.ones(len(pts))])
+            coords.append(np.dot(xfm, wpts)[:3].round().astype(np.uint16).T)
+
+        return coords
 
 surfs = Database()
