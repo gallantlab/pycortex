@@ -52,7 +52,7 @@ default_cmap = options['colormap'] if 'colormap' in options else "RdBu"
 
 class Mixer(HasTraits):
     points = Any
-    polys = Array
+    polys = Any
     coords = Array
     data = Array
     tcoords = Array
