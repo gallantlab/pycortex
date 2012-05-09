@@ -3,9 +3,13 @@ import subprocess as sp
 from xml.dom.minidom import parse as xmlparse
 
 import numpy as np
-import traits.api as traits
 from scipy.interpolate import griddata
 from matplotlib.pyplot import imread
+
+try:
+    import traits.api as traits
+except ImportError as e:
+    import enthought.traits.api as traits
 
 from db import options
 default_lw = options['line_width'] if 'line_width' in options else 3.
