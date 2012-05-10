@@ -13,8 +13,8 @@ import svgroi
 from db import options
 
 try:
-    from traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Range, Any, Color,Enum, Callable, Tuple, Button, on_trait_change
-    from traitsui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor
+    from traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Range, Any, Color,Enum, Callable, Tuple, Button, on_trait_change, List
+    from traitsui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor, InstanceEditor
 
     from tvtk.api import tvtk
     from tvtk.pyface.scene import Scene
@@ -29,8 +29,8 @@ try:
     from mayavi.sources.array_source import Source
 
 except ImportError:
-    from enthought.traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Any, Range, Color,Enum, Callable, Tuple, Button, on_trait_change
-    from enthought.traits.ui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor
+    from enthought.traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Any, Range, Color,Enum, Callable, Tuple, Button, on_trait_change, List
+    from enthought.traits.ui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor, InstanceEditor
 
     from enthought.tvtk.api import tvtk
     from enthought.tvtk.pyface.scene import Scene
@@ -50,6 +50,19 @@ default_renderheight = options['renderheight'] if 'renderheight' in options else
 default_labelhide = options['labelhide'] if 'labelhide' in options else True
 default_cmap = options['colormap'] if 'colormap' in options else "RdBu"
 
+class DataPack(HasTraits):
+    name = Str
+
+    def __init__(self, src, data, **kwargs):
+        super(DataPack, self).__init__(**kwargs)
+        self.ldat, self.rdat = data
+        self.mixer = src
+
+    def set(self, srcs):
+        left, right = srcs
+        left.mlab_source.scalars = self.ldat
+        right.mlab_source.scalars = self.rdat
+
 class Mixer(HasTraits):
     points = Any
     polys = Any
@@ -57,12 +70,12 @@ class Mixer(HasTraits):
     data = Array
     tcoords = Any
     mix = Range(0., 1., value=1)
+    pivot = Range(-180, 180, value=-180)
     nstops = Int(3)
 
     figure = Instance(MlabSceneModel, ())
     data_srcs = Any
     surfs = Any
-    dataname = Str
 
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
@@ -81,12 +94,13 @@ class Mixer(HasTraits):
     showlabels = Bool(False)
 
     reset_btn = Button(label="Reset View")
+    datavars = List(DataPack)
+    datapack = Instance(DataPack)
 
-    def __init__(self, points, polys, coords, data=None, svgfile=None, **kwargs):
+    def __init__(self, points, polys, coords, data=None, dataname=None, svgfile=None, **kwargs):
         super(Mixer, self).__init__(points=points, polys=polys, coords=coords, **kwargs)
         if data is not None:
             self.data = data
-        self.svgfile = svgfile
 
         self.pivinterp = None
         if len(points) > 1:
@@ -94,20 +108,10 @@ class Mixer(HasTraits):
             pint[-1] = -180
             self.pivinterp = interp1d(np.linspace(0, 1, self.nstops), pint)
 
+        if svgfile is not None:
+            self.rois = svgroi.ROIpack(np.vstack(self.tcoords), svgfile)
+
         self.update_crange()
-    
-    def _data_srcs_default(self):
-        sources = []
-        for points, polys, tcoords in zip(self.points, self.polys, self.tcoords):
-            pts = points(1)
-            src = mlab.pipeline.triangular_mesh_source(
-                pts[:,0], pts[:,1], pts[:,2],
-                polys, figure=self.figure.mayavi_scene)
-
-            src.data.point_data.t_coords = tcoords
-            sources.append(src)
-
-        return sources
 
     def _vmin_default(self):
         vmin = np.finfo(self.data.dtype).max
@@ -124,12 +128,19 @@ class Mixer(HasTraits):
             if lut.data_range[1] > vmax:
                 vmax = lut.data_range[1]
         return vmax
+    
+    def _data_srcs_default(self):
+        sources = []
+        for points, polys, tcoords in zip(self.points, self.polys, self.tcoords):
+            pts = points(1)
+            src = mlab.pipeline.triangular_mesh_source(
+                pts[:,0], pts[:,1], pts[:,2],
+                polys, figure=self.figure.mayavi_scene)
 
-    @on_trait_change("vmin, vmax")
-    def update_crange(self):
-        for surf in self.surfs:
-            lut = surf.module_manager.scalar_lut_manager
-            lut.data_range = self.vmin, self.vmax
+            src.data.point_data.t_coords = tcoords
+            sources.append(src)
+
+        return sources
 
     def _surfs_default(self):
         surfs = []
@@ -144,7 +155,7 @@ class Mixer(HasTraits):
             surf.actor.texture.repeat = False
             surf.actor.enable_texture = self.showrois
             lut = surf.module_manager.scalar_lut_manager
-            lut.scalar_bar.title = self.dataname
+            lut.scalar_bar.title = ""
             lut.use_default_range = False
             surfs.append(surf)
 
@@ -176,9 +187,6 @@ class Mixer(HasTraits):
             surf.parent.parent.parent.widget.enabled = False
         self.colormap = default_cmap
         self.fliplut = True
-
-        if self.svgfile is not None:
-            self.rois = svgroi.ROIpack(np.vstack(self.tcoords), self.svgfile)
         
         self.figure.reset_zoom()
         self.reset_view()
@@ -231,13 +239,47 @@ class Mixer(HasTraits):
             data_src.data.points.from_array(points(self.mix))
         
         if self.pivinterp is not None:
-            self.pivot(self.pivinterp(self.mix))
+            self.pivot = float(self.pivinterp(self.mix))
 
         self._update_label_pos()
-        self.figure.renderer.reset_camera_clipping_range()
+        #self.figure.renderer.reset_camera_clipping_range()
         self.figure.reset_zoom()
         self.figure.camera.view_up = [0,0,1]
         self.figure.scene.disable_render = False
+
+    def _pivot_changed(self):
+        '''Pivots the brain halves away from each other by pivot degrees'''
+        left, right = self.data_srcs
+        lxfm, rxfm, txfm = np.eye(4), np.eye(4), np.eye(4)
+        p = np.radians(self.pivot/2)
+        rot = np.array([
+                [np.cos(p),-np.sin(p), 0, 0 ],
+                [np.sin(p), np.cos(p), 0, 0 ],
+                [   0,         0,      1, 0 ],
+                [   0,         0,      0, 1]])
+        if self.pivot > 0:
+            lmove = left.data.points.to_array()[:,1].max()
+            rmove = right.data.points.to_array()[:,1].max()
+        elif self.pivot < 0:
+            lmove = left.data.points.to_array()[:,1].min()
+            rmove = right.data.points.to_array()[:,1].min()
+        lrot = rot.copy()
+        lrot[[0,1], [1,0]] = -lrot[[0,1], [1,0]]
+
+        if self.pivot != 0:
+            lxfm[1,-1] = -lmove
+            txfm[1,-1] = lmove
+            lxfm = np.dot(txfm, np.dot(lrot, lxfm))
+            rxfm[1,-1] = -rmove
+            txfm[1,-1] = rmove
+            rxfm = np.dot(txfm, np.dot(rot, rxfm))
+        try:
+            left.children[0].transform.matrix.from_array(lxfm)
+            right.children[0].transform.matrix.from_array(rxfm)
+            left.children[0].update_pipeline()
+            right.children[0].update_pipeline()
+        except:
+            pass
     
     def _data_changed(self):
         '''Trait callback for transforming the data and applying it to the surface.
@@ -245,6 +287,7 @@ class Mixer(HasTraits):
         Or a 4D volume where the first dimension is of length 3, in which case the
         data will be treated as color values for each voxel.
         '''
+        pack = []
         for data_src, coords in zip(self.data_srcs, self.coords):
             coords = np.array([np.clip(c, 0, l-1) for c, l in zip(coords.T, self.data.T.shape)]).T
             scalars = self.data.T[tuple(coords.T)]
@@ -253,9 +296,16 @@ class Mixer(HasTraits):
                 vtk_data = tvtk.UnsignedCharArray()
                 vtk_data.from_array(scalars)
                 vtk_data.name = "scalars"
-                data_src.data.point_data.scalars = vtk_data
+                pack.append(vtk_data)
+                #data_src.data.point_data.scalars = vtk_data
             else:
-                data_src.mlab_source.scalars = scalars
+                pack.append(scalars)
+                #data_src.mlab_source.scalars = scalars
+        self.datapack = DataPack(self, pack, name="data%d"%len(self.datavars))
+        self.datavars.append(self.datapack)
+
+    def _datapack_changed(self):
+        self.datapack.set(self.data_srcs)
     
     def _tex_changed(self):
         self.figure.scene.disable_render = True
@@ -289,6 +339,12 @@ class Mixer(HasTraits):
     def _show_colorbar_changed(self):
         for surf in self.surfs:
             surf.module_manager.scalar_lut_manager.show_legend = self.show_colorbar
+
+    @on_trait_change("vmin, vmax")
+    def update_crange(self):
+        for surf in self.surfs:
+            lut = surf.module_manager.scalar_lut_manager
+            lut.data_range = self.vmin, self.vmax
     
     @on_trait_change("colormap, fliplut")
     def _update_colors(self):
@@ -297,35 +353,6 @@ class Mixer(HasTraits):
             surf.parent.scalar_lut_manager.lut_mode = self.colormap
             surf.parent.scalar_lut_manager.reverse_lut = self.fliplut
         self.figure.disable_render = False
-    
-    def data_to_points(self, arr):
-        '''Maps the given 3D data array [arr] to vertices on the mesh.
-        '''
-        ## This line is broken w/ multiple surfaces
-        #return np.array([arr.T[tuple(p)] for p in self.coords])
-        return np.hstack([[arr.T[tuple(p)] for p in c] for c in self.coords])
-
-    def lindata_to_points(self, linarr, mask):
-        '''Maps the given 1D data array [linarr] to vertices on the mesh, but first
-        maps the 1D data into 3D space via the given [mask].
-
-        Parameters
-        ----------
-        linarr : (N,) array, float
-            A vector containing a floating point value for each voxel.
-        mask : (Z,Y,X) array, binary
-            A 3D mask that is True wherever a voxel value should be mapped to
-            the surface.
-
-        Returns
-        -------
-        pointdata : (M,) array, float
-            A new vector that contains, for each vertex, the value of the voxel
-            that vertex lies inside.
-        '''
-        datavol = mask.copy().astype(linarr.dtype)
-        datavol[mask>0] = linarr
-        return self.data_to_points(datavol)
     
     @on_trait_change("reset_btn")
     def reset_view(self, center=True):
@@ -397,7 +424,7 @@ class Mixer(HasTraits):
         lastpos = self.figure.camera.position, self.figure.camera.focal_point
         self.mix = 1
         x, y = self.figure.get_size()
-        pts = np.vstack([data_src.data.points.to_array() for data_src in self.data_srcs])
+        pts = np.vstack([surf.parent.parent.outputs[0].points.to_array() for surf in self.surfs])
         ptmax = pts.max(0)
         ptmin = pts.min(0)
         size = ptmax-ptmin
@@ -468,10 +495,15 @@ class Mixer(HasTraits):
         mixes = np.linspace(0, 1, self.nstops)
         interps = dict([(name,[]) for name in self.rois.names])
         for mix in mixes:
-            self.mix = mix
+            #self.mix = mix
             allpts, allnorms = [], []
+            for data_src, points in zip(self.data_srcs, self.points):
+                data_src.data.points.from_array(points(mix))
+
+            if self.pivinterp is not None:
+                self.pivot = float(self.pivinterp(mix))
+
             for data_src, surf, points in zip(self.data_srcs, self.surfs, self.points):
-                data_src.children[0].update_pipeline()
                 pts = surf.parent.parent.outputs[0].points.to_array()
                 norms = surf.parent.parent.outputs[0].point_data.normals.to_array()
                 allpts.append(pts)
@@ -498,8 +530,7 @@ class Mixer(HasTraits):
 
         self.mix = startmix
         self.figure.scene.disable_render = False
-            
-    
+
     def load_colormap(self, cmap):
         if cmap.max() <= 1:
             cmap = cmap.copy() * 255
@@ -509,52 +540,20 @@ class Mixer(HasTraits):
         for surf in self.surfs:
             surf.module_manager.scalar_lut_manager.lut.table = cmap
         self.figure.render()
-    
-    def pivot(self, pivot):
-        '''Pivots the brain halves away from each other by pivot degrees'''
-        left, right = self.data_srcs
-        lxfm, rxfm, txfm = np.eye(4), np.eye(4), np.eye(4)
-        p = np.radians(pivot/2)
-        rot = np.array([
-                [np.cos(p),-np.sin(p), 0, 0 ],
-                [np.sin(p), np.cos(p), 0, 0 ],
-                [   0,         0,      1, 0 ],
-                [   0,         0,      0, 1]])
-        if pivot > 0:
-            lmove = left.data.points.to_array()[:,1].max()
-            rmove = right.data.points.to_array()[:,1].max()
-        elif pivot < 0:
-            lmove = left.data.points.to_array()[:,1].min()
-            rmove = right.data.points.to_array()[:,1].min()
-        lrot = rot.copy()
-        lrot[[0,1], [1,0]] = -lrot[[0,1], [1,0]]
-
-        if pivot != 0:
-            lxfm[1,-1] = -lmove
-            txfm[1,-1] = lmove
-            lxfm = np.dot(txfm, np.dot(lrot, lxfm))
-            rxfm[1,-1] = -rmove
-            txfm[1,-1] = rmove
-            rxfm = np.dot(txfm, np.dot(rot, rxfm))
-
-        left.children[0].transform.matrix.from_array(lxfm)
-        right.children[0].transform.matrix.from_array(rxfm)
-
-    def show(self):
-        return mlab.show()
 
     view = View(
         HGroup(
             Group(
                 Item("figure", editor=SceneEditor(scene_class=MayaviScene)),
-                "mix",
+                Group("mix", "pivot", show_labels=True),
                 show_labels=False),
             Group(
                 Item('colormap',
                      editor=ImageEnumEditor(values=lut_manager.lut_mode_list(),
                      cols=6, path=lut_manager.lut_image_dir)),
                 "fliplut", Item("show_colorbar", name="colorbar"), "vmin", "vmax", "_", 
-                "showlabels", "showrois", "reset_btn"
+                "showlabels", "showrois", Item("reset_btn", show_label=False), "_",
+                Item('datapack', editor=InstanceEditor(name="datavars", editable=False), width=100),
                 ),
         show_labels=False),
         resizable=True, title="Mixer")

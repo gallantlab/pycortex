@@ -145,7 +145,7 @@ class Database(object):
         if os.path.exists(fname):
             if epifile is not None:
                 print "Cannot change reference epi for existing transform"
-
+                
             jsdict = json.load(open(fname))
             if xfmtype in jsdict:
                 prompt = 'There is already a transform for this subject by the name of "%s". Overwrite? (Y/N)'%subject
@@ -174,6 +174,28 @@ class Database(object):
         return np.array(xfmdict[xfmtype]), os.path.join(filestore, "references", xfmdict['epifile'])
 
     def getVTK(self, subject, type, hemisphere="both", merge=False, nudge=False):
+        '''Return the VTK pair for the given subject, surface type, and hemisphere.
+
+        Parameters
+        ----------
+        subject : str
+            Name of the subject
+        type : str
+            Type of surface to return, probably in (fiducial, inflated, 
+            veryinflated, hyperinflated, superinflated, flat)
+        hemisphere : "lh", "rh"
+            Which hemisphere to return
+        merge : bool
+            Vstack the hemispheres, if requesting both
+        nudge : bool
+            Nudge the hemispheres apart from each other, for overlapping surfaces
+            (inflated, etc)
+
+        Returns
+        -------
+        left, right
+        '''
+
         import vtkutils
         fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
 
@@ -214,7 +236,7 @@ class Database(object):
         coords = []
         for pts, polys, norms in self.getVTK(subject, "fiducial", hemisphere=hemisphere, nudge=False):
             wpts = np.vstack([pts.T, np.ones(len(pts))])
-            coords.append(np.dot(xfm, wpts)[:3].round().astype(np.uint32).T)
+            coords.append(np.dot(xfm, wpts)[:3].round().astype(int).T)
 
         return coords
 
