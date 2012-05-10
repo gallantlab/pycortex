@@ -63,6 +63,19 @@ class DataPack(HasTraits):
         left.mlab_source.scalars = self.ldat
         right.mlab_source.scalars = self.rdat
 
+class SavedView(HasTraits):
+    name = Str
+
+    def __init__(self, view, mix, pivot, **kwargs):
+        super(SavedView, self).__init__(**kwargs)
+        self.view = view, mix, pivot
+
+    def set(self, mixer):
+        view, mix, pivot = self.view
+        mlab.view(*view, figure=mixer.figure)
+        mixer.set(mix=mix, pivot=pivot)
+        
+
 class Mixer(HasTraits):
     points = Any
     polys = Any
@@ -70,7 +83,7 @@ class Mixer(HasTraits):
     data = Array
     tcoords = Any
     mix = Range(0., 1., value=1)
-    pivot = Range(-180, 180, value=-180)
+    pivot = Range(-180., 180., value=-180.)
     nstops = Int(3)
 
     figure = Instance(MlabSceneModel, ())
@@ -540,6 +553,9 @@ class Mixer(HasTraits):
         for surf in self.surfs:
             surf.module_manager.scalar_lut_manager.lut.table = cmap
         self.figure.render()
+
+    def save_view(self, name):
+        return SavedView(mlab.view(figure=self.figure), self.mix, self.pivot, name=name)
 
     view = View(
         HGroup(

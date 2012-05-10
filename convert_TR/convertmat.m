@@ -5,6 +5,11 @@ addpath('/auto/k2/share/kathleen/anatomicals/code/');
 
 files = {
 	struct('subject', 'SN', 'name','SN_shinji', 'xfm', '/auto/data/shinji/MRI/voxels/voxelsSN/tr/tr_20100714SN_anatKat.mat'),
+	struct('subject', 'SN', 'name', 'SN_tolga', 'xfm', '/auto/k6/cukur/flatmap/alignments/tr_20100714SN_anatKat.mat'),
+	struct('subject', 'SN', 'name', 'SN_tolga2', 'xfm', '/auto/k6/cukur/flatmap/alignments/tr_20100714SN_anatKat_sn.mat'),
+	struct('subject', 'SN', 'name', 'SN_shinji2', 'xfm', '/auto/data/shinji/MRI/voxels/voxelsSN/tr/tr_20100815SN_anatKat.mat'),
+	struct('subject', 'SN', 'name', 'SN_shinji6', 'xfm', '/auto/data/shinji/MRI/voxels/voxelsSN/tr/tr_20100714SN_anatKat6.mat'),
+	struct('subject', 'SN', 'name', 'SN_shinji5', 'xfm', '/auto/data/shinji/MRI/voxels/voxelsSN/tr/tr_20100714SN_anatKat5.mat'),
 	struct('subject', 'JV', 'name','AV_huth', 'xfm','/auto/k1/huth/text/movie/data/20101002AV-tr.mat'),
 	struct('subject', 'JV', 'name', 'AV_shinji','xfm','/auto/data/shinji/MRI/voxels/voxelsAV/tr/tr20090116AV_2_anatomical.mat'),
 	struct('subject', 'AH', 'name', 'AH_huth','xfm','/auto/k1/huth/text/movie/data/AH_tr.mat'),
