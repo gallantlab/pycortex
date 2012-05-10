@@ -114,9 +114,9 @@ class Mixer(HasTraits):
     datavars = List(DataPack)
     datapack = Instance(DataPack)
 
-    saved_views = List(SavedView)
+    saved_views = List
     viewpoint = Instance(SavedView)
-    
+
     def __init__(self, points, polys, coords, data=None, dataname=None, svgfile=None, **kwargs):
         super(Mixer, self).__init__(points=points, polys=polys, coords=coords, **kwargs)
         if data is not None:
@@ -236,6 +236,7 @@ class Mixer(HasTraits):
     
     def _fix_label_vis(self):
         '''Use backface culling behind the focal_point to hide labels behind the brain'''
+        self.viewpoint = None
         if self.showlabels and self.mix != 1:
             flipme = []
             fpos = self.figure.camera.focal_point
@@ -257,6 +258,7 @@ class Mixer(HasTraits):
     
     def _mix_changed(self):
         self.figure.scene.disable_render = True
+        self.viewpoint = None
         for data_src, points in zip(self.data_srcs, self.points):
             data_src.data.points.from_array(points(self.mix))
         
@@ -333,7 +335,8 @@ class Mixer(HasTraits):
 
     def _viewpoint_changed(self):
         self.figure.disable_render = True
-        self.viewpoint.set(self)
+        if self.viewpoint is not None:
+            self.viewpoint.set(self)
         self.figure.disable_render = True
     
     def _tex_changed(self):
@@ -591,7 +594,7 @@ class Mixer(HasTraits):
                 Item('datapack', editor=InstanceEditor(name="datavars", editable=False), width=100),
                 "_",
                 "showlabels", "showrois", Item("reset_btn", show_label=False),
-                Item('viewpoint', editor=InstanceEditor(name='saved_views'), style='custom', 
+                Item('viewpoint', editor=InstanceEditor(name='saved_views', editable=False), style='custom', 
                     visible_when="len(saved_views) > 0"),
             ),
         show_labels=False),
