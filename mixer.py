@@ -4,6 +4,7 @@ import tempfile
 import cStringIO
 import threading
 import traceback
+import cPickle
 import subprocess as sp
 
 import numpy as np
@@ -49,6 +50,7 @@ default_labelsize = options['label_size'] if 'label_size' in options else 24
 default_renderheight = options['renderheight'] if 'renderheight' in options else 1024.
 default_labelhide = options['labelhide'] if 'labelhide' in options else True
 default_cmap = options['colormap'] if 'colormap' in options else "RdBu"
+default_svfile = options['saved_views'] if 'saved_views' in options else None
 
 class DataPack(HasTraits):
     name = Str
@@ -65,16 +67,18 @@ class DataPack(HasTraits):
 
 class SavedView(HasTraits):
     name = Str
+    desc = Str
 
-    def __init__(self, view, mix, pivot, **kwargs):
+    def __init__(self, view, mix, pivot=0, **kwargs):
         super(SavedView, self).__init__(**kwargs)
         self.view = view, mix, pivot
 
     def set(self, mixer):
         view, mix, pivot = self.view
-        mlab.view(*view, figure=mixer.figure)
         mixer.set(mix=mix, pivot=pivot)
-        
+        mlab.view(*view, figure=mixer.figure)
+
+    view = View('name', 'desc')
 
 class Mixer(HasTraits):
     points = Any
@@ -110,6 +114,9 @@ class Mixer(HasTraits):
     datavars = List(DataPack)
     datapack = Instance(DataPack)
 
+    saved_views = List(SavedView)
+    viewpoint = Instance(SavedView)
+    
     def __init__(self, points, polys, coords, data=None, dataname=None, svgfile=None, **kwargs):
         super(Mixer, self).__init__(points=points, polys=polys, coords=coords, **kwargs)
         if data is not None:
@@ -124,6 +131,8 @@ class Mixer(HasTraits):
         if svgfile is not None:
             self.rois = svgroi.ROIpack(np.vstack(self.tcoords), svgfile)
 
+        if default_svfile is not None and os.path.exists(os.path.join(cwd, default_svfile)):
+            self.saved_views = cPickle.load(open(os.path.join(cwd, options['saved_views'])))
         self.update_crange()
 
     def _vmin_default(self):
@@ -318,7 +327,14 @@ class Mixer(HasTraits):
         self.datavars.append(self.datapack)
 
     def _datapack_changed(self):
+        self.figure.disable_render = True
         self.datapack.set(self.data_srcs)
+        self.figure.disable_render = False
+
+    def _viewpoint_changed(self):
+        self.figure.disable_render = True
+        self.viewpoint.set(self)
+        self.figure.disable_render = True
     
     def _tex_changed(self):
         self.figure.scene.disable_render = True
@@ -554,8 +570,12 @@ class Mixer(HasTraits):
             surf.module_manager.scalar_lut_manager.lut.table = cmap
         self.figure.render()
 
-    def save_view(self, name):
-        return SavedView(mlab.view(figure=self.figure), self.mix, self.pivot, name=name)
+    def save_view(self, name="Saved View"):
+        vp = SavedView(mlab.view(figure=self.figure), self.mix, self.pivot, name=name)
+        self.saved_views.append(vp)
+        self.set(viewpoint=vp, trait_change_notify=False)
+        if 'saved_views' in options:
+            cPickle.dump(self.saved_views, open(os.path.join(cwd, options['saved_views']), 'w'))
 
     view = View(
         HGroup(
@@ -567,9 +587,12 @@ class Mixer(HasTraits):
                 Item('colormap',
                      editor=ImageEnumEditor(values=lut_manager.lut_mode_list(),
                      cols=6, path=lut_manager.lut_image_dir)),
-                "fliplut", Item("show_colorbar", name="colorbar"), "vmin", "vmax", "_", 
-                "showlabels", "showrois", Item("reset_btn", show_label=False), "_",
+                "fliplut", Item("show_colorbar", label="colorbar"), "vmin", "vmax", "_", 
                 Item('datapack', editor=InstanceEditor(name="datavars", editable=False), width=100),
-                ),
+                "_",
+                "showlabels", "showrois", Item("reset_btn", show_label=False),
+                Item('viewpoint', editor=InstanceEditor(name='saved_views'), style='custom', 
+                    visible_when="len(saved_views) > 0"),
+            ),
         show_labels=False),
         resizable=True, title="Mixer")

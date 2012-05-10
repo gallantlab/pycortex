@@ -3,8 +3,9 @@
     "default_xfm": "20110909JG_dust", 
     "file_store": "/auto/k2/share/mritools_store/",
     "label_size": 16,
-    "texture_res": 1024,
+    "texture_res": 1536,
     "line_width": 5,
     "renderheight": 1024,
-    "use_offscreen": true
+    "use_offscreen": true,
+    "saved_views":"saved_views.pkl"
 }

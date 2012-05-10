@@ -193,7 +193,10 @@ class Database(object):
 
         Returns
         -------
-        left, right
+        left, right :
+            If request is for both hemispheres, otherwise:
+        pts, polys, norms :
+            For single hemisphere
         '''
 
         import vtkutils
