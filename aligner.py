@@ -1,5 +1,6 @@
 #/usr/bin/env python
 import os
+import types
 import numpy as np
 import nibabel
 
@@ -7,7 +8,7 @@ import utils
 from db import options
 
 try:
-    from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, Int, on_trait_change
+    from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, Int, on_trait_change, Button
     from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
     from tvtk.api import tvtk
@@ -18,7 +19,7 @@ try:
     from mayavi.core.api import PipelineBase, Source, Filter, Module
     from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 except ImportError:
-    from enthought.traits.api import HasTraits, List, Instance, Array, Bool, Dict, Float, Enum, Range, Color, Int, on_trait_change
+    from enthought.traits.api import HasTraits, List, Instance, Array, Bool, Dict, Float, Enum, Range, Color, Int, on_trait_change, Button
     from enthought.traits.ui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 
     from enthought.tvtk.api import tvtk
@@ -227,6 +228,9 @@ class Align(HasTraits):
     flip_lr = Bool
     flip_ud = Bool
 
+    save_callback = Instance(types.FunctionType)
+    save_btn = Button(label="Save Transform")
+
     #---------------------------------------------------------------------------
     # Object interface
     #---------------------------------------------------------------------------
@@ -277,7 +281,6 @@ class Align(HasTraits):
         self.epi_orig *= 2
         self.epi_orig -= 1
         self.epi = self.epi_orig.copy()
-        self.epifile = nii
 
     #---------------------------------------------------------------------------
     # Default values
@@ -652,6 +655,10 @@ class Align(HasTraits):
         self.xfm.update_pipeline()
         self.update_slab()
 
+    def _save_btn_changed(self):
+        if self.save_callback is not None:
+            self.save_callback(self)
+
     #---------------------------------------------------------------------------
     # The layout of the dialog created
     #---------------------------------------------------------------------------
@@ -670,7 +677,8 @@ class Align(HasTraits):
                             editor=SceneEditor(scene_class=ThreeDScene)),
                        show_labels=False,
                   ),
-                  Group("brightness", "contrast", "epi_filter", 
+                  Group(Item("save_btn", show_label=False, visible_when="save_callback is not None"),
+                        "brightness", "contrast", "epi_filter", 
                         Item('filter_strength', visible_when="epi_filter is not None"),
                         "_", "opacity", "_",
                         Item('colormap',
@@ -702,12 +710,19 @@ def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
     return Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
 
 def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
+    def save_callback(aligner):
+        import db
+        db.surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epi, override=True)
+        db.surfs.loadXfm(subject, xfmname, aligner.get_xfm("coord"), xfmtype='coord', epifile=epi, override=True)
+        print "saved xfm"
+
     m = get_aligner(subject, xfmname, epi=epi, xfm=xfm, xfmtype=xfmtype)
+    m.save_callback = save_callback
     m.configure_traits()
 
     magnet = m.get_xfm("magnet")
     shortcut = m.get_xfm("coord")
-    epi = os.path.abspath(m.epifile.get_filename())
+    epi = os.path.abspath(m.epi_file.get_filename())
 
     checked = False
     while not checked:
