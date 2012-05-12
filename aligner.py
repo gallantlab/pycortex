@@ -702,6 +702,8 @@ def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
         data = db.surfs.getXfm(subject, xfmname, xfmtype='coord')
         if data is not None:
             dbxfm, epi = data
+        else:
+            dbxfm = None
         assert epi is not None, "Unknown transform"
     else:
         dbxfm, epi = data
