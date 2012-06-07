@@ -62,8 +62,18 @@ class DataPack(HasTraits):
 
     def set(self, srcs):
         left, right = srcs
-        left.mlab_source.scalars = self.ldat
-        right.mlab_source.scalars = self.rdat
+        self.set_hem(left, self.ldat)
+        self.set_hem(right, self.rdat)
+
+    def set_hem(self, src, dat):
+        ## Check whether our data is an array
+        if isinstance(dat, np.ndarray):
+            ## (in which case it just becomes scalar values)
+            src.mlab_source.scalars = dat
+        ## or a tvtk UnsignedCharArray
+        elif isinstance(dat, tvtk.UnsignedCharArray):        
+            ## (in which case it defines per-vertex colors)
+            src.data.point_data.scalars = dat
 
 class SavedView(HasTraits):
     name = Str
@@ -82,13 +92,16 @@ class SavedView(HasTraits):
 
 class Mixer(HasTraits):
     points = Any
-    polys = Any
+    flatpolys = Any
+    fidpolys = Any
     coords = Any
     data = Array
     tcoords = Any
     mix = Range(0., 1., value=1)
     pivot = Range(-180., 180., value=-180.)
     nstops = Int(3)
+    hide_backfaces = Bool(True)
+    use_fidpolys = Bool(True)
 
     figure = Instance(MlabSceneModel, ())
     data_srcs = Any
@@ -117,8 +130,8 @@ class Mixer(HasTraits):
     saved_views = List
     viewpoint = Instance(SavedView)
 
-    def __init__(self, points, polys, coords, data=None, dataname=None, svgfile=None, **kwargs):
-        super(Mixer, self).__init__(points=points, polys=polys, coords=coords, **kwargs)
+    def __init__(self, points, flatpolys, fidpolys, coords, data=None, dataname=None, svgfile=None, **kwargs):
+        super(Mixer, self).__init__(points=points, flatpolys=flatpolys, fidpolys=fidpolys, coords=coords, **kwargs)
         if data is not None:
             self.data = data
 
@@ -136,6 +149,9 @@ class Mixer(HasTraits):
         self.update_crange()
 
     def _vmin_default(self):
+        ## If there is no data set this to a reasonable value
+        if self.data.size==0:
+            return 0
         vmin = np.finfo(self.data.dtype).max
         for surf in self.surfs:
             lut = surf.module_manager.scalar_lut_manager
@@ -144,6 +160,9 @@ class Mixer(HasTraits):
         return vmin
 
     def _vmax_default(self):
+        ## If there is no data set this to a reasonable value
+        if self.data.size==0:
+            return 1
         vmax = np.finfo(self.data.dtype).min
         for surf in self.surfs:
             lut = surf.module_manager.scalar_lut_manager
@@ -153,7 +172,7 @@ class Mixer(HasTraits):
     
     def _data_srcs_default(self):
         sources = []
-        for points, polys, tcoords in zip(self.points, self.polys, self.tcoords):
+        for points, polys, tcoords in zip(self.points, self.flatpolys, self.tcoords):
             pts = points(1)
             src = mlab.pipeline.triangular_mesh_source(
                 pts[:,0], pts[:,1], pts[:,2],
@@ -209,6 +228,8 @@ class Mixer(HasTraits):
             surf.parent.parent.parent.widget.enabled = False
         self.colormap = default_cmap
         self.fliplut = True
+        self.hide_backfaces = True
+        self._hide_backfaces_changed()
         
         self.figure.reset_zoom()
         self.reset_view()
@@ -261,6 +282,30 @@ class Mixer(HasTraits):
         self.viewpoint = None
         for data_src, points in zip(self.data_srcs, self.points):
             data_src.data.points.from_array(points(self.mix))
+
+        ## Check whether we should swap out the polys
+        def set_polys(polys):
+            for d,p in zip(self.data_srcs, polys):
+                if d.mlab_source.triangles.shape[0] != p.shape[0]:
+                    d.mlab_source.triangles = p
+        
+        if self.use_fidpolys:
+            ## We should use the fiducial polys for everything but "flat"
+            ## So we check if the mix has any "flat" in it
+            flatmixstart = self.points[0].x[-2]
+            if self.mix < flatmixstart:
+                ## Turn off backface hiding (no point + ugly sparklies)
+                self.hide_backfaces = False
+                ## Use the fiducial polys
+                set_polys(self.fidpolys)
+            else:
+                ## Turn on backface hiding?
+                self.hide_backfaces = True
+                ## Otherwise use the flat polys
+                set_polys(self.flatpolys)
+        else:
+            ## Otherwise use the flat polys
+            set_polys(self.flatpolys)
         
         if self.pivinterp is not None:
             self.pivot = float(self.pivinterp(self.mix))
@@ -270,6 +315,9 @@ class Mixer(HasTraits):
         self.figure.reset_zoom()
         self.figure.camera.view_up = [0,0,1]
         self.figure.scene.disable_render = False
+
+    def _use_fidpolys_changed(self):
+        self._mix_changed()
 
     def _pivot_changed(self):
         '''Pivots the brain halves away from each other by pivot degrees'''
@@ -311,12 +359,20 @@ class Mixer(HasTraits):
         Or a 4D volume where the first dimension is of length 3, in which case the
         data will be treated as color values for each voxel.
         '''
+        self.add_data(self.data)
+    
+    def add_data(self, data, name=None):
+        '''Trait callback for transforming the data and applying it to the surface.
+        The data can be a 3D volume in the EPI space.
+        Or a 4D volume where the first dimension is of length 3, in which case the
+        data will be treated as color values for each voxel.
+        '''
         pack = []
         for data_src, coords in zip(self.data_srcs, self.coords):
-            coords = np.array([np.clip(c, 0, l-1) for c, l in zip(coords.T, self.data.T.shape)]).T
-            scalars = self.data.T[tuple(coords.T)]
-            if self.data.dtype == np.uint8 and len(self.data.shape) > 3:
-                print "setting raw color data..."
+            coords = np.array([np.clip(c, 0, l-1) for c, l in zip(coords.T, data.T.shape)]).T
+            scalars = data.T[tuple(coords.T)]
+            if data.dtype == np.uint8 and len(data.shape) > 3:
+                #print "setting raw color data..."
                 vtk_data = tvtk.UnsignedCharArray()
                 vtk_data.from_array(scalars)
                 vtk_data.name = "scalars"
@@ -325,9 +381,13 @@ class Mixer(HasTraits):
             else:
                 pack.append(scalars)
                 #data_src.mlab_source.scalars = scalars
-        self.datapack = DataPack(self, pack, name="data%d"%len(self.datavars))
+        
+        if name is None:
+            name = "data%d"%len(self.datavars)
+        
+        self.datapack = DataPack(self, pack, name=name)
         self.datavars.append(self.datapack)
-
+    
     def _datapack_changed(self):
         self.figure.disable_render = True
         self.datapack.set(self.data_srcs)
@@ -371,6 +431,16 @@ class Mixer(HasTraits):
     def _show_colorbar_changed(self):
         for surf in self.surfs:
             surf.module_manager.scalar_lut_manager.show_legend = self.show_colorbar
+
+    def _hide_backfaces_changed(self):
+        if self.hide_backfaces:
+            hideprop = tvtk.Property()
+            hideprop.ambient = 1
+            for s in self.surfs:
+                s.actor.actor.backface_property = hideprop
+        else:
+            for s in self.surfs:
+                s.actor.actor.backface_property = None
 
     @on_trait_change("vmin, vmax")
     def update_crange(self):
@@ -594,6 +664,9 @@ class Mixer(HasTraits):
                 Item('datapack', editor=InstanceEditor(name="datavars", editable=False), width=100),
                 "_",
                 "showlabels", "showrois", Item("reset_btn", show_label=False),
+                "_",
+                "hide_backfaces",
+                "_",
                 Item('viewpoint', editor=InstanceEditor(name='saved_views', editable=False), style='custom', 
                     visible_when="len(saved_views) > 0"),
             ),
