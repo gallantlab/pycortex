@@ -161,3 +161,73 @@ def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
             idx[name] = 1<<i
             mask.T[tuple(coords[rois.get_roi(name)].T)] |= 1<<i
         return mask, idx
+
+def get_roi_masks(subject,xfmname,roiList=None,shape=(31,100,100),Dst=2,overlapOpt='cut'):
+    '''
+    Return a numbered mask + dictionary of roi numbers
+    roiList is a list of ROIs (which better be defined in the .svg file)
+
+    '''
+    import svgroi
+    # merge = True returns LEFT HEM as first (nL) values, then RIGHT
+    flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
+    vertIdx = np.unique(polys) # Needed for determining index for ROIs later
+    flat = flat[vertIdx]
+    # Get 3D coords
+    coords = np.vstack(db.surfs.getCoords(subject, xfmname))
+    nVerts = np.max(coords.shape)
+    coords = coords[vertIdx]
+    nValidVerts = np.max(coords.shape)
+    # Get voxDst,voxIdx (voxIdx has NOT had invalid 2-D vertices removed by "vertIdx" index)
+    voxDst,voxIdx = get_vox_dist(subject,xfmname,shape)
+    voxIdxF = voxIdx.flatten()
+    # Get L,R hem separately
+    L,R = surfs.getVTK(subject, "flat", merge=False, nudge=True)
+    nL = len(np.unique(L[1]))
+    #nVerts = len(idxL)+len(idxR)
+    # mask for left hemisphere
+    Lmask = (voxIdx < nL).flatten()
+    Rmask = np.logical_not(Lmask)
+    CxMask = (voxDst < Dst).flatten()
+    # Get ROIs from inkscape SVGs
+    svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
+    rois = svgroi.ROIpack(flat[:,:2], svgfile)
+    
+    #return rois, flat, coords, voxDst, voxIdx ## rois is a list of class svgROI; flat = flat cortex coords; coords = 3D coords
+    if roiList is None:
+        roiList = rois.names
+
+    if isinstance(roiList, str):
+        roiList = [roiList]
+    # First: get all roi voxels into 4D volume
+    tmpMask = np.zeros((np.prod(shape),len(roiList),2),np.bool)
+    for ir,roi in enumerate(roiList):
+        # Irritating index switching:
+        roiIdxB1 = np.zeros((nValidVerts,),np.bool) # binary index 1
+        roiIdxS1 = rois.get_roi(roi) # substitution index 1 (in valid vertex space)
+        roiIdxB1[roiIdxS1] = True
+        roiIdxB2 = np.zeros((nVerts,),np.bool) # binary index 2
+        roiIdxB2[vertIdx] = roiIdxB1
+        roiIdxS2 = np.nonzero(roiIdxB2)[0] # substitution index 2 (in ALL fiducial vertex space)
+        roiIdxB3 = np.in1d(voxIdxF,roiIdxS2) # binary index to 3D volume (flattened, though)
+        tmpMask[:,ir,0] = np.all(np.array([roiIdxB3,Lmask,CxMask]),axis=0)
+        tmpMask[:,ir,1] = np.all(np.array([roiIdxB3,Rmask,CxMask]),axis=0)
+    
+    # cover 
+    mask = np.zeros(np.prod(shape),dtype=np.int64)
+    roiIdx = {}
+    if overlapOpt=='cut':
+        toCut = np.sum(tmpMask,axis=1)>1
+        # Note that indexing by voxIdx guarantees that there will be no overlap in ROIs
+        # (unless there are overlapping assignments to ROIs on the surface), due to 
+        # each voxel being assigned only ONE closest vertex
+        print('%d voxels cut'%np.sum(toCut))
+        tmpMask[toCut] = False 
+        for ir,roi in enumerate(roiList):
+            mask[tmpMask[:,ir,0]] = -ir-1
+            mask[tmpMask[:,ir,1]] = ir+1
+            roiIdx[roi] = ir+1
+        mask.shape = shape
+    elif overlapOpt=='split':
+        pass
+    return mask,roiIdx

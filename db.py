@@ -238,7 +238,10 @@ class Database(object):
             xfm = np.dot(np.linalg.inv(magnet), xfm)
 
         coords = []
-        for pts, polys, norms in self.getVTK(subject, "fiducial", hemisphere=hemisphere, nudge=False):
+        vtkTmp = self.getVTK(subject, "fiducial", hemisphere=hemisphere, nudge=False)
+        if not isinstance(vtkTmp,(tuple,list)):
+            vtkTmp = [vtkTmp]
+        for pts, polys, norms in vtkTmp:
             wpts = np.vstack([pts.T, np.ones(len(pts))])
             coords.append(np.dot(xfm, wpts)[:3].round().astype(int).T)
 

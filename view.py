@@ -51,7 +51,10 @@ def _get_surf_interp(subject, types=('inflated',)):
 
     left, right = db.surfs.getVTK(subject, "flat", nudge=False)
     pts.append([left[0], right[0]])
-    polys = [p[1] for p in [left, right]]
+    flatpolys = [p[1] for p in [left, right]]
+
+    fidleft, fidright = db.surfs.getVTK(subject, "fiducial", nudge=True)
+    fidpolys = [p[1] for p in [fidleft, fidright]]
 
     flatmin = 0
     for p in pts[-1]:
@@ -68,12 +71,15 @@ def _get_surf_interp(subject, types=('inflated',)):
         p[:,1] -= p[:,1].min()
         p[:,1] += flatmin
 
-    interp = [interp1d(np.linspace(0,1,len(pts)), pts, axis=0) for pts in zip(*pts)]
+    interp = [interp1d(np.linspace(0,1,len(p)), p, axis=0) for p in zip(*pts)]
+    ## Store the name of each "stop" in the interpolator
+    for i in interp:
+        i.stops = list(types)+["flat"]
 
-    return interp, polys
+    return interp, flatpolys, fidpolys
 
 def _tcoords(subject):
-    left, right = db.surfs.getVTK(subject, "flat", hemisphere="both", nudge=True)
+    left, right = db.surfs.getVTK(subject, "fiducial", hemisphere="both", nudge=True)
     fpts = np.vstack([left[0], right[0]])
     fmin = fpts.min(0)
     fpts -= fmin
@@ -88,7 +94,7 @@ def _tcoords(subject):
 
 def get_mixer_args(subject, xfmname, types=('inflated',)):
     coords = db.surfs.getCoords(subject, xfmname)
-    interp, polys = _get_surf_interp(subject, types)
+    interp, flatpolys, fidpolys = _get_surf_interp(subject, types)
     
     overlay = os.path.join(options['file_store'], "overlays", "%s_rois.svg"%subject)
     if not os.path.exists(overlay):
@@ -101,8 +107,8 @@ def get_mixer_args(subject, xfmname, types=('inflated',)):
             xmlbase = open(os.path.join(cwd, "svgbase.xml")).read()
             xml.write(xmlbase.format(width=aspect * 1024, height=1024))
 
-    return dict(points=interp, polys=polys, coords=coords, tcoords=_tcoords(subject),
-        nstops=len(types)+2, svgfile=overlay)
+    return dict(points=interp, flatpolys=flatpolys, fidpolys=fidpolys, coords=coords,
+                tcoords=_tcoords(subject), nstops=len(types)+2, svgfile=overlay)
 
 def show(data, subject, xfm, types=('inflated',)):
     '''View epi data, transformed into the space given by xfm. 
