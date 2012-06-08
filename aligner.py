@@ -714,8 +714,7 @@ def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
 def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
     def save_callback(aligner):
         import db
-        db.surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epi, override=True)
-        db.surfs.loadXfm(subject, xfmname, aligner.get_xfm("coord"), xfmtype='coord', epifile=epi, override=True)
+        db.surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epi)
         print "saved xfm"
 
     m = get_aligner(subject, xfmname, epi=epi, xfm=xfm, xfmtype=xfmtype)
@@ -723,7 +722,6 @@ def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
     m.configure_traits()
 
     magnet = m.get_xfm("magnet")
-    shortcut = m.get_xfm("coord")
     epi = os.path.abspath(m.epi_file.get_filename())
 
     checked = False
@@ -735,8 +733,7 @@ def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
                 print "Saving..."
                 try:
                     import db
-                    db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi, override=True)
-                    db.surfs.loadXfm(subject, xfmname, shortcut, xfmtype='coord', epifile=epi, override=True)
+                    db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi)
                 except Exception as e:
                     print "AN ERROR OCCURRED, THE TRANSFORM WAS NOT SAVED: %s"%e
                 print "Complete!"
