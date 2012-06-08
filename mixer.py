@@ -520,7 +520,7 @@ class Mixer(HasTraits):
         self.surf.module_manager.scalar_lut_manager.data_range = (-3, 3)
         self.figure.scene.disable_render = currender
     
-    def saveflat(self, filename=None, height=default_renderheight, center=False):
+    def saveflat(self, filename=None, height=default_renderheight, center=True):
         #Save the current view to restore
         startmix = self.mix
         lastpos = self.figure.camera.position, self.figure.camera.focal_point
@@ -539,12 +539,12 @@ class Mixer(HasTraits):
             mlab.options.offscreen = True
             self.figure.off_screen_rendering = True
         if filename is None:
-            self.reset_view(center=center)
+            self.reset_view(center=False)
             tf = tempfile.NamedTemporaryFile()
             self.figure.save_png(tf.name)
             pngdata = binascii.b2a_base64(tf.read())
         else:
-            self.reset_view(center=True)
+            self.reset_view(center=center)
             self.figure.save_png(filename)
 
         #Restore the last view, turn off offscreen rendering
