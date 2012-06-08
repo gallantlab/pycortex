@@ -79,7 +79,7 @@ def _get_surf_interp(subject, types=('inflated',)):
     return interp, flatpolys, fidpolys
 
 def _tcoords(subject):
-    left, right = db.surfs.getVTK(subject, "fiducial", hemisphere="both", nudge=True)
+    left, right = db.surfs.getVTK(subject, "flat", hemisphere="both", nudge=True)
     fpts = np.vstack([left[0], right[0]])
     fmin = fpts.min(0)
     fpts -= fmin
