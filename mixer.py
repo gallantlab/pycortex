@@ -517,7 +517,7 @@ class Mixer(HasTraits):
             ## Set the colormap to gray
             self.colormap = "gray"
         ## Set the data range appropriately
-        self.surf.module_manager.scalar_lut_manager.data_range = (-3, 3)
+        #self.surf.module_manager.scalar_lut_manager.data_range = (-3, 3)
         self.figure.scene.disable_render = currender
     
     def saveflat(self, filename=None, height=default_renderheight, center=True):
