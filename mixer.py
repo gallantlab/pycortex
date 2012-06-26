@@ -429,8 +429,10 @@ class Mixer(HasTraits):
         self.figure.scene.disable_render = False
     
     def _show_colorbar_changed(self):
-        for surf in self.surfs:
-            surf.module_manager.scalar_lut_manager.show_legend = self.show_colorbar
+        """Only toggles the colorbar for the FIRST surface. Thus assumes that the two 'colors
+        and legends' objects are totally yoked.
+        """
+        self.surfs[0].module_manager.scalar_lut_manager.show_legend = self.show_colorbar
 
     def _hide_backfaces_changed(self):
         if self.hide_backfaces:
