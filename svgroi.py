@@ -31,9 +31,8 @@ class ROI(traits.HasTraits):
         self.coords = [ griddata(parent.tcoords, np.arange(len(parent.tcoords)), p, "nearest") for p in pts ]
         self.hide = xml.hasAttribute("style") and "display:none" in xml.attributes['style'].value
 
-        self.linewidth = self.parent.linewidth
-        self.linecolor = self.parent.linecolor
-        self.roifill = self.parent.roifill
+        self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
+        self.update_attribs()
     
     def _parse_svg_pts(self, data):
         data = data.split()
@@ -99,13 +98,14 @@ class ROIpack(traits.HasTraits):
     linecolor = traits.Tuple((0.,0.,0.,1.))
     roifill = traits.Tuple((0.,0.,0.,0.2))
 
-    def __init__(self, tcoords, svgfile):
+    def __init__(self, tcoords, svgfile, callback=None):
         super(ROIpack, self).__init__()
         if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
             tcoords -= tcoords.min(0)
             tcoords /= tcoords.max(0)
         self.tcoords = tcoords
         self.svgfile = svgfile
+        self.callback = callback
         self.reload()
 
     def reload(self):
@@ -154,6 +154,11 @@ class ROIpack(traits.HasTraits):
     def update_style(self):
         for roi in self.rois.values():
             roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill)
+        try:
+            if self.callback is not None:
+                self.callback()
+        except:
+            print "cannot callback"
 
     def get_texture(self, texres, bits=32):
         '''Renders the current roimap as a png'''

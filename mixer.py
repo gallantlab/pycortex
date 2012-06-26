@@ -142,7 +142,7 @@ class Mixer(HasTraits):
             self.pivinterp = interp1d(np.linspace(0, 1, self.nstops), pint)
 
         if svgfile is not None:
-            self.rois = svgroi.ROIpack(np.vstack(self.tcoords), svgfile)
+            self.rois = svgroi.ROIpack(np.vstack(self.tcoords), svgfile, self.update_texture)
 
         if default_svfile is not None and os.path.exists(os.path.join(cwd, default_svfile)):
             self.saved_views = cPickle.load(open(os.path.join(cwd, options['saved_views'])))
