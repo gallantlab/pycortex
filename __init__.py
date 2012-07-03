@@ -7,6 +7,7 @@ options = json.load(open(os.path.join(cwd, "defaults.json")))
 
 from db import surfs
 import view
+from utils import unmask
 
 def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     '''mosaic(data, xy=(6, 5), trim=10, skip=1)
@@ -88,11 +89,11 @@ def epi_to_anat(data, subject=None, xfmname=None, filename=None):
     return output
 
 def get_cortical_mask(subject, xfmname, shape=(31, 100, 100)):
-    data = np.zeros(shape)
+    data = np.zeros(shape, dtype=bool)
     coords = np.vstack(surfs.getCoords(subject, xfmname))
     pts, polys, norms = surfs.getVTK(subject, "flat", merge=True)
     coords = coords[np.unique(polys)]
-    data.T[tuple(coords.T)] = 1
+    data.T[tuple(coords.T)] = True
     
     return data
 

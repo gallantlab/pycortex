@@ -17,7 +17,7 @@ def get_binary_pts(subj, types, hemi):
     types = ("fiducial",) + types + ("flat",)
     pts = []
     for t in types:
-        pt, polys, norm = db.surfs.getVTK(subj, t, hemisphere=hemi)
+        pt, polys, norm = db.surfs.getVTK(subj, t, hemisphere=hemi, merge=True, nudge=True)
         pts.append(pt)
 
     #flip the flats to be on the X-Z plane

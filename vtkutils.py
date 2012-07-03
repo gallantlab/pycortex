@@ -1,14 +1,10 @@
 import numpy as np
-try:
-    from enthought.mayavi.sources.vtk_file_reader import VTKFileReader
-    from enthought.mayavi import mlab
-    from enthought.tvtk.api import tvtk
-except ImportError:
-    from mayavi.sources.vtk_file_reader import VTKFileReader
-    from mayavi import mlab
-    from tvtk.api import tvtk
 
 def get(vtk):
+    try:
+        from enthought.mayavi.sources.vtk_file_reader import VTKFileReader
+    except ImportError:
+        from mayavi.sources.vtk_file_reader import VTKFileReader
     vfr = VTKFileReader()
     vfr.initialize(vtk)
     return vfr
@@ -24,10 +20,16 @@ def read(vtk):
     return pts, polys, normals
 
 def show(vtks):
+    try:
+        from enthought.mayavi import mlab
+        from enthought.tvtk.api import tvtk
+    except ImportError:
+        from mayavi import mlab
+        from tvtk.api import tvtk
+
     fig = mlab.figure()
     fig.scene.background = (0,0,0)
-    fig.scene.interactor.interactor_style = \
-                                tvtk.InteractorStyleTerrain()
+    fig.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
     fig.scene.disable_render = True
     pts = []
     for i, vtk in enumerate(vtks):
