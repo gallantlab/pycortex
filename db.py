@@ -200,7 +200,7 @@ class Database(object):
             For single hemisphere
         '''
 
-        import vtkutils
+        from vtkutils_new import read as vtkread
         fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
 
         if hemisphere == "both":
@@ -228,7 +228,7 @@ class Database(object):
             if not os.path.exists(vtkfile):
                 raise ValueError("Cannot find given subject and type")
 
-            return vtkutils.read(vtkfile)
+            return vtkread(vtkfile)
 
     def getCoords(self, subject, xfmname, hemisphere="both", magnet=None):
         if magnet is None:

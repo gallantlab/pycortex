@@ -75,7 +75,7 @@ THREE.BinSurfLoader.prototype.parse = function ( data ) {
     
     //Generate the UV coordinates
     var u, v, face, tcoords, n, names = ["a","b","c"];
-    for (var i=0; i < geometry.faces.length; i++) {
+    for (var i=0, il=geometry.faces.length; i < il; i++) {
         face = geometry.faces[i];
         tcoords = [];
         for (var j=0; j < 3; j++) {
