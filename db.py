@@ -137,21 +137,13 @@ class Database(object):
     def __dir__(self):
         return ["loadXfm","getXfm", "loadVTK", "getVTK"] + self.subjects.keys()
     
-    def loadXfm(self, subject, name, xfm, xfmtype="magnet", epifile=None, override=False):
+    def loadXfm(self, subject, name, xfm, xfmtype="magnet", epifile=None):
         """Load a transform into the surface database. If the transform exists already, update it
         If it does not exist, copy the reference epi into the filestore and insert."""
-        assert xfmtype in ["magnet", "coord", "base"], "Unknown transform type"
+        assert xfmtype in ["magnet", "coord"], "Unknown transform type"
         fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
         if os.path.exists(fname):
-            if epifile is not None:
-                print "Cannot change reference epi for existing transform"
-                
             jsdict = json.load(open(fname))
-            if xfmtype in jsdict:
-                prompt = 'There is already a transform for this subject by the name of "%s". Overwrite? (Y/N)'%subject
-                if not override and raw_input(prompt).lower().strip() not in ("y", "yes"):
-                    print "Not saving..."
-                    return
         else:
             assert epifile is not None, "Please specify a reference epi"
             assert os.path.splitext(epifile)[1].lower() == ".nii", "Reference epi must be a nifti"
@@ -162,7 +154,16 @@ class Database(object):
 
             jsdict = dict(epifile=filename, subject=subject)
 
-        jsdict[xfmtype] = xfm.tolist()
+        import nibabel
+        nib = nibabel.load(os.path.join(filestore, "references", jsdict['epifile']))
+        if xfmtype == "magnet":
+            jsdict['magnet'] = xfm.tolist()
+            aff = np.linalg.inv(nib.get_affine())
+            jsdict['coord'] = np.dot(aff, xfm).tolist()
+        elif xfmtype == "coord":
+            jsdict['coord'] = xfm.tolist()
+            jsdict['magnet'] = np.dot(nib.get_affine(), xfm).tolist()
+        
         json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
     
     def getXfm(self, subject, name, xfmtype="coord"):
@@ -237,7 +238,10 @@ class Database(object):
             xfm = np.dot(np.linalg.inv(magnet), xfm)
 
         coords = []
-        for pts, polys, norms in self.getVTK(subject, "fiducial", hemisphere=hemisphere, nudge=False):
+        vtkTmp = self.getVTK(subject, "fiducial", hemisphere=hemisphere, nudge=False)
+        if not isinstance(vtkTmp,(tuple,list)):
+            vtkTmp = [vtkTmp]
+        for pts, polys, norms in vtkTmp:
             wpts = np.vstack([pts.T, np.ones(len(pts))])
             coords.append(np.dot(xfm, wpts)[:3].round().astype(int).T)
 
