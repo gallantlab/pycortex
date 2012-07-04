@@ -15,7 +15,7 @@ from db import options
 
 try:
     from traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Range, Any, Color,Enum, Callable, Tuple, Button, on_trait_change, List
-    from traitsui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor, InstanceEditor
+    from traitsui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor, InstanceEditor, ListEditor
 
     from tvtk.api import tvtk
     from tvtk.pyface.scene import Scene
@@ -31,7 +31,7 @@ try:
 
 except ImportError:
     from enthought.traits.api import HasTraits, Instance, Array, Float, Int, Str, Bool, Dict, Any, Range, Color,Enum, Callable, Tuple, Button, on_trait_change, List
-    from enthought.traits.ui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor, InstanceEditor
+    from enthought.traits.ui.api import View, Item, HGroup, Group, VGroup, ImageEnumEditor, ColorEditor, InstanceEditor, ListEditor
 
     from enthought.tvtk.api import tvtk
     from enthought.tvtk.pyface.scene import Scene
@@ -55,10 +55,9 @@ default_svfile = options['saved_views'] if 'saved_views' in options else None
 class DataPack(HasTraits):
     name = Str
 
-    def __init__(self, src, data, **kwargs):
+    def __init__(self, data, **kwargs):
         super(DataPack, self).__init__(**kwargs)
         self.ldat, self.rdat = data
-        self.mixer = src
 
     def set(self, srcs):
         left, right = srcs
@@ -74,6 +73,8 @@ class DataPack(HasTraits):
         elif isinstance(dat, tvtk.UnsignedCharArray):        
             ## (in which case it defines per-vertex colors)
             src.data.point_data.scalars = dat
+
+    view = View(Item("name", show_label=False))
 
 class SavedView(HasTraits):
     name = Str
@@ -381,11 +382,8 @@ class Mixer(HasTraits):
             else:
                 pack.append(scalars)
                 #data_src.mlab_source.scalars = scalars
-        
-        if name is None:
-            name = "data%d"%len(self.datavars)
-        
-        self.datapack = DataPack(self, pack, name=name)
+
+        self.datapack = DataPack(pack, name="data%d"%len(self.datavars))
         self.datavars.append(self.datapack)
     
     def _datapack_changed(self):
@@ -664,6 +662,7 @@ class Mixer(HasTraits):
                      cols=6, path=lut_manager.lut_image_dir)),
                 "fliplut", Item("show_colorbar", label="colorbar"), "vmin", "vmax", "_", 
                 Item('datapack', editor=InstanceEditor(name="datavars", editable=False), width=100),
+                Item('datavars', editor=ListEditor(style='custom')),
                 "_",
                 "showlabels", "showrois", Item("reset_btn", show_label=False),
                 "_",

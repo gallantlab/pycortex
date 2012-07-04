@@ -59,10 +59,9 @@
             this.renderer.setSize( window.innerWidth,window.innerHeight-50);
 
             this.shader = new THREE.MeshLambertMaterial( { color: 0xFFFFFF, morphTargets: true, morphNormals: true } );
-
-            var _this = this;
+            
             this.container.html( this.renderer.domElement );
-            $(window).resize(function() {_this.resize()});
+            $(window).resize(this.resize.bind(this));
             this.slider = $(slider).width(window.innerWidth);
             this.slider.change(function() {
                 _this.setMix(this.value/10000);
