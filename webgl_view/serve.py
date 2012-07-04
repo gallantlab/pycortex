@@ -23,22 +23,22 @@ def memoize(func):
     return mfunc
 
 @memoize
-def get_binary_pts(subj, types):
-    types = ("fiducial",) + types + ("flat",)
-    pts = []
-    for t in types:
-        pt, polys, norm = db.surfs.getVTK(subj, t, hemisphere="both", merge=True, nudge=True)
-        pts.append(pt)
-
-    #flip the flats to be on the X-Z plane
-    flatpts = np.zeros_like(pts[-1])
-    flatpts[:,[0,2]] = pts[-1][:,:2]
-    flatpts[:,1] = pts[-2].min(0)[1]
-    pts[-1] = flatpts*.66
-
-    header = struct.pack('2I', len(types), pts[0].size)
-    ptstr = ''.join([p.astype(np.float32).tostring() for p in pts])
-    return header+ptstr+polys.astype(np.uint32).tostring()
+def get_binary_pts(subj, surftype, getPolys=False, compress=True):
+    left, right = db.surfs.getVTK(subj, surftype, hemisphere="both", 
+        merge=False, nudge=surftype != "fiducial")
+    data = ""
+    for pts, polys, norms in left, right:
+        if not getPolys:
+            polys = np.array([])
+        minmax = pts.min(0).tolist() + (pts.max(0) - pts.min(0)).tolist()
+        header = struct.pack('?2I6f', compress, len(pts), len(polys), *minmax)
+        if compress:
+            pts -= pts.min(0)
+            pts /= pts.max(0)
+            pts *= np.iinfo(np.uint16).max
+            pts = pts.astype(np.uint16)
+        data += header+pts.tostring()+polys.astype(np.uint32).tostring()
+    return data
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -52,10 +52,9 @@ class MainHandler(tornado.web.RequestHandler):
             self.write_error(404)
 
 class BinarySurface(tornado.web.RequestHandler):
-    def get(self, subj):
-        self.set_header("Content-Type", "text/plain")
-        data = get_binary_pts(subj, ("inflated",))
-        self.write(data)
+    def get(self, subj, surftype):
+        self.set_header("Content-Type", "application/octet-stream")
+        self.write(get_binary_pts(subj, surftype, self.get_argument("polys")))
 
     def post(self, subj, hemi):
         self.set_header("Content-Type", "text/plain")
@@ -86,7 +85,7 @@ class WebApp(mp.Process):
     def run(self):
         self.sockets = []
         application = tornado.web.Application([
-            (r"/surfaces/(\w+)/?(\w+)?/?", BinarySurface),
+            (r"/surfaces/(\w+)/(\w+)/?", BinarySurface),
             (r"/wsconnect/", ClientSocket, dict(sockets=self.sockets)),
             (r"/(.*)", MainHandler),
         ], gzip=True)

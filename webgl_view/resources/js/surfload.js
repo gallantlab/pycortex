@@ -33,7 +33,31 @@ THREE.BinSurfLoader.prototype.load = function ( url, post, callback ) {
 };
 
 THREE.BinSurfLoader.prototype.parse = function ( data ) {
-    var idata = new Uint32Array(data);
+    var pos = 0, header, ptdat, polydat, ptbuf;
+    for (var hemi = 0; hemi < 2; hemi++) {
+        header = { 
+            compressed: new UInt8Array(data, pos, 1)[0] == 1;
+            lengths: new UInt32Array(data, pos+1, 8);
+            min: new Float32Array(data, pos+9, 12);
+            max: new Float32Array(data, pos+21, 12);
+        }
+        pos += 33;
+        if (header.compressed) {
+            ptbuf = new UInt16Array(data, pos, pos+header.lengths[0]*3);
+            ptdat = new Float32Array(new ArrayBuffer(header.lengths[0]*3));
+            for (var i = 0, il = header.lengths[0]; i < il; i++) {
+                for (var j = 0; j < 3; j++) {
+                    ptdat[i*3+j] = (ptbuf[i*3+j]*header.max[j]) + header.min[j];
+                }
+            }
+        } else {
+            ptdat = new Float32Array(data, pos, pos+header.lengths[0]*3);
+        }
+        pos += header.lengths[0];
+        polydat = new UInt32Array(data, pos, pos+header.lengths[1]);
+        pos += header.lenghts[0];
+    }
+    var header = data.slice(0,33)
     var fdata = new Float32Array(data);
     var numsurfs = idata[0];
     var ptlen = idata[1];
