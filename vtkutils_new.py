@@ -1,5 +1,10 @@
 import itertools
 import numpy as np
+import vtkctm
+
+def read_old(vtk):
+	pts, polys = vtkctm.readVTK(vtk)
+	return pts, polys, None
 
 def read(vtk):
 	with open(vtk) as vtk:

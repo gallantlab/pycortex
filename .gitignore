@@ -1,3 +1,5 @@
 *.pyc
 *~
 defaults.json
+*.so
+*.o

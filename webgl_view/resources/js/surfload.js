@@ -1,121 +1,134 @@
 /**
- * @author mrdoob / http://mrdoob.com/
+ * @author jamesgao / james@jamesgao.com
  */
 
-THREE.BinSurfLoader = function () {};
+THREE.BinSurfLoader = function (context, showStatus) {
+    this.context = context;
+    THREE.Loader.call( this, showStatus );
+};
 
 THREE.BinSurfLoader.prototype = new THREE.Loader();
 THREE.BinSurfLoader.prototype.constructor = THREE.BinSurfLoader;
 
-THREE.BinSurfLoader.prototype.load = function ( url, post, callback ) {
-    var that = this;
+THREE.BinSurfLoader.prototype.load = function (subject, callback) {
+    //Load the minimal data
+    this.callback = callback;
+    this.subject = subject;
+    this.loaded = {fiducial:false, flat:false};
+    this.request(subject, "fiducial", true, this.parse.bind(this));
+    this.request(subject, "flat", true, this.parse.bind(this));
+};
+THREE.BinSurfLoader.prototype.request = function(subject, type, polys, callback) {
+    var _this = this;
+    var url = "/surfaces/"+subject+"/"+type+"/";
+    if (polys)
+        url += "?polys=True"
+
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function () {
         if ( xhr.readyState == 4 ) {
             if ( xhr.status == 200 || xhr.status == 0 ) {
-                callback( that.parse( this.response ) );
+                callback(type, this.response);
             } else {
                 console.error( 'THREE.BinSurfLoader: Couldn\'t load ' + url + ' (' + xhr.status + ')' );
             }
         }
     };
-    if (post) {
-        var params = "types="+post+"&";
-        xhr.open( "POST", url, true );
-        xhr.responseType = 'arraybuffer';
-        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-        xhr.send( params );
-    } else {
-        xhr.open( "GET", url, true );
-        xhr.responseType = 'arraybuffer';
-        xhr.send( null );
+    xhr.open( "GET", url, true );
+    xhr.responseType = 'arraybuffer';
+    xhr.send( null );
+}
+THREE.BinSurfLoader.prototype.parse = function(surftype, data) {
+    this.loaded[surftype] = this.parseSurf(data);
+    var loaded = true;
+    for (var type in this.loaded) {
+        if (typeof(this.loaded[type]) == "boolean")
+            loaded &= this.loaded[type];
     }
-};
+    if (loaded) {
+        console.log("Download complete");
+        var fid = this.loaded.fiducial;
+        fid.left.norms = this._computeNorms(fid.left.pts, fid.left.polys);
+        console.log("Computed left norms");
+        fid.right.norms = this._computeNorms(fid.right.pts, fid.right.polys);
+        console.log("Computed right norms");
 
-THREE.BinSurfLoader.prototype.parse = function ( data ) {
-    var pos = 0, header, ptdat, polydat, ptbuf;
+        var left = new THREE.SurfGeometry(this.context, {fiducial:this.loaded.fiducial.left, flat:this.loaded.flat.left});
+        var right = new THREE.SurfGeometry(this.context, {fiducial:this.loaded.fiducial.right, flat:this.loaded.flat.right});
+        this.callback(left, right);
+    }
+}
+
+THREE.BinSurfLoader.prototype.parseSurf = function ( data ) {
+    var pos = 0, header, pts, polys, norms, ptbuf;
+    var heminames = ['left', 'right'];
+    var geoms = {};
+
     for (var hemi = 0; hemi < 2; hemi++) {
         header = { 
-            compressed: new UInt8Array(data, pos, 1)[0] == 1;
-            lengths: new UInt32Array(data, pos+1, 8);
-            min: new Float32Array(data, pos+9, 12);
-            max: new Float32Array(data, pos+21, 12);
+            compressed: new Uint32Array(data.slice(pos), 0, 1)[0] == 1,
+            lengths: new Uint32Array(data.slice(pos+4), 0, 2),
+            min: new Float32Array(data.slice(pos+12), 0, 3),
+            max: new Float32Array(data.slice(pos+24), 0, 3),
         }
-        pos += 33;
+        pos += 36;
         if (header.compressed) {
-            ptbuf = new UInt16Array(data, pos, pos+header.lengths[0]*3);
-            ptdat = new Float32Array(new ArrayBuffer(header.lengths[0]*3));
+            ptbuf = new Uint16Array(data.slice(pos), 0, header.lengths[0]*3);
+            pts = new Float32Array(header.lengths[0]*3);
             for (var i = 0, il = header.lengths[0]; i < il; i++) {
                 for (var j = 0; j < 3; j++) {
-                    ptdat[i*3+j] = (ptbuf[i*3+j]*header.max[j]) + header.min[j];
+                    pts[i*3+j] = (ptbuf[i*3+j]/65535)*header.max[j] + header.min[j];
                 }
             }
+            pos += header.lengths[0]*3*2;
         } else {
-            ptdat = new Float32Array(data, pos, pos+header.lengths[0]*3);
+            pts = new Float32Array(data.slice(pos), 0, header.lengths[0]*3);
+            pos += header.lengths[0]*3*4;
         }
-        pos += header.lengths[0];
-        polydat = new UInt32Array(data, pos, pos+header.lengths[1]);
-        pos += header.lenghts[0];
+        polys = new Uint32Array(data.slice(pos), 0, header.lengths[1]*3);
+        pos += header.lengths[1]*3*4;
+        geoms[heminames[hemi]] = {pts:pts, polys:polys};
     }
-    var header = data.slice(0,33)
-    var fdata = new Float32Array(data);
-    var numsurfs = idata[0];
-    var ptlen = idata[1];
-    var attrib = {};
+    return geoms;
+}
 
-    var geometry = new THREE.Geometry();
-
-    var pts = fdata.subarray(2,ptlen+2);
-    for (var i=0; i<ptlen; i+=3) {
-        geometry.vertices.push(new THREE.Vector3(pts[i], pts[i+1], pts[i+2]));
-    }
-
-    var ptdat, verts;
-    for (var i = 1; i < numsurfs-1; i++) {
-        verts = [];
-        ptdat = fdata.subarray(i*ptlen+2, (i+1)*ptlen+2);
-        for (var j=0; j < ptdat.length; j+=3)
-            verts.push(new THREE.Vector3(ptdat[j], ptdat[j+1], ptdat[j+2]));
-        geometry.morphTargets.push({name:"surf"+(i-1), vertices:verts});
-    }
-
-    var flat = fdata.subarray((numsurfs-1)*ptlen+2, numsurfs*ptlen+2);
-    var min = [1000,1000], max = [0,0], verts = [], pt;
-    for (var i=0; i < flat.length; i+=3) {
-        pt = new THREE.Vector3(flat[i], flat[i+1], flat[i+2]);
-        verts.push(pt);
-        if (min[0] < pt.x) min[0] = pt.x;
-        else if (max[0] > pt.x) max[0] = pt.x;
-        if (min[1] < pt.z) min[1] = pt.z;
-        else if (max[1] > pt.z) max[0] = pt.z;
-    }
-    geometry.morphTargets.push({name:"flat", vertices:verts});
-
-    var polys = idata.subarray(numsurfs*ptlen+2);
-    for (var i=0; i < polys.length; i+=3) {
-        geometry.faces.push(new THREE.Face3(polys[i], polys[i+1], polys[i+2]));
-    }
-
-    
-    //Generate the UV coordinates
-    var u, v, face, tcoords, n, names = ["a","b","c"];
-    for (var i=0, il=geometry.faces.length; i < il; i++) {
-        face = geometry.faces[i];
-        tcoords = [];
+THREE.BinSurfLoader.prototype._computeNorms = function(ptdat, polydat) {
+    var ptface = {}; //Stores the faces that a point belongs to, for averaging
+    var crosspt = [[0,0,0],[0,0,0]];
+    var facenorms = new Float32Array(polydat.length*3);
+    for (var i=0, il=polydat.length / 3; i < il; i++) {
         for (var j=0; j < 3; j++) {
-            n = names[j];
-            u = (verts[face[n]].x - min[0]) / (max[0] - min[0]);
-            v = (verts[face[n]].z - min[1]) / (max[1] - min[1]);
-            tcoords.push(new THREE.UV(u, v));
-        }
-        geometry.faceVertexUvs.push(tcoords);
-    }
-    
-    geometry.computeCentroids();
-    geometry.computeFaceNormals();
-    geometry.computeVertexNormals();
-    geometry.computeMorphNormals();
-    geometry.computeBoundingSphere();
+            if (!ptface[polydat[i*3+j]]) 
+                ptface[polydat[i*3+j]] = new Array();
+            ptface[polydat[i*3+j]].push(i);
 
-    return geometry;
+            //subtract the first point for cross product
+            crosspt[0][j] = ptdat[polydat[i*3+1]*3+j] - ptdat[polydat[i*3]*3+j];
+            crosspt[1][j] = ptdat[polydat[i*3+2]*3+j] - ptdat[polydat[i*3]*3+j];
+        }
+        //Compute cross product
+        facenorms[i*3+0] = crosspt[0][1]*crosspt[1][2] - crosspt[0][2]*crosspt[1][1];
+        facenorms[i*3+1] = crosspt[0][2]*crosspt[1][0] - crosspt[0][0]*crosspt[1][2];
+        facenorms[i*3+2] = crosspt[0][0]*crosspt[1][1] - crosspt[0][1]*crosspt[1][0];
+
+        //Normalize
+        var norm = 0;
+        for (var j=0; j < 3; j++)
+            norm += Math.pow(facenorms[i*3+j],2);
+        norm = Math.sqrt(norm);
+        for (var j=0; j < 3; j++)
+            facenorms[i*3+j] /= norm;
+    }
+    var ptnorms = new Float32Array(ptdat.length*3);
+    for (var i=0, il=ptdat.length; i < il; i++) {
+        if (ptface[i]) {
+            for (var j=0; j < 3; j++) {
+                ptnorms[i*3+j] = 0;
+                for (var k=0, kl=ptface[i].length; k < kl; k++)
+                    ptnorms[i*3+j] += facenorms[ptface[i][k]*3+j]
+                ptnorms[i*3+j] /= ptface[i].length;
+            }
+        }
+    }
+    return ptnorms;
 }
