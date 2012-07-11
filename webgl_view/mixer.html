@@ -17,10 +17,13 @@
                 font-family:sans-serif;
             }
         </style>
-        <script src="https://raw.github.com/mrdoob/three.js/dev/build/Three.js"></script>
-        <script src="resources/js/surfload.js"></script>
+        <script src="resources/js/Three.js"></script>
         <script src='resources/js/jquery-1.7.2.min.js'></script>
         <script src='resources/js/LandscapeControls.js'></script>
+        <script src="resources/js/loaders/ctm/lzma.js"></script>
+        <script src="resources/js/loaders/ctm/ctm.js"></script>
+        <script src="resources/js/loaders/ctm/CTMLoader.js"></script>
+
         <script type='text/javascript'>
         function MRIview(obj, slider) {
             this.container = $(obj)
@@ -58,7 +61,7 @@
             this.renderer.setClearColorHex( 0x000000, 1 );
             this.renderer.setSize( window.innerWidth,window.innerHeight-50);
 
-            this.shader = new THREE.MeshLambertMaterial( { color: 0xFFFFFF, morphTargets: true, morphNormals: true } );
+            this.shader = new THREE.MeshLambertMaterial( { color: 0xFFFFFF } );
             
             this.container.html( this.renderer.domElement );
             $(window).resize(this.resize.bind(this));
@@ -75,28 +78,31 @@
                 this.controls.update();
                 this.renderer.render( this.scene, this.camera );
             },
-            load: function(subj, types) {
+            load: function(subj) {
                 $(this.renderer.domElement).remove();
                 this.container.html("Loading...");
-                if (!types)
-                    types = "inflated"
-                if (this.geometry) {
-                    this.scene.remove(this.mesh);
-                    delete this.geometry;
-                    delete this.mesh;
+                if (this.meshes) {
+                    for (var hemi in this.meshes) {
+                        this.scene.remove(this.meshes[hemi]);
+                        delete this.meshes[hemi];
+                    }
+                    delete this.meshes;
                 }
-                var _this = this;
-                var loader=new THREE.BinSurfLoader();
-                loader.load ("/surfaces/"+subj+"/", types, function(geom){
-                    console.log("Retrieved geometry", geom);
-                    _this.geometry = geom;
-                    _this.mesh = new THREE.Mesh(geom, _this.shader);
-                    _this.mesh.doubleSided=true;
-                    _this.mesh.rotation.x = -Math.PI/2;
-                    _this.scene.add( _this.mesh );
-                    _this.container.html(_this.renderer.domElement);
-                    _this.draw();
-                });
+                
+                this.loader = new THREE.CTMLoader( this.renderer.context );
+
+                this.loader.loadParts( "resources/ctm/JG_inflated.json", function( geometries, materials ) {
+                    this.container.html(this.renderer.domElement);
+                    //this.geoms = {left:geometries[0], right:geometries[1]};
+                    this.meshes = {};
+                    this.meshes.left = new THREE.Mesh(geometries[0], this.shader);
+                    this.meshes.right = new THREE.Mesh(geometries[1], this.shader);
+                    this.scene.add(this.meshes.left);
+                    this.scene.add(this.meshes.right);
+                    this.draw();
+
+                }.bind(this), true, true );
+
             },
             resize: function() {
                 this.renderer.setSize(window.innerWidth, window.innerHeight-50);

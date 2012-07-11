@@ -19,11 +19,14 @@ def memoize(func):
     def mfunc(*args):
         if args not in cache:
             cache[args] = func(*args)
+        else:
+            print "Found in cache: %r"%(args,)
         return cache[args]
     return mfunc
 
 @memoize
 def get_binary_pts(subj, surftype, getPolys=False, compress=True):
+    print "Retrieving suject %r, type %r, polys=%r"%(subj, surftype, getPolys)
     left, right = db.surfs.getVTK(subj, surftype, hemisphere="both", 
         merge=False, nudge=surftype != "fiducial")
     data = ""
@@ -31,7 +34,7 @@ def get_binary_pts(subj, surftype, getPolys=False, compress=True):
         if not getPolys:
             polys = np.array([])
         minmax = pts.min(0).tolist() + (pts.max(0) - pts.min(0)).tolist()
-        header = struct.pack('?2I6f', compress, len(pts), len(polys), *minmax)
+        header = struct.pack('3I6f', compress, len(pts), len(polys), *minmax)
         if compress:
             pts -= pts.min(0)
             pts /= pts.max(0)
@@ -46,7 +49,10 @@ class MainHandler(tornado.web.RequestHandler):
         if path == '':
             self.write(open("mixer.html").read())
         elif os.path.isfile(path):
-            self.set_header("Content-Type", mimetypes.guess_type(path)[0])
+            mtype = mimetypes.guess_type(path)[0]
+            if mtype is None:
+                mtype = "application/octet-stream"
+            self.set_header("Content-Type", mtype)
             self.write(open(path).read())
         else:
             self.write_error(404)
@@ -57,7 +63,7 @@ class BinarySurface(tornado.web.RequestHandler):
         self.write(get_binary_pts(subj, surftype, self.get_argument("polys")))
 
     def post(self, subj, hemi):
-        self.set_header("Content-Type", "text/plain")
+        self.set_header("Content-Type", "application/octet-stream")
         types = self.get_argument("types").split(",")
         print "loading %r"%types
         data = get_binary_pts(subj, tuple(types))
