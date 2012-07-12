@@ -1,11 +1,14 @@
 import os
 import struct
 import ctypes
+import json
 import tempfile
 import numpy as np
 from scipy.spatial import cKDTree
 
 import mritools
+
+cwd = os.path.split(os.path.abspath(__file__))[0]
 
 class Mesh(ctypes.Structure):
     _fields_ = [
@@ -32,7 +35,7 @@ class Subject(ctypes.Structure):
         ("left", Hemi),
         ("right", Hemi)]
 
-lib = ctypes.cdll.LoadLibrary("./_vtkctm.so")
+lib = ctypes.cdll.LoadLibrary(os.path.join(cwd, "_vtkctm.so"))
 lib.readVTK.restype = ctypes.POINTER(Mesh)
 lib.readVTK.argtypes = [ctypes.c_char_p, ctypes.c_bool]
 lib.readCTM.restype = ctypes.POINTER(Mesh)
@@ -136,8 +139,15 @@ class CTMfile(object):
     def __del__(self):
         lib.subjFree(self.subj)
 
-if __name__ == "__main__":
+def makePack(subj, xfm, types=("inflated",)):
+    fname = "{subj}_{xfm}_[{types}].%s".format(subj=subj,xfm=xfm,types=','.join(types))
     ctm = CTMfile("JG", "20110909JG_nb")
-    ctm.addSurf("inflated")
-    offsets = ctm.save("/tmp/merged")
-    #pts, polys = readCTM("/tmp/left.ctm")
+    for t in types:
+        ctm.addSurf(t)
+
+    offsets = ctm.save(fname%"ctm")
+    jsdat = dict(data=fname%"ctm", materials=[], offsets=offsets)
+    json.dump(jsdat, open(fname%"json", "w"))
+
+if __name__ == "__main__":
+    makePack("JG", "20110909JG_nb", types=("inflated", "veryinflated"))

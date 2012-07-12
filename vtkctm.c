@@ -155,7 +155,7 @@ void meshShift(Mesh* mesh, float* add, float* div) {
 void meshNudge(Mesh* mesh, bool right) {
     float min[3], max[3], shift[3] = {0,0,0}, div[3] = {1,1,1};
     meshMinMax(mesh, min, max);
-    shift[1] = right ? -min[1] : -max[1];
+    shift[0] = right ? -min[0] : -max[0];
     meshShift(mesh, shift, div);
 }
 void meshFree(Mesh* mesh) {

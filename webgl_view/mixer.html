@@ -61,7 +61,7 @@
             this.renderer.setClearColorHex( 0x000000, 1 );
             this.renderer.setSize( window.innerWidth,window.innerHeight-50);
 
-            this.shader = new THREE.MeshLambertMaterial( { color: 0xFFFFFF } );
+            this.shader = new THREE.MeshLambertMaterial( { color: 0xFFFFFF, morphTargets:true, morphNormals:true } );
             
             this.container.html( this.renderer.domElement );
             $(window).resize(this.resize.bind(this));
@@ -73,8 +73,7 @@
         }
         MRIview.prototype = { 
             draw: function () {
-                var _this = this;
-                requestAnimationFrame( function() { _this.draw(); } );
+                requestAnimationFrame( this.draw.bind(this) );
                 this.controls.update();
                 this.renderer.render( this.scene, this.camera );
             },
@@ -91,9 +90,8 @@
                 
                 this.loader = new THREE.CTMLoader( this.renderer.context );
 
-                this.loader.loadParts( "resources/ctm/JG_inflated.json", function( geometries, materials ) {
+                this.loader.loadParts( "resources/ctm/JG_20110909JG_nb_[inflated,veryinflated].json", function( geometries, materials ) {
                     this.container.html(this.renderer.domElement);
-                    //this.geoms = {left:geometries[0], right:geometries[1]};
                     this.meshes = {};
                     this.meshes.left = new THREE.Mesh(geometries[0], this.shader);
                     this.meshes.right = new THREE.Mesh(geometries[1], this.shader);
@@ -111,15 +109,18 @@
                 this.slider.width(window.innerWidth);
             },
             setMix: function(val) {
-                var num = this.geometry.morphTargets.length;
-                for (var i=0; i < num; i++)
-                    this.mesh.morphTargetInfluences[i] = 0;
+                for (var h in this.meshes) {
+                    var hemi = this.meshes[h];
+                    var num = hemi.geometry.morphTargets.length;
+                    for (var i=0; i < num; i++)
+                        hemi.morphTargetInfluences[i] = 0;
 
-                var n1 = Math.floor(val * num)-1;
-                var n2 = Math.ceil(val * num)-1;
-                this.mesh.morphTargetInfluences[n2] = (val * num)%1;
-                if (n1 >= 0)
-                    this.mesh.morphTargetInfluences[n1] = 1 - (val * num)%1;
+                    var n1 = Math.floor(val * num)-1;
+                    var n2 = Math.ceil(val * num)-1;
+                    hemi.morphTargetInfluences[n2] = (val * num)%1;
+                    if (n1 >= 0)
+                        hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
+                }
             }
         }
         var viewer;
