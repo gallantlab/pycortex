@@ -7,6 +7,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 import mritools
+from mritools.svgroi import clip_svg
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 
@@ -17,6 +18,12 @@ class Mesh(ctypes.Structure):
         ("nelem", ctypes.c_uint32),
         ("pts", ctypes.POINTER(ctypes.c_float)),
         ("polys", ctypes.POINTER(ctypes.c_uint32))]
+
+class MinMax(ctypes.Structure):
+    _fields_ = [
+        ("min", ctypes.c_float*3),
+        ("max", ctypes.c_float*3),
+    ]
 
 class Hemi(ctypes.Structure):
     _fields_ = [
@@ -41,6 +48,7 @@ lib.readVTK.argtypes = [ctypes.c_char_p, ctypes.c_bool]
 lib.readCTM.restype = ctypes.POINTER(Mesh)
 lib.readCTM.argtypes = [ctypes.c_char_p, ctypes.c_bool]
 lib.meshFree.argtypes = [ctypes.POINTER(Mesh)]
+lib.minmaxFree.argtypes = [ctypes.POINTER(MinMax)]
 
 lib.newSubject.restype = ctypes.POINTER(Subject)
 lib.newSubject.argtypes = [ctypes.c_char_p]
@@ -48,6 +56,8 @@ lib.hemiAddFid.argtypes = [ctypes.POINTER(Hemi), ctypes.c_char_p]
 lib.hemiAddFlat.argtypes = [ctypes.POINTER(Hemi), ctypes.c_char_p]
 lib.hemiAddSurf.argtypes = [ctypes.POINTER(Hemi), ctypes.c_char_p, ctypes.c_char_p]
 lib.hemiAddMap.argtypes = [ctypes.POINTER(Hemi), np.ctypeslib.ndpointer(np.uint32)]
+
+lib.saveCTM.restype = ctypes.POINTER(MinMax)
 lib.saveCTM.argtypes = [ctypes.POINTER(Subject), ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint32, ctypes.c_uint32]
 
 def readVTK(filename, readpoly=True):
@@ -67,10 +77,12 @@ def _getmesh(mesh):
 class CTMfile(object):
     def __init__(self, subj, xfmname=None, shape=(31, 100, 100)):
         self.shape = shape
+        self.name = subj
         self.xfmname = xfmname
         self.files = os.path.join(mritools.db.filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
-        self.subj = lib.newSubject(subj)
-        self.name = subj
+
+    def __enter__(self):
+        self.subj = lib.newSubject(self.name)
         cont = self.subj.contents
         for h, hemi, datamap in zip(["lh", "rh"], [cont.left, cont.right], self.maps):
             fname = self.files.format(subj=self.name, type="fiducial", hemi=h)
@@ -78,6 +90,10 @@ class CTMfile(object):
             fname = self.files.format(subj=self.name, type="flat", hemi=h)
             lib.hemiAddFlat(ctypes.byref(hemi), fname)
             lib.hemiAddMap(ctypes.byref(hemi), datamap)
+        return self
+
+    def __exit__(self, type, value, traceback):
+        lib.subjFree(self.subj)
 
     @property
     def maps(self):
@@ -101,8 +117,11 @@ class CTMfile(object):
     def save(self, filename):
         left = tempfile.NamedTemporaryFile()
         right = tempfile.NamedTemporaryFile()
-        lib.saveCTM(self.subj, left.name, right.name, 0x203, 9)
+        minmax = lib.saveCTM(self.subj, left.name, right.name, 0x203, 9)
+        flatlims = [tuple(minmax.contents.min), tuple(minmax.contents.max)]
+        lib.minmaxFree(minmax)
         print "Save complete! Hunting down deleted polys"
+
         cont = self.subj.contents
         didx = []
         for fp, hemi in zip([left, right], [cont.left, cont.right]):
@@ -114,7 +133,7 @@ class CTMfile(object):
             dpolys = np.array(list(dpolys))
 
             pts, polys = readCTM(fp.name)
-            polys = dict([(tuple(p), i) for i, p in enumerate(polys)])
+            polys = dict([(tuple(p), i) for i, p in enumerate(np.sort(polys, axis=1))])
             kdt = cKDTree(pts)
             diff, idx = kdt.query(rpts)
             #get the new point indices
@@ -124,6 +143,9 @@ class CTMfile(object):
             fp.seek(0)
         
         offsets = []
+        path, fname = os.path.split(filename)
+        fname, ext = os.path.splitext(fname)
+
         with open(filename, "w") as fp:
             head = struct.pack('2I', len(didx[0]), len(didx[1]))
             fp.write(head)
@@ -134,20 +156,26 @@ class CTMfile(object):
             offsets.append(fp.tell())
             fp.write(right.read())
 
-        return offsets
-
-    def __del__(self):
-        lib.subjFree(self.subj)
+        auxdat = dict(
+            data=filename,
+            offsets=offsets,
+            materials=[],
+            flatlims=flatlims)
+        json.dump(auxdat, open(os.path.join(path, "%s.json"%fname), "w"))
+        
 
 def makePack(subj, xfm, types=("inflated",)):
     fname = "{subj}_{xfm}_[{types}].%s".format(subj=subj,xfm=xfm,types=','.join(types))
-    ctm = CTMfile("JG", "20110909JG_nb")
-    for t in types:
-        ctm.addSurf(t)
+    with CTMfile("JG", "20110909JG_nb") as ctm:
+        for t in types:
+            ctm.addSurf(t)
 
-    offsets = ctm.save(fname%"ctm")
-    jsdat = dict(data=fname%"ctm", materials=[], offsets=offsets)
-    json.dump(jsdat, open(fname%"json", "w"))
+        ctm.save(fname%"ctm")
+
+    svgfile = os.path.join(mritools.db.filestore, "overlays", "{subj}_rois.svg".format(subj=subj))
+    svg = clip_svg(svgfile)
+    with open(fname%"svg", "w") as svgout:
+        svgout.write(svg.toxml())
 
 if __name__ == "__main__":
     makePack("JG", "20110909JG_nb", types=("inflated", "veryinflated"))

@@ -109,15 +109,11 @@ class ROIpack(traits.HasTraits):
         self.reload()
 
     def reload(self):
-        self.svg = xmlparse(self.svgfile)
+        self.svg = clip_svg(self.svgfile)
         svgdoc = self.svg.getElementsByTagName("svg")[0]
         w = float(svgdoc.getAttribute("width"))
         h = float(svgdoc.getAttribute("height"))
         self.svgshape = w, h
-
-        #Remove the base images -- we don't need to render them for the texture
-        rmnode = _find_layer(self.svg, "data")
-        rmnode.parentNode.removeChild(rmnode)
 
         #Set up the ROI dict
         self.rois = {}
@@ -205,6 +201,12 @@ class ROIpack(traits.HasTraits):
 
     def __getitem__(self, name):
         return self.rois[name]
+
+def clip_svg(svgfile):
+    svg = xmlparse(svgfile)
+    rmnode = _find_layer(svg, "data")
+    rmnode.parentNode.removeChild(rmnode)
+    return svg
 
 ###################################################################################
 # SVG Helper functions

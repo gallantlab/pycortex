@@ -99,21 +99,25 @@ Mesh* readVTK(const char* filename, bool readpolys) {
     }
     return mesh;
 }
-void meshMinMax(Mesh* mesh, float* min, float* max) {
+MinMax* meshMinMax(Mesh* mesh) {
     int i, j;
+    MinMax* minmax = calloc(1, sizeof(MinMax));
+
     for (j = 0; j < mesh->nelem; j++) {
-        min[j] = FLT_MAX;
-        max[j] = FLT_MIN;
+        minmax->min[j] = FLT_MAX;
+        minmax->max[j] = FLT_MIN;
     }
     
     for (i = 0; i < mesh->npts; i++) {
         for (j = 0; j < mesh->nelem; j++) {
-            if (mesh->pts[i*mesh->nelem+j] < min[j])
-                min[j] = mesh->pts[i*mesh->nelem+j];
-            else if (mesh->pts[i*mesh->nelem+j] > max[j])
-                max[j] = mesh->pts[i*mesh->nelem+j];
+            if (mesh->pts[i*mesh->nelem+j] < minmax->min[j])
+                minmax->min[j] = mesh->pts[i*mesh->nelem+j];
+            else if (mesh->pts[i*mesh->nelem+j] > minmax->max[j])
+                minmax->max[j] = mesh->pts[i*mesh->nelem+j];
         }
     }
+
+    return minmax;
 }
 void meshResize(Mesh* mesh, CTMuint nelem) {
     int i, j;
@@ -146,22 +150,27 @@ void meshResize(Mesh* mesh, CTMuint nelem) {
     }
     mesh->nelem = nelem;
 }
-void meshShift(Mesh* mesh, float* add, float* div) {
+void meshShift(Mesh* mesh, MinMax* add_div) {
     int i, j;
     for (i=0; i < mesh->npts; i++)
         for (j=0; j < mesh->nelem; j++)
-            mesh->pts[i*mesh->nelem+j] = (mesh->pts[i*mesh->nelem+j]+add[j]) / div[j];
+            mesh->pts[i*mesh->nelem+j] = (mesh->pts[i*mesh->nelem+j]+add_div->min[j]) / add_div->max[j];
 }
 void meshNudge(Mesh* mesh, bool right) {
-    float min[3], max[3], shift[3] = {0,0,0}, div[3] = {1,1,1};
-    meshMinMax(mesh, min, max);
-    shift[0] = right ? -min[0] : -max[0];
-    meshShift(mesh, shift, div);
+    MinMax add_div = {{0,0,0}, {1,1,1}};
+    MinMax* minmax = meshMinMax(mesh);
+    add_div.min[0] = right ? -minmax->min[0] : -minmax->max[0];
+    meshShift(mesh, &add_div);
+    minmaxFree(minmax);
 }
 void meshFree(Mesh* mesh) {
     free(mesh->pts);
     free(mesh->polys);
     free(mesh);
+}
+
+void minmaxFree(MinMax* minmax) {
+    free(minmax);
 }
 
 
@@ -223,17 +232,16 @@ void subjFree(Subject* subj) {
     free(subj);
 }
 
-void saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth, CTMuint complevel) {
+MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth, CTMuint complevel) {
     int i, j;
     Mesh* mesh;
     CTMenum idx, err;
     CTMcontext* ctx[2];
     Hemi* hemis[2];
     char* filenames[2];
-    char comment[8192];
-    float leftmin[2], leftmax[2];
-    float rightmin[2], rightmax[2];
-    float flatmin[2], flatmax[2];
+    MinMax* leftmm, *rightmm;
+    MinMax* flat_lr = calloc(1, sizeof(MinMax));
+    MinMax flatmm;
 
     assert(subj->left.fiducial != NULL);
     assert(subj->right.fiducial != NULL);
@@ -252,23 +260,31 @@ void saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth, C
     meshResize(hemis[1]->flat, 2);
     meshNudge(hemis[0]->flat, false);
     meshNudge(hemis[1]->flat, true);
-    meshMinMax(hemis[0]->flat, leftmin, leftmax);
-    meshMinMax(hemis[1]->flat, rightmin, rightmax);
+
+    leftmm = meshMinMax(hemis[0]->flat);
+    rightmm = meshMinMax(hemis[1]->flat);
+
     for (i = 0; i < 2; i++) {
-        flatmin[i] = leftmin[i] < rightmin[i] ? leftmin[i] : rightmin[i];
-        flatmax[i] = leftmax[i] > rightmax[i] ? leftmax[i] : rightmax[i];
+        flatmm.min[i] = leftmm->min[i] < rightmm->min[i] ? leftmm->min[i] : rightmm->min[i];
+        flatmm.max[i] = leftmm->max[i] > rightmm->max[i] ? leftmm->max[i] : rightmm->max[i];
     }
     for (i = 0; i < 2; i++) {
-        flatmax[i] = flatmax[i] - flatmin[i];
-        flatmin[i] = - flatmin[i];
+        flatmm.max[i] = flatmm.max[i] - flatmm.min[i];
+        flatmm.min[i] = - flatmm.min[i];
     }
-    sprintf(comment, "{flat:{min:[%f,%f], max:[%f,%f]}}", 
-        flatmin[0], flatmin[1], flatmax[0], flatmax[1]);
+
+    flat_lr->min[0] = (leftmm->min[0] + flatmm.min[0]) / flatmm.max[0];
+    flat_lr->max[0] = (rightmm->min[0] + flatmm.min[0]) / flatmm.max[0];
+    flat_lr->min[1] = (leftmm->max[0] + flatmm.min[0]) / flatmm.max[0] - flat_lr->min[0];
+    flat_lr->max[1] = (rightmm->max[0] + flatmm.min[0]) / flatmm.max[0] - flat_lr->max[0];
+    flat_lr->min[2] = (leftmm->max[1] - leftmm->min[1]) / (leftmm->max[0] - leftmm->min[0]);
+    flat_lr->max[2] = (rightmm->max[1] - rightmm->min[1]) / (rightmm->max[0] - rightmm->min[0]);
+    
     for (i = 0; i < 2; i++) {
         mesh = hemis[i]->fiducial;
         ctmDefineMesh(ctx[i], mesh->pts, mesh->npts, mesh->polys, mesh->npolys, NULL);
-        meshShift(hemis[i]->flat, flatmin, flatmax);
-        idx = ctmAddUVMap(ctx[i], hemis[i]->flat->pts, "texcoord", NULL);
+        meshShift(hemis[i]->flat, &flatmm);
+        idx = ctmAddUVMap(ctx[i], hemis[i]->flat->pts, "uv", NULL);
         if (idx == CTM_NONE)
             printf("CTM error!\n");
         err = ctmGetError(ctx[i]);
@@ -294,7 +310,7 @@ void saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth, C
             if (err != CTM_NONE)
                 printf("CTM error add datamap: %s\n", ctmErrorString(err));
         }
-        ctmFileComment(ctx[i], comment);
+        
         ctmCompressionMethod(ctx[i], compmeth);
         ctmCompressionLevel(ctx[i], complevel);
         printf("Saving to %s...\n", filenames[i]);
@@ -302,6 +318,9 @@ void saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth, C
         err = ctmGetError(ctx[i]);
         if (err != CTM_NONE)
             printf("CTM error saving: %s\n", ctmErrorString(err));
+
         ctmFreeContext(ctx[i]);
     }
+
+    return flat_lr;
 }

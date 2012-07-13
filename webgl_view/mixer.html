@@ -25,6 +25,46 @@
         <script src="resources/js/loaders/ctm/CTMLoader.js"></script>
 
         <script type='text/javascript'>
+        var fragmentShader = [
+
+            "uniform vec3 diffuse;",
+            "uniform float opacity;",
+
+            "uniform vec3 ambient;",
+            "uniform vec3 emissive;",
+            "uniform vec3 specular;",
+            "uniform float shininess;",
+
+            THREE.ShaderChunk[ "color_pars_fragment" ],
+            THREE.ShaderChunk[ "map_pars_fragment" ],
+            THREE.ShaderChunk[ "lightmap_pars_fragment" ],
+            THREE.ShaderChunk[ "envmap_pars_fragment" ],
+            THREE.ShaderChunk[ "fog_pars_fragment" ],
+            THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
+            THREE.ShaderChunk[ "shadowmap_pars_fragment" ],
+
+            "void main() {",
+
+                "gl_FragColor = vec4( vec3 ( 1.0 ), opacity );",
+
+                THREE.ShaderChunk[ "map_fragment" ],
+                THREE.ShaderChunk[ "alphatest_fragment" ],
+
+                THREE.ShaderChunk[ "lights_phong_fragment" ],
+
+                THREE.ShaderChunk[ "lightmap_fragment" ],
+                THREE.ShaderChunk[ "color_fragment" ],
+                THREE.ShaderChunk[ "envmap_fragment" ],
+                THREE.ShaderChunk[ "shadowmap_fragment" ],
+
+                THREE.ShaderChunk[ "linear_to_gamma_fragment" ],
+
+                THREE.ShaderChunk[ "fog_fragment" ],
+
+            "}"
+
+        ].join("\n")
+
         function MRIview(obj, slider) {
             this.container = $(obj)
             // scene and camera
@@ -57,11 +97,11 @@
             this.light = dirLight;
 
             // renderer
-            this.renderer = new THREE.WebGLRenderer( { antialias: true } );
+            this.renderer = new THREE.WebGLRenderer( { antialias: false } );
             this.renderer.setClearColorHex( 0x000000, 1 );
             this.renderer.setSize( window.innerWidth,window.innerHeight-50);
 
-            this.shader = new THREE.MeshLambertMaterial( { color: 0xFFFFFF, morphTargets:true, morphNormals:true } );
+            this.shader = new THREE.MeshLambertMaterial( { color: 0xFFFFFF, morphTargets:true, morphNormals:true, } );
             
             this.container.html( this.renderer.domElement );
             $(window).resize(this.resize.bind(this));
@@ -88,15 +128,80 @@
                     delete this.meshes;
                 }
                 
-                this.loader = new THREE.CTMLoader( this.renderer.context );
+                this.loader = new THREE.CTMLoader(  );
+                var ctminfo = "resources/ctm/JG_20110909JG_nb_[inflated,veryinflated].json";
+                this.loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
+                    var geom;
+                    
+                    var rawdata = new Uint32Array(header.length / 4);
+                    var charview = new Uint8Array(rawdata.buffer);
+                    for (var i = 0, il = header.length; i < il; i++) {
+                        charview[i] = header.charCodeAt(i);
+                    }
 
-                this.loader.loadParts( "resources/ctm/JG_20110909JG_nb_[inflated,veryinflated].json", function( geometries, materials ) {
-                    this.container.html(this.renderer.domElement);
+                    var polyfilt = {};
+                    polyfilt.left = rawdata.subarray(2, rawdata[0]+2);
+                    polyfilt.right = rawdata.subarray(rawdata[0]+2);
+                    
                     this.meshes = {};
-                    this.meshes.left = new THREE.Mesh(geometries[0], this.shader);
-                    this.meshes.right = new THREE.Mesh(geometries[1], this.shader);
-                    this.scene.add(this.meshes.left);
-                    this.scene.add(this.meshes.right);
+                    this.pivot = {};
+                    var names = {left:0, right:1};
+                    for (var name in names) {
+                        geom = geometries[names[name]];
+                        geom.computeBoundingBox();
+                        geom.computeBoundingSphere();
+                        geom.dynamic = true;
+                        
+                        var uv = geom.attributes.uv.array;
+                        var flat = new Float32Array(uv.length / 2 * 3);
+                        var norms = new Float32Array(uv.length / 2 * 3);
+                        var lim = json.flatlims[names[name]];
+                        var flip = 2*names[name]-1;
+                        var yrange = geom.boundingBox.max.y - geom.boundingBox.min.y, ymin = geom.boundingBox.min.y;
+                        var zrange = geom.boundingBox.max.z - geom.boundingBox.min.z, zmin = geom.boundingBox.min.z;
+                        for (var i = 0, il = uv.length / 2; i < il; i++) {
+                            flat[i*3+1] = (uv[i*2] - lim[0]) / lim[1];
+                            if (!names[name]) {
+                                flat[i*3] = geom.boundingBox.min.x / 3;
+                                flat[i*3+1] = 1 - flat[i*3+1]
+                            } else {
+                                flat[i*3] = geom.boundingBox.max.x / 3;
+                            }
+
+                            flat[i*3+1] = 1.8*(flat[i*3+1] * yrange + ymin);
+                            flat[i*3+2] = 1.8*(uv[i*2+1] * lim[2] * zrange + zmin);
+                            norms[i*3] = flip;
+                        }
+                        geom.morphTargets.push({ array:flat, stride:3 })
+                        geom.morphNormals.push( norms );
+
+                        var polys = new Uint16Array(geom.attributes.index.array.length - polyfilt[name].length*3);
+                        var j = 0;
+                        for (var i = 0, il = geom.attributes.index.array.length / 3; i < il; i++) {
+                            if (i != polyfilt[name][i-j]) {
+                                polys[j*3]   = geom.attributes.index.array[i*3];
+                                polys[j*3+1] = geom.attributes.index.array[i*3+1];
+                                polys[j*3+2] = geom.attributes.index.array[i*3+2];
+                                j++;
+                            }
+                        }
+                        geom.attributes.flatindex = {itemsize:1, array:polys, numItems:polys.length};
+
+                        var mesh = new THREE.Mesh(geom, this.shader);
+                        mesh.position.y = -1.8*geom.boundingBox.min.y;
+                        mesh.doubleSided = true;
+                        this.meshes[name] = mesh;
+                        this.pivot[name] = {back:new THREE.Object3D(), front:new THREE.Object3D()};
+                        this.pivot[name].back.add(mesh);
+                        this.pivot[name].front.add(this.pivot[name].back);
+                        this.pivot[name].back.position.y = 1.8*(geom.boundingBox.min.y - geom.boundingBox.max.y);
+                        this.pivot[name].front.position.y = 1.8*geom.boundingBox.max.y;
+                        this.scene.add(this.pivot[name].front);
+                    }
+                    this.indexswap = {};
+                    this.indexswap.left = geometries[0].attributes.flatindex;
+                    this.indexswap.right = geometries[1].attributes.flatindex;
+                    this.container.html(this.renderer.domElement);
                     this.draw();
 
                 }.bind(this), true, true );
@@ -109,17 +214,45 @@
                 this.slider.width(window.innerWidth);
             },
             setMix: function(val) {
+                var num = this.meshes.left.geometry.morphTargets.length;
+                var flat = num - 1;
+                var n1 = Math.floor(val * num)-1;
+                var n2 = Math.ceil(val * num)-1;
+
                 for (var h in this.meshes) {
                     var hemi = this.meshes[h];
-                    var num = hemi.geometry.morphTargets.length;
+                    
                     for (var i=0; i < num; i++)
                         hemi.morphTargetInfluences[i] = 0;
 
-                    var n1 = Math.floor(val * num)-1;
-                    var n2 = Math.ceil(val * num)-1;
+                    if ((this.lastn2 == flat) ^ (n2 == flat)) {
+                        var tmpbuf = this.indexswap[h];
+                        this.indexswap[h] = hemi.geometry.attributes.index;
+                        hemi.geometry.attributes.index = tmpbuf;
+                    }
+                    if (n2 == flat)
+                        this.setPivot(((val*num-.000001)%1)*180);
+                    else 
+                        this.setPivot(0);
+
                     hemi.morphTargetInfluences[n2] = (val * num)%1;
                     if (n1 >= 0)
                         hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
+                }
+                this.lastn2 = n2;
+            }, 
+            setPivot: function (val) {
+                var names = {left:1, right:-1}
+                if (val > 0) {
+                    for (var name in names) {
+                        this.pivot[name].front.rotation.z = 0;
+                        this.pivot[name].back.rotation.z = val*Math.PI/180 * names[name]/ 2;
+                    }
+                } else {
+                    for (var name in names) {
+                        this.pivot[name].back.rotation.z = 0;
+                        this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
+                    }
                 }
             }
         }

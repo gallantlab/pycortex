@@ -31,10 +31,16 @@ typedef struct Subject {
     Hemi right;
 } Subject;
 
+typedef struct MinMax {
+    float min[3];
+    float max[3];
+} MinMax;
+
 enum States { READ_HEAD, READ_PTNUM, READ_POLYNUM, SKIP_PTS, SKIP_POLYS, READ_PTS, READ_POLYS };
 
 Mesh* readVTK(const char* filename, bool readpolys);
-void meshMinMax(Mesh* mesh, float* min, float* max);
-void meshShift(Mesh* mesh, float* add, float* div);
-void meshNudge(Mesh* mes, bool right);
+MinMax* meshMinMax(Mesh* mesh);
+void meshShift(Mesh* mesh, MinMax*);
+void meshNudge(Mesh* mesh, bool right);
 void meshFree(Mesh* mesh);
+void minmaxFree(MinMax* minmax);
