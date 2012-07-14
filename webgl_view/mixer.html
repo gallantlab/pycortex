@@ -25,6 +25,52 @@
         <script src="js/loaders/ctm/CTMLoader.js"></script>
 
         <script type='text/javascript'>
+        var vertexShader = [
+
+            "attribute vec2 datamap;",
+            "uniform sampler2D data;",
+            "uniform vec2 datasize;",
+            "uniform vec2 dsamp;",
+
+            "uniform sampler2D colormap;",
+            "uniform float vmin;",
+            "uniform float vmax;",
+
+            "varying vec3 vViewPosition;",
+            "varying vec3 vNormal;",
+
+            THREE.ShaderChunk[ "map_pars_vertex" ],
+            THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+            THREE.ShaderChunk[ "color_pars_vertex" ],
+            THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+
+            "void main() {",
+
+                "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
+
+                THREE.ShaderChunk[ "map_vertex" ],
+                
+                "vec2 dcoord = (2.*datamap.yx+1.) / (2.*datasize.xy);",
+                "float vdata = texture2D(data, dcoord).r;",
+                "float vnorm = (vdata - vmin) / (vmax - vmin);",
+                //"vColor = texture2D(data, dsamp).rgb;",
+                "vColor = texture2D(colormap, vec2(vnorm, 0 )).rgb;",
+                //"vColor = texture2D(colormap, (2*vec2(datamap.x, 0)-1) / (2*datasize)).rgb;",
+                //"vColor = vec3(datamap.x / 115.);",
+
+                "vViewPosition = -mvPosition.xyz;",
+
+                THREE.ShaderChunk[ "morphnormal_vertex" ],
+
+                "vNormal = transformedNormal;",
+
+                THREE.ShaderChunk[ "lights_phong_vertex" ],
+                THREE.ShaderChunk[ "morphtarget_vertex" ],
+                THREE.ShaderChunk[ "default_vertex" ],
+
+            "}"
+
+        ].join("\n");
         var fragmentShader = [
 
             "uniform vec3 diffuse;",
@@ -37,40 +83,51 @@
 
             THREE.ShaderChunk[ "color_pars_fragment" ],
             THREE.ShaderChunk[ "map_pars_fragment" ],
-            THREE.ShaderChunk[ "lightmap_pars_fragment" ],
-            THREE.ShaderChunk[ "envmap_pars_fragment" ],
-            THREE.ShaderChunk[ "fog_pars_fragment" ],
             THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
-            THREE.ShaderChunk[ "shadowmap_pars_fragment" ],
 
             "void main() {",
 
-                "gl_FragColor = vec4( vec3 ( 1.0 ), opacity );",
-
+                "gl_FragColor = vec4( vec3(1.0), opacity);",
                 THREE.ShaderChunk[ "map_fragment" ],
-                THREE.ShaderChunk[ "alphatest_fragment" ],
 
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
 
-                THREE.ShaderChunk[ "lightmap_fragment" ],
                 THREE.ShaderChunk[ "color_fragment" ],
-                THREE.ShaderChunk[ "envmap_fragment" ],
-                THREE.ShaderChunk[ "shadowmap_fragment" ],
 
-                THREE.ShaderChunk[ "linear_to_gamma_fragment" ],
-
-                THREE.ShaderChunk[ "fog_fragment" ],
+                //THREE.ShaderChunk[ "linear_to_gamma_fragment" ],
 
             "}"
 
-        ].join("\n")
+        ].join("\n");
 
-        function MRIview(obj, slider) {
-            this.container = $(obj)
+
+        var colormaps = {
+
+            redblue: function() {
+                var cmap = new Uint8Array(256*3);
+
+                for (var i = 0; i < 256; i++) {
+                    cmap[i*3] = i;
+                    cmap[i*3+2] = 255 - i;
+                }
+
+                var tex = new THREE.DataTexture(cmap, 256, 1, THREE.RGBFormat);
+                tex.needsUpdate = true;
+                return tex;
+            }(),
+
+            RdBu_r: THREE.ImageUtils.loadTexture("RdBu_r.png"),
+
+        }
+
+        
+
+        function MRIview(data) {
+            this.container = $("#threeDview")
             // scene and camera
             this.scene = new THREE.Scene();
 
-            this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight-50), 0.5, 5e4 );
+            this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight-80), 0.1, 5000 );
             this.camera.position.x = 200;
             this.camera.position.y = 200;
             this.camera.position.z = 0;
@@ -93,23 +150,65 @@
             var dirLight = new THREE.DirectionalLight( 0xffffff );
             dirLight.position.set( 200, 200, 1000 ).normalize();
             this.camera.add( dirLight );
-            this.camera.add( dirLight.target );
+            //this.camera.add( dirLight.target );
             this.light = dirLight;
 
             // renderer
             this.renderer = new THREE.WebGLRenderer( { antialias: false } );
-            this.renderer.setClearColorHex( 0x000000, 1 );
+            this.renderer.setClearColorHex( 0x888888, 1 );
             this.renderer.setSize( window.innerWidth,window.innerHeight-50);
 
-            this.shader = new THREE.MeshLambertMaterial( { color: 0xFFFFFF, morphTargets:true, morphNormals:true, } );
+            this.datatex =  new THREE.DataTexture(data, 256, data.length/4 / 256);
+            this.datatex.needsUpdate = true;
+            this.datatex.flipY = false;
+            this.datatex.minFilter = THREE.NearestFilter;
+            this.datatex.maxFilter = THREE.NearestFilter;
+
+            var uniforms = THREE.UniformsUtils.merge( [
+                THREE.UniformsLib[ "lights" ],
+                {
+                    diffuse:    { type:'v3', value:new THREE.Vector3( 1,1,1 )},
+                    specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
+                    emissive:    { type:'v3', value:new THREE.Vector3( 0.05,0.05,0.05 )},
+                    shininess:  { type:'f', value:200},
+                    opacity:    { type:'f', value:1 },
+
+                    colormap:   { type:'t', value:0, texture: null },
+                    data:       { type:'t', value:1, texture: null },
+                    dsamp:      { type:'v2', value:new THREE.Vector2(1., 0.)},
+                    datasize:   { type:'v2', value:new THREE.Vector2(this.datatex.image.width, this.datatex.image.height)},
+
+                    vmin:{ type:'f', value: 0},
+                    vmax:{ type:'f', value: 1},
+                }
+            ])
+            uniforms.data.texture = this.datatex;
+            uniforms.colormap.texture = colormaps.RdBu_r;
+
+            this.shader = new THREE.ShaderMaterial( { 
+                vertexShader:vertexShader,
+                fragmentShader:fragmentShader,
+                uniforms: uniforms,
+                attributes: {
+                    datamap:true,
+                },
+                morphTargets:true, 
+                morphNormals:true, 
+                lights:true, 
+                vertexColors:true
+            });
             
             this.container.html( this.renderer.domElement );
             $(window).resize(this.resize.bind(this));
-            this.slider = $(slider).width(window.innerWidth);
+            this.slider = $("#mix").width(window.innerWidth);
             var _this = this;
             this.slider.change(function() {
                 _this.setMix(this.value/10000);
             });
+            this.pivslider = $("#pivot").width(window.innerWidth);
+            this.pivslider.change(function() {
+                _this.setPivot(this.value / 10);
+            })
         }
         MRIview.prototype = { 
             draw: function () {
@@ -129,7 +228,7 @@
                 }
                 
                 this.loader = new THREE.CTMLoader(  );
-                var ctminfo = "resources/ctm/JG_20110909JG_nb_[inflated,veryinflated].json";
+                var ctminfo = "resources/ctm/AH_AH_huth_[inflated,superinflated].json";
                 this.loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
                     var geom;
                     
@@ -168,8 +267,8 @@
                                 flat[i*3] = geom.boundingBox.max.x / 3;
                             }
 
-                            flat[i*3+1] = 1.8*(flat[i*3+1] * yrange + ymin);
-                            flat[i*3+2] = 1.8*(uv[i*2+1] * lim[2] * zrange + zmin);
+                            flat[i*3+1] = 1.2*(flat[i*3+1] * yrange + ymin);
+                            flat[i*3+2] = 1.2*(uv[i*2+1] *lim[2]* yrange + zmin);
                             norms[i*3] = flip;
                         }
                         geom.morphTargets.push({ array:flat, stride:3 })
@@ -188,14 +287,13 @@
                         geom.attributes.flatindex = {itemsize:1, array:polys, numItems:polys.length};
 
                         var mesh = new THREE.Mesh(geom, this.shader);
-                        mesh.position.y = -1.8*geom.boundingBox.min.y;
-                        mesh.doubleSided = true;
+                        mesh.position.y = -1.2*geom.boundingBox.min.y;
                         this.meshes[name] = mesh;
                         this.pivot[name] = {back:new THREE.Object3D(), front:new THREE.Object3D()};
                         this.pivot[name].back.add(mesh);
                         this.pivot[name].front.add(this.pivot[name].back);
-                        this.pivot[name].back.position.y = 1.8*(geom.boundingBox.min.y - geom.boundingBox.max.y);
-                        this.pivot[name].front.position.y = 1.8*geom.boundingBox.max.y;
+                        this.pivot[name].back.position.y = 1.2*(geom.boundingBox.min.y - geom.boundingBox.max.y);
+                        this.pivot[name].front.position.y = 1.2*geom.boundingBox.max.y;
                         this.scene.add(this.pivot[name].front);
                     }
                     this.indexswap = {};
@@ -208,10 +306,11 @@
 
             },
             resize: function() {
-                this.renderer.setSize(window.innerWidth, window.innerHeight-50);
-                this.camera.aspect = window.innerWidth / (window.innerHeight-50);
+                this.renderer.setSize(window.innerWidth, window.innerHeight-80);
+                this.camera.aspect = window.innerWidth / (window.innerHeight-80);
                 this.camera.updateProjectionMatrix();
                 this.slider.width(window.innerWidth);
+                this.pivslider.width(window.innerWidth);
             },
             setMix: function(val) {
                 var num = this.meshes.left.geometry.morphTargets.length;
@@ -242,6 +341,7 @@
                 this.lastn2 = n2;
             }, 
             setPivot: function (val) {
+                $("#pivot").attr("value", val*10);
                 var names = {left:1, right:-1}
                 if (val > 0) {
                     for (var name in names) {
@@ -258,8 +358,22 @@
         }
         var viewer;
         $(document).ready(function() {
-            viewer = new MRIview("#threeDview", "#mix");
-            viewer.load();
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'corrdata.bin', true);
+            xhr.responseType = 'arraybuffer';
+
+            xhr.onload = function(e) {
+                if (this.status == 200) {
+                    var head = new Float32Array(this.response.slice(0, 8*4));
+                    var data = new Uint8Array(this.response.slice(8*4));
+                    console.log(head);
+                    viewer = new MRIview(data);
+                    viewer.load();
+                } else {
+                    console.log(this.status);
+                }
+            };
+            xhr.send();
         });
         </script>
     </head>
@@ -269,5 +383,6 @@
             Loading...
         </div>
         <input id="mix" type="range" min="0" max="10000" value="0">
+        <input id="pivot" type="range" min="-1800" max="1800" value="0">
     </body>
 </html>

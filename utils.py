@@ -14,15 +14,18 @@ def unmask(mask, data):
         Actual MRI data to unmask
     '''
     #assert len(data.shape) == 2, "Are you sure this is masked data?"
-    import docdb
-    if isinstance(mask, str):
-        client = docdb.getclient()
-        mask = client.query(experiment_name=mask, generated_by_name="BrainMaskFSL")[0]
+    try:
+        import docdb
+        if isinstance(mask, str):
+            client = docdb.getclient()
+            mask = client.query(experiment_name=mask, generated_by_name="BrainMaskFSL")[0]
 
-    if isinstance(mask, docdb.orm.ImageDoc):
-        mask = mask.get_data()[:]
+        if isinstance(mask, docdb.orm.ImageDoc):
+            mask = mask.get_data()[:]
+    except:
+        assert isinstance(mask, np.ndarray)
 
-    output = np.zeros_like(mask)
+    output = np.zeros(mask.shape, dtype=data.dtype)
     output[mask > 0] = data
     return output
 

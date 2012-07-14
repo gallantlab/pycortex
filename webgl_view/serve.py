@@ -43,6 +43,34 @@ def get_binary_pts(subj, surftype, getPolys=False, compress=True):
         data += header+pts.tostring()+polys.astype(np.uint32).tostring()
     return data
 
+class BinarySurface(tornado.web.RequestHandler):
+    def get(self, subj, surftype):
+        self.set_header("Content-Type", "application/octet-stream")
+        self.write(get_binary_pts(subj, surftype, self.get_argument("polys")))
+
+    def post(self, subj, hemi):
+        self.set_header("Content-Type", "application/octet-stream")
+        types = self.get_argument("types").split(",")
+        print "loading %r"%types
+        data = get_binary_pts(subj, tuple(types))
+        self.write(data)
+
+
+def embedData(*args):
+    shape = (np.ceil(len(args[0]) / 256.), 256)
+    outmap = np.zeros(shape+(4,), dtype=np.uint8)
+    minmax = np.zeros((4, 2), dtype=np.float32)
+    for i, data in enumerate(args):
+        mapdata = np.zeros(shape)
+        mapdata.ravel()[:len(data)] = data
+        minmax[i] = mapdata.min(), mapdata.max()
+        normmap = (mapdata - minmax[i][0]) / (minmax[i][1] - minmax[i][0])
+        print normmap.max()
+        outmap[...,i] = (normmap*255).astype(np.uint8)
+
+    return outmap
+    #return minmax.tostring() + outmap.tostring()
+
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self, path):
@@ -56,18 +84,6 @@ class MainHandler(tornado.web.RequestHandler):
             self.write(open(path).read())
         else:
             self.write_error(404)
-
-class BinarySurface(tornado.web.RequestHandler):
-    def get(self, subj, surftype):
-        self.set_header("Content-Type", "application/octet-stream")
-        self.write(get_binary_pts(subj, surftype, self.get_argument("polys")))
-
-    def post(self, subj, hemi):
-        self.set_header("Content-Type", "application/octet-stream")
-        types = self.get_argument("types").split(",")
-        print "loading %r"%types
-        data = get_binary_pts(subj, tuple(types))
-        self.write(data)
 
 class ClientSocket(websocket.WebSocketHandler):
     def initialize(self, sockets):
@@ -91,7 +107,6 @@ class WebApp(mp.Process):
     def run(self):
         self.sockets = []
         application = tornado.web.Application([
-            (r"/surfaces/(\w+)/(\w+)/?", BinarySurface),
             (r"/wsconnect/", ClientSocket, dict(sockets=self.sockets)),
             (r"/(.*)", MainHandler),
         ], gzip=True)

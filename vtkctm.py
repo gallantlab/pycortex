@@ -164,18 +164,18 @@ class CTMfile(object):
         json.dump(auxdat, open(os.path.join(path, "%s.json"%fname), "w"))
         
 
-def makePack(subj, xfm, types=("inflated",)):
+def makePack(subj, xfm, types=("inflated",), shape=(31,100,100)):
     fname = "{subj}_{xfm}_[{types}].%s".format(subj=subj,xfm=xfm,types=','.join(types))
-    with CTMfile("JG", "20110909JG_nb") as ctm:
-        for t in types:
-            ctm.addSurf(t)
-
-        ctm.save(fname%"ctm")
-
     svgfile = os.path.join(mritools.db.filestore, "overlays", "{subj}_rois.svg".format(subj=subj))
     svg = clip_svg(svgfile)
     with open(fname%"svg", "w") as svgout:
         svgout.write(svg.toxml())
 
+    with CTMfile(subj, xfm, shape=shape) as ctm:
+        for t in types:
+            ctm.addSurf(t)
+
+        ctm.save(fname%"ctm")
+
 if __name__ == "__main__":
-    makePack("JG", "20110909JG_nb", types=("inflated", "veryinflated"))
+    makePack("AH", "AH_huth", types=("inflated", "superinflated"), shape=(32,100,100))
