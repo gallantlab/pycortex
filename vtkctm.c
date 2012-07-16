@@ -202,11 +202,10 @@ void hemiAddSurf(Hemi* hemi, const char* filename, const char* name) {
 }
 void hemiAddMap(Hemi* hemi, const int* datamap) {
     int i;
-    //int height = (int) ceil(hemi->fiducial->npts / 256);
     hemi->datamap = (CTMfloat*) malloc(hemi->fiducial->npts*sizeof(float)*2);
     for (i=0; i < hemi->fiducial->npts; i++) {
-        hemi->datamap[i*2+0] = (CTMfloat) floor(datamap[i] / 256); // 256;
-        hemi->datamap[i*2+1] = (CTMfloat) (datamap[i] % 256); // height;
+        hemi->datamap[i*2+0] = (CTMfloat) (datamap[i] % 256);
+        hemi->datamap[i*2+1] = (CTMfloat) floor(datamap[i] / 256);
     }
 }
 
