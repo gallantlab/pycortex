@@ -2,14 +2,14 @@
  * @author Eberhard Graether / http://egraether.com/
  */
 
-THREE.LandscapeControls = function ( object, domElement ) {
+THREE.LandscapeControls = function ( camera, domElement ) {
 
     THREE.EventTarget.call( this );
 
     var _this = this,
-    STATE = { NONE : -1, ROTATE : 0, ZOOM : 1, PAN : 2 };
+    STATE = { NONE : -1, ROTATE : 0, ZOOM : 2, PAN : 1 };
 
-    this.object = object;
+    this.camera = camera;
     this.domElement = ( domElement !== undefined ) ? domElement : document;
 
     // API
@@ -17,21 +17,14 @@ THREE.LandscapeControls = function ( object, domElement ) {
     this.enabled = true;
 
     this.screen = { width: window.innerWidth, height: window.innerHeight, offsetLeft: 0, offsetTop: 0 };
-    this.radius = ( this.screen.width + this.screen.height ) / 4;
 
     this.rotateSpeed = 1.0;
-    this.zoomSpeed = 1.2;
+    this.zoomSpeed = 1.0;
     this.panSpeed = 0.3;
 
     this.noRotate = false;
     this.noZoom = false;
     this.noPan = false;
-
-    this.staticMoving = false;
-    this.dynamicDampingFactor = 0.2;
-
-    this.minDistance = 0;
-    this.maxDistance = Infinity;
 
     this.keys = [ 65 /*A*/, 83 /*S*/, 68 /*D*/ ];
 
@@ -81,37 +74,15 @@ THREE.LandscapeControls = function ( object, domElement ) {
 
     };
 
-    this.getMouseProjectionOnBall = function ( clientX, clientY ) {
+    this.rotateCamera = function () {
 
-        var mouseOnBall = new THREE.Vector3(
-            ( clientX - _this.screen.width * 0.5 - _this.screen.offsetLeft ) / _this.radius,
-            ( _this.screen.height * 0.5 + _this.screen.offsetTop - clientY ) / _this.radius,
-            0.0
-        );
+        var mouseChange = _rotateEnd.clone().subSelf( _rotateStart );
 
-        var length = mouseOnBall.length();
+        if ( mouseChange.lengthSq() ) {
 
-        if ( length > 1.0 ) {
-
-            mouseOnBall.normalize();
-
-        } else {
-
-            mouseOnBall.z = Math.sqrt( 1.0 - length * length );
+            
 
         }
-
-        _eye.copy( _this.object.position ).subSelf( _this.target );
-
-        var projection = _this.object.up.clone().setLength( mouseOnBall.y );
-        projection.addSelf( _this.object.up.clone().crossSelf( _eye ).setLength( mouseOnBall.x ) );
-        projection.addSelf( _eye.setLength( mouseOnBall.z ) );
-
-        return projection;
-
-    };
-
-    this.rotateCamera = function () {
 
         var angle = Math.acos( _rotateStart.dot( _rotateEnd ) / _rotateStart.length() / _rotateEnd.length() );
 
@@ -125,20 +96,11 @@ THREE.LandscapeControls = function ( object, domElement ) {
             quaternion.setFromAxisAngle( axis, -angle );
 
             quaternion.multiplyVector3( _eye );
-            quaternion.multiplyVector3( _this.object.up );
+            quaternion.multiplyVector3( _this.camera.up );
 
             quaternion.multiplyVector3( _rotateEnd );
 
-            if ( _this.staticMoving ) {
-
-                _rotateStart = _rotateEnd;
-
-            } else {
-
-                quaternion.setFromAxisAngle( axis, angle * ( _this.dynamicDampingFactor - 1.0 ) );
-                quaternion.multiplyVector3( _rotateStart );
-
-            }
+            _rotateStart = _rotateEnd;
 
         }
 
@@ -152,15 +114,7 @@ THREE.LandscapeControls = function ( object, domElement ) {
 
             _eye.multiplyScalar( factor );
 
-            if ( _this.staticMoving ) {
-
-                _zoomStart = _zoomEnd;
-
-            } else {
-
-                _zoomStart.y += ( _zoomEnd.y - _zoomStart.y ) * this.dynamicDampingFactor;
-
-            }
+            _zoomStart = _zoomEnd;
 
         }
 
@@ -174,41 +128,13 @@ THREE.LandscapeControls = function ( object, domElement ) {
 
             mouseChange.multiplyScalar( _eye.length() * _this.panSpeed );
 
-            var pan = _eye.clone().crossSelf( _this.object.up ).setLength( mouseChange.x );
-            pan.addSelf( _this.object.up.clone().setLength( mouseChange.y ) );
+            var pan = _eye.clone().crossSelf( _this.camera.up ).setLength( mouseChange.x );
+            pan.addSelf( _this.camera.up.clone().setLength( mouseChange.y ) );
 
-            _this.object.position.addSelf( pan );
+            _this.camera.position.addSelf( pan );
             _this.target.addSelf( pan );
-
-            if ( _this.staticMoving ) {
-
-                _panStart = _panEnd;
-
-            } else {
-
-                _panStart.addSelf( mouseChange.sub( _panEnd, _panStart ).multiplyScalar( _this.dynamicDampingFactor ) );
-
-            }
-
-        }
-
-    };
-
-    this.checkDistances = function () {
-
-        if ( !_this.noZoom || !_this.noPan ) {
-
-            if ( _this.object.position.lengthSq() > _this.maxDistance * _this.maxDistance ) {
-
-                _this.object.position.setLength( _this.maxDistance );
-
-            }
-
-            if ( _eye.lengthSq() < _this.minDistance * _this.minDistance ) {
-
-                _this.object.position.add( _this.target, _eye.setLength( _this.minDistance ) );
-
-            }
+            
+            _panStart = _panEnd;
 
         }
 
@@ -216,7 +142,7 @@ THREE.LandscapeControls = function ( object, domElement ) {
 
     this.update = function () {
 
-        _eye.copy( _this.object.position ).subSelf( _this.target );
+        _eye.copy( _this.camera.position ).subSelf( _this.target );
 
         if ( !_this.noRotate ) {
 
@@ -236,17 +162,17 @@ THREE.LandscapeControls = function ( object, domElement ) {
 
         }
 
-        _this.object.position.add( _this.target, _eye );
+        _this.camera.position.add( _this.target, _eye );
 
         _this.checkDistances();
 
-        _this.object.lookAt( _this.target );
+        _this.camera.lookAt( _this.target );
 
-        if ( lastPosition.distanceTo( _this.object.position ) > 0 ) {
+        if ( lastPosition.distanceTo( _this.camera.position ) > 0 ) {
 
             _this.dispatchEvent( changeEvent );
 
-            lastPosition.copy( _this.object.position );
+            lastPosition.copy( _this.camera.position );
 
         }
 
@@ -298,8 +224,6 @@ THREE.LandscapeControls = function ( object, domElement ) {
 
     function mousedown( event ) {
 
-        if ( ! _this.enabled ) return;
-
         event.preventDefault();
         event.stopPropagation();
 
@@ -307,11 +231,11 @@ THREE.LandscapeControls = function ( object, domElement ) {
 
             _state = event.button;
 
-            if ( _state === STATE.ROTATE && !_this.noRotate ) {
+            if ( _state === STATE.ROTATE && !this.noRotate ) {
 
-                _rotateStart = _rotateEnd = _this.getMouseProjectionOnBall( event.clientX, event.clientY );
+                _rotateStart = _rotateEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
 
-            } else if ( _state === STATE.ZOOM && !_this.noZoom ) {
+            } else if ( _state === STATE.ZOOM && !this.noZoom ) {
 
                 _zoomStart = _zoomEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
 
@@ -321,7 +245,7 @@ THREE.LandscapeControls = function ( object, domElement ) {
 
             }
 
-        }
+        }.bind(this)
 
     };
 
@@ -331,7 +255,7 @@ THREE.LandscapeControls = function ( object, domElement ) {
 
         if ( _keyPressed ) {
 
-            _rotateStart = _rotateEnd = _this.getMouseProjectionOnBall( event.clientX, event.clientY );
+            _rotateStart = _rotateEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
             _zoomStart = _zoomEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
             _panStart = _panEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
 
@@ -345,7 +269,7 @@ THREE.LandscapeControls = function ( object, domElement ) {
 
         } else if ( _state === STATE.ROTATE && !_this.noRotate ) {
 
-            _rotateEnd = _this.getMouseProjectionOnBall( event.clientX, event.clientY );
+            _rotateEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
 
         } else if ( _state === STATE.ZOOM && !_this.noZoom ) {
 

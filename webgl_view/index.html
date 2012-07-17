@@ -9,9 +9,10 @@
 <script type='text/javascript' src='resources/js/jquery-1.7.2.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery-ui-1.8.21.custom.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
-<script type='text/javascript' src='resources/js/jquery.miniColors.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery.miniColors.js'></script>
 <script type="text/javascript" src="resources/js/rgbcolor.js"></script> 
 <script type="text/javascript" src="resources/js/canvg.js"></script> 
+<script type="text/javascript" src="resources/js/StackBoxBlur.js"></script> 
 <script type='text/javascript' src="resources/js/Three.js"></script>
 <script type='text/javascript' src='resources/js/mriview.js'></script>
 <script type='text/javascript' src="js/loaders/ctm/lzma.js"></script>
@@ -63,31 +64,45 @@
 	.content { padding:10px; }
 	.infobar {
 		transition: all .3s; 
-		transition-timing-function:ease-in-out;
+		transition-timing-function:ease;
+		transition-delay:1s;
 		-moz-transition: all .3s;
-		-mkoz-transition-timing-function: ease-in-out;
+		-moz-transition-timing-function: ease;
+		-moz-transition-delay:1s;
 		-webkit-transition: all .3s;
-		-webkit-transition-timing-function: ease-in-out;
+		-webkit-transition-timing-function: ease;
+		-webkit-transition-delay:1s;
+
 		position:relative;
 		z-index:10;
 		background-color:rgba(255,255,255, .2);
 	}
-	.infobar:hover {
+	.infobar:hover, .infobar:active {
 		background-color:rgba(255,255,255, .6);
+		transition-delay:0s;
+		-moz-transition-delay:0s;
+		-webkit-transition-delay:0s;
 	}
 	#topbar { 
-		height:200px; 
-		margin:-190px 50px -10px 50px;		
+		height:300px; 
+		margin:-290px 50px -10px 50px;		
 		border-radius: 0px 0px 50px 50px / 0px 0px 10px 10px;
 	}
-	#topbar:hover { 
-		margin:0px 50px -200px 50px; 
+	#topbar:hover, #topbar:active { 
+		margin:0px 50px -300px 50px; 
+	}
+
+	#display_options {
+
+	}
+	#display_options fieldset {
+		border:1px solid #666;
+		border-radius: 20px 20px 50px 50px / 5px 5px 10px 10px;
+		margin:5px;
 	}
 	.opt_category {
 		float:left;
 	}
-
-	
 	#vminmax > input {float:left; width:25px; }
 	#vrange_wrap { float:left; padding:5px 10px;}
 	#vrange { width:222px; }
@@ -125,7 +140,7 @@
 		width:5%;
 		min-width:80px;
 	}
-	#bottombar:hover {
+	#bottombar:hover, #bottombar:active {
 		margin-top:-80px;
 	}
 
@@ -162,6 +177,8 @@
 		$("#roi_linecolor").miniColors();
 		$("#roi_fillcolor").miniColors();
 		$("#roi_linewidth").slider({min:.5, max:10, step:.1, value:3});
+		$("#roi_shadowcolor").miniColors();
+		$("#roi_shadowalpha").slider({min:0, max:20, step:1, value:4});
 
 		viewer = new MRIview();
 		$("#colormap").ddslick({ width:296, height:400, 
@@ -349,7 +366,7 @@
 				<div class='display_opt'>
 					<table id='roilines'>
 						<tr>
-							<td><label for='roi_linecolor'>ROI lines</label></td>
+							<td><label for='roi_linecolor'>Line color</label></td>
 							<td><input type='hidden' id='roi_linecolor' value='#FFFFFF' /></td>
 						</tr>
 						<tr>
@@ -363,14 +380,26 @@
 					</table>
 				</div>
 				<div class='display_opt'>
-					<table id='roilines'>
+					<table id='roifill'>
 						<tr>
-							<td><label for='roi_fillcolor'>ROI fill</label></td>
+							<td><label for='roi_fillcolor'>Fill color</label></td>
 							<td><input type='hidden' id='roi_fillcolor' value='#000000' /></td>
 						</tr>
 						<tr>
 							<td><label for="roi_fillalpha">Alpha</label></td>
 							<td><div id='roi_fillalpha'></div></td>
+						</tr>
+					</table>
+				</div>
+				<div class='display_opt'>
+					<table id='roishadow'>
+						<tr>
+							<td><label for='roi_shadowcolor'>Shadow</label></td>
+							<td><input type='hidden' id='roi_shadowcolor' value='#000000' /></td>
+						</tr>
+						<tr>
+							<td><label for="roi_shadowalpha">Radius</label></td>
+							<td><div id='roi_shadowalpha'></div></td>
 						</tr>
 					</table>
 				</div>

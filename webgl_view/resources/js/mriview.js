@@ -145,8 +145,10 @@ function MRIview() {
     $("#roi_fillalpha").bind("slidechange", this._updateROIs.bind(this));
     $("#roi_linealpha").bind("slidechange", this._updateROIs.bind(this));
     $("#roi_linewidth").bind("slidechange", this._updateROIs.bind(this));
-    $("#roi_fillcolor").miniColors("change", this._updateROIs.bind(this));
-    $("#roi_linecolor").miniColors("change", this._updateROIs.bind(this));
+    $("#roi_shadowalpha").bind("slidechange", this._updateROIs.bind(this));
+    $("#roi_fillcolor").miniColors("option", "close", this._updateROIs.bind(this));
+    $("#roi_linecolor").miniColors("option", "close", this._updateROIs.bind(this));
+    $("#roi_shadowcolor").miniColors("option", "close", this._updateROIs.bind(this));
 }
 MRIview.prototype = { 
     draw: function () {
@@ -324,6 +326,30 @@ MRIview.prototype = {
         this.svgroi.id = "svgroi";
         document.getElementById("hiderois").appendChild(this.svgroi);
         this.rois = $(this.svgroi).find("path");
+        //this.rois.attr("filter", "url(#dropshadow)");
+        /*
+        var svgns = "http://www.w3.org/2000/svg";
+        var defs = document.createElementNS(svgns, "defs");
+        var filter = document.createElementNS(svgns, "filter");
+        filter.id = "dropshadow";
+        filter.height = "130%";
+        var fegb = document.createElementNS(svgns, "feGaussianBlur");
+        fegb.setAttribute("in", "SourceAlpha");
+        fegb.setAttribute("stdDeviation", "3");
+        filter.appendChild(fegb);
+        var femerge = document.createElementNS(svgns, "feMerge");
+        var femn = document.createElementNS(svgns, "feMergeNode");
+        femerge.appendChild(femn);
+        var femns = document.createElementNS(svgns, "feMergeNode");
+        femns.setAttribute("in", "SourceGraphic");
+        femerge.appendChild(femns);
+        filter.appendChild(femerge);
+        defs.appendChild(filter);
+        viewer.svgroi.insertBefore(defs, viewer.svgroi.firstChild);
+        
+        this.roidrop = fegb;
+        */
+
         this._updateROIs();
     }, 
     _updateROIs: function() {
@@ -332,19 +358,50 @@ MRIview.prototype = {
         var fc = "fill:"+$("#roi_fillcolor").attr("value");
         var lc = "stroke:"+$("#roi_linecolor").attr("value");
         var lw = "stroke-width:"+$("#roi_linewidth").slider("option", "value") + "px";
-        this.rois.attr("style", [fo, lo, fc, lc, lw].join(";"));
+        var sw = parseInt($("#roi_shadowalpha").slider("option", "value"));
 
+        this.rois.attr("style", [fo, lo, fc, lc, lw].join(";"));
         var svg_xml = (new XMLSerializer()).serializeToString(this.svgroi);
+
         var canvas = document.getElementById("canvasrois");
-        canvg(canvas, svg_xml, {
-            ignoreMouse:true, 
-            ignoreAnimation:true,
-            renderCallback: function() {
-                var tex = new THREE.Texture(canvas);
-                tex.needsUpdate = true;
-                tex.premultiplyAlpha = true;
-                this.shader.uniforms.map.texture = tex;
-            }.bind(this),
-        });
-    }
+
+        var texfunc = function() {
+            var img = new Image();
+            img.src = canvas.toDataURL();
+            console.log(img);
+            var tex = new THREE.Texture(canvas);
+            tex.needsUpdate = true;
+            tex.premultiplyAlpha = true;
+            this.shader.uniforms.map.texture = tex;
+        }.bind(this);
+
+        if (sw > 0) {
+            var sc = "stroke:"+$("#roi_shadowcolor").val();
+            this.rois.attr("style", [sc, fc, fo, lo, lw].join(";"));
+            var shadow_xml = (new XMLSerializer()).serializeToString(this.svgroi);
+
+            canvg(canvas, shadow_xml, {
+                ignoreMouse:true, 
+                ignoreAnimation:true,
+                ignoreClear:false,
+                renderCallback: function() {
+                    stackBoxBlurCanvasRGBA("canvasrois", 0,0, canvas.width, canvas.height, sw, 1);
+                    canvg(canvas, svg_xml, {
+                        ignoreMouse:true,
+                        ignoreAnimation:true,
+                        ignoreDimensions:true,
+                        ignoreClear:true,
+                        renderCallback: texfunc,
+                    });
+                }.bind(this),
+            });
+
+        } else {
+            canvg(canvas, svg_xml, {
+                ignoreMouse:true,
+                ignoreAnimation:true,
+                renderCallback:texfunc,
+            });
+        }
+    },
 }
