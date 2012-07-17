@@ -6,8 +6,9 @@ import tempfile
 import numpy as np
 from scipy.spatial import cKDTree
 
-import mritools
-from mritools.svgroi import clip_svg
+from utils import get_cortical_mask
+from svgroi import scrub
+from db import surfs, filestore
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 
@@ -75,11 +76,12 @@ def _getmesh(mesh):
 
 
 class CTMfile(object):
-    def __init__(self, subj, xfmname=None, shape=(31, 100, 100)):
+    def __init__(self, subj, xfmname=None, shape=(31, 100, 100), **kwargs):
         self.shape = shape
         self.name = subj
         self.xfmname = xfmname
-        self.files = os.path.join(mritools.db.filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
+        self.files = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
+        self.auxdat = kwargs
 
     def __enter__(self):
         self.subj = lib.newSubject(self.name)
@@ -98,11 +100,11 @@ class CTMfile(object):
     @property
     def maps(self):
         indices = []
-        mask = mritools.get_cortical_mask(self.name, self.xfmname, shape=self.shape)
+        mask = get_cortical_mask(self.name, self.xfmname, shape=self.shape)
         imask = mask.astype(np.uint32)
         imask[imask > 0] = np.arange(mask[mask > 0].sum())
 
-        left, right = mritools.surfs.getCoords(self.name, self.xfmname)
+        left, right = surfs.getCoords(self.name, self.xfmname)
         for coords in (left, right):
             idx = np.ravel_multi_index(coords.T, self.shape[::-1])
             indices.append(imask.T.ravel()[idx])
@@ -161,17 +163,19 @@ class CTMfile(object):
             offsets=offsets,
             materials=[],
             flatlims=flatlims)
+        auxdat.update(self.auxdat)
+
         json.dump(auxdat, open(os.path.join(path, "%s.json"%fname), "w"))
         
 
 def makePack(subj, xfm, types=("inflated",), shape=(31,100,100)):
     fname = "{subj}_{xfm}_[{types}].%s".format(subj=subj,xfm=xfm,types=','.join(types))
-    svgfile = os.path.join(mritools.db.filestore, "overlays", "{subj}_rois.svg".format(subj=subj))
-    svg = clip_svg(svgfile)
-    with open(fname%"svg", "w") as svgout:
+    svgfile = os.path.join(filestore, "overlays", "{subj}_rois.svg".format(subj=subj))
+    svg = scrub(svgfile)
+    with open(os.path.split(svgfile)[1], "w") as svgout:
         svgout.write(svg.toxml())
 
-    with CTMfile(subj, xfm, shape=shape) as ctm:
+    with CTMfile(subj, xfm, shape=shape, rois=os.path.split(svgfile)[1]) as ctm:
         for t in types:
             ctm.addSurf(t)
 

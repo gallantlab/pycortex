@@ -269,7 +269,6 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
         flatmm.max[i] = leftmm->max[i] > rightmm->max[i] ? leftmm->max[i] : rightmm->max[i];
     }
     for (i = 0; i < 2; i++) {
-        printf("Flat max: %f, min:%f\n", flatmm.max[i], flatmm.min[i]);
         flatmm.max[i] = flatmm.max[i] - flatmm.min[i];
         flatmm.min[i] = - flatmm.min[i];
     }
@@ -286,8 +285,7 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
         ctmDefineMesh(ctx[i], mesh->pts, mesh->npts, mesh->polys, mesh->npolys, NULL);
         meshShift(hemis[i]->flat, &flatmm);
         tmp = meshMinMax(hemis[i]->flat);
-        printf("min: %f, %f, %f, max:%f %f %f\n", tmp->min[0], tmp->min[1], tmp->min[2], tmp->max[0], tmp->max[1], tmp->max[2]);
-
+        
         idx = ctmAddUVMap(ctx[i], hemis[i]->flat->pts, "uv", NULL);
         if (idx == CTM_NONE)
             printf("CTM error!\n");

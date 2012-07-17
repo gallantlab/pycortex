@@ -1,5 +1,4 @@
 var vertexShader = [
-
     "attribute vec2 datamap;",
     "uniform sampler2D data;",
     "uniform sampler2D data2;",
@@ -13,10 +12,10 @@ var vertexShader = [
 
     "varying vec3 vViewPosition;",
     "varying vec3 vNormal;",
+    "varying vec4 vColor;",
 
     THREE.ShaderChunk[ "map_pars_vertex" ],
     THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
-    THREE.ShaderChunk[ "color_pars_vertex" ],
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
 
     "void main() {",
@@ -31,7 +30,7 @@ var vertexShader = [
         "float vdata2 = texture2D(data2, dcoord).r;",
         "float vnorm = (vdata - vmin) / (vmax - vmin);",
         "float vnorm2 = (vdata2 - vmin2) / (vmax2 - vmin2);",
-        "vColor = texture2D(colormap, vec2(vnorm, vnorm2 )).rgb;",
+        "vColor = texture2D(colormap, vec2(vnorm, vnorm2 ));",
 
         "vViewPosition = -mvPosition.xyz;",
 
@@ -56,18 +55,16 @@ var fragmentShader = [
     "uniform vec3 specular;",
     "uniform float shininess;",
 
-    THREE.ShaderChunk[ "color_pars_fragment" ],
+    "varying vec4 vColor;",
     THREE.ShaderChunk[ "map_pars_fragment" ],
     THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
     "void main() {",
-
-        "gl_FragColor = vec4( vec3(1.0), opacity);",
-        THREE.ShaderChunk[ "map_fragment" ],
+        "vec4 mapcolor = texture2D(map, vUv);",
+        "gl_FragColor.rgb = mapcolor.rgb + vec3(1.-mapcolor.a)*vColor.rgb*vec3(vColor.a);",
+        "gl_FragColor.a = mapcolor.a + vColor.a*(1. - mapcolor.a);",
 
         THREE.ShaderChunk[ "lights_phong_fragment" ],
-
-        THREE.ShaderChunk[ "color_fragment" ],
 
         //THREE.ShaderChunk[ "linear_to_gamma_fragment" ],
 
@@ -114,13 +111,14 @@ function MRIview() {
             diffuse:    { type:'v3', value:new THREE.Vector3( 1,1,1 )},
             specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
             emissive:    { type:'v3', value:new THREE.Vector3( 0.05,0.05,0.05 )},
-            shininess:  { type:'f', value:200},
-            opacity:    { type:'f', value:1 },
+            shininess:  { type:'f', value:500},
 
-            colormap:   { type:'t', value:0, texture: null },
-            data:       { type:'t', value:1, texture: null },
-            data2:       { type:'t', value:2, texture: null },
+            map:        { type:'t', value:0, texture: null },
+            colormap:   { type:'t', value:1, texture: null },
+            data:       { type:'t', value:2, texture: null },
+            data2:      { type:'t', value:3, texture: null },
             datasize:   { type:'v2', value:new THREE.Vector2(256, 0)},
+            offsetRepeat:{ type: "v4", value: new THREE.Vector4( 0, 0, 1, 1 ) },
 
             vmin:{ type:'f', value: 0},
             vmax:{ type:'f', value: 1},
@@ -135,15 +133,20 @@ function MRIview() {
         morphTargets:true, 
         morphNormals:true, 
         lights:true, 
-        vertexColors:true
+        vertexColors:true,
     });
+    this.shader.map = true;
     
     this.container.html( this.renderer.domElement );
     $(window).resize(this.resize.bind(this));
-    this.mixslider = $("#mix");
-    this.pivslider = $("#pivot");
-    this.mixslider.bind("slide", function() { this.setMix(this.mixslider.slider("option", "value")); }.bind(this));
-    this.pivslider.bind("slide", function() { this.setPivot(this.pivslider.slider("option", "value")); }.bind(this));
+
+    $("#mix").bind("slide", function() { this.setMix($("#mix").slider("option", "value")); }.bind(this));
+    $("#pivot").bind("slide", function() { this.setPivot($("#pivot").slider("option", "value")); }.bind(this));
+    $("#roi_fillalpha").bind("slidechange", this._updateROIs.bind(this));
+    $("#roi_linealpha").bind("slidechange", this._updateROIs.bind(this));
+    $("#roi_linewidth").bind("slidechange", this._updateROIs.bind(this));
+    $("#roi_fillcolor").miniColors("change", this._updateROIs.bind(this));
+    $("#roi_linecolor").miniColors("change", this._updateROIs.bind(this));
 }
 MRIview.prototype = { 
     draw: function () {
@@ -162,10 +165,10 @@ MRIview.prototype = {
             delete this.meshes;
         }
         
-        this.loader = new THREE.CTMLoader( );
+        var loader = new THREE.CTMLoader( );
         var ctminfo = "resources/ctm/AH_AH_huth_[inflated,superinflated].json";
 
-        this.loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
+        loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
             var rawdata = new Uint32Array(header.length / 4);
             var charview = new Uint8Array(rawdata.buffer);
             for (var i = 0, il = header.length; i < il; i++) {
@@ -180,6 +183,8 @@ MRIview.prototype = {
             this.pivot = {};
             this.polys = { norm:{}, flat:{}}
             var names = {left:0, right:1};
+            $.get(loader.extractUrlBase(ctminfo)+json.rois, null, this._loadROIs.bind(this));
+
             for (var name in names) {
                 var right = names[name];
                 this._makeFlat(geometries[right], json.flatlims[right], polyfilt[name], right);
@@ -243,9 +248,6 @@ MRIview.prototype = {
     },
     setPoly: function(polyvar) {
         for (var name in this.meshes) {
-//                    if (this.polys.norm[name] === undefined) {
-//                        this.polys.norm[name] = this.meshes[name].attributes.index.clone();
-//                    }
             this.meshes[name].geometry.attributes.index = this.polys[polyvar][name];
         }
     },
@@ -316,5 +318,33 @@ MRIview.prototype = {
         this.pivot[name].back.position.y = 1.2*(geom.boundingBox.min.y - geom.boundingBox.max.y);
         this.pivot[name].front.position.y = 1.2*geom.boundingBox.max.y;
         this.scene.add(this.pivot[name].front);
+    }, 
+    _loadROIs: function(svgdoc) {
+        this.svgroi = svgdoc.getElementsByTagName("svg")[0];
+        this.svgroi.id = "svgroi";
+        document.getElementById("hiderois").appendChild(this.svgroi);
+        this.rois = $(this.svgroi).find("path");
+        this._updateROIs();
+    }, 
+    _updateROIs: function() {
+        var fo = "fill-opacity:"+$("#roi_fillalpha").slider("option", "value");
+        var lo = "stroke-opacity:"+$("#roi_linealpha").slider("option", "value");
+        var fc = "fill:"+$("#roi_fillcolor").attr("value");
+        var lc = "stroke:"+$("#roi_linecolor").attr("value");
+        var lw = "stroke-width:"+$("#roi_linewidth").slider("option", "value") + "px";
+        this.rois.attr("style", [fo, lo, fc, lc, lw].join(";"));
+
+        var svg_xml = (new XMLSerializer()).serializeToString(this.svgroi);
+        var canvas = document.getElementById("canvasrois");
+        canvg(canvas, svg_xml, {
+            ignoreMouse:true, 
+            ignoreAnimation:true,
+            renderCallback: function() {
+                var tex = new THREE.Texture(canvas);
+                tex.needsUpdate = true;
+                tex.premultiplyAlpha = true;
+                this.shader.uniforms.map.texture = tex;
+            }.bind(this),
+        });
     }
 }

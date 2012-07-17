@@ -1,0 +1,409 @@
+<!doctype html>
+<html>
+<title>Brain</title>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<link rel="stylesheet" href="resources/css/ui-lightness/jquery-ui-1.8.21.custom.css" type='text/css' />
+<link rel="stylesheet" href="resources/css/jquery.miniColors.css" type='text/css' />
+<script type='text/javascript' src='resources/js/jquery-1.7.2.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery-ui-1.8.21.custom.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery.miniColors.min.js'></script>
+<script type="text/javascript" src="resources/js/rgbcolor.js"></script> 
+<script type="text/javascript" src="resources/js/canvg.js"></script> 
+<script type='text/javascript' src="resources/js/Three.js"></script>
+<script type='text/javascript' src='resources/js/mriview.js'></script>
+<script type='text/javascript' src="js/loaders/ctm/lzma.js"></script>
+<script type='text/javascript' src="js/loaders/ctm/ctm.js"></script>
+<script type='text/javascript' src="js/loaders/ctm/CTMLoader.js"></script>
+
+<style type="text/css">
+	html { height:100%; }
+	body { 
+		background-color:#333; 
+		margin:0px;
+		font-family:sans;
+		font-size:10pt;
+		height:100%;
+		min-height:100%;
+		overflow:hidden;
+	}
+	canvas { display:block; }
+	input[type='text'] {
+		border:1px solid #CCC;
+		border-radius:10px / 2px;
+	}
+	table {
+		cell-spacing:0px;
+	}
+	.clear { clear:both; }
+
+	#main {
+		margin:0px;
+		min-height:100%;
+		height: auto !important;
+		height:100%;
+	}
+	#threeDview {
+		margin:0px;
+		padding:0px;
+		color:white;
+		font-size:48pt;
+		text-align:center;
+	}
+	#hiderois {
+		display:none;
+	}
+
+	.dd-select { height:30px; }
+	.dd-selected-text, .dd-option-text { display:none; }
+	.dd-option-image, .dd-selected-image { height:10px; width:256px; max-width:none; }
+
+	.content { padding:10px; }
+	.infobar {
+		transition: all .3s; 
+		transition-timing-function:ease-in-out;
+		-moz-transition: all .3s;
+		-mkoz-transition-timing-function: ease-in-out;
+		-webkit-transition: all .3s;
+		-webkit-transition-timing-function: ease-in-out;
+		position:relative;
+		z-index:10;
+		background-color:rgba(255,255,255, .2);
+	}
+	.infobar:hover {
+		background-color:rgba(255,255,255, .6);
+	}
+	#topbar { 
+		height:200px; 
+		margin:-190px 50px -10px 50px;		
+		border-radius: 0px 0px 50px 50px / 0px 0px 10px 10px;
+	}
+	#topbar:hover { 
+		margin:0px 50px -200px 50px; 
+	}
+	.opt_category {
+		float:left;
+	}
+
+	
+	#vminmax > input {float:left; width:25px; }
+	#vrange_wrap { float:left; padding:5px 10px;}
+	#vrange { width:222px; }
+
+	#roi_fieldset {
+		width:200px;
+	}
+	#roi_fieldset table {
+		width:100%;
+	}
+	#roi_fieldset table td {
+		text-align:center;
+	}
+	#roi_fieldset tr:first-child td:first-child { text-align:left; }
+	#roi_fieldset table td:first-child {
+		width:40%;
+		min-width:50px;
+	}
+	#roi_fieldset table td:last-child {
+		width:60%;
+	}
+
+
+	#bottombar {
+		height:80px;
+		margin-top:-10px;
+		border-radius: 50px 50px 0px 0px / 10px 10px 0px 0px;
+		clear:both;
+	}
+	#bottombar table {
+		width:100%;
+		padding:4px;
+	}
+	#bottombar table td:first-child {
+		width:5%;
+		min-width:80px;
+	}
+	#bottombar:hover {
+		margin-top:-80px;
+	}
+
+</style>
+<script type='text/javascript'>
+	function toggleFullScreen() {
+	  if ((document.fullScreenElement && document.fullScreenElement !== null) ||    // alternative standard method
+	      (!document.mozFullScreen && !document.webkitIsFullScreen)) {               // current working methods
+	    if (document.documentElement.requestFullScreen) {
+	      document.documentElement.requestFullScreen();
+	    } else if (document.documentElement.mozRequestFullScreen) {
+	      document.documentElement.mozRequestFullScreen();
+	    } else if (document.documentElement.webkitRequestFullScreen) {
+	      document.documentElement.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+	    }
+	  } else {
+	    if (document.cancelFullScreen) {
+	      document.cancelFullScreen();
+	    } else if (document.mozCancelFullScreen) {
+	      document.mozCancelFullScreen();
+	    } else if (document.webkitCancelFullScreen) {
+	      document.webkitCancelFullScreen();
+	    }
+	  }
+	}
+	var viewer;
+	$(document).ready(function() {
+		toggleFullScreen();
+		$("#mix").slider({min:0, max:1, step:.001});
+		$("#pivot").slider({min:-180, max:180, step:.01});
+		$("#vrange").slider({ range:true, width:200, min:0, max:1, step:.001, values:[0,1] });
+		$("#roi_linealpha").slider({min:0, max:1, step:.001, value:1});
+		$("#roi_fillalpha").slider({min:0, max:1, step:.001, value:0});
+		$("#roi_linecolor").miniColors();
+		$("#roi_fillcolor").miniColors();
+		$("#roi_linewidth").slider({min:.5, max:10, step:.1, value:3});
+
+		viewer = new MRIview();
+		$("#colormap").ddslick({ width:296, height:400, 
+			onSelected: function() { 
+				viewer.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
+			}
+		});
+
+        viewer.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
+        viewer.load(); 
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'corrdata.bin', true);
+        xhr.responseType = 'arraybuffer';
+
+        xhr.onload = function(e) {
+            if (this.status == 200) {
+                var head = new Float32Array(this.response.slice(0, 8*4));
+                var data = new Uint8Array(this.response.slice(8*4));
+                viewer.setData(data);
+            } else {
+                console.log(this.status);
+            }
+        };
+        xhr.send();
+	})
+</script>
+</head>
+<body>
+<div id='topbar' class='infobar'>
+	<div class='content'>
+		<form id='display_options'>
+			<fieldset class='opt_category'>
+				<legend>Colormap</legend>
+				<div id='vminmax'>
+					<input type='text' id='vmin' /><div id='vrange_wrap'><div id='vrange'></div></div><input type='text' id='vmax' />
+					<div class='clear'></div>
+				</div>
+				<select id='colormap'>
+					<option data-imagesrc='resources/colormaps/Accent.png'>Accent</option>
+					<option data-imagesrc='resources/colormaps/Accent_r.png'>Accent_r</option>
+					<option data-imagesrc='resources/colormaps/Blues.png'>Blues</option>
+					<option data-imagesrc='resources/colormaps/Blues_r.png'>Blues_r</option>
+					<option data-imagesrc='resources/colormaps/BrBG.png'>BrBG</option>
+					<option data-imagesrc='resources/colormaps/BrBG_r.png'>BrBG_r</option>
+					<option data-imagesrc='resources/colormaps/BuGn.png'>BuGn</option>
+					<option data-imagesrc='resources/colormaps/BuGn_r.png'>BuGn_r</option>
+					<option data-imagesrc='resources/colormaps/BuPu.png'>BuPu</option>
+					<option data-imagesrc='resources/colormaps/BuPu_r.png'>BuPu_r</option>
+					<option data-imagesrc='resources/colormaps/Dark2.png'>Dark2</option>
+					<option data-imagesrc='resources/colormaps/Dark2_r.png'>Dark2_r</option>
+					<option data-imagesrc='resources/colormaps/GnBu.png'>GnBu</option>
+					<option data-imagesrc='resources/colormaps/GnBu_r.png'>GnBu_r</option>
+					<option data-imagesrc='resources/colormaps/Greens.png'>Greens</option>
+					<option data-imagesrc='resources/colormaps/Greens_r.png'>Greens_r</option>
+					<option data-imagesrc='resources/colormaps/Greys.png'>Greys</option>
+					<option data-imagesrc='resources/colormaps/Greys_r.png'>Greys_r</option>
+					<option data-imagesrc='resources/colormaps/OrRd.png'>OrRd</option>
+					<option data-imagesrc='resources/colormaps/OrRd_r.png'>OrRd_r</option>
+					<option data-imagesrc='resources/colormaps/Oranges.png'>Oranges</option>
+					<option data-imagesrc='resources/colormaps/Oranges_r.png'>Oranges_r</option>
+					<option data-imagesrc='resources/colormaps/PRGn.png'>PRGn</option>
+					<option data-imagesrc='resources/colormaps/PRGn_r.png'>PRGn_r</option>
+					<option data-imagesrc='resources/colormaps/Paired.png'>Paired</option>
+					<option data-imagesrc='resources/colormaps/Paired_r.png'>Paired_r</option>
+					<option data-imagesrc='resources/colormaps/Pastel1.png'>Pastel1</option>
+					<option data-imagesrc='resources/colormaps/Pastel1_r.png'>Pastel1_r</option>
+					<option data-imagesrc='resources/colormaps/Pastel2.png'>Pastel2</option>
+					<option data-imagesrc='resources/colormaps/Pastel2_r.png'>Pastel2_r</option>
+					<option data-imagesrc='resources/colormaps/PiYG.png'>PiYG</option>
+					<option data-imagesrc='resources/colormaps/PiYG_r.png'>PiYG_r</option>
+					<option data-imagesrc='resources/colormaps/PuBu.png'>PuBu</option>
+					<option data-imagesrc='resources/colormaps/PuBuGn.png'>PuBuGn</option>
+					<option data-imagesrc='resources/colormaps/PuBuGn_r.png'>PuBuGn_r</option>
+					<option data-imagesrc='resources/colormaps/PuBu_r.png'>PuBu_r</option>
+					<option data-imagesrc='resources/colormaps/PuOr.png'>PuOr</option>
+					<option data-imagesrc='resources/colormaps/PuOr_r.png'>PuOr_r</option>
+					<option data-imagesrc='resources/colormaps/PuRd.png'>PuRd</option>
+					<option data-imagesrc='resources/colormaps/PuRd_r.png'>PuRd_r</option>
+					<option data-imagesrc='resources/colormaps/Purples.png'>Purples</option>
+					<option data-imagesrc='resources/colormaps/Purples_r.png'>Purples_r</option>
+					<option data-imagesrc='resources/colormaps/RdBu.png'>RdBu</option>
+					<option data-imagesrc='resources/colormaps/RdBu_r.png'>RdBu_r</option>
+					<option data-imagesrc='resources/colormaps/RdGy.png'>RdGy</option>
+					<option data-imagesrc='resources/colormaps/RdGy_r.png'>RdGy_r</option>
+					<option data-imagesrc='resources/colormaps/RdPu.png'>RdPu</option>
+					<option data-imagesrc='resources/colormaps/RdPu_r.png'>RdPu_r</option>
+					<option data-imagesrc='resources/colormaps/RdYlBu.png'>RdYlBu</option>
+					<option data-imagesrc='resources/colormaps/RdYlBu_r.png'>RdYlBu_r</option>
+					<option data-imagesrc='resources/colormaps/RdYlGn.png'>RdYlGn</option>
+					<option data-imagesrc='resources/colormaps/RdYlGn_r.png'>RdYlGn_r</option>
+					<option data-imagesrc='resources/colormaps/Reds.png'>Reds</option>
+					<option data-imagesrc='resources/colormaps/Reds_r.png'>Reds_r</option>
+					<option data-imagesrc='resources/colormaps/Set1.png'>Set1</option>
+					<option data-imagesrc='resources/colormaps/Set1_r.png'>Set1_r</option>
+					<option data-imagesrc='resources/colormaps/Set2.png'>Set2</option>
+					<option data-imagesrc='resources/colormaps/Set2_r.png'>Set2_r</option>
+					<option data-imagesrc='resources/colormaps/Set3.png'>Set3</option>
+					<option data-imagesrc='resources/colormaps/Set3_r.png'>Set3_r</option>
+					<option data-imagesrc='resources/colormaps/Spectral.png'>Spectral</option>
+					<option data-imagesrc='resources/colormaps/Spectral_r.png'>Spectral_r</option>
+					<option data-imagesrc='resources/colormaps/YlGn.png'>YlGn</option>
+					<option data-imagesrc='resources/colormaps/YlGnBu.png'>YlGnBu</option>
+					<option data-imagesrc='resources/colormaps/YlGnBu_r.png'>YlGnBu_r</option>
+					<option data-imagesrc='resources/colormaps/YlGn_r.png'>YlGn_r</option>
+					<option data-imagesrc='resources/colormaps/YlOrBr.png'>YlOrBr</option>
+					<option data-imagesrc='resources/colormaps/YlOrBr_r.png'>YlOrBr_r</option>
+					<option data-imagesrc='resources/colormaps/YlOrRd.png'>YlOrRd</option>
+					<option data-imagesrc='resources/colormaps/YlOrRd_r.png'>YlOrRd_r</option>
+					<option data-imagesrc='resources/colormaps/afmhot.png'>afmhot</option>
+					<option data-imagesrc='resources/colormaps/afmhot_r.png'>afmhot_r</option>
+					<option data-imagesrc='resources/colormaps/autumn.png'>autumn</option>
+					<option data-imagesrc='resources/colormaps/autumn_r.png'>autumn_r</option>
+					<option data-imagesrc='resources/colormaps/binary.png'>binary</option>
+					<option data-imagesrc='resources/colormaps/binary_r.png'>binary_r</option>
+					<option data-imagesrc='resources/colormaps/bone.png'>bone</option>
+					<option data-imagesrc='resources/colormaps/bone_r.png'>bone_r</option>
+					<option data-imagesrc='resources/colormaps/brg.png'>brg</option>
+					<option data-imagesrc='resources/colormaps/brg_r.png'>brg_r</option>
+					<option data-imagesrc='resources/colormaps/bwr.png'>bwr</option>
+					<option data-imagesrc='resources/colormaps/bwr_r.png'>bwr_r</option>
+					<option data-imagesrc='resources/colormaps/cool.png'>cool</option>
+					<option data-imagesrc='resources/colormaps/cool_r.png'>cool_r</option>
+					<option data-imagesrc='resources/colormaps/coolwarm.png'>coolwarm</option>
+					<option data-imagesrc='resources/colormaps/coolwarm_r.png'>coolwarm_r</option>
+					<option data-imagesrc='resources/colormaps/copper.png'>copper</option>
+					<option data-imagesrc='resources/colormaps/copper_r.png'>copper_r</option>
+					<option data-imagesrc='resources/colormaps/cubehelix.png'>cubehelix</option>
+					<option data-imagesrc='resources/colormaps/cubehelix_r.png'>cubehelix_r</option>
+					<option data-imagesrc='resources/colormaps/flag.png'>flag</option>
+					<option data-imagesrc='resources/colormaps/flag_r.png'>flag_r</option>
+					<option data-imagesrc='resources/colormaps/gist_earth.png'>gist_earth</option>
+					<option data-imagesrc='resources/colormaps/gist_earth_r.png'>gist_earth_r</option>
+					<option data-imagesrc='resources/colormaps/gist_gray.png'>gist_gray</option>
+					<option data-imagesrc='resources/colormaps/gist_gray_r.png'>gist_gray_r</option>
+					<option data-imagesrc='resources/colormaps/gist_heat.png'>gist_heat</option>
+					<option data-imagesrc='resources/colormaps/gist_heat_r.png'>gist_heat_r</option>
+					<option data-imagesrc='resources/colormaps/gist_ncar.png'>gist_ncar</option>
+					<option data-imagesrc='resources/colormaps/gist_ncar_r.png'>gist_ncar_r</option>
+					<option data-imagesrc='resources/colormaps/gist_rainbow.png'>gist_rainbow</option>
+					<option data-imagesrc='resources/colormaps/gist_rainbow_r.png'>gist_rainbow_r</option>
+					<option data-imagesrc='resources/colormaps/gist_stern.png'>gist_stern</option>
+					<option data-imagesrc='resources/colormaps/gist_stern_r.png'>gist_stern_r</option>
+					<option data-imagesrc='resources/colormaps/gist_yarg.png'>gist_yarg</option>
+					<option data-imagesrc='resources/colormaps/gist_yarg_r.png'>gist_yarg_r</option>
+					<option data-imagesrc='resources/colormaps/gnuplot.png'>gnuplot</option>
+					<option data-imagesrc='resources/colormaps/gnuplot2.png'>gnuplot2</option>
+					<option data-imagesrc='resources/colormaps/gnuplot2_r.png'>gnuplot2_r</option>
+					<option data-imagesrc='resources/colormaps/gnuplot_r.png'>gnuplot_r</option>
+					<option data-imagesrc='resources/colormaps/gray.png'>gray</option>
+					<option data-imagesrc='resources/colormaps/gray_r.png'>gray_r</option>
+					<option data-imagesrc='resources/colormaps/hot.png' selected='selected'>hot</option>
+					<option data-imagesrc='resources/colormaps/hot_r.png'>hot_r</option>
+					<option data-imagesrc='resources/colormaps/hsv.png'>hsv</option>
+					<option data-imagesrc='resources/colormaps/hsv_r.png'>hsv_r</option>
+					<option data-imagesrc='resources/colormaps/jet.png'>jet</option>
+					<option data-imagesrc='resources/colormaps/jet_r.png'>jet_r</option>
+					<option data-imagesrc='resources/colormaps/ocean.png'>ocean</option>
+					<option data-imagesrc='resources/colormaps/ocean_r.png'>ocean_r</option>
+					<option data-imagesrc='resources/colormaps/pink.png'>pink</option>
+					<option data-imagesrc='resources/colormaps/pink_r.png'>pink_r</option>
+					<option data-imagesrc='resources/colormaps/prism.png'>prism</option>
+					<option data-imagesrc='resources/colormaps/prism_r.png'>prism_r</option>
+					<option data-imagesrc='resources/colormaps/rainbow.png'>rainbow</option>
+					<option data-imagesrc='resources/colormaps/rainbow_r.png'>rainbow_r</option>
+					<option data-imagesrc='resources/colormaps/seismic.png'>seismic</option>
+					<option data-imagesrc='resources/colormaps/seismic_r.png'>seismic_r</option>
+					<option data-imagesrc='resources/colormaps/spectral.png'>spectral</option>
+					<option data-imagesrc='resources/colormaps/spectral_r.png'>spectral_r</option>
+					<option data-imagesrc='resources/colormaps/spring.png'>spring</option>
+					<option data-imagesrc='resources/colormaps/spring_r.png'>spring_r</option>
+					<option data-imagesrc='resources/colormaps/summer.png'>summer</option>
+					<option data-imagesrc='resources/colormaps/summer_r.png'>summer_r</option>
+					<option data-imagesrc='resources/colormaps/terrain.png'>terrain</option>
+					<option data-imagesrc='resources/colormaps/terrain_r.png'>terrain_r</option>
+					<option data-imagesrc='resources/colormaps/winter.png'>winter</option>
+					<option data-imagesrc='resources/colormaps/winter_r.png'>winter_r</option>
+				</select>
+			</fieldset>
+			<fieldset id="roi_fieldset" class='opt_category'>
+				<legend>ROIs</legend>
+				<div class='display_opt'>
+					<input id='showroi' type='checkbox'><label for='showroi'>Show</label>
+				</div>
+				<div class='display_opt'>
+					<table id='roilines'>
+						<tr>
+							<td><label for='roi_linecolor'>ROI lines</label></td>
+							<td><input type='hidden' id='roi_linecolor' value='#FFFFFF' /></td>
+						</tr>
+						<tr>
+							<td><label for="roi_linealpha">Alpha</label></td>
+							<td><div id='roi_linealpha'></div></td>
+						</tr>
+						<tr>
+							<td><label for="roi_linealpha">Width</label></td>
+							<td><div id='roi_linewidth'></div></td>
+						</tr>
+					</table>
+				</div>
+				<div class='display_opt'>
+					<table id='roilines'>
+						<tr>
+							<td><label for='roi_fillcolor'>ROI fill</label></td>
+							<td><input type='hidden' id='roi_fillcolor' value='#000000' /></td>
+						</tr>
+						<tr>
+							<td><label for="roi_fillalpha">Alpha</label></td>
+							<td><div id='roi_fillalpha'></div></td>
+						</tr>
+					</table>
+				</div>
+			</fieldset>
+		</form>
+	</div>
+</div>
+<div id='main'>
+	<div id='threeDview'>
+            Loading...
+    </div>
+    <div id='hiderois'>
+    	<canvas id='canvasrois'></canvas>
+	</div>
+</div>
+
+<div id='bottombar' class='infobar'>
+	<div class='content'>
+		<table>
+			<tr>
+				<td><label for='mix'>Mix</label></td>
+				<td><div id="mix"></div></td>
+			</tr>
+			<tr>
+				<td><label for='pivot'>Pivot</label></td>
+				<td><div id="pivot"></div></td>
+			</tr>
+			<tr>
+				<td><label for='shifthemis'>Shift</label></td>
+				<td><div id="shifthemis"></div></td>
+			</tr>
+		</table>
+	</div>
+</div>
+</body>
+</html>

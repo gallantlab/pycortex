@@ -202,12 +202,6 @@ class ROIpack(traits.HasTraits):
     def __getitem__(self, name):
         return self.rois[name]
 
-def clip_svg(svgfile):
-    svg = xmlparse(svgfile)
-    rmnode = _find_layer(svg, "data")
-    rmnode.parentNode.removeChild(rmnode)
-    return svg
-
 ###################################################################################
 # SVG Helper functions
 ###################################################################################
@@ -268,3 +262,23 @@ def test():
     import db
     pts, polys, norms = db.surfs.getVTK("JG", "flat")
     return ROIpack(pts[:,:2], "/home/james/code/mritools_store/overlays/JG_rois.svg")
+
+def scrub(svgfile):
+    svg = xmlparse(svgfile)
+    rmnode = _find_layer(svg, "data")
+    rmnode.parentNode.removeChild(rmnode)
+    svgtag = svg.getElementsByTagName("svg")[0]
+    svgtag.setAttribute("id", "svgroi")
+    svgtag.removeAttribute("inkscape:version")
+    try:
+        tags = []
+        for tagname in ["defs", "sodipodi:namedview", "metadata"]:
+            tags += svgtag.getElementsByTagName(tagname)
+        print tags
+        for tag in tags:
+            tag.parentNode.removeChild(tag)
+    except:
+        import traceback
+        traceback.print_exc()
+
+    return svg
