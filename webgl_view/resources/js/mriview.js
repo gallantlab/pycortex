@@ -149,6 +149,16 @@ function MRIview() {
     $("#roi_fillcolor").miniColors("option", "close", this._updateROIs.bind(this));
     $("#roi_linecolor").miniColors("option", "close", this._updateROIs.bind(this));
     $("#roi_shadowcolor").miniColors("option", "close", this._updateROIs.bind(this));
+
+    var blanktex = new THREE.DataTexture(new Uint8Array(16*16*4), 16, 16);
+    blanktex.needsUpdate = true;
+    var _this = this;
+    $("#roishow").change(function() {
+        if (this.checked) 
+            _this._updateROIs();
+        else
+            _this.shader.uniforms.map.texture = blanktex;
+    })
 }
 MRIview.prototype = { 
     draw: function () {

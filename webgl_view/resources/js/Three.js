@@ -1,1 +1,1 @@
-/auto/k1/james/projects/three.js/build/Three.js
+../../../../three.js/build/Three.js
