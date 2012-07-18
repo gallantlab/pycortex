@@ -170,41 +170,9 @@
 	var viewer;
 	$(document).ready(function() {
 		toggleFullScreen();
-		$("#mix").slider({min:0, max:1, step:.001});
-		$("#pivot").slider({min:-180, max:180, step:.01});
-		$("#vrange").slider({ range:true, width:200, min:0, max:1, step:.001, values:[0,1] });
-		$("#roi_linealpha").slider({min:0, max:1, step:.001, value:1});
-		$("#roi_fillalpha").slider({min:0, max:1, step:.001, value:0});
-		$("#roi_linecolor").miniColors();
-		$("#roi_fillcolor").miniColors();
-		$("#roi_linewidth").slider({min:.5, max:10, step:.1, value:3});
-		$("#roi_shadowcolor").miniColors();
-		$("#roi_shadowalpha").slider({min:0, max:20, step:1, value:4});
-
 		viewer = new MRIview();
-		$("#colormap").ddslick({ width:296, height:400, 
-			onSelected: function() { 
-				viewer.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
-			}
-		});
-
-        viewer.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
         viewer.load(); 
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'corrdata.bin', true);
-        xhr.responseType = 'arraybuffer';
-
-        xhr.onload = function(e) {
-            if (this.status == 200) {
-                var head = new Float32Array(this.response.slice(0, 8*4));
-                var data = new Uint8Array(this.response.slice(8*4));
-                viewer.setData(data);
-            } else {
-                console.log(this.status);
-            }
-        };
-        xhr.send();
+        dataset = new Dataset("corrdat_float.bin", viewer.setData.bind(viewer));
 	})
 </script>
 </head>

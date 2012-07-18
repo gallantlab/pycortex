@@ -102,7 +102,7 @@ function MRIview() {
         {
             diffuse:    { type:'v3', value:new THREE.Vector3( 1,1,1 )},
             specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
-            emissive:    { type:'v3', value:new THREE.Vector3( 0.05,0.05,0.05 )},
+            emissive:   { type:'v3', value:new THREE.Vector3( 0,0,0 )},
             shininess:  { type:'f', value:200},
 
             map:        { type:'t', value:0, texture: null },
@@ -128,31 +128,7 @@ function MRIview() {
         vertexColors:true,
     });
     this.shader.map = true;
-    
-    this.container.html( this.renderer.domElement );
-    $(window).resize(this.resize.bind(this));
-
-    $("#mix").bind("slide", function() { this.setMix($("#mix").slider("option", "value")); }.bind(this));
-    $("#pivot").bind("slide", function() { this.setPivot($("#pivot").slider("option", "value")); }.bind(this));
-    $("#roi_fillalpha").bind("slidechange", this._updateROIs.bind(this));
-    $("#roi_linealpha").bind("slidechange", this._updateROIs.bind(this));
-    $("#roi_linewidth").bind("slidechange", this._updateROIs.bind(this));
-    $("#roi_shadowalpha").bind("slidechange", this._updateROIs.bind(this));
-    $("#roi_fillcolor").miniColors("option", "close", this._updateROIs.bind(this));
-    $("#roi_linecolor").miniColors("option", "close", this._updateROIs.bind(this));
-    $("#roi_shadowcolor").miniColors("option", "close", this._updateROIs.bind(this));
-
-    var blanktex = new THREE.DataTexture(new Uint8Array(16*16*4), 16, 16);
-    blanktex.needsUpdate = true;
-    var _this = this;
-    $("#roishow").change(function() {
-        if (this.checked) 
-            _this._updateROIs();
-        else {
-            _this.shader.uniforms.map.texture = blanktex;
-            _this._dirty = true;
-        }
-    })
+    this._bindUI();
 }
 MRIview.prototype = { 
     draw: function () {
@@ -196,6 +172,7 @@ MRIview.prototype = {
 
             for (var name in names) {
                 var right = names[name];
+                geometries[right].doubleSided = true;
                 this._makeFlat(geometries[right], json.flatlims[right], polyfilt[name], right);
                 this._makeMesh(geometries[right], name);
 
@@ -227,8 +204,10 @@ MRIview.prototype = {
         for (var h in this.meshes) {
             var hemi = this.meshes[h];
             
-            for (var i=0; i < num; i++)
+            console.log(num);
+            for (var i=0; i < num; i++) {
                 hemi.morphTargetInfluences[i] = 0;
+            }
 
             if ((this.lastn2 == flat) ^ (n2 == flat)) {
                 this.setPoly(n2 == flat ? "flat" : "norm");
@@ -266,15 +245,11 @@ MRIview.prototype = {
         }
         this._dirty = true;
     },
-    setData: function(data) {
-        var datatex = new THREE.DataTexture(data, 256, data.length/4 / 256);
-        datatex.needsUpdate = true;
-        datatex.flipY = false;
-        datatex.minFilter = THREE.NearestFilter;
-        datatex.maxFilter = THREE.NearestFilter;
-
-        this.shader.uniforms.data.texture = datatex;
-        this.shader.uniforms.datasize.value.set(256, data.length/4/256);
+    setData: function(dataset) {
+        this.shader.uniforms.data.texture = dataset.textures[0];
+        this.shader.uniforms.datasize.value = dataset.shape;
+        this.dataset = dataset;
+        this.setVminmax();
         this._dirty = true;
     },
 
@@ -283,6 +258,77 @@ MRIview.prototype = {
         cmap.flipY = false;
         this.shader.uniforms.colormap.texture = cmap;
         this._dirty = true;
+    },
+
+    setVminmax: function(vrmin, vrmax) {
+        var range = this.dataset.minmax[1] - this.dataset.minmax[0];
+        this.dataset.minmax[0]
+        $("#vmin").val();
+        $("#vmax").val();
+    },
+
+    setVrange: function(vmin, vmax) {
+
+        $("#vrange").slider("option", "values", [vmin || 0, vmax || 1]);
+    },
+
+    _bindUI: function() {
+        $(window).resize(this.resize.bind(this));
+        var _this = this;
+        $("#mix").slider({
+            min:0, max:1, step:.001,
+            slide: function(event, ui) { this.setMix(ui.value); }.bind(this)
+        });
+        $("#pivot").slider({
+            min:-180, max:180, step:.01,
+            slide: function(event, ui) { this.setPivot(ui.value); }.bind(this)
+        });
+        $("#vrange").slider({ 
+            range:true, width:200, min:0, max:1, step:.001, values:[0,1],
+            slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1]); }
+        });
+        $("#vmin").change(function() { this.setVrange($("#vmin").val(), $("#vmax").val()); }.bind(this));
+        $("#vmax").change(function() { this.setVrange($("#vmin").val(), $("#vmax").val()); }.bind(this));
+        $("#roi_linewidth").slider({
+            min:.5, max:10, step:.1, value:3,
+            change: this._updateROIs.bind(this),
+        });
+        $("#roi_linealpha").slider({
+            min:0, max:1, step:.001, value:1,
+            change: this._updateROIs.bind(this),
+        });
+        $("#roi_fillalpha").slider({
+            min:0, max:1, step:.001, value:0,
+            change: this._updateROIs.bind(this),
+        });
+        $("#roi_shadowalpha").slider({
+            min:0, max:20, step:1, value:4,
+            change: this._updateROIs.bind(this),
+        });
+        $("#roi_linecolor").miniColors({close: this._updateROIs.bind(this)});
+        $("#roi_fillcolor").miniColors({close: this._updateROIs.bind(this)});
+        $("#roi_shadowcolor").miniColors({close: this._updateROIs.bind(this)});
+
+        var blanktex = new THREE.DataTexture(new Uint8Array(16*16*4), 16, 16);
+        blanktex.needsUpdate = true;
+        var _this = this;
+        $("#roishow").change(function() {
+            if (this.checked) 
+                _this._updateROIs();
+            else {
+                _this.shader.uniforms.map.texture = blanktex;
+                _this._dirty = true;
+            }
+        })
+
+        $("#colormap").ddslick({ width:296, height:400, 
+            onSelected: function() { 
+                setTimeout(function() {
+                    this.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
+                }.bind(this), 5);
+            }.bind(this)
+        });
+        this.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
     },
 
     _makeFlat: function(geom, lim, polyfilt, right) {
@@ -383,7 +429,7 @@ MRIview.prototype = {
                         ignoreAnimation:true,
                         ignoreDimensions:true,
                         ignoreClear:true,
-                        renderCallback: texfunc,
+                        renderCallback: function() { setTimeout(texfunc, 5); },
                     });
                 }.bind(this),
             });
@@ -396,4 +442,51 @@ MRIview.prototype = {
             });
         }
     },
+}
+
+function Dataset(url, callback) {
+    this.textures = [];
+    this.minmax = null;
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+
+    var _this = this;
+    xhr.onload = function(e) {
+        if (this.status == 200) {
+            _this.parse(this.response);
+            callback(_this);
+        } else {
+            console.log(this.status);
+        }
+    };
+    xhr.send();
+}
+Dataset.prototype.parse = function (data) {
+    this.length = (new Uint32Array(data, 0, 1))[0];
+    this.minmax = new Float32Array(this.length*2);
+
+    var nnum = 1;
+    for (var i = 0; i < this.length; i++) {
+        var shape = new Uint32Array(data, nnum*4, 2);
+        nnum += 2;
+        var minmax = new Float32Array(data, nnum*4, 2);
+        nnum += 2;
+
+        var dtex = new Float32Array(data, nnum*4, shape[0]*shape[1]);
+        nnum += shape[0]*shape[1];
+
+        var tex = new THREE.DataTexture(dtex, shape[0], shape[1], THREE.LuminanceFormat, THREE.FloatType);
+        tex.needsUpdate = true;
+        tex.flipY = false;
+        tex.minFilter = THREE.NearestFilter;
+        tex.maxFilter = THREE.NearestFilter;
+        this.textures.push(tex);
+        this.minmax[i*2] = minmax[0];
+        this.minmax[i*2+1] = minmax[1];
+    }
+    //Assume the dataset is sanitized, and the shapes are equal
+    this.shape = new THREE.Vector2(shape[0], shape[1]);
+    if (this.length != this.textures.length)
+        throw "Invalid dataset";
 }
