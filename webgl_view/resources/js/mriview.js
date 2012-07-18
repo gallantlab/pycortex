@@ -82,11 +82,7 @@ function MRIview() {
     this.camera.up.set(0,0,1);
 
     this.scene.add( this.camera );
-
     this.controls = new THREE.LandscapeControls( this.camera, this.container[0] );
-    this.controls.addEventListener("change", function() {
-        this._dirty = true;
-    }.bind(this));
     
     this.light = new THREE.DirectionalLight( 0xffffff );
     this.light.position.set( 200, 200, 1000 ).normalize();
@@ -127,18 +123,17 @@ function MRIview() {
         lights:true, 
         vertexColors:true,
     });
+
     this.shader.map = true;
     this._bindUI();
 }
 MRIview.prototype = { 
     draw: function () {
-        requestAnimationFrame( this.draw.bind(this) );
-        this.controls.update();
-        if (this._dirty) {
-            this.renderer.render( this.scene, this.camera );
-            this._dirty = false;
-        }
+        this.controls.update(this.flatmix);
+        this.renderer.render( this.scene, this.camera );
+        this._scheduled = false;
     },
+
     load: function(subj) {
         $(this.renderer.domElement).remove();
         this.container.html("Loading...");
@@ -182,9 +177,13 @@ MRIview.prototype = {
 
             this.container.html(this.renderer.domElement);
 
-            //Should I draw a frame?
-            this._dirty = true;
-            this.draw();
+            this.controls.addEventListener("change", function() {
+                if (!this._scheduled) {
+                    this._scheduled = true;
+                    requestAnimationFrame( this.draw.bind(this) );
+                }
+            }.bind(this));
+            this.controls.dispatchEvent({type:"change"});
 
         }.bind(this), true, true );
 
@@ -193,7 +192,7 @@ MRIview.prototype = {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.camera.aspect = window.innerWidth / (window.innerHeight);
         this.camera.updateProjectionMatrix();
-        this._dirty = true;
+        this.controls.dispatchEvent({type:"change"});
     },
     setMix: function(val) {
         var num = this.meshes.left.geometry.morphTargets.length;
@@ -204,7 +203,6 @@ MRIview.prototype = {
         for (var h in this.meshes) {
             var hemi = this.meshes[h];
             
-            console.log(num);
             for (var i=0; i < num; i++) {
                 hemi.morphTargetInfluences[i] = 0;
             }
@@ -212,16 +210,17 @@ MRIview.prototype = {
             if ((this.lastn2 == flat) ^ (n2 == flat)) {
                 this.setPoly(n2 == flat ? "flat" : "norm");
             }
-            this.flatindex = n2 == flat ? (val*num-.000001)%1 : 0;
-            this.setPivot(this.flatindex*180);
-            this.shader.uniforms.specular.value.set(1-this.flatindex, 1-this.flatindex, 1-this.flatindex);
+            this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
+            this.setPivot(this.flatmix*180);
+            this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
 
             hemi.morphTargetInfluences[n2] = (val * num)%1;
             if (n1 >= 0)
                 hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
         }
         this.lastn2 = n2;
-        this._dirty = true;
+        this.controls.setCamera(this.flatmix);
+        this.controls.dispatchEvent({type:"change"});
     }, 
     setPivot: function (val) {
         $("#pivot").slider("option", "value", val);
@@ -237,39 +236,61 @@ MRIview.prototype = {
                 this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
             }
         }
-        this._dirty = true;
+        this.controls.dispatchEvent({type:"change"});
     },
     setPoly: function(polyvar) {
         for (var name in this.meshes) {
             this.meshes[name].geometry.attributes.index = this.polys[polyvar][name];
         }
-        this._dirty = true;
+        this.controls.dispatchEvent({type:"change"});
     },
     setData: function(dataset) {
         this.shader.uniforms.data.texture = dataset.textures[0];
         this.shader.uniforms.datasize.value = dataset.shape;
         this.dataset = dataset;
-        this.setVminmax();
-        this._dirty = true;
+        this.setVminmax(0, 1);
+        this.controls.dispatchEvent({type:"change"});
     },
 
     setColormap: function(cmap) {
         cmap.needsUpdate = true;
         cmap.flipY = false;
         this.shader.uniforms.colormap.texture = cmap;
-        this._dirty = true;
+        this.controls.dispatchEvent({type:"change"});
     },
 
     setVminmax: function(vrmin, vrmax) {
-        var range = this.dataset.minmax[1] - this.dataset.minmax[0];
-        this.dataset.minmax[0]
-        $("#vmin").val();
-        $("#vmax").val();
+        var amin = this.dataset.minmax[0];
+        var amax = this.dataset.minmax[1];
+
+        var vmin = (vrmin * (amax - amin)) + amin;
+        var vmax = (vrmax * (amax - amin)) + amin;
+
+        $("#vmin").val(vmin);
+        $("#vmax").val(vmax);
+
+        this.shader.uniforms.vmin.value = vrmin;
+        this.shader.uniforms.vmax.value = vrmax;
+        this.controls.dispatchEvent({type:"change"});
     },
 
     setVrange: function(vmin, vmax) {
+        var amin = this.dataset.minmax[0];
+        var amax = this.dataset.minmax[1];
 
-        $("#vrange").slider("option", "values", [vmin || 0, vmax || 1]);
+        var vrmax = (vmax - amin) / (amax - amin);
+        var vrmin = (vmin - amin) / (amax - amin);
+
+        if (vrmax > 1) {
+            $("#vrange").slider("option", "max", vrmax);
+        }
+        if (vrmin < 0) {
+            $("#vrange").slider("option", "min", vrmin);
+        }
+        $("#vrange").slider("option", "values", [vrmin, vrmax]);
+        this.shader.uniforms.vmin.value = vrmin;
+        this.shader.uniforms.vmax.value = vrmax;
+        this.controls.dispatchEvent({type:"change"});
     },
 
     _bindUI: function() {
@@ -285,7 +306,7 @@ MRIview.prototype = {
         });
         $("#vrange").slider({ 
             range:true, width:200, min:0, max:1, step:.001, values:[0,1],
-            slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1]); }
+            slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1]); }.bind(this)
         });
         $("#vmin").change(function() { this.setVrange($("#vmin").val(), $("#vmax").val()); }.bind(this));
         $("#vmax").change(function() { this.setVrange($("#vmin").val(), $("#vmax").val()); }.bind(this));
@@ -317,7 +338,7 @@ MRIview.prototype = {
                 _this._updateROIs();
             else {
                 _this.shader.uniforms.map.texture = blanktex;
-                _this._dirty = true;
+                _this.controls.dispatchEvent({type:"change"});
             }
         })
 
@@ -410,7 +431,7 @@ MRIview.prototype = {
             tex.needsUpdate = true;
             tex.premultiplyAlpha = true;
             this.shader.uniforms.map.texture = tex;
-            this._dirty = true;
+            this.controls.dispatchEvent({type:"change"});
         }.bind(this);
 
         if (sw > 0) {
@@ -429,7 +450,7 @@ MRIview.prototype = {
                         ignoreAnimation:true,
                         ignoreDimensions:true,
                         ignoreClear:true,
-                        renderCallback: function() { setTimeout(texfunc, 5); },
+                        renderCallback: function() { setTimeout(texfunc, 100); },
                     });
                 }.bind(this),
             });

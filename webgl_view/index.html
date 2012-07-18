@@ -80,9 +80,9 @@
 	}
 	.infobar:hover, .infobar:active {
 		background-color:rgba(255,255,255, .6);
-		transition-delay:0s;
-		-moz-transition-delay:0s;
-		-webkit-transition-delay:0s;
+		transition-delay:.1s;
+		-moz-transition-delay:.1s;
+		-webkit-transition-delay:.1s;
 	}
 	#topbar { 
 		height:300px; 
@@ -104,9 +104,9 @@
 	.opt_category {
 		float:left;
 	}
-	#vminmax > input {float:left; width:25px; }
+	#vminmax > input {float:left; width:36px; }
 	#vrange_wrap { float:left; padding:5px 10px;}
-	#vrange { width:222px; }
+	#vrange { width:200px; }
 
 	#roi_fieldset {
 		width:200px;
@@ -330,7 +330,7 @@
 			<fieldset id="roi_fieldset" class='opt_category'>
 				<legend>ROIs</legend>
 				<div class='display_opt'>
-					<input id='roishow' type='checkbox' checked='checked'><label for='showroi'>Show</label>
+					<input id='roishow' type='checkbox' checked='checked'><label for='roishow'>Show</label>
 				</div>
 				<div class='display_opt'>
 					<table id='roilines'>

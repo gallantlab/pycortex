@@ -22,7 +22,7 @@ THREE.LandscapeControls = function ( camera, domElement ) {
 
     this.enabled = true;
 
-    this.rotateSpeed = .8;
+    this.rotateSpeed = .4;
     this.zoomSpeed = .002;
     this.panSpeed = 0.3;
 
@@ -33,37 +33,28 @@ THREE.LandscapeControls = function ( camera, domElement ) {
     this.altitude = 45;
     this.radius = 200;
 
-    var lastPosition = new THREE.Vector3();
-
-    var _keyPressed = false,
-    _state = STATE.NONE,
-
-    _eye = new THREE.Vector3(),
-
-    _start = new THREE.Vector3(),
-    _end = new THREE.Vector3();
+    var _state = STATE.NONE,
+        _start = new THREE.Vector3(),
+        _end = new THREE.Vector3();
 
     // events
 
     var changeEvent = { type: 'change' };
 
-    this.update = function () {
-
-        _eye.copy( this.camera.position ).subSelf( this.target );
+    this.update = function (flatmix) {
         var mouseChange = _end.clone().subSelf(_start);
+        this.azlim = flatmix * 180;
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
-            statefunc[_state](mouseChange, _eye);
+            statefunc[_state](mouseChange);
         }
 
         _start = _end;
         
         if (mouseChange.length() > 0) {
-            this.setCamera(_eye);
-            this.dispatchEvent( changeEvent );
+            this.setCamera(flatmix);
         }
-
-    }.bind(this);
+    };
 
     // listeners
 
@@ -112,7 +103,7 @@ THREE.LandscapeControls = function ( camera, domElement ) {
         } else {
             _end = this.getMouse(event);
         }
-
+        this.dispatchEvent( changeEvent );
     };
 
     function mouseup( event ) {
@@ -141,55 +132,68 @@ THREE.LandscapeControls = function ( camera, domElement ) {
 
 THREE.LandscapeControls.prototype = {
     handleEvent: function ( event ) {
-
         if ( typeof this[ event.type ] == 'function' ) {
-
             this[ event.type ]( event );
-
         }
-
     },
 
     getMouse: function ( event ) {
         return new THREE.Vector2( event.clientX, event.clientY);
     },
 
-    setCamera: function( _eye ) {
+    set: function(azimuth, altitude, radius) {
+        if (azimuth) this.azimuth = azimuth;
+        if (altitude) this.altitude = altitude;
+        if (radius) this.radius = radius;
+        this.setCamera();
+    },
+
+    setCamera: function( flatmix ) {
         this.altitude = this.altitude > 179.9999 ? 179.9999 : this.altitude;
         this.altitude = this.altitude < 0.0001 ? 0.0001 : this.altitude;
 
+        if (this.azlim > this.azimuth || this.azimuth > (360 - this.azlim)) {
+            var d1 = this.azlim - this.azimuth;
+            var d2 = 360 - this.azlim - this.azimuth;
+            this.azimuth = Math.abs(d1) > Math.abs(d2) ? 360-this.azlim : this.azlim;
+        }
+
         var altrad = this.altitude*Math.PI / 180;
-        var azirad = this.azimuth*Math.PI / 180;
+        var azirad = (this.azimuth+90)*Math.PI / 180;
 
-        if (!_eye)
-            _eye = new THREE.Vector3();
-
-        _eye.set(
+        var eye = new THREE.Vector3(
             this.radius*Math.sin(altrad)*Math.cos(azirad),
             this.radius*Math.sin(altrad)*Math.sin(azirad),
             this.radius*Math.cos(altrad)
         );
 
-        this.camera.position.add( this.target, _eye );
+        this.camera.position.add( this.target, eye );
         this.camera.lookAt( this.target );
     },
 
-    rotate: function ( mouseChange, eye ) {
-        this.azimuth -= this.rotateSpeed*mouseChange.x;
+    rotate: function ( mouseChange ) {
+        var azdiff = -this.rotateSpeed*mouseChange.x;
+        var az = this.azimuth + azdiff;
+        if ( this.azlim > az || az > (360-this.azlim)) {
+            this.azimuth = azdiff < 0 ? this.azlim : 360-this.azlim;
+        } else {
+            this.azimuth = az - 360*Math.floor(az / 360);
+        }
+
         this.altitude -= this.rotateSpeed*mouseChange.y;
     }, 
 
-    pan: function( mouseChange, eye ) {
-        //mouseChange.multiplyScalar( eye.length() * this.panSpeed );
+    pan: function( mouseChange ) {
+        var eye = this.camera.position.clone().subSelf(this.target);
 
-        var pan = eye.clone().crossSelf( this.camera.up ).setLength( this.panSpeed*mouseChange.x );
+        var pan = eye.crossSelf( this.camera.up ).setLength( this.panSpeed*mouseChange.x );
         pan.addSelf( this.camera.up.clone().setLength( this.panSpeed*mouseChange.y ) );
 
         this.camera.position.addSelf( pan );
         this.target.addSelf( pan );
     },
 
-    zoom: function( mouseChange, eye ) {
+    zoom: function( mouseChange ) {
         var factor = 1.0 + mouseChange.y*this.zoomSpeed;
         this.radius *= factor;
     }

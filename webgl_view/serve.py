@@ -72,7 +72,7 @@ def embedData(*args):
 class MainHandler(tornado.web.RequestHandler):
     def get(self, path):
         if path == '':
-            self.write(open("mixer.html").read())
+            self.write(open("index.html").read())
         elif os.path.isfile(path):
             mtype = mimetypes.guess_type(path)[0]
             if mtype is None:
