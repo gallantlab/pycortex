@@ -83,18 +83,10 @@ function MRIview() {
 
     this.scene.add( this.camera );
 
-    this.controls = new THREE.TrackballControls( this.camera, this.container[0] );
-    
-    this.controls.rotateSpeed = 5.0;
-    this.controls.zoomSpeed = 20;
-    this.controls.panSpeed = 2;
-
-    this.controls.noZoom = false;
-    this.controls.noPan = false;
-
-    this.controls.staticMoving = true;
-    this.controls.dynamicDampingFactor = 0.3;
-    this.controls.target.set(0,0,0);
+    this.controls = new THREE.LandscapeControls( this.camera, this.container[0] );
+    this.controls.addEventListener("change", function() {
+        this._dirty = true;
+    }.bind(this));
     
     this.light = new THREE.DirectionalLight( 0xffffff );
     this.light.position.set( 200, 200, 1000 ).normalize();
@@ -111,7 +103,7 @@ function MRIview() {
             diffuse:    { type:'v3', value:new THREE.Vector3( 1,1,1 )},
             specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
             emissive:    { type:'v3', value:new THREE.Vector3( 0.05,0.05,0.05 )},
-            shininess:  { type:'f', value:500},
+            shininess:  { type:'f', value:200},
 
             map:        { type:'t', value:0, texture: null },
             colormap:   { type:'t', value:1, texture: null },
@@ -156,15 +148,20 @@ function MRIview() {
     $("#roishow").change(function() {
         if (this.checked) 
             _this._updateROIs();
-        else
+        else {
             _this.shader.uniforms.map.texture = blanktex;
+            _this._dirty = true;
+        }
     })
 }
 MRIview.prototype = { 
     draw: function () {
         requestAnimationFrame( this.draw.bind(this) );
         this.controls.update();
-        this.renderer.render( this.scene, this.camera );
+        if (this._dirty) {
+            this.renderer.render( this.scene, this.camera );
+            this._dirty = false;
+        }
     },
     load: function(subj) {
         $(this.renderer.domElement).remove();
@@ -207,6 +204,9 @@ MRIview.prototype = {
             }
 
             this.container.html(this.renderer.domElement);
+
+            //Should I draw a frame?
+            this._dirty = true;
             this.draw();
 
         }.bind(this), true, true );
@@ -216,6 +216,7 @@ MRIview.prototype = {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.camera.aspect = window.innerWidth / (window.innerHeight);
         this.camera.updateProjectionMatrix();
+        this._dirty = true;
     },
     setMix: function(val) {
         var num = this.meshes.left.geometry.morphTargets.length;
@@ -232,16 +233,16 @@ MRIview.prototype = {
             if ((this.lastn2 == flat) ^ (n2 == flat)) {
                 this.setPoly(n2 == flat ? "flat" : "norm");
             }
-            if (n2 == flat)
-                this.setPivot(((val*num-.000001)%1)*180);
-            else 
-                this.setPivot(0);
+            this.flatindex = n2 == flat ? (val*num-.000001)%1 : 0;
+            this.setPivot(this.flatindex*180);
+            this.shader.uniforms.specular.value.set(1-this.flatindex, 1-this.flatindex, 1-this.flatindex);
 
             hemi.morphTargetInfluences[n2] = (val * num)%1;
             if (n1 >= 0)
                 hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
         }
         this.lastn2 = n2;
+        this._dirty = true;
     }, 
     setPivot: function (val) {
         $("#pivot").slider("option", "value", val);
@@ -257,11 +258,13 @@ MRIview.prototype = {
                 this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
             }
         }
+        this._dirty = true;
     },
     setPoly: function(polyvar) {
         for (var name in this.meshes) {
             this.meshes[name].geometry.attributes.index = this.polys[polyvar][name];
         }
+        this._dirty = true;
     },
     setData: function(data) {
         var datatex = new THREE.DataTexture(data, 256, data.length/4 / 256);
@@ -272,12 +275,14 @@ MRIview.prototype = {
 
         this.shader.uniforms.data.texture = datatex;
         this.shader.uniforms.datasize.value.set(256, data.length/4/256);
+        this._dirty = true;
     },
 
     setColormap: function(cmap) {
         cmap.needsUpdate = true;
         cmap.flipY = false;
         this.shader.uniforms.colormap.texture = cmap;
+        this._dirty = true;
     },
 
     _makeFlat: function(geom, lim, polyfilt, right) {
@@ -336,30 +341,6 @@ MRIview.prototype = {
         this.svgroi.id = "svgroi";
         document.getElementById("hiderois").appendChild(this.svgroi);
         this.rois = $(this.svgroi).find("path");
-        //this.rois.attr("filter", "url(#dropshadow)");
-        /*
-        var svgns = "http://www.w3.org/2000/svg";
-        var defs = document.createElementNS(svgns, "defs");
-        var filter = document.createElementNS(svgns, "filter");
-        filter.id = "dropshadow";
-        filter.height = "130%";
-        var fegb = document.createElementNS(svgns, "feGaussianBlur");
-        fegb.setAttribute("in", "SourceAlpha");
-        fegb.setAttribute("stdDeviation", "3");
-        filter.appendChild(fegb);
-        var femerge = document.createElementNS(svgns, "feMerge");
-        var femn = document.createElementNS(svgns, "feMergeNode");
-        femerge.appendChild(femn);
-        var femns = document.createElementNS(svgns, "feMergeNode");
-        femns.setAttribute("in", "SourceGraphic");
-        femerge.appendChild(femns);
-        filter.appendChild(femerge);
-        defs.appendChild(filter);
-        viewer.svgroi.insertBefore(defs, viewer.svgroi.firstChild);
-        
-        this.roidrop = fegb;
-        */
-
         this._updateROIs();
     }, 
     _updateROIs: function() {
@@ -378,11 +359,12 @@ MRIview.prototype = {
         var texfunc = function() {
             var img = new Image();
             img.src = canvas.toDataURL();
-            console.log(img);
+
             var tex = new THREE.Texture(canvas);
             tex.needsUpdate = true;
             tex.premultiplyAlpha = true;
             this.shader.uniforms.map.texture = tex;
+            this._dirty = true;
         }.bind(this);
 
         if (sw > 0) {

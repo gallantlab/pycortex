@@ -109,7 +109,7 @@ class ROIpack(traits.HasTraits):
         self.reload()
 
     def reload(self):
-        self.svg = clip_svg(self.svgfile)
+        self.svg = scrub(self.svgfile)
         svgdoc = self.svg.getElementsByTagName("svg")[0]
         w = float(svgdoc.getAttribute("width"))
         h = float(svgdoc.getAttribute("height"))
