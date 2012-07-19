@@ -150,6 +150,7 @@ THREE.LandscapeControls.prototype = {
     },
 
     setCamera: function( flatmix ) {
+        console.log(this.altlim)
         this.altitude = this.altitude > 179.9999-this.altlim ? 179.9999-this.altlim : this.altitude;
         this.altitude = this.altitude < 0.0001+this.altlim ? 0.0001+this.altlim : this.altitude;
 

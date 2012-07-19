@@ -93,6 +93,7 @@ function MRIview() {
     this.light = new THREE.DirectionalLight( 0xffffff );
     this.light.position.set( 200, 200, 1000 ).normalize();
     this.camera.add( this.light );
+    this.flatmix = 0;
 
     // renderer
     this.renderer = new THREE.WebGLRenderer( { antialias: true, preserveDrawingBuffer:true } );
@@ -187,7 +188,6 @@ MRIview.prototype = {
 
             for (var name in names) {
                 var right = names[name];
-                geometries[right].doubleSided = true;
                 this._makeFlat(geometries[right], json.flatlims[right], polyfilt[name], right);
                 this._makeMesh(geometries[right], name);
 
@@ -437,6 +437,7 @@ MRIview.prototype = {
     _makeMesh: function(geom, name) {
         var mesh = new THREE.Mesh(geom, this.shader);
         mesh.position.y = -flatscale*geom.boundingBox.min.y;
+        mesh.doubleSided = true;
         this.meshes[name] = mesh;
         this.pivot[name] = {back:new THREE.Object3D(), front:new THREE.Object3D()};
         this.pivot[name].back.add(mesh);
