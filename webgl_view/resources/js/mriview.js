@@ -1,4 +1,5 @@
-var flatscale = .8;
+var flatscale = .4;
+
 var vShadeHead = [
     "attribute vec2 datamap;",
     "uniform sampler2D data;",
@@ -91,11 +92,12 @@ function MRIview() {
     this.controls = new THREE.LandscapeControls( this.camera, this.container[0] );
     
     this.light = new THREE.DirectionalLight( 0xffffff );
-    this.light.position.set( 200, 200, 1000 ).normalize();
+    this.light.position.set( -200, -200, 1000 ).normalize();
     this.camera.add( this.light );
+    this.flatmix = 0;
 
     // renderer
-    this.renderer = new THREE.WebGLRenderer( { antialias: true, preserveDrawingBuffer:true } );
+    this.renderer = new THREE.WebGLRenderer( { antialias: true, preserveDrawingBuffer:false } );
     this.renderer.setClearColorHex( 0x0, 1 );
     this.renderer.setSize( window.innerWidth,window.innerHeight);
 
@@ -167,7 +169,7 @@ MRIview.prototype = {
         
         var loader = new THREE.CTMLoader(true);
         $("#threeDview").append(loader.statusDomElement);
-        var ctminfo = "resources/ctm/AH_AH_huth_[inflated,superinflated].json";
+        var ctminfo = "resources/ctm/AH_AH_huth2_[inflated,superinflated].json";
 
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
             var rawdata = new Uint32Array(header.length / 4);
@@ -188,7 +190,6 @@ MRIview.prototype = {
 
             for (var name in names) {
                 var right = names[name];
-                geometries[right].doubleSided = true;
                 this._makeFlat(geometries[right], json.flatlims[0], json.flatlims[1], 
                     polyfilt[name], right);
                 this._makeMesh(geometries[right], name);
@@ -238,14 +239,14 @@ MRIview.prototype = {
             if ((this.lastn2 == flat) ^ (n2 == flat)) {
                 this.setPoly(n2 == flat ? "flat" : "norm");
             }
-            this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
-            this.setPivot(this.flatmix*180);
-            this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
 
             hemi.morphTargetInfluences[n2] = (val * num)%1;
             if (n1 >= 0)
                 hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
         }
+        this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
+        this.setPivot(this.flatmix*180);
+        this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
         this.lastn2 = n2;
         this.controls.setCamera(this.flatmix);
         this.controls.dispatchEvent({type:"change"});
@@ -404,16 +405,16 @@ MRIview.prototype = {
         for (var i = 0, il = uv.length / 2; i < il; i++) {
             if (!right) {
                 flat[i*3] = geom.boundingBox.min.x / 3;
-                flat[i*3+1] = fmax[0] - (uv[i*2] + fmin[0]);
+                flat[i*3+1] = flatscale * -uv[i*2] + geom.boundingBox.min.y;
                 norms[i*3] = -1;
             } else {
                 flat[i*3] = geom.boundingBox.max.x / 3;
-                flat[i*3+1] = uv[i*2];
+                flat[i*3+1] = flatscale*uv[i*2] + geom.boundingBox.min.y;
                 norms[i*3] = 1;
             }
-            flat[i*3+2] = uv[i*2+1];
-            uv[i*2]   = (uv[i*2]   - fmin[0]) / fmax[0];
-            uv[i*2+1] = (uv[i*2+1] - fmin[1]) / fmax[1];
+            flat[i*3+2] = flatscale*uv[i*2+1];
+            uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
+            uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
         }
         geom.morphTargets.push({ array:flat, stride:3 })
         geom.morphNormals.push( norms );
@@ -434,7 +435,8 @@ MRIview.prototype = {
     },
     _makeMesh: function(geom, name) {
         var mesh = new THREE.Mesh(geom, this.shader);
-        mesh.position.y = geom.boundingBox.min.y;
+        mesh.position.y = -geom.boundingBox.min.y;
+        mesh.doubleSided = true;
         this.meshes[name] = mesh;
         this.pivot[name] = {back:new THREE.Object3D(), front:new THREE.Object3D()};
         this.pivot[name].back.add(mesh);
