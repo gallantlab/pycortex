@@ -271,12 +271,9 @@ def scrub(svgfile):
     svgtag.setAttribute("id", "svgroi")
     svgtag.removeAttribute("inkscape:version")
     try:
-        tags = []
         for tagname in ["defs", "sodipodi:namedview", "metadata"]:
-            tags += svgtag.getElementsByTagName(tagname)
-        print tags
-        for tag in tags:
-            tag.parentNode.removeChild(tag)
+            for tag in svgtag.getElementsByTagName(tagname):
+                tag.parentNode.removeChild(tag)
     except:
         import traceback
         traceback.print_exc()

@@ -156,6 +156,13 @@ void meshShift(Mesh* mesh, MinMax* add_div) {
         for (j=0; j < mesh->nelem; j++)
             mesh->pts[i*mesh->nelem+j] = (mesh->pts[i*mesh->nelem+j]+add_div->min[j]) / add_div->max[j];
 }
+void meshShift2(Mesh* mesh, MinMax* sub_mult) {
+    int i, j;
+    for (i=0; i < mesh->npts; i++)
+        for (j=0; j < mesh->nelem; j++)
+            mesh->pts[i*mesh->nelem+j] = (mesh->pts[i*mesh->nelem+j]*sub_mult->max[j]) + sub_mult->min[j];
+}
+
 void meshNudge(Mesh* mesh, bool right) {
     MinMax add_div = {{0,0,0}, {1,1,1}};
     MinMax* minmax = meshMinMax(mesh);
@@ -239,9 +246,9 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
     CTMcontext* ctx[2];
     Hemi* hemis[2];
     char* filenames[2];
-    MinMax* leftmm, *rightmm;
+    MinMax *leftmm, *rightmm;
     MinMax* flat_lr = calloc(1, sizeof(MinMax));
-    MinMax flatmm, *tmp;
+    MinMax flatmm, *fidmm, *surfmm;
 
     assert(subj->left.fiducial != NULL);
     assert(subj->right.fiducial != NULL);
@@ -282,19 +289,33 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
     
     for (i = 0; i < 2; i++) {
         mesh = hemis[i]->fiducial;
+        fidmm = meshMinMax(mesh);
+        fidmm->max[0] = fidmm->max[0] - fidmm->min[0];
+        fidmm->max[1] = fidmm->max[1] - fidmm->min[1];
+        fidmm->max[2] = fidmm->max[2] - fidmm->min[2];
         ctmDefineMesh(ctx[i], mesh->pts, mesh->npts, mesh->polys, mesh->npolys, NULL);
+
         meshShift(hemis[i]->flat, &flatmm);
-        tmp = meshMinMax(hemis[i]->flat);
-        
         idx = ctmAddUVMap(ctx[i], hemis[i]->flat->pts, "uv", NULL);
         if (idx == CTM_NONE)
             printf("CTM error!\n");
         err = ctmGetError(ctx[i]);
         if (err != CTM_NONE)
             printf("CTM error: %s, %d\n", ctmErrorString(err), err);
+
         for (j = 0; j < hemis[i]->nbetween; j++) {
             mesh = hemis[i]->between[j];
-            meshNudge(mesh, i);
+            surfmm = meshMinMax(mesh);
+            surfmm->min[0] = -surfmm->min[0];
+            surfmm->min[1] = -surfmm->min[1];
+            surfmm->min[2] = -surfmm->min[2];
+            surfmm->max[0] = surfmm->max[0] + surfmm->min[0];
+            surfmm->max[1] = surfmm->max[1] + surfmm->min[1];
+            surfmm->max[2] = surfmm->max[2] + surfmm->min[2];
+            meshShift(mesh, surfmm);
+            minmaxFree(surfmm);
+            meshShift2(mesh, fidmm);
+            
             meshResize(mesh, 4);
             assert(mesh->nelem == 4);
             idx = ctmAddAttribMap(ctx[i], mesh->pts, hemis[i]->names[j]);
@@ -304,6 +325,8 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
             if (err != CTM_NONE)
                 printf("CTM error add surface: %s\n", ctmErrorString(err));
         }
+        minmaxFree(fidmm);
+
         if (hemis[i]->datamap != NULL) {
             idx = ctmAddUVMap(ctx[i], hemis[i]->datamap, "datamap", NULL);
             if (idx == CTM_NONE)

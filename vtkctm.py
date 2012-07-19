@@ -62,16 +62,17 @@ lib.saveCTM.restype = ctypes.POINTER(MinMax)
 lib.saveCTM.argtypes = [ctypes.POINTER(Subject), ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint32, ctypes.c_uint32]
 
 def readVTK(filename, readpoly=True):
-    return _getmesh(lib.readVTK(filename, readpoly))
+    return _getmesh(lib.readVTK(filename, readpoly));
 
 def readCTM(filename, readpoly=True):
     return _getmesh(lib.readCTM(filename, readpoly))
 
-def _getmesh(mesh):
+def _getmesh(mesh, free=True):
     mesh = mesh.contents;
     pts = np.array(mesh.pts[:mesh.npts*3],dtype=np.float32).reshape(-1, 3)
     polys = np.array(mesh.polys[:mesh.npolys*3], dtype=np.uint32).reshape(-1, 3)
-    lib.meshFree(mesh)
+    if free:
+        lib.meshFree(mesh);
     return pts, polys
 
 
@@ -127,8 +128,8 @@ class CTMfile(object):
         cont = self.subj.contents
         didx = []
         for fp, hemi in zip([left, right], [cont.left, cont.right]):
-            rpts, rpolys = _getmesh(hemi.fiducial) #reference
-            fpts, fpolys = _getmesh(hemi.flat) #flat
+            rpts, rpolys = _getmesh(hemi.fiducial, False) #reference
+            fpts, fpolys = _getmesh(hemi.flat, False) #flat
             #polygons which need to be removed
             dpolys  = set([tuple(p) for p in np.sort(rpolys, axis=1)])
             dpolys -= set([tuple(p) for p in np.sort(fpolys, axis=1)])
@@ -169,13 +170,15 @@ class CTMfile(object):
         
 
 def makePack(subj, xfm, types=("inflated",), shape=(31,100,100)):
+    print "Packing up SVG..."
     fname = "{subj}_{xfm}_[{types}].%s".format(subj=subj,xfm=xfm,types=','.join(types))
     svgfile = os.path.join(filestore, "overlays", "{subj}_rois.svg".format(subj=subj))
     svg = scrub(svgfile)
     with open(os.path.split(svgfile)[1], "w") as svgout:
         svgout.write(svg.toxml())
 
-    with CTMfile(subj, xfm, shape=shape, rois=os.path.split(svgfile)[1]) as ctm:
+    kwargs = dict(rois=os.path.split(svgfile)[1], names=types)
+    with CTMfile(subj, xfm, shape=shape, **kwargs) as ctm:
         for t in types:
             ctm.addSurf(t)
 

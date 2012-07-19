@@ -44,6 +44,7 @@ THREE.LandscapeControls = function ( camera, domElement ) {
     this.update = function (flatmix) {
         var mouseChange = _end.clone().subSelf(_start);
         this.azlim = flatmix * 180;
+        this.altlim = flatmix * 90;
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
             statefunc[_state](mouseChange);
@@ -149,8 +150,8 @@ THREE.LandscapeControls.prototype = {
     },
 
     setCamera: function( flatmix ) {
-        this.altitude = this.altitude > 179.9999 ? 179.9999 : this.altitude;
-        this.altitude = this.altitude < 0.0001 ? 0.0001 : this.altitude;
+        this.altitude = this.altitude > 179.9999-this.altlim ? 179.9999-this.altlim : this.altitude;
+        this.altitude = this.altitude < 0.0001+this.altlim ? 0.0001+this.altlim : this.altitude;
 
         if (this.azlim > this.azimuth || this.azimuth > (360 - this.azlim)) {
             var d1 = this.azlim - this.azimuth;
