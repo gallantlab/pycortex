@@ -362,7 +362,7 @@ MRIview.prototype = {
             change: this._updateROIs.bind(this),
         });
         $("#roi_shadowalpha").slider({
-            min:0, max:20, step:1, value:0,
+            min:0, max:20, step:1, value:4,
             change: this._updateROIs.bind(this),
         });
         $("#roi_linecolor").miniColors({close: this._updateROIs.bind(this)});
@@ -543,7 +543,6 @@ Dataset.prototype.parse = function (data) {
         if (raw) {
             dtex = new Uint8Array(data, nnum*4, shape[0]*shape[1]*4);
             tex = new THREE.DataTexture(dtex, shape[0], shape[1], THREE.RGBAformat, THREE.UnsignedByteType);
-            console.log(dtex, shape);
         } else {
             dtex = new Float32Array(data, nnum*4, shape[0]*shape[1]);
             tex = new THREE.DataTexture(dtex, shape[0], shape[1], THREE.LuminanceFormat, THREE.FloatType);
