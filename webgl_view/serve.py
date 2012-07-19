@@ -57,16 +57,24 @@ class BinarySurface(tornado.web.RequestHandler):
 
 
 def embedData(*args):
+    assert all([len(a) == len(args[0]) for a in args])
+    assert all([a.dtype == args[0].dtype for a in args])
     shape = (np.ceil(len(args[0]) / 256.), 256)
-    outmap = np.zeros(shape, dtype=np.float32)
     outstr = "";
     for data in args:
-        outmap.ravel()[:len(data)] = data
-        omin, omax = outmap.min(), outmap.max()
-        normmap = (outmap - omin) / (omax - omin)
-        outstr += struct.pack('2I2f', shape[1], shape[0], omin, omax)+normmap.tostring()
+        if (data.dtype == np.uint8):
+            mm = 0,0
+            outmap = np.zeros((np.prod(shape), 4), dtype=np.uint8)
+            outmap[:,-1] = 255
+            outmap[:len(data),:data.shape[1]] = data
+        else:
+            outmap = np.zeros(shape, dtype=np.float32)
+            mm = data.min, data.max()
+            outmap.ravel()[:len(data)] = (data - data.min()) / (data.max() - data.min())
+
+        outstr += struct.pack('2f', mm[0], mm[1])+outmap.tostring()
         
-    return struct.pack('I', len(args))+outstr
+    return struct.pack('3I', len(args), shape[1], shape[0])+outstr
 
 
 class MainHandler(tornado.web.RequestHandler):

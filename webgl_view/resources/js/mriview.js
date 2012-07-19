@@ -26,10 +26,10 @@ var vShadeHead = [
         THREE.ShaderChunk[ "map_vertex" ],
         
         "vec2 dcoord = (2.*datamap+1.) / (2.*datasize);",
-
+        "",
 ].join("\n");
 
-var vShadeTail = [
+var vShadeTail = [ "",
         "vViewPosition = -mvPosition.xyz;",
 
         THREE.ShaderChunk[ "morphnormal_vertex" ],
@@ -44,7 +44,7 @@ var vShadeTail = [
 
 ].join("\n");
 
-var cmapShader = vShadeHead + ([
+var cmapShader = vShadeHead + ([ 
         "float vdata = texture2D(data, dcoord).r;",
         "float vdata2 = texture2D(data2, dcoord).r;",
         "float vnorm = (vdata - vmin) / (vmax - vmin);",
@@ -52,7 +52,7 @@ var cmapShader = vShadeHead + ([
         "vColor = texture2D(colormap, vec2(clamp(vnorm, 0., .999), clamp(vnorm2, 0., .999) ));",
 ].join("\n")) + vShadeTail;
 
-var rawShader = vShadeHead + "\nvColor = texture2D(data, dcoord);\n" + vShadeTail;
+var rawShader = vShadeHead + "vColor = texture2D(data, dcoord);" + vShadeTail;
 
 var fragmentShader = [
 
@@ -96,7 +96,7 @@ function MRIview() {
 
     // renderer
     this.renderer = new THREE.WebGLRenderer( { antialias: true, preserveDrawingBuffer:true } );
-    this.renderer.setClearColorHex( 0x888888, 1 );
+    this.renderer.setClearColorHex( 0x0, 1 );
     this.renderer.setSize( window.innerWidth,window.innerHeight);
 
     var uniforms = THREE.UniformsUtils.merge( [
@@ -119,7 +119,7 @@ function MRIview() {
         }
     ])
 
-    this.shader = this.cmapshader = new THREE.ShaderMaterial( { 
+    this.shader =  this.cmapshader = new THREE.ShaderMaterial( { 
         vertexShader:cmapShader,
         fragmentShader:fragmentShader,
         uniforms: uniforms,
@@ -130,6 +130,7 @@ function MRIview() {
         vertexColors:true,
     });
     this.shader.map = true;
+    this.shader.needsUpdate = true;
 
     this.rawshader = new THREE.ShaderMaterial( {
         vertexShader:rawShader,
@@ -142,6 +143,7 @@ function MRIview() {
         vertexColors:true,
     });
     this.rawshader.map = true;
+    this.rawshader.needsUpdate = true;
     
     this._bindUI();
 }
@@ -268,8 +270,8 @@ MRIview.prototype = {
         }
         this.controls.dispatchEvent({type:"change"});
     },
-    setData: function(dataset, raw) {
-        if (raw) {
+    setData: function(dataset) {
+        if (dataset.raw) {
             this.shader = this.rawshader;
             if (this.meshes && this.meshes.left) {
                 this.meshes.left.material = this.rawshader;
@@ -279,7 +281,7 @@ MRIview.prototype = {
             this.shader = this.cmapshader;
             if (this.meshes && this.meshes.left) {
                 this.meshes.left.material = this.cmapshader;
-                this.meshes.left.material = this.cmapshader;
+                this.meshes.right.material = this.cmapshader;
             }
         }
         this.shader.uniforms.data.texture = dataset.textures[0];
@@ -360,7 +362,7 @@ MRIview.prototype = {
             change: this._updateROIs.bind(this),
         });
         $("#roi_shadowalpha").slider({
-            min:0, max:20, step:1, value:4,
+            min:0, max:20, step:1, value:0,
             change: this._updateROIs.bind(this),
         });
         $("#roi_linecolor").miniColors({close: this._updateROIs.bind(this)});
@@ -505,9 +507,11 @@ MRIview.prototype = {
     },
 }
 
-function Dataset(url, callback, raw) {
+function Dataset(url, callback) {
     this.textures = [];
     this.minmax = null;
+    this.raw = false;
+
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';
@@ -515,7 +519,7 @@ function Dataset(url, callback, raw) {
     var _this = this;
     xhr.onload = function(e) {
         if (this.status == 200) {
-            _this.parse(this.response, raw);
+            _this.parse(this.response);
             callback(_this);
         } else {
             console.log(this.status);
@@ -523,23 +527,29 @@ function Dataset(url, callback, raw) {
     };
     xhr.send();
 }
-Dataset.prototype.parse = function (data, raw) {
+Dataset.prototype.parse = function (data) {
+    var minmax, shape, dtex, tex, nnum = 3, raw = false;
+
     this.length = (new Uint32Array(data, 0, 1))[0];
     this.minmax = new Float32Array(this.length*2);
+    shape = new Uint32Array(data, 4, 2);
 
-    var nnum = 1;
     for (var i = 0; i < this.length; i++) {
-        var shape = new Uint32Array(data, nnum*4, 2);
-        nnum += 2;
-        var minmax = new Float32Array(data, nnum*4, 2);
+        minmax = new Float32Array(data, nnum*4, 2);
         nnum += 2;
 
-        var dtex = raw ? new Uint8Array(data, nnum*4, shape[0]*shape[1]*4) : new Float32Array(data, nnum*4, shape[0]*shape[1]);
+        raw = minmax[0] == 0 && minmax[1] == 0
+
+        if (raw) {
+            dtex = new Uint8Array(data, nnum*4, shape[0]*shape[1]*4);
+            tex = new THREE.DataTexture(dtex, shape[0], shape[1], THREE.RGBAformat, THREE.UnsignedByteType);
+            console.log(dtex, shape);
+        } else {
+            dtex = new Float32Array(data, nnum*4, shape[0]*shape[1]);
+            tex = new THREE.DataTexture(dtex, shape[0], shape[1], THREE.LuminanceFormat, THREE.FloatType);
+        } 
         nnum += shape[0]*shape[1];
 
-        var tex = new THREE.DataTexture(dtex, shape[0], shape[1], 
-            raw ? THREE.RGBAformat : THREE.LuminanceFormat, 
-            raw ? THREE.UnsignedByteType : THREE.FloatType);
         tex.needsUpdate = true;
         tex.flipY = false;
         tex.minFilter = THREE.NearestFilter;
@@ -550,6 +560,8 @@ Dataset.prototype.parse = function (data, raw) {
     }
     //Assume the dataset is sanitized, and the shapes are equal
     this.shape = new THREE.Vector2(shape[0], shape[1]);
+    this.raw = raw;
+
     if (this.length != this.textures.length)
         throw "Invalid dataset";
 }
