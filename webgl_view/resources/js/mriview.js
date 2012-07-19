@@ -1,5 +1,5 @@
 var flatscale = .8;
-var vertexShader = [
+var vShadeHead = [
     "attribute vec2 datamap;",
     "uniform sampler2D data;",
     "uniform sampler2D data2;",
@@ -27,12 +27,9 @@ var vertexShader = [
         
         "vec2 dcoord = (2.*datamap+1.) / (2.*datasize);",
 
-        "float vdata = texture2D(data, dcoord).r;",
-        "float vdata2 = texture2D(data2, dcoord).r;",
-        "float vnorm = (vdata - vmin) / (vmax - vmin);",
-        "float vnorm2 = (vdata2 - vmin2) / (vmax2 - vmin2);",
-        "vColor = texture2D(colormap, vec2(clamp(vnorm, 0., .999), clamp(vnorm2, 0., .999) ));",
+].join("\n");
 
+var vShadeTail = [
         "vViewPosition = -mvPosition.xyz;",
 
         THREE.ShaderChunk[ "morphnormal_vertex" ],
@@ -46,6 +43,17 @@ var vertexShader = [
     "}"
 
 ].join("\n");
+
+var cmapShader = vShadeHead + ([
+        "float vdata = texture2D(data, dcoord).r;",
+        "float vdata2 = texture2D(data2, dcoord).r;",
+        "float vnorm = (vdata - vmin) / (vmax - vmin);",
+        "float vnorm2 = (vdata2 - vmin2) / (vmax2 - vmin2);",
+        "vColor = texture2D(colormap, vec2(clamp(vnorm, 0., .999), clamp(vnorm2, 0., .999) ));",
+].join("\n")) + vShadeTail;
+
+var rawShader = vShadeHead + "\nvColor = texture2D(data, dcoord);\n" + vShadeTail;
+
 var fragmentShader = [
 
     "uniform vec3 diffuse;",
@@ -66,9 +74,6 @@ var fragmentShader = [
         "gl_FragColor.a = mapcolor.a + vColor.a*(1. - mapcolor.a);",
 
         THREE.ShaderChunk[ "lights_phong_fragment" ],
-
-        //THREE.ShaderChunk[ "linear_to_gamma_fragment" ],
-
     "}"
 
 ].join("\n");
@@ -91,7 +96,7 @@ function MRIview() {
 
     // renderer
     this.renderer = new THREE.WebGLRenderer( { antialias: true, preserveDrawingBuffer:true } );
-    this.renderer.setClearColorHex( 0x0, 1 );
+    this.renderer.setClearColorHex( 0x888888, 1 );
     this.renderer.setSize( window.innerWidth,window.innerHeight);
 
     var uniforms = THREE.UniformsUtils.merge( [
@@ -114,8 +119,8 @@ function MRIview() {
         }
     ])
 
-    this.shader = new THREE.ShaderMaterial( { 
-        vertexShader:vertexShader,
+    this.shader = this.cmapshader = new THREE.ShaderMaterial( { 
+        vertexShader:cmapShader,
         fragmentShader:fragmentShader,
         uniforms: uniforms,
         attributes: { datamap:true },
@@ -124,8 +129,20 @@ function MRIview() {
         lights:true, 
         vertexColors:true,
     });
-
     this.shader.map = true;
+
+    this.rawshader = new THREE.ShaderMaterial( {
+        vertexShader:rawShader,
+        fragmentShader:fragmentShader,
+        uniforms: THREE.UniformsUtils.clone(uniforms),
+        attributes: { datamap:true },
+        morphTargets:true,
+        morphNormals:true,
+        lights:true,
+        vertexColors:true,
+    });
+    this.rawshader.map = true;
+    
     this._bindUI();
 }
 MRIview.prototype = { 
@@ -251,7 +268,20 @@ MRIview.prototype = {
         }
         this.controls.dispatchEvent({type:"change"});
     },
-    setData: function(dataset) {
+    setData: function(dataset, raw) {
+        if (raw) {
+            this.shader = this.rawshader;
+            if (this.meshes && this.meshes.left) {
+                this.meshes.left.material = this.rawshader;
+                this.meshes.right.material = this.rawshader;
+            }
+        } else {
+            this.shader = this.cmapshader;
+            if (this.meshes && this.meshes.left) {
+                this.meshes.left.material = this.cmapshader;
+                this.meshes.left.material = this.cmapshader;
+            }
+        }
         this.shader.uniforms.data.texture = dataset.textures[0];
         this.shader.uniforms.datasize.value = dataset.shape;
         this.dataset = dataset;
@@ -475,7 +505,7 @@ MRIview.prototype = {
     },
 }
 
-function Dataset(url, callback) {
+function Dataset(url, callback, raw) {
     this.textures = [];
     this.minmax = null;
     var xhr = new XMLHttpRequest();
@@ -485,7 +515,7 @@ function Dataset(url, callback) {
     var _this = this;
     xhr.onload = function(e) {
         if (this.status == 200) {
-            _this.parse(this.response);
+            _this.parse(this.response, raw);
             callback(_this);
         } else {
             console.log(this.status);
@@ -493,7 +523,7 @@ function Dataset(url, callback) {
     };
     xhr.send();
 }
-Dataset.prototype.parse = function (data) {
+Dataset.prototype.parse = function (data, raw) {
     this.length = (new Uint32Array(data, 0, 1))[0];
     this.minmax = new Float32Array(this.length*2);
 
@@ -504,10 +534,12 @@ Dataset.prototype.parse = function (data) {
         var minmax = new Float32Array(data, nnum*4, 2);
         nnum += 2;
 
-        var dtex = new Float32Array(data, nnum*4, shape[0]*shape[1]);
+        var dtex = raw ? new Uint8Array(data, nnum*4, shape[0]*shape[1]*4) : new Float32Array(data, nnum*4, shape[0]*shape[1]);
         nnum += shape[0]*shape[1];
 
-        var tex = new THREE.DataTexture(dtex, shape[0], shape[1], THREE.LuminanceFormat, THREE.FloatType);
+        var tex = new THREE.DataTexture(dtex, shape[0], shape[1], 
+            raw ? THREE.RGBAformat : THREE.LuminanceFormat, 
+            raw ? THREE.UnsignedByteType : THREE.FloatType);
         tex.needsUpdate = true;
         tex.flipY = false;
         tex.minFilter = THREE.NearestFilter;
