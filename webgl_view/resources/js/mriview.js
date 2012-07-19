@@ -165,7 +165,8 @@ MRIview.prototype = {
             delete this.meshes;
         }
         
-        var loader = new THREE.CTMLoader( );
+        var loader = new THREE.CTMLoader(true);
+        $("#threeDview").append(loader.statusDomElement);
         var ctminfo = "resources/ctm/AH_AH_huth_[inflated,superinflated].json";
 
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
@@ -188,7 +189,8 @@ MRIview.prototype = {
             for (var name in names) {
                 var right = names[name];
                 geometries[right].doubleSided = true;
-                this._makeFlat(geometries[right], json.flatlims[right], polyfilt[name], right);
+                this._makeFlat(geometries[right], json.flatlims[0], json.flatlims[1], 
+                    polyfilt[name], right);
                 this._makeMesh(geometries[right], name);
 
                 this.polys.norm[name] =  geometries[right].attributes.index;
@@ -391,8 +393,7 @@ MRIview.prototype = {
         this.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
     },
 
-    _makeFlat: function(geom, lim, polyfilt, right) {
-        var side = right ? "right" : "left";
+    _makeFlat: function(geom, fmin, fmax, polyfilt, right) {
         geom.computeBoundingBox();
         geom.computeBoundingSphere();
         geom.dynamic = true;
@@ -400,22 +401,19 @@ MRIview.prototype = {
         var uv = geom.attributes.uv.array;
         var flat = new Float32Array(uv.length / 2 * 3);
         var norms = new Float32Array(uv.length / 2 * 3);
-        var yrange = geom.boundingBox.max.y - geom.boundingBox.min.y,
-            ymin = geom.boundingBox.min.y;
-        var zrange = geom.boundingBox.max.z - geom.boundingBox.min.z, 
-            zmin = geom.boundingBox.min.z;
         for (var i = 0, il = uv.length / 2; i < il; i++) {
-            flat[i*3+1] = (uv[i*2] - lim[0]) / lim[1];
             if (!right) {
                 flat[i*3] = geom.boundingBox.min.x / 3;
-                flat[i*3+1] = 1 - flat[i*3+1]
+                flat[i*3+1] = fmax[0] - (uv[i*2] + fmin[0]);
+                norms[i*3] = -1;
             } else {
                 flat[i*3] = geom.boundingBox.max.x / 3;
+                flat[i*3+1] = uv[i*2];
+                norms[i*3] = 1;
             }
-
-            flat[i*3+1] = flatscale*(flat[i*3+1] * yrange + ymin);
-            flat[i*3+2] = flatscale*(uv[i*2+1] *lim[2]* yrange - (lim[2]*yrange)/2);
-            norms[i*3] = 2*right-1;
+            flat[i*3+2] = uv[i*2+1];
+            uv[i*2]   = (uv[i*2]   - fmin[0]) / fmax[0];
+            uv[i*2+1] = (uv[i*2+1] - fmin[1]) / fmax[1];
         }
         geom.morphTargets.push({ array:flat, stride:3 })
         geom.morphNormals.push( norms );
@@ -436,13 +434,13 @@ MRIview.prototype = {
     },
     _makeMesh: function(geom, name) {
         var mesh = new THREE.Mesh(geom, this.shader);
-        mesh.position.y = -flatscale*geom.boundingBox.min.y;
+        mesh.position.y = geom.boundingBox.min.y;
         this.meshes[name] = mesh;
         this.pivot[name] = {back:new THREE.Object3D(), front:new THREE.Object3D()};
         this.pivot[name].back.add(mesh);
         this.pivot[name].front.add(this.pivot[name].back);
-        this.pivot[name].back.position.y = flatscale*(geom.boundingBox.min.y - geom.boundingBox.max.y);
-        this.pivot[name].front.position.y = flatscale*geom.boundingBox.max.y;
+        this.pivot[name].back.position.y = geom.boundingBox.min.y - geom.boundingBox.max.y;
+        this.pivot[name].front.position.y = geom.boundingBox.max.y;
         this.scene.add(this.pivot[name].front);
     }, 
     _loadROIs: function(svgdoc) {
