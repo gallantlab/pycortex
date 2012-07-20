@@ -79,17 +79,17 @@ var fragmentShader = [
 
 ].join("\n");
 
-function MRIview() {
-    this.container = $("#threeDview")
+function MRIview() { 
     // scene and camera
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight), 0.1, 5000 );
     this.camera.position.set(200, 200, 200);
     this.camera.up.set(0,0,1);
+    $("#brain").css("opacity", 0);
 
     this.scene.add( this.camera );
-    this.controls = new THREE.LandscapeControls( this.camera, this.container[0] );
+    this.controls = new THREE.LandscapeControls( this.camera, $("#brain")[0] );
     
     this.light = new THREE.DirectionalLight( 0xffffff );
     this.light.position.set( -200, -200, 1000 ).normalize();
@@ -97,7 +97,11 @@ function MRIview() {
     this.flatmix = 0;
 
     // renderer
-    this.renderer = new THREE.WebGLRenderer( { antialias: true, preserveDrawingBuffer:false } );
+    this.renderer = new THREE.WebGLRenderer({ 
+        antialias: true, 
+        preserveDrawingBuffer:true, 
+        canvas:$("#brain")[0] 
+    });
     this.renderer.setClearColorHex( 0x0, 1 );
     this.renderer.setSize( window.innerWidth,window.innerHeight);
 
@@ -157,8 +161,6 @@ MRIview.prototype = {
     },
 
     load: function(subj) {
-        $(this.renderer.domElement).remove();
-        this.container.html("Loading...");
         if (this.meshes) {
             for (var hemi in this.meshes) {
                 this.scene.remove(this.meshes[hemi]);
@@ -181,24 +183,29 @@ MRIview.prototype = {
             var polyfilt = {};
             polyfilt.left = rawdata.subarray(2, rawdata[0]+2);
             polyfilt.right = rawdata.subarray(rawdata[0]+2);
-            
+
+            geometries[0].computeBoundingBox();
+            geometries[1].computeBoundingBox();
+
             this.meshes = {};
             this.pivot = {};
             this.polys = { norm:{}, flat:{}}
+            this.flatlims = json.flatlims;
+            this.flatoff = Math.max(
+                Math.abs(geometries[0].boundingBox.min.x),
+                Math.abs(geometries[0].boundingBox.max.x)
+            ) / 3;
             var names = {left:0, right:1};
-            $.get(loader.extractUrlBase(ctminfo)+json.rois, null, this._loadROIs.bind(this));
 
+            $.get(loader.extractUrlBase(ctminfo)+json.rois, null, this._loadROIs.bind(this));
             for (var name in names) {
                 var right = names[name];
-                this._makeFlat(geometries[right], json.flatlims[0], json.flatlims[1], 
-                    polyfilt[name], right);
+                this._makeFlat(geometries[right], polyfilt[name], right);
                 this._makeMesh(geometries[right], name);
 
                 this.polys.norm[name] =  geometries[right].attributes.index;
                 this.polys.flat[name] = geometries[right].attributes.flatindex;
             }
-
-            this.container.html(this.renderer.domElement);
 
             this.controls.addEventListener("change", function() {
                 if (!this._scheduled) {
@@ -206,22 +213,39 @@ MRIview.prototype = {
                     requestAnimationFrame( this.draw.bind(this) );
                 }
             }.bind(this));
-            this.controls.dispatchEvent({type:"change"});
+            this.draw();
+            $("#brain").css("opacity", 1);
 
         }.bind(this), true, true );
 
     },
-    resize: function() {
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.camera.aspect = window.innerWidth / (window.innerHeight);
+    resize: function(width, height) {
+        var w = width === undefined ? window.innerWidth : width;
+        var h = height === undefined ? window.innerHeight : height;
+        this.renderer.setSize(w, h);
+        this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.controls.dispatchEvent({type:"change"});
     },
     screenshot: function(width, height) {
-        window.location.href = this.renderer.domElement.toDataURL().replace('image/png', 'image/octet-stream');
+        $("#brain").css("opacity", 0);
+        setTimeout(function() {
+            this.resize(width, height);
+            window.location.href = $("#brain")[0].toDataURL().replace('image/png', 'image/octet-stream');
+            this.resize();
+            $("#brain").css("opacity", 1);
+        }.bind(this), 1000);
     },
-    reset_view: function(center) {
-
+    reset_view: function(center, height) {
+        var aspect = this.flatlims[1][0] / this.flatlims[1][1];
+        var w = height !== undefined ? aspect * height : $("#brain").width();
+        var h = w / aspect;
+        var xoff = center ? 0 : this.flatlims[1][0] / 2 - this.flatlims[0][0];
+        var yoff = w / 2 / Math.tan(this.camera.fov * Math.PI / 180);
+        console.log(h, xoff, yoff);
+        this.controls.target.set(xoff, -this.flatoff, 0);
+        this.controls.set(180, 90, yoff);
+        this.setMix(1);
     },
     setMix: function(val) {
         var num = this.meshes.left.geometry.morphTargets.length;
@@ -336,7 +360,7 @@ MRIview.prototype = {
     },
 
     _bindUI: function() {
-        $(window).resize(this.resize.bind(this));
+        $(window).resize(function() { this.resize(); }.bind(this));
         var _this = this;
         $("#mix").slider({
             min:0, max:1, step:.001,
@@ -394,21 +418,21 @@ MRIview.prototype = {
         this.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
     },
 
-    _makeFlat: function(geom, fmin, fmax, polyfilt, right) {
-        geom.computeBoundingBox();
+    _makeFlat: function(geom, polyfilt, right) {
         geom.computeBoundingSphere();
         geom.dynamic = true;
         
+        var fmin = this.flatlims[0], fmax = this.flatlims[1];
         var uv = geom.attributes.uv.array;
         var flat = new Float32Array(uv.length / 2 * 3);
         var norms = new Float32Array(uv.length / 2 * 3);
         for (var i = 0, il = uv.length / 2; i < il; i++) {
             if (!right) {
-                flat[i*3] = geom.boundingBox.min.x / 3;
+                flat[i*3] = -this.flatoff;
                 flat[i*3+1] = flatscale * -uv[i*2] + geom.boundingBox.min.y;
                 norms[i*3] = -1;
             } else {
-                flat[i*3] = geom.boundingBox.max.x / 3;
+                flat[i*3] = this.flatoff;
                 flat[i*3+1] = flatscale*uv[i*2] + geom.boundingBox.min.y;
                 norms[i*3] = 1;
             }

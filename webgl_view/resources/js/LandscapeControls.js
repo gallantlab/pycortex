@@ -143,9 +143,9 @@ THREE.LandscapeControls.prototype = {
     },
 
     set: function(azimuth, altitude, radius) {
-        if (azimuth) this.azimuth = azimuth;
-        if (altitude) this.altitude = altitude;
-        if (radius) this.radius = radius;
+        if (azimuth !== undefined) this.azimuth = azimuth;
+        if (altitude !== undefined) this.altitude = altitude;
+        if (radius !== undefined) this.radius = radius;
         this.setCamera();
     },
 
