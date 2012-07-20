@@ -1,4 +1,5 @@
-var flatscale = .8;
+var flatscale = .4;
+
 var vShadeHead = [
     "attribute vec2 datamap;",
     "uniform sampler2D data;",
@@ -78,8 +79,6 @@ var fragmentShader = [
 
 ].join("\n");
 
-
-
 var flatVertShade = [
     "varying vec4 vColor;",
     "attribute float idx;",
@@ -91,25 +90,29 @@ var flatVertShade = [
     "}",
 ].join("\n");
 
-function MRIview() {
-    this.container = $("#threeDview")
+function MRIview() { 
     // scene and camera
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight), 0.1, 5000 );
     this.camera.position.set(200, 200, 200);
     this.camera.up.set(0,0,1);
+    $("#brain").css("opacity", 0);
 
     this.scene.add( this.camera );
-    this.controls = new THREE.LandscapeControls( this.camera, this.container[0] );
+    this.controls = new THREE.LandscapeControls( this.camera, $("#brain")[0] );
     
     this.light = new THREE.DirectionalLight( 0xffffff );
-    this.light.position.set( 200, 200, 1000 ).normalize();
+    this.light.position.set( -200, -200, 1000 ).normalize();
     this.camera.add( this.light );
     this.flatmix = 0;
 
     // renderer
-    this.renderer = new THREE.WebGLRenderer( { antialias: true, preserveDrawingBuffer:true } );
+    this.renderer = new THREE.WebGLRenderer({ 
+        antialias: true, 
+        preserveDrawingBuffer:true, 
+        canvas:$("#brain")[0] 
+    });
     this.renderer.setClearColorHex( 0x0, 1 );
     this.renderer.setSize( window.innerWidth,window.innerHeight);
 
@@ -169,8 +172,6 @@ MRIview.prototype = {
     },
 
     load: function(subj) {
-        $(this.renderer.domElement).remove();
-        this.container.html("Loading...");
         if (this.meshes) {
             for (var hemi in this.meshes) {
                 this.scene.remove(this.meshes[hemi]);
@@ -179,8 +180,9 @@ MRIview.prototype = {
             delete this.meshes;
         }
         
-        var loader = new THREE.CTMLoader( );
-        var ctminfo = "resources/ctm/AH_AH_huth_[inflated,superinflated].json";
+        var loader = new THREE.CTMLoader(true);
+        $("#threeDview").append(loader.statusDomElement);
+        var ctminfo = "resources/ctm/AH_AH_huth2_[inflated,superinflated].json";
 
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
             var rawdata = new Uint32Array(header.length / 4);
@@ -192,26 +194,33 @@ MRIview.prototype = {
             var polyfilt = {};
             polyfilt.left = rawdata.subarray(2, rawdata[0]+2);
             polyfilt.right = rawdata.subarray(rawdata[0]+2);
-            
+
+            geometries[0].computeBoundingBox();
+            geometries[1].computeBoundingBox();
+
             this.meshes = {};
             this.pivot = {};
             this.polys = { norm:{}, flat:{}}
+            this.flatlims = json.flatlims;
+            this.flatoff = Math.max(
+                Math.abs(geometries[0].boundingBox.min.x),
+                Math.abs(geometries[0].boundingBox.max.x)
+            ) / 3;
             var names = {left:0, right:1};
-            $.get(loader.extractUrlBase(ctminfo)+json.rois, null, this._loadROIs.bind(this));
 
+            $.get(loader.extractUrlBase(ctminfo)+json.rois, null, this._loadROIs.bind(this));
             for (var name in names) {
                 var right = names[name];
-                this._makeFlat(geometries[right], json.flatlims[right], polyfilt[name], right);
+                this._makeFlat(geometries[right], polyfilt[name], right);
                 var meshpiv = this._makeMesh(geometries[right], this.shader);
                 this.meshes[name] = meshpiv.mesh;
                 this.pivot[name] = meshpiv.pivots;
                 this.scene.add(meshpiv.pivots.front);
 
+
                 this.polys.norm[name] =  geometries[right].attributes.index;
                 this.polys.flat[name] = geometries[right].attributes.flatindex;
             }
-
-            this.container.html(this.renderer.domElement);
 
             this.controls.addEventListener("change", function() {
                 if (!this._scheduled) {
@@ -219,22 +228,39 @@ MRIview.prototype = {
                     requestAnimationFrame( this.draw.bind(this) );
                 }
             }.bind(this));
-            this.controls.dispatchEvent({type:"change"});
+            this.draw();
+            $("#brain").css("opacity", 1);
 
         }.bind(this), true, true );
 
     },
-    resize: function() {
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.camera.aspect = window.innerWidth / (window.innerHeight);
+    resize: function(width, height) {
+        var w = width === undefined ? window.innerWidth : width;
+        var h = height === undefined ? window.innerHeight : height;
+        this.renderer.setSize(w, h);
+        this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.controls.dispatchEvent({type:"change"});
     },
     screenshot: function(width, height) {
-        window.location.href = this.renderer.domElement.toDataURL().replace('image/png', 'image/octet-stream');
+        $("#brain").css("opacity", 0);
+        setTimeout(function() {
+            this.resize(width, height);
+            window.location.href = $("#brain")[0].toDataURL().replace('image/png', 'image/octet-stream');
+            this.resize();
+            $("#brain").css("opacity", 1);
+        }.bind(this), 1000);
     },
-    reset_view: function(center) {
-
+    reset_view: function(center, height) {
+        var aspect = this.flatlims[1][0] / this.flatlims[1][1];
+        var w = height !== undefined ? aspect * height : $("#brain").width();
+        var h = w / aspect;
+        var xoff = center ? 0 : this.flatlims[1][0] / 2 - this.flatlims[0][0];
+        var yoff = w / 2 / Math.tan(this.camera.fov * Math.PI / 180);
+        console.log(h, xoff, yoff);
+        this.controls.target.set(xoff, -this.flatoff, 0);
+        this.controls.set(180, 90, yoff);
+        this.setMix(1);
     },
     setMix: function(val) {
         var num = this.meshes.left.geometry.morphTargets.length;
@@ -252,14 +278,14 @@ MRIview.prototype = {
             if ((this.lastn2 == flat) ^ (n2 == flat)) {
                 this.setPoly(n2 == flat ? "flat" : "norm");
             }
-            this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
-            this.setPivot(this.flatmix*180);
-            this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
 
             hemi.morphTargetInfluences[n2] = (val * num)%1;
             if (n1 >= 0)
                 hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
         }
+        this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
+        this.setPivot(this.flatmix*180);
+        this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
         this.lastn2 = n2;
         this.controls.setCamera(this.flatmix);
         this.controls.dispatchEvent({type:"change"});
@@ -349,7 +375,7 @@ MRIview.prototype = {
     },
 
     _bindUI: function() {
-        $(window).resize(this.resize.bind(this));
+        $(window).resize(function() { this.resize(); }.bind(this));
         var _this = this;
         $("#mix").slider({
             min:0, max:1, step:.001,
@@ -407,31 +433,27 @@ MRIview.prototype = {
         this.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
     },
 
-    _makeFlat: function(geom, lim, polyfilt, right) {
-        var side = right ? "right" : "left";
-        geom.computeBoundingBox();
+    _makeFlat: function(geom, polyfilt, right) {
         geom.computeBoundingSphere();
         geom.dynamic = true;
         
+        var fmin = this.flatlims[0], fmax = this.flatlims[1];
         var uv = geom.attributes.uv.array;
         var flat = new Float32Array(uv.length / 2 * 3);
         var norms = new Float32Array(uv.length / 2 * 3);
-        var yrange = geom.boundingBox.max.y - geom.boundingBox.min.y,
-            ymin = geom.boundingBox.min.y;
-        var zrange = geom.boundingBox.max.z - geom.boundingBox.min.z, 
-            zmin = geom.boundingBox.min.z;
         for (var i = 0, il = uv.length / 2; i < il; i++) {
-            flat[i*3+1] = (uv[i*2] - lim[0]) / lim[1];
             if (!right) {
-                flat[i*3] = geom.boundingBox.min.x / 3;
-                flat[i*3+1] = 1 - flat[i*3+1]
+                flat[i*3] = -this.flatoff;
+                flat[i*3+1] = flatscale * -uv[i*2] + geom.boundingBox.min.y;
+                norms[i*3] = -1;
             } else {
-                flat[i*3] = geom.boundingBox.max.x / 3;
+                flat[i*3] = this.flatoff;
+                flat[i*3+1] = flatscale*uv[i*2] + geom.boundingBox.min.y;
+                norms[i*3] = 1;
             }
-
-            flat[i*3+1] = flatscale*(flat[i*3+1] * yrange + ymin);
-            flat[i*3+2] = flatscale*(uv[i*2+1] *lim[2]* yrange - (lim[2]*yrange)/2);
-            norms[i*3] = 2*right-1;
+            flat[i*3+2] = flatscale*uv[i*2+1];
+            uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
+            uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
         }
         geom.morphTargets.push({ array:flat, stride:3 })
         geom.morphNormals.push( norms );
@@ -461,13 +483,13 @@ MRIview.prototype = {
     },
     _makeMesh: function(geom, shader) {
         var mesh = new THREE.Mesh(geom, shader);
-        mesh.position.y = -flatscale*geom.boundingBox.min.y;
+        mesh.position.y = -geom.boundingBox.min.y;
         mesh.doubleSided = true;
         var pivots = {back:new THREE.Object3D(), front:new THREE.Object3D()};
         pivots.back.add(mesh);
         pivots.front.add(pivots.back);
-        pivots.back.position.y = flatscale*(geom.boundingBox.min.y - geom.boundingBox.max.y);
-        pivots.front.position.y = flatscale*geom.boundingBox.max.y;
+        pivots.back.position.y = geom.boundingBox.min.y - geom.boundingBox.max.y;
+        pivots.front.position.y = geom.boundingBox.max.y;
         return {mesh:mesh, pivots:pivots};
     }, 
     _loadROIs: function(svgdoc) {

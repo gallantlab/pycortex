@@ -1,4 +1,5 @@
 import os
+import sys
 import struct
 import ctypes
 import json
@@ -170,12 +171,14 @@ class CTMfile(object):
         
 
 def makePack(subj, xfm, types=("inflated",), shape=(31,100,100)):
-    print "Packing up SVG..."
+    print "Packing up SVG...",
+    sys.stdout.flush()
     fname = "{subj}_{xfm}_[{types}].%s".format(subj=subj,xfm=xfm,types=','.join(types))
     svgfile = os.path.join(filestore, "overlays", "{subj}_rois.svg".format(subj=subj))
     svg = scrub(svgfile)
     with open(os.path.split(svgfile)[1], "w") as svgout:
         svgout.write(svg.toxml())
+    print "Done"
 
     kwargs = dict(rois=os.path.split(svgfile)[1], names=types)
     with CTMfile(subj, xfm, shape=shape, **kwargs) as ctm:
@@ -185,4 +188,4 @@ def makePack(subj, xfm, types=("inflated",), shape=(31,100,100)):
         ctm.save(fname%"ctm")
 
 if __name__ == "__main__":
-    makePack("AH", "AH_huth", types=("inflated", "superinflated"), shape=(32,100,100))
+    makePack("AH", "AH_huth2", types=("inflated", "superinflated"), shape=(32,100,100))

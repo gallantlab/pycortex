@@ -247,8 +247,7 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
     Hemi* hemis[2];
     char* filenames[2];
     MinMax *leftmm, *rightmm;
-    MinMax* flat_lr = calloc(1, sizeof(MinMax));
-    MinMax flatmm, *fidmm, *surfmm;
+    MinMax *fidmm, *surfmm, *flatmm = calloc(1, sizeof(MinMax));
 
     assert(subj->left.fiducial != NULL);
     assert(subj->right.fiducial != NULL);
@@ -272,21 +271,16 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
     rightmm = meshMinMax(hemis[1]->flat);
 
     for (i = 0; i < 2; i++) {
-        flatmm.min[i] = leftmm->min[i] < rightmm->min[i] ? leftmm->min[i] : rightmm->min[i];
-        flatmm.max[i] = leftmm->max[i] > rightmm->max[i] ? leftmm->max[i] : rightmm->max[i];
+        flatmm->min[i] = leftmm->min[i] < rightmm->min[i] ? leftmm->min[i] : rightmm->min[i];
+        flatmm->max[i] = leftmm->max[i] > rightmm->max[i] ? leftmm->max[i] : rightmm->max[i];
     }
     for (i = 0; i < 2; i++) {
-        flatmm.max[i] = flatmm.max[i] - flatmm.min[i];
-        flatmm.min[i] = - flatmm.min[i];
+        flatmm->max[i] = flatmm->max[i] - flatmm->min[i];
+        flatmm->min[i] = - flatmm->min[i];
     }
+    flatmm->min[2] = leftmm->max[0];
+    flatmm->max[2] = rightmm->min[0];
 
-    flat_lr->min[0] = (leftmm->min[0] + flatmm.min[0]) / flatmm.max[0];
-    flat_lr->max[0] = (rightmm->min[0] + flatmm.min[0]) / flatmm.max[0];
-    flat_lr->min[1] = (leftmm->max[0] + flatmm.min[0]) / flatmm.max[0] - flat_lr->min[0];
-    flat_lr->max[1] = (rightmm->max[0] + flatmm.min[0]) / flatmm.max[0] - flat_lr->max[0];
-    flat_lr->min[2] = (leftmm->max[1] - leftmm->min[1]) / (leftmm->max[0] - leftmm->min[0]);
-    flat_lr->max[2] = (rightmm->max[1] - rightmm->min[1]) / (rightmm->max[0] - rightmm->min[0]);
-    
     for (i = 0; i < 2; i++) {
         mesh = hemis[i]->fiducial;
         fidmm = meshMinMax(mesh);
@@ -295,7 +289,6 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
         fidmm->max[2] = fidmm->max[2] - fidmm->min[2];
         ctmDefineMesh(ctx[i], mesh->pts, mesh->npts, mesh->polys, mesh->npolys, NULL);
 
-        meshShift(hemis[i]->flat, &flatmm);
         idx = ctmAddUVMap(ctx[i], hemis[i]->flat->pts, "uv", NULL);
         if (idx == CTM_NONE)
             printf("CTM error!\n");
@@ -346,6 +339,5 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
 
         ctmFreeContext(ctx[i]);
     }
-
-    return flat_lr;
+    return flatmm;
 }

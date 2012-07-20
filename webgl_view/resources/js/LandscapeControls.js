@@ -143,14 +143,13 @@ THREE.LandscapeControls.prototype = {
     },
 
     set: function(azimuth, altitude, radius) {
-        if (azimuth) this.azimuth = azimuth;
-        if (altitude) this.altitude = altitude;
-        if (radius) this.radius = radius;
+        if (azimuth !== undefined) this.azimuth = azimuth;
+        if (altitude !== undefined) this.altitude = altitude;
+        if (radius !== undefined) this.radius = radius;
         this.setCamera();
     },
 
     setCamera: function( flatmix ) {
-        console.log(this.altlim)
         this.altitude = this.altitude > 179.9999-this.altlim ? 179.9999-this.altlim : this.altitude;
         this.altitude = this.altitude < 0.0001+this.altlim ? 0.0001+this.altlim : this.altitude;
 
