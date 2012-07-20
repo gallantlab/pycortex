@@ -211,10 +211,14 @@ MRIview.prototype = {
             this.pivot = {};
             this.polys = { norm:{}, flat:{}}
             this.flatlims = json.flatlims;
-            this.flatoff = Math.max(
-                Math.abs(geometries[0].boundingBox.min.x),
-                Math.abs(geometries[0].boundingBox.max.x)
-            ) / 3;
+            this.flatoff = [
+                Math.max(
+                    Math.abs(geometries[0].boundingBox.min.x),
+                    Math.abs(geometries[1].boundingBox.max.x)
+                ) / 3, Math.min(
+                    geometries[0].boundingBox.min.y, 
+                    geometries[1].boundingBox.min.y
+                )];
             var names = {left:0, right:1};
 
             $.get(loader.extractUrlBase(ctminfo)+json.rois, null, this._loadROIs.bind(this));
@@ -251,26 +255,38 @@ MRIview.prototype = {
         this.camera.updateProjectionMatrix();
         this.controls.dispatchEvent({type:"change"});
     },
-    screenshot: function(width, height) {
+    screenshot: function(width, height, callback) {
         $("#brain").css("opacity", 0);
         setTimeout(function() {
+            if (typeof(callback) == "function")
+                callback();
             this.resize(width, height);
+            this.draw();
             window.location.href = $("#brain")[0].toDataURL().replace('image/png', 'image/octet-stream');
             this.resize();
             $("#brain").css("opacity", 1);
         }.bind(this), 1000);
     },
-    reset_view: function(center) {
-        var size = this.flatlims[1];
-        var xoff = center ? 0 : size[0] / 2 - this.flatlims[0][0];
-        var zoff = center ? 0 : size[1] / 2 - this.flatlims[0][1];
-        var h = size[0] / 2 / this.camera.aspect;
+    reset_view: function(center, height) {
+        var flatasp = this.flatlims[1][0] / this.flatlims[1][1];
+        var camasp = height ? flatasp : this.camera.aspect;
+        var size = [flatscale*this.flatlims[1][0], flatscale*this.flatlims[1][1]];
+        var min = [flatscale*this.flatlims[0][0], flatscale*this.flatlims[0][1]];
+        var xoff = center ? 0 : size[0] / 2 - min[0];
+        var zoff = center ? 0 : size[1] / 2 - min[1];
+        var h = size[0] / 2 / camasp;
         h /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
-        console.log(h);
-        this.controls.target.set(xoff / 2, -this.flatoff, zoff / 2);
+        this.controls.target.set(xoff, this.flatoff[1], zoff);
         this.controls.set(180, 90, h);
         this.setMix(1);
     },
+    saveflat: function(height) {
+        var flatasp = this.flatlims[1][0] / this.flatlims[1][1];
+        var width = height * flatasp;
+        this.screenshot(width, height, function() { 
+            this.reset_view(false, height); 
+        }.bind(this));
+    }, 
     setMix: function(val) {
         var num = this.meshes.left.geometry.morphTargets.length;
         var flat = num - 1;
@@ -297,6 +313,7 @@ MRIview.prototype = {
         this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
         this.lastn2 = n2;
         this.controls.setCamera(this.flatmix);
+        $("#mix").slider("value", val);
         this.controls.dispatchEvent({type:"change"});
     }, 
     setPivot: function (val) {
@@ -452,12 +469,12 @@ MRIview.prototype = {
         var norms = new Float32Array(uv.length / 2 * 3);
         for (var i = 0, il = uv.length / 2; i < il; i++) {
             if (!right) {
-                flat[i*3] = -this.flatoff;
-                flat[i*3+1] = flatscale * -uv[i*2] + geom.boundingBox.min.y;
+                //flat[i*3] = -this.flatoff[0];
+                flat[i*3+1] = flatscale * -uv[i*2] + this.flatoff[1];
                 norms[i*3] = -1;
             } else {
-                flat[i*3] = this.flatoff;
-                flat[i*3+1] = flatscale*uv[i*2] + geom.boundingBox.min.y;
+                //flat[i*3] = this.flatoff[0];
+                flat[i*3+1] = flatscale*uv[i*2] + this.flatoff[1];
                 norms[i*3] = 1;
             }
             flat[i*3+2] = flatscale*uv[i*2+1];
@@ -492,13 +509,13 @@ MRIview.prototype = {
     },
     _makeMesh: function(geom, shader) {
         var mesh = new THREE.Mesh(geom, shader);
-        mesh.position.y = -geom.boundingBox.min.y;
         mesh.doubleSided = true;
+        mesh.position.y = -this.flatoff[1];
         var pivots = {back:new THREE.Object3D(), front:new THREE.Object3D()};
         pivots.back.add(mesh);
         pivots.front.add(pivots.back);
         pivots.back.position.y = geom.boundingBox.min.y - geom.boundingBox.max.y;
-        pivots.front.position.y = geom.boundingBox.max.y;
+        pivots.front.position.y = geom.boundingBox.max.y - geom.boundingBox.min.y + this.flatoff[1];
         return {mesh:mesh, pivots:pivots};
     }, 
     _loadROIs: function(svgdoc) {

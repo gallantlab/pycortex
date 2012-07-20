@@ -45,6 +45,7 @@ THREE.LandscapeControls = function ( camera, domElement ) {
         var mouseChange = _end.clone().subSelf(_start);
         this.azlim = flatmix * 180;
         this.altlim = flatmix * 90;
+        //this.altlim = 0;
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
             statefunc[_state](mouseChange);
@@ -53,7 +54,7 @@ THREE.LandscapeControls = function ( camera, domElement ) {
         _start = _end;
         
         if (mouseChange.length() > 0) {
-            this.setCamera(flatmix);
+            this.setCamera();
         }
     };
 
@@ -149,7 +150,7 @@ THREE.LandscapeControls.prototype = {
         this.setCamera();
     },
 
-    setCamera: function( flatmix ) {
+    setCamera: function() {
         this.altitude = this.altitude > 179.9999-this.altlim ? 179.9999-this.altlim : this.altitude;
         this.altitude = this.altitude < 0.0001+this.altlim ? 0.0001+this.altlim : this.altitude;
 
@@ -186,10 +187,11 @@ THREE.LandscapeControls.prototype = {
 
     pan: function( mouseChange ) {
         var eye = this.camera.position.clone().subSelf(this.target);
-
-        var pan = eye.crossSelf( this.camera.up ).setLength( this.panSpeed*mouseChange.x );
-        pan.addSelf( this.camera.up.clone().setLength( this.panSpeed*mouseChange.y ) );
-
+        var right = eye.clone().crossSelf( this.camera.up );
+        var up = right.clone().crossSelf(eye);
+        var pan = (new THREE.Vector3()).add(
+            right.setLength( this.panSpeed*mouseChange.x ), 
+            up.setLength( this.panSpeed*mouseChange.y ));
         this.camera.position.addSelf( pan );
         this.target.addSelf( pan );
     },
