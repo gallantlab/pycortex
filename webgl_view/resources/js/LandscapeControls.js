@@ -2,7 +2,7 @@
  * @author Eberhard Graether / http://egraether.com/
  */
 
-THREE.LandscapeControls = function ( camera, domElement ) {
+THREE.LandscapeControls = function ( camera, domElement, scene ) {
 
     THREE.EventTarget.call( this );
 
@@ -17,6 +17,7 @@ THREE.LandscapeControls = function ( camera, domElement ) {
     this.keystate = null;
     this.camera = camera;
     this.domElement = ( domElement !== undefined ) ? domElement : document;
+    this.scene = scene;
 
     // API
 
@@ -25,6 +26,9 @@ THREE.LandscapeControls = function ( camera, domElement ) {
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
     this.panSpeed = 0.3;
+
+    // Picker
+    this.projector = new THREE.Projector();
 
     // internals
 
@@ -118,11 +122,41 @@ THREE.LandscapeControls = function ( camera, domElement ) {
 
     };
 
+    function click( event ) {
+        var mouse2D = this.getMouse(event).clone();
+        var mouse3D = new THREE.Vector3(0, 10000, 0.5);
+        mouse3D.x = (mouse2D.x / window.innerWidth) * 2 - 1;
+        mouse3D.y = -(mouse2D.y / window.innerHeight) * 2 + 1;
+
+        //console.log("picker: "+mouse3D.x+", "+mouse3D.y+", "+mouse3D.z);
+        var ray = this.projector.pickingRay(mouse3D, this.camera);
+        //console.log("picker: "+ray.origin.x+", "+ray.origin.y+", "+ray.origin.z);
+
+        // create actual ray for debugging..
+        //var linemat = new THREE.LineBasicMaterial({color: 0xffffff});
+        //var linegeom = new THREE.Geometry();
+        //var st = ray.direction.clone(), end = ray.direction.clone();
+        //st.multiplyScalar(1000).addSelf(ray.origin);
+        //end.multiplyScalar(-100).addSelf(ray.origin);
+        //linegeom.vertices.push(st);
+        //linegeom.vertices.push(end);
+        //var line = new THREE.Line(linegeom, linemat);
+        //this.scene.add(line);
+
+        // this is kind of a hack
+        var meshes = new Array([this.scene.children[1].children[0].children[0], this.scene.children[2].children[0].children[0]]);
+        var intersects = ray.intersectObjects(meshes);
+        this.intersects = intersects;
+        this.ray = ray;
+
+    };
+
     this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
 
     this.domElement.addEventListener( 'mousemove', mousemove.bind(this), false );
     this.domElement.addEventListener( 'mousedown', mousedown.bind(this), false );
     this.domElement.addEventListener( 'mouseup', mouseup.bind(this), false );
+    this.domElement.addEventListener( 'click', click.bind(this), false );
 
     window.addEventListener( 'keydown', keydown.bind(this), false );
     window.addEventListener( 'keyup', keyup.bind(this), false );

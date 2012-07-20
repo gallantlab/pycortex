@@ -89,7 +89,7 @@ function MRIview() {
     this.camera.up.set(0,0,1);
 
     this.scene.add( this.camera );
-    this.controls = new THREE.LandscapeControls( this.camera, this.container[0] );
+    this.controls = new THREE.LandscapeControls( this.camera, this.container[0], this.scene );
     
     this.light = new THREE.DirectionalLight( 0xffffff );
     this.light.position.set( -200, -200, 1000 ).normalize();
