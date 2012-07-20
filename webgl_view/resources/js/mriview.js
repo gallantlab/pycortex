@@ -80,14 +80,23 @@ var fragmentShader = [
 ].join("\n");
 
 var flatVertShade = [
-    "varying vec4 vColor;",
+    "varying vec3 vColor;",
     "attribute float idx;",
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
     "void main() {",
-        "vColor.r = idx / 256. / 256.;",
+        "vColor.r = (idx / (256. * 256.)) / 256;",
+        "vColor.g = mod(idx / 256, 256) / 256;",
+        "vColor.b = mod(idx, 256) / 256;",
         THREE.ShaderChunk[ "morphtarget_vertex" ],
         THREE.ShaderChunk[ "default_vertex" ],
     "}",
+].join("\n");
+
+var flatFragShade = [
+    "varying vec3 vColor;",
+    "void main() {",
+        "gl_FragColor = vec4(vColor, 1);",
+    "}"
 ].join("\n");
 
 function MRIview() { 
@@ -251,15 +260,15 @@ MRIview.prototype = {
             $("#brain").css("opacity", 1);
         }.bind(this), 1000);
     },
-    reset_view: function(center, height) {
-        var aspect = this.flatlims[1][0] / this.flatlims[1][1];
-        var w = height !== undefined ? aspect * height : $("#brain").width();
-        var h = w / aspect;
-        var xoff = center ? 0 : this.flatlims[1][0] / 2 - this.flatlims[0][0];
-        var yoff = w / 2 / Math.tan(this.camera.fov * Math.PI / 180);
-        console.log(h, xoff, yoff);
-        this.controls.target.set(xoff, -this.flatoff, 0);
-        this.controls.set(180, 90, yoff);
+    reset_view: function(center) {
+        var size = this.flatlims[1];
+        var xoff = center ? 0 : size[0] / 2 - this.flatlims[0][0];
+        var zoff = center ? 0 : size[1] / 2 - this.flatlims[0][1];
+        var h = size[0] / 2 / this.camera.aspect;
+        h /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
+        console.log(h);
+        this.controls.target.set(xoff / 2, -this.flatoff, zoff / 2);
+        this.controls.set(180, 90, h);
         this.setMix(1);
     },
     setMix: function(val) {
