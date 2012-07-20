@@ -47,12 +47,10 @@
 		height: auto !important;
 		height:100%;
 	}
-	#threeDview {
-		margin:0px;
-		padding:0px;
-		color:white;
-		font-size:48pt;
-		text-align:center;
+	#brain {
+		transition: opacity 1s ease;
+		-moz-transition: opacity 1s ease;
+		-webkit-transition:opacity 1s ease;
 	}
 	#hiderois {
 		display:none;
@@ -377,9 +375,7 @@
 	</div>
 </div>
 <div id='main'>
-	<div id='threeDview'>
-            Loading...
-    </div>
+	<canvas id='brain'></canvas>
     <div id='hiderois'>
     	<canvas id='canvasrois'></canvas>
 	</div>
