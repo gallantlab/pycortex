@@ -15,7 +15,7 @@ var vShadeHead = [
     "varying vec3 vNormal;",
     "varying vec4 vColor;",
 
-    THREE.ShaderChunk[ "map_pars_vertex" ],
+    THREE.ShaderChunk[ "map_pars_vertex" ], 
     THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
 
@@ -76,6 +76,19 @@ var fragmentShader = [
         THREE.ShaderChunk[ "lights_phong_fragment" ],
     "}"
 
+].join("\n");
+
+
+
+var flatVertShade = [
+    "varying vec4 vColor;",
+    "attribute float idx;",
+    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+    "void main() {",
+        "vColor.r = idx / 256. / 256.;",
+        THREE.ShaderChunk[ "morphtarget_vertex" ],
+        THREE.ShaderChunk[ "default_vertex" ],
+    "}",
 ].join("\n");
 
 function MRIview() {
@@ -189,7 +202,10 @@ MRIview.prototype = {
             for (var name in names) {
                 var right = names[name];
                 this._makeFlat(geometries[right], json.flatlims[right], polyfilt[name], right);
-                this._makeMesh(geometries[right], name);
+                var meshpiv = this._makeMesh(geometries[right], this.shader);
+                this.meshes[name] = meshpiv.mesh;
+                this.pivot[name] = meshpiv.pivots;
+                this.scene.add(meshpiv.pivots.front);
 
                 this.polys.norm[name] =  geometries[right].attributes.index;
                 this.polys.flat[name] = geometries[right].attributes.flatindex;
@@ -433,18 +449,26 @@ MRIview.prototype = {
         }
 
         geom.attributes.flatindex = {itemsize:1, array:polys, numItems:polys.length};
+
+        var voxidx = new Uint8Array(uv.length / 2 * 3);
+        for (var i = 0, il = uv.length / 2; i < il; i ++) {
+            voxidx[i*3+0] = Math.floor(i / (256*256));
+            voxidx[i*3+1] = Math.floor(i / 256);
+            voxidx[i*3+2] = i %256;
+        }
+
+        geom.attributes.voxidx = {itemsize:3, array:voxidx};
     },
-    _makeMesh: function(geom, name) {
-        var mesh = new THREE.Mesh(geom, this.shader);
+    _makeMesh: function(geom, shader) {
+        var mesh = new THREE.Mesh(geom, shader);
         mesh.position.y = -flatscale*geom.boundingBox.min.y;
         mesh.doubleSided = true;
-        this.meshes[name] = mesh;
-        this.pivot[name] = {back:new THREE.Object3D(), front:new THREE.Object3D()};
-        this.pivot[name].back.add(mesh);
-        this.pivot[name].front.add(this.pivot[name].back);
-        this.pivot[name].back.position.y = flatscale*(geom.boundingBox.min.y - geom.boundingBox.max.y);
-        this.pivot[name].front.position.y = flatscale*geom.boundingBox.max.y;
-        this.scene.add(this.pivot[name].front);
+        var pivots = {back:new THREE.Object3D(), front:new THREE.Object3D()};
+        pivots.back.add(mesh);
+        pivots.front.add(pivots.back);
+        pivots.back.position.y = flatscale*(geom.boundingBox.min.y - geom.boundingBox.max.y);
+        pivots.front.position.y = flatscale*geom.boundingBox.max.y;
+        return {mesh:mesh, pivots:pivots};
     }, 
     _loadROIs: function(svgdoc) {
         this.svgroi = svgdoc.getElementsByTagName("svg")[0];
@@ -506,6 +530,58 @@ MRIview.prototype = {
             });
         }
     },
+    _makeFlatGeom:function() {
+        var scene = new THREE.Scene();
+        var pivots = {}, meshes = {};
+        var shader = new THREE.ShaderMaterial({
+            vertexShader: flatVertShade,
+            fragmentShader: flatFragShade,
+            morphTargets:true
+        });
+
+        for (var name in this.meshes) {
+            var hemi = this.meshes[name];
+
+            var ppts = hemi.geometry.attributes.position.array;
+            var ppolys = hemi.geometry.attributes.flatindex.array;
+            var morphs = hemi.geometry.morphTargets;
+
+            var geom = new THREE.BufferGeometry();
+            var pts = new Float32Array(ppolys.length*3);
+            var polys = new Uint32Array(ppolys.length);
+            var color = new Float32Array(ppolys.length);
+            var i, il, j, jl, k;
+
+            for (j = 0, jl = polys.length / 3; j < jl; j++) {
+                for (k = 0; k < 9; k++) {
+                    pts[j*9+k] = ppts[ppolys[j*3+Math.floor(k/3)]*3+k%3];
+                    polys[j*9+k] = j*9+k;
+                    color[j*9+k] = j*3+Math.floor(k/3);
+                }
+            }
+            geom.attributes.position = {itemSize:3, array:pts};
+            geom.attributes.index = {itemSize:1, array:polys};
+            geom.attributes.color = {itemSize:1, array:color};
+
+            for (i = 0, il = morphs.length; i < il; i++) {
+                pts = new Float32Array(ppolys.length*3);
+                for (j = 0, jl = polys.length / 3; j < jl; j++) {
+                    for (k = 0; k < 9; k++) {
+                        pts[j*9+k] = morphs[i].array[ppolys[j*3+Math.floor(k/3)]*3+k%3];
+                    }
+                }
+                geom.morphTargets.push({itemSize:3, array:pts});
+            }
+
+            var meshpiv = this._makeMesh(geom, shader);
+            meshes[name] = meshpiv.mesh;
+            pivots[name] = meshpiv.pivots;
+            scene.add(meshpiv.pivots.front);
+        }
+
+        return {scene:scene, meshes:meshes, pivots:pivots};
+    }
+
 }
 
 function Dataset(url, callback) {
