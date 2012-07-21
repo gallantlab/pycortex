@@ -84,9 +84,9 @@ var flatVertShade = [
     "attribute float idx;",
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
     "void main() {",
-        "vColor.r = (idx / (256. * 256.)) / 256;",
-        "vColor.g = mod(idx / 256, 256) / 256;",
-        "vColor.b = mod(idx, 256) / 256;",
+        "vColor.r = (idx / (256. * 256.)) / 256.;",
+        "vColor.g = mod(idx / 256., 256.) / 256.;",
+        "vColor.b = mod(idx, 256.) / 256.;",
         THREE.ShaderChunk[ "morphtarget_vertex" ],
         THREE.ShaderChunk[ "default_vertex" ],
     "}",
@@ -603,8 +603,10 @@ MRIview.prototype = {
             for (j = 0, jl = polys.length / 3; j < jl; j++) {
                 for (k = 0; k < 9; k++) {
                     pts[j*9+k] = ppts[ppolys[j*3+Math.floor(k/3)]*3+k%3];
-                    polys[j*9+k] = j*9+k;
-                    color[j*9+k] = j*3+Math.floor(k/3);
+                }
+                for (k = 0; k < 3; k++) {
+                    polys[j*3+k] = j*3+k;
+                    color[j*3+k] = j;
                 }
             }
             geom.attributes.position = {itemSize:3, array:pts};
@@ -615,12 +617,12 @@ MRIview.prototype = {
                 pts = new Float32Array(ppolys.length*3);
                 for (j = 0, jl = polys.length / 3; j < jl; j++) {
                     for (k = 0; k < 9; k++) {
-                        pts[j*9+k] = morphs[i].array[ppolys[j*3+Math.floor(k/3)]*3+k%3];
+                        pts[j*9+k] = morphs[i].array[ppolys[j*3+Math.floor(k/3)]*4+k%3];
                     }
                 }
                 geom.morphTargets.push({itemSize:3, array:pts});
             }
-
+            geom.computeBoundingBox();
             var meshpiv = this._makeMesh(geom, shader);
             meshes[name] = meshpiv.mesh;
             pivots[name] = meshpiv.pivots;
