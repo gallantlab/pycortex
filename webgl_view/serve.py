@@ -69,7 +69,7 @@ def embedData(*args):
             outmap[:len(data),:data.shape[1]] = data
         else:
             outmap = np.zeros(shape, dtype=np.float32)
-            mm = data.min, data.max()
+            mm = data.min(), data.max()
             outmap.ravel()[:len(data)] = (data - data.min()) / (data.max() - data.min())
 
         outstr += struct.pack('2f', mm[0], mm[1])+outmap.tostring()

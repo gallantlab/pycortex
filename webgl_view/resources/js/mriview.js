@@ -647,7 +647,8 @@ function Dataset(url, callback) {
     xhr.onload = function(e) {
         if (this.status == 200) {
             _this.parse(this.response);
-            callback(_this);
+            if (typeof(callback) == "function")
+                callback(_this);
         } else {
             console.log(this.status);
         }
