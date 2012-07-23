@@ -84,9 +84,9 @@ var flatVertShade = [
     "attribute float idx;",
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
     "void main() {",
-        "vColor.r = (idx / (256. * 256.)) / 256;",
-        "vColor.g = mod(idx / 256, 256) / 256;",
-        "vColor.b = mod(idx, 256) / 256;",
+        "vColor.r = (idx / (256. * 256.)) / 256.;",
+        "vColor.g = mod(idx / 256., 256.) / 256.;",
+        "vColor.b = mod(idx, 256.) / 256.;",
         THREE.ShaderChunk[ "morphtarget_vertex" ],
         THREE.ShaderChunk[ "default_vertex" ],
     "}",
@@ -95,7 +95,7 @@ var flatVertShade = [
 var flatFragShade = [
     "varying vec3 vColor;",
     "void main() {",
-        "gl_FragColor = vec4(vColor, 1);",
+        "gl_FragColor = vec4(1);",
     "}"
 ].join("\n");
 
@@ -579,7 +579,7 @@ MRIview.prototype = {
 
             var geom = new THREE.BufferGeometry();
             var pts = new Float32Array(ppolys.length*3);
-            var polys = new Uint32Array(ppolys.length);
+            var polys = new Uint16Array(ppolys.length);
             var color = new Float32Array(ppolys.length);
             var i, il, j, jl, k;
 
@@ -593,6 +593,11 @@ MRIview.prototype = {
             geom.attributes.position = {itemSize:3, array:pts};
             geom.attributes.index = {itemSize:1, array:polys};
             geom.attributes.color = {itemSize:1, array:color};
+            geom.offsets = []
+            for (i = 0, il = polys.length / 3; i < il; i+= 65536) {
+                geom.offsets.push({start:i, index:i, count:65536});
+            }
+            geom.offsets.push({start:i, index:i, count:polys.length / 3 % 65536});
 
             for (i = 0, il = morphs.length; i < il; i++) {
                 pts = new Float32Array(ppolys.length*3);
@@ -603,14 +608,18 @@ MRIview.prototype = {
                 }
                 geom.morphTargets.push({itemSize:3, array:pts});
             }
-
+            geom.computeBoundingBox();
             var meshpiv = this._makeMesh(geom, shader);
             meshes[name] = meshpiv.mesh;
             pivots[name] = meshpiv.pivots;
             scene.add(meshpiv.pivots.front);
         }
 
-        return {scene:scene, meshes:meshes, pivots:pivots};
+        var cam = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight), 0.1, 5000 )
+        cam.position = this.camera.position;
+        scene.add(cam);
+
+        return {scene:scene, meshes:meshes, pivots:pivots, camera:cam};
     }
 
 }
