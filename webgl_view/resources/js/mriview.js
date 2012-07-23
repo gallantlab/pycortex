@@ -84,9 +84,9 @@ var flatVertShade = [
     "attribute float idx;",
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
     "void main() {",
-        "vColor.r = (idx / (256. * 256.)) / 256.;",
-        "vColor.g = mod(idx / 256., 256.) / 256.;",
-        "vColor.b = mod(idx, 256.) / 256.;",
+        "vColor.r = (idx / (256. * 256.)) / 255.;",
+        "vColor.g = mod(idx / 256., 256.) / 255.;",
+        "vColor.b = mod(idx, 256.) / 255.;",
         THREE.ShaderChunk[ "morphtarget_vertex" ],
         THREE.ShaderChunk[ "default_vertex" ],
     "}",
@@ -95,7 +95,7 @@ var flatVertShade = [
 var flatFragShade = [
     "varying vec3 vColor;",
     "void main() {",
-        "gl_FragColor = vec4(1);",
+        "gl_FragColor = vec4(vColor, 1.);",
     "}"
 ].join("\n");
 
@@ -169,6 +169,7 @@ function MRIview() {
         vertexColors:true,
     });
     this.rawshader.map = true;
+    this.rawshader.metal = true;
     this.rawshader.needsUpdate = true;
     
     this._bindUI();
@@ -230,7 +231,6 @@ MRIview.prototype = {
                 this.pivot[name] = meshpiv.pivots;
                 this.scene.add(meshpiv.pivots.front);
 
-
                 this.polys.norm[name] =  geometries[right].attributes.index;
                 this.polys.flat[name] = geometries[right].attributes.flatindex;
             }
@@ -243,7 +243,7 @@ MRIview.prototype = {
             }.bind(this));
             this.draw();
             $("#brain").css("opacity", 1);
-
+            this._flatobj = this._makeFlatGeom();
         }.bind(this), true, true );
 
     },
@@ -579,68 +579,21 @@ MRIview.prototype = {
         }
     },
     _makeFlatGeom:function() {
-        var scene = new THREE.Scene();
-        var pivots = {}, meshes = {};
-        var shader = new THREE.ShaderMaterial({
-            vertexShader: flatVertShade,
-            fragmentShader: flatFragShade,
-            morphTargets:true
-        });
-
-        for (var name in this.meshes) {
-            var hemi = this.meshes[name];
-
-            var ppts = hemi.geometry.attributes.position.array;
-            var ppolys = hemi.geometry.attributes.flatindex.array;
-            var morphs = hemi.geometry.morphTargets;
-
-            var geom = new THREE.BufferGeometry();
-            var pts = new Float32Array(ppolys.length*3);
-            var polys = new Uint16Array(ppolys.length);
-            var color = new Float32Array(ppolys.length);
-            var i, il, j, jl, k;
-
-            for (j = 0, jl = polys.length / 3; j < jl; j++) {
-                for (k = 0; k < 9; k++) {
-                    pts[j*9+k] = ppts[ppolys[j*3+Math.floor(k/3)]*3+k%3];
-                }
-                for (k = 0; k < 3; k++) {
-                    polys[j*3+k] = j*3+k;
-                    color[j*3+k] = j;
-                }
-            }
-            geom.attributes.position = {itemSize:3, array:pts};
-            geom.attributes.index = {itemSize:1, array:polys};
-            geom.attributes.color = {itemSize:1, array:color};
-            geom.offsets = []
-            for (i = 0, il = polys.length / 3; i < il; i+= 65536) {
-                geom.offsets.push({start:i, index:i, count:65536});
-            }
-            geom.offsets.push({start:i, index:i, count:polys.length / 3 % 65536});
-
-            for (i = 0, il = morphs.length; i < il; i++) {
-                pts = new Float32Array(ppolys.length*3);
-                for (j = 0, jl = polys.length / 3; j < jl; j++) {
-                    for (k = 0; k < 9; k++) {
-                        pts[j*9+k] = morphs[i].array[ppolys[j*3+Math.floor(k/3)]*4+k%3];
-                    }
-                }
-                geom.morphTargets.push({itemSize:3, array:pts});
-            }
-            geom.computeBoundingBox();
-            var meshpiv = this._makeMesh(geom, shader);
-            meshes[name] = meshpiv.mesh;
-            pivots[name] = meshpiv.pivots;
-            scene.add(meshpiv.pivots.front);
+        
+    },
+    _renderFlatObj: function() {
+        this._flatobj.camera.lookAt(this.controls.target);
+        for (var name in this._flatobj.meshes) {
+            var piv = this._flatobj.pivots[name];
+            var vpiv = this.pivot[name];
+            var hemi = this._flatobj.meshes[name].geometry;
+            var vhem = this.meshes[name].geometry;
+            piv.front.rotation.z = vpiv.front.rotation.z;
+            piv.back.rotation.z = vpiv.back.rotation.z;
+            hemi.morphTargetInfluences = vhem.morphTargetInfluences;
         }
-
-        var cam = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight), 0.1, 5000 )
-        cam.position = this.camera.position;
-        scene.add(cam);
-
-        return {scene:scene, meshes:meshes, pivots:pivots, camera:cam};
+        this.renderer.render(this._flatobj.scene, this._flatobj.camera);
     }
-
 }
 
 function Dataset(url, callback) {
@@ -700,4 +653,75 @@ Dataset.prototype.parse = function (data) {
 
     if (this.length != this.textures.length)
         throw "Invalid dataset";
+}
+
+function FacePick(viewer, callback) {
+    this.callback = callback;
+    this.pivots = {};
+    this.meshes = {};
+
+    this.scene = new THREE.Scene();
+    this.shader = new THREE.ShaderMaterial({
+        vertexShader: flatVertShade,
+        fragmentShader: flatFragShade,
+        attributes: { idx: true },
+        morphTargets:true
+    });
+
+    for (var name in viewer.meshes) {
+        var hemi = viewer.meshes[name];
+
+        var ppts = hemi.geometry.attributes.position.array;
+        var ppolys = hemi.geometry.attributes.flatindex.array;
+        var morphs = hemi.geometry.morphTargets;
+
+        var geom = new THREE.BufferGeometry();
+        var pts = new Float32Array(ppolys.length*3);
+        var polys = new Uint16Array(ppolys.length);
+        var color = new Float32Array(ppolys.length);
+        var i, il, j, jl, k;
+
+        for (j = 0, jl = polys.length; j < jl; j++) {
+            for (k = 0; k < 3; k++) {
+                pts[j*3+k] = ppts[ppolys[j]*3+k];
+                color[j*3+k] = j;
+            }
+            polys[j] = j % 65535;
+        }
+        geom.attributes.position = {itemSize:3, array:pts, stride:3};
+        geom.attributes.index = {itemSize:1, array:polys, stride:1};
+        geom.attributes.idx = {itemSize:1, array:color, stride:1};
+        geom.offsets = []
+        for (i = 0, il = polys.length; i < il; i += 65535) {
+            geom.offsets.push({start:i, index:i, count:Math.min(65535, il - i)});
+        }
+
+        for (i = 0, il = morphs.length; i < il; i++) {
+            pts = new Float32Array(ppolys.length*3);
+            for (j = 0, jl = polys.length; j < jl; j++) {
+                for (k = 0; k < 3; k++) {
+                    pts[j*3+k] = morphs[i].array[ppolys[j]*4+k];
+                }
+            }
+            geom.morphTargets.push({itemSize:3, array:pts, stride:3});
+        }
+
+        geom.computeBoundingBox();
+        var meshpiv = this._makeMesh(geom, shader);
+        meshes[name] = meshpiv.mesh;
+        pivots[name] = meshpiv.pivots;
+        scene.add(meshpiv.pivots.front);
+    }
+
+    var cam = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight), 0.1, 5000 )
+    cam.position = this.camera.position;
+    cam.up.set(0,0,1);
+    scene.add(cam);
+}
+FacePick.prototype = {
+
+    draw: function() {
+
+    },
+    pick:
 }
