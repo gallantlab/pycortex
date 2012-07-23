@@ -2,7 +2,7 @@
  * @author Eberhard Graether / http://egraether.com/
  */
 
-THREE.LandscapeControls = function ( camera, domElement ) {
+THREE.LandscapeControls = function ( camera, domElement, scene ) {
 
     THREE.EventTarget.call( this );
 
@@ -17,6 +17,7 @@ THREE.LandscapeControls = function ( camera, domElement ) {
     this.keystate = null;
     this.camera = camera;
     this.domElement = ( domElement !== undefined ) ? domElement : document;
+    this.scene = scene;
 
     // API
 
@@ -25,6 +26,9 @@ THREE.LandscapeControls = function ( camera, domElement ) {
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
     this.panSpeed = 0.3;
+
+    // Picker
+    this.projector = new THREE.Projector();
 
     // internals
 
@@ -45,6 +49,7 @@ THREE.LandscapeControls = function ( camera, domElement ) {
         var mouseChange = _end.clone().subSelf(_start);
         this.azlim = flatmix * 180;
         this.altlim = flatmix * 90;
+        //this.altlim = 0;
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
             statefunc[_state](mouseChange);
@@ -53,7 +58,7 @@ THREE.LandscapeControls = function ( camera, domElement ) {
         _start = _end;
         
         if (mouseChange.length() > 0) {
-            this.setCamera(flatmix);
+            this.setCamera();
         }
     };
 
@@ -118,11 +123,41 @@ THREE.LandscapeControls = function ( camera, domElement ) {
 
     };
 
+    function click( event ) {
+        var mouse2D = this.getMouse(event).clone();
+        var mouse3D = new THREE.Vector3(0, 10000, 0.5);
+        mouse3D.x = (mouse2D.x / window.innerWidth) * 2 - 1;
+        mouse3D.y = -(mouse2D.y / window.innerHeight) * 2 + 1;
+
+        //console.log("picker: "+mouse3D.x+", "+mouse3D.y+", "+mouse3D.z);
+        var ray = this.projector.pickingRay(mouse3D, this.camera);
+        //console.log("picker: "+ray.origin.x+", "+ray.origin.y+", "+ray.origin.z);
+
+        // create actual ray for debugging..
+        //var linemat = new THREE.LineBasicMaterial({color: 0xffffff});
+        //var linegeom = new THREE.Geometry();
+        //var st = ray.direction.clone(), end = ray.direction.clone();
+        //st.multiplyScalar(1000).addSelf(ray.origin);
+        //end.multiplyScalar(-100).addSelf(ray.origin);
+        //linegeom.vertices.push(st);
+        //linegeom.vertices.push(end);
+        //var line = new THREE.Line(linegeom, linemat);
+        //this.scene.add(line);
+
+        // this is kind of a hack
+        var meshes = new Array([this.scene.children[1].children[0].children[0], this.scene.children[2].children[0].children[0]]);
+        var intersects = ray.intersectObjects(meshes);
+        this.intersects = intersects;
+        this.ray = ray;
+
+    };
+
     this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
 
     this.domElement.addEventListener( 'mousemove', mousemove.bind(this), false );
     this.domElement.addEventListener( 'mousedown', mousedown.bind(this), false );
     this.domElement.addEventListener( 'mouseup', mouseup.bind(this), false );
+    this.domElement.addEventListener( 'click', click.bind(this), false );
 
     window.addEventListener( 'keydown', keydown.bind(this), false );
     window.addEventListener( 'keyup', keyup.bind(this), false );
@@ -149,7 +184,7 @@ THREE.LandscapeControls.prototype = {
         this.setCamera();
     },
 
-    setCamera: function( flatmix ) {
+    setCamera: function() {
         this.altitude = this.altitude > 179.9999-this.altlim ? 179.9999-this.altlim : this.altitude;
         this.altitude = this.altitude < 0.0001+this.altlim ? 0.0001+this.altlim : this.altitude;
 
@@ -186,10 +221,11 @@ THREE.LandscapeControls.prototype = {
 
     pan: function( mouseChange ) {
         var eye = this.camera.position.clone().subSelf(this.target);
-
-        var pan = eye.crossSelf( this.camera.up ).setLength( this.panSpeed*mouseChange.x );
-        pan.addSelf( this.camera.up.clone().setLength( this.panSpeed*mouseChange.y ) );
-
+        var right = eye.clone().crossSelf( this.camera.up );
+        var up = right.clone().crossSelf(eye);
+        var pan = (new THREE.Vector3()).add(
+            right.setLength( this.panSpeed*mouseChange.x ), 
+            up.setLength( this.panSpeed*mouseChange.y ));
         this.camera.position.addSelf( pan );
         this.target.addSelf( pan );
     },
