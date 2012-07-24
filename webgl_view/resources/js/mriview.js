@@ -84,7 +84,7 @@ var flatVertShade = [
     "attribute float idx;",
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
     "void main() {",
-        "vColor.r = (idx / (256. * 256.)) / 255.;",
+        "vColor.r = floor(idx / (256. * 256.)) / 255.;",
         "vColor.g = mod(idx / 256., 256.) / 255.;",
         "vColor.b = mod(idx, 256.) / 255.;",
         THREE.ShaderChunk[ "morphtarget_vertex" ],
@@ -210,6 +210,7 @@ MRIview.prototype = {
 
             this.meshes = {};
             this.pivot = {};
+            this.datamap = {};
             this.polys = { norm:{}, flat:{}}
             this.flatlims = json.flatlims;
             this.flatoff = [
@@ -225,6 +226,7 @@ MRIview.prototype = {
             $.get(loader.extractUrlBase(ctminfo)+json.rois, null, this._loadROIs.bind(this));
             for (var name in names) {
                 var right = names[name];
+                this.datamap[name] = geometries[right].attributes.datamap.array;
                 this._makeFlat(geometries[right], polyfilt[name], right);
                 var meshpiv = this._makeMesh(geometries[right], this.shader);
                 this.meshes[name] = meshpiv.mesh;
@@ -234,24 +236,24 @@ MRIview.prototype = {
                 this.polys.norm[name] =  geometries[right].attributes.index;
                 this.polys.flat[name] = geometries[right].attributes.flatindex;
             }
-
+            this.controls.picker = new FacePick(this);
             this.controls.addEventListener("change", function() {
                 if (!this._scheduled) {
                     this._scheduled = true;
+                    this.controls.picker._valid = false;
                     requestAnimationFrame( this.draw.bind(this) );
                 }
             }.bind(this));
             this.draw();
             $("#brain").css("opacity", 1);
-            this._flatobj = this._makeFlatGeom();
         }.bind(this), true, true );
-
     },
     resize: function(width, height) {
         var w = width === undefined ? window.innerWidth : width;
         var h = height === undefined ? window.innerHeight : height;
         this.renderer.setSize(w, h);
         this.camera.aspect = w / h;
+        this._picker.resize(w, h);
         this.camera.updateProjectionMatrix();
         this.controls.dispatchEvent({type:"change"});
     },
@@ -335,6 +337,7 @@ MRIview.prototype = {
     setPoly: function(polyvar) {
         for (var name in this.meshes) {
             this.meshes[name].geometry.attributes.index = this.polys[polyvar][name];
+            this.meshes[name].geometry.offsets[0].count = this.polys[polyvar][name].numItems;
         }
         this.controls.dispatchEvent({type:"change"});
     },
@@ -496,7 +499,7 @@ MRIview.prototype = {
             }
         }
 
-        geom.attributes.flatindex = {itemsize:1, array:polys, numItems:polys.length};
+        geom.attributes.flatindex = {itemsize:1, array:polys, numItems:polys.length, stride:1};
 
         var voxidx = new Uint8Array(uv.length / 2 * 3);
         for (var i = 0, il = uv.length / 2; i < il; i ++) {
@@ -578,22 +581,6 @@ MRIview.prototype = {
             });
         }
     },
-    _makeFlatGeom:function() {
-        
-    },
-    _renderFlatObj: function() {
-        this._flatobj.camera.lookAt(this.controls.target);
-        for (var name in this._flatobj.meshes) {
-            var piv = this._flatobj.pivots[name];
-            var vpiv = this.pivot[name];
-            var hemi = this._flatobj.meshes[name].geometry;
-            var vhem = this.meshes[name].geometry;
-            piv.front.rotation.z = vpiv.front.rotation.z;
-            piv.back.rotation.z = vpiv.back.rotation.z;
-            hemi.morphTargetInfluences = vhem.morphTargetInfluences;
-        }
-        this.renderer.render(this._flatobj.scene, this._flatobj.camera);
-    }
 }
 
 function Dataset(url, callback) {
@@ -656,9 +643,17 @@ Dataset.prototype.parse = function (data) {
 }
 
 function FacePick(viewer, callback) {
-    this.callback = callback;
-    this.pivots = {};
+    this.viewer = viewer;
+    this.pivot = {};
     this.meshes = {};
+    this.idxrange = {};
+    if (typeof(callback) == "function") {
+        this.callback = callback;
+    } else {
+        this.callback = function(pos, idx) {
+            console.log(pos, idx);
+        }
+    }
 
     this.scene = new THREE.Scene();
     this.shader = new THREE.ShaderMaterial({
@@ -668,60 +663,111 @@ function FacePick(viewer, callback) {
         morphTargets:true
     });
 
-    for (var name in viewer.meshes) {
-        var hemi = viewer.meshes[name];
+    this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight), 0.1, 5000 )
+    this.camera.position = this.viewer.camera.position;
+    this.camera.up.set(0,0,1);
+    this.scene.add(this.camera);
+    this.renderbuf = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+        minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter
+    })
+    this.height = window.innerHeight;
 
-        var ppts = hemi.geometry.attributes.position.array;
-        var ppolys = hemi.geometry.attributes.flatindex.array;
-        var morphs = hemi.geometry.morphTargets;
-
-        var geom = new THREE.BufferGeometry();
-        var pts = new Float32Array(ppolys.length*3);
-        var polys = new Uint16Array(ppolys.length);
-        var color = new Float32Array(ppolys.length);
-        var i, il, j, jl, k;
-
-        for (j = 0, jl = polys.length; j < jl; j++) {
-            for (k = 0; k < 3; k++) {
-                pts[j*3+k] = ppts[ppolys[j]*3+k];
-                color[j*3+k] = j;
-            }
-            polys[j] = j % 65535;
+    var nface, nfaces = 0;
+    for (var name in this.viewer.meshes) {
+        var hemi = this.viewer.meshes[name];
+        var morphs = [];
+        for (var i = 0, il = hemi.geometry.morphTargets.length; i < il; i++) {
+            morphs.push(hemi.geometry.morphTargets[i].array);
         }
-        geom.attributes.position = {itemSize:3, array:pts, stride:3};
-        geom.attributes.index = {itemSize:1, array:polys, stride:1};
-        geom.attributes.idx = {itemSize:1, array:color, stride:1};
-        geom.offsets = []
-        for (i = 0, il = polys.length; i < il; i += 65535) {
-            geom.offsets.push({start:i, index:i, count:Math.min(65535, il - i)});
-        }
+        nface = hemi.geometry.attributes.flatindex.array.length / 3;
+        this.idxrange[name] = [nfaces, nfaces + nface];
 
-        for (i = 0, il = morphs.length; i < il; i++) {
-            pts = new Float32Array(ppolys.length*3);
-            for (j = 0, jl = polys.length; j < jl; j++) {
-                for (k = 0; k < 3; k++) {
-                    pts[j*3+k] = morphs[i].array[ppolys[j]*4+k];
-                }
-            }
-            geom.morphTargets.push({itemSize:3, array:pts, stride:3});
-        }
-
-        geom.computeBoundingBox();
-        var meshpiv = this._makeMesh(geom, shader);
-        meshes[name] = meshpiv.mesh;
-        pivots[name] = meshpiv.pivots;
-        scene.add(meshpiv.pivots.front);
+        var worker = new Worker("resources/js/mriview_worker.js");
+        worker.onmessage = this.handleworker.bind(this);
+        worker.postMessage({
+            func:   "genFlatGeom",
+            name:   name,
+            ppts:   hemi.geometry.attributes.position.array,
+            ppolys: hemi.geometry.attributes.flatindex.array,
+            morphs: morphs,
+            faceoff: nfaces,
+        });
+        nfaces += nface;
     }
 
-    var cam = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight), 0.1, 5000 )
-    cam.position = this.camera.position;
-    cam.up.set(0,0,1);
-    scene.add(cam);
+    this._valid = false;
 }
 FacePick.prototype = {
-
-    draw: function() {
-
+    resize: function(w, h) {
+        this.camera.aspect = w / h;
+        this.height = h;
+        delete this.renderbuf;
+        this.renderbuf = new THREE.WebGLRenderTarget(w, h, {
+            minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter
+        })
     },
-    pick:
+
+    draw: function(debug) {
+        this.camera.lookAt(this.viewer.controls.target);
+        for (var name in this.meshes) {
+            this.pivot[name].front.rotation.z = this.viewer.pivot[name].front.rotation.z;
+            this.pivot[name].back.rotation.z = this.viewer.pivot[name].back.rotation.z;
+            this.meshes[name].morphTargetInfluences = this.viewer.meshes[name].morphTargetInfluences;
+        }
+        if (debug)
+            this.viewer.renderer.render(this.scene, this.camera);
+        else
+            this.viewer.renderer.render(this.scene, this.camera, this.renderbuf);
+    },
+
+    handleworker: function(event) {
+        var msg = event.data;
+        var i, il, geom = new THREE.BufferGeometry();
+        geom.attributes.position = {itemSize:3, array:msg.pts, stride:3};
+        geom.attributes.index = {itemSize:1, array:msg.polys, stride:1};
+        geom.attributes.idx = {itemSize:1, array:msg.color, stride:1};
+        geom.morphTargets = [];
+        for (i = 0, il = msg.morphs.length; i < il; i++) {
+            geom.morphTargets.push({itemSize:3, array:msg.morphs[i], stride:3});
+        }
+        geom.offsets = []
+        for (i = 0, il = msg.polys.length; i < il; i += 65535) {
+            geom.offsets.push({start:i, index:i, count:Math.min(65535, il - i)});
+        }
+        geom.computeBoundingBox();
+        var meshpiv = this.viewer._makeMesh(geom, this.shader);
+        this.meshes[msg.name] = meshpiv.mesh;
+        this.pivot[msg.name] = meshpiv.pivots;
+        this.scene.add(meshpiv.pivots.front);
+    }, 
+
+    pick: function(x, y) {
+        if (!this._valid)
+            this.draw();
+        var gl = this.viewer.renderer.context;
+        var pix = new Uint8Array(4);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderbuf.__webglFramebuffer);
+        gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
+        var faceidx = (pix[0] << 16) + (pix[1] << 8) + pix[2];
+        if (faceidx > 0) {
+            //adjust for clicking on black area
+            faceidx -= 1;
+            for (var name in this.idxrange) {
+                var lims = this.idxrange[name];
+                if (lims[0] <= faceidx && faceidx < lims[1]) {
+                    faceidx -= lims[0];
+                    var polys = this.viewer.polys.flat[name].array;
+                    var map = this.viewer.datamap[name];
+
+                    var ptidx = polys[faceidx*3];
+                    var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
+
+                    var pts = this.viewer.meshes[name].geometry.attributes.position.array;
+                    var pos = [pts[ptidx*3], pts[ptidx*3+1], pts[ptidx*3+2]];
+
+                    this.callback(pos, dataidx);
+                }
+            }
+        } 
+    }
 }

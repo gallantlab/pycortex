@@ -49,23 +49,18 @@ THREE.LandscapeControls = function ( camera, domElement, scene ) {
         var mouseChange = _end.clone().subSelf(_start);
         this.azlim = flatmix * 180;
         this.altlim = flatmix * 90;
-        //this.altlim = 0;
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
-            statefunc[_state](mouseChange);
+            if (statefunc[_state])
+                statefunc[_state](mouseChange);
+            this.setCamera();
         }
 
         _start = _end;
-        
-        if (mouseChange.length() > 0) {
-            this.setCamera();
-        }
     };
 
     // listeners
-
     function keydown( event ) {
-
         if ( ! this.enabled ) return;
 
         if (event.keyCode == 17) {
@@ -79,29 +74,21 @@ THREE.LandscapeControls = function ( camera, domElement, scene ) {
     };
 
     function keyup( event ) {
-
         if ( ! this.enabled ) return;
-
         this.keystate = null;
-
     };
 
     function mousedown( event ) {
-
         event.preventDefault();
         event.stopPropagation();
 
         if ( _state === STATE.NONE ) {
-
             _state = this.keystate ? this.keystate : event.button;
             _start = _end = this.getMouse(event);
-
         }
-
     };
 
     function mousemove( event ) {
-
         if ( ! this.enabled ) return;
 
         if ( _state === STATE.NONE ) {
@@ -113,43 +100,18 @@ THREE.LandscapeControls = function ( camera, domElement, scene ) {
     };
 
     function mouseup( event ) {
-
         if ( ! this.enabled ) return;
 
         event.preventDefault();
         event.stopPropagation();
 
         _state = STATE.NONE;
-
     };
 
     function click( event ) {
         var mouse2D = this.getMouse(event).clone();
-        var mouse3D = new THREE.Vector3(0, 10000, 0.5);
-        mouse3D.x = (mouse2D.x / window.innerWidth) * 2 - 1;
-        mouse3D.y = -(mouse2D.y / window.innerHeight) * 2 + 1;
-
-        //console.log("picker: "+mouse3D.x+", "+mouse3D.y+", "+mouse3D.z);
-        var ray = this.projector.pickingRay(mouse3D, this.camera);
-        //console.log("picker: "+ray.origin.x+", "+ray.origin.y+", "+ray.origin.z);
-
-        // create actual ray for debugging..
-        //var linemat = new THREE.LineBasicMaterial({color: 0xffffff});
-        //var linegeom = new THREE.Geometry();
-        //var st = ray.direction.clone(), end = ray.direction.clone();
-        //st.multiplyScalar(1000).addSelf(ray.origin);
-        //end.multiplyScalar(-100).addSelf(ray.origin);
-        //linegeom.vertices.push(st);
-        //linegeom.vertices.push(end);
-        //var line = new THREE.Line(linegeom, linemat);
-        //this.scene.add(line);
-
-        // this is kind of a hack
-        var meshes = new Array([this.scene.children[1].children[0].children[0], this.scene.children[2].children[0].children[0]]);
-        var intersects = ray.intersectObjects(meshes);
-        this.intersects = intersects;
-        this.ray = ray;
-
+        if (this.picker !== undefined)
+            this.picker.pick(mouse2D.x, mouse2D.y);
     };
 
     this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
