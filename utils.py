@@ -1,5 +1,6 @@
+import os
 import numpy as np
-from db import surfs
+from db import surfs, options
 
 def unmask(mask, data):
     '''unmask(mask, data)
@@ -183,6 +184,12 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
     dist.shape = shape
     argdist.shape = shape
     return dist, argdist
+
+def get_rois(subject):
+    import svgroi
+    flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
+    svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
+    return svgroi.ROIpack(flat[:,:2], svgfile)
 
 def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
     '''Return a bitmask for the given ROIs'''

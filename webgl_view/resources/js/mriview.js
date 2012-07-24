@@ -157,6 +157,7 @@ function MRIview() {
         vertexColors:true,
     });
     this.shader.map = true;
+    this.shader.metal = true;
     this.shader.needsUpdate = true;
 
     this.rawshader = new THREE.ShaderMaterial( {
@@ -224,7 +225,13 @@ MRIview.prototype = {
                 )];
             var names = {left:0, right:1};
 
-            $.get(loader.extractUrlBase(ctminfo)+json.rois, null, this._loadROIs.bind(this));
+            $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
+                this.rois = new ROIpack(svgdoc, function(tex) {
+                    this.shader.uniforms.map.texture = tex;
+                    this.controls.dispatchEvent({type:"change"});
+                }.bind(this));
+                this.rois.update(this.renderer);
+            }.bind(this));
             for (var name in names) {
                 var right = names[name];
                 this.datamap[name] = geometries[right].attributes.datamap.array;
@@ -521,73 +528,9 @@ MRIview.prototype = {
         pivots.front.position.y = geom.boundingBox.max.y - geom.boundingBox.min.y + this.flatoff[1];
         return {mesh:mesh, pivots:pivots};
     }, 
-    _loadROIs: function(svgdoc) {
-        this.svgroi = svgdoc.getElementsByTagName("svg")[0];
-        this.svgroi.id = "svgroi";
-        document.getElementById("hiderois").appendChild(this.svgroi);
-        this.rois = $(this.svgroi).find("path");
-        this._shadowtex = new ShadowTex(
-            Math.ceil(this.svgroi.width.baseVal.value), 
-            Math.ceil(this.svgroi.height.baseVal.value), 
-            4
-        );
-        this._updateROIs();
-    }, 
     _updateROIs: function() {
-        var fo = "fill-opacity:"+$("#roi_fillalpha").slider("option", "value");
-        var lo = "stroke-opacity:"+$("#roi_linealpha").slider("option", "value");
-        var fc = "fill:"+$("#roi_fillcolor").attr("value");
-        var lc = "stroke:"+$("#roi_linecolor").attr("value");
-        var lw = "stroke-width:"+$("#roi_linewidth").slider("option", "value") + "px";
-        var sw = parseInt($("#roi_shadowalpha").slider("option", "value"));
-
-        this.rois.attr("style", [fo, lo, fc, lc, lw].join(";"));
-        var svg_xml = (new XMLSerializer()).serializeToString(this.svgroi);
-
-        var canvas = document.getElementById("canvasrois");
-
-        if (sw > 0) {
-            var sc = "stroke:"+$("#roi_shadowcolor").val();
-            this.rois.attr("style", [sc, fc, fo, lo, lw].join(";"));
-            var shadow_xml = (new XMLSerializer()).serializeToString(this.svgroi);
-
-            canvg(canvas, shadow_xml, {
-                ignoreMouse:true, 
-                ignoreAnimation:true,
-                ignoreClear:false,
-                renderCallback: function() {
-                    //this.shader.uniforms.map.texture = new THREE.Texture(canvas);
-                    //this.shader.uniforms.map.texture.needsUpdate = true;
-                    
-                    this._shadowtex.setRadius(sw/4);
-                    var tex = this._shadowtex.blur(this.renderer, new THREE.Texture(canvas));
-                    //this.shader.uniforms.map.texture = tex;
-                    canvg(canvas, svg_xml, {
-                        ignoreMouse:true,
-                        ignoreAnimation:true,
-                        renderCallback: function() {
-                            var otex = this._shadowtex.overlay(this.renderer, new THREE.Texture(canvas));
-                            this.shader.uniforms.map.texture = otex;
-                            this.controls.dispatchEvent({type:"change"});
-                        }.bind(this)
-                    });
-                }.bind(this)
-            });
-
-        } else {
-            canvg(canvas, svg_xml, {
-                ignoreMouse:true,
-                ignoreAnimation:true,
-                renderCallback:function() {
-                    var tex = new THREE.Texture(canvas);
-                    tex.needsUpdate = true;
-                    //tex.premultiplyAlpha = true;
-                    this.shader.uniforms.map.texture = tex;
-                    this.controls.dispatchEvent({type:"change"});
-                }.bind(this),
-            });
-        }
-    },
+        this.rois.update(this.renderer);
+    }
 }
 
 function Dataset(url, callback) {

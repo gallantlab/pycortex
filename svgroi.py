@@ -3,7 +3,7 @@ import subprocess as sp
 from xml.dom.minidom import parse as xmlparse
 
 import numpy as np
-from scipy.interpolate import griddata
+from scipy.spatial import cKDTree
 from matplotlib.pyplot import imread
 
 try:
@@ -28,7 +28,8 @@ class ROI(traits.HasTraits):
         self.name = xml.getAttribute("inkscape:label")
         self.paths = xml.getElementsByTagName("path")
         pts = [ self._parse_svg_pts(path.getAttribute("d")) for path in self.paths]
-        self.coords = [ griddata(parent.tcoords, np.arange(len(parent.tcoords)), p, "nearest") for p in pts ]
+        self.kdt = cKDTree(parent.tcoords)
+        self.coords = [ self.kdt.query(p)[1] for p in pts ]
         self.hide = xml.hasAttribute("style") and "display:none" in xml.attributes['style'].value
 
         self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
@@ -79,16 +80,32 @@ class ROI(traits.HasTraits):
         for path in self.paths:
             path.setAttribute("style", style)
     
-    def get_labelpos(self, pts, norms, fancy=True):
+    def get_labelpos(self, pts=None, norms=None, fancy=True):
+        if pts is None:
+            pts = self.parent.tcoords
+
         if fancy:
             labels = []
             for coord in self.coords:
                 try:
-                    labels.append((_labelpos(pts[coord]), norms[coord].mean(0)))
+                    if norms is None:
+                        labels.append(_labelpos(pts[coord]))
+                    else:
+                        labels.append((_labelpos(pts[coord]), norms[coord].mean(0)))
                 except:
-                    labels.append((pts[coord].mean(0), norms[coord].mean(0)))
+                    if norms is None:
+                        labels.append(pts[coord].mean(0))
+                    else:
+                        labels.append((pts[coord].mean(0), norms[coord].mean(0)))
             return labels
+
+        if norms is None:
+            return [pts[coord].mean(0) for coord in self.coords]
+
         return [(pts[coord].mean(0), norms[coord].mean(0)) for coord in self.coords]
+
+    def get_ptidx(self):
+        return self.coords
 
 class ROIpack(traits.HasTraits):
     svg = traits.Instance("xml.dom.minidom.Document")
@@ -170,8 +187,11 @@ class ROIpack(traits.HasTraits):
         pngfile.flush()
         return pngfile
 
-    def get_labelpos(self, pts, norms, fancy=True):
+    def get_labelpos(self, pts=None, norms=None, fancy=True):
         return dict([(name, roi.get_labelpos(pts, norms, fancy)) for name, roi in self.rois.items()])
+
+    def get_ptidx(self):
+        return dict([(name, roi.get_ptidx()) for name, roi in self.rois.items()])
 
     def get_roi(self, roiname):
         state = dict()
