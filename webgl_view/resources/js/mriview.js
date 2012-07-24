@@ -71,8 +71,9 @@ var fragmentShader = [
 
     "void main() {",
         "vec4 mapcolor = texture2D(map, vUv);",
-        "gl_FragColor.rgb = mapcolor.rgb + vec3(1.-mapcolor.a)*vColor.rgb*vec3(vColor.a);",
-        "gl_FragColor.a = mapcolor.a + vColor.a*(1. - mapcolor.a);",
+        "gl_FragColor.a = mapcolor.a + vColor.a*(1.-mapcolor.a);",
+        "gl_FragColor.rgb = mapcolor.rgb*mapcolor.a + vColor.rgb*vColor.a*(1.-mapcolor.a);",
+        "gl_FragColor.rgb /= gl_FragColor.a;",
 
         THREE.ShaderChunk[ "lights_phong_fragment" ],
     "}"
@@ -240,7 +241,6 @@ MRIview.prototype = {
             this.controls.addEventListener("change", function() {
                 if (!this._scheduled) {
                     this._scheduled = true;
-                    this.controls.picker._valid = false;
                     requestAnimationFrame( this.draw.bind(this) );
                 }
             }.bind(this));
@@ -253,7 +253,7 @@ MRIview.prototype = {
         var h = height === undefined ? window.innerHeight : height;
         this.renderer.setSize(w, h);
         this.camera.aspect = w / h;
-        this._picker.resize(w, h);
+        this.controls.picker.resize(w, h);
         this.camera.updateProjectionMatrix();
         this.controls.dispatchEvent({type:"change"});
     },
@@ -526,6 +526,11 @@ MRIview.prototype = {
         this.svgroi.id = "svgroi";
         document.getElementById("hiderois").appendChild(this.svgroi);
         this.rois = $(this.svgroi).find("path");
+        this._shadowtex = new ShadowTex(
+            Math.ceil(this.svgroi.width.baseVal.value), 
+            Math.ceil(this.svgroi.height.baseVal.value), 
+            4
+        );
         this._updateROIs();
     }, 
     _updateROIs: function() {
@@ -541,17 +546,6 @@ MRIview.prototype = {
 
         var canvas = document.getElementById("canvasrois");
 
-        var texfunc = function() {
-            var img = new Image();
-            img.src = canvas.toDataURL();
-
-            var tex = new THREE.Texture(canvas);
-            tex.needsUpdate = true;
-            tex.premultiplyAlpha = true;
-            this.shader.uniforms.map.texture = tex;
-            this.controls.dispatchEvent({type:"change"});
-        }.bind(this);
-
         if (sw > 0) {
             var sc = "stroke:"+$("#roi_shadowcolor").val();
             this.rois.attr("style", [sc, fc, fo, lo, lw].join(";"));
@@ -562,22 +556,35 @@ MRIview.prototype = {
                 ignoreAnimation:true,
                 ignoreClear:false,
                 renderCallback: function() {
-                    stackBoxBlurCanvasRGBA("canvasrois", 0,0, canvas.width, canvas.height, sw, 1);
+                    //this.shader.uniforms.map.texture = new THREE.Texture(canvas);
+                    //this.shader.uniforms.map.texture.needsUpdate = true;
+                    
+                    this._shadowtex.setRadius(sw/4);
+                    var tex = this._shadowtex.blur(this.renderer, new THREE.Texture(canvas));
+                    //this.shader.uniforms.map.texture = tex;
                     canvg(canvas, svg_xml, {
                         ignoreMouse:true,
                         ignoreAnimation:true,
-                        ignoreDimensions:true,
-                        ignoreClear:true,
-                        renderCallback: function() { setTimeout(texfunc, 100); },
+                        renderCallback: function() {
+                            var otex = this._shadowtex.overlay(this.renderer, new THREE.Texture(canvas));
+                            this.shader.uniforms.map.texture = otex;
+                            this.controls.dispatchEvent({type:"change"});
+                        }.bind(this)
                     });
-                }.bind(this),
+                }.bind(this)
             });
 
         } else {
             canvg(canvas, svg_xml, {
                 ignoreMouse:true,
                 ignoreAnimation:true,
-                renderCallback:texfunc,
+                renderCallback:function() {
+                    var tex = new THREE.Texture(canvas);
+                    tex.needsUpdate = true;
+                    //tex.premultiplyAlpha = true;
+                    this.shader.uniforms.map.texture = tex;
+                    this.controls.dispatchEvent({type:"change"});
+                }.bind(this),
             });
         }
     },
@@ -769,5 +776,13 @@ FacePick.prototype = {
                 }
             }
         } 
+    }
+}
+
+function Cursors() {
+    this.elements = [];
+}
+Cursors.prototype = {
+    create: function(pos, contents) {
     }
 }

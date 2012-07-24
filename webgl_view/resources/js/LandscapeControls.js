@@ -49,6 +49,7 @@ THREE.LandscapeControls = function ( camera, domElement, scene ) {
         var mouseChange = _end.clone().subSelf(_start);
         this.azlim = flatmix * 180;
         this.altlim = flatmix * 90;
+        this.picker._valid = false;
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
             if (statefunc[_state])

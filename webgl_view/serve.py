@@ -3,10 +3,6 @@ import struct
 import mimetypes
 import multiprocessing as mp
 
-import sys
-cwd = os.path.split(os.path.abspath(__file__))[0]
-sys.path.insert(0, os.path.join(cwd, ".."))
-
 import numpy as np
 import tornado.web
 import tornado.ioloop
