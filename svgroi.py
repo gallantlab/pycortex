@@ -28,8 +28,7 @@ class ROI(traits.HasTraits):
         self.name = xml.getAttribute("inkscape:label")
         self.paths = xml.getElementsByTagName("path")
         pts = [ self._parse_svg_pts(path.getAttribute("d")) for path in self.paths]
-        self.kdt = cKDTree(parent.tcoords)
-        self.coords = [ self.kdt.query(p)[1] for p in pts ]
+        self.coords = [ self.parent.kdt.query(p)[1] for p in pts ]
         self.hide = xml.hasAttribute("style") and "display:none" in xml.attributes['style'].value
 
         self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
@@ -123,6 +122,7 @@ class ROIpack(traits.HasTraits):
         self.tcoords = tcoords
         self.svgfile = svgfile
         self.callback = callback
+        self.kdt = cKDTree(tcoords)
         self.reload()
 
     def reload(self):
@@ -222,6 +222,20 @@ class ROIpack(traits.HasTraits):
     def __getitem__(self, name):
         return self.rois[name]
 
+    def make_text_layer(self):
+        layer = self.svg.createElement("foreignObject")
+        layer.setAttribute("id", "labels")
+        for name, pts in self.get_labelpos().items():
+            for i, pt in enumerate(pts):
+                el = self.svg.createElement("p")
+                el.setAttribute("id", "roi-%s%d"%(name,i))
+                el.setAttribute("class", "roilabel")
+                text = self.svg.createTextNode(name)
+                el.appendChild(text)
+                el.setAttribute("data-ptidx", str(self.kdt.query(pt)[1]))
+                layer.appendChild(el)
+        return layer
+
 ###################################################################################
 # SVG Helper functions
 ###################################################################################
@@ -263,6 +277,9 @@ except ImportError:
         return pts.mean(0)
 
 def _labelpos(pts):
+    if pts.ndim < 3:
+        return _center_pts(pts)
+
     ptm = pts.copy().astype(float)
     ptm -= ptm.mean(0)
     u, s, v = np.linalg.svd(ptm, full_matrices=False)

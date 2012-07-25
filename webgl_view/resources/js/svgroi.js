@@ -4,6 +4,18 @@ function ROIpack(svgdoc, callback) {
     this.svgroi.id = "svgroi";
     //document.getElementById("hiderois").appendChild(this.svgroi);
     this.rois = $(this.svgroi).find("path");
+    var labels = [];
+    $(this.svgroi).find("foreignObject p").each(function() {
+        var name = $(this).text();
+        var el = document.createElement("p");
+        el.setAttribute("data-ptidx", $(this).data("ptidx"));
+        el.className = "roilabel";
+        el.innerHTML = name;
+        labels.push(el);
+    });
+    this.labels = $(labels);
+    this.svgroi.removeChild(this.svgroi.getElementsByTagName("foreignObject")[0]);
+    $("#main").children().first().before(this.labels);
     this._shadowtex = new ShadowTex(
         Math.ceil(this.svgroi.width.baseVal.value), 
         Math.ceil(this.svgroi.height.baseVal.value), 
@@ -59,5 +71,17 @@ ROIpack.prototype = {
                 }.bind(this),
             });
         }
-    }
+    }, 
+    move: function(viewer) {
+        $(this.labels).each(function() {
+            var posdot = viewer.get_pos($(this).data("ptidx"));
+            //var display = posdot[1] > 0 ? 0 : 1;
+            var opacity = Math.max(-posdot[1], 0);
+            $(this).css({
+                left: Math.round(posdot[0][0]),
+                top: Math.round(posdot[0][1]),
+                opacity: 1 - Math.exp(-opacity * 20)
+            })
+        })
+    },
 }

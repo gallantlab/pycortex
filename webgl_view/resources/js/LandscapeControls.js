@@ -2,7 +2,7 @@
  * @author Eberhard Graether / http://egraether.com/
  */
 
-THREE.LandscapeControls = function ( camera, domElement, scene ) {
+THREE.LandscapeControls = function ( scene, camera ) {
 
     THREE.EventTarget.call( this );
 
@@ -16,7 +16,9 @@ THREE.LandscapeControls = function ( camera, domElement, scene ) {
 
     this.keystate = null;
     this.camera = camera;
-    this.domElement = ( domElement !== undefined ) ? domElement : document;
+    this.domElement = document.createElement("div");
+    this.domElement.id = "braincover";
+    $("#main").children().first().before(this.domElement);
     this.scene = scene;
 
     // API
@@ -49,7 +51,6 @@ THREE.LandscapeControls = function ( camera, domElement, scene ) {
         var mouseChange = _end.clone().subSelf(_start);
         this.azlim = flatmix * 180;
         this.altlim = flatmix * 90;
-        this.picker._valid = false;
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
             if (statefunc[_state])
@@ -125,6 +126,7 @@ THREE.LandscapeControls = function ( camera, domElement, scene ) {
     window.addEventListener( 'keydown', keydown.bind(this), false );
     window.addEventListener( 'keyup', keyup.bind(this), false );
 
+    this.resize(window.innerWidth, window.innerHeight);
     this.setCamera();
 
 };
@@ -134,6 +136,13 @@ THREE.LandscapeControls.prototype = {
         if ( typeof this[ event.type ] == 'function' ) {
             this[ event.type ]( event );
         }
+    },
+
+    resize: function(w, h) {
+        this.domElement.style.width = w+"px";
+        this.domElement.style.height = h+"px";
+        if (this.picker !== undefined)
+            this.picker.resize(w, h);
     },
 
     getMouse: function ( event ) {

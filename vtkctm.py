@@ -7,8 +7,7 @@ import tempfile
 import numpy as np
 from scipy.spatial import cKDTree
 
-from utils import get_cortical_mask
-from svgroi import scrub
+from utils import get_cortical_mask, get_roipack
 from db import surfs, filestore
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
@@ -128,7 +127,8 @@ class CTMfile(object):
 
         cont = self.subj.contents
         didx = []
-        for fp, hemi in zip([left, right], [cont.left, cont.right]):
+        ptidx = {}
+        for fp, hemi, name in zip([left, right], [cont.left, cont.right], ["left", "right"]):
             rpts, rpolys = _getmesh(hemi.fiducial, False) #reference
             fpts, fpolys = _getmesh(hemi.flat, False) #flat
             #polygons which need to be removed
@@ -145,6 +145,7 @@ class CTMfile(object):
             dpolys = [polys[tuple(dpoly)] for dpoly in dpolys if tuple(dpoly) in polys]
             didx.append(np.array(sorted(dpolys), dtype=np.uint32))
             fp.seek(0)
+            ptidx[name] = idx, len(rpts)
         
         offsets = []
         path, fname = os.path.split(filename)
@@ -168,24 +169,35 @@ class CTMfile(object):
         auxdat.update(self.auxdat)
 
         json.dump(auxdat, open(os.path.join(path, "%s.json"%fname), "w"))
+        return ptidx
         
 
 def makePack(subj, xfm, types=("inflated",), shape=(31,100,100)):
-    print "Packing up SVG...",
-    sys.stdout.flush()
     fname = "{subj}_{xfm}_[{types}].%s".format(subj=subj,xfm=xfm,types=','.join(types))
-    svgfile = os.path.join(filestore, "overlays", "{subj}_rois.svg".format(subj=subj))
-    svg = scrub(svgfile)
-    with open(os.path.split(svgfile)[1], "w") as svgout:
-        svgout.write(svg.toxml())
-    print "Done"
+    roipack = get_roipack(subj)
 
-    kwargs = dict(rois=os.path.split(svgfile)[1], names=types)
+    kwargs = dict(rois=os.path.split(roipack.svgfile)[1], names=types)
     with CTMfile(subj, xfm, shape=shape, **kwargs) as ctm:
         for t in types:
             ctm.addSurf(t)
 
-        ctm.save(fname%"ctm")
+        ptidx = ctm.save(fname%"ctm")
+
+    print "Packing up SVG...",
+    sys.stdout.flush()
+    with open(os.path.split(roipack.svgfile)[1], "w") as svgout:
+        layer = roipack.make_text_layer()
+        for element in layer.getElementsByTagName("p"):
+            idx = int(element.getAttribute("data-ptidx"))
+            if idx < ptidx['left'][1]:
+                idx = ptidx['left'][0][idx]
+            else:
+                idx -= ptidx['left'][1]
+                idx = ptidx['right'][0][idx] + ptidx['left'][1]
+            element.setAttribute("data-ptidx", str(idx))
+        roipack.svg.getElementsByTagName("svg")[0].appendChild(layer)
+        svgout.write(roipack.svg.toxml())
+    print "Done"
 
 if __name__ == "__main__":
     makePack("AH", "AH_huth2", types=("inflated", "superinflated"), shape=(32,100,100))

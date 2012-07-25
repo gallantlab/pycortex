@@ -185,7 +185,7 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
     argdist.shape = shape
     return dist, argdist
 
-def get_rois(subject):
+def get_roipack(subject):
     import svgroi
     flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
     svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))

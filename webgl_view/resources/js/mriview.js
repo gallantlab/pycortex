@@ -107,10 +107,9 @@ function MRIview() {
     this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight), 0.1, 5000 );
     this.camera.position.set(200, 200, 200);
     this.camera.up.set(0,0,1);
-    $("#brain").css("opacity", 0);
 
     this.scene.add( this.camera );
-    this.controls = new THREE.LandscapeControls( this.camera, $("#brain")[0], this.scene );
+    this.controls = new THREE.LandscapeControls( this.scene, this.camera );
     
     this.light = new THREE.DirectionalLight( 0xffffff );
     this.light.position.set( -200, -200, 1000 ).normalize();
@@ -173,6 +172,8 @@ function MRIview() {
     this.rawshader.map = true;
     this.rawshader.metal = true;
     this.rawshader.needsUpdate = true;
+
+    this.projector = new THREE.Projector();
     
     this._bindUI();
 }
@@ -180,6 +181,8 @@ MRIview.prototype = {
     draw: function () {
         this.controls.update(this.flatmix);
         this.renderer.render( this.scene, this.camera );
+        if (this.roipack)
+            this.roipack.move(this);
         this._scheduled = false;
     },
 
@@ -226,11 +229,11 @@ MRIview.prototype = {
             var names = {left:0, right:1};
 
             $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
-                this.rois = new ROIpack(svgdoc, function(tex) {
+                this.roipack = new ROIpack(svgdoc, function(tex) {
                     this.shader.uniforms.map.texture = tex;
                     this.controls.dispatchEvent({type:"change"});
                 }.bind(this));
-                this.rois.update(this.renderer);
+                this.roipack.update(this.renderer);
             }.bind(this));
             for (var name in names) {
                 var right = names[name];
@@ -260,7 +263,7 @@ MRIview.prototype = {
         var h = height === undefined ? window.innerHeight : height;
         this.renderer.setSize(w, h);
         this.camera.aspect = w / h;
-        this.controls.picker.resize(w, h);
+        this.controls.resize(w, h);
         this.camera.updateProjectionMatrix();
         this.controls.dispatchEvent({type:"change"});
     },
@@ -409,6 +412,68 @@ MRIview.prototype = {
         this.shader.uniforms.vmax.value = vrmax;
         this.controls.dispatchEvent({type:"change"});
     },
+    get_pos: function(idx) {
+        //Returns the 2D screen coordinate of the given point index
+
+        //Which hemi is the point on?
+        var leftlen = this.meshes.left.geometry.attributes.position.array.length / 3;
+        var name = idx < leftlen ? "left" : "right";
+        if (idx >= leftlen)
+            idx -= leftlen;
+        var hemi = this.meshes[name].geometry;
+        var influ = this.meshes[name].morphTargetInfluences;
+
+        var basepos = new THREE.Vector3(
+            hemi.attributes.position.array[idx*3+0],
+            hemi.attributes.position.array[idx*3+1],
+            hemi.attributes.position.array[idx*3+2]
+        );
+        var basenorm = new THREE.Vector3(
+            hemi.attributes.normal.array[idx*3+0],
+            hemi.attributes.normal.array[idx*3+1],
+            hemi.attributes.normal.array[idx*3+2]
+        );
+
+        var isum = 0;
+        var mpos = new THREE.Vector3(0,0,0);
+        var mnorm = new THREE.Vector3(0,0,0);
+        for (var i = 0, il = hemi.morphTargets.length; i < il; i++) {
+            isum += influ[i];
+            var mt = hemi.morphTargets[i];
+            var mn = hemi.morphNormals[i];
+            var pos = new THREE.Vector3(
+                mt.array[mt.stride*idx+0],
+                mt.array[mt.stride*idx+1],
+                mt.array[mt.stride*idx+2]
+            );
+            var norm = new THREE.Vector3(mn[3*idx], mn[3*idx+1], mn[3*idx+2]);
+            pos.multiplyScalar(influ[i]);
+            norm.multiplyScalar(influ[i]);
+            mpos.addSelf(pos);
+            mnorm.addSelf(norm);
+        }
+        
+        var pos = basepos.multiplyScalar(1-isum).addSelf(mpos);
+        var norm = basenorm.multiplyScalar(1-isum).addSelf(mnorm);
+
+        pos = this.meshes[name].matrix.multiplyVector3(pos);
+        pos = this.pivot[name].back.matrix.multiplyVector3(pos);
+        pos = this.pivot[name].front.matrix.multiplyVector3(pos);
+        norm = this.meshes[name].matrix.multiplyVector3(norm);
+        norm = this.pivot[name].back.matrix.multiplyVector3(norm);
+        norm = this.pivot[name].front.matrix.multiplyVector3(norm);
+
+        var cpos = this.camera.position.clone().subSelf(pos).normalize();
+        var dot = norm.subSelf(pos).normalize().dot(cpos);
+
+        var spos = this.projector.projectVector(pos, this.camera);
+        var w = this.renderer.domElement.width;
+        var h = this.renderer.domElement.height;
+        var x = (spos.x + 1) / 2 * w;
+        var y = h - (spos.y + 1) / 2 * h;
+
+        return [[x, y], dot];
+    },
 
     _bindUI: function() {
         $(window).resize(function() { this.resize(); }.bind(this));
@@ -529,8 +594,8 @@ MRIview.prototype = {
         return {mesh:mesh, pivots:pivots};
     }, 
     _updateROIs: function() {
-        this.rois.update(this.renderer);
-    }
+        this.roipack.update(this.renderer);
+    }, 
 }
 
 function Dataset(url, callback) {
@@ -600,8 +665,8 @@ function FacePick(viewer, callback) {
     if (typeof(callback) == "function") {
         this.callback = callback;
     } else {
-        this.callback = function(pos, idx) {
-            console.log(pos, idx);
+        this.callback = function(ptidx, idx) {
+            console.log(ptidx, idx);
         }
     }
 
@@ -696,6 +761,7 @@ FacePick.prototype = {
             this.draw();
         var gl = this.viewer.renderer.context;
         var pix = new Uint8Array(4);
+        var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderbuf.__webglFramebuffer);
         gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
         var faceidx = (pix[0] << 16) + (pix[1] << 8) + pix[2];
@@ -711,21 +777,11 @@ FacePick.prototype = {
 
                     var ptidx = polys[faceidx*3];
                     var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
+                    ptidx += name == "right" ? leftlen : 0;
 
-                    var pts = this.viewer.meshes[name].geometry.attributes.position.array;
-                    var pos = [pts[ptidx*3], pts[ptidx*3+1], pts[ptidx*3+2]];
-
-                    this.callback(pos, dataidx);
+                    this.callback(ptidx, dataidx);
                 }
             }
         } 
-    }
-}
-
-function Cursors() {
-    this.elements = [];
-}
-Cursors.prototype = {
-    create: function(pos, contents) {
     }
 }
