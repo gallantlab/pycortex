@@ -75,6 +75,10 @@ def _getmesh(mesh, free=True):
         lib.meshFree(mesh);
     return pts, polys
 
+compformats = dict(
+    raw=0x201,
+    mg1=0x202,
+    mg2=0x203)
 
 class CTMfile(object):
     def __init__(self, subj, xfmname=None, shape=(31, 100, 100), **kwargs):
@@ -117,10 +121,10 @@ class CTMfile(object):
             fname = self.files.format(subj=self.name, type=surf, hemi=h)
             lib.hemiAddSurf(ctypes.byref(hemi), fname, name)
 
-    def save(self, filename):
+    def save(self, filename, compmeth=compformats['mg2'], complevel=9):
         left = tempfile.NamedTemporaryFile()
         right = tempfile.NamedTemporaryFile()
-        minmax = lib.saveCTM(self.subj, left.name, right.name, 0x203, 9)
+        minmax = lib.saveCTM(self.subj, left.name, right.name, compmeth, complevel)
         flatlims = [tuple(minmax.contents.min), tuple(minmax.contents.max)]
         lib.minmaxFree(minmax)
         print "Save complete! Hunting down deleted polys"

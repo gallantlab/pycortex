@@ -75,8 +75,8 @@ ROIpack.prototype = {
     move: function(viewer) {
         $(this.labels).each(function() {
             var posdot = viewer.get_pos($(this).data("ptidx"));
-            //var display = posdot[1] > 0 ? 0 : 1;
             var opacity = Math.max(-posdot[1], 0);
+            opacity = viewer.flatmix + (1 - viewer.flatmix)*opacity;
             $(this).css({
                 left: Math.round(posdot[0][0]),
                 top: Math.round(posdot[0][1]),

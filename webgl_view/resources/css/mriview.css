@@ -1,0 +1,147 @@
+html { height:100%; }
+body { 
+    background-color:#333; 
+    margin:0px;
+    font-family:helvetica;
+    font-size:10pt;
+    height:100%;
+    min-height:100%;
+    overflow:hidden;
+}
+canvas { display:block; }
+input[type='text'] {
+    border:1px solid #CCC;
+    border-radius:10px / 2px;
+}
+table { cell-spacing:0px; }
+.clear { clear:both; }
+
+#main {
+    margin:0px;
+    min-height:100%;
+    height: auto !important;
+    height:100%;
+}
+#brain {
+    transition: opacity 1s ease;
+    -moz-transition: opacity 1s ease;
+    -webkit-transition:opacity 1s ease;
+    position:absolute;
+    z-index:2;
+    opacity:0;
+}
+#braincover {
+    z-index:8;
+    position:absolute;
+    top:0px;
+    left:0px;
+    opacity:0;
+}
+#hiderois {
+    display:none;
+}
+
+.dd-select { height:30px; }
+.dd-selected-text, .dd-option-text { display:none; }
+.dd-option-image, .dd-selected-image { height:10px; width:256px; max-width:none; }
+
+.content { padding:10px; }
+.infobar {
+    transition: all .3s; 
+    transition-timing-function:ease;
+    transition-delay:1s;
+    -moz-transition: all .3s;
+    -moz-transition-timing-function: ease;
+    -moz-transition-delay:1s;
+    -webkit-transition: all .3s;
+    -webkit-transition-timing-function: ease;
+    -webkit-transition-delay:1s;
+
+    position:relative;
+    z-index:10;
+    background-color:rgba(255,255,255, .2);
+}
+.infobar:hover, .infobar:active {
+    background-color:rgba(255,255,255, .6);
+    transition-delay:.1s;
+    -moz-transition-delay:.1s;
+    -webkit-transition-delay:.1s;
+}
+#topbar { 
+    height:300px; 
+    margin:-290px 50px -10px 50px;      
+    border-radius: 0px 0px 50px 50px / 0px 0px 10px 10px;
+}
+#topbar:hover, #topbar:active { 
+    margin:0px 50px -300px 50px; 
+}
+
+#display_options {
+
+}
+#display_options fieldset {
+    border:1px solid #666;
+    border-radius: 20px 20px 50px 50px / 5px 5px 10px 10px;
+    margin:5px;
+}
+.opt_category {
+    float:left;
+}
+#vminmax > input {float:left; width:36px; }
+#vrange_wrap { float:left; padding:5px 10px;}
+#vrange { width:200px; }
+
+#roi_fieldset {
+    width:200px;
+}
+#roi_fieldset table {
+    width:100%;
+}
+#roi_fieldset table td {
+    text-align:center;
+}
+#roi_fieldset tr:first-child td:first-child { text-align:left; }
+#roi_fieldset table td:first-child {
+    width:40%;
+    min-width:50px;
+}
+#roi_fieldset table td:last-child {
+    width:60%;
+}
+
+
+#bottombar {
+    height:80px;
+    margin-top:-10px;
+    border-radius: 50px 50px 0px 0px / 10px 10px 0px 0px;
+    clear:both;
+}
+#bottombar table {
+    width:100%;
+    padding:4px;
+}
+#bottombar table td:first-child {
+    width:5%;
+    min-width:80px;
+}
+#bottombar:hover, #bottombar:active {
+    margin-top:-80px;
+}
+
+.roilabel {
+    position:absolute;
+    z-index:5;
+    color:white;
+    font-size:16pt;
+    margin:0px;
+    margin-top:-5px;
+    width:100px;
+    margin-left:-50px;
+    text-align:center;
+    text-shadow:0px 0px 8px black;
+    font-style:italic;
+    font-weight:bold;
+    user-select:none;
+    -moz-user-select:none;
+    -webkit-user-select:none;
+}

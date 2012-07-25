@@ -10,68 +10,7 @@ from tornado import websocket
 
 import db
 
-def memoize(func):
-    cache = {}
-    def mfunc(*args):
-        if args not in cache:
-            cache[args] = func(*args)
-        else:
-            print "Found in cache: %r"%(args,)
-        return cache[args]
-    return mfunc
-
-@memoize
-def get_binary_pts(subj, surftype, getPolys=False, compress=True):
-    print "Retrieving suject %r, type %r, polys=%r"%(subj, surftype, getPolys)
-    left, right = db.surfs.getVTK(subj, surftype, hemisphere="both", 
-        merge=False, nudge=surftype != "fiducial")
-    data = ""
-    for pts, polys, norms in left, right:
-        if not getPolys:
-            polys = np.array([])
-        minmax = pts.min(0).tolist() + (pts.max(0) - pts.min(0)).tolist()
-        header = struct.pack('3I6f', compress, len(pts), len(polys), *minmax)
-        if compress:
-            pts -= pts.min(0)
-            pts /= pts.max(0)
-            pts *= np.iinfo(np.uint16).max
-            pts = pts.astype(np.uint16)
-        data += header+pts.tostring()+polys.astype(np.uint32).tostring()
-    return data
-
-class BinarySurface(tornado.web.RequestHandler):
-    def get(self, subj, surftype):
-        self.set_header("Content-Type", "application/octet-stream")
-        self.write(get_binary_pts(subj, surftype, self.get_argument("polys")))
-
-    def post(self, subj, hemi):
-        self.set_header("Content-Type", "application/octet-stream")
-        types = self.get_argument("types").split(",")
-        print "loading %r"%types
-        data = get_binary_pts(subj, tuple(types))
-        self.write(data)
-
-
-def embedData(*args):
-    assert all([len(a) == len(args[0]) for a in args])
-    assert all([a.dtype == args[0].dtype for a in args])
-    shape = (np.ceil(len(args[0]) / 256.), 256)
-    outstr = "";
-    for data in args:
-        if (data.dtype == np.uint8):
-            mm = 0,0
-            outmap = np.zeros((np.prod(shape), 4), dtype=np.uint8)
-            outmap[:,-1] = 255
-            outmap[:len(data),:data.shape[1]] = data
-        else:
-            outmap = np.zeros(shape, dtype=np.float32)
-            mm = data.min(), data.max()
-            outmap.ravel()[:len(data)] = (data - data.min()) / (data.max() - data.min())
-
-        outstr += struct.pack('2f', mm[0], mm[1])+outmap.tostring()
-        
-    return struct.pack('3I', len(args), shape[1], shape[0])+outstr
-
+msgid = ["raw", "__call__"]
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self, path):
@@ -87,28 +26,31 @@ class MainHandler(tornado.web.RequestHandler):
             self.write_error(404)
 
 class ClientSocket(websocket.WebSocketHandler):
-    def initialize(self, sockets):
-        self.sockets = sockets
+    def initialize(self, parent):
+        self.parent = parent
 
     def open(self):
-        self.sockets.append(self)
+        self.parent.sockets.append(self)
         print "WebSocket opened"
 
     def on_close(self):
         print "WebSocket closed"
-        self.sockets.remove(self)
+        self.parent.sockets.remove(self)
 
+    def on_message(self, message):
+        self.parent._pipe.send(message)
 
 class WebApp(mp.Process):
-    def __init__(self, port):
+    def __init__(self,  port):
         super(WebApp, self).__init__()
         self._pipe, self.pipe = os.pipe()
+        self._clients, self.clients = mp.Pipe()
         self.port = port
 
     def run(self):
         self.sockets = []
         application = tornado.web.Application([
-            (r"/wsconnect/", ClientSocket, dict(sockets=self.sockets)),
+            (r"/wsconnect/", ClientSocket, dict(parent=self)),
             (r"/(.*)", MainHandler),
         ], gzip=True)
         application.listen(self.port)
@@ -130,6 +72,34 @@ class WebApp(mp.Process):
             msg = json.dumps(msg)
 
         os.write(self.pipe, struct.pack('I', len(msg))+msg)
+
+    def get_client(self):
+        msg = self.clients.recv()
+        return JSProxy(self, json.loads(msg))
+
+class JSProxy(object):
+    def __init__(self, server, methods):
+        self.server = server
+        self.methods = dict([(name, FuncProxy(server.send, name)) for name in methods])
+    
+    def __getattr__(self, attr):
+        return self.methods[attr]
+
+    def run(self, jseval):
+        msgtype = dict([(m, i) for i, m in enumerate(msgid)])
+        msg = struct.pack('I', msgtype['raw'])+jseval
+        self.server.send(msg)
+
+class FuncProxy(object):
+    def __init__(self, _send, _recv, name):
+        self._send = _send
+        self.name = name
+
+    def __call__(self, *args):
+        msgtype = dict([(m, i) for i, m in enumerate(msgid)])
+        jsdat = json.dumps(dict(name=name, args=args))
+        msg = struct.pack('I', msgtype['__call__'])+jsdat
+        self._send(msg)
 
 if __name__ == "__main__":
     proc = WebApp(8888)
