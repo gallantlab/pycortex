@@ -2,15 +2,14 @@ var flatscale = .4;
 
 var vShadeHead = [
     "attribute vec2 datamap;",
-    "uniform sampler2D data;",
-    "uniform sampler2D data2;",
+    "uniform sampler2D data[4];",
     "uniform vec2 datasize;",
 
     "uniform sampler2D colormap;",
-    "uniform float vmin;",
-    "uniform float vmax;",
-    "uniform float vmin2;",
-    "uniform float vmax2;",
+    "uniform float vmin[2];",
+    "uniform float vmax[2];",
+
+    "uniform float framemix;",
 
     "varying vec3 vViewPosition;",
     "varying vec3 vNormal;",
@@ -46,20 +45,34 @@ var vShadeTail = [ "",
 ].join("\n");
 
 var cmapShader = vShadeHead + ([ 
-        "float vdata = texture2D(data, dcoord).r;",
-        "float vdata2 = texture2D(data2, dcoord).r;",
-        "float vnorm = (vdata - vmin) / (vmax - vmin);",
-        "float vnorm2 = (vdata2 - vmin2) / (vmax2 - vmin2);",
-        "vColor = texture2D(colormap, vec2(clamp(vnorm, 0., .999), clamp(vnorm2, 0., .999) ));",
+        "float vdata[4];",
+        "vdata[0] = texture2D(data[0], dcoord).r;",
+        "vdata[1] = texture2D(data[1], dcoord).r;",
+        "vdata[2] = texture2D(data[2], dcoord).r;",
+        "vdata[3] = texture2D(data[3], dcoord).r;",
+
+        "float vnorm[4];",
+        "vnorm[0] = (vdata[0] - vmin[0]) / (vmax[0] - vmin[0]);",
+        "vnorm[1] = (vdata[1] - vmin[1]) / (vmax[1] - vmin[1]);",
+        "vnorm[2] = (vdata[2] - vmin[0]) / (vmax[0] - vmin[0]);",
+        "vnorm[3] = (vdata[3] - vmin[1]) / (vmax[1] - vmin[1]);",
+
+        "vec2 cuv0 = vec2(clamp(vnorm[0], 0., .999), clamp(vnorm[1], 0., .999) );",
+        "vec2 cuv1 = vec2(clamp(vnorm[2], 0., .999), clamp(vnorm[3], 0., .999) );",
+
+        "vColor  = (1. - framemix) * texture2D(colormap, cuv0);",
+        "vColor +=       framemix  * texture2D(colormap, cuv1);",
 ].join("\n")) + vShadeTail;
 
-var rawShader = vShadeHead + "vColor = texture2D(data, dcoord);" + vShadeTail;
+var rawShader = vShadeHead + ([
+        "vColor  = (1. - framemix) * texture2D(data[0], dcoord);",
+        "vColor +=       framemix  * texture2D(data[2], dcoord);",
+].join("\n")) + vShadeTail;
 
 var fragmentShader = [
+    "uniform sampler2D hatch;",
 
     "uniform vec3 diffuse;",
-    "uniform float opacity;",
-
     "uniform vec3 ambient;",
     "uniform vec3 emissive;",
     "uniform vec3 specular;",
@@ -133,15 +146,17 @@ function MRIview() {
             emissive:   { type:'v3', value:new THREE.Vector3( 0,0,0 )},
             shininess:  { type:'f', value:200},
 
-            map:        { type:'t', value:0, texture: null },
-            colormap:   { type:'t', value:1, texture: null },
-            data:       { type:'t', value:2, texture: null },
-            data2:      { type:'t', value:3, texture: null },
+            framemix:   { type:'f',  value:0},
             datasize:   { type:'v2', value:new THREE.Vector2(256, 0)},
             offsetRepeat:{ type: "v4", value: new THREE.Vector4( 0, 0, 1, 1 ) },
 
-            vmin:{ type:'f', value: 0},
-            vmax:{ type:'f', value: 1},
+            map:        { type:'t',  value:0, texture: null },
+            hatch:      { type:'t',  value:1, texture: null },
+            colormap:   { type:'t',  value:2, texture: null },
+            data:       { type:'tv', value:3, texture: [null, null, null, null] },
+
+            vmin:       { type:'fv', value: [0,0]},
+            vmax:       { type:'fv', value: [1,1]},
         }
     ])
 
@@ -365,7 +380,7 @@ MRIview.prototype = {
                 this.meshes.right.material = this.cmapshader;
             }
         }
-        this.shader.uniforms.data.texture = dataset.textures[0];
+        this.shader.uniforms.data.texture[0] = dataset.textures[0];
         this.shader.uniforms.datasize.value = dataset.shape;
         this.dataset = dataset;
         this.setVminmax(0, 1);
