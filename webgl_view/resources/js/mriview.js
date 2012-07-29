@@ -149,6 +149,7 @@ function MRIview() {
             framemix:   { type:'f',  value:0},
             datasize:   { type:'v2', value:new THREE.Vector2(256, 0)},
             offsetRepeat:{ type: "v4", value: new THREE.Vector4( 0, 0, 1, 1 ) },
+            hatchrep:   { type:'v2', value: new THREE.Vector4(270, 100) },
 
             map:        { type:'t',  value:0, texture: null },
             hatch:      { type:'t',  value:1, texture: null },
@@ -189,6 +190,7 @@ function MRIview() {
     this.rawshader.needsUpdate = true;
 
     this.projector = new THREE.Projector();
+    this._startplay = null;
     
     this._bindUI();
 }
@@ -646,7 +648,7 @@ Dataset.prototype.parse = function (data) {
         nnum += 2;
 
         raw = minmax[0] == 0 && minmax[1] == 0
-
+        
         if (raw) {
             dtex = new Uint8Array(data, nnum*4, shape[0]*shape[1]*4);
             tex = new THREE.DataTexture(dtex, shape[0], shape[1], THREE.RGBAformat, THREE.UnsignedByteType);
