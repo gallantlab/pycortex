@@ -182,11 +182,16 @@ THREE.LandscapeControls.prototype = {
     rotate: function ( mouseChange ) {
         var azdiff = -this.rotateSpeed*mouseChange.x;
         var az = this.azimuth + azdiff;
-        if ( this.azlim > az || az > (360-this.azlim)) {
-            this.azimuth = azdiff < 0 ? this.azlim : 360-this.azlim;
+        if ( this.azlim > 0 ) {
+            if ( this.azlim > az || az > (360-this.azlim)) {
+                this.azimuth = azdiff < 0 ? this.azlim : 360-this.azlim;
+            } else {
+                this.azimuth = az - 360*Math.floor(az / 360);
+            }
         } else {
             this.azimuth = az - 360*Math.floor(az / 360);
         }
+
 
         this.altitude -= this.rotateSpeed*mouseChange.y;
     }, 
