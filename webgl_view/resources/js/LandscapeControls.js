@@ -110,6 +110,18 @@ THREE.LandscapeControls = function ( scene, camera ) {
         _state = STATE.NONE;
     };
 
+    function mousewheel( event ) {
+        if ( ! this.enabled ) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        this.wheelzoom( event );
+        this.setCamera();
+        this.dispatchEvent( changeEvent );
+
+    };
+
     function click( event ) {
         var mouse2D = this.getMouse(event).clone();
         if (this.picker !== undefined)
@@ -121,6 +133,7 @@ THREE.LandscapeControls = function ( scene, camera ) {
     this.domElement.addEventListener( 'mousemove', mousemove.bind(this), false );
     this.domElement.addEventListener( 'mousedown', mousedown.bind(this), false );
     this.domElement.addEventListener( 'mouseup', mouseup.bind(this), false );
+    this.domElement.addEventListener( 'mousewheel', mousewheel.bind(this), false);
     this.domElement.addEventListener( 'click', click.bind(this), false );
 
     window.addEventListener( 'keydown', keydown.bind(this), false );
@@ -209,6 +222,11 @@ THREE.LandscapeControls.prototype = {
 
     zoom: function( mouseChange ) {
         var factor = 1.0 + mouseChange.y*this.zoomSpeed;
+        this.radius *= factor;
+    },
+    
+    wheelzoom: function( wheelEvent ) {
+        var factor = 1.0 + this.zoomSpeed * -1 * wheelEvent.wheelDelta/10.0;
         this.radius *= factor;
     }
 
