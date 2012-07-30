@@ -134,6 +134,7 @@ THREE.LandscapeControls = function ( scene, camera ) {
     this.domElement.addEventListener( 'mousedown', mousedown.bind(this), false );
     this.domElement.addEventListener( 'mouseup', mouseup.bind(this), false );
     this.domElement.addEventListener( 'mousewheel', mousewheel.bind(this), false);
+    this.domElement.addEventListener( 'mouseout', mouseup.bind(this), false );
     this.domElement.addEventListener( 'click', click.bind(this), false );
 
     window.addEventListener( 'keydown', keydown.bind(this), false );
