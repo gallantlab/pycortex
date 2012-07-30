@@ -28,6 +28,7 @@ THREE.LandscapeControls = function ( scene, camera ) {
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
     this.panSpeed = 0.3;
+    this.clickTimeout = 120; // milliseconds
 
     // Picker
     this.projector = new THREE.Projector();
@@ -42,6 +43,8 @@ THREE.LandscapeControls = function ( scene, camera ) {
     var _state = STATE.NONE,
         _start = new THREE.Vector3(),
         _end = new THREE.Vector3();
+
+    var _mousedowntime = 0;
 
     // events
 
@@ -87,6 +90,7 @@ THREE.LandscapeControls = function ( scene, camera ) {
         if ( _state === STATE.NONE ) {
             _state = this.keystate ? this.keystate : event.button;
             _start = _end = this.getMouse(event);
+            _mousedowntime = new Date().getTime();
         }
     };
 
@@ -108,6 +112,13 @@ THREE.LandscapeControls = function ( scene, camera ) {
         event.stopPropagation();
 
         _state = STATE.NONE;
+
+        // Run picker if time since mousedown is short enough
+        if ( new Date().getTime() - _mousedowntime < this.clickTimeout ) {
+            var mouse2D = this.getMouse(event).clone();
+            if (this.picker !== undefined)
+                this.picker.pick(mouse2D.x, mouse2D.y);
+        }
     };
 
     function mousewheel( event ) {
@@ -122,12 +133,6 @@ THREE.LandscapeControls = function ( scene, camera ) {
 
     };
 
-    function click( event ) {
-        var mouse2D = this.getMouse(event).clone();
-        if (this.picker !== undefined)
-            this.picker.pick(mouse2D.x, mouse2D.y);
-    };
-
     this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
 
     this.domElement.addEventListener( 'mousemove', mousemove.bind(this), false );
@@ -135,7 +140,6 @@ THREE.LandscapeControls = function ( scene, camera ) {
     this.domElement.addEventListener( 'mouseup', mouseup.bind(this), false );
     this.domElement.addEventListener( 'mousewheel', mousewheel.bind(this), false);
     this.domElement.addEventListener( 'mouseout', mouseup.bind(this), false );
-    this.domElement.addEventListener( 'click', click.bind(this), false );
 
     window.addEventListener( 'keydown', keydown.bind(this), false );
     window.addEventListener( 'keyup', keyup.bind(this), false );
