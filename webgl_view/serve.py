@@ -104,11 +104,11 @@ class WebApp(mp.Process):
         if not isinstance(msg, (str, unicode)):
             msg = json.dumps(msg, cls=NPEncode)
 
-        os.write(self.pipe, struct.pack('I', len(msg))+msg)
-        return json.loads(self.response.recv())
+        os.write(self.pipe, struct.pack('I', len(msg))+msg)        
+        return [json.loads(self.response.recv()) for _ in range(self.clients.value)]
 
     def get_client(self):
-        self.c_evt.wait(10)
+        self.c_evt.wait()
         self.c_evt.clear()
         return JSProxy(self.send)
 

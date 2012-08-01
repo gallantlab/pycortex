@@ -1,7 +1,3 @@
-function test_NParray(data) {
-    console.log(data);
-}
-
 function Websock() {
     this.ws = new WebSocket("ws://"+location.host+"/wsconnect/");
     this.ws.onopen = function(evt) {
@@ -12,7 +8,7 @@ function Websock() {
         var func = this[jsdat.method];
         var resp = func.apply(this, jsdat.params);
         //Don't return jquery objects, 
-        if (resp && resp.constructor && resp.constructor === $) {
+        if (resp instanceof $) {
             this.ws.send(JSON.Stringify(null));
         } else {
             this.ws.send(JSON.stringify(resp))
@@ -90,17 +86,17 @@ NParray.fromJSON = function(json) {
         charview[i] = str.charCodeAt(i - start);
     }
 
-    return new NParray(data);
+    return new NParray(data, json.dtype, json.shape);
 }
 NParray.prototype.view = function() {
     if (arguments.length == 1 && this.shape.length > 1) {
+        var slice = arguments[0];
         var shape = this.shape.slice(1);
         var size = shape[0];
         for (var i = 1, il = shape.length; i < il; i++) {
             size *= shape[i];
         }
-
-        return new NParray(this.data.subarray(i*size, (i+1)*size), this.dtype, shape);
+        return new NParray(this.data.subarray(slice*size, (slice+1)*size), this.dtype, shape);
     } else {
         throw "Can only slice in first dimension for now"
     }
@@ -110,9 +106,10 @@ NParray.prototype.minmax = function() {
     var max = -min;
 
     for (var i = 0, il = this.data.length; i < il; i++) {
-        if (min < this.data[i]) {
+        if (this.data[i] < min) {
             min = this.data[i];
-        } else if (max > this.data[i]) {
+        }
+        if (this.data[i] > max) {
             max = this.data[i];
         }
     }

@@ -44,21 +44,19 @@ var vShadeTail = [ "",
 
 ].join("\n");
 
-var cmapShader = vShadeHead + ([ 
-        "float vdata[4];",
-        "vdata[0] = texture2D(data[0], dcoord).r;",
-        "vdata[1] = texture2D(data[1], dcoord).r;",
-        "vdata[2] = texture2D(data[2], dcoord).r;",
-        "vdata[3] = texture2D(data[3], dcoord).r;",
+var cmapShader = vShadeHead + ([
+        "float vdata0 = texture2D(data[0], dcoord).r;",
+        "float vdata1 = texture2D(data[1], dcoord).r;",
+        "float vdata2 = texture2D(data[2], dcoord).r;",
+        "float vdata3 = texture2D(data[3], dcoord).r;",
 
-        "float vnorm[4];",
-        "vnorm[0] = (vdata[0] - vmin[0]) / (vmax[0] - vmin[0]);",
-        "vnorm[1] = (vdata[1] - vmin[1]) / (vmax[1] - vmin[1]);",
-        "vnorm[2] = (vdata[2] - vmin[0]) / (vmax[0] - vmin[0]);",
-        "vnorm[3] = (vdata[3] - vmin[1]) / (vmax[1] - vmin[1]);",
+        "float vnorm0 = (vdata0 - vmin[0]) / (vmax[0] - vmin[0]);",
+        "float vnorm1 = (vdata1 - vmin[1]) / (vmax[1] - vmin[1]);",
+        "float vnorm2 = (vdata2 - vmin[0]) / (vmax[0] - vmin[0]);",
+        "float vnorm3 = (vdata3 - vmin[1]) / (vmax[1] - vmin[1]);",
 
-        "vec2 cuv0 = vec2(clamp(vnorm[0], 0., .999), clamp(vnorm[1], 0., .999) );",
-        "vec2 cuv1 = vec2(clamp(vnorm[2], 0., .999), clamp(vnorm[3], 0., .999) );",
+        "vec2 cuv0 = vec2(clamp(vnorm0, 0., .999), clamp(vnorm1, 0., .999) );",
+        "vec2 cuv1 = vec2(clamp(vnorm2, 0., .999), clamp(vnorm3, 0., .999) );",
 
         "vColor  = (1. - framemix) * texture2D(colormap, cuv0);",
         "vColor +=       framemix  * texture2D(colormap, cuv1);",
@@ -137,6 +135,7 @@ function MRIview() {
     });
     this.renderer.setClearColorHex( 0x0, 1 );
     this.renderer.setSize( window.innerWidth,window.innerHeight);
+    this.state = "pause";
 
     var uniforms = THREE.UniformsUtils.merge( [
         THREE.UniformsLib[ "lights" ],
@@ -144,20 +143,20 @@ function MRIview() {
             diffuse:    { type:'v3', value:new THREE.Vector3( 1,1,1 )},
             specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
             emissive:   { type:'v3', value:new THREE.Vector3( 0,0,0 )},
-            shininess:  { type:'f', value:200},
+            shininess:  { type:'f',  value:200},
 
             framemix:   { type:'f',  value:0},
             datasize:   { type:'v2', value:new THREE.Vector2(256, 0)},
-            offsetRepeat:{ type: "v4", value: new THREE.Vector4( 0, 0, 1, 1 ) },
-            hatchrep:   { type:'v2', value: new THREE.Vector4(270, 100) },
+            offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
+            hatchrep:   { type:'v2', value:new THREE.Vector4(270, 100) },
 
             map:        { type:'t',  value:0, texture: null },
             hatch:      { type:'t',  value:1, texture: null },
             colormap:   { type:'t',  value:2, texture: null },
             data:       { type:'tv', value:3, texture: [null, null, null, null] },
 
-            vmin:       { type:'fv', value: [0,0]},
-            vmax:       { type:'fv', value: [1,1]},
+            vmin:       { type:'fv1',value:[0,0]},
+            vmax:       { type:'fv1',value:[1,1]},
         }
     ])
 
@@ -200,10 +199,15 @@ MRIview.prototype = {
         this.renderer.render( this.scene, this.camera );
         if (this.roipack)
             this.roipack.move(this);
+        if (this.state == "play") {
+            var sec = ((new Date()) - this._startplay) / 1000;
+            this.setFrame(sec % this.dataset.textures.length);
+            requestAnimationFrame(this.draw.bind(this));
+        }
         this._scheduled = false;
     },
 
-    load: function(subj) {
+    load: function(ctminfo) {
         if (this.meshes) {
             for (var hemi in this.meshes) {
                 this.scene.remove(this.meshes[hemi]);
@@ -214,8 +218,6 @@ MRIview.prototype = {
         
         var loader = new THREE.CTMLoader(true);
         $("#threeDview").append(loader.statusDomElement);
-        var ctminfo = "resources/ctm/AH_AH_huth2_[inflated,superinflated].json";
-
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
             var rawdata = new Uint32Array(header.length / 4);
             var charview = new Uint8Array(rawdata.buffer);
@@ -266,7 +268,7 @@ MRIview.prototype = {
             }
             this.controls.picker = new FacePick(this);
             this.controls.addEventListener("change", function() {
-                if (!this._scheduled) {
+                if (!this._scheduled && this.state == "pause") {
                     this._scheduled = true;
                     requestAnimationFrame( this.draw.bind(this) );
                 }
@@ -369,6 +371,9 @@ MRIview.prototype = {
         this.controls.dispatchEvent({type:"change"});
     },
     setData: function(dataset) {
+        if (!(dataset instanceof Dataset))
+            dataset = new Dataset(dataset);
+
         if (dataset.raw) {
             this.shader = this.rawshader;
             if (this.meshes && this.meshes.left) {
@@ -382,52 +387,59 @@ MRIview.prototype = {
                 this.meshes.right.material = this.cmapshader;
             }
         }
-        this.shader.uniforms.data.texture[0] = dataset.textures[0];
-        this.shader.uniforms.datasize.value = dataset.shape;
+        this.shader.uniforms.datasize.value = dataset.datasize;
         this.dataset = dataset;
-        this.setVminmax(0, 1);
+        if (dataset.textures.length > 1) {
+            this.setFrame(0);
+            $("#moviecontrols").show();
+            $("#bottombar").addClass(".bbar_controls");
+        } else {
+            this.shader.uniforms.data.texture[0] = dataset.textures[0];
+            $("#moviecontrols").hide();
+            $("#bottombar").removeClass(".bbar_controls");
+        }
+        $("#vrange").slider("option", {min: dataset.min, max:dataset.max});
+        this.setVminmax(dataset.min, dataset.max);
         this.controls.dispatchEvent({type:"change"});
     },
 
     setColormap: function(cmap) {
-        cmap.needsUpdate = true;
-        cmap.flipY = false;
-        this.shader.uniforms.colormap.texture = cmap;
+        var tex = new THREE.Texture(cmap);
+        tex.needsUpdate = true;
+        tex.flipY = false;
+        this.shader.uniforms.colormap.texture = tex;
         this.controls.dispatchEvent({type:"change"});
     },
 
-    setVminmax: function(vrmin, vrmax) {
-        var amin = this.dataset.minmax[0];
-        var amax = this.dataset.minmax[1];
-
-        var vmin = (vrmin * (amax - amin)) + amin;
-        var vmax = (vrmax * (amax - amin)) + amin;
-
+    setVminmax: function(vmin, vmax) {
+        this.shader.uniforms.vmin.value[0] = vmin;
+        this.shader.uniforms.vmax.value[0] = vmax;
+        if (vmax > $("#vrange").slider("option", "max")) {
+            $("#vrange").slider("option", "max", vmin);
+        } else if (vmin < $("#vrange").slider("option", "min")) {
+            $("#vrange").slider("option", "min", vmax);
+        }
+        $("#vrange").slider("option", "values", [vmin, vmax]);
         $("#vmin").val(vmin);
         $("#vmax").val(vmax);
 
-        this.shader.uniforms.vmin.value = vrmin;
-        this.shader.uniforms.vmax.value = vrmax;
         this.controls.dispatchEvent({type:"change"});
     },
 
-    setVrange: function(vmin, vmax) {
-        var amin = this.dataset.minmax[0];
-        var amax = this.dataset.minmax[1];
-
-        var vrmax = (vmax - amin) / (amax - amin);
-        var vrmin = (vmin - amin) / (amax - amin);
-
-        if (vrmax > 1) {
-            $("#vrange").slider("option", "max", vrmax);
-        }
-        if (vrmin < 0) {
-            $("#vrange").slider("option", "min", vrmin);
-        }
-        $("#vrange").slider("option", "values", [vrmin, vrmax]);
-        this.shader.uniforms.vmin.value = vrmin;
-        this.shader.uniforms.vmax.value = vrmax;
+    setFrame: function(frame) {
+        this.shader.uniforms.data.texture[0] = this.dataset.textures[Math.floor(frame)];
+        this.shader.uniforms.data.texture[2] = this.dataset.textures[Math.floor(frame)+1];
+        this.shader.uniforms.framemix.value = frame - Math.floor(frame);
         this.controls.dispatchEvent({type:"change"});
+    },
+    playpause: function() {
+        if (this.state == "pause") {
+            this._startplay = new Date();
+            this.controls.dispatchEvent({type:"change"});
+            this.state = "play";
+        } else {
+            this.state = "pause";
+        }
     },
     get_pos: function(idx) {
         //Returns the 2D screen coordinate of the given point index
@@ -507,8 +519,8 @@ MRIview.prototype = {
             range:true, width:200, min:0, max:1, step:.001, values:[0,1],
             slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1]); }.bind(this)
         });
-        $("#vmin").change(function() { this.setVrange($("#vmin").val(), $("#vmax").val()); }.bind(this));
-        $("#vmax").change(function() { this.setVrange($("#vmin").val(), $("#vmax").val()); }.bind(this));
+        $("#vmin").change(function() { this.setVminmax(parseInt($("#vmin").val()), parseInt($("#vmax").val())); }.bind(this));
+        $("#vmax").change(function() { this.setVminmax(parseInt($("#vmin").val()), parseInt($("#vmax").val())); }.bind(this));
         $("#roi_linewidth").slider({
             min:.5, max:10, step:.1, value:3,
             change: this._updateROIs.bind(this),
@@ -544,11 +556,11 @@ MRIview.prototype = {
         $("#colormap").ddslick({ width:296, height:400, 
             onSelected: function() { 
                 setTimeout(function() {
-                    this.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
+                    this.setColormap($("#colormap .dd-selected-image")[0]);
                 }.bind(this), 5);
             }.bind(this)
         });
-        this.setColormap(new THREE.Texture($("#colormap .dd-selected-image")[0]));
+        this.setColormap($("#colormap .dd-selected-image")[0]);
     },
 
     _makeFlat: function(geom, polyfilt, right) {
@@ -615,63 +627,48 @@ MRIview.prototype = {
     }, 
 }
 
-function Dataset(url, callback) {
-    this.textures = [];
-    this.minmax = null;
-    this.raw = false;
-
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-
-    var _this = this;
-    xhr.onload = function(e) {
-        if (this.status == 200) {
-            _this.parse(this.response);
-            if (typeof(callback) == "function")
-                callback(_this);
-        } else {
-            console.log(this.status);
-        }
-    };
-    xhr.send();
-}
-Dataset.prototype.parse = function (data) {
-    var minmax, shape, dtex, tex, nnum = 3, raw = false;
-
-    this.length = (new Uint32Array(data, 0, 1))[0];
-    this.minmax = new Float32Array(this.length*2);
-    shape = new Uint32Array(data, 4, 2);
-
-    for (var i = 0; i < this.length; i++) {
-        minmax = new Float32Array(data, nnum*4, 2);
-        nnum += 2;
-
-        raw = minmax[0] == 0 && minmax[1] == 0
-        
-        if (raw) {
-            dtex = new Uint8Array(data, nnum*4, shape[0]*shape[1]*4);
-            tex = new THREE.DataTexture(dtex, shape[0], shape[1], THREE.RGBAformat, THREE.UnsignedByteType);
-        } else {
-            dtex = new Float32Array(data, nnum*4, shape[0]*shape[1]);
-            tex = new THREE.DataTexture(dtex, shape[0], shape[1], THREE.LuminanceFormat, THREE.FloatType);
-        } 
-        nnum += shape[0]*shape[1];
-
-        tex.needsUpdate = true;
-        tex.flipY = false;
-        tex.minFilter = THREE.NearestFilter;
-        tex.maxFilter = THREE.NearestFilter;
-        this.textures.push(tex);
-        this.minmax[i*2] = minmax[0];
-        this.minmax[i*2+1] = minmax[1];
+function Dataset(nparray) {
+    if (!(nparray instanceof NParray)) {
+        nparray = NParray.fromJSON(nparray);
     }
-    //Assume the dataset is sanitized, and the shapes are equal
-    this.shape = new THREE.Vector2(shape[0], shape[1]);
-    this.raw = raw;
+    this.array = nparray;
+    this.raw = nparray.data instanceof Uint8Array && nparray.shape.length > 1;
+    this.textures = [];
 
-    if (this.length != this.textures.length)
-        throw "Invalid dataset";
+    if ((this.raw && nparray.shape.length > 2) || (!this.raw && nparray.shape.length > 1)) {
+        //Movie
+        this.datasize = new THREE.Vector2(256, Math.ceil(nparray.shape[1] / 256));
+        for (var i = 0; i < nparray.shape[0]; i++) {
+            this.textures.push(Dataset.maketex(nparray, [this.datasize.x, this.datasize.y], this.raw, i));
+        }
+    } else {
+        //Single frame
+        this.datasize = new THREE.Vector2(256, Math.ceil(nparray.shape[0] / 256));
+        this.textures.push(Dataset.maketex(nparray, [this.datasize.x, this.datasize.y], this.raw));
+    }
+    var minmax = nparray.minmax();
+    this.min = minmax[0];
+    this.max = minmax[1];
+}
+Dataset.maketex = function(array, shape, raw, slice) {
+    var tex, data, form;
+    var arr = slice === undefined ? array : array.view(slice);
+    var size = array.shape[array.shape.length-1];
+    var len = shape[0] * shape[1] * (raw ? size : 1);
+    
+    data = new array.data.constructor(len);
+    data.set(arr.data);
+    if (raw) {
+        form = size == 4 ? THREE.RGBAFormat : THREE.RGBFormat;
+        tex = new THREE.DataTexture(data, shape[0], shape[1], form, THREE.UnsignedByteType);
+    } else {
+        tex = new THREE.DataTexture(data, shape[0], shape[1], THREE.LuminanceFormat, THREE.FloatType);
+    }
+    tex.needsUpdate = true;
+    tex.flipY = false;
+    tex.minFilter = THREE.NearestFilter;
+    tex.magFilter = THREE.NearestFilter;
+    return tex;
 }
 
 function FacePick(viewer, callback) {

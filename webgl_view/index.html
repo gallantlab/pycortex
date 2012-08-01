@@ -48,8 +48,10 @@
 	$(document).ready(function() {
 		toggleFullScreen();
 		viewer = new MRIview();
-        viewer.load(); 
-        dataset = new Dataset("mapdat_raw.bin", viewer.setData.bind(viewer));
+        viewer.load("resources/ctm/AH_AH_huth2_[inflated,superinflated].json"); 
+        $.get("timecourse.json", null, function(resp) {
+			viewer.setData(resp);
+		});
 	})
 </script>
 </head>
@@ -263,7 +265,13 @@
 <div id='bottombar' class='infobar'>
 	<div class='content'>
 		<div id='moviecontrols'>
-
+			<table id='movieui'>
+				<tr>
+					<td><input type='text' id='movieframe' /></td>
+					<td id='movieprogress'><div></div></td>
+					<td id='moviecontrol'><div></div></td>
+				</tr>
+			</table>
 		</div>
 		<table>
 			<tr>
