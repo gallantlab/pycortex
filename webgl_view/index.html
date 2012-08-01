@@ -60,10 +60,6 @@
 		<form id='display_options'>
 			<fieldset class='opt_category'>
 				<legend>Colormap</legend>
-				<div id='vminmax'>
-					<input type='text' id='vmin' /><div id='vrange_wrap'><div id='vrange'></div></div><input type='text' id='vmax' />
-					<div class='clear'></div>
-				</div>
 				<select id='colormap'>
 					<option data-imagesrc='resources/colormaps/Accent.png'>Accent</option>
 					<option data-imagesrc='resources/colormaps/Accent_r.png'>Accent_r</option>
@@ -204,6 +200,10 @@
 					<option data-imagesrc='resources/colormaps/winter.png'>winter</option>
 					<option data-imagesrc='resources/colormaps/winter_r.png'>winter_r</option>
 				</select>
+				<div id='vminmax'>
+					<input type='text' id='vmin' /><div id='vrange_wrap'><div id='vrange'></div></div><input type='text' id='vmax' />
+					<div class='clear'></div>
+				</div>
 			</fieldset>
 			<fieldset id="roi_fieldset" class='opt_category'>
 				<legend>ROIs</legend>

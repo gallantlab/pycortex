@@ -62,6 +62,7 @@ table { cell-spacing:0px; }
     position:relative;
     z-index:10;
     background-color:rgba(255,255,255, .2);
+    box-shadow:0px 0px 10px black;
 }
 .infobar:hover, .infobar:active {
     background-color:rgba(255,255,255, .6);
