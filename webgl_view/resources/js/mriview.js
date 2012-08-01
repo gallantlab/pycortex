@@ -24,6 +24,8 @@ var vShadeHead = [
         "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
 
         THREE.ShaderChunk[ "map_vertex" ],
+
+        "float mix = smoothstep(0.,1.,framemix);",
         
         "vec2 dcoord = (2.*datamap+1.) / (2.*datasize);",
         "",
@@ -115,7 +117,7 @@ function MRIview() {
     // scene and camera
     this.scene = new THREE.Scene();
 
-    this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight), 0.1, 5000 );
+    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 0.1, 5000 );
     this.camera.position.set(200, 200, 200);
     this.camera.up.set(0,0,1);
 
@@ -134,7 +136,7 @@ function MRIview() {
         canvas:$("#brain")[0] 
     });
     this.renderer.setClearColorHex( 0x0, 1 );
-    this.renderer.setSize( window.innerWidth,window.innerHeight);
+    this.renderer.setSize( $("#brain").width(), $("#brain").height() );
     this.state = "pause";
 
     var uniforms = THREE.UniformsUtils.merge( [
@@ -216,8 +218,7 @@ MRIview.prototype = {
             delete this.meshes;
         }
         
-        var loader = new THREE.CTMLoader(true);
-        $("#threeDview").append(loader.statusDomElement);
+        var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
             var rawdata = new Uint32Array(header.length / 4);
             var charview = new Uint8Array(rawdata.buffer);
@@ -278,8 +279,8 @@ MRIview.prototype = {
         }.bind(this), true, true );
     },
     resize: function(width, height) {
-        var w = width === undefined ? window.innerWidth : width;
-        var h = height === undefined ? window.innerHeight : height;
+        var w = width === undefined ? $("#brain").width()  : width;
+        var h = height === undefined ? $("#brain").height()  : height;
         this.renderer.setSize(w, h);
         this.camera.aspect = w / h;
         this.controls.resize(w, h);
@@ -310,6 +311,7 @@ MRIview.prototype = {
         this.controls.target.set(xoff, this.flatoff[1], zoff);
         this.controls.set(180, 90, h);
         this.setMix(1);
+        this.setShift(0);
     },
     saveflat: function(height) {
         var flatasp = this.flatlims[1][0] / this.flatlims[1][1];
@@ -343,8 +345,9 @@ MRIview.prototype = {
         this.setPivot(this.flatmix*180);
         this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
         this.lastn2 = n2;
-        this.controls.setCamera(this.flatmix);
         $("#mix").slider("value", val);
+        this.controls.update(this.flatmix);
+        this.controls.setCamera();
         this.controls.dispatchEvent({type:"change"});
     }, 
     setPivot: function (val) {
@@ -361,6 +364,11 @@ MRIview.prototype = {
                 this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
             }
         }
+        this.controls.dispatchEvent({type:"change"});
+    },
+    setShift: function(val) {
+        this.pivot.left.front.position.x = -val;
+        this.pivot.right.front.position.x = val;
         this.controls.dispatchEvent({type:"change"});
     },
     setPoly: function(polyvar) {
@@ -392,11 +400,12 @@ MRIview.prototype = {
         if (dataset.textures.length > 1) {
             this.setFrame(0);
             $("#moviecontrols").show();
-            $("#bottombar").addClass(".bbar_controls");
+            $("#bottombar").addClass("bbar_controls");
+            $("#movieprogress div").slider("option", {min:0, max:this.dataset.textures.length});
         } else {
             this.shader.uniforms.data.texture[0] = dataset.textures[0];
             $("#moviecontrols").hide();
-            $("#bottombar").removeClass(".bbar_controls");
+            $("#bottombar").removeClass("bbar_controls");
         }
         $("#vrange").slider("option", {min: dataset.min, max:dataset.max});
         this.setVminmax(dataset.min, dataset.max);
@@ -415,11 +424,11 @@ MRIview.prototype = {
         this.shader.uniforms.vmin.value[0] = vmin;
         this.shader.uniforms.vmax.value[0] = vmax;
         if (vmax > $("#vrange").slider("option", "max")) {
-            $("#vrange").slider("option", "max", vmin);
+            $("#vrange").slider("option", "max", vmax);
         } else if (vmin < $("#vrange").slider("option", "min")) {
-            $("#vrange").slider("option", "min", vmax);
+            $("#vrange").slider("option", "min", vmin);
         }
-        $("#vrange").slider("option", "values", [vmin, vmax]);
+        $("#vrange").slider("values", [vmin, vmax]);
         $("#vmin").val(vmin);
         $("#vmax").val(vmax);
 
@@ -427,18 +436,23 @@ MRIview.prototype = {
     },
 
     setFrame: function(frame) {
+        this.frame = frame;
         this.shader.uniforms.data.texture[0] = this.dataset.textures[Math.floor(frame)];
         this.shader.uniforms.data.texture[2] = this.dataset.textures[Math.floor(frame)+1];
         this.shader.uniforms.framemix.value = frame - Math.floor(frame);
+        $("#movieprogress div").slider("value", frame);
+        $("#movieframe").val(frame);
         this.controls.dispatchEvent({type:"change"});
     },
     playpause: function() {
         if (this.state == "pause") {
-            this._startplay = new Date();
+            this._startplay = (new Date()) - this.frame * 1000;
             this.controls.dispatchEvent({type:"change"});
             this.state = "play";
+            $("#moviecontrols img").attr("src", "resources/images/control-pause.png");
         } else {
             this.state = "pause";
+            $("#moviecontrols img").attr("src", "resources/images/control-play.png");
         }
     },
     get_pos: function(idx) {
@@ -506,6 +520,11 @@ MRIview.prototype = {
 
     _bindUI: function() {
         $(window).resize(function() { this.resize(); }.bind(this));
+        $("#brain").resize(function() { this.resize(); }.bind(this));
+        window.addEventListener( 'keypress', function(e) {
+            if (e.keyCode == 32 && this.dataset.textures.length > 1)
+                this.playpause();
+        }.bind(this))
         var _this = this;
         $("#mix").slider({
             min:0, max:1, step:.001,
@@ -515,6 +534,12 @@ MRIview.prototype = {
             min:-180, max:180, step:.01,
             slide: function(event, ui) { this.setPivot(ui.value); }.bind(this)
         });
+
+        $("#shifthemis").slider({
+            min:0, max:100, step:.01,
+            slide: function(event, ui) { this.setShift(ui.value); }.bind(this)
+        });
+
         $("#vrange").slider({ 
             range:true, width:200, min:0, max:1, step:.001, values:[0,1],
             slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1]); }.bind(this)
@@ -561,6 +586,16 @@ MRIview.prototype = {
             }.bind(this)
         });
         this.setColormap($("#colormap .dd-selected-image")[0]);
+
+        $("#moviecontrol").click(this.playpause.bind(this));
+
+        $("#movieprogress div").slider({min:0, max:1, step:.01,
+            slide: function(event, ui) { 
+                this.setFrame(ui.value); 
+            }.bind(this)
+        })
+
+        $("#movieframe").change(function() { _this.setFrame(this.value); });
     },
 
     _makeFlat: function(geom, polyfilt, right) {
@@ -625,6 +660,73 @@ MRIview.prototype = {
     _updateROIs: function() {
         this.roipack.update(this.renderer);
     }, 
+}
+
+var dtypeMap = {
+    "uint32":Uint32Array,
+    "uint16":Uint16Array,
+    "uint8":Uint8Array,
+    "int32":Int32Array,
+    "int16":Int16Array,
+    "int8":Int8Array,
+    "float32":Float32Array,
+}
+function NParray(data, dtype, shape) {
+    this.data = data;
+    this.shape = shape;
+    this.dtype = dtype;
+    this.size = this.data.length;
+}
+NParray.fromJSON = function(json) {
+    var size = json.shape.length ? json.shape[0] : 0;
+    for (var i = 1, il = json.shape.length; i < il; i++) {
+        size *= json.shape[i];
+    }
+    var pad = 0;
+    if (json.pad) {
+        size += json.pad;
+        pad = json.pad;
+    }
+
+    var data = new (dtypeMap[json.dtype])(size);
+    var charview = new Uint8Array(data.buffer);
+    var bytes = charview.length / data.length;
+    
+    var str = atob(json.data.slice(0,-1));
+    var start = pad*bytes, stop  = size*bytes - start;
+    for ( var i = start, il = Math.min(stop, str.length); i < il; i++ ) {
+        charview[i] = str.charCodeAt(i - start);
+    }
+
+    return new NParray(data, json.dtype, json.shape);
+}
+NParray.prototype.view = function() {
+    if (arguments.length == 1 && this.shape.length > 1) {
+        var slice = arguments[0];
+        var shape = this.shape.slice(1);
+        var size = shape[0];
+        for (var i = 1, il = shape.length; i < il; i++) {
+            size *= shape[i];
+        }
+        return new NParray(this.data.subarray(slice*size, (slice+1)*size), this.dtype, shape);
+    } else {
+        throw "Can only slice in first dimension for now"
+    }
+}
+NParray.prototype.minmax = function() {
+    var min = Math.pow(2, 32);
+    var max = -min;
+
+    for (var i = 0, il = this.data.length; i < il; i++) {
+        if (this.data[i] < min) {
+            min = this.data[i];
+        }
+        if (this.data[i] > max) {
+            max = this.data[i];
+        }
+    }
+
+    return [min, max];
 }
 
 function Dataset(nparray) {
@@ -692,14 +794,14 @@ function FacePick(viewer, callback) {
         morphTargets:true
     });
 
-    this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / (window.innerHeight), 0.1, 5000 )
+    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 0.1, 5000 )
     this.camera.position = this.viewer.camera.position;
     this.camera.up.set(0,0,1);
     this.scene.add(this.camera);
-    this.renderbuf = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+    this.renderbuf = new THREE.WebGLRenderTarget($("#brain").width(), $("#brain").height(), {
         minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter
     })
-    this.height = window.innerHeight;
+    this.height = $("#brain").height();
 
     var nface, nfaces = 0;
     for (var name in this.viewer.meshes) {

@@ -144,7 +144,7 @@ THREE.LandscapeControls = function ( scene, camera ) {
     window.addEventListener( 'keydown', keydown.bind(this), false );
     window.addEventListener( 'keyup', keyup.bind(this), false );
 
-    this.resize(window.innerWidth, window.innerHeight);
+    this.resize($("#brain").width(), $("#brain").height() );
     this.setCamera();
 
 };

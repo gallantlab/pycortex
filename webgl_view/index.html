@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <link rel="stylesheet" href="resources/css/ui-lightness/jquery-ui-1.8.21.custom.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/jquery.miniColors.css" type='text/css' />
-<link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
 <script type='text/javascript' src='resources/js/jquery-1.7.2.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery-ui-1.8.21.custom.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
@@ -22,7 +21,7 @@
 <script type='text/javascript' src="js/loaders/ctm/lzma.js"></script>
 <script type='text/javascript' src="js/loaders/ctm/ctm.js"></script>
 <script type='text/javascript' src="js/loaders/ctm/CTMLoader.js"></script>
-
+<link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
 <script type='text/javascript'>
 	function toggleFullScreen() {
 	  if ((document.fullScreenElement && document.fullScreenElement !== null) ||    // alternative standard method
@@ -49,7 +48,7 @@
 		toggleFullScreen();
 		viewer = new MRIview();
         viewer.load("resources/ctm/AH_AH_huth2_[inflated,superinflated].json"); 
-        $.get("timecourse.json", null, function(resp) {
+        $.get("rawdat.json", null, function(resp) {
 			viewer.setData(resp);
 		});
 	})
@@ -269,7 +268,7 @@
 				<tr>
 					<td><input type='text' id='movieframe' /></td>
 					<td id='movieprogress'><div></div></td>
-					<td id='moviecontrol'><div></div></td>
+					<td id='moviecontrol'><img src='resources/images/control-play.png' /></td>
 				</tr>
 			</table>
 		</div>
