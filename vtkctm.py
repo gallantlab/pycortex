@@ -81,8 +81,7 @@ compformats = dict(
     mg2=0x203)
 
 class CTMfile(object):
-    def __init__(self, subj, xfmname=None, shape=(31, 100, 100), **kwargs):
-        self.shape = shape
+    def __init__(self, subj, xfmname=None, **kwargs):
         self.name = subj
         self.xfmname = xfmname
         self.files = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
@@ -105,13 +104,13 @@ class CTMfile(object):
     @property
     def maps(self):
         indices = []
-        mask = get_cortical_mask(self.name, self.xfmname, shape=self.shape)
+        mask = get_cortical_mask(self.name, self.xfmname)
         imask = mask.astype(np.uint32)
         imask[imask > 0] = np.arange(mask[mask > 0].sum())
 
         left, right = surfs.getCoords(self.name, self.xfmname)
         for coords in (left, right):
-            idx = np.ravel_multi_index(coords.T, self.shape[::-1])
+            idx = np.ravel_multi_index(coords.T, mask.shape[::-1])
             indices.append(imask.T.ravel()[idx])
         return indices
 
@@ -121,10 +120,10 @@ class CTMfile(object):
             fname = self.files.format(subj=self.name, type=surf, hemi=h)
             lib.hemiAddSurf(ctypes.byref(hemi), fname, name)
 
-    def save(self, filename, compmeth=compformats['mg2'], complevel=9):
+    def save(self, filename, compmeth='mg2', complevel=9):
         left = tempfile.NamedTemporaryFile()
         right = tempfile.NamedTemporaryFile()
-        minmax = lib.saveCTM(self.subj, left.name, right.name, compmeth, complevel)
+        minmax = lib.saveCTM(self.subj, left.name, right.name, compformats[compmeth], complevel)
         flatlims = [tuple(minmax.contents.min), tuple(minmax.contents.max)]
         lib.minmaxFree(minmax)
         print "Save complete! Hunting down deleted polys"
@@ -176,20 +175,28 @@ class CTMfile(object):
         return ptidx
         
 
-def makePack(subj, xfm, types=("inflated",), shape=(31,100,100)):
-    fname = "{subj}_{xfm}_[{types}].%s".format(subj=subj,xfm=xfm,types=','.join(types))
-    roipack = get_roipack(subj)
+def get_pack(subj, xfm, types=("inflated",), method='mg1', level=1):
+    ctmcache = os.path.join(filestore, "ctmcache")
+    fname = os.path.join(ctmcache, "{subj}_{xfm}_[{types}]_{meth}_{lvl}.%s".format(
+        subj=subj, xfm=xfm, types=','.join(types), 
+        meth=method, lvl=level))
 
-    kwargs = dict(rois=os.path.split(roipack.svgfile)[1], names=types)
-    with CTMfile(subj, xfm, shape=shape, **kwargs) as ctm:
+    if os.path.exists(fname%"json"):
+        return fname%"json"
+
+    print "No ctm found in cache, generating..."
+    svgname = fname%"svg"
+    kwargs = dict(rois=svgname, names=types)
+    with CTMfile(subj, xfm, **kwargs) as ctm:
         for t in types:
             ctm.addSurf(t)
 
-        ptidx = ctm.save(fname%"ctm")
+        ptidx = ctm.save(fname%"ctm", compmeth=method, complevel=level)
 
     print "Packing up SVG...",
     sys.stdout.flush()
-    with open(os.path.split(roipack.svgfile)[1], "w") as svgout:
+    roipack = get_roipack(subj)
+    with open(svgname, "w") as svgout:
         layer = roipack.make_text_layer()
         for element in layer.getElementsByTagName("p"):
             idx = int(element.getAttribute("data-ptidx"))
@@ -203,5 +210,7 @@ def makePack(subj, xfm, types=("inflated",), shape=(31,100,100)):
         svgout.write(roipack.svg.toxml())
     print "Done"
 
+    return fname%"json"
+
 if __name__ == "__main__":
-    makePack("AH", "AH_huth2", types=("inflated", "superinflated"), shape=(32,100,100))
+    print get_pack("AH", "AH_huth2", types=("inflated", "superinflated"))

@@ -141,7 +141,9 @@ def epi_to_anat(data, subject=None, xfmname=None, filename=None):
     os.unlink(xfmfile)
     return output
 
-def get_cortical_mask(subject, xfmname, shape=(31, 100, 100)):
+def get_cortical_mask(subject, xfmname):
+    import nibabel
+    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
     data = np.zeros(shape, dtype=bool)
     coords = np.vstack(surfs.getCoords(subject, xfmname))
     pts, polys, norms = surfs.getVTK(subject, "flat", merge=True)

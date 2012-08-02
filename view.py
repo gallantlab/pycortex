@@ -5,6 +5,7 @@ import glob
 import cPickle
 import numpy as np
 from scipy.interpolate import interp1d
+from webgl_view import show as webshow
 
 import db
 

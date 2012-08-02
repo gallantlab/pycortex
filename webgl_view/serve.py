@@ -12,6 +12,8 @@ from tornado import websocket
 
 import db
 
+cwd = os.path.split(os.path.abspath(__file__))[0]
+
 dtypemap = {
     np.float: "float32",
     np.int: "int32",
@@ -41,14 +43,15 @@ class NPEncode(json.JSONEncoder):
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self, path):
+        fpath = os.path.join(cwd, path)
         if path == '':
-            self.write(open("index.html").read())
-        elif os.path.isfile(path):
-            mtype = mimetypes.guess_type(path)[0]
+            self.write(open(os.path.join(cwd, "index.html")).read())
+        elif os.path.isfile(fpath):
+            mtype = mimetypes.guess_type(fpath)[0]
             if mtype is None:
                 mtype = "application/octet-stream"
             self.set_header("Content-Type", mtype)
-            self.write(open(path).read())
+            self.write(open(fpath).read())
         else:
             self.write_error(404)
 
@@ -72,8 +75,12 @@ class ClientSocket(websocket.WebSocketHandler):
             self.parent._response.send(message)
 
 class WebApp(mp.Process):
-    def __init__(self,  port):
+    def __init__(self, handlers, port):
         super(WebApp, self).__init__()
+        self.handlers = handlers + [
+            (r"/wsconnect/", ClientSocket, dict(parent=self)),
+            (r"/(.*)", MainHandler),
+        ]
         self._pipe, self.pipe = os.pipe()
         self._response, self.response = mp.Pipe()
         self.port = port
@@ -82,10 +89,7 @@ class WebApp(mp.Process):
 
     def run(self):
         self.sockets = []
-        application = tornado.web.Application([
-            (r"/wsconnect/", ClientSocket, dict(parent=self)),
-            (r"/(.*)", MainHandler),
-        ], gzip=True)
+        application = tornado.web.Application(self.handlers, gzip=True)
         application.listen(self.port)
         self.ioloop = tornado.ioloop.IOLoop.instance()
         self.ioloop.add_handler(self._pipe, self._send, self.ioloop.READ)
@@ -113,10 +117,10 @@ class WebApp(mp.Process):
         return JSProxy(self.send)
 
 class JSProxy(object):
-    def __init__(self, sendfunc, name = "window"):
+    def __init__(self, sendfunc, name="window"):
         self.send = sendfunc
         self.name = name
-        self.attrs = set(self.send(method='query', params=[name]))
+        self.attrs = set(self.send(method='query', params=[name])[0])
     
     def __getattr__(self, attr):
         assert attr in self.attrs
@@ -130,7 +134,7 @@ class JSProxy(object):
 
     def __call__(self, *args):
         resp = self.send(method='run', params=[self.name, args])
-        if isinstance(resp, dict) and "error" in resp:
+        if isinstance(resp[0], dict) and "error" in resp:
             raise Exception(resp['error'])
         else:
             return resp
@@ -138,12 +142,7 @@ class JSProxy(object):
     def __getitem__(self, idx):
         assert not isinstance(idx, (slice, list, tuple, np.ndarray))
         resp = self.send(method='index', params=[self.name, args])
-        if isinstance(resp, dict) and "error" in resp:
+        if isinstance(resp[0], dict) and "error" in resp:
             raise Exception(resp['error'])
         else:
-            return resp        
-
-if __name__ == "__main__":
-    server = WebApp(8888)
-    server.start()
-    window = server.get_client()
+            return resp 

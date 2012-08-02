@@ -57,11 +57,12 @@ var cmapShader = vShadeHead + ([
         "float vnorm2 = (vdata2 - vmin[0]) / (vmax[0] - vmin[0]);",
         "float vnorm3 = (vdata3 - vmin[1]) / (vmax[1] - vmin[1]);",
 
-        "vec2 cuv0 = vec2(clamp(vnorm0, 0., .999), clamp(vnorm1, 0., .999) );",
-        "vec2 cuv1 = vec2(clamp(vnorm2, 0., .999), clamp(vnorm3, 0., .999) );",
+        "float fnorm0 = (1. - framemix) * vnorm0 + framemix * vnorm2;",
+        "float fnorm1 = (1. - framemix) * vnorm1 + framemix * vnorm3;",
 
-        "vColor  = (1. - framemix) * texture2D(colormap, cuv0);",
-        "vColor +=       framemix  * texture2D(colormap, cuv1);",
+        "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
+
+        "vColor  = texture2D(colormap, cuv);",
 ].join("\n")) + vShadeTail;
 
 var rawShader = vShadeHead + ([
@@ -218,7 +219,7 @@ MRIview.prototype = {
             delete this.meshes;
         }
         
-        var loader = new THREE.CTMLoader(false);
+        var loader = new THREE.CTMLoader();
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
             var rawdata = new Uint32Array(header.length / 4);
             var charview = new Uint8Array(rawdata.buffer);
@@ -540,12 +541,23 @@ MRIview.prototype = {
             slide: function(event, ui) { this.setShift(ui.value); }.bind(this)
         });
 
-        $("#vrange").slider({ 
-            range:true, width:200, min:0, max:1, step:.001, values:[0,1],
-            slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1]); }.bind(this)
-        });
-        $("#vmin").change(function() { this.setVminmax(parseInt($("#vmin").val()), parseInt($("#vmax").val())); }.bind(this));
-        $("#vmax").change(function() { this.setVminmax(parseInt($("#vmin").val()), parseInt($("#vmax").val())); }.bind(this));
+        if ($("#color_fieldset").length > 0) {
+            $("#colormap").ddslick({ width:296, height:400, 
+                onSelected: function() { 
+                    setTimeout(function() {
+                        this.setColormap($("#colormap .dd-selected-image")[0]);
+                    }.bind(this), 5);
+                }.bind(this)
+            });
+            this.setColormap($("#colormap .dd-selected-image")[0]);
+            $("#vrange").slider({ 
+                range:true, width:200, min:0, max:1, step:.001, values:[0,1],
+                slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1]); }.bind(this)
+            });
+            $("#vmin").change(function() { this.setVminmax(parseInt($("#vmin").val()), parseInt($("#vmax").val())); }.bind(this));
+            $("#vmax").change(function() { this.setVminmax(parseInt($("#vmin").val()), parseInt($("#vmax").val())); }.bind(this));
+        }
+
         $("#roi_linewidth").slider({
             min:.5, max:10, step:.1, value:3,
             change: this._updateROIs.bind(this),
@@ -578,14 +590,10 @@ MRIview.prototype = {
             }
         })
 
-        $("#colormap").ddslick({ width:296, height:400, 
-            onSelected: function() { 
-                setTimeout(function() {
-                    this.setColormap($("#colormap .dd-selected-image")[0]);
-                }.bind(this), 5);
-            }.bind(this)
-        });
-        this.setColormap($("#colormap .dd-selected-image")[0]);
+        $("#labelshow").change(function() {
+            this.roipack.labels.toggle();
+        }.bind(this));
+
 
         $("#moviecontrol").click(this.playpause.bind(this));
 
