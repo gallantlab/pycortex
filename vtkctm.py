@@ -165,7 +165,7 @@ class CTMfile(object):
             fp.write(right.read())
 
         auxdat = dict(
-            data=filename,
+            data=os.path.split(filename)[1],
             offsets=offsets,
             materials=[],
             flatlims=flatlims)
@@ -186,7 +186,7 @@ def get_pack(subj, xfm, types=("inflated",), method='mg1', level=1):
 
     print "No ctm found in cache, generating..."
     svgname = fname%"svg"
-    kwargs = dict(rois=svgname, names=types)
+    kwargs = dict(rois=os.path.split(svgname)[1], names=types)
     with CTMfile(subj, xfm, **kwargs) as ctm:
         for t in types:
             ctm.addSurf(t)

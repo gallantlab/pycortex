@@ -1,4 +1,6 @@
+import os
 import random
+import mimetypes
 import webbrowser
 import tornado.web
 import numpy as np
@@ -61,13 +63,21 @@ def show(data, subject, xfmname, types=("inflated",)):
             self.c_evt.wait()
             self.c_evt.clear()
             return JSMixer(self.send, "window.viewer")
-
+    
     class CTMHandler(tornado.web.RequestHandler):
-        def get(self):
-            self.set_header("Content-Type", "application/octet-stream")
-            self.write(open(ctm).read())
+        def get(self, path):
+            fpath = os.path.split(ctm)[0]
+            if path == '':
+                self.set_header("Content-Type", "application/json")
+                self.write(open(ctm).read())
+            else:
+                mtype = mimetypes.guess_type(os.path.join(fpath, path))[0]
+                if mtype is None:
+                    mtype = "application/octet-stream"
+                self.set_header("Content-Type", mtype)
+                self.write(open(os.path.join(fpath, path)).read())
 
-    server = WebApp([(r'/ctm/', CTMHandler)], random.randint(1024, 65536))
+    server = WebApp([(r'/ctm/(.*)', CTMHandler)], random.randint(1024, 65536))
     server.start()
     webbrowser.open("http://localhost:%d/mixer.html"%server.port)
     client = server.get_client()
