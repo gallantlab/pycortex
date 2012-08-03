@@ -3,6 +3,7 @@ import json
 import random
 import mimetypes
 import webbrowser
+import multiprocessing as mp
 import numpy as np
 
 from tornado import web, template
@@ -64,6 +65,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False):
     ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)
     mask = utils.get_cortical_mask(subject, xfmname)
     jsondat = json.dumps(_normalize_data(data, mask), cls=serve.NPEncode)
+    savesvg = mp.Array('c', 8192)
 
     class CTMHandler(web.RequestHandler):
         def get(self, path):
@@ -83,10 +85,20 @@ def show(data, subject, xfmname, types=("inflated",), recache=False):
             self.set_header("Content-Type", "text/html")
             self.write(html.generate(data=jsondat))
 
+        def post(self):
+            print "saving file to %s"%savesvg.value
+            with open(savesvg.value, "w") as svgfile:
+                svgfile.write(self.get_argument("svg"))
+
     class JSMixer(serve.JSProxy):
         def addData(self, **kwargs):
-            Proxy = serve.JSProxy(self.send, "window.viewer.setData")
-            return Proxy(_normalize_data(data, mask))
+            Proxy = serve.JSProxy(self.send, "window.viewer.addData")
+            return Proxy(_normalize_data(kwargs, mask))
+
+        def saveflat(self, filename, height=1024):
+            Proxy = serve.JSProxy(self.send, "window.viewer.saveflat")
+            savesvg.value = filename
+            return Proxy(height, "mixer.html")
 
     class WebApp(serve.WebApp):
         def get_client(self):

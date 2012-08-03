@@ -144,7 +144,7 @@ class JSProxy(object):
     def __call__(self, *args):
         resp = self.send(method='run', params=[self.name, args])
         if isinstance(resp[0], dict) and "error" in resp:
-            raise Exception(resp['error'])
+            raise Exception(resp[0]['error'])
         else:
             return resp
 
@@ -152,6 +152,6 @@ class JSProxy(object):
         assert not isinstance(idx, (slice, list, tuple, np.ndarray))
         resp = self.send(method='index', params=[self.name, args])
         if isinstance(resp[0], dict) and "error" in resp:
-            raise Exception(resp['error'])
+            raise Exception(resp[0]['error'])
         else:
             return resp 

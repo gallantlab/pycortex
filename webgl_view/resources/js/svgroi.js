@@ -16,11 +16,9 @@ function ROIpack(svgdoc, callback) {
     this.labels = $(labels);
     this.svgroi.removeChild(this.svgroi.getElementsByTagName("foreignObject")[0]);
     $("#main").children().first().before(this.labels);
-    this._shadowtex = new ShadowTex(
-        Math.ceil(this.svgroi.width.baseVal.value), 
-        Math.ceil(this.svgroi.height.baseVal.value), 
-        4
-    );
+    this.width = this.svgroi.width.baseVal.value;
+    this.height = this.svgroi.height.baseVal.value;
+    this._shadowtex = new ShadowTex(Math.ceil(this.width), Math.ceil(this.height), 4);
 }
 ROIpack.prototype = {
     update: function(renderer) {
@@ -84,4 +82,64 @@ ROIpack.prototype = {
             })
         })
     },
+    saveSVG: function(png, posturl) {
+        var svgdoc = this.svgroi.parentNode;
+        var newsvg = svgdoc.implementation.createDocument(svgdoc.namespaceURI, null, null);
+        var svg = newsvg.importNode(svgdoc.documentElement, true);
+        newsvg.appendChild(svg);
+
+        var img = newsvg.createElement("image");
+        img.setAttribute("id", "flatdata");   
+        img.setAttribute("x", "0");
+        img.setAttribute("y", "0");
+        img.setAttribute("height", this.height);
+        img.setAttribute("width", this.width);
+        img.setAttribute("xlink:href", png);
+        var gi = newsvg.createElement("g");
+        gi.setAttribute("id", 'dataimg');
+        gi.setAttribute("style", "display:inline;");
+        gi.setAttribute("inkscape:label", "dataimg")
+        gi.setAttribute("inkscape:groupmode", "layer")
+        gi.appendChild(img);
+        $(svg).find("#roilayer").before(gi);
+
+        var gt = newsvg.createElement("g");
+        gt.setAttribute("id", 'roilabels');
+        gt.setAttribute("style", "display:inline;");
+        gt.setAttribute("inkscape:label", "roilabels")
+        gt.setAttribute("inkscape:groupmode", "layer")
+        $(svg).find("#roilayer").after(gt);
+
+        var h = this.height, w = this.width;
+        var luv = viewer.meshes.left.geometry.attributes.uv.array;
+        var llen = luv.length / 2;
+        var ruv = viewer.meshes.right.geometry.attributes.uv.array;
+        this.labels.each(function() {
+            if ($(this).data("ptidx") >= llen) {
+                var uv = ruv;
+                var ptidx = $(this).data("ptidx") - llen;
+            } else {
+                var uv = luv;
+                var ptidx = $(this).data("ptidx");
+            }
+            var text = newsvg.createElement("text");
+            text.setAttribute("x", uv[ptidx*2]*w);
+            text.setAttribute("y", (1-uv[ptidx*2+1])*h);
+            text.setAttribute('font-size', '24');
+            text.setAttribute('font-family', 'helvetica');
+            text.setAttribute("style", "text-anchor:middle;");
+            text.appendChild(newsvg.createTextNode(this.innerText));
+            gt.appendChild(text);
+        })
+
+        var svgxml = (new XMLSerializer()).serializeToString(newsvg);
+        if (posturl == undefined) {
+            var anchor = document.createElement("a"); 
+            anchor.href = "data:image/svg+xml;utf8,"+svgxml;
+            anchor.download = "flatmap.svg";
+            anchor.click()
+        } else {
+            $.post(posturl, {svg: svgxml});
+        }
+    }
 }

@@ -291,16 +291,22 @@ MRIview.prototype = {
         this.camera.updateProjectionMatrix();
         this.controls.dispatchEvent({type:"change"});
     },
-    screenshot: function(width, height, callback) {
-        $("#brain").css("opacity", 0);
+    screenshot: function(width, height, pre, post) {
+        $("#main").css("opacity", 0);
         setTimeout(function() {
-            if (typeof(callback) == "function")
-                callback();
+            if (typeof(pre) == "function")
+                pre();
             this.resize(width, height);
             this.draw();
-            window.location.href = $("#brain")[0].toDataURL().replace('image/png', 'image/octet-stream');
+            var png = $("#brain")[0].toDataURL();
             this.resize();
-            $("#brain").css("opacity", 1);
+            
+            if (typeof(post) == "function")
+                post(png);
+            else
+                window.location.href = png.replace("image/png", "application/octet-stream");
+            $("#main").css("opacity", 1);
+            console.log("I die here");
         }.bind(this), 1000);
     },
     reset_view: function(center, height) {
@@ -317,11 +323,19 @@ MRIview.prototype = {
         this.setMix(1);
         this.setShift(0);
     },
-    saveflat: function(height) {
+    saveflat: function(height, posturl) {
         var flatasp = this.flatlims[1][0] / this.flatlims[1][1];
         var width = height * flatasp;
+        var roistate = $("#roishow").attr("checked");
         this.screenshot(width, height, function() { 
             this.reset_view(false, height); 
+            $("#roishow").attr("checked", false);
+            $("#roishow").change();
+        }.bind(this), function(png) {
+            $("#roishow").attr("checked", roistate);
+            $("#roishow").change();
+            this.controls.target.set(0,0,0);
+            this.roipack.saveSVG(png, posturl);
         }.bind(this));
     }, 
     setMix: function(val) {
@@ -429,9 +443,21 @@ MRIview.prototype = {
     },
 
     setColormap: function(cmap) {
-        var tex = new THREE.Texture(cmap);
+        var tex;
+        if (cmap instanceof Image || cmap instanceof Element)
+            tex = new THREE.Texture(cmap);
+        else if (cmap instanceof NParray) {
+            var ncolors = cmap.shape[cmap.shape.length-1];
+            if (ncolors != 3 && ncolors != 4)
+                throw "Invalid colormap shape"
+            var height = cmap.shape.length > 2 ? cmap.shape[1] : 1;
+            tex = new THREE.DataTexture(cmap.data, cmap.shape[0], height);
+        }
         tex.needsUpdate = true;
         tex.flipY = false;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        this.colormap = tex;
         this.shader.uniforms.colormap.texture = tex;
         this.controls.dispatchEvent({type:"change"});
     },
@@ -621,7 +647,7 @@ MRIview.prototype = {
         $("#movieframe").change(function() { _this.setFrame(this.value); });
 
         $("#datasets").change(function(e) {
-            var max = _this.colormap.texture.height > 1 ? 2 : 1;
+            var max = _this.colormap.height > 1 ? 2 : 1;
 
             if ($(this).val().length > max) {
                 $(this).val($(this).data("lastvalid"));
@@ -629,7 +655,7 @@ MRIview.prototype = {
                 $(this).data("lastvalid", $(this).val());
                 var selected = $(this).val();
                 for (var i = 0; i < selected.length; i++) {
-                    this.setData(selected[i], i);
+                    _this.setData(selected[i], i);
                 }
             }
         })
