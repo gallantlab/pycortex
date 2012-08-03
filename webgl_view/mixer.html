@@ -23,11 +23,15 @@
 <script type='text/javascript' src="js/loaders/ctm/CTMLoader.js"></script>
 <link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
 <script type='text/javascript'>
+	var initial_data = {{ data }};
+
 	var viewer, sock;
 	$(document).ready(function() {
 		viewer = new MRIview();
 		sock = new Websock();
-	})
+		viewer.load("/ctm/");
+		viewer.setData(initial_data);
+	});
 </script>
 </head>
 <body>
@@ -80,7 +84,7 @@
 					<option data-imagesrc='resources/colormaps/Purples.png'>Purples</option>
 					<option data-imagesrc='resources/colormaps/Purples_r.png'>Purples_r</option>
 					<option data-imagesrc='resources/colormaps/RdBu.png'>RdBu</option>
-					<option data-imagesrc='resources/colormaps/RdBu_r.png'>RdBu_r</option>
+					<option data-imagesrc='resources/colormaps/RdBu_r.png' selected='selected'>RdBu_r</option>
 					<option data-imagesrc='resources/colormaps/RdGy.png'>RdGy</option>
 					<option data-imagesrc='resources/colormaps/RdGy_r.png'>RdGy_r</option>
 					<option data-imagesrc='resources/colormaps/RdPu.png'>RdPu</option>
@@ -149,7 +153,7 @@
 					<option data-imagesrc='resources/colormaps/gnuplot_r.png'>gnuplot_r</option>
 					<option data-imagesrc='resources/colormaps/gray.png'>gray</option>
 					<option data-imagesrc='resources/colormaps/gray_r.png'>gray_r</option>
-					<option data-imagesrc='resources/colormaps/hot.png' selected='selected'>hot</option>
+					<option data-imagesrc='resources/colormaps/hot.png'>hot</option>
 					<option data-imagesrc='resources/colormaps/hot_r.png'>hot_r</option>
 					<option data-imagesrc='resources/colormaps/hsv.png'>hsv</option>
 					<option data-imagesrc='resources/colormaps/hsv_r.png'>hsv_r</option>

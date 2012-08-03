@@ -1,6 +1,7 @@
 import os
 import json
 import struct
+import socket
 import binascii
 import mimetypes
 import multiprocessing as mp
@@ -13,6 +14,7 @@ from tornado import websocket
 import db
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
+hostname = socket.gethostname()
 
 dtypemap = {
     np.float: "float32",
@@ -66,6 +68,9 @@ class ClientSocket(websocket.WebSocketHandler):
     def on_close(self):
         print "WebSocket closed"
         self.parent.sockets.remove(self)
+        self.parent.clients.value -= 1
+        if self.parent.clients.value == 0:
+            self.parent.stop()
 
     def on_message(self, message):
         if (message == "connect"):
@@ -94,6 +99,10 @@ class WebApp(mp.Process):
         self.ioloop = tornado.ioloop.IOLoop.instance()
         self.ioloop.add_handler(self._pipe, self._send, self.ioloop.READ)
         self.ioloop.start()
+
+    def stop(self):
+        print "Stopping server"
+        self.ioloop.stop()
 
     def _send(self, fd, event):
         nbytes, = struct.unpack('I', os.read(fd, 4))

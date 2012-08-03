@@ -1,4 +1,5 @@
 import os
+import re
 import glob
 import time
 import json
@@ -8,7 +9,6 @@ import numpy as np
 cwd = os.path.split(os.path.abspath(__file__))[0]
 options = json.load(open(os.path.join(cwd, "defaults.json")))
 filestore = options['file_store']
-#dbfile = os.path.join(cwd, "database.sql")
 
 class SubjectDB(object):
     def __init__(self, subj):
@@ -246,6 +246,27 @@ class Database(object):
             coords.append(np.dot(xfm, wpts)[:3].round().astype(int).T)
 
         return coords
+
+    def getFiles(self, subject):
+        vtkparse = re.compile(r'(.*)/(\w+)_(\w+)_(\w+).vtk')
+        vtks = os.path.join(filestore, "surfaces", "{subj}_*.vtk").format(subj=subject)
+        ctmcache = "%s_{xfmname}_[{types}]_{method}_{level}.json"%subject
+        flatcache = "%s_{xfmname}_{height}_{date}.pkl"%subject
+
+        surfs = dict()
+        for vtk in glob.glob(vtks):
+            path, subj, stype, hemi = vtkparse.match(vtk).groups()
+            if stype not in surfs:
+                surfs[stype] = dict()
+            surfs[stype][hemi] = vtk
+
+        filenames = dict(surfs=surfs, 
+            ctmcache=os.path.join(filestore, "ctmcache", ctmcache),
+            flatcache=os.path.join(filestore, "flatcache", flatcache),
+            rois=os.path.join(filestore, "overlays", "{subj}_rois.svg").format(subj=subject),
+        )
+
+        return filenames
 
 
 surfs = Database()

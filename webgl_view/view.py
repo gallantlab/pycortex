@@ -1,13 +1,18 @@
 import os
+import json
 import random
 import mimetypes
 import webbrowser
-import tornado.web
 import numpy as np
 
-from .. import utils, vtkctm
+from tornado import web, template
+
+from .. import utils
 
 import serve
+
+loader = template.Loader(serve.cwd, autoescape=None)
+html = loader.load("mixer.html")
 
 #Raw volume movie:      [[3, 4], t, z, y, x]
 #Raw volume image:      [[3, 4], z, y, x]
@@ -50,8 +55,27 @@ def _normalize_data(data, mask):
             return data
 
 def show(data, subject, xfmname, types=("inflated",)):
-    ctm = vtkctm.get_pack(subject, xfmname, types, method='raw', level=0)
+    ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0)
     mask = utils.get_cortical_mask(subject, xfmname)
+    jsondat = json.dumps(_normalize_data(data, mask), cls=serve.NPEncode)
+
+    class CTMHandler(web.RequestHandler):
+        def get(self, path):
+            fpath = os.path.split(ctmfile)[0]
+            if path == '':
+                self.set_header("Content-Type", "application/json")
+                self.write(open(ctmfile).read())
+            else:
+                mtype = mimetypes.guess_type(os.path.join(fpath, path))[0]
+                if mtype is None:
+                    mtype = "application/octet-stream"
+                self.set_header("Content-Type", mtype)
+                self.write(open(os.path.join(fpath, path)).read())
+
+    class MixerHandler(web.RequestHandler):
+        def get(self):
+            self.set_header("Content-Type", "text/html")
+            self.write(html.generate(data=jsondat))
 
     class JSMixer(serve.JSProxy):
         def setData(self, data, name="dataset"):
@@ -63,25 +87,16 @@ def show(data, subject, xfmname, types=("inflated",)):
             self.c_evt.wait()
             self.c_evt.clear()
             return JSMixer(self.send, "window.viewer")
-    
-    class CTMHandler(tornado.web.RequestHandler):
-        def get(self, path):
-            fpath = os.path.split(ctm)[0]
-            if path == '':
-                self.set_header("Content-Type", "application/json")
-                self.write(open(ctm).read())
-            else:
-                mtype = mimetypes.guess_type(os.path.join(fpath, path))[0]
-                if mtype is None:
-                    mtype = "application/octet-stream"
-                self.set_header("Content-Type", mtype)
-                self.write(open(os.path.join(fpath, path)).read())
 
-    server = WebApp([(r'/ctm/(.*)', CTMHandler)], random.randint(1024, 65536))
+    server = WebApp([
+            (r'/ctm/(.*)', CTMHandler),
+            (r'/mixer.html', MixerHandler),
+        ], 
+        random.randint(1024, 65536))
     server.start()
-    webbrowser.open("http://localhost:%d/mixer.html"%server.port)
+
+    webbrowser.open("http://%s:%d/mixer.html"%(serve.hostname, server.port))
+
     client = server.get_client()
     client.server = server
-    client.load("/ctm/")
-    client.setData(data)
     return client

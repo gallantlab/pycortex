@@ -8,9 +8,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 from utils import get_cortical_mask, get_roipack
-from db import surfs, filestore
-
-cwd = os.path.split(os.path.abspath(__file__))[0]
+from db import surfs
 
 class Mesh(ctypes.Structure):
     _fields_ = [
@@ -43,6 +41,7 @@ class Subject(ctypes.Structure):
         ("left", Hemi),
         ("right", Hemi)]
 
+cwd = os.path.split(os.path.abspath(__file__))[0]
 lib = ctypes.cdll.LoadLibrary(os.path.join(cwd, "_vtkctm.so"))
 lib.readVTK.restype = ctypes.POINTER(Mesh)
 lib.readVTK.argtypes = [ctypes.c_char_p, ctypes.c_bool]
@@ -81,20 +80,17 @@ compformats = dict(
     mg2=0x203)
 
 class CTMfile(object):
-    def __init__(self, subj, xfmname=None, **kwargs):
-        self.name = subj
+    def __init__(self, subject, xfmname):
+        self.name = subject
         self.xfmname = xfmname
-        self.files = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
-        self.auxdat = kwargs
+        self.files = surfs.getFiles(subject)
 
     def __enter__(self):
         self.subj = lib.newSubject(self.name)
         cont = self.subj.contents
         for h, hemi, datamap in zip(["lh", "rh"], [cont.left, cont.right], self.maps):
-            fname = self.files.format(subj=self.name, type="fiducial", hemi=h)
-            lib.hemiAddFid(ctypes.byref(hemi), fname)
-            fname = self.files.format(subj=self.name, type="flat", hemi=h)
-            lib.hemiAddFlat(ctypes.byref(hemi), fname)
+            lib.hemiAddFid(ctypes.byref(hemi), self.files['surfs']['fiducial'][h])
+            lib.hemiAddFlat(ctypes.byref(hemi), self.files['surfs']['flat'][h])
             lib.hemiAddMap(ctypes.byref(hemi), datamap)
         return self
 
@@ -114,11 +110,10 @@ class CTMfile(object):
             indices.append(imask.T.ravel()[idx])
         return indices
 
-    def addSurf(self, surf, name=None):
+    def addSurf(self, surf):
         cont = self.subj.contents
         for h, hemi in zip(["lh", "rh"], [cont.left, cont.right]):
-            fname = self.files.format(subj=self.name, type=surf, hemi=h)
-            lib.hemiAddSurf(ctypes.byref(hemi), fname, name)
+            lib.hemiAddSurf(ctypes.byref(hemi), self.files['surfs'][surf][h], None)
 
     def save(self, filename, compmeth='mg2', complevel=9):
         left = tempfile.NamedTemporaryFile()
@@ -151,9 +146,6 @@ class CTMfile(object):
             ptidx[name] = idx, len(rpts)
         
         offsets = []
-        path, fname = os.path.split(filename)
-        fname, ext = os.path.splitext(fname)
-
         with open(filename, "w") as fp:
             head = struct.pack('2I', len(didx[0]), len(didx[1]))
             fp.write(head)
@@ -164,34 +156,24 @@ class CTMfile(object):
             offsets.append(fp.tell())
             fp.write(right.read())
 
-        auxdat = dict(
-            data=os.path.split(filename)[1],
-            offsets=offsets,
-            materials=[],
-            flatlims=flatlims)
-        auxdat.update(self.auxdat)
+        return ptidx, dict(offsets=offsets, flatlims=flatlims)
 
-        json.dump(auxdat, open(os.path.join(path, "%s.json"%fname), "w"))
-        return ptidx
-        
-
-def get_pack(subj, xfm, types=("inflated",), method='mg1', level=1):
-    ctmcache = os.path.join(filestore, "ctmcache")
-    fname = os.path.join(ctmcache, "{subj}_{xfm}_[{types}]_{meth}_{lvl}.%s".format(
-        subj=subj, xfm=xfm, types=','.join(types), 
-        meth=method, lvl=level))
-
-    if os.path.exists(fname%"json"):
-        return fname%"json"
-
-    print "No ctm found in cache, generating..."
-    svgname = fname%"svg"
-    kwargs = dict(rois=os.path.split(svgname)[1], names=types)
-    with CTMfile(subj, xfm, **kwargs) as ctm:
+def make_pack(outfile, subj, xfm, types=("inflated,"), method='raw', level=0):
+    fname, ext = os.path.splitext(outfile)
+    with CTMfile(subj, xfm) as ctm:
         for t in types:
             ctm.addSurf(t)
 
-        ptidx = ctm.save(fname%"ctm", compmeth=method, complevel=level)
+        ptidx, jsondat = ctm.save("%s.ctm"%fname, compmeth=method, complevel=level)
+
+    svgname = "%s.svg"%fname
+    jsondat.update(dict(
+        rois=os.path.split(svgname)[1], 
+        data=os.path.split("%s.ctm"%fname)[1],
+        names=types,
+        materials=[],
+    ))
+    json.dump(jsondat, open(outfile, "w"))
 
     print "Packing up SVG...",
     sys.stdout.flush()
@@ -210,7 +192,13 @@ def get_pack(subj, xfm, types=("inflated",), method='mg1', level=1):
         svgout.write(roipack.svg.toxml())
     print "Done"
 
-    return fname%"json"
+    return outfile
+    
 
 if __name__ == "__main__":
-    print get_pack("AH", "AH_huth2", types=("inflated", "superinflated"))
+    ctmcache = os.path.join(filestore, "ctmcache")
+    fname = os.path.join(ctmcache, "{subj}_{xfm}_[{types}]_{meth}_{lvl}.%s".format(
+        subj=subj, xfm=xfm, types=','.join(types), 
+        meth=method, lvl=level))
+
+    print make_pack("AH", "AH_huth2", types=("inflated", "superinflated"))

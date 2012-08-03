@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from db import surfs, options
+import view
 
 def unmask(mask, data):
     '''unmask(mask, data)
@@ -141,6 +142,22 @@ def epi_to_anat(data, subject=None, xfmname=None, filename=None):
     os.unlink(xfmfile)
     return output
 
+def get_roipack(subject):
+    import svgroi
+    flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
+    svgfile = surfs.getFiles(subject)['rois']
+    return svgroi.ROIpack(flat[:,:2], svgfile)
+
+def get_ctmpack(subject, xfmname, types=("inflated",), method="raw", level=0):
+    ctmform = surfs.getFiles(subject)['ctmcache']
+    ctmfile = ctmform.format(xfmname=xfmname, types=','.join(types), method=method, level=level)
+    if os.path.exists(ctmfile):
+        return ctmfile
+
+    print "No ctm found in cache, generating..."
+    import vtkctm
+    return vtkctm.make_pack(ctmfile, subject, xfmname, types, method, level)
+
 def get_cortical_mask(subject, xfmname):
     import nibabel
     shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
@@ -186,13 +203,7 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
     dist.shape = shape
     argdist.shape = shape
     return dist, argdist
-
-def get_roipack(subject):
-    import svgroi
-    flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
-    svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
-    return svgroi.ROIpack(flat[:,:2], svgfile)
-
+    
 def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
     '''Return a bitmask for the given ROIs'''
     import svgroi
