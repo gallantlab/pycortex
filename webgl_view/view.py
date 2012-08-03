@@ -61,6 +61,9 @@ def _fixarray(data, mask):
         else: #cortical
             return data
 
+def make_movie(stimidx, outfile):
+    pass
+
 def show(data, subject, xfmname, types=("inflated",), recache=False):
     ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)
     mask = utils.get_cortical_mask(subject, xfmname)

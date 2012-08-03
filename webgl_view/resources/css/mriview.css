@@ -23,14 +23,21 @@ table { cell-spacing:0px; }
     height:100%;
 }
 #brain {
-    transition: opacity 1s ease;
-    -moz-transition: opacity 1s ease;
-    -webkit-transition:opacity 1s ease;
+    transition: opacity .5s ease;
+    -moz-transition: opacity .5s ease;
+    -webkit-transition:opacity .5s ease;
     position:absolute;
     z-index:2;
     opacity:0;
-    width:100%;
+    width:80%;
     height:100%;
+}
+#roilabels {
+    position:absolute;
+    z-index:5;
+    width:80%;
+    height:100%;
+    overflow:hidden;
 }
 #braincover {
     z-index:8;

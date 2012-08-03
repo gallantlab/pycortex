@@ -15,7 +15,7 @@ function ROIpack(svgdoc, callback) {
     });
     this.labels = $(labels);
     this.svgroi.removeChild(this.svgroi.getElementsByTagName("foreignObject")[0]);
-    $("#main").children().first().before(this.labels);
+    $("#roilabels").append(this.labels);
     this.width = this.svgroi.width.baseVal.value;
     this.height = this.svgroi.height.baseVal.value;
     this._shadowtex = new ShadowTex(Math.ceil(this.width), Math.ceil(this.height), 4);

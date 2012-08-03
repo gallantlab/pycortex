@@ -307,7 +307,7 @@ MRIview.prototype = {
                 window.location.href = png.replace("image/png", "application/octet-stream");
             $("#main").css("opacity", 1);
             console.log("I die here");
-        }.bind(this), 1000);
+        }.bind(this), 500);
     },
     reset_view: function(center, height) {
         var flatasp = this.flatlims[1][0] / this.flatlims[1][1];
@@ -723,6 +723,18 @@ MRIview.prototype = {
     _updateROIs: function() {
         this.roipack.update(this.renderer);
     }, 
+}
+
+function classify(data) {
+    if (data['__class__'] !== undefined)
+        data = window[data['__class__']].fromJSON(data);
+    else
+        for (var name in data) {
+            if (data[name] instanceof Object){
+                data[name] = classify(data[name])
+            }
+        }
+    return data
 }
 
 var dtypeMap = {

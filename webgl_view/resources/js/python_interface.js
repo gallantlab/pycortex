@@ -1,13 +1,3 @@
-function classify(data) {
-    for (var name in data) {
-        if (data[name]['__class__'] !== undefined) {
-            data[name] = window[data[name]['__class__']].fromJSON(data[name]);
-        } else if (data instanceof Object){
-            data[name] = classify(data[name])
-        }
-    }
-    return data
-}
 function Websock() {
     this.ws = new WebSocket("ws://"+location.host+"/wsconnect/");
     this.ws.onopen = function(evt) {
