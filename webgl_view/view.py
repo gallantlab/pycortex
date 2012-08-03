@@ -24,6 +24,12 @@ html = loader.load("mixer.html")
 #Regular cortical image: [vox]
 
 def _normalize_data(data, mask):
+    if not isinstance(data, dict):
+        data = dict(data0=data)
+
+    return dict([(name, _fixarray(array, mask)) for name, array in data.items()])
+
+def _fixarray(data, mask):
     if isinstance(data, str):
         import nibabel
         data = nibabel.load(data).get_data().T
@@ -78,9 +84,9 @@ def show(data, subject, xfmname, types=("inflated",), recache=False):
             self.write(html.generate(data=jsondat))
 
     class JSMixer(serve.JSProxy):
-        def setData(self, data, name="dataset"):
+        def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.setData")
-            return Proxy(_normalize_data(data, mask), name)
+            return Proxy(_normalize_data(data, mask))
 
     class WebApp(serve.WebApp):
         def get_client(self):

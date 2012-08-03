@@ -30,7 +30,7 @@
 		viewer = new MRIview();
 		sock = new Websock();
 		viewer.load("/ctm/");
-		viewer.setData(initial_data);
+		viewer.addData(classify(initial_data));
 	});
 </script>
 </head>

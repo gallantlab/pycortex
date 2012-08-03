@@ -1,15 +1,25 @@
+function classify(data) {
+    for (var name in data) {
+        if (data[name]['__class__'] !== undefined) {
+            data[name] = window[data[name]['__class__']].fromJSON(data[name]);
+        } else if (data instanceof Object){
+            data[name] = classify(data[name])
+        }
+    }
+    return data
+}
 function Websock() {
     this.ws = new WebSocket("ws://"+location.host+"/wsconnect/");
     this.ws.onopen = function(evt) {
         this.ws.send("connect");
     }.bind(this);
     this.ws.onmessage = function(evt) {
-        var jsdat = JSON.parse(evt.data);
+        var jsdat = classify(JSON.parse(evt.data));
         var func = this[jsdat.method];
         var resp = func.apply(this, jsdat.params);
         //Don't return jquery objects, 
         if (resp instanceof $) {
-            this.ws.send(JSON.Stringify(null));
+            this.ws.send(JSON.stringify(null));
         } else {
             this.ws.send(JSON.stringify(resp))
         }
@@ -32,11 +42,6 @@ Websock.prototype.query = function(name) {
     return names;
 }
 Websock.prototype.run = function(name, params) {
-    for (var i = 0; i < params.length; i++) {
-        if (params[i]['__class__'] !== undefined) {
-            params[i] = window[params[i]['__class__']].fromJSON(params[i]);
-        }
-    }
     var resp = this.get(name);
     var obj = resp[0], func = resp[1];
     try {

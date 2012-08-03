@@ -193,6 +193,9 @@ function MRIview() {
 
     this.projector = new THREE.Projector();
     this._startplay = null;
+
+    this.datasets = {}
+    this.active = null;
     
     this._bindUI();
 }
@@ -379,9 +382,21 @@ MRIview.prototype = {
         }
         this.controls.dispatchEvent({type:"change"});
     },
-    setData: function(dataset) {
-        if (!(dataset instanceof Dataset))
-            dataset = new Dataset(dataset);
+    addData: function(data) {
+        if (data instanceof NParray || data instanceof Dataset)
+            data = {'data0':data};
+
+        for (var name in data) {
+            if (data[name] instanceof Dataset)
+                this.datasets[name] = data[name];
+            else if (data[name] instanceof NParray)
+                this.datasets[name] = new Dataset(data[name]);
+            $("#datasets").append("<option value='"+name+"'>"+name+"</option>")
+        }
+        this.setData(Object.keys(data)[0]);
+    },
+    setData: function(name, dim) {
+        var dataset = this.datasets[name];
 
         if (dataset.raw) {
             this.shader = this.rawshader;
@@ -604,6 +619,20 @@ MRIview.prototype = {
         })
 
         $("#movieframe").change(function() { _this.setFrame(this.value); });
+
+        $("#datasets").change(function(e) {
+            var max = _this.colormap.texture.height > 1 ? 2 : 1;
+
+            if ($(this).val().length > max) {
+                $(this).val($(this).data("lastvalid"));
+            } else {
+                $(this).data("lastvalid", $(this).val());
+                var selected = $(this).val();
+                for (var i = 0; i < selected.length; i++) {
+                    this.setData(selected[i], i);
+                }
+            }
+        })
     },
 
     _makeFlat: function(geom, polyfilt, right) {
