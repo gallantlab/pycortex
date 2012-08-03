@@ -10,6 +10,7 @@
 <script type='text/javascript' src='resources/js/jquery-ui-1.8.21.custom.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.miniColors.js'></script>
+<script type='text/javascript' src='resources/js/jquery.ui.touch-punch.min.js'></script>
 <script type="text/javascript" src="resources/js/rgbcolor.js"></script> 
 <script type="text/javascript" src="resources/js/canvg.js"></script> 
 <script type='text/javascript' src="resources/js/Three.js"></script>
@@ -47,8 +48,8 @@
 	$(document).ready(function() {
 		toggleFullScreen();
 		viewer = new MRIview();
-        viewer.load("resources/ctm/AH_AH_huth2_[inflated,superinflated].json"); 
-        $.get("rawdat.json", null, function(resp) {
+        viewer.load("resources/ctm/AH_AH_huth2_[inflated,superinflated]_mg2_9.json"); 
+        $.get("wordnet.json", null, function(resp) {
 			viewer.setData(resp);
 		});
 	})
