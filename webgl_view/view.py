@@ -54,8 +54,8 @@ def _normalize_data(data, mask):
         else: #cortical
             return data
 
-def show(data, subject, xfmname, types=("inflated",)):
-    ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0)
+def show(data, subject, xfmname, types=("inflated",), recache=False):
+    ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)
     mask = utils.get_cortical_mask(subject, xfmname)
     jsondat = json.dumps(_normalize_data(data, mask), cls=serve.NPEncode)
 

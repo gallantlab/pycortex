@@ -148,10 +148,10 @@ def get_roipack(subject):
     svgfile = surfs.getFiles(subject)['rois']
     return svgroi.ROIpack(flat[:,:2], svgfile)
 
-def get_ctmpack(subject, xfmname, types=("inflated",), method="raw", level=0):
+def get_ctmpack(subject, xfmname, types=("inflated",), method="raw", level=0, recache=False):
     ctmform = surfs.getFiles(subject)['ctmcache']
     ctmfile = ctmform.format(xfmname=xfmname, types=','.join(types), method=method, level=level)
-    if os.path.exists(ctmfile):
+    if os.path.exists(ctmfile) and not recache:
         return ctmfile
 
     print "No ctm found in cache, generating..."
