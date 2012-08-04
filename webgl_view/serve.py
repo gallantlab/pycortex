@@ -11,7 +11,6 @@ import tornado.web
 import tornado.ioloop
 from tornado import websocket
 
-
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
@@ -47,13 +46,14 @@ class MainHandler(tornado.web.RequestHandler):
         fpath = os.path.join(cwd, path)
         if path == '':
             self.write(open(os.path.join(cwd, "index.html")).read())
-        elif os.path.isfile(fpath):
+        elif os.path.exists(fpath):
             mtype = mimetypes.guess_type(fpath)[0]
             if mtype is None:
                 mtype = "application/octet-stream"
             self.set_header("Content-Type", mtype)
             self.write(open(fpath).read())
         else:
+            print "could not find %s"%fpath
             self.write_error(404)
 
 class ClientSocket(websocket.WebSocketHandler):

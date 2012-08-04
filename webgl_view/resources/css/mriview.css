@@ -23,19 +23,19 @@ table { cell-spacing:0px; }
     height:100%;
 }
 #brain {
-    transition: opacity .5s ease;
-    -moz-transition: opacity .5s ease;
-    -webkit-transition:opacity .5s ease;
+    transition: opacity .5s ease, width .5s ease;
+    -moz-transition: opacity .5s ease, width .5s ease;
+    -webkit-transition:opacity .5s ease, width .5s ease;
     position:absolute;
     z-index:2;
     opacity:0;
-    width:80%;
+    width:100%;
     height:100%;
 }
 #roilabels {
     position:absolute;
     z-index:5;
-    width:80%;
+    width:100%;
     height:100%;
     overflow:hidden;
 }
@@ -162,6 +162,14 @@ table#movieui {
 }
 #movieprogress {
     width:100%;
+}
+
+#stim_movie {
+    position:absolute;
+    left:60%;
+    width:40%;
+    top:50%;
+    margin-top:-240px;
 }
 
 .roilabel {

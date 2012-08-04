@@ -50,7 +50,7 @@
 		viewer = new MRIview();
         viewer.load("resources/ctm/AH_AH_huth2_[inflated,superinflated]_mg2_9.json"); 
         $.get("wordnet.json", null, function(resp) {
-			viewer.addData(classify(JSON.parse(resp)));
+			viewer.addData(classify(resp));
 		});
 	})
 </script>

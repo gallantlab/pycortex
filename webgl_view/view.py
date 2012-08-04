@@ -61,15 +61,19 @@ def _fixarray(data, mask):
         else: #cortical
             return data
 
-def make_movie(stimidx, outfile):
-    pass
+def make_movie(stim, outfile, fps=15, size="640x480"):
+    import shlex
+    import subprocess as sp
+    cmd = "ffmpeg -i {infile} -b 1500k -g 30 -s {size} -r {fps} -vcodec libtheora {outfile}.ogv"
+    fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
+    sp.call(shlex.split(fcmd))
 
 def show(data, subject, xfmname, types=("inflated",), recache=False):
     ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)
     mask = utils.get_cortical_mask(subject, xfmname)
     jsondat = json.dumps(_normalize_data(data, mask), cls=serve.NPEncode)
     savesvg = mp.Array('c', 8192)
-
+    
     class CTMHandler(web.RequestHandler):
         def get(self, path):
             fpath = os.path.split(ctmfile)[0]
