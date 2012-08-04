@@ -11,7 +11,6 @@ import tornado.web
 import tornado.ioloop
 from tornado import websocket
 
-import db
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
