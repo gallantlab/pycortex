@@ -203,7 +203,8 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
     dist.shape = shape
     argdist.shape = shape
     return dist, argdist
-    
+
+
 def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
     '''Return a bitmask for the given ROIs'''
     import svgroi
@@ -211,7 +212,7 @@ def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
     valid = np.unique(polys)
     flat = flat[valid]
     
-    coords = np.vstack(db.surfs.getCoords(subject, xfmname))
+    coords = np.vstack(surfs.getCoords(subject, xfmname))
     coords = coords[valid]
 
     svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
@@ -227,13 +228,13 @@ def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
         mask.T[tuple(coords[rois.get_roi(roi)].T)] = True
         return mask
     elif isinstance(roi, list):
-        assert len(roi) < 64, "Too many rois for roimask, select a few"
-        idx = dict()
-        mask = np.zeros(shape, dtype=np.uint64)
-        for i, name in enumerate(roi):
-            idx[name] = 1<<i
-            mask.T[tuple(coords[rois.get_roi(name)].T)] |= 1<<i
-        return mask, idx
+        roidict = dict()
+        for name in roi:
+            mask = np.zeros(shape, dtype=np.bool)
+            mask.T[tuple(coords[rois.get_roi(name)].T)] = True
+            roidict[name] = mask
+        return roidict
+
 
 def get_roi_masks(subject,xfmname,roiList=None,shape=(31,100,100),Dst=2,overlapOpt='cut'):
     '''
@@ -247,7 +248,7 @@ def get_roi_masks(subject,xfmname,roiList=None,shape=(31,100,100),Dst=2,overlapO
     vertIdx = np.unique(polys) # Needed for determining index for ROIs later
     flat = flat[vertIdx]
     # Get 3D coords
-    coords = np.vstack(db.surfs.getCoords(subject, xfmname))
+    coords = np.vstack(surfs.getCoords(subject, xfmname))
     nVerts = np.max(coords.shape)
     coords = coords[vertIdx]
     nValidVerts = np.max(coords.shape)
