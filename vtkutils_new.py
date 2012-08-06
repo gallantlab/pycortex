@@ -1,6 +1,6 @@
 import itertools
 import numpy as np
-import vtkctm
+#import vtkctm
 
 def read_old(vtk):
 	pts, polys = vtkctm.readVTK(vtk)
