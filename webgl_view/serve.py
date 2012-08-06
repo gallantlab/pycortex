@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import struct
 import socket
@@ -43,18 +44,35 @@ class NPEncode(json.JSONEncoder):
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self, path):
-        fpath = os.path.join(cwd, path)
+        self.set_header("Accept-Ranges", "bytes")
         if path == '':
-            self.write(open(os.path.join(cwd, "index.html")).read())
-        elif os.path.exists(fpath):
+            path = 'index.html'
+        fpath = os.path.join(cwd, path)
+
+        if os.path.exists(fpath):
             mtype = mimetypes.guess_type(fpath)[0]
             if mtype is None:
                 mtype = "application/octet-stream"
             self.set_header("Content-Type", mtype)
-            self.write(open(fpath).read())
+
+            content = open(fpath).read()
+            if "Range" in self.request.headers:
+                self.set_status(206)
+                start, end = re.match(r'bytes=(\d+)-(\d*)', self.request.headers['Range']).groups()
+                if end == '':
+                    end = len(content)-1
+                start, end = int(start), int(end)
+                crange = "bytes %d-%d/%d"%(start, end, len(content))
+                self.set_header("Content-Range", crange)
+                content = content[start:end+1]
+
+            self.write(content)
         else:
-            print "could not find %s"%fpath
             self.write_error(404)
+
+    def head(self, path):
+        self.set_header("Accept-Ranges", "bytes")
+        print "*****HEAD"
 
 class ClientSocket(websocket.WebSocketHandler):
     def initialize(self, parent):
@@ -154,3 +172,8 @@ class JSProxy(object):
             raise Exception(resp[0]['error'])
         else:
             return resp 
+
+if __name__ == "__main__":
+    app = WebApp([], 8888)
+    app.start()
+    app.join()
