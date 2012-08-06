@@ -134,7 +134,8 @@ class ROIpack(traits.HasTraits):
 
         #Set up the ROI dict
         self.rois = {}
-        for r in _find_layer(self.svg, "rois").getElementsByTagName("g"):
+        #for r in _find_layer(self.svg, "rois").getElementsByTagName("g"):
+        for r in filter(lambda n:n.nodeName=="g", _find_layer(self.svg, "rois").childNodes):
             roi = ROI(self, r)
             self.rois[roi.name] = roi
 
