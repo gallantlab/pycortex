@@ -202,17 +202,19 @@ function MRIview() {
 MRIview.prototype = { 
     draw: function () {
         this.controls.update(this.flatmix);
-        this.renderer.render( this.scene, this.camera );
-        if (this.roipack)
-            this.roipack.move(this);
         if (this.state == "play") {
             var sec = ((new Date()) - this._startplay) / 1000;
-            this.setFrame(sec % this.datasets[this.active].textures.length);
+            if (sec > this.dataset.textures.length) {
+                sec -= this.dataset.textures.length;
+            }
+            this.setFrame(sec);
             requestAnimationFrame(this.draw.bind(this));
         }
+        this.renderer.render(this.scene, this.camera);
+        if (this.roipack)
+            this.roipack.move(this);
         this._scheduled = false;
     },
-
     load: function(ctminfo) {
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
@@ -626,7 +628,7 @@ MRIview.prototype = {
                 _this.shader.uniforms.map.texture = blanktex;
                 _this.controls.dispatchEvent({type:"change"});
             }
-        })
+        });
 
         $("#labelshow").change(function() {
             this.roipack.labels.toggle();
@@ -643,7 +645,7 @@ MRIview.prototype = {
                     dataset.stim.currentTime = ui.value + dataset.delay;
                 }
             }.bind(this)
-        })
+        });
 
         $("#movieframe").change(function() { 
             _this.setFrame(this.value); 
@@ -665,7 +667,7 @@ MRIview.prototype = {
                     _this.setData(selected[i], i);
                 }
             }
-        })
+        });
     },
 
     _makeFlat: function(geom, polyfilt, right) {
@@ -779,6 +781,9 @@ NParray.fromJSON = function(json) {
 
     return new NParray(data, json.dtype, json.shape);
 }
+NParray.fromURL = function(url, callback) {
+    
+}
 NParray.prototype.view = function() {
     if (arguments.length == 1 && this.shape.length > 1) {
         var slice = arguments[0];
@@ -851,43 +856,46 @@ Dataset.maketex = function(array, shape, raw, slice) {
     tex.magFilter = THREE.NearestFilter;
     return tex;
 }
-Dataset.prototype.addStim = function(url, delay) {
-    this.delay = delay;
-    $("#brain, #roilabels").width("60%");
-    this.stim = document.createElement("video");
-    this.stim.id = "stim_movie";
-    this.stim.setAttribute("preload", "");
-    var src = document.createElement("source");
-    src.setAttribute("type", 'video/ogg; codecs="theora, vorbis"');
-    src.setAttribute("src", url);
-    this.stim.appendChild(src);
-    $("#main").append(this.stim);
-    this.stim.currentTime = delay;
-    setTimeout(function() {viewer.resize()}, 500);
-}
-Dataset.prototype.set = function(viewer) {
-    viewer._setShader(this.raw, this.datasize);
-    if (this.textures.length > 1) {
-        viewer.setFrame(0);
-        $("#moviecontrols").show();
-        $("#bottombar").addClass("bbar_controls");
-        $("#movieprogress div").slider("option", {min:0, max:this.textures.length});
-    } else {
-        viewer.shader.uniforms.data.texture[0] = this.textures[0];
-        $("#moviecontrols").hide();
-        $("#bottombar").removeClass("bbar_controls");
-    }
-    $("#vrange").slider("option", {min: this.min, max:this.max});
-    viewer.setVminmax(this.min, this.max);
-
-    if (this.stim === undefined) {
-        $("#stim_movie").remove();
-        $("#brain, #roilabels").width("100%");
-    } else {
+Dataset.prototype = { 
+    addStim: function(url, delay) {
+        this.delay = delay;
         $("#brain, #roilabels").width("60%");
+        this.stim = document.createElement("video");
+        this.stim.id = "stim_movie";
+        this.stim.setAttribute("preload", "");
+        this.stim.setAttribute("autobuffer", "");
+        var src = document.createElement("source");
+        src.setAttribute("type", 'video/ogg; codecs="theora, vorbis"');
+        src.setAttribute("src", url);
+        this.stim.appendChild(src);
         $("#main").append(this.stim);
-    }
-    setTimeout(function() {viewer.resize()}, 500);
+        this.stim.currentTime = delay;
+        viewer.resize()
+    },
+    set: function(viewer) {
+        viewer._setShader(this.raw, this.datasize);
+        if (this.textures.length > 1) {
+            viewer.setFrame(0);
+            $("#moviecontrols").show();
+            $("#bottombar").addClass("bbar_controls");
+            $("#movieprogress div").slider("option", {min:0, max:this.textures.length});
+        } else {
+            viewer.shader.uniforms.data.texture[0] = this.textures[0];
+            $("#moviecontrols").hide();
+            $("#bottombar").removeClass("bbar_controls");
+        }
+        $("#vrange").slider("option", {min: this.min, max:this.max});
+        viewer.setVminmax(this.min, this.max);
+
+        if (this.stim === undefined) {
+            $("#stim_movie").remove();
+            $("#brain, #roilabels").width("100%");
+        } else {
+            $("#brain, #roilabels").width("60%");
+            $("#main").append(this.stim);
+        }
+        setTimeout(function() {viewer.resize()}, 500);
+    },
 }
 
 function FacePick(viewer, callback) {
