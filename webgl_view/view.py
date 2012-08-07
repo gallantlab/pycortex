@@ -68,7 +68,7 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
 
-def make_dataset(data, filename, subject, xfmname):
+def make_static(data, subject, xfmname, stimname=None):
     mask = utils.get_cortical_mask(subject, xfmname)
     json.dump(_normalize_data(data, mask), open(filename, "w"), cls=serve.NPEncode)
 

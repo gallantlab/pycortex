@@ -743,7 +743,7 @@ function classify(data) {
     return data
 }
 
-var dtypeMap = {
+var dtypeNames = {
     "uint32":Uint32Array,
     "uint16":Uint16Array,
     "uint8":Uint8Array,
@@ -752,6 +752,7 @@ var dtypeMap = {
     "int8":Int8Array,
     "float32":Float32Array,
 }
+var dtypeMap = [Uint32Array, Uint16Array, Uint8Array, Int32Array, Int16Array, Int8Array, Float32Array]
 function NParray(data, dtype, shape) {
     this.data = data;
     this.shape = shape;
@@ -769,7 +770,7 @@ NParray.fromJSON = function(json) {
         pad = json.pad;
     }
 
-    var data = new (dtypeMap[json.dtype])(size);
+    var data = new (dtypeNames[json.dtype])(size);
     var charview = new Uint8Array(data.buffer);
     var bytes = charview.length / data.length;
     
@@ -782,7 +783,17 @@ NParray.fromJSON = function(json) {
     return new NParray(data, json.dtype, json.shape);
 }
 NParray.fromURL = function(url, callback) {
-    
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.onload = function(e) {
+        var data = new Uint32Array(this.response);
+        var dtype = dtypeMap[data[0]];
+        var ndim = data[1];
+        var shape = data.subarray(2, ndim+2);
+        var array = new dtype(this.response, (ndim+2)*4);
+        callback(new NParray(array, dtype, shape));
+    };
 }
 NParray.prototype.view = function() {
     if (arguments.length == 1 && this.shape.length > 1) {
