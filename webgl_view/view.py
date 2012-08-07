@@ -119,7 +119,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False):
         ], 
         random.randint(1024, 65536))
     server.start()
-
+    print "Started server on port %d"%server.port
     webbrowser.open("http://%s:%d/mixer.html"%(serve.hostname, server.port))
 
     client = server.get_client()
