@@ -64,9 +64,13 @@ def _fixarray(data, mask):
 def make_movie(stim, outfile, fps=15, size="640x480"):
     import shlex
     import subprocess as sp
-    cmd = "ffmpeg -i {infile} -b 1500k -g 30 -s {size} -r {fps} -vcodec libtheora {outfile}.ogv"
+    cmd = "ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv"
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
+
+def make_dataset(data, filename, subject, xfmname):
+    mask = utils.get_cortical_mask(subject, xfmname)
+    json.dump(_normalize_data(data, mask), open(filename, "w"), cls=serve.NPEncode)
 
 def show(data, subject, xfmname, types=("inflated",), recache=False):
     ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)

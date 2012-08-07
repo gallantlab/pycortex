@@ -26,10 +26,25 @@ Websock.prototype.get = function(name) {
     return [last, o];
 }
 Websock.prototype.query = function(name) {
-    var names = [];
-    for (var name in this.get(name)[1])
-        names.push(name)
+    var names = {};
+    var obj = this.get(name)[1];
+    for (var name in obj) {
+        names[name] = [typeof(obj[name])];
+        if (names[name] != "object" && names[name] != "function")
+            names[name].push(obj[name])
+    }
     return names;
+}
+Websock.prototype.set = function(name, value) {
+    var resp = this.get(name);
+    var obj = resp[0], val = resp[1];
+    try {
+        obj[val] = value;
+        resp = null;
+    } catch (e) {
+        resp = {error:e.message};
+    }
+    return resp;
 }
 Websock.prototype.run = function(name, params) {
     var resp = this.get(name);

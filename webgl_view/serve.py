@@ -42,6 +42,18 @@ class NPEncode(json.JSONEncoder):
         else:
             return super(NPEncode, self).default(obj)
 
+class FileCache(dict):
+    def __getitem__(self, item):
+        if item in self:
+            return self[item]
+        elif os.path.exists(item):
+            self[item] = open(item).read()
+            return self[item]
+        else:
+            raise KeyError
+
+cachefile = FileCache()
+
 class MainHandler(tornado.web.RequestHandler):
     def get(self, path):
         self.set_header("Accept-Ranges", "bytes")
@@ -55,9 +67,9 @@ class MainHandler(tornado.web.RequestHandler):
                 mtype = "application/octet-stream"
             self.set_header("Content-Type", mtype)
 
-            content = open(fpath).read()
             if "Range" in self.request.headers:
                 self.set_status(206)
+                content = cachefile[fpath]
                 start, end = re.match(r'bytes=(\d+)-(\d*)', self.request.headers['Range']).groups()
                 if end == '':
                     end = len(content)-1
@@ -65,6 +77,8 @@ class MainHandler(tornado.web.RequestHandler):
                 crange = "bytes %d-%d/%d"%(start, end, len(content))
                 self.set_header("Content-Range", crange)
                 content = content[start:end+1]
+            else:
+                content = open(fpath).read()
 
             self.write(content)
         else:
@@ -146,11 +160,25 @@ class JSProxy(object):
     def __init__(self, sendfunc, name="window"):
         self.send = sendfunc
         self.name = name
-        self.attrs = set(self.send(method='query', params=[name])[0])
+        self.attrs = self.send(method='query', params=[name])[0]
     
     def __getattr__(self, attr):
         assert attr in self.attrs
-        return JSProxy(self.send, "%s.%s"%(self.name, attr))
+        if self.attrs[attr][0] in ["object", "function"]:
+            return JSProxy(self.send, "%s.%s"%(self.name, attr))
+        else:
+            return self.attrs[attr][1]
+
+    def __setattr__(self, attr, value):
+        if not hasattr(self, "attrs") or attr not in self.attrs:
+            return super(JSProxy, self).__setattr__(attr, value)
+
+        assert self.attrs[attr] not in ["object", "function"]
+        resp = self.send(method='set', params=["%s.%s"%(self.name, attr), value])
+        if isinstance(resp[0], dict) and "error" in resp[0]:
+            raise Exception(resp[0]['error'])
+        else:
+            return resp
 
     def __repr__(self):
         return "<JS: %s>"%self.name
@@ -160,7 +188,7 @@ class JSProxy(object):
 
     def __call__(self, *args):
         resp = self.send(method='run', params=[self.name, args])
-        if isinstance(resp[0], dict) and "error" in resp:
+        if isinstance(resp[0], dict) and "error" in resp[0]:
             raise Exception(resp[0]['error'])
         else:
             return resp
@@ -168,7 +196,7 @@ class JSProxy(object):
     def __getitem__(self, idx):
         assert not isinstance(idx, (slice, list, tuple, np.ndarray))
         resp = self.send(method='index', params=[self.name, args])
-        if isinstance(resp[0], dict) and "error" in resp:
+        if isinstance(resp[0], dict) and "error" in resp[0]:
             raise Exception(resp[0]['error'])
         else:
             return resp 
