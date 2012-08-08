@@ -15,8 +15,9 @@ from tornado import websocket
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
-dtypemap = {
-    np.float: "float32",
+dtypeMap = [np.uint32, np.uint16, np.uint8, np.int32, np.int16, np.int8, np.float32]
+dtypeMap = dict([(dt, i) for i, dt in enumerate(dtypeMap)])
+dtypeNames = {
     np.int: "int32",
     np.int32: "int32",
     np.float32: "float32",
@@ -25,6 +26,10 @@ dtypemap = {
     np.int16: "int16",
     np.int8:"int8",
 }
+def make_bindat(data):
+    header  = struct.pack('II', dtypeMap[data.dtype.type], data.ndim)
+    header += struct.pack('I'*data.ndim, *data.shape)
+    return header+data.tostring()
 
 class NPEncode(json.JSONEncoder):
     def default(self, obj):
@@ -36,7 +41,7 @@ class NPEncode(json.JSONEncoder):
 
             return dict(
                 __class__="NParray",
-                dtype=dtypemap[obj.dtype.type], 
+                dtype=dtypeNames[obj.dtype.type], 
                 shape=obj.shape, 
                 data=binascii.b2a_base64(obj.tostring()))
         else:
@@ -82,6 +87,7 @@ class MainHandler(tornado.web.RequestHandler):
 
             self.write(content)
         else:
+            self.set_status(404)
             self.write_error(404)
 
     def head(self, path):
