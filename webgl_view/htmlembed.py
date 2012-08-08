@@ -10,7 +10,7 @@ import serve
 def _make_base64(imgfile):
     with open(imgfile) as img:
         mtype = mimetypes.guess_type(imgfile)[0]
-        data = binascii.b2a_base64(img.read())
+        data = binascii.b2a_base64(img.read()).strip()
         return "data:{mtype};base64,{data}".format(mtype=mtype, data=data)
 
 
@@ -35,35 +35,57 @@ def _embed_css(cssfile):
             cssout.append("%s {\n%s;\n}"%(selector, ';\n'.join(lines)))
         return '\n'.join(cssout)
 
-js_prefix = '''
-var wurl;
-if (window.URL)
-    wurl = window.URL.createObjectURL;
-else if (window.webkitURL)
-    wurl = window.webkitURL.createObjectURL;
-'''
 def _embed_js(dom, script):
     assert script.hasAttribute("src")
     with open(os.path.join(serve.cwd, script.getAttribute("src"))) as jsfile:
         jssrc = jsfile.read()
-        jsparse = re.compile(r"new Worker(['\"](.*?)['\"])")
-        for worker in jsparse.findall(jssrc):
-            with open(os.path.join(serve.cwd, worker)) as wfile:
-                wid = os.path.splitext(os.path.split(worker)[1])[0]
-                wscript = dom.createElement("script")
-                wscript.setAttribute("type", "text/js-worker")
-                wscript.setAttribute("id", wid)
-                wscript.appendChild(dom.createTextNode(wfile.read()))
-                script.parentNode.insertBefore(wscript, script)
-                jssrc.replace(worker, "wurl(new Blob([document.getElementById('"+wid+"').textContent]))")
+        wparse = re.compile(r"new Worker\(\s*(['\"].*?['\"])\s*\)", re.S)
+        aparse = re.compile(r"attr\(\s*['\"]src['\"]\s*,\s*(.*?)\)")
+        for worker in wparse.findall(jssrc):
+            wfile = os.path.join(serve.cwd, worker.strip('"\''))
+            wid = os.path.splitext(os.path.split(worker.strip('"\''))[1])[0]
+            wscript = dom.createElement("script")
+            wscript.setAttribute("type", "text/js-worker")
+            wscript.setAttribute("id", wid)
+            wscript.appendChild(dom.createTextNode(_embed_worker(wfile)))
+            script.parentNode.insertBefore(wscript, script)
+            jssrc = jssrc.replace(worker, "wurl(new Blob([document.getElementById('%s').textContent]))"%wid)
+
+        for src in aparse.findall(jssrc):
+            imgpath = os.path.join(serve.cwd, src.strip('\'"'))
+            jssrc = jssrc.replace(src, "'%s'"%_make_base64(imgpath))
 
         script.removeAttribute("src")
-        script.appendChild(dom.createTextNode(js_prefix + jssrc))
+        script.appendChild(dom.createTextNode(jssrc))
 
+def _embed_worker(worker):
+    wpath = os.path.split(worker)[0]
+    wparse = re.compile(r"importScripts\((.*)\)")
+    with open(worker) as wfile:
+        wdata = wfile.read()
+        for simport in wparse.findall(wdata):
+            imports = []
+            for fname in simport.split(','):
+                iname = os.path.join(wpath, fname.strip('\'" '))
+                with open(iname) as fp:
+                    imports.append(fp.read())
+            wdata = wdata.replace("importScripts(%s)"%simport, '\n'.join(imports))
+        return wdata
 
 def embed(rawhtml, outfile):
     parser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))
     dom = parser.parse(rawhtml)
+    head = dom.getElementsByTagName("head")[0]
+    wurl = dom.createElement("script")
+    wurl.setAttribute("type", "text/javascript")
+    wurl.appendChild(dom.createTextNode('''var wurl;
+if (window.URL)
+    wurl = window.URL.createObjectURL;
+else if (window.webkitURL)
+    wurl = window.webkitURL.createObjectURL;
+'''))
+    head.insertBefore(wurl, head.childNodes[0])
+
     for script in dom.getElementsByTagName("script"):
         src = script.getAttribute("src")
         if len(src) > 0:

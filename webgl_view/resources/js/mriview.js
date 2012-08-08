@@ -405,12 +405,13 @@ MRIview.prototype = {
                 NParray.fromURL(data[name], function(array) {
                     this.datasets[name] = new Dataset(array);
                     this.setData(name);
-                    callback(this.datasets[name]);
+                    if (typeof(callback) == "function")
+                        callback(this.datasets[name]);
                 }.bind(this));
             }
             $("#datasets").append("<option value='"+name+"'>"+name+"</option>")
         }
-        
+
         var active = Object.keys(data)[0];
         if (this.datasets[active] !== undefined) {
             this.setData(active);

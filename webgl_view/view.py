@@ -101,7 +101,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
             print "copying %s file"%ext
             shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
         else:
-            print "%s file already exists at %s"%(ext, newfile)
+            print "%s file already exists"%ext
     ctmfile = os.path.split(ctmfile)[1]
 
     #Generate the data binary objects and save them into the outpath
@@ -110,7 +110,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     for name, array in _normalize_data(data, mask).items():
         with open(os.path.join(outpath, "%s.bin"%name), "w") as binfile:
             binfile.write(serve.make_bindat(array))
-        jsondat[name] = name
+        jsondat[name] = "%s.bin"%name
     
     #Parse the html file and paste all the js and css files directly into the html
     html = static_template.generate(ctmfile=ctmfile, data=jsondat, colormaps=colormaps, default_cmap=cmap)
