@@ -27,10 +27,8 @@
 	var viewer, sock;
 	$(document).ready(function() {
 		viewer = new MRIview();
-		viewer.load({ctmfile});
+		viewer.load("{{ctmfile}}");
 		viewer.addData({{data}});
-		//viewer.addData(classify(initial_data));
-
 	});
 </script>
 </head>

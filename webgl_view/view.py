@@ -19,6 +19,7 @@ import serve
 loader = template.Loader(serve.cwd, autoescape=None)
 html = loader.load("mixer.html")
 static_template = loader.load("static_template.html")
+
 try:
     colormaps
 except NameError:
@@ -26,8 +27,7 @@ except NameError:
     colormaps = []
     for cmap in sorted(glob.glob(os.path.join(serve.cwd, "resources/colormaps/*.png"))):
         name = name_parse.match(cmap).group(1)
-        data = binascii.b2a_base64(open(cmap).read()).strip()
-        colormaps.append((name, "data:image/png;base64,"+data))
+        colormaps.append((name, "data:image/png;base64,"+binascii.b2a_base64(open(cmap).read())))
 
 #Raw volume movie:      [[3, 4], t, z, y, x]
 #Raw volume image:      [[3, 4], z, y, x]
@@ -77,21 +77,6 @@ def _fixarray(data, mask):
         else: #cortical
             return data
 
-def _embed_css(cssfile):
-    csspath = os.path.split(cssfile)
-    with open(cssfile) as fp:
-        css = fp.read()
-        cssparse = re.compile(r'(.*?){(.*?)}', re.S)
-        urlparse = re.compile(r'url\((.*?)\)')
-        for selector, content in cssparse.findall(css):
-            for line in content.split(';'):
-                attr, val = line.strip().split(':')
-                url = urlparse.search(val)
-                if url:
-                    imgfile = os.path.join(csspath, url.group(1))
-                    with open(imgfile) as img:
-                        imgdat = "data:image/png;base64,"+binascii.b2a_base64(img.read()).strip()
-
 def make_movie(stim, outfile, fps=15, size="640x480"):
     import shlex
     import subprocess as sp
@@ -99,16 +84,24 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
 
-def make_static(outpath, data, subject, xfmname, stimmovie=None, cmap="RdBu_r"):
-    import html5lib
+def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, stimmovie=None, cmap="RdBu_r"):
+    import htmlembed
     print "You'll probably need nginx to view this, since file:// paths don't handle xsrf correctly"
-    outpath = os.path.abspath(outpath) # To handle ~ expansion
+    outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
+    if not os.path.exists(outpath):
+        os.makedirs(outpath)
 
     #Create a new mg2 compressed CTM and move it into the outpath
-    ctmfile = utils.get_ctmpack(subject, xfmname, types, method='mg2', level=9, recache=True)
-    fname, ext = os.path.splitext(ctmfile)
+    ctmfile = utils.get_ctmpack(subject, xfmname, types, method='mg2', level=9, recache=recache)
+    oldpath, fname = os.path.split(ctmfile)
+    fname, ext = os.path.splitext(fname)
     for ext in ['json','ctm', 'svg']:
-        shutil.move("%s.%s"%(fname, ext), outpath)
+        newfile = os.path.join(outpath, "%s.%s"%(fname, ext))
+        if not os.path.exists(newfile):
+            print "copying %s file"%ext
+            shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
+        else:
+            print "%s file already exists at %s"%(ext, newfile)
     ctmfile = os.path.split(ctmfile)[1]
 
     #Generate the data binary objects and save them into the outpath
@@ -118,33 +111,10 @@ def make_static(outpath, data, subject, xfmname, stimmovie=None, cmap="RdBu_r"):
         with open(os.path.join(outpath, "%s.bin"%name), "w") as binfile:
             binfile.write(serve.make_bindat(array))
         jsondat[name] = name
-
+    
     #Parse the html file and paste all the js and css files directly into the html
-    with open(os.path.join(outpath, "index.html"), "w") as htmlfile:
-        html = static_template.generate(ctmfile=ctmfile, data=jsondat, colormaps=colormaps, default_cmap=cmap)
-        parser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))
-        dom = parser.parse(html)
-        for script in dom.getElementsByTagName("script"):
-            src = script.getAttribute("src")
-            if len(src) > 0:
-                with open(os.path.join(serve.cwd, src)) as jsfile:
-                    stext = dom.createTextNode(jsfile.read())
-                    script.removeAttribute("src")
-                    script.appendChild(stext)
-
-        
-        for css in dom.getElementsByTagName("link"):
-            if (css.getAttribute("type") == "text/css"):
-                href = css.getAttribute("href")
-                csspath, cssfile = os.path.split(os.path.join(serve.cwd, href))
-                with open(os.path.join(serve.cwd, href)) as cssfile:
-                    ncss = dom.createElement("style")
-                    ncss.setAttribute("type", "text/css")
-                    ncss.appendChild(dom.createTextNode())
-                    css.parentNode.insertBefore(ncss, css)
-                    css.parentNode.removeChild(css)
-
-
+    html = static_template.generate(ctmfile=ctmfile, data=jsondat, colormaps=colormaps, default_cmap=cmap)
+    htmlembed.embed(html, os.path.join(outpath, "index.html"))
 
 
 def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r"):
