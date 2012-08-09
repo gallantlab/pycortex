@@ -38,7 +38,7 @@ function FacePick(viewer, callback) {
         nface = hemi.geometry.attributes.flatindex.array.length / 3;
         this.idxrange[name] = [nfaces, nfaces + nface];
 
-        var worker = new Worker("resources/js/mriview_worker.js");
+        var worker = new Worker("resources/js/facepick_worker.js");
         worker.onmessage = this.handleworker.bind(this);
         worker.postMessage({
             func:   "genFlatGeom",
@@ -50,7 +50,7 @@ function FacePick(viewer, callback) {
         });
         nfaces += nface;
     }
-
+    
     this._valid = false;
 }
 FacePick.prototype = {

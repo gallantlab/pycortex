@@ -143,6 +143,7 @@ table { cell-spacing:0px; }
 #moviecontrols {
     width:100%;
     text-align:center;
+    display:none;
 }
 table#movieui {
     width:60%;

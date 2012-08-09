@@ -129,6 +129,7 @@ function MRIview() {
     this.light.position.set( -200, -200, 1000 ).normalize();
     this.camera.add( this.light );
     this.flatmix = 0;
+    this.frame = 0;
 
     // renderer
     this.renderer = new THREE.WebGLRenderer({ 
@@ -401,22 +402,11 @@ MRIview.prototype = {
                 this.datasets[name] = data[name];
             } else if (data[name] instanceof NParray) {
                 this.datasets[name] = new Dataset(data[name]);
-            } else if (typeof(data[name]) == "string") {
-                NParray.fromURL(data[name], function(array) {
-                    this.datasets[name] = new Dataset(array);
-                    this.setData(name);
-                    if (typeof(callback) == "function")
-                        callback(this.datasets[name]);
-                }.bind(this));
             }
             $("#datasets").append("<option value='"+name+"'>"+name+"</option>")
         }
 
-        var active = Object.keys(data)[0];
-        if (this.datasets[active] !== undefined) {
-            this.setData(active);
-            callback(this.datasets[active]);
-        }
+        this.setData(Object.keys(data)[0]);
     },
     setData: function(name, dim) {
         this.active = name;
@@ -491,13 +481,22 @@ MRIview.prototype = {
         var dataset = this.datasets[this.active];
         if (this.state == "pause") {
             //Start playing
-            this._startplay = (new Date()) - this.frame * 1000;
-            this.controls.dispatchEvent({type:"change"});
-            this.state = "play";
-            $("#moviecontrols img").attr("src", "resources/images/control-pause.png");
+            var func = function() {
+                this._startplay = (new Date()) - this.frame * 1000;
+                this.controls.dispatchEvent({type:"change"});
+                this.state = "play";
+                $("#moviecontrols img").attr("src", "resources/images/control-pause.png");
+            }.bind(this);
 
             if (dataset.stim !== undefined) {
+                dataset.stim.currentTime = this.frame+dataset.delay;
+                $(dataset.stim).bind("playing", function() {
+                    func();
+                    $(dataset.stim).unbind("playing");
+                });
                 dataset.stim.play()
+            } else {
+                func();
             }
         } else {
             this.state = "pause";
@@ -846,27 +845,22 @@ NParray.prototype.minmax = function() {
 }
 
 function Dataset(nparray) {
-    if (!(nparray instanceof NParray)) {
-        nparray = NParray.fromJSON(nparray);
+    if (nparray instanceof NParray) {
+        this.init(nparray);
     }
-    this.array = nparray;
-    this.raw = nparray.data instanceof Uint8Array && nparray.shape.length > 1;
-    this.textures = [];
-
-    if ((this.raw && nparray.shape.length > 2) || (!this.raw && nparray.shape.length > 1)) {
-        //Movie
-        this.datasize = new THREE.Vector2(256, Math.ceil(nparray.shape[1] / 256));
-        for (var i = 0; i < nparray.shape[0]; i++) {
-            this.textures.push(Dataset.maketex(nparray, [this.datasize.x, this.datasize.y], this.raw, i));
-        }
-    } else {
-        //Single frame
-        this.datasize = new THREE.Vector2(256, Math.ceil(nparray.shape[0] / 256));
-        this.textures.push(Dataset.maketex(nparray, [this.datasize.x, this.datasize.y], this.raw));
+}
+Dataset.fromJSON = function(json) {
+    var ds;
+    if (json.data instanceof NParray) {
+        ds = new Dataset(json.data);
+    } else if (typeof(json.data) == "string") {
+        ds = new Dataset(null);
+        NParray.fromURL(json.data, function(array) {
+            ds.init(array);
+        });
     }
-    var minmax = nparray.minmax();
-    this.min = minmax[0];
-    this.max = minmax[1];
+    ds.addStim(json.stim, json.delay);
+    return ds;
 }
 Dataset.maketex = function(array, shape, raw, slice) {
     var tex, data, form;
@@ -889,9 +883,33 @@ Dataset.maketex = function(array, shape, raw, slice) {
     return tex;
 }
 Dataset.prototype = { 
+    init: function(nparray) {
+        this.array = nparray;
+        this.raw = nparray.data instanceof Uint8Array && nparray.shape.length > 1;
+        this.textures = [];
+
+        if ((this.raw && nparray.shape.length > 2) || (!this.raw && nparray.shape.length > 1)) {
+            //Movie
+            this.datasize = new THREE.Vector2(256, Math.ceil(nparray.shape[1] / 256));
+            for (var i = 0; i < nparray.shape[0]; i++) {
+                this.textures.push(Dataset.maketex(nparray, [this.datasize.x, this.datasize.y], this.raw, i));
+            }
+        } else {
+            //Single frame
+            this.datasize = new THREE.Vector2(256, Math.ceil(nparray.shape[0] / 256));
+            this.textures.push(Dataset.maketex(nparray, [this.datasize.x, this.datasize.y], this.raw));
+        }
+        var minmax = nparray.minmax();
+        this.min = minmax[0];
+        this.max = minmax[1];
+
+        if (this._func !== undefined) {
+            this._func();
+            delete this._func;
+        }
+    },
     addStim: function(url, delay) {
         this.delay = delay;
-        $("#brain, #roilabels").width("60%");
         this.stim = document.createElement("video");
         this.stim.id = "stim_movie";
         this.stim.setAttribute("preload", "");
@@ -900,32 +918,49 @@ Dataset.prototype = {
         src.setAttribute("type", 'video/ogg; codecs="theora, vorbis"');
         src.setAttribute("src", url);
         this.stim.appendChild(src);
-        $("#main").append(this.stim);
-        this.stim.currentTime = delay;
-        viewer.resize()
+        //$("#brain, #roilabels").width("60%");
+        //$("#main").append(this.stim);
+        //this.stim.currentTime = delay;
+        //viewer.resize()
     },
     set: function(viewer) {
-        viewer._setShader(this.raw, this.datasize);
-        if (this.textures.length > 1) {
-            viewer.setFrame(0);
-            $("#moviecontrols").show();
-            $("#bottombar").addClass("bbar_controls");
-            $("#movieprogress div").slider("option", {min:0, max:this.textures.length});
-        } else {
-            viewer.shader.uniforms.data.texture[0] = this.textures[0];
-            $("#moviecontrols").hide();
-            $("#bottombar").removeClass("bbar_controls");
-        }
-        $("#vrange").slider("option", {min: this.min, max:this.max});
-        viewer.setVminmax(this.min, this.max);
+        var func = function() {
+            viewer._setShader(this.raw, this.datasize);
+            if (this.textures.length > 1) {
+                viewer.setFrame(0);
+                $("#moviecontrols").show();
+                $("#bottombar").addClass("bbar_controls");
+                $("#movieprogress div").slider("option", {min:0, max:this.textures.length});
+            } else {
+                viewer.shader.uniforms.data.texture[0] = this.textures[0];
+                $("#moviecontrols").hide();
+                $("#bottombar").removeClass("bbar_controls");
+            }
+            $("#vrange").slider("option", {min: this.min, max:this.max});
+            viewer.setVminmax(this.min, this.max);
 
-        if (this.stim === undefined) {
-            $("#stim_movie").remove();
-            $("#brain, #roilabels").width("100%");
-        } else {
-            $("#brain, #roilabels").width("60%");
-            $("#main").append(this.stim);
-        }
-        setTimeout(function() {viewer.resize()}, 500);
+            if (this.stim === undefined) {
+                $("#stim_movie").remove();
+                $("#brain, #roilabels").width("100%");
+            } else {
+                $("#brain, #roilabels").width("60%");
+                $("#main").append(this.stim);
+                var delay = viewer.frame + this.delay;
+                if (this.stim.readyState == 4) {
+                    this.stim.currentTime = delay;
+                } else {
+                    $(this.stim).bind("loadeddata", function() {
+                        this.currentTime = delay; 
+                        console.log(this.currentTime, delay);
+                        $(this).unbind("loadeddata");
+                    });
+                }
+            }
+            setTimeout(function() {viewer.resize()}, 500);
+        }.bind(this);
+        if (this.array !== undefined)
+            func();
+        else
+            this._func = func;
     },
 }

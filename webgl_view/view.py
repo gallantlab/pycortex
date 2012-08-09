@@ -23,26 +23,28 @@ static_template = loader.load("static_template.html")
 try:
     colormaps
 except NameError:
-    name_parse = re.compile(r".*/(\w+).png")
     colormaps = []
+    name_parse = re.compile(r".*/(\w+).png")
     for cmap in sorted(glob.glob(os.path.join(serve.cwd, "resources/colormaps/*.png"))):
         name = name_parse.match(cmap).group(1)
         colormaps.append((name, "data:image/png;base64,"+binascii.b2a_base64(open(cmap).read())))
-
-#Raw volume movie:      [[3, 4], t, z, y, x]
-#Raw volume image:      [[3, 4], z, y, x]
-#Raw cortical movie:    [[3, 4], t, vox]
-#Raw cortical image:    [[3, 4], vox]
-#Regular volume movie:  [t, z, y, x]
-#Regular volume image:  [z, y, x]
-#Regular cortical movie: [t, vox]
-#Regular cortical image: [vox]
 
 def _normalize_data(data, mask):
     if not isinstance(data, dict):
         data = dict(data0=data)
 
-    return dict([(name, _fixarray(array, mask)) for name, array in data.items()])
+    ndata = dict()
+    for name, dat in data.items():
+        if isinstance(dat, dict):
+            ndata[name] = dict(
+                __class__="Dataset", 
+                data=_fixarray(dat['data'], mask), 
+                stim=dat['stim'],
+                delay=dat['delay'] if 'delay' in dat else 0)
+        elif isinstance(dat, np.ndarray):
+            ndata[name] = _fixarray(dat, mask)
+
+    return ndata
 
 def _fixarray(data, mask):
     if isinstance(data, str):
@@ -84,8 +86,7 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
 
-def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, stimmovie=None, cmap="RdBu_r"):
-    import htmlembed
+def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r"):
     print "You'll probably need nginx to view this, since file:// paths don't handle xsrf correctly"
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
@@ -107,17 +108,37 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     #Generate the data binary objects and save them into the outpath
     mask = utils.get_cortical_mask(subject, xfmname)
     jsondat = dict()
-    for name, array in _normalize_data(data, mask).items():
+    for name, dat in _normalize_data(data, mask).items():
+        if isinstance(dat, dict):
+            array = dat['data']
+            jsondat[name] = dat
+            jsondat[name]['data'] = "%s.bin"%name
+        else:
+            jsondat[name] = "%s.bin"%name
+
         with open(os.path.join(outpath, "%s.bin"%name), "w") as binfile:
             binfile.write(serve.make_bindat(array))
-        jsondat[name] = "%s.bin"%name
     
     #Parse the html file and paste all the js and css files directly into the html
+    import htmlembed
     html = static_template.generate(ctmfile=ctmfile, data=jsondat, colormaps=colormaps, default_cmap=cmap)
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
 
 
 def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r"):
+    '''Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
+    sub dictionary with keys [data, stim, delay].
+
+    Data array can be a variety of shapes:
+    Raw volume movie:      [[3, 4], t, z, y, x]
+    Raw volume image:      [[3, 4], z, y, x]
+    Raw cortical movie:    [[3, 4], t, vox]
+    Raw cortical image:    [[3, 4], vox]
+    Regular volume movie:  [t, z, y, x]
+    Regular volume image:  [z, y, x]
+    Regular cortical movie: [t, vox]
+    Regular cortical image: [vox]
+    '''
     ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)
     mask = utils.get_cortical_mask(subject, xfmname)
     data = _normalize_data(data, mask)

@@ -18,7 +18,6 @@
 <script type='text/javascript' src='resources/js/shadowtex.js'></script>
 <script type='text/javascript' src='resources/js/facepick.js'></script>
 <script type='text/javascript' src='resources/js/mriview.js'></script>
-<script type='text/javascript' src='resources/js/python_interface.js'></script>
 <script type='text/javascript' src="js/loaders/ctm/lzma.js"></script>
 <script type='text/javascript' src="js/loaders/ctm/ctm.js"></script>
 <script type='text/javascript' src="js/loaders/ctm/CTMLoader.js"></script>
@@ -28,7 +27,7 @@
 	$(document).ready(function() {
 		viewer = new MRIview();
 		viewer.load("{{ctmfile}}");
-		viewer.addData({{data}});
+		viewer.addData(classify({{data}}));
 	});
 </script>
 </head>
