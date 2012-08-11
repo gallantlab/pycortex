@@ -196,7 +196,6 @@ function MRIview() {
     this._startplay = null;
 
     this.datasets = {}
-    this.active = null;
     
     this._bindUI();
 }
@@ -406,47 +405,87 @@ MRIview.prototype = {
             $("#datasets").append("<option value='"+name+"'>"+name+"</option>")
         }
 
-        this.setData(Object.keys(data)[0]);
+        var keys = Object.keys(data);
+        this.setData(keys.slice(0,this.colormap.image.height > 10 ? 2 : 1));
     },
-    setData: function(name, dim) {
-        this.active = name;
-        this.dataset = this.datasets[name];
-        this.datasets[name].set(this);
+    setData: function(names) {
+        if (names instanceof Array && names.length > 1) {
+            if (names.length > (this.colormap.image.height > 10 ? 2 : 1))
+                return false;
+
+            var dataset = [this.datasets[names[0]]];
+            var length = dataset[0].textures.length;
+            var raw = dataset[0].raw;
+            for (var i = 1; i < names.length; i++) {
+                var ds = this.datasets[names[i]];
+                if (ds.textures.length != length || ds.raw != raw)
+                    return false;
+                dataset.push(dataset);
+            }
+            this.dataset = dataset;
+            for (var i = 0; i < names.length; i++) {
+                this.datasets[names[i]].set(this, i);
+            }
+        } else {
+            if (names instanceof Array)
+                names = names[0];
+            this.dataset = [this.datasets[names]];
+            this.datasets[names].set(this, 0);
+        }
         this.controls.dispatchEvent({type:"change"});
-        $("#datasets").val(name);
+        $("#datasets").val(names);
+        return true;
     },
 
     setColormap: function(cmap) {
         var tex;
-        if (cmap instanceof Image || cmap instanceof Element)
+        if (cmap instanceof Image || cmap instanceof Element) {
             tex = new THREE.Texture(cmap);
-        else if (cmap instanceof NParray) {
+
+        } else if (cmap instanceof NParray) {
             var ncolors = cmap.shape[cmap.shape.length-1];
             if (ncolors != 3 && ncolors != 4)
                 throw "Invalid colormap shape"
             var height = cmap.shape.length > 2 ? cmap.shape[1] : 1;
-            tex = new THREE.DataTexture(cmap.data, cmap.shape[0], height);
+            var fmt = ncolors == 3 ? THREE.RGBFormat : THREE.RGBAFormat;
+            tex = new THREE.DataTexture(cmap.data, cmap.shape[0], height, fmt);
         }
         tex.needsUpdate = true;
-        tex.flipY = false;
+        tex.flipY = true;
         tex.minFilter = THREE.LinearFilter;
         tex.magFilter = THREE.LinearFilter;
         this.colormap = tex;
         this.shader.uniforms.colormap.texture = tex;
         this.controls.dispatchEvent({type:"change"});
+        console.log(this.colormap.image.height);
+        if (this.colormap.image.height > 10) {
+            $(".vcolorbar").show();
+        } else {
+            $(".vcolorbar").hide();
+        }
     },
 
-    setVminmax: function(vmin, vmax) {
-        this.shader.uniforms.vmin.value[0] = vmin;
-        this.shader.uniforms.vmax.value[0] = vmax;
-        if (vmax > $("#vrange").slider("option", "max")) {
-            $("#vrange").slider("option", "max", vmax);
-        } else if (vmin < $("#vrange").slider("option", "min")) {
-            $("#vrange").slider("option", "min", vmin);
+    setVminmax: function(vmin, vmax, dim) {
+        if (dim === undefined)
+            dim = 0;
+        this.shader.uniforms.vmin.value[dim] = vmin;
+        this.shader.uniforms.vmax.value[dim] = vmax;
+
+        var range, min, max;
+        if (dim == 0) {
+            range = "#vrange"; min = "#vmin"; max = "#vmax";
+        } else {
+            range = "#vrange2"; min = "#vmin2"; max = "#vmax2";
         }
-        $("#vrange").slider("values", [vmin, vmax]);
-        $("#vmin").val(vmin);
-        $("#vmax").val(vmax);
+
+        if (vmax > $(range).slider("option", "max")) {
+            $(range).slider("option", "max", vmax);
+        } else if (vmin < $(range).slider("option", "min")) {
+            $(range).slider("option", "min", vmin);
+        }
+        $(range).slider("values", [vmin, vmax]);
+        $(min).val(vmin);
+        $(max).val(vmax);
 
         this.controls.dispatchEvent({type:"change"});
     },
@@ -469,16 +508,24 @@ MRIview.prototype = {
 
     setFrame: function(frame) {
         this.frame = frame;
-        var dataset = this.datasets[this.active];
-        this.shader.uniforms.data.texture[0] = dataset.textures[Math.floor(frame)];
-        this.shader.uniforms.data.texture[2] = dataset.textures[Math.floor(frame)+1];
-        this.shader.uniforms.framemix.value = frame - Math.floor(frame);
+        var fframe = Math.floor(frame);
+        
+        if (this.dataset instanceof Array) {
+            this.shader.uniforms.data.texture[0] = this.dataset[0].textures[fframe];
+            this.shader.uniforms.data.texture[1] = this.dataset[1].textures[fframe];
+            this.shader.uniforms.data.texture[2] = this.dataset[0].textures[fframe+1];
+            this.shader.uniforms.data.texture[3] = this.dataset[1].textures[fframe+1];
+        } else {
+            this.shader.uniforms.data.texture[0] = this.dataset.textures[fframe];
+            this.shader.uniforms.data.texture[2] = this.dataset.textures[fframe+1];
+        }
+        this.shader.uniforms.framemix.value = frame - fframe;
         $("#movieprogress div").slider("value", frame);
         $("#movieframe").val(frame);
         this.controls.dispatchEvent({type:"change"});
     },
     playpause: function() {
-        var dataset = this.datasets[this.active];
+        var dataset = this.dataset[0];
         if (this.state == "pause") {
             //Start playing
             var func = function() {
@@ -574,7 +621,7 @@ MRIview.prototype = {
         $(window).resize(function() { this.resize(); }.bind(this));
         $("#brain").resize(function() { this.resize(); }.bind(this));
         window.addEventListener( 'keypress', function(e) {
-            if (e.keyCode == 32 && this.datasets[this.active].textures.length > 1)
+            if (e.keyCode == 32 && this.dataset[0].textures.length > 1)
                 this.playpause();
         }.bind(this))
         var _this = this;
@@ -601,12 +648,20 @@ MRIview.prototype = {
                 }.bind(this)
             });
             this.setColormap($("#colormap .dd-selected-image")[0]);
+
             $("#vrange").slider({ 
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1],
                 slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1]); }.bind(this)
             });
-            $("#vmin").change(function() { this.setVminmax(parseInt($("#vmin").val()), parseInt($("#vmax").val())); }.bind(this));
-            $("#vmax").change(function() { this.setVminmax(parseInt($("#vmin").val()), parseInt($("#vmax").val())); }.bind(this));
+            $("#vmin").change(function() { this.setVminmax(parseFloat($("#vmin").val()), parseFloat($("#vmax").val())); }.bind(this));
+            $("#vmax").change(function() { this.setVminmax(parseFloat($("#vmin").val()), parseFloat($("#vmax").val())); }.bind(this));
+
+            $("#vrange2").slider({ 
+                range:true, width:200, min:0, max:1, step:.001, values:[0,1], orientation:"vertical",
+                slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1], 1); }.bind(this)
+            });
+            $("#vmin2").change(function() { this.setVminmax(parseFloat($("#vmin2").val()), parseFloat($("#vmax2").val())); }.bind(this));
+            $("#vmax2").change(function() { this.setVminmax(parseFloat($("#vmin2").val()), parseFloat($("#vmax2").val())); }.bind(this));            
         }
         var updateROIs = function() {
             this.roipack.update(this.renderer);
@@ -653,7 +708,7 @@ MRIview.prototype = {
         $("#movieprogress div").slider({min:0, max:1, step:.01,
             slide: function(event, ui) { 
                 this.setFrame(ui.value); 
-                var dataset = this.datasets[this.active];
+                var dataset = this.dataset[0];
                 if (dataset.stim !== undefined) {
                     dataset.stim.currentTime = ui.value + dataset.delay;
                 }
@@ -662,22 +717,22 @@ MRIview.prototype = {
 
         $("#movieframe").change(function() { 
             _this.setFrame(this.value); 
-            var dataset = _this.datasets[_this.active];
+            var dataset = _this.dataset[0];
             if (dataset.stim !== undefined) {
                 dataset.stim.currentTime = this.value + dataset.delay;
             }
         });
 
         $("#datasets").change(function(e) {
-            var max = _this.colormap.height > 1 ? 2 : 1;
+            var max = _this.colormap.image.height > 10 ? 2 : 1;
 
             if ($(this).val().length > max) {
                 $(this).val($(this).data("lastvalid"));
             } else {
-                $(this).data("lastvalid", $(this).val());
-                var selected = $(this).val();
-                for (var i = 0; i < selected.length; i++) {
-                    _this.setData(selected[i], i);
+                if (_this.setData($(this).val())) {
+                    $(this).data("lastvalid", $(this).val());
+                } else {
+                    $(this).val($(this).data("lastvalid"));
                 }
             }
         });
@@ -745,14 +800,15 @@ MRIview.prototype = {
 }
 
 function classify(data) {
-    if (data['__class__'] !== undefined)
+    if (data['__class__'] !== undefined) {
         data = window[data['__class__']].fromJSON(data);
-    else
+    } else {
         for (var name in data) {
             if (data[name] instanceof Object){
                 data[name] = classify(data[name])
             }
         }
+    }
     return data
 }
 
@@ -859,7 +915,8 @@ Dataset.fromJSON = function(json) {
             ds.init(array);
         });
     }
-    ds.addStim(json.stim, json.delay);
+    if (json.stim !== undefined)
+        ds.addStim(json.stim, json.delay);
     return ds;
 }
 Dataset.maketex = function(array, shape, raw, slice) {
@@ -923,7 +980,9 @@ Dataset.prototype = {
         //this.stim.currentTime = delay;
         //viewer.resize()
     },
-    set: function(viewer) {
+    set: function(viewer, dim) {
+        if (dim === undefined)
+            dim = 0;
         var func = function() {
             viewer._setShader(this.raw, this.datasize);
             if (this.textures.length > 1) {
@@ -932,12 +991,13 @@ Dataset.prototype = {
                 $("#bottombar").addClass("bbar_controls");
                 $("#movieprogress div").slider("option", {min:0, max:this.textures.length});
             } else {
-                viewer.shader.uniforms.data.texture[0] = this.textures[0];
+                viewer.shader.uniforms.data.texture[dim] = this.textures[0];
                 $("#moviecontrols").hide();
                 $("#bottombar").removeClass("bbar_controls");
             }
-            $("#vrange").slider("option", {min: this.min, max:this.max});
-            viewer.setVminmax(this.min, this.max);
+
+            $(dim == 0 ? "#vrange" : "#vrange2").slider("option", {min: this.min, max:this.max});
+            viewer.setVminmax(this.min, this.max, dim);
 
             if (this.stim === undefined) {
                 $("#stim_movie").remove();

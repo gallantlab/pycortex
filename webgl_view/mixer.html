@@ -39,17 +39,30 @@
 		<form id='display_options'>
 			<fieldset id='color_fieldset' class='opt_category'>
 				<legend>Colormap</legend>
-				<select id='colormap'>
-					{% for name, img in colormaps %}
-					<option data-imagesrc='{{img}}' {% if name == default_cmap %}selected='selected'{%end%}>{{name}}</option>
-					{% end %}
-				</select>
-				<div id='vminmax'>
-					<input type='text' id='vmin' />
-					<div id='vrange_wrap'><div id='vrange'></div></div>
-					<input type='text' id='vmax' />
-					<div class='clear'></div>
-				</div>
+				<table>
+					<tr><td class='vcolorbar'>
+						<div id='vminmax2'>
+							<input type='text' id='vmax2' class='vlim'/>
+							<div class='vrange_wrap'><div id='vrange2'></div></div>
+							<input type='text' id='vmin2' class='vlim'/>
+							<div class='clear'></div>
+						</div>
+					</td><td>
+						<select id='colormap'>
+							{% for name, img in colormaps %}
+							<option data-imagesrc='{{img}}' {% if name == default_cmap %}selected='selected'{%end%}>{{name}}</option>
+							{% end %}
+						</select>
+					</td></tr>
+					<tr><td class='vcolorbar'></td><td>
+						<div id='vminmax'>
+							<input type='text' id='vmin' class='vlim' />
+							<div class='vrange_wrap'><div id='vrange'></div></div>
+							<input type='text' id='vmax' class='vlim' />
+							<div class='clear'></div>
+						</div>
+					</td></tr>
+				</table>
 			</fieldset>
 			<fieldset id="roi_fieldset" class='opt_category'>
 				<legend>ROIs</legend>

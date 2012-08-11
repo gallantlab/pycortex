@@ -29,22 +29,21 @@ except NameError:
         name = name_parse.match(cmap).group(1)
         colormaps.append((name, "data:image/png;base64,"+binascii.b2a_base64(open(cmap).read())))
 
-def _normalize_data(data, mask):
+def _normalize_data(data, mask, fmt="%s.bin"):
     if not isinstance(data, dict):
         data = dict(data0=data)
 
-    ndata = dict()
+    json, sdat = dict(), dict()
     for name, dat in data.items():
+        json[name] = dict( __class__="Dataset", data=fmt%name)
         if isinstance(dat, dict):
-            ndata[name] = dict(
-                __class__="Dataset", 
-                data=_fixarray(dat['data'], mask), 
-                stim=dat['stim'],
-                delay=dat['delay'] if 'delay' in dat else 0)
+            sdat[name] = serve.make_bindat(_fixarray(dat['data'], mask))
+            json[name]['stim'] = dat['stim']
+            json[name]['delay'] = dat['delay'] if 'delay' in dat else 0
         elif isinstance(dat, np.ndarray):
-            ndata[name] = _fixarray(dat, mask)
+            sdat[name] = serve.make_bindat(_fixarray(dat, mask))
 
-    return ndata
+    return json, sdat
 
 def _fixarray(data, mask):
     if isinstance(data, str):
@@ -107,17 +106,10 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
 
     #Generate the data binary objects and save them into the outpath
     mask = utils.get_cortical_mask(subject, xfmname)
-    jsondat = dict()
-    for name, dat in _normalize_data(data, mask).items():
-        if isinstance(dat, dict):
-            array = dat['data']
-            jsondat[name] = dat
-            jsondat[name]['data'] = "%s.bin"%name
-        else:
-            jsondat[name] = "%s.bin"%name
-
+    json, sdat = _normalize_data(data, mask)
+    for name, dat in sdat.items():
         with open(os.path.join(outpath, "%s.bin"%name), "w") as binfile:
-            binfile.write(serve.make_bindat(array))
+            binfile.write(dat)
     
     #Parse the html file and paste all the js and css files directly into the html
     import htmlembed
@@ -141,9 +133,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     '''
     ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)
     mask = utils.get_cortical_mask(subject, xfmname)
-    data = _normalize_data(data, mask)
-    bindat = dict([(name, serve.make_bindat(array)) for name, array in data.items()])
-    jsondat = dict([(name, "data/%s/"%name) for name in data.keys()])
+    jsondat, bindat = _normalize_data(data, mask, fmt='data/%s/')
 
     savesvg = mp.Array('c', 8192)
     
@@ -182,7 +172,8 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     class JSMixer(serve.JSProxy):
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
-            return Proxy(_normalize_data(kwargs, mask))
+            data = _normalize_data(kwargs, mask)
+            return Proxy(dict([(name, dat['data']) for name, dat in data.items()]))
 
         def saveflat(self, filename, height=1024):
             Proxy = serve.JSProxy(self.send, "window.viewer.saveflat")

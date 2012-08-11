@@ -49,7 +49,8 @@ def _embed_js(dom, script):
             wscript.setAttribute("id", wid)
             wscript.appendChild(dom.createTextNode(_embed_worker(wfile)))
             script.parentNode.insertBefore(wscript, script)
-            jssrc = jssrc.replace(worker, "wurl(new Blob([document.getElementById('%s').textContent]))"%wid)
+            rplc = "wurl(new Blob([document.getElementById('%s').textContent]))"%wid
+            jssrc = jssrc.replace(worker, rplc)
 
         for src in aparse.findall(jssrc):
             imgpath = os.path.join(serve.cwd, src.strip('\'"'))
