@@ -1041,9 +1041,11 @@ Dataset.prototype = {
             $(dim == 0 ? "#vrange" : "#vrange2").slider("option", {min: this.min, max:this.max});
             viewer.setVminmax(this.min, this.max, dim);
 
-            if (this.stim === undefined && dim == 0) {
-                $("#stim_movie").remove();
-                $("#brain, #roilabels").width("100%");
+            if (this.stim === undefined) {
+                if (dim == 0) {
+                    $("#stim_movie").remove();
+                    $("#brain, #roilabels").width("100%");
+                }
             } else {
                 $("#brain, #roilabels").width("60%");
                 $("#main").append(this.stim);
