@@ -208,8 +208,10 @@ MRIview.prototype = {
         this.controls.update(this.flatmix);
         if (this.state == "play") {
             var sec = ((new Date()) - this._startplay) / 1000;
-            if (sec > this.dataset.textures.length) {
-                sec -= this.dataset.textures.length;
+            if (sec > this.dataset[0].textures.length) {
+                sec -= this.dataset[0].textures.length;
+                if (this.dataset[0].stim)
+                    this.dataset[0].stim.currentTime = this.dataset[0].delay;
             }
             this.setFrame(sec);
             requestAnimationFrame(this.draw.bind(this));
@@ -516,14 +518,14 @@ MRIview.prototype = {
         this.frame = frame;
         var fframe = Math.floor(frame);
         
-        if (this.dataset instanceof Array) {
+        if (this.dataset.length > 1) {
             this.shader.uniforms.data.texture[0] = this.dataset[0].textures[fframe];
             this.shader.uniforms.data.texture[1] = this.dataset[1].textures[fframe];
             this.shader.uniforms.data.texture[2] = this.dataset[0].textures[fframe+1];
             this.shader.uniforms.data.texture[3] = this.dataset[1].textures[fframe+1];
         } else {
-            this.shader.uniforms.data.texture[0] = this.dataset.textures[fframe];
-            this.shader.uniforms.data.texture[2] = this.dataset.textures[fframe+1];
+            this.shader.uniforms.data.texture[0] = this.dataset[0].textures[fframe];
+            this.shader.uniforms.data.texture[2] = this.dataset[0].textures[fframe+1];
         }
         this.shader.uniforms.framemix.value = frame - fframe;
         $("#movieprogress div").slider("value", frame);
