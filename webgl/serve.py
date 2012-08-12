@@ -14,6 +14,7 @@ import numpy as np
 import tornado.web
 import tornado.ioloop
 from tornado import websocket
+from tornado.web import HTTPError
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
