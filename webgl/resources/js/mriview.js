@@ -426,7 +426,7 @@ MRIview.prototype = {
                 var ds = this.datasets[names[i]];
                 if (ds.textures.length != length || ds.raw != raw)
                     return false;
-                dataset.push(dataset);
+                dataset.push(ds);
             }
             this.dataset = dataset;
             for (var i = 0; i < names.length; i++) {
