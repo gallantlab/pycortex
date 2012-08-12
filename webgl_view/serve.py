@@ -1,9 +1,12 @@
 import os
 import re
 import json
+import stat
+import email
 import struct
 import socket
 import binascii
+import datetime
 import mimetypes
 import multiprocessing as mp
 
@@ -14,6 +17,12 @@ from tornado import websocket
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
+
+def make_base64(imgfile):
+    with open(imgfile) as img:
+        mtype = mimetypes.guess_type(imgfile)[0]
+        data = binascii.b2a_base64(img.read()).strip()
+        return "data:{mtype};base64,{data}".format(mtype=mtype, data=data)
 
 dtypeMap = [np.uint32, np.uint16, np.uint8, np.int32, np.int16, np.int8, np.float32]
 dtypeMap = dict([(dt, i) for i, dt in enumerate(dtypeMap)])
@@ -26,7 +35,8 @@ dtypeNames = {
     np.int16: "int16",
     np.int8:"int8",
 }
-def make_bindat(data):
+
+def make_binarray(data):
     header  = struct.pack('II', dtypeMap[data.dtype.type], data.ndim)
     header += struct.pack('I'*data.ndim, *data.shape)
     return header+data.tostring()
@@ -47,52 +57,141 @@ class NPEncode(json.JSONEncoder):
         else:
             return super(NPEncode, self).default(obj)
 
-class FileCache(dict):
-    def __getitem__(self, item):
-        if item in self:
-            return self[item]
-        elif os.path.exists(item):
-            self[item] = open(item).read()
-            return self[item]
-        else:
-            raise KeyError
+class StaticFileHandler(tornado.web.RequestHandler):
+    """StaticFileHandler from https://github.com/kzahel"""
+    CACHE_MAX_AGE = 86400*365*10 #10 years
 
-cachefile = FileCache()
+    _static_hashes = {}
 
-class MainHandler(tornado.web.RequestHandler):
-    def get(self, path):
-        self.set_header("Accept-Ranges", "bytes")
-        if path == '':
-            path = 'index.html'
-        fpath = os.path.join(cwd, path)
-
-        if os.path.exists(fpath):
-            mtype = mimetypes.guess_type(fpath)[0]
-            if mtype is None:
-                mtype = "application/octet-stream"
-            self.set_header("Content-Type", mtype)
-
-            if "Range" in self.request.headers:
-                self.set_status(206)
-                content = cachefile[fpath]
-                start, end = re.match(r'bytes=(\d+)-(\d*)', self.request.headers['Range']).groups()
-                if end == '':
-                    end = len(content)-1
-                start, end = int(start), int(end)
-                crange = "bytes %d-%d/%d"%(start, end, len(content))
-                self.set_header("Content-Range", crange)
-                content = content[start:end+1]
-            else:
-                content = open(fpath).read()
-
-            self.write(content)
-        else:
-            self.set_status(404)
-            self.write_error(404)
+    def initialize(self, path, default_filename=None):
+        self.root = os.path.abspath(path) + os.path.sep
+        self.default_filename = default_filename
 
     def head(self, path):
-        self.set_header("Accept-Ranges", "bytes")
-        print "*****HEAD"
+        self.get(path, include_body=False)
+
+    @tornado.web.asynchronous
+    def get(self, path, include_body=True):
+        #logging.info('static request %s, %s' % (self.request.uri,  self.request.headers))
+        if os.path.sep != "/":
+            path = path.replace("/", os.path.sep)
+        abspath = os.path.abspath(os.path.join(self.root, path))
+        # os.path.abspath strips a trailing /
+        # it needs to be temporarily added back for requests to root/
+        if not (abspath + os.path.sep).startswith(self.root):
+            raise HTTPError(403, "%s is not in root static directory", path)
+        if os.path.isdir(abspath) and self.default_filename is not None:
+            # need to look at the request.path here for when path is empty
+            # but there is some prefix to the path that was already
+            # trimmed by the routing
+            if not self.request.path.endswith("/"):
+                self.redirect(self.request.path + "/")
+                return
+            abspath = os.path.join(abspath, self.default_filename)
+        if not os.path.exists(abspath):
+            raise HTTPError(404)
+        if not os.path.isfile(abspath):
+            raise HTTPError(403, "%s is not a file", path)
+        self.set_extra_headers(path)
+
+        stat_result = os.stat(abspath)
+        
+        mime_type, encoding = mimetypes.guess_type(abspath)
+        if mime_type:
+            self.set_header("Content-Type", mime_type)
+
+        self.set_header('Accept-Ranges','bytes')
+
+        self.file = open(abspath, "rb")
+        self._transforms = []
+
+        if 'Range' not in self.request.headers:
+            modified = datetime.datetime.fromtimestamp(stat_result[stat.ST_MTIME])
+            self.set_header("Last-Modified", modified)
+
+            cache_time = self.get_cache_time(path, modified, mime_type)
+            if cache_time > 0:
+                self.set_header("Expires", datetime.datetime.utcnow() + \
+                                           datetime.timedelta(seconds=cache_time))
+                self.set_header("Cache-Control", "max-age=" + str(cache_time))
+            else:
+                self.set_header("Cache-Control", "public")
+
+            # Check the If-Modified-Since, and don't send the result if the
+            # content has not been modified
+            ims_value = self.request.headers.get("If-Modified-Since")
+            if ims_value is not None:
+                date_tuple = email.utils.parsedate(ims_value)
+                if_since = datetime.datetime.fromtimestamp(time.mktime(date_tuple))
+                if if_since >= modified:
+                    self.set_status(304)
+                    self.finish()
+                    return
+
+            self.bytes_start = 0
+            self.bytes_end = stat_result.st_size - 1
+            if not include_body:
+                self.file.close()
+                self.finish()
+                return
+        else:
+            logging.info('got range string %s' % self.request.headers['Range'])
+            self.set_status(206)
+            rangestr = self.request.headers['Range'].split('=')[1]
+            start, end = rangestr.split('-')
+            logging.info('seeking to start %s' % start)
+            self.bytes_start = int(start)
+            self.file.seek(self.bytes_start)
+            if not end:
+                self.bytes_end = stat_result.st_size - 1
+            else:
+                self.bytes_end = int(end)
+
+            clenheader = 'bytes %s-%s/%s' % (self.bytes_start, self.bytes_end, stat_result.st_size)
+            self.set_header('Content-Range', clenheader)
+            self.set_header('Content-Length', self.bytes_end-self.bytes_start+1)
+            logging.info('set content range header %s' % clenheader)
+
+        if 'If-Range' in self.request.headers:
+            logging.debug('staticfilehandler had if-range header %s' % self.request.headers['If-Range'])
+
+
+        self.bytes_remaining = self.bytes_end - self.bytes_start + 1
+        self.set_header('Content-Length', str(self.bytes_remaining))
+        self.bufsize = 4096 * 16
+        #logging.info('writing to frontend: %s' % self._generate_headers())
+        self.flush() # flush out the headers
+        self.stream_one()
+
+    def stream_one(self):
+        if self.request.connection.stream.closed():
+            self.file.close()
+            return
+
+        if self.bytes_remaining == 0:
+            self.file.close()
+            self.finish()
+        else:
+            data = self.file.read(min(self.bytes_remaining, self.bufsize))
+            self.bytes_remaining -= len(data)
+            #logging.info('read from disk %s, remaining %s' % (len(data), self.bytes_remaining))
+            self.request.connection.stream.write( data, self.stream_one )
+
+    def set_extra_headers(self, path):
+        """For subclass to add extra headers to the response"""
+        pass
+
+    def get_cache_time(self, path, modified, mime_type):
+        """Override to customize cache control behavior.
+
+        Return a positive number of seconds to trigger aggressive caching or 0
+        to mark resource as cacheable, only.
+
+        By default returns cache expiry of 10 years for resources requested
+        with "v" argument.
+        """
+        return self.CACHE_MAX_AGE if "v" in self.request.arguments else 0
+
 
 class ClientSocket(websocket.WebSocketHandler):
     def initialize(self, parent):
@@ -100,10 +199,8 @@ class ClientSocket(websocket.WebSocketHandler):
 
     def open(self):
         self.parent.sockets.append(self)
-        print "WebSocket opened"
 
     def on_close(self):
-        print "WebSocket closed"
         self.parent.sockets.remove(self)
         self.parent.clients.value -= 1
         if self.parent.clients.value == 0:
@@ -121,7 +218,7 @@ class WebApp(mp.Process):
         super(WebApp, self).__init__()
         self.handlers = handlers + [
             (r"/wsconnect/", ClientSocket, dict(parent=self)),
-            (r"/(.*)", MainHandler),
+            (r"/(.*)", StaticFileHandler, dict(path=cwd)),
         ]
         self._pipe, self.pipe = os.pipe()
         self._response, self.response = mp.Pipe()

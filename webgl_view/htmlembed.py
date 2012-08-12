@@ -7,13 +7,6 @@ import html5lib
 
 import serve
 
-def _make_base64(imgfile):
-    with open(imgfile) as img:
-        mtype = mimetypes.guess_type(imgfile)[0]
-        data = binascii.b2a_base64(img.read()).strip()
-        return "data:{mtype};base64,{data}".format(mtype=mtype, data=data)
-
-
 def _embed_css(cssfile):
     csspath, fname = os.path.split(cssfile)
     with open(cssfile) as fp:
@@ -29,7 +22,7 @@ def _embed_css(cssfile):
                     url = urlparse.search(val)
                     if url is not None:
                         imgfile = os.path.join(csspath, url.group(1))
-                        imgdat = "url(%s)"%_make_base64(imgfile)
+                        imgdat = "url(%s)"%serve.make_base64(imgfile)
                         val = urlparse.sub(imgdat, val)
                     lines.append("%s:%s"%(attr, val))
             cssout.append("%s {\n%s;\n}"%(selector, ';\n'.join(lines)))
@@ -54,7 +47,7 @@ def _embed_js(dom, script):
 
         for src in aparse.findall(jssrc):
             imgpath = os.path.join(serve.cwd, src.strip('\'"'))
-            jssrc = jssrc.replace(src, "'%s'"%_make_base64(imgpath))
+            jssrc = jssrc.replace(src, "'%s'"%serve.make_base64(imgpath))
 
         script.removeAttribute("src")
         script.appendChild(dom.createTextNode(jssrc))
@@ -104,7 +97,7 @@ else if (window.webkitURL)
     for img in dom.getElementsByTagName("img"):
         imgfile = os.path.join(serve.cwd, img.getAttribute("src"))
         if os.path.exists(imgfile):
-            img.setAttribute("src", _make_base64(imgfile))
+            img.setAttribute("src", serve.make_base64(imgfile))
         else:
             print "Cannot find image to embed: %s"%imgfile
 

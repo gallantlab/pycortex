@@ -7,58 +7,60 @@
 <link rel="stylesheet" href="resources/css/ui-lightness/jquery-ui-1.8.21.custom.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/jquery.miniColors.css" type='text/css' />
 <script type='text/javascript' src='resources/js/jquery-1.7.2.min.js'></script>
-<script type='text/javascript' src='resources/js/jquery-ui-1.8.21.custom.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery-ui-1.8.22.custom.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.miniColors.js'></script>
-<script type='text/javascript' src='resources/js/jquery.ui.touch-punch.min.js'></script>
 <script type="text/javascript" src="resources/js/rgbcolor.js"></script> 
 <script type="text/javascript" src="resources/js/canvg.js"></script> 
 <script type='text/javascript' src="resources/js/Three.js"></script>
 <script type='text/javascript' src="resources/js/LandscapeControls.js"></script>
 <script type='text/javascript' src='resources/js/svgroi.js'></script>
 <script type='text/javascript' src='resources/js/shadowtex.js'></script>
+<script type='text/javascript' src='resources/js/facepick.js'></script>
 <script type='text/javascript' src='resources/js/mriview.js'></script>
-<script type='text/javascript' src='resources/js/python_interface.js'></script>
 <script type='text/javascript' src="js/loaders/ctm/lzma.js"></script>
 <script type='text/javascript' src="js/loaders/ctm/ctm.js"></script>
 <script type='text/javascript' src="js/loaders/ctm/CTMLoader.js"></script>
+{% if python_interface %}
+<script type='text/javascript' src='resources/js/python_interface.js'></script>
+{% end %}
 <link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
 <script type='text/javascript'>
-	function toggleFullScreen() {
-	  if ((document.fullScreenElement && document.fullScreenElement !== null) ||    // alternative standard method
-	      (!document.mozFullScreen && !document.webkitIsFullScreen)) {               // current working methods
-	    if (document.documentElement.requestFullScreen) {
-	      document.documentElement.requestFullScreen();
-	    } else if (document.documentElement.mozRequestFullScreen) {
-	      document.documentElement.mozRequestFullScreen();
-	    } else if (document.documentElement.webkitRequestFullScreen) {
-	      document.documentElement.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
-	    }
-	  } else {
-	    if (document.cancelFullScreen) {
-	      document.cancelFullScreen();
-	    } else if (document.mozCancelFullScreen) {
-	      document.mozCancelFullScreen();
-	    } else if (document.webkitCancelFullScreen) {
-	      document.webkitCancelFullScreen();
-	    }
-	  }
-	}
-	var viewer;
-	$(document).ready(function() {
-		toggleFullScreen();
-		viewer = new MRIview();
-        viewer.load("resources/ctm/AH_AH_huth2_[inflated,superinflated]_mg2_9.json"); 
-        $.get("wordnet.json", null, function(resp) {
-			viewer.addData(classify(resp));
-		});
-	})
+	{% block onload %}
+	{% end %}
 </script>
 </head>
 <body>
 <div id='topbar' class='infobar'>
 	<div class='content'>
 		<form id='display_options'>
+			<fieldset id='color_fieldset' class='opt_category'>
+				<legend>Colormap</legend>
+				<table>
+					<tr><td class='vcolorbar'>
+						<div id='vminmax2'>
+							<input type='text' id='vmax2' class='vlim'/>
+							<div class='vrange_wrap'><div id='vrange2'></div></div>
+							<input type='text' id='vmin2' class='vlim'/>
+							<div class='clear'></div>
+						</div>
+					</td><td>
+						<select id='colormap'>
+							{% for name, img in colormaps %}
+							<option data-imagesrc='{{img}}' {% if name == default_cmap %}selected='selected'{%end%}>{{name}}</option>
+							{% end %}
+						</select>
+					</td></tr>
+					<tr><td class='vcolorbar'></td><td>
+						<div id='vminmax'>
+							<input type='text' id='vmin' class='vlim' />
+							<div class='vrange_wrap'><div id='vrange'></div></div>
+							<input type='text' id='vmax' class='vlim' />
+							<div class='clear'></div>
+						</div>
+					</td></tr>
+				</table>
+			</fieldset>
 			<fieldset id="roi_fieldset" class='opt_category'>
 				<legend>ROIs</legend>
 				<div class='display_opt'>
@@ -106,6 +108,11 @@
 					</table>
 				</div>
 			</fieldset>
+			<fieldset id="dataset_fieldset" class='opt_category'>
+				<legend>Datasets</legend>
+				<select id='datasets' multiple='multiple'>
+				</select>
+			</fieldset>
 		</form>
 	</div>
 </div>
@@ -116,6 +123,8 @@
     <div id='hiderois'>
     	<canvas id='canvasrois'></canvas>
 	</div>
+
+	
 </div>
 
 <div id='bottombar' class='infobar'>

@@ -72,6 +72,7 @@ var rawShader = vShadeHead + ([
 
 var fragmentShader = [
     "uniform sampler2D hatch;",
+    "uniform vec2 hatchrep;",
 
     "uniform vec3 diffuse;",
     "uniform vec3 ambient;",
@@ -90,6 +91,9 @@ var fragmentShader = [
         "gl_FragColor.rgb /= gl_FragColor.a;",
 
         THREE.ShaderChunk[ "lights_phong_fragment" ],
+
+        "vec4 hcolor = texture2D(hatch, vUv*hatchrep);",
+        "gl_FragColor = gl_FrontFacing ? gl_FragColor : hcolor + gl_FragColor*(1.-hcolor.a);",
     "}"
 
 ].join("\n");
@@ -152,10 +156,10 @@ function MRIview() {
             framemix:   { type:'f',  value:0},
             datasize:   { type:'v2', value:new THREE.Vector2(256, 0)},
             offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
-            hatchrep:   { type:'v2', value:new THREE.Vector4(270, 100) },
+            hatchrep:   { type:'v2', value:new THREE.Vector2(27, 10) },
 
             map:        { type:'t',  value:0, texture: null },
-            hatch:      { type:'t',  value:1, texture: null },
+            hatch:      { type:'t',  value:1, texture: makeHatch() },
             colormap:   { type:'t',  value:2, texture: null },
             data:       { type:'tv', value:3, texture: [null, null, null, null] },
 
@@ -431,6 +435,8 @@ MRIview.prototype = {
                 names = names[0];
             this.dataset = [this.datasets[names]];
             this.datasets[names].set(this, 0);
+            this.shader.uniforms.data.texture[1] = null;
+            this.shader.uniforms.data.texture[3] = null;
         }
         this.controls.dispatchEvent({type:"change"});
         $("#datasets").val(names);
@@ -457,7 +463,7 @@ MRIview.prototype = {
         this.colormap = tex;
         this.shader.uniforms.colormap.texture = tex;
         this.controls.dispatchEvent({type:"change"});
-        console.log(this.colormap.image.height);
+        
         if (this.colormap.image.height > 10) {
             $(".vcolorbar").show();
         } else {
@@ -490,7 +496,7 @@ MRIview.prototype = {
         this.controls.dispatchEvent({type:"change"});
     },
     _setShader: function(raw, datasize) {
-        if (this.raw) {
+        if (raw) {
             this.shader = this.rawshader;
             if (this.meshes && this.meshes.left) {
                 this.meshes.left.material = this.rawshader;
@@ -799,6 +805,34 @@ MRIview.prototype = {
     }, 
 }
 
+function makeHatch(size, linewidth, spacing) {
+    if (spacing === undefined)
+        spacing = 8;
+    if (size === undefined)
+        size = 128;
+    var canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "rgb(255, 255, 255);"
+    ctx.fillRect(0,0,size,size);
+    ctx.lineWidth = linewidth ? linewidth: 3;
+    for (var i = 0, il = size*2; i < il; i+=spacing) {
+        ctx.beginPath();
+        ctx.moveTo(i-size, 0);
+        ctx.lineTo(i, size);
+        ctx.stroke();
+    }
+
+    var tex = new THREE.Texture(canvas);
+    tex.needsUpdate = true;
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.magFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearFilter;
+    return tex;
+}
+
 function classify(data) {
     if (data['__class__'] !== undefined) {
         data = window[data['__class__']].fromJSON(data);
@@ -857,10 +891,10 @@ NParray.fromURL = function(url, callback) {
     xhr.responseType = 'arraybuffer';
     xhr.onload = function(e) {
         if (this.readyState == 4 && this.status == 200) {
-            var data = new Uint32Array(this.response);
+            var data = new Uint32Array(this.response, 0, 2);
             var dtype = dtypeMap[data[0]];
             var ndim = data[1];
-            var shape = data.subarray(2, ndim+2);
+            var shape = new Uint32Array(this.response, 8, ndim);
             var array = new dtype(this.response, (ndim+2)*4);
             callback(new NParray(array, dtype, shape));
         }

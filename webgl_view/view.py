@@ -16,34 +16,38 @@ from .. import utils
 
 import serve
 
-loader = template.Loader(serve.cwd, autoescape=None)
+loader = template.Loader(serve.cwd)
 html = loader.load("mixer.html")
-static_template = loader.load("static_template.html")
+static_template = loader.load("static.html")
 
-try:
-    colormaps
-except NameError:
-    colormaps = []
-    name_parse = re.compile(r".*/(\w+).png")
-    for cmap in sorted(glob.glob(os.path.join(serve.cwd, "resources/colormaps/*.png"))):
-        name = name_parse.match(cmap).group(1)
-        colormaps.append((name, "data:image/png;base64,"+binascii.b2a_base64(open(cmap).read())))
+name_parse = re.compile(r".*/(\w+).png")
+colormaps = glob.glob(os.path.join(serve.cwd, "resources/colormaps/*.png"))
+colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
-def _normalize_data(data, mask, fmt="%s.bin"):
+def _normalize_data(data, mask):
     if not isinstance(data, dict):
         data = dict(data0=data)
 
-    json, sdat = dict(), dict()
+    json = dict()
     for name, dat in data.items():
-        json[name] = dict( __class__="Dataset", data=fmt%name)
+        json[name] = dict( __class__="Dataset")
         if isinstance(dat, dict):
-            sdat[name] = serve.make_bindat(_fixarray(dat['data'], mask))
+            json[name]['data'] = _fixarray(dat['data'], mask)
             json[name]['stim'] = dat['stim']
             json[name]['delay'] = dat['delay'] if 'delay' in dat else 0
         elif isinstance(dat, np.ndarray):
-            sdat[name] = serve.make_bindat(_fixarray(dat, mask))
+            json[name]['data'] = _fixarray(dat, mask)
 
-    return json, sdat
+    return json
+
+def _make_bindat(json, fmt="%s.bin"):
+    newjs, bindat = dict(), dict()
+    for name, data in json.items():
+        newjs[name] = dict(data)
+        newjs[name]['data'] = fmt%name
+        bindat[name] = serve.make_binarray(data['data'])
+
+    return newjs, bindat
 
 def _fixarray(data, mask):
     if isinstance(data, str):
@@ -106,14 +110,14 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
 
     #Generate the data binary objects and save them into the outpath
     mask = utils.get_cortical_mask(subject, xfmname)
-    json, sdat = _normalize_data(data, mask)
+    json, sdat = _make_bindat(_normalize_data(data, mask))
     for name, dat in sdat.items():
         with open(os.path.join(outpath, "%s.bin"%name), "w") as binfile:
             binfile.write(dat)
     
     #Parse the html file and paste all the js and css files directly into the html
     import htmlembed
-    html = static_template.generate(ctmfile=ctmfile, data=jsondat, colormaps=colormaps, default_cmap=cmap)
+    html = static_template.generate(ctmfile=ctmfile, data=json, colormaps=colormaps, default_cmap=cmap, python_interface=False)
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
 
 
@@ -133,7 +137,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     '''
     ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)
     mask = utils.get_cortical_mask(subject, xfmname)
-    jsondat, bindat = _normalize_data(data, mask, fmt='data/%s/')
+    jsondat, bindat = _make_bindat(_normalize_data(data, mask), fmt='data/%s/')
 
     savesvg = mp.Array('c', 8192)
     
@@ -162,7 +166,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     class MixerHandler(web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
-            self.write(html.generate(data=jsondat, colormaps=colormaps, default_cmap=cmap))
+            self.write(html.generate(data=jsondat, colormaps=colormaps, default_cmap=cmap, python_interface=True))
 
         def post(self):
             print "saving file to %s"%savesvg.value
@@ -172,8 +176,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     class JSMixer(serve.JSProxy):
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
-            data = _normalize_data(kwargs, mask)
-            return Proxy(dict([(name, dat['data']) for name, dat in data.items()]))
+            return Proxy(_normalize_data(kwargs, mask))
 
         def saveflat(self, filename, height=1024):
             Proxy = serve.JSProxy(self.send, "window.viewer.saveflat")
