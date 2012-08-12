@@ -402,7 +402,13 @@ MRIview.prototype = {
         if (data instanceof NParray || data instanceof Dataset)
             data = {'data0':data};
 
+        var name, names = [];
         for (var name in data) {
+            names.push(name);
+        }
+        names.sort();
+        for (var i = 0; i < names.length; i++) {
+            name = names[i];
             if (data[name] instanceof Dataset) {
                 this.datasets[name] = data[name];
             } else if (data[name] instanceof NParray) {
