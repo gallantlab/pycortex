@@ -181,6 +181,7 @@ function MRIview() {
     this.shader.map = true;
     this.shader.metal = true;
     this.shader.needsUpdate = true;
+    this.shader.uniforms.hatch.texture.needsUpdate = true;
 
     this.rawshader = new THREE.ShaderMaterial( {
         vertexShader:rawShader,
@@ -195,6 +196,7 @@ function MRIview() {
     this.rawshader.map = true;
     this.rawshader.metal = true;
     this.rawshader.needsUpdate = true;
+    this.rawshader.uniforms.hatch.texture.needsUpdate = true;
 
     this.projector = new THREE.Projector();
     this._startplay = null;
@@ -208,10 +210,12 @@ MRIview.prototype = {
         this.controls.update(this.flatmix);
         if (this.state == "play") {
             var sec = ((new Date()) - this._startplay) / 1000;
-            if (sec > this.dataset[0].textures.length) {
-                sec -= this.dataset[0].textures.length;
-                if (this.dataset[0].stim)
-                    this.dataset[0].stim.currentTime = this.dataset[0].delay;
+            if (sec > this.active[0].textures.length) {
+                sec -= this.active[0].textures.length;
+                if (this.active[0].stim) {
+                    this.active[0].stim.currentTime = this.active[0].delay;
+                    this.active[0].stim.play();
+                }
             }
             this.setFrame(sec);
             requestAnimationFrame(this.draw.bind(this));
@@ -282,6 +286,7 @@ MRIview.prototype = {
             }.bind(this));
             this.draw();
             $("#brain").css("opacity", 1);
+            $("#ctmload").hide();
         }.bind(this), true, true );
     },
     resize: function(width, height) {
@@ -416,15 +421,22 @@ MRIview.prototype = {
             }
             $("#datasets").append("<option value='"+name+"'>"+name+"</option>")
         }
+        var func = function() {
+            this.setData(names.slice(0,this.colormap.image.height > 10 ? 2 : 1));
+        }.bind(this);
 
-        var keys = Object.keys(data);
-        this.setData(keys.slice(0,this.colormap.image.height > 10 ? 2 : 1));
+        if (this.colormap.image.complete)
+            func();
+        else
+            this.colormap.image.addEventListener("load", func);
     },
     setData: function(names) {
         if (names instanceof Array && names.length > 1) {
             if (names.length > (this.colormap.image.height > 10 ? 2 : 1))
                 return false;
 
+            //Validate that the two datasets can be shown on the 2D colormap
+            /*
             var dataset = [this.datasets[names[0]]];
             var length = dataset[0].textures.length;
             var raw = dataset[0].raw;
@@ -435,13 +447,16 @@ MRIview.prototype = {
                 dataset.push(ds);
             }
             this.dataset = dataset;
+            */
+            this.active = [];
             for (var i = 0; i < names.length; i++) {
+                this.active.push(this.datasets[names[i]]);
                 this.datasets[names[i]].set(this, i);
             }
         } else {
             if (names instanceof Array)
                 names = names[0];
-            this.dataset = [this.datasets[names]];
+            this.active = [this.datasets[names]];
             this.datasets[names].set(this, 0);
             this.shader.uniforms.data.texture[1] = null;
             this.shader.uniforms.data.texture[3] = null;
@@ -452,30 +467,36 @@ MRIview.prototype = {
     },
 
     setColormap: function(cmap) {
-        var tex;
         if (cmap instanceof Image || cmap instanceof Element) {
-            tex = new THREE.Texture(cmap);
-
+            this.colormap = new THREE.Texture(cmap);
         } else if (cmap instanceof NParray) {
             var ncolors = cmap.shape[cmap.shape.length-1];
             if (ncolors != 3 && ncolors != 4)
                 throw "Invalid colormap shape"
             var height = cmap.shape.length > 2 ? cmap.shape[1] : 1;
             var fmt = ncolors == 3 ? THREE.RGBFormat : THREE.RGBAFormat;
-            tex = new THREE.DataTexture(cmap.data, cmap.shape[0], height, fmt);
+            this.colormap = new THREE.DataTexture(cmap.data, cmap.shape[0], height, fmt);
         }
-        tex.needsUpdate = true;
-        tex.flipY = true;
-        tex.minFilter = THREE.LinearFilter;
-        tex.magFilter = THREE.LinearFilter;
-        this.colormap = tex;
-        this.shader.uniforms.colormap.texture = tex;
-        this.controls.dispatchEvent({type:"change"});
-        
-        if (this.colormap.image.height > 10) {
-            $(".vcolorbar").show();
+
+        var func = function() {
+            this.colormap.needsUpdate = true;
+            this.colormap.flipY = true;
+            this.colormap.minFilter = THREE.LinearFilter;
+            this.colormap.magFilter = THREE.LinearFilter;
+            this.shader.uniforms.colormap.texture = this.colormap;
+            this.controls.dispatchEvent({type:"change"});
+            
+            if (this.colormap.image.height > 10) {
+                $(".vcolorbar").show();
+            } else {
+                $(".vcolorbar").hide();
+            }
+        }.bind(this);
+
+        if ((cmap instanceof Image || cmap instanceof Element) && !cmap.complete) {
+            cmap.addEventListener("load", func);
         } else {
-            $(".vcolorbar").hide();
+            func();
         }
     },
 
@@ -494,12 +515,16 @@ MRIview.prototype = {
 
         if (vmax > $(range).slider("option", "max")) {
             $(range).slider("option", "max", vmax);
+            this.active[dim].lmax = vmax;
         } else if (vmin < $(range).slider("option", "min")) {
             $(range).slider("option", "min", vmin);
+            this.active[dim].lmin = vmin;
         }
         $(range).slider("values", [vmin, vmax]);
         $(min).val(vmin);
         $(max).val(vmax);
+        this.active[dim].min = vmin;
+        this.active[dim].max = vmax;
 
         this.controls.dispatchEvent({type:"change"});
     },
@@ -523,23 +548,21 @@ MRIview.prototype = {
     setFrame: function(frame) {
         this.frame = frame;
         var fframe = Math.floor(frame);
-        
-        if (this.dataset.length > 1) {
-            this.shader.uniforms.data.texture[0] = this.dataset[0].textures[fframe];
-            this.shader.uniforms.data.texture[1] = this.dataset[1].textures[fframe];
-            this.shader.uniforms.data.texture[2] = this.dataset[0].textures[fframe+1];
-            this.shader.uniforms.data.texture[3] = this.dataset[1].textures[fframe+1];
-        } else {
-            this.shader.uniforms.data.texture[0] = this.dataset[0].textures[fframe];
-            this.shader.uniforms.data.texture[2] = this.dataset[0].textures[fframe+1];
+        if (this.active[0].array !== undefined) {
+            this.shader.uniforms.data.texture[0] = this.active[0].textures[fframe];
+            this.shader.uniforms.data.texture[2] = this.active[0].textures[fframe+1];
+        }
+        if (this.active.length > 1 && this.active[1].array !== undefined) {
+            this.shader.uniforms.data.texture[1] = this.active[1].textures[fframe];
+            this.shader.uniforms.data.texture[3] = this.active[1].textures[fframe+1];
         }
         this.shader.uniforms.framemix.value = frame - fframe;
         $("#movieprogress div").slider("value", frame);
-        $("#movieframe").val(frame);
+        $("#movieframe").attr("value", frame);
         this.controls.dispatchEvent({type:"change"});
     },
     playpause: function() {
-        var dataset = this.dataset[0];
+        var dataset = this.active[0];
         if (this.state == "pause") {
             //Start playing
             var func = function() {
@@ -564,6 +587,7 @@ MRIview.prototype = {
             $("#moviecontrols img").attr("src", "resources/images/control-play.png");
 
             if (dataset.stim !== undefined) {
+                dataset.stim.currentTime = this.frame+dataset.delay;
                 dataset.stim.pause();
             }
         }
@@ -635,8 +659,11 @@ MRIview.prototype = {
         $(window).resize(function() { this.resize(); }.bind(this));
         $("#brain").resize(function() { this.resize(); }.bind(this));
         window.addEventListener( 'keypress', function(e) {
-            if (e.keyCode == 32 && this.dataset[0].textures.length > 1)
+            if (e.keyCode == 32 && this.active[0].textures.length > 1) {
                 this.playpause();
+                e.stopPropagation();
+                e.preventDefault();
+            }
         }.bind(this))
         var _this = this;
         $("#mix").slider({
@@ -656,12 +683,9 @@ MRIview.prototype = {
         if ($("#color_fieldset").length > 0) {
             $("#colormap").ddslick({ width:296, height:400, 
                 onSelected: function() { 
-                    setTimeout(function() {
-                        this.setColormap($("#colormap .dd-selected-image")[0]);
-                    }.bind(this), 5);
+                    this.setColormap($("#colormap .dd-selected-image")[0]);
                 }.bind(this)
             });
-            this.setColormap($("#colormap .dd-selected-image")[0]);
 
             $("#vrange").slider({ 
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1],
@@ -674,8 +698,8 @@ MRIview.prototype = {
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1], orientation:"vertical",
                 slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1], 1); }.bind(this)
             });
-            $("#vmin2").change(function() { this.setVminmax(parseFloat($("#vmin2").val()), parseFloat($("#vmax2").val())); }.bind(this));
-            $("#vmax2").change(function() { this.setVminmax(parseFloat($("#vmin2").val()), parseFloat($("#vmax2").val())); }.bind(this));            
+            $("#vmin2").change(function() { this.setVminmax(parseFloat($("#vmin2").val()), parseFloat($("#vmax2").val()), 1); }.bind(this));
+            $("#vmax2").change(function() { this.setVminmax(parseFloat($("#vmin2").val()), parseFloat($("#vmax2").val()), 1); }.bind(this));            
         }
         var updateROIs = function() {
             this.roipack.update(this.renderer);
@@ -722,7 +746,7 @@ MRIview.prototype = {
         $("#movieprogress div").slider({min:0, max:1, step:.01,
             slide: function(event, ui) { 
                 this.setFrame(ui.value); 
-                var dataset = this.dataset[0];
+                var dataset = this.active[0];
                 if (dataset.stim !== undefined) {
                     dataset.stim.currentTime = ui.value + dataset.delay;
                 }
@@ -731,7 +755,7 @@ MRIview.prototype = {
 
         $("#movieframe").change(function() { 
             _this.setFrame(this.value); 
-            var dataset = _this.dataset[0];
+            var dataset = _this.active[0];
             if (dataset.stim !== undefined) {
                 dataset.stim.currentTime = this.value + dataset.delay;
             }
@@ -822,13 +846,16 @@ function makeHatch(size, linewidth, spacing) {
     canvas.width = size;
     canvas.height = size;
     var ctx = canvas.getContext("2d");
-    ctx.fillStyle = "rgb(255, 255, 255);"
-    ctx.fillRect(0,0,size,size);
-    ctx.lineWidth = linewidth ? linewidth: 3;
+    //ctx.fillStyle = "rgb(255, 255, 255);"
+    //ctx.fillRect(0,0,size,size);
+    ctx.lineWidth = linewidth ? linewidth: 1.5;
     for (var i = 0, il = size*2; i < il; i+=spacing) {
         ctx.beginPath();
         ctx.moveTo(i-size, 0);
         ctx.lineTo(i, size);
+        ctx.stroke();
+        ctx.moveTo(i, 0)
+        ctx.lineTo(i-size, size);
         ctx.stroke();
     }
 
@@ -837,7 +864,7 @@ function makeHatch(size, linewidth, spacing) {
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
     tex.magFilter = THREE.LinearFilter;
-    tex.minFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearMipMapLinearFilter;
     return tex;
 }
 
@@ -864,6 +891,7 @@ var dtypeNames = {
     "float32":Float32Array,
 }
 var dtypeMap = [Uint32Array, Uint16Array, Uint8Array, Int32Array, Int16Array, Int8Array, Float32Array]
+var loadCount = 0;
 function NParray(data, dtype, shape) {
     this.data = data;
     this.shape = shape;
@@ -894,17 +922,22 @@ NParray.fromJSON = function(json) {
     return new NParray(data, json.dtype, json.shape);
 }
 NParray.fromURL = function(url, callback) {
+    loadCount++;
+    $("#dataload").show();
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';
     xhr.onload = function(e) {
         if (this.readyState == 4 && this.status == 200) {
+            loadCount--;
             var data = new Uint32Array(this.response, 0, 2);
             var dtype = dtypeMap[data[0]];
             var ndim = data[1];
             var shape = new Uint32Array(this.response, 8, ndim);
             var array = new dtype(this.response, (ndim+2)*4);
             callback(new NParray(array, dtype, shape));
+            if (loadCount == 0)
+                $("#dataload").hide();
         }
     };
     xhr.send()
@@ -959,6 +992,8 @@ Dataset.fromJSON = function(json) {
     }
     if (json.stim !== undefined)
         ds.addStim(json.stim, json.delay);
+    ds.min = json.min;
+    ds.max = json.max;
     return ds;
 }
 Dataset.maketex = function(array, shape, raw, slice) {
@@ -999,8 +1034,12 @@ Dataset.prototype = {
             this.textures.push(Dataset.maketex(nparray, [this.datasize.x, this.datasize.y], this.raw));
         }
         var minmax = nparray.minmax();
-        this.min = minmax[0];
-        this.max = minmax[1];
+        this.lmin = minmax[0];
+        this.lmax = minmax[1];
+        if (this.min === undefined)
+            this.min = this.lmin;
+        if (this.max === undefined)
+            this.max = this.lmax;
 
         if (this._func !== undefined) {
             this._func();
@@ -1038,7 +1077,7 @@ Dataset.prototype = {
                 $("#bottombar").removeClass("bbar_controls");
             }
 
-            $(dim == 0 ? "#vrange" : "#vrange2").slider("option", {min: this.min, max:this.max});
+            $(dim == 0 ? "#vrange" : "#vrange2").slider("option", {min: this.lmin, max:this.lmax});
             viewer.setVminmax(this.min, this.max, dim);
 
             if (this.stim === undefined) {
@@ -1054,8 +1093,7 @@ Dataset.prototype = {
                     this.stim.currentTime = delay;
                 } else {
                     $(this.stim).bind("loadeddata", function() {
-                        this.currentTime = delay; 
-                        console.log(this.currentTime, delay);
+                        this.currentTime = delay;
                         $(this).unbind("loadeddata");
                     });
                 }

@@ -9,6 +9,7 @@ import mimetypes
 import webbrowser
 import multiprocessing as mp
 import numpy as np
+from scipy.stats import scoreatpercentile
 
 from tornado import web, template
 
@@ -32,11 +33,15 @@ def _normalize_data(data, mask):
     for name, dat in data.items():
         json[name] = dict( __class__="Dataset")
         if isinstance(dat, dict):
-            json[name]['data'] = _fixarray(dat['data'], mask)
+            data = _fixarray(dat['data'], mask)
             json[name]['stim'] = dat['stim']
             json[name]['delay'] = dat['delay'] if 'delay' in dat else 0
         elif isinstance(dat, np.ndarray):
-            json[name]['data'] = _fixarray(dat, mask)
+            data = _fixarray(dat, mask)
+
+        json[name]['data'] = data
+        json[name]['min'] = scoreatpercentile(data.ravel(), 1)
+        json[name]['max'] = scoreatpercentile(data.ravel(), 99)
 
     return json
 
@@ -140,6 +145,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     jsondat, bindat = _make_bindat(_normalize_data(data, mask), fmt='data/%s/')
 
     savesvg = mp.Array('c', 8192)
+    queue = mp.Queue()
     
     class CTMHandler(web.RequestHandler):
         def get(self, path):
@@ -157,6 +163,8 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     class DataHandler(web.RequestHandler):
         def get(self, path):
             path = path.strip("/")
+            if not queue.empty():
+                bindat.update(queue.get())
             if path in bindat:
                 self.write(bindat[path])
             else:
@@ -176,7 +184,9 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     class JSMixer(serve.JSProxy):
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
-            return Proxy(_normalize_data(kwargs, mask))
+            json, data = _make_bindat(_normalize_data(kwargs, mask), fmt='data/%s/')
+            queue.put(data)
+            return Proxy(json)
 
         def saveflat(self, filename, height=1024):
             Proxy = serve.JSProxy(self.send, "window.viewer.saveflat")

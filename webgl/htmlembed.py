@@ -42,7 +42,7 @@ def _embed_js(dom, script):
             wscript.setAttribute("id", wid)
             wscript.appendChild(dom.createTextNode(_embed_worker(wfile)))
             script.parentNode.insertBefore(wscript, script)
-            rplc = "wurl(new Blob([document.getElementById('%s').textContent]))"%wid
+            rplc = "window.URL.createObjectURL(new Blob([document.getElementById('%s').textContent]))"%wid
             jssrc = jssrc.replace(worker, rplc)
 
         for src in aparse.findall(jssrc):
@@ -72,11 +72,9 @@ def embed(rawhtml, outfile):
     head = dom.getElementsByTagName("head")[0]
     wurl = dom.createElement("script")
     wurl.setAttribute("type", "text/javascript")
-    wurl.appendChild(dom.createTextNode('''var wurl;
-if (window.URL)
-    wurl = window.URL.createObjectURL;
-else if (window.webkitURL)
-    wurl = window.webkitURL.createObjectURL;
+    wurl.appendChild(dom.createTextNode('''
+if (window.webkitURL)
+    window.URL = window.webkitURL;
 '''))
     head.insertBefore(wurl, head.childNodes[0])
 
