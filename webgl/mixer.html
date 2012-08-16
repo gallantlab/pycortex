@@ -1,0 +1,10 @@
+{% extends template.html %}
+{% block onload %}
+	var viewer, sock;
+	$(document).ready(function() {
+		viewer = new MRIview();
+		sock = new Websock();
+		viewer.load("/ctm/");
+		viewer.addData(classify({{data}}));
+	});
+{% end %}

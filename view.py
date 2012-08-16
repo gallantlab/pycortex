@@ -5,7 +5,7 @@ import glob
 import numpy as np
 from scipy.interpolate import interp1d
 
-from webgl_view import show as webshow
+from webgl import show as webshow
 from quickflat import show as quickflat
 
 import db

@@ -49,10 +49,41 @@ table { cell-spacing:0px; }
 #hiderois {
     display:none;
 }
-
-.dd-select { height:30px; }
+#dataload {
+    position:absolute;
+    z-index:100;
+    width:200px;
+    left:100px;
+    top:100px;
+    font-size:150%;
+    padding:20px;
+    color:white;
+    background:rgba(50,50,50,0.5);
+    text-align:center;
+}
+#dataload img {
+    height:32px;
+    vertical-align:middle;
+    margin:0px 10px 0px 0px;
+}
+#ctmload {
+    position:absolute;
+    color:#AAA;
+    width:250px;
+    top:50%;
+    margin-top:-8px;
+    margin-left:-125px;
+    text-align:center;
+    left:50%;
+    text-shadow:0px 1px 1px black;
+}
+#ctmload img {
+    height:16px;
+    margin:0 5px 0px 0px;
+    vertical-align: middle;
+}
 .dd-selected-text, .dd-option-text { display:none; }
-.dd-option-image, .dd-selected-image { height:10px; width:256px; max-width:none; }
+.dd-option-image, .dd-selected-image { min-height:10px; width:256px; max-width:none; }
 
 .content { padding:10px; }
 .infobar {
@@ -78,12 +109,12 @@ table { cell-spacing:0px; }
     -webkit-transition-delay:.1s;
 }
 #topbar { 
-    height:300px; 
-    margin:-290px 50px -10px 50px;      
+    height:380px; 
+    margin:-370px 50px -10px 50px;      
     border-radius: 0px 0px 50px 50px / 0px 0px 10px 10px;
 }
 #topbar:hover, #topbar:active { 
-    margin:0px 50px -300px 50px; 
+    margin:0px 50px -380px 50px; 
 }
 
 #display_options {
@@ -97,9 +128,11 @@ table { cell-spacing:0px; }
 .opt_category {
     float:left;
 }
-#vminmax > input {float:left; width:36px; }
-#vrange_wrap { float:left; padding:5px 10px;}
+.vcolorbar { display:none; width:36px; }
+input.vlim {float:left; width:36px; }
+.vrange_wrap { float:left; padding:5px 10px;}
 #vrange { width:200px; }
+#vrange2 { height:200px; }
 
 #roi_fieldset {
     width:200px;
@@ -143,6 +176,7 @@ table { cell-spacing:0px; }
 #moviecontrols {
     width:100%;
     text-align:center;
+    display:none;
 }
 table#movieui {
     width:60%;
@@ -168,8 +202,7 @@ table#movieui {
     position:absolute;
     left:60%;
     width:40%;
-    top:50%;
-    margin-top:-240px;
+    height:100%;
 }
 
 .roilabel {
