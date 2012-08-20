@@ -22,6 +22,7 @@ typedef struct Hemi {
     char names[6][1024];
     unsigned int nbetween;
     CTMfloat* datamap;
+    CTMfloat* aux;
 } Hemi;
 
 typedef struct Subject {

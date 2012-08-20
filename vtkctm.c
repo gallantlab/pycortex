@@ -184,6 +184,8 @@ void minmaxFree(MinMax* minmax) {
 Subject* newSubject(const char* name) {
     Subject* subj = calloc(1, sizeof(Subject));
     strcpy(subj->name, name);
+    subj->left.aux = NULL;
+    subj->right.aux = NULL;
     subj->left.fiducial = NULL;
     subj->right.fiducial = NULL;
     subj->left.flat = NULL;
@@ -195,6 +197,7 @@ Subject* newSubject(const char* name) {
 
 void hemiAddFid(Hemi* hemi, const char* filename) {
     hemi->fiducial = readVTK(filename, true);
+    hemi->aux = calloc(hemi->fiducial->npts*4, sizeof(CTMfloat));
 }
 void hemiAddFlat(Hemi* hemi, const char* filename) {
     hemi->flat = readVTK(filename, true);
@@ -207,9 +210,16 @@ void hemiAddSurf(Hemi* hemi, const char* filename, const char* name) {
     else
         strcpy(hemi->names[idx], name);
 }
+void hemiAddAux(Hemi* hemi, const float* data, const unsigned short offset) {
+    int i;
+    assert(offset < 4);
+    for (i = 0; i < hemi->fiducial->npts; i++) {
+        hemi->aux[i*4+offset] = data[i];
+    }
+}
 void hemiAddMap(Hemi* hemi, const int* datamap) {
     int i;
-    hemi->datamap = (CTMfloat*) malloc(hemi->fiducial->npts*sizeof(float)*2);
+    hemi->datamap = malloc(hemi->fiducial->npts*sizeof(float)*2);
     for (i=0; i < hemi->fiducial->npts; i++) {
         hemi->datamap[i*2+0] = (CTMfloat) (datamap[i] % 256);
         hemi->datamap[i*2+1] = (CTMfloat) floor(datamap[i] / 256);
@@ -226,7 +236,10 @@ void subjFree(Subject* subj) {
         meshFree(subj->left.flat);
     if (subj->right.flat != NULL)
         meshFree(subj->right.flat);
-
+    if (subj->left.aux != NULL)
+        free(subj->left.aux);
+    if (subj->right.aux != NULL)
+        free(subj->right.aux);
     if (subj->left.datamap != NULL)
         free(subj->left.datamap);
     if (subj->right.datamap != NULL)

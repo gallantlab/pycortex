@@ -31,7 +31,8 @@ class Hemi(ctypes.Structure):
         ("between", ctypes.POINTER(Mesh)*6),
         ("names", ctypes.c_char*1024*6),
         ("nbetween", ctypes.c_uint32),
-        ("datamap", ctypes.POINTER(ctypes.c_float))
+        ("datamap", ctypes.POINTER(ctypes.c_float)),
+        ("aux", ctypes.POINTER(ctypes.c_float))
     ]
 
 class Subject(ctypes.Structure):
@@ -55,6 +56,7 @@ lib.newSubject.argtypes = [ctypes.c_char_p]
 lib.hemiAddFid.argtypes = [ctypes.POINTER(Hemi), ctypes.c_char_p]
 lib.hemiAddFlat.argtypes = [ctypes.POINTER(Hemi), ctypes.c_char_p]
 lib.hemiAddSurf.argtypes = [ctypes.POINTER(Hemi), ctypes.c_char_p, ctypes.c_char_p]
+lib.hemiAddAux.argtypes = [ctypes.POINTER(Hemi), np.ctypeslib.ndpointer(np.float32), ctypes.c_uint16]
 lib.hemiAddMap.argtypes = [ctypes.POINTER(Hemi), np.ctypeslib.ndpointer(np.uint32)]
 
 lib.saveCTM.restype = ctypes.POINTER(MinMax)
@@ -94,7 +96,7 @@ class CTMfile(object):
             lib.hemiAddFid(ctypes.byref(hemi), self.files['surfs']['fiducial'][h])
             lib.hemiAddFlat(ctypes.byref(hemi), self.files['surfs']['flat'][h])
             lib.hemiAddMap(ctypes.byref(hemi), datamap)
-            lib.hemiAddAux(ctypes.byref(hemi), data, 0)
+            lib.hemiAddAux(ctypes.byref(hemi), drop.astype(np.float32), 0)
         return self
 
     def __exit__(self, type, value, traceback):
@@ -132,7 +134,7 @@ class CTMfile(object):
         cont = self.subj.contents
         curvs = get_curvature(self.name, **kwargs)
         for h, hemi, curv in zip(['lh', 'rh'], [cont.left, cont.right], curvs):
-            lib.hemiAddAux(ctypes.byref(hemi), data, 1)
+            lib.hemiAddAux(ctypes.byref(hemi), curv.astype(np.float32), 1)
 
     def save(self, filename, compmeth='mg2', complevel=9):
         left = tempfile.NamedTemporaryFile()
@@ -177,12 +179,12 @@ class CTMfile(object):
 
         return ptidx, dict(offsets=offsets, flatlims=flatlims)
 
-def make_pack(outfile, subj, xfm, types=("inflated,"), method='raw', level=0):
+def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0, **curvargs):
     fname, ext = os.path.splitext(outfile)
     with CTMfile(subj, xfm) as ctm:
         for t in types:
             ctm.addSurf(t)
-
+        ctm.addCurv(**curvargs)
         ptidx, jsondat = ctm.save("%s.ctm"%fname, compmeth=method, complevel=level)
 
     svgname = "%s.svg"%fname
@@ -215,9 +217,4 @@ def make_pack(outfile, subj, xfm, types=("inflated,"), method='raw', level=0):
     
 
 if __name__ == "__main__":
-    ctmcache = os.path.join(filestore, "ctmcache")
-    fname = os.path.join(ctmcache, "{subj}_{xfm}_[{types}]_{meth}_{lvl}.%s".format(
-        subj=subj, xfm=xfm, types=','.join(types), 
-        meth=method, lvl=level))
-
-    print make_pack("AH", "AH_huth2", types=("inflated", "superinflated"))
+    print make_pack("/tmp/test.json", "AH", "AH_huth2", types=("inflated", "superinflated"), recache=True)
