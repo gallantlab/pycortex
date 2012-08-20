@@ -1,6 +1,10 @@
 var flatscale = .4;
 
 var vShadeHead = [
+    THREE.ShaderChunk[ "map_pars_vertex" ], 
+    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+
     "attribute vec2 datamap;",
     "attribute vec4 auxdat;",
     "uniform sampler2D data[4];",
@@ -17,10 +21,6 @@ var vShadeHead = [
     "varying vec4 vColor;",
     "varying float vCurv;",
     "varying float vDrop;",
-
-    THREE.ShaderChunk[ "map_pars_vertex" ], 
-    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
-    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
 
     "void main() {",
 
@@ -76,8 +76,14 @@ var rawShader = vShadeHead + ([
 ].join("\n")) + vShadeTail;
 
 var fragmentShader = [
+    THREE.ShaderChunk[ "map_pars_fragment" ],
+    THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
+
     "uniform sampler2D hatch;",
     "uniform vec2 hatchrep;",
+
+    "uniform float curvWt;",
+    "uniform float dropWt;",
 
     "uniform vec3 diffuse;",
     "uniform vec3 ambient;",
@@ -89,9 +95,6 @@ var fragmentShader = [
     "varying float vCurv;",
     "varying float vDrop;",
 
-    THREE.ShaderChunk[ "map_pars_fragment" ],
-    THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
-
     "void main() {",
         "vec4 mapcolor = texture2D(map, vUv);",
         "gl_FragColor.a = mapcolor.a + vColor.a*(1.-mapcolor.a);",
@@ -101,7 +104,8 @@ var fragmentShader = [
         THREE.ShaderChunk[ "lights_phong_fragment" ],
 
         "vec4 hcolor = texture2D(hatch, vUv*hatchrep);",
-        "gl_FragColor = gl_FrontFacing ? gl_FragColor : hcolor + gl_FragColor*(1.-hcolor.a);",
+        "float dw = gl_FrontFacing ? 1 : dropWt"
+        "gl_FragColor = (hcolor*dw) + gl_FragColor*(1.-dw*hcolor.a);",
     "}"
 
 ].join("\n");
@@ -171,10 +175,13 @@ function MRIview() {
             colormap:   { type:'t',  value:2, texture: null },
             dropout:    { type:'t',  value:3, texture: null },
             curvature:  { type:'t',  value:4, texture: null },
-            data:       { type:'tv', value:5, texture: [null, null, null, null] },
+            data:       { type:'tv', value:0, texture: [null, null, null, null] },
 
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
+
+            dropWt:     { type:'f', value:1},
+            curvWt:     { type:'f', value:0},
         }
     ])
 
