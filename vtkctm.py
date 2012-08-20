@@ -7,7 +7,7 @@ import tempfile
 import numpy as np
 from scipy.spatial import cKDTree
 
-from utils import get_cortical_mask, get_roipack
+from utils import get_cortical_mask, get_roipack, get_curvature
 from db import surfs
 
 class Mesh(ctypes.Structure):
@@ -84,36 +84,55 @@ class CTMfile(object):
         self.name = subject
         self.xfmname = xfmname
         self.files = surfs.getFiles(subject)
+        self.mask = get_cortical_mask(self.name, self.xfmname)
+        self.coords = surfs.getCoords(self.name, self.xfmname)
 
     def __enter__(self):
         self.subj = lib.newSubject(self.name)
         cont = self.subj.contents
-        for h, hemi, datamap in zip(["lh", "rh"], [cont.left, cont.right], self.maps):
+        for h, hemi, datamap, drop in zip(["lh", "rh"], [cont.left, cont.right], self.maps, self.dropout):
             lib.hemiAddFid(ctypes.byref(hemi), self.files['surfs']['fiducial'][h])
             lib.hemiAddFlat(ctypes.byref(hemi), self.files['surfs']['flat'][h])
             lib.hemiAddMap(ctypes.byref(hemi), datamap)
+            lib.hemiAddAux(ctypes.byref(hemi), data, 0)
         return self
 
     def __exit__(self, type, value, traceback):
         lib.subjFree(self.subj)
 
+    def _vox_to_idx(self, vox):
+        values = []
+        left, right = self.coords
+        for coords in (left, right):
+            idx = np.ravel_multi_index(coords.T, vox.shape[::-1])
+            values.append(vox.T.ravel()[idx])
+        return values
+
     @property
     def maps(self):
-        indices = []
-        mask = get_cortical_mask(self.name, self.xfmname)
-        imask = mask.astype(np.uint32)
-        imask[imask > 0] = np.arange(mask[mask > 0].sum())
+        imask = self.mask.astype(np.uint32)
+        imask[imask > 0] = np.arange(self.mask[self.mask > 0].sum())
+        return self._vox_to_idx(imask)
 
-        left, right = surfs.getCoords(self.name, self.xfmname)
-        for coords in (left, right):
-            idx = np.ravel_multi_index(coords.T, mask.shape[::-1])
-            indices.append(imask.T.ravel()[idx])
-        return indices
+    @property
+    def dropout(self):
+        import nibabel
+        xfm, ref = surfs.getXfm(self.name, self.xfmname)
+        nib = nibabel.load(ref)
+        data = nib.get_data().T
+        norm = (data - data.min()) / (data.max() - data.min())
+        return self._vox_to_idx(norm)
 
     def addSurf(self, surf):
         cont = self.subj.contents
         for h, hemi in zip(["lh", "rh"], [cont.left, cont.right]):
             lib.hemiAddSurf(ctypes.byref(hemi), self.files['surfs'][surf][h], None)
+
+    def addCurv(self, **kwargs):
+        cont = self.subj.contents
+        curvs = get_curvature(self.name, **kwargs)
+        for h, hemi, curv in zip(['lh', 'rh'], [cont.left, cont.right], curvs):
+            lib.hemiAddAux(ctypes.byref(hemi), data, 1)
 
     def save(self, filename, compmeth='mg2', complevel=9):
         left = tempfile.NamedTemporaryFile()

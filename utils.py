@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 from db import surfs, options
 import view
@@ -343,3 +344,42 @@ def get_roi_masks(subject,xfmname,roiList=None,shape=(31,100,100),Dst=2,overlapO
     elif overlapOpt=='split':
         pass
     return mask,roiIdx
+
+def get_curvature(subject, smooth=5, neighborhood=2):
+    from tvtk.api import tvtk
+    curvs = []
+    for hemi in surfs.getVTK(subject, "fiducial"):
+        pd = tvtk.PolyData(points=hemi[0], polys=hemi[1])
+        curv = tvtk.Curvatures(input=pd, curvature_type="mean")
+        curv.update()
+        curv = curv.output.point_data.scalars.to_array()
+        if smooth == 0:
+            curvs.append(curv)
+        else:
+            faces = dict()
+            for poly in hemi[1]:
+                for pt in poly:
+                    if pt not in faces:
+                        faces[pt] = set()
+                    faces[pt] |= set(poly)
+
+            def getpts(pt, n):
+                if pt in faces:
+                    for p in faces[pt]:
+                        if n == 0:
+                            yield p
+                        else:
+                            for q in getpts(p, n-1):
+                                yield q
+
+            curvature = np.zeros(len(hemi[0]))
+            for i, pt in enumerate(hemi[0]):
+                neighbors = list(set(getpts(i, neighborhood)))
+                mult = np.exp(-(((hemi[0][neighbors] - pt)**2) / (2*smooth**2)).sum(1))
+                curvature[i] = (mult * curv[neighbors]).mean()
+                if i % 1000 == 0:
+                    print "\r%d"%i ,
+                    sys.stdout.flush()
+            curvs.append(curvature)
+
+    return curvs
