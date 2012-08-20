@@ -104,7 +104,7 @@ var fragmentShader = [
         THREE.ShaderChunk[ "lights_phong_fragment" ],
 
         "vec4 hcolor = texture2D(hatch, vUv*hatchrep);",
-        "float dw = gl_FrontFacing ? 1. : dropWt;",
+        "float dw = gl_FrontFacing ? dropWt*vDrop : 1.;",
         "gl_FragColor = (hcolor*dw) + gl_FragColor*(1.-dw*hcolor.a);",
     "}"
 
@@ -175,7 +175,7 @@ function MRIview() {
             colormap:   { type:'t',  value:2, texture: null },
             dropout:    { type:'t',  value:3, texture: null },
             curvature:  { type:'t',  value:4, texture: null },
-            data:       { type:'tv', value:0, texture: [null, null, null, null] },
+            data:       { type:'tv', value:5, texture: [null, null, null, null] },
 
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
@@ -189,7 +189,7 @@ function MRIview() {
         vertexShader:cmapShader,
         fragmentShader:fragmentShader,
         uniforms: uniforms,
-        attributes: { datamap:true },
+        attributes: { datamap:true, auxdat:true },
         morphTargets:true, 
         morphNormals:true, 
         lights:true, 
@@ -204,7 +204,7 @@ function MRIview() {
         vertexShader:rawShader,
         fragmentShader:fragmentShader,
         uniforms: THREE.UniformsUtils.clone(uniforms),
-        attributes: { datamap:true },
+        attributes: { datamap:true, auxdat:true },
         morphTargets:true,
         morphNormals:true,
         lights:true,

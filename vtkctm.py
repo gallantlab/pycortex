@@ -121,9 +121,10 @@ class CTMfile(object):
         import nibabel
         xfm, ref = surfs.getXfm(self.name, self.xfmname)
         nib = nibabel.load(ref)
-        data = nib.get_data().T
+        data = self.mask.copy()
+        data[self.mask > 0] = nib.get_data().T[self.mask]
         norm = (data - data.min()) / (data.max() - data.min())
-        return self._vox_to_idx(norm**20)
+        return self._vox_to_idx((1-norm)**20)
 
     def addSurf(self, surf):
         cont = self.subj.contents
