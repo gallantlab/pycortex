@@ -67,6 +67,7 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     '''mosaic(data, xy=(6, 5), trim=10, skip=1)
 
     Turns volume data into a mosaic, useful for quickly viewing volumetric data
+    IN RADIOLOGICAL COORDINATES (LEFT SIDE OF FIGURE IS RIGHT SIDE OF SUBJECT)
 
     Parameters
     ----------
@@ -205,6 +206,17 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
     return dist, argdist
 
 
+def get_hemi_masks(subject, xfmname, shape=(31,100,100)):
+    '''Returns a binary mask of the left and right hemisphere
+    surface voxels for the given subject.
+    '''
+    lco, rco = surfs.getCoords(subject, xfmname)
+    lmask = np.zeros(shape, dtype=np.bool)
+    lmask.T[tuple(lco.T)] = True
+    rmask = np.zeros(shape, dtype=np.bool)
+    rmask.T[tuple(rco.T)] = True
+    return lmask, rmask
+
 def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
     '''Return a bitmask for the given ROIs'''
     import svgroi
@@ -233,6 +245,32 @@ def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
             mask = np.zeros(shape, dtype=np.bool)
             mask.T[tuple(coords[rois.get_roi(name)].T)] = True
             roidict[name] = mask
+        return roidict
+
+def get_roi_verts(subject, xfmname, roi=None, shape=(31, 100, 100)):
+    '''Return vertices for the given ROIs'''
+    import svgroi
+    flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
+    valid = np.unique(polys)
+    flat = flat[valid]
+    
+    coords = np.vstack(surfs.getCoords(subject, xfmname))
+    coords = coords[valid]
+
+    svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
+    rois = svgroi.ROIpack(flat[:,:2], svgfile)
+
+    #return rois, flat, coords
+
+    if roi is None:
+        roi = rois.names
+
+    if isinstance(roi, str):
+        raise Exception
+    elif isinstance(roi, list):
+        roidict = dict()
+        for name in roi:
+            roidict[name] = tuple(coords[rois.get_roi(name)].T)
         return roidict
 
 
