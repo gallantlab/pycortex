@@ -104,7 +104,7 @@ var fragmentShader = [
         THREE.ShaderChunk[ "lights_phong_fragment" ],
 
         "vec4 hcolor = texture2D(hatch, vUv*hatchrep);",
-        "float dw = gl_FrontFacing ? 1 : dropWt"
+        "float dw = gl_FrontFacing ? 1 : dropWt;",
         "gl_FragColor = (hcolor*dw) + gl_FragColor*(1.-dw*hcolor.a);",
     "}"
 
