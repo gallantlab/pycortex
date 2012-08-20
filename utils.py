@@ -375,8 +375,10 @@ def get_curvature(subject, smooth=5, neighborhood=2):
             curvature = np.zeros(len(hemi[0]))
             for i, pt in enumerate(hemi[0]):
                 neighbors = list(set(getpts(i, neighborhood)))
-                mult = np.exp(-(((hemi[0][neighbors] - pt)**2) / (2*smooth**2)).sum(1))
-                curvature[i] = (mult * curv[neighbors]).mean()
+                if len(neighbors) > 0:
+                    mult = np.exp(-(((hemi[0][neighbors] - pt)**2) / (2*smooth**2)).sum(1))
+                    curvature[i] = (mult * curv[neighbors]).mean()
+                
                 if i % 1000 == 0:
                     print "\r%d"%i ,
                     sys.stdout.flush()

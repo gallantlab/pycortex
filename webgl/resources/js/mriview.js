@@ -2,6 +2,7 @@ var flatscale = .4;
 
 var vShadeHead = [
     "attribute vec2 datamap;",
+    "attribute vec4 auxdat;",
     "uniform sampler2D data[4];",
     "uniform vec2 datasize;",
 
@@ -14,6 +15,8 @@ var vShadeHead = [
     "varying vec3 vViewPosition;",
     "varying vec3 vNormal;",
     "varying vec4 vColor;",
+    "varying float vCurv;",
+    "varying float vDrop;",
 
     THREE.ShaderChunk[ "map_pars_vertex" ], 
     THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -28,6 +31,8 @@ var vShadeHead = [
         "float mix = smoothstep(0.,1.,framemix);",
         
         "vec2 dcoord = (2.*datamap+1.) / (2.*datasize);",
+        "vDrop = auxdat.x;",
+        "vCurv = auxdat.y;",
         "",
 ].join("\n");
 
@@ -81,6 +86,9 @@ var fragmentShader = [
     "uniform float shininess;",
 
     "varying vec4 vColor;",
+    "varying float vCurv;",
+    "varying float vDrop;",
+
     THREE.ShaderChunk[ "map_pars_fragment" ],
     THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
@@ -161,7 +169,9 @@ function MRIview() {
             map:        { type:'t',  value:0, texture: null },
             hatch:      { type:'t',  value:1, texture: makeHatch() },
             colormap:   { type:'t',  value:2, texture: null },
-            data:       { type:'tv', value:3, texture: [null, null, null, null] },
+            dropout:    { type:'t',  value:3, texture: null },
+            curvature:  { type:'t',  value:4, texture: null },
+            data:       { type:'tv', value:5, texture: [null, null, null, null] },
 
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},

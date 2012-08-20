@@ -333,6 +333,15 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
         }
         minmaxFree(fidmm);
 
+        if (hemis[i]->aux != NULL) {
+            idx = ctmAddAttribMap(ctx[i], hemis[i]->aux, "auxdat");
+            if (idx == CTM_NONE)
+                printf("CTM error!\n");
+            err = ctmGetError(ctx[i]);
+            if (err != CTM_NONE)
+                printf("CTM error add auxdat: %s\n", ctmErrorString(err));
+        }
+
         if (hemis[i]->datamap != NULL) {
             idx = ctmAddUVMap(ctx[i], hemis[i]->datamap, "datamap", NULL);
             if (idx == CTM_NONE)

@@ -123,7 +123,7 @@ class CTMfile(object):
         nib = nibabel.load(ref)
         data = nib.get_data().T
         norm = (data - data.min()) / (data.max() - data.min())
-        return self._vox_to_idx(norm)
+        return self._vox_to_idx(norm**20)
 
     def addSurf(self, surf):
         cont = self.subj.contents
