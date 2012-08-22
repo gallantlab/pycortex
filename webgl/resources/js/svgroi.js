@@ -46,6 +46,7 @@ ROIpack.prototype = {
                 renderCallback: function() {
                     this._shadowtex.setRadius(sw/4);
                     var tex = this._shadowtex.blur(renderer, new THREE.Texture(canvas));
+                    //this.callback(tex);
                     canvg(canvas, svg_xml, {
                         ignoreMouse:true,
                         ignoreAnimation:true,
@@ -64,7 +65,7 @@ ROIpack.prototype = {
                 renderCallback:function() {
                     var tex = new THREE.Texture(canvas);
                     tex.needsUpdate = true;
-                    //tex.premultiplyAlpha = true;
+                    tex.premultiplyAlpha = true;
                     this.callback(tex);
                 }.bind(this),
             });

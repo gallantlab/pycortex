@@ -103,12 +103,12 @@ class CTMfile(object):
         lib.subjFree(self.subj)
 
     def _vox_to_idx(self, vox):
-        values = []
+        hemis = []
         left, right = self.coords
         for coords in (left, right):
             idx = np.ravel_multi_index(coords.T, vox.shape[::-1])
-            values.append(vox.T.ravel()[idx])
-        return values
+            hemis.append(vox.T.ravel()[idx])
+        return hemis
 
     @property
     def maps(self):
@@ -121,7 +121,7 @@ class CTMfile(object):
         import nibabel
         xfm, ref = surfs.getXfm(self.name, self.xfmname)
         nib = nibabel.load(ref)
-        data = self.mask.copy()
+        data = np.zeros(self.mask.shape, dtype=np.float32)
         data[self.mask > 0] = nib.get_data().T[self.mask]
         norm = (data - data.min()) / (data.max() - data.min())
         return self._vox_to_idx((1-norm)**20)

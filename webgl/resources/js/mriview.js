@@ -21,7 +21,7 @@ var vShadeHead = [
     "varying vec4 vColor;",
     "varying float vCurv;",
     "varying float vDrop;",
-
+    
     "void main() {",
 
         "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
@@ -83,6 +83,8 @@ var fragmentShader = [
     "uniform vec2 hatchrep;",
 
     "uniform float curvWt;",
+    "uniform float curvScale;",
+    "uniform float curvLim;",
     "uniform float dropWt;",
 
     "uniform vec3 diffuse;",
@@ -96,16 +98,21 @@ var fragmentShader = [
     "varying float vDrop;",
 
     "void main() {",
-        "vec4 mapcolor = texture2D(map, vUv);",
-        "gl_FragColor.a = mapcolor.a + vColor.a*(1.-mapcolor.a);",
-        "gl_FragColor.rgb = mapcolor.rgb*mapcolor.a + vColor.rgb*vColor.a*(1.-mapcolor.a);",
-        "gl_FragColor.rgb /= gl_FragColor.a;",
-
-        THREE.ShaderChunk[ "lights_phong_fragment" ],
-
+        //Curvature Underlay
+        "gl_FragColor = vec4(vec3(clamp(curvScale * vCurv  + .5, curvLim, 1.-curvLim)), 1.);",
+        //Data layer
+        "gl_FragColor.rgb = vColor.rgb*(1. - curvWt) + gl_FragColor.rgb*curvWt;",
+        "gl_FragColor.a = vColor.a + gl_FragColor.a * (1. - vColor.a);",
+        //Cross hatch / dropout layer
         "vec4 hcolor = texture2D(hatch, vUv*hatchrep);",
         "float dw = gl_FrontFacing ? dropWt*vDrop : 1.;",
         "gl_FragColor = (hcolor*dw) + gl_FragColor*(1.-dw*hcolor.a);",
+        //roi layer
+        "vec4 roi = texture2D(map, vUv);",
+        "gl_FragColor.rgb = roi.rgb + gl_FragColor.rgb * (1. - roi.a);",
+        "gl_FragColor.a = roi.a + gl_FragColor.a * (1. - roi.a);",
+
+        THREE.ShaderChunk[ "lights_phong_fragment" ],
     "}"
 
 ].join("\n");
@@ -153,7 +160,7 @@ function MRIview() {
         preserveDrawingBuffer:true, 
         canvas:$("#brain")[0] 
     });
-    this.renderer.setClearColorHex( 0x0, 1 );
+    this.renderer.setClearColorHex( 0xFFFFFF, 1 );
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
     this.state = "pause";
 
@@ -168,7 +175,7 @@ function MRIview() {
             framemix:   { type:'f',  value:0},
             datasize:   { type:'v2', value:new THREE.Vector2(256, 0)},
             offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
-            hatchrep:   { type:'v2', value:new THREE.Vector2(27, 10) },
+            hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
 
             map:        { type:'t',  value:0, texture: null },
             hatch:      { type:'t',  value:1, texture: makeHatch() },
@@ -181,7 +188,9 @@ function MRIview() {
             vmax:       { type:'fv1',value:[1,1]},
 
             dropWt:     { type:'f', value:1},
-            curvWt:     { type:'f', value:0},
+            curvWt:     { type:'f', value:.1},
+            curvScale:  { type:'f', value:.5},
+            curvLim:    { type:'f', value:.2},
         }
     ])
 
@@ -194,6 +203,7 @@ function MRIview() {
         morphNormals:true, 
         lights:true, 
         vertexColors:true,
+        blending:THREE.CustomBlending,
     });
     this.shader.map = true;
     this.shader.metal = true;
@@ -209,6 +219,7 @@ function MRIview() {
         morphNormals:true,
         lights:true,
         vertexColors:true,
+        blending:THREE.CustomBlending,
     });
     this.rawshader.map = true;
     this.rawshader.metal = true;
@@ -856,7 +867,7 @@ MRIview.prototype = {
 
 function makeHatch(size, linewidth, spacing) {
     if (spacing === undefined)
-        spacing = 8;
+        spacing = 32;
     if (size === undefined)
         size = 128;
     var canvas = document.createElement("canvas");
@@ -865,7 +876,7 @@ function makeHatch(size, linewidth, spacing) {
     var ctx = canvas.getContext("2d");
     //ctx.fillStyle = "rgb(255, 255, 255);"
     //ctx.fillRect(0,0,size,size);
-    ctx.lineWidth = linewidth ? linewidth: 1.5;
+    ctx.lineWidth = linewidth ? linewidth: 8;
     for (var i = 0, il = size*2; i < il; i+=spacing) {
         ctx.beginPath();
         ctx.moveTo(i-size, 0);
