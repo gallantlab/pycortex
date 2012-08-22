@@ -29,7 +29,7 @@ var vShadeHead = [
 
         THREE.ShaderChunk[ "map_vertex" ],
 
-        "float mix = smoothstep(0.,1.,framemix);",
+        //"float mix = smoothstep(0.,1.,framemix);",
         
         "vec2 dcoord = (2.*datamap+1.) / (2.*datasize);",
         "vDrop = auxdat.x;",
@@ -75,6 +75,7 @@ var cmapShader = vShadeHead + ([
 var rawShader = vShadeHead + ([
         "vColor  = (1. - framemix) * texture2D(data[0], dcoord);",
         "vColor +=       framemix  * texture2D(data[2], dcoord);",
+        "vColor.rgb *= vColor.a;",
 ].join("\n")) + vShadeTail;
 
 var fragmentShader = [
@@ -84,10 +85,12 @@ var fragmentShader = [
     "uniform sampler2D hatch;",
     "uniform vec2 hatchrep;",
 
-    "uniform float curvWt;",
+    "uniform float curvAlpha;",
     "uniform float curvScale;",
     "uniform float curvLim;",
-    "uniform float dropWt;",
+    "uniform float dataAlpha;",
+    "uniform float hatchAlpha;",
+    "uniform vec3 hatchColor;",
 
     "uniform vec3 diffuse;",
     "uniform vec3 ambient;",
@@ -102,19 +105,18 @@ var fragmentShader = [
 
     "void main() {",
         //Curvature Underlay
-        "gl_FragColor = vec4(vec3(clamp(curvScale * vCurv  + .5, curvLim, 1.-curvLim)), 1.);",
+        "gl_FragColor = vec4(vec3(clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim)), curvAlpha);",
         //Data layer
         "if (vMedial > .5) {",
-            "gl_FragColor.rgb = vColor.rgb* (1. - curvWt) + gl_FragColor.rgb*curvWt;",
-            "gl_FragColor.a = vColor.a + gl_FragColor.a * (1. - vColor.a);",
+            "gl_FragColor.rgb = vColor.rgb * dataAlpha + gl_FragColor.rgb * (1. - vColor.a*dataAlpha);",
+            "gl_FragColor.a   = vColor.a * dataAlpha + gl_FragColor.a * (1. - vColor.a * dataAlpha);",
             //Cross hatch / dropout layer
-            "vec4 hcolor = texture2D(hatch, vUv*hatchrep);",
-            "float dw = gl_FrontFacing ? dropWt*vDrop : 1.;",
-            "gl_FragColor = (hcolor*dw) + gl_FragColor*(1.-dw*hcolor.a);",
+            "float dw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
+            "vec4 hcolor = dw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
+            "gl_FragColor = hcolor + gl_FragColor * (1. - hcolor.a);",
             //roi layer
             "vec4 roi = texture2D(map, vUv);",
-            "gl_FragColor.rgb = roi.rgb + gl_FragColor.rgb * (1. - roi.a);",
-            "gl_FragColor.a = roi.a + gl_FragColor.a * (1. - roi.a);",
+            "gl_FragColor = roi + gl_FragColor * (1. - roi.a);",
         "}",
         THREE.ShaderChunk[ "lights_phong_fragment" ],
     "}"
@@ -191,10 +193,12 @@ function MRIview() {
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
 
-            dropWt:     { type:'f', value:1},
-            curvWt:     { type:'f', value:.1},
+            curvAlpha:  { type:'f', value:1.},
             curvScale:  { type:'f', value:.5},
             curvLim:    { type:'f', value:.2},
+            dataAlpha:  { type:'f', value:.9},
+            hatchAlpha: { type:'f', value:1.},
+            hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
         }
     ])
 
@@ -208,6 +212,7 @@ function MRIview() {
         lights:true, 
         vertexColors:true,
         blending:THREE.CustomBlending,
+        transparent:true,
     });
     this.shader.map = true;
     this.shader.metal = true;
@@ -224,6 +229,7 @@ function MRIview() {
         lights:true,
         vertexColors:true,
         blending:THREE.CustomBlending,
+        transparent:true,
     });
     this.rawshader.map = true;
     this.rawshader.metal = true;
@@ -512,6 +518,7 @@ MRIview.prototype = {
 
         var func = function() {
             this.colormap.needsUpdate = true;
+            this.colormap.premultiplyAlpha = true;
             this.colormap.flipY = true;
             this.colormap.minFilter = THREE.LinearFilter;
             this.colormap.magFilter = THREE.LinearFilter;
@@ -774,27 +781,28 @@ MRIview.prototype = {
 
         $("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
             this.shader.uniforms.curvAlpha.value = ui.value;
-            this.controls.dispatchEvent({type:"change"})
+            this.controls.dispatchEvent({type:"change"});
         }.bind(this)})
-        $("#layer_curvmult").slider({ min:0, max:100, step:.001, value:.5, slide:function(event, ui) {
+        $("#layer_curvmult").slider({ min:.001, max:2, step:.001, value:1, slide:function(event, ui) {
             this.shader.uniforms.curvScale.value = ui.value;
-            this.controls.dispatchEvent({type:"change"})
+            this.controls.dispatchEvent({type:"change"});
         }.bind(this)})
         $("#layer_curvlim").slider({ min:0, max:.5, step:.001, value:.2, slide:function(event, ui) {
             this.shader.uniforms.curvLim.value = ui.value;
-            this.controls.dispatchEvent({type:"change"})
+            this.controls.dispatchEvent({type:"change"});
         }.bind(this)})
-        $("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:.1, slide:function(event, ui) {
-            this.shader.uniforms.curvWt.value = ui.value;
-            this.controls.dispatchEvent({type:"change"})
+        $("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:.9, slide:function(event, ui) {
+            this.shader.uniforms.dataAlpha.value = ui.value;
+            this.controls.dispatchEvent({type:"change"});
         }.bind(this)})
         $("#layer_hatchalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
             this.shader.uniforms.hatchAlpha.value = ui.value;
-            this.controls.dispatchEvent({type:"change"})
+            this.controls.dispatchEvent({type:"change"});
         }.bind(this)})
-        $("#layer_hatchcolor").miniColors({close: function() {
-            console.log(this.value);
-        }});
+        $("#layer_hatchcolor").miniColors({close: function(hex, rgb) {
+            this.shader.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
+            this.controls.dispatchEvent({type:"change"});
+        }.bind(this)});
 
 
         $("#datasets").change(function(e) {
@@ -912,6 +920,7 @@ function makeHatch(size, linewidth, spacing) {
     //ctx.fillStyle = "rgb(255, 255, 255);"
     //ctx.fillRect(0,0,size,size);
     ctx.lineWidth = linewidth ? linewidth: 8;
+    ctx.strokeStyle = "white";
     for (var i = 0, il = size*2; i < il; i+=spacing) {
         ctx.beginPath();
         ctx.moveTo(i-size, 0);
@@ -924,6 +933,7 @@ function makeHatch(size, linewidth, spacing) {
 
     var tex = new THREE.Texture(canvas);
     tex.needsUpdate = true;
+    tex.premultiplyAlpha = true;
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
     tex.magFilter = THREE.LinearFilter;
