@@ -61,7 +61,7 @@
 					</td></tr>
 				</table>
 			</fieldset>
-			<fieldset id="roi_fieldset" class='opt_category'>
+			<fieldset id="roi_fieldset" class='opt_category subtable'>
 				<legend>ROIs</legend>
 				<div class='display_opt'>
 					<input id='roishow' type='checkbox' checked='checked'><label for='roishow'>Show</label>
@@ -108,6 +108,45 @@
 					</table>
 				</div>
 			</fieldset>
+			<fieldset id="layers_fieldset" class='opt_category subtable'>
+				<legend>Layers</legend>
+				<div class='display_opt'>
+					<table id='layerCurv'>
+						<tr>
+							<td><label for='layer_curvalpha'>Curvature</label></td>
+							<td><div id='layer_curvalpha'></div></td>
+						</tr>
+						<tr>
+							<td><label for="layer_curvmult">Mult</label></td>
+							<td><div id='layer_curvmult'></div></td>
+						</tr>
+						<tr>
+							<td><label for="layer_curvlim">Limit</label></td>
+							<td><div id='layer_curvlim'></div></td>
+						</tr>
+					</table>
+				</div>
+				<div class='display_opt'>
+					<table id='layerData'>
+						<tr>
+							<td><label for='layer_dataalpha'>Data</label></td>
+							<td><div id='layer_dataalpha'></div></td>
+						</tr>
+					</table>
+				</div>
+				<div class='display_opt'>
+					<table id='layerHatch'>
+						<tr>
+							<td><label for='layer_hatchalpha'>Hatching</label></td>
+							<td><div id='layer_hatchalpha'></div></td>
+						</tr>
+						<tr>
+							<td><label for='layer_hatchcolor'>Color</label></td>
+							<td><input type='hidden' id='layer_hatchcolor' value='#000000' /></td>
+						</tr>
+					</table>
+				</div>
+			</fieldset>
 			<fieldset id="dataset_fieldset" class='opt_category'>
 				<legend>Datasets</legend>
 				<select id='datasets' multiple='multiple'>
@@ -125,8 +164,6 @@
     <div id='hiderois'>
     	<canvas id='canvasrois'></canvas>
 	</div>
-
-	
 </div>
 
 <div id='bottombar' class='infobar'>

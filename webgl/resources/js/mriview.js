@@ -1,4 +1,4 @@
-var flatscale = .4;
+var flatscale = .3;
 
 var vShadeHead = [
     THREE.ShaderChunk[ "map_pars_vertex" ], 
@@ -21,7 +21,8 @@ var vShadeHead = [
     "varying vec4 vColor;",
     "varying float vCurv;",
     "varying float vDrop;",
-    
+    "varying float vMedial;",
+
     "void main() {",
 
         "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
@@ -33,6 +34,7 @@ var vShadeHead = [
         "vec2 dcoord = (2.*datamap+1.) / (2.*datasize);",
         "vDrop = auxdat.x;",
         "vCurv = auxdat.y;",
+        "vMedial = auxdat.z;",
         "",
 ].join("\n");
 
@@ -96,22 +98,24 @@ var fragmentShader = [
     "varying vec4 vColor;",
     "varying float vCurv;",
     "varying float vDrop;",
+    "varying float vMedial;",
 
     "void main() {",
         //Curvature Underlay
         "gl_FragColor = vec4(vec3(clamp(curvScale * vCurv  + .5, curvLim, 1.-curvLim)), 1.);",
         //Data layer
-        "gl_FragColor.rgb = vColor.rgb*(1. - curvWt) + gl_FragColor.rgb*curvWt;",
-        "gl_FragColor.a = vColor.a + gl_FragColor.a * (1. - vColor.a);",
-        //Cross hatch / dropout layer
-        "vec4 hcolor = texture2D(hatch, vUv*hatchrep);",
-        "float dw = gl_FrontFacing ? dropWt*vDrop : 1.;",
-        "gl_FragColor = (hcolor*dw) + gl_FragColor*(1.-dw*hcolor.a);",
-        //roi layer
-        "vec4 roi = texture2D(map, vUv);",
-        "gl_FragColor.rgb = roi.rgb + gl_FragColor.rgb * (1. - roi.a);",
-        "gl_FragColor.a = roi.a + gl_FragColor.a * (1. - roi.a);",
-
+        "if (vMedial > .5) {",
+            "gl_FragColor.rgb = vColor.rgb* (1. - curvWt) + gl_FragColor.rgb*curvWt;",
+            "gl_FragColor.a = vColor.a + gl_FragColor.a * (1. - vColor.a);",
+            //Cross hatch / dropout layer
+            "vec4 hcolor = texture2D(hatch, vUv*hatchrep);",
+            "float dw = gl_FrontFacing ? dropWt*vDrop : 1.;",
+            "gl_FragColor = (hcolor*dw) + gl_FragColor*(1.-dw*hcolor.a);",
+            //roi layer
+            "vec4 roi = texture2D(map, vUv);",
+            "gl_FragColor.rgb = roi.rgb + gl_FragColor.rgb * (1. - roi.a);",
+            "gl_FragColor.a = roi.a + gl_FragColor.a * (1. - roi.a);",
+        "}",
         THREE.ShaderChunk[ "lights_phong_fragment" ],
     "}"
 
@@ -620,7 +624,7 @@ MRIview.prototype = {
             }
         }
     },
-    get_pos: function(idx) {
+    getPos: function(idx) {
         //Returns the 2D screen coordinate of the given point index
 
         //Which hemi is the point on?
@@ -662,7 +666,7 @@ MRIview.prototype = {
         }
         
         var pos = basepos.multiplyScalar(1-isum).addSelf(mpos);
-        var norm = basenorm.multiplyScalar(1-isum).addSelf(mnorm);
+        var norm = basenorm.multiplyScalar(1-isum).addSelf(mnorm).addSelf(pos);
 
         pos = this.meshes[name].matrix.multiplyVector3(pos);
         pos = this.pivot[name].back.matrix.multiplyVector3(pos);
@@ -672,7 +676,7 @@ MRIview.prototype = {
         norm = this.pivot[name].front.matrix.multiplyVector3(norm);
 
         var cpos = this.camera.position.clone().subSelf(pos).normalize();
-        var dot = norm.subSelf(pos).normalize().dot(cpos);
+        var dot = -norm.subSelf(pos).normalize().dot(cpos);
 
         var spos = this.projector.projectVector(pos, this.camera);
         var w = this.renderer.domElement.width;
@@ -768,6 +772,47 @@ MRIview.prototype = {
             this.roipack.labels.toggle();
         }.bind(this));
 
+        $("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
+            this.shader.uniforms.curvAlpha.value = ui.value;
+            this.controls.dispatchEvent({type:"change"})
+        }.bind(this)})
+        $("#layer_curvmult").slider({ min:0, max:100, step:.001, value:.5, slide:function(event, ui) {
+            this.shader.uniforms.curvScale.value = ui.value;
+            this.controls.dispatchEvent({type:"change"})
+        }.bind(this)})
+        $("#layer_curvlim").slider({ min:0, max:.5, step:.001, value:.2, slide:function(event, ui) {
+            this.shader.uniforms.curvLim.value = ui.value;
+            this.controls.dispatchEvent({type:"change"})
+        }.bind(this)})
+        $("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:.1, slide:function(event, ui) {
+            this.shader.uniforms.curvWt.value = ui.value;
+            this.controls.dispatchEvent({type:"change"})
+        }.bind(this)})
+        $("#layer_hatchalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
+            this.shader.uniforms.hatchAlpha.value = ui.value;
+            this.controls.dispatchEvent({type:"change"})
+        }.bind(this)})
+        $("#layer_hatchcolor").miniColors({close: function() {
+            console.log(this.value);
+        }});
+
+
+        $("#datasets").change(function(e) {
+            var max = _this.colormap.image.height > 10 ? 2 : 1;
+
+            if ($(this).val().length > max) {
+                $(this).val($(this).data("lastvalid"));
+            } else {
+                if (_this.setData($(this).val())) {
+                    $(this).data("lastvalid", $(this).val());
+                } else {
+                    $(this).val($(this).data("lastvalid"));
+                }
+            }
+        });
+
+
+
 
         $("#moviecontrol").click(this.playpause.bind(this));
 
@@ -788,20 +833,6 @@ MRIview.prototype = {
                 dataset.stim.currentTime = this.value + dataset.delay;
             }
         });
-
-        $("#datasets").change(function(e) {
-            var max = _this.colormap.image.height > 10 ? 2 : 1;
-
-            if ($(this).val().length > max) {
-                $(this).val($(this).data("lastvalid"));
-            } else {
-                if (_this.setData($(this).val())) {
-                    $(this).data("lastvalid", $(this).val());
-                } else {
-                    $(this).val($(this).data("lastvalid"));
-                }
-            }
-        });
     },
 
     _makeFlat: function(geom, polyfilt, right) {
@@ -810,6 +841,7 @@ MRIview.prototype = {
         
         var fmin = this.flatlims[0], fmax = this.flatlims[1];
         var uv = geom.attributes.uv.array;
+        var aux = geom.attributes.auxdat.array;
         var flat = new Float32Array(uv.length / 2 * 3);
         var norms = new Float32Array(uv.length / 2 * 3);
         for (var i = 0, il = uv.length / 2; i < il; i++) {
@@ -837,6 +869,9 @@ MRIview.prototype = {
                 polys[j*3]   = geom.attributes.index.array[i*3];
                 polys[j*3+1] = geom.attributes.index.array[i*3+1];
                 polys[j*3+2] = geom.attributes.index.array[i*3+2];
+                aux[polys[j*3+0]*4+2] = 1;
+                aux[polys[j*3+1]*4+2] = 1;
+                aux[polys[j*3+2]*4+2] = 1;
                 j++;
             }
         }

@@ -117,9 +117,6 @@ table { cell-spacing:0px; }
     margin:0px 50px -380px 50px; 
 }
 
-#display_options {
-
-}
 #display_options fieldset {
     border:1px solid #666;
     border-radius: 20px 20px 50px 50px / 5px 5px 10px 10px;
@@ -128,6 +125,21 @@ table { cell-spacing:0px; }
 .opt_category {
     float:left;
 }
+.subtable table {
+    width:100%;
+}
+.subtable table td {
+    text-align:center;
+}
+.subtable tr:first-child td:first-child { text-align:left; }
+.subtable table td:first-child {
+    width:40%;
+    min-width:50px;
+}
+.subtable table td:last-child {
+    width:60%;
+}
+
 .vcolorbar { display:none; width:36px; }
 input.vlim {float:left; width:36px; }
 .vrange_wrap { float:left; padding:5px 10px;}
@@ -136,20 +148,6 @@ input.vlim {float:left; width:36px; }
 
 #roi_fieldset {
     width:200px;
-}
-#roi_fieldset table {
-    width:100%;
-}
-#roi_fieldset table td {
-    text-align:center;
-}
-#roi_fieldset tr:first-child td:first-child { text-align:left; }
-#roi_fieldset table td:first-child {
-    width:40%;
-    min-width:50px;
-}
-#roi_fieldset table td:last-child {
-    width:60%;
 }
 
 

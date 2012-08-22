@@ -1,4 +1,4 @@
-function ROIpack(svgdoc, callback) {
+function ROIpack(svgdoc, callback, height) {
     this.callback = callback;
     this.svgroi = svgdoc.getElementsByTagName("svg")[0];
     this.svgroi.id = "svgroi";
@@ -16,8 +16,11 @@ function ROIpack(svgdoc, callback) {
     this.labels = $(labels);
     this.svgroi.removeChild(this.svgroi.getElementsByTagName("foreignObject")[0]);
     $("#roilabels").append(this.labels);
-    this.width = this.svgroi.width.baseVal.value;
-    this.height = this.svgroi.height.baseVal.value;
+    this.height = height === undefined ? this.svgroi.height.baseVal.value : height;
+    var width = this.svgroi.width.baseVal.value;
+    var aspect = width / this.svgroi.height.baseVal.value;
+    this.width = this.height * aspect;
+    
     this._shadowtex = new ShadowTex(Math.ceil(this.width), Math.ceil(this.height), 4);
 }
 ROIpack.prototype = {
@@ -43,6 +46,8 @@ ROIpack.prototype = {
                 ignoreMouse:true, 
                 ignoreAnimation:true,
                 ignoreClear:false,
+                scaleWidth:this.width,
+                scaleHeight:this.height,
                 renderCallback: function() {
                     this._shadowtex.setRadius(sw/4);
                     var tex = this._shadowtex.blur(renderer, new THREE.Texture(canvas));
@@ -50,6 +55,8 @@ ROIpack.prototype = {
                     canvg(canvas, svg_xml, {
                         ignoreMouse:true,
                         ignoreAnimation:true,
+                        scaleWidth:this.width,
+                        scaleHeight:this.height,
                         renderCallback: function() {
                             var tex = this._shadowtex.overlay(renderer, new THREE.Texture(canvas));
                             this.callback(tex);
@@ -62,6 +69,8 @@ ROIpack.prototype = {
             canvg(canvas, svg_xml, {
                 ignoreMouse:true,
                 ignoreAnimation:true,
+                scaleWidth:this.width,
+                scaleHeight:this.height,
                 renderCallback:function() {
                     var tex = new THREE.Texture(canvas);
                     tex.needsUpdate = true;
@@ -73,7 +82,7 @@ ROIpack.prototype = {
     }, 
     move: function(viewer) {
         $(this.labels).each(function() {
-            var posdot = viewer.get_pos($(this).data("ptidx"));
+            var posdot = viewer.getPos($(this).data("ptidx"));
             var opacity = Math.max(-posdot[1], 0);
             opacity = viewer.flatmix + (1 - viewer.flatmix)*opacity;
             $(this).css({
