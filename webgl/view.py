@@ -3,7 +3,6 @@ import re
 import glob
 import json
 import shutil
-import binascii
 import random
 import mimetypes
 import webbrowser

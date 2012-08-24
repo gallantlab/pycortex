@@ -16,16 +16,50 @@ input[type='text'] {
 table { cell-spacing:0px; }
 .clear { clear:both; }
 
+.vcenter {
+    display:table-cell;
+    vertical-align:middle;
+    text-align:center;
+}
+
+.content { padding:10px; }
+.infobar {
+    transition: all .3s; 
+    transition-timing-function:ease;
+    transition-delay:1s;
+    -moz-transition: all .3s;
+    -moz-transition-timing-function: ease;
+    -moz-transition-delay:1s;
+    -webkit-transition: all .3s;
+    -webkit-transition-timing-function: ease;
+    -webkit-transition-delay:1s;
+
+    position:relative;
+    z-index:10;
+    background-color:rgba(255,255,255, .2);
+    box-shadow:0px 0px 10px black;
+}
+.infobar:hover, .infobar:active {
+    background-color:rgba(255,255,255, .6);
+    transition-delay:.1s;
+    -moz-transition-delay:.1s;
+    -webkit-transition-delay:.1s;
+}
+
 #main {
     margin:0px;
     min-height:100%;
     height: auto !important;
     height:100%;
 }
+
+/*************************************************
+ * WebGL Canvas
+ *************************************************/
 #brain {
-    transition: opacity .5s ease, width .5s ease;
-    -moz-transition: opacity .5s ease, width .5s ease;
-    -webkit-transition:opacity .5s ease, width .5s ease;
+    transition: opacity .5s ease;
+    -moz-transition: opacity .5s ease;
+    -webkit-transition:opacity .5s ease;
     position:absolute;
     z-index:2;
     opacity:0;
@@ -49,6 +83,56 @@ table { cell-spacing:0px; }
 #hiderois {
     display:none;
 }
+
+/*************************************************
+ * Side panel
+ *************************************************/
+#bar {
+    position:absolute;
+    z-index:9;
+    left:100%;
+    width:5px;
+    height:100%;
+    margin-left:-4px;
+    background-color: #EEE;
+    background-image: -webkit-linear-gradient(top, #EEE, #CCC);
+    background-image: -moz-linear-gradient(top, #EEE, #CCC);
+    background-image: linear-gradient(top, #EEE, #CCC);
+    border: 1px solid #CCC;
+    border-bottom: 1px solid #BBB;
+    border-radius: 3px;
+    color: #333;
+    display:none;
+}
+#bar:hover {
+    background-color: #dddddd;
+    background-image: -webkit-linear-gradient(top, #dddddd, #bbbbbb);
+    background-image: -moz-linear-gradient(top, #dddddd, #bbbbbb);
+    background-image: linear-gradient(top, #dddddd, #bbbbbb);
+    border: 1px solid #bbb;
+    border-bottom: 1px solid #999;
+    cursor: w-resize;
+    text-shadow: 0 1px 0 #ddd; 
+}
+#bar:active {
+    border: 1px solid #aaa;
+    border-bottom: 1px solid #888;
+    -webkit-box-shadow: inset 0 0 5px 2px #aaaaaa, 0 1px 0 0 #eeeeee;
+    -moz-box-shadow: inset 0 0 5px 2px #aaaaaa, 0 1px 0 0 #eeeeee;
+    box-shadow: inset 0 0 5px 2px #aaaaaa, 0 1px 0 0 #eeeeee; 
+}
+#sidepanel {
+    position:absolute;
+    left:100%;
+    width:0%;
+    height:100%;
+    display:table;
+    overflow:hidden;
+}
+
+/*************************************************
+ * Loading messages
+ *************************************************/
 #dataload {
     position:absolute;
     z-index:100;
@@ -82,32 +166,14 @@ table { cell-spacing:0px; }
     margin:0 5px 0px 0px;
     vertical-align: middle;
 }
+
+
+/*************************************************
+ * Top Bar
+ *************************************************/
 .dd-selected-text, .dd-option-text { display:none; }
 .dd-option-image, .dd-selected-image { min-height:10px; width:256px; max-width:none; }
 
-.content { padding:10px; }
-.infobar {
-    transition: all .3s; 
-    transition-timing-function:ease;
-    transition-delay:1s;
-    -moz-transition: all .3s;
-    -moz-transition-timing-function: ease;
-    -moz-transition-delay:1s;
-    -webkit-transition: all .3s;
-    -webkit-transition-timing-function: ease;
-    -webkit-transition-delay:1s;
-
-    position:relative;
-    z-index:10;
-    background-color:rgba(255,255,255, .2);
-    box-shadow:0px 0px 10px black;
-}
-.infobar:hover, .infobar:active {
-    background-color:rgba(255,255,255, .6);
-    transition-delay:.1s;
-    -moz-transition-delay:.1s;
-    -webkit-transition-delay:.1s;
-}
 #topbar { 
     height:380px; 
     margin:-370px 50px -10px 50px;      
@@ -150,7 +216,9 @@ input.vlim {float:left; width:36px; }
     width:200px;
 }
 
-
+/*************************************************
+ * Bottom Bar
+ *************************************************/
 .bbar_controls:hover, .bbar_controls:active{
     margin-top:-135px !important;
 }
@@ -197,10 +265,7 @@ table#movieui {
 }
 
 #stim_movie {
-    position:absolute;
-    left:60%;
-    width:40%;
-    height:100%;
+    width:100%;
 }
 
 .roilabel {

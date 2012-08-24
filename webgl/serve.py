@@ -6,6 +6,7 @@ import stat
 import email
 import struct
 import socket
+import logging
 import binascii
 import datetime
 import mimetypes

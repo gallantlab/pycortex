@@ -16,14 +16,21 @@ function ROIpack(svgdoc, callback, height) {
     this.labels = $(labels);
     this.svgroi.removeChild(this.svgroi.getElementsByTagName("foreignObject")[0]);
     $("#roilabels").append(this.labels);
-    this.height = height === undefined ? this.svgroi.height.baseVal.value : height;
-    var width = this.svgroi.width.baseVal.value;
-    var aspect = width / this.svgroi.height.baseVal.value;
-    this.width = this.height * aspect;
-    
-    this._shadowtex = new ShadowTex(Math.ceil(this.width), Math.ceil(this.height), 4);
+
+    var w = this.svgroi.getAttribute("width");
+    var h = this.svgroi.getAttribute("height");
+    this.aspect = w / h;
+    this.svgroi.setAttribute("viewBox", "0 0 "+w+" "+h);
+    this.setHeight(height === undefined ? h : height);
 }
 ROIpack.prototype = {
+    setHeight: function(height) {
+        this.height = height;
+        this.width = this.height * this.aspect;
+        this.svgroi.setAttribute("width", this.width);
+        this.svgroi.setAttribute("height", this.height);
+        this._shadowtex = new ShadowTex(Math.ceil(this.width), Math.ceil(this.height), 4);
+    }, 
     update: function(renderer) {
         var fo = "fill-opacity:"+$("#roi_fillalpha").slider("option", "value");
         var lo = "stroke-opacity:"+$("#roi_linealpha").slider("option", "value");
@@ -46,8 +53,6 @@ ROIpack.prototype = {
                 ignoreMouse:true, 
                 ignoreAnimation:true,
                 ignoreClear:false,
-                scaleWidth:this.width,
-                scaleHeight:this.height,
                 renderCallback: function() {
                     this._shadowtex.setRadius(sw/4);
                     var tex = this._shadowtex.blur(renderer, new THREE.Texture(canvas));
@@ -55,8 +60,6 @@ ROIpack.prototype = {
                     canvg(canvas, svg_xml, {
                         ignoreMouse:true,
                         ignoreAnimation:true,
-                        scaleWidth:this.width,
-                        scaleHeight:this.height,
                         renderCallback: function() {
                             var tex = this._shadowtex.overlay(renderer, new THREE.Texture(canvas));
                             this.callback(tex);
@@ -69,8 +72,6 @@ ROIpack.prototype = {
             canvg(canvas, svg_xml, {
                 ignoreMouse:true,
                 ignoreAnimation:true,
-                scaleWidth:this.width,
-                scaleHeight:this.height,
                 renderCallback:function() {
                     var tex = new THREE.Texture(canvas);
                     tex.needsUpdate = true;

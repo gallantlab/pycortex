@@ -298,7 +298,7 @@ MRIview.prototype = {
                 this.roipack = new ROIpack(svgdoc, function(tex) {
                     this.shader.uniforms.map.texture = tex;
                     this.controls.dispatchEvent({type:"change"});
-                }.bind(this));
+                }.bind(this), 2048);
                 this.roipack.update(this.renderer);
             }.bind(this));
 
@@ -328,6 +328,10 @@ MRIview.prototype = {
         }.bind(this), true, true );
     },
     resize: function(width, height) {
+        if (width !== undefined) {
+            $("#brain, #roilabels").css("width", width);
+            width = $("#brain").width();
+        }
         var w = width === undefined ? $("#brain").width()  : width;
         var h = height === undefined ? $("#brain").height()  : height;
         this.renderer.setSize(w, h);
@@ -502,6 +506,43 @@ MRIview.prototype = {
         this.controls.dispatchEvent({type:"change"});
         $("#datasets").val(names);
         return true;
+    },
+
+    addPlugin: function(obj) {
+        $("#bar").css('display', 'table');
+        $("#sidepanel>div").html(obj);
+        var _lastwidth = "60%";
+        var resizepanel = function() {
+            var width = $("#bar").position().left / $(window).width() * 100 + "%";
+            this.resize(width);
+            $("#sidepanel")
+                .width(100-parseFloat(width)+"%")
+                .css("left", width).css('display', 'table');
+            $("#bar").css("left", width);
+            _lastwidth = width;
+        }.bind(this);
+
+        $("#bar")
+            .draggable({axis:'x', drag: resizepanel, stop: resizepanel})
+            .click(function() {
+                var width = document.getElementById("brain").style.width;
+                if (width == "100%" || width == "") {
+                    width = _lastwidth;
+                    $("#sidepanel").css('display', 'table');
+                } else {
+                    width = "100%";
+                    $("#sidepanel").hide();
+                }
+                this.resize(width);
+                $("#bar").css("left", width);
+                $("#sidepanel").width(100-parseFloat(width)+"%").css('left', width);
+            }.bind(this));
+        $("#bar").click();
+    },
+    rmPlugin: function() {
+        $("#bar").hide();
+        this.resize("100%");
+        $("sidepanel").width("0%").hide();
     },
 
     setColormap: function(cmap) {
@@ -1129,10 +1170,6 @@ Dataset.prototype = {
         src.setAttribute("type", 'video/ogg; codecs="theora, vorbis"');
         src.setAttribute("src", url);
         this.stim.appendChild(src);
-        //$("#brain, #roilabels").width("60%");
-        //$("#main").append(this.stim);
-        //this.stim.currentTime = delay;
-        //viewer.resize()
     },
     set: function(viewer, dim) {
         if (dim === undefined)
@@ -1157,11 +1194,9 @@ Dataset.prototype = {
                 return;
 
             if (this.stim === undefined) {
-                $("#stim_movie").remove();
-                $("#brain, #roilabels").width("100%");
+                viewer.rmPlugin();
             } else {
-                $("#brain, #roilabels").width("60%");
-                $("#main").append(this.stim);
+                viewer.addPlugin(this.stim);
                 var delay = viewer.frame + this.delay;
                 if (this.stim.readyState == 4) {
                     this.stim.currentTime = delay;
@@ -1172,7 +1207,6 @@ Dataset.prototype = {
                     });
                 }
             }
-            setTimeout(function() {viewer.resize()}, 500);
         }.bind(this);
         if (this.array !== undefined)
             func();
