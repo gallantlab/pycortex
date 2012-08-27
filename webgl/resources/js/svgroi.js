@@ -83,14 +83,12 @@ ROIpack.prototype = {
     }, 
     move: function(viewer) {
         $(this.labels).each(function() {
-            var posdot = viewer.getPos($(this).data("ptidx"));
+            var posdot = viewer.getPos(this.getAttribute("data-ptidx"));
             var opacity = Math.max(-posdot[1], 0);
             opacity = viewer.flatmix + (1 - viewer.flatmix)*opacity;
-            $(this).css({
-                left: Math.round(posdot[0][0]),
-                top: Math.round(posdot[0][1]),
-                opacity: 1 - Math.exp(-opacity * 20)
-            })
+            this.style.left = Math.round(posdot[0][0])+"px";
+            this.style.top =  Math.round(posdot[0][1])+"px";
+            this.style.opacity = 1 - Math.exp(-opacity * 10);
         })
     },
     saveSVG: function(png, posturl) {

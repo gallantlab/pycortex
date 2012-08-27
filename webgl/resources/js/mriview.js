@@ -108,11 +108,10 @@ var fragmentShader = [
         "gl_FragColor = vec4(vec3(clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim)), curvAlpha);",
         //Data layer
         "if (vMedial > .5) {",
-            "gl_FragColor.rgb = vColor.rgb * dataAlpha + gl_FragColor.rgb * (1. - vColor.a*dataAlpha);",
-            "gl_FragColor.a   = vColor.a * dataAlpha + gl_FragColor.a * (1. - vColor.a * dataAlpha);",
+            "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
             //Cross hatch / dropout layer
-            "float dw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
-            "vec4 hcolor = dw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
+            "float hw = max(hatchAlpha*vDrop, float(!gl_FrontFacing));",
+            "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
             "gl_FragColor = hcolor + gl_FragColor * (1. - hcolor.a);",
             //roi layer
             "vec4 roi = texture2D(map, vUv);",
@@ -121,26 +120,6 @@ var fragmentShader = [
         THREE.ShaderChunk[ "lights_phong_fragment" ],
     "}"
 
-].join("\n");
-
-var flatVertShade = [
-    "varying vec3 vColor;",
-    "attribute float idx;",
-    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
-    "void main() {",
-        "vColor.r = floor(idx / (256. * 256.)) / 255.;",
-        "vColor.g = mod(idx / 256., 256.) / 255.;",
-        "vColor.b = mod(idx, 256.) / 255.;",
-        THREE.ShaderChunk[ "morphtarget_vertex" ],
-        THREE.ShaderChunk[ "default_vertex" ],
-    "}",
-].join("\n");
-
-var flatFragShade = [
-    "varying vec3 vColor;",
-    "void main() {",
-        "gl_FragColor = vec4(vColor, 1.);",
-    "}"
 ].join("\n");
 
 function MRIview() { 
@@ -877,10 +856,10 @@ MRIview.prototype = {
                         $(ui.selecting).removeClass("ui-selecting");
                     }
                 }.bind(this),
-                unselecting: function(event, ui) {
+                unselected: function(event, ui) {
                     var selected = $("#datasets").find("li.ui-selected, li.ui-selecting");
                     if (selected.length < 1) {
-                        $(ui.unselecting).addClass("ui-selecting");
+                        $(ui.unselected).addClass("ui-selected");
                     }
                 },
                 stop: setdat,

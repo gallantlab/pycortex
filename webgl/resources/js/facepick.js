@@ -1,3 +1,23 @@
+var flatVertShade = [
+    "varying vec3 vColor;",
+    "attribute float idx;",
+    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+    "void main() {",
+        "vColor.r = floor(idx / (256. * 256.)) / 255.;",
+        "vColor.g = mod(idx / 256., 256.) / 255.;",
+        "vColor.b = mod(idx, 256.) / 255.;",
+        THREE.ShaderChunk[ "morphtarget_vertex" ],
+        THREE.ShaderChunk[ "default_vertex" ],
+    "}",
+].join("\n");
+
+var flatFragShade = [
+    "varying vec3 vColor;",
+    "void main() {",
+        "gl_FragColor = vec4(vColor, 1.);",
+    "}"
+].join("\n");
+
 function FacePick(viewer, callback) {
     this.viewer = viewer;
     this.pivot = {};
@@ -127,4 +147,21 @@ FacePick.prototype = {
             }
         } 
     }
+}
+
+function makeAxes(length, width, color) {
+    function v(x,y,z){ 
+        return new THREE.Vertex(new THREE.Vector3(x,y,z)); 
+    }
+
+    var lineGeo = new THREE.Geometry();
+    lineGeo.vertices.push(
+        v(-length, 0, 0), v(length, 0, 0),
+        v(0, -length, 0), v(0, length, 0),
+        v(0, 0, -length), v(0, 0, length)
+    );
+    var lineMat = new THREE.LineBasicMaterial({ color: color, lineWidth: width});
+    var axes = new THREE.Line(lineGeo, lineMat);
+    axes.type = THREE.Lines;
+    return axes;
 }

@@ -104,9 +104,8 @@ class CTMfile(object):
 
     def _vox_to_idx(self, vox):
         hemis = []
-        left, right = self.coords
-        for coords in (left, right):
-            idx = np.ravel_multi_index(coords.T, vox.shape[::-1])
+        for coords in self.coords:
+            idx = np.ravel_multi_index(coords.T, vox.shape[::-1], mode='clip')
             hemis.append(vox.T.ravel()[idx])
         return hemis
 

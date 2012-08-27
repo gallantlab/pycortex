@@ -167,7 +167,11 @@ def get_cortical_mask(subject, xfmname):
     coords = np.vstack(surfs.getCoords(subject, xfmname))
     pts, polys, norms = surfs.getVTK(subject, "flat", merge=True)
     coords = coords[np.unique(polys)]
-    data.T[tuple(coords.T)] = True
+    d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < shape[2])
+    d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < shape[1])
+    d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < shape[0])
+    valid = np.logical_and(d1, np.logical_and(d2, d3))
+    data.T[tuple(coords[valid].T)] = True
     
     return data
 
