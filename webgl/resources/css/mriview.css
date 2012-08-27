@@ -103,6 +103,7 @@ table { cell-spacing:0px; }
     border-radius: 3px;
     color: #333;
     display:none;
+    line-height:.5;
 }
 #bar:hover {
     background-color: #dddddd;
@@ -167,13 +168,21 @@ table { cell-spacing:0px; }
     vertical-align: middle;
 }
 
+#dataname {
+    float:right;
+    text-shadow:0px 2px 8px black, 0px 1px 8px black;
+    color:white;
+    font-size:24pt;
+    padding:10px;
+    margin:20px;
+    border-radius:10px;
+    background:rgba(255,255,255,.2);
+}
+
 
 /*************************************************
  * Top Bar
  *************************************************/
-.dd-selected-text, .dd-option-text { display:none; }
-.dd-option-image, .dd-selected-image { min-height:10px; width:256px; max-width:none; }
-
 #topbar { 
     height:380px; 
     margin:-370px 50px -10px 50px;      
@@ -197,7 +206,9 @@ table { cell-spacing:0px; }
 .subtable table td {
     text-align:center;
 }
-.subtable tr:first-child td:first-child { text-align:left; }
+.subtable tr:first-child td:first-child { 
+    text-align:left; 
+}
 .subtable table td:first-child {
     width:40%;
     min-width:50px;
@@ -206,14 +217,43 @@ table { cell-spacing:0px; }
     width:60%;
 }
 
-.vcolorbar { display:none; width:36px; }
-input.vlim {float:left; width:36px; }
-.vrange_wrap { float:left; padding:5px 10px;}
-#vrange { width:200px; }
-#vrange2 { height:200px; }
+/* Colorbar */
+.dd-selected-text, .dd-option-text { display:none; }
+.dd-option-image, .dd-selected-image { 
+    min-height:10px; 
+    width:256px; 
+    max-width:256px; 
+    max-height:256px; 
+}
 
+.vcolorbar { 
+    display:none; 
+    width:36px; 
+}
+input.vlim {
+    float:left; 
+    width:36px;
+}
+.vrange_wrap { 
+    float:left; 
+    padding:5px 10px;
+}
+#vrange { 
+    width:200px; 
+}
+#vrange2 { 
+    height:200px; 
+}
 #roi_fieldset {
     width:200px;
+}
+
+#zlockopts {
+    float:left;
+}
+p#zlocklabel {
+    float:left;
+    margin-right:5px;
 }
 
 /*************************************************
@@ -250,7 +290,9 @@ table#movieui {
     text-align:left;
     vertical-align:middle;
 }
-#moviecontrol { padding:2px; }
+#moviecontrol { 
+    padding:2px; 
+}
 #moviecontrol img {
     padding:4px;
     appearance:button;

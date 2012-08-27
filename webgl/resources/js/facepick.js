@@ -64,6 +64,7 @@ FacePick.prototype = {
     },
 
     draw: function(debug) {
+        console.log("redrawing facepick");
         this.camera.lookAt(this.viewer.controls.target);
         for (var name in this.meshes) {
             this.pivot[name].front.rotation.z = this.viewer.pivot[name].front.rotation.z;
@@ -74,6 +75,7 @@ FacePick.prototype = {
             this.viewer.renderer.render(this.scene, this.camera);
         else
             this.viewer.renderer.render(this.scene, this.camera, this.renderbuf);
+        this._valid = true;
     },
 
     handleworker: function(event) {

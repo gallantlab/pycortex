@@ -156,7 +156,7 @@ def get_ctmpack(subject, xfmname, types=("inflated",), method="raw", level=0, re
     if os.path.exists(ctmfile) and not recache:
         return ctmfile
 
-    print "No ctm found in cache, generating..."
+    print "Generating new ctm file..."
     import vtkctm
     return vtkctm.make_pack(ctmfile, subject, xfmname, types, method, level)
 
@@ -345,7 +345,7 @@ def get_roi_masks(subject,xfmname,roiList=None,shape=(31,100,100),Dst=2,overlapO
         pass
     return mask,roiIdx
 
-def get_curvature(subject, smooth=5, neighborhood=2):
+def get_curvature(subject, smooth=8, neighborhood=2):
     from tvtk.api import tvtk
     curvs = []
     for hemi in surfs.getVTK(subject, "fiducial"):
@@ -376,8 +376,8 @@ def get_curvature(subject, smooth=5, neighborhood=2):
             for i, pt in enumerate(hemi[0]):
                 neighbors = list(set(getpts(i, neighborhood)))
                 if len(neighbors) > 0:
-                    mult = np.exp(-(((hemi[0][neighbors] - pt)**2) / (2*smooth**2)).sum(1))
-                    curvature[i] = (mult * curv[neighbors]).mean()
+                    g = np.exp(-(((hemi[0][neighbors] - pt)**2) / (2*smooth**2)).sum(1))
+                    curvature[i] = (g * curv[neighbors]).mean()
                 
                 if i % 1000 == 0:
                     print "\r%d"%i ,

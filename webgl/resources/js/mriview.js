@@ -152,7 +152,7 @@ function MRIview() {
     this.camera.up.set(0,0,1);
 
     this.scene.add( this.camera );
-    this.controls = new THREE.LandscapeControls( this.scene, this.camera );
+    this.controls = new THREE.LandscapeControls( this.camera );
     
     this.light = new THREE.DirectionalLight( 0xffffff );
     this.light.position.set( -200, -200, 1000 ).normalize();
@@ -315,6 +315,8 @@ MRIview.prototype = {
                 this.polys.flat[name] = geometries[right].attributes.flatindex;
             }
 
+            this.controls.flatsize = flatscale * this.flatlims[1][0];
+            this.controls.flatoff = this.flatoff[1];
             this.controls.picker = new FacePick(this);
             this.controls.addEventListener("change", function() {
                 if (!this._scheduled && this.state == "pause") {
@@ -355,12 +357,10 @@ MRIview.prototype = {
             else
                 window.location.href = png.replace("image/png", "application/octet-stream");
             $("#main").css("opacity", 1);
-            console.log("I die here");
         }.bind(this), 500);
     },
     reset_view: function(center, height) {
-        var flatasp = this.flatlims[1][0] / this.flatlims[1][1];
-        var camasp = height ? flatasp : this.camera.aspect;
+        var camasp = height !== undefined ? this.flatlims[1][0] / this.flatlims[1][1] : this.camera.aspect;
         var size = [flatscale*this.flatlims[1][0], flatscale*this.flatlims[1][1]];
         var min = [flatscale*this.flatlims[0][0], flatscale*this.flatlims[0][1]];
         var xoff = center ? 0 : size[0] / 2 - min[0];
@@ -368,13 +368,12 @@ MRIview.prototype = {
         var h = size[0] / 2 / camasp;
         h /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
         this.controls.target.set(xoff, this.flatoff[1], zoff);
-        this.controls.set(180, 90, h);
+        this.controls.setCamera(180, 90, h);
         this.setMix(1);
         this.setShift(0);
     },
     saveflat: function(height, posturl) {
-        var flatasp = this.flatlims[1][0] / this.flatlims[1][1];
-        var width = height * flatasp;
+        var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
         var roistate = $("#roishow").attr("checked");
         this.screenshot(width, height, function() { 
             this.reset_view(false, height); 
@@ -473,6 +472,7 @@ MRIview.prototype = {
             this.colormap.image.addEventListener("load", func);
     },
     setData: function(names) {
+        var name;
         if (names instanceof Array && names.length > 1) {
             if (names.length > (this.colormap.image.height > 10 ? 2 : 1))
                 return false;
@@ -495,6 +495,7 @@ MRIview.prototype = {
                 this.active.push(this.datasets[names[i]]);
                 this.datasets[names[i]].set(this, i);
             }
+            name = names[0] + " / " + names[1];
         } else {
             if (names instanceof Array)
                 names = names[0];
@@ -502,9 +503,12 @@ MRIview.prototype = {
             this.datasets[names].set(this, 0);
             this.shader.uniforms.data.texture[1] = null;
             this.shader.uniforms.data.texture[3] = null;
+            name = names;
         }
+
         this.controls.dispatchEvent({type:"change"});
         $("#datasets").val(names);
+        $("#dataname").text(name);
         return true;
     },
 
@@ -844,6 +848,16 @@ MRIview.prototype = {
             this.shader.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
             this.controls.dispatchEvent({type:"change"});
         }.bind(this)});
+
+        $("#resetfid").click(function() {
+            this.setMix(0);
+            this.controls.target.set(0,0,0);
+            this.controls.setCamera(45, 45, 200);
+            this.controls.dispatchEvent({type:"change"});
+        }.bind(this));
+        $("#resetflat").click(function() {
+            this.reset_view();
+        }.bind(this));
 
 
         $("#datasets").change(function(e) {

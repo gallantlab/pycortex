@@ -117,11 +117,11 @@
 							<td><div id='layer_curvalpha'></div></td>
 						</tr>
 						<tr>
-							<td><label for="layer_curvmult">Mult</label></td>
+							<td><label for="layer_curvmult">Threshold</label></td>
 							<td><div id='layer_curvmult'></div></td>
 						</tr>
 						<tr>
-							<td><label for="layer_curvlim">Limit</label></td>
+							<td><label for="layer_curvlim">Contrast</label></td>
 							<td><div id='layer_curvlim'></div></td>
 						</tr>
 					</table>
@@ -147,6 +147,26 @@
 					</table>
 				</div>
 			</fieldset>
+			<fieldset id="viewopt_fieldset" class='opt_category'>
+				<legend>View</legend>
+				<div class='display_opt'>
+					<input id='resetfid' type='button' value='Reset to fiducial'>
+			        <input id='resetflat' type='button' value='Reset to flat'>
+			    </div>
+				<div class='display_opt'>
+					<p id='zlocklabel'>Zoom lock:</p>
+					<div id='zlockopts'>
+						<input id='zlocknone' type='radio' name='zoomlock' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='None' checked>
+					    <label for='zlocknone'>​​​​​​​​​​​​​​​​​​​​​None</label><br>
+					    <input id='zlockleft' type='radio' name='zoomlock' value='left'>
+					    <label for='zlockleft'>left</label><br>
+					    <input id='zlockright' type='radio' name='zoomlock' value='right'>
+					    <label for='zlockright'>right</label><br>
+					    <input id='zlockwhole' type='radio' name='zoomlock' value='whole'>
+					    <label for='zlockwhole'>whole</label><br>
+					</div>
+				</div>
+			</fieldset>
 			<fieldset id="dataset_fieldset" class='opt_category'>
 				<legend>Datasets</legend>
 				<select id='datasets' multiple='multiple'>
@@ -159,7 +179,9 @@
 	<div id='dataload'><img src='resources/images/loading.gif'>Loading data...</div>
 	<div id='roilabels'>
 		<div id='ctmload'><img src='resources/images/loading.gif'>Loading brain...</div>
+		<div id='dataname'></div>
 	</div>
+	<div id='braincover'></div>
 	<canvas id='brain'></canvas>
 	<div id='bar'>
 		<div class='vcenter'>
