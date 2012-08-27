@@ -444,15 +444,22 @@ MRIview.prototype = {
         }
         this.controls.dispatchEvent({type:"change"});
     },
-    addData: function(data, callback) {
+    addData: function(data) {
         if (data instanceof NParray || data instanceof Dataset)
             data = {'data0':data};
 
         var name, names = [];
-        for (var name in data) {
-            names.push(name);
+        if (data.__order__ !== undefined) {
+            names = data.__order__;
+            delete data.__order__;
+        } else {
+            for (name in data) {
+                names.push(name);
+            }
+            names.sort();
         }
-        names.sort();
+
+        var handle = "<div class='handle'><span class='ui-icon ui-icon-carat-2-n-s'></span></div>";
         for (var i = 0; i < names.length; i++) {
             name = names[i];
             if (data[name] instanceof Dataset) {
@@ -460,7 +467,7 @@ MRIview.prototype = {
             } else if (data[name] instanceof NParray) {
                 this.datasets[name] = new Dataset(data[name]);
             }
-            $("#datasets").append("<option value='"+name+"'>"+name+"</option>")
+            $("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
         }
         var func = function() {
             this.setData(names.slice(0,this.colormap.image.height > 10 ? 2 : 1));
@@ -472,43 +479,34 @@ MRIview.prototype = {
             this.colormap.image.addEventListener("load", func);
     },
     setData: function(names) {
-        var name;
-        if (names instanceof Array && names.length > 1) {
+        if (names instanceof Array) {
             if (names.length > (this.colormap.image.height > 10 ? 2 : 1))
                 return false;
 
-            //Validate that the two datasets can be shown on the 2D colormap
-            /*
-            var dataset = [this.datasets[names[0]]];
-            var length = dataset[0].textures.length;
-            var raw = dataset[0].raw;
-            for (var i = 1; i < names.length; i++) {
-                var ds = this.datasets[names[i]];
-                if (ds.textures.length != length || ds.raw != raw)
-                    return false;
-                dataset.push(ds);
+            this.active = [this.datasets[names[0]]];
+            this.datasets[names[0]].set(this, 0);
+            $("#datasets li").each(function() {
+                if ($(this).text() == names[0])
+                    $(this).addClass("ui-selected");
+            })
+            if (names.length > 1) {
+                this.active.push(this.datasets[names[1]]);
+                this.datasets[names[1]].set(this, 1);
+                $("#datasets li").each(function() {
+                    if ($(this).text() == names[1])
+                        $(this).addClass("ui-selected");
+                })
+            } else {
+                this.shader.uniforms.data.texture[1] = this.blanktex;
+                this.shader.uniforms.data.texture[3] = this.blanktex;
             }
-            this.dataset = dataset;
-            */
-            this.active = [];
-            for (var i = 0; i < names.length; i++) {
-                this.active.push(this.datasets[names[i]]);
-                this.datasets[names[i]].set(this, i);
-            }
-            name = names[0] + " / " + names[1];
         } else {
-            if (names instanceof Array)
-                names = names[0];
-            this.active = [this.datasets[names]];
-            this.datasets[names].set(this, 0);
-            this.shader.uniforms.data.texture[1] = null;
-            this.shader.uniforms.data.texture[3] = null;
-            name = names;
+            return false;
         }
-
+        
         this.controls.dispatchEvent({type:"change"});
         $("#datasets").val(names);
-        $("#dataname").text(name);
+        $("#dataname").text(names.join(" / "));
         return true;
     },
 
@@ -811,6 +809,7 @@ MRIview.prototype = {
         var blanktex = new THREE.DataTexture(new Uint8Array(16*16*4), 16, 16);
         blanktex.needsUpdate = true;
         var _this = this;
+        this.blanktex = blanktex;
         $("#roishow").change(function() {
             if (this.checked) 
                 updateROIs();
@@ -859,22 +858,33 @@ MRIview.prototype = {
             this.reset_view();
         }.bind(this));
 
-
-        $("#datasets").change(function(e) {
-            var max = _this.colormap.image.height > 10 ? 2 : 1;
-
-            if ($(this).val().length > max) {
-                $(this).val($(this).data("lastvalid"));
-            } else {
-                if (_this.setData($(this).val())) {
-                    $(this).data("lastvalid", $(this).val());
-                } else {
-                    $(this).val($(this).data("lastvalid"));
-                }
-            }
-        });
-
-
+        //Dataset box
+        var setdat = function(event, ui) {
+            var names = [];
+            $("#datasets li.ui-selected").each(function() { names.push($(this).text()); });
+            this.setData(names);
+        }.bind(this)
+        $("#datasets")
+            .sortable({ 
+                handle: ".handle",
+                stop: setdat,
+             })
+            .selectable({
+                selecting: function(event, ui) {
+                    var max = this.colormap.image.height > 10 ? 2 : 1;
+                    var selected = $("#datasets").find("li.ui-selected, li.ui-selecting");
+                    if (selected.length > max) {
+                        $(ui.selecting).removeClass("ui-selecting");
+                    }
+                }.bind(this),
+                unselecting: function(event, ui) {
+                    var selected = $("#datasets").find("li.ui-selected, li.ui-selecting");
+                    if (selected.length < 1) {
+                        $(ui.unselecting).addClass("ui-selecting");
+                    }
+                },
+                stop: setdat,
+            });
 
 
         $("#moviecontrol").click(this.playpause.bind(this));
