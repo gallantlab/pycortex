@@ -265,8 +265,6 @@ def get_roi_verts(subject, xfmname, roi=None, shape=(31, 100, 100)):
     svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
     rois = svgroi.ROIpack(flat[:,:2], svgfile)
 
-    #return rois, flat, coords
-
     if roi is None:
         roi = rois.names
 
@@ -275,7 +273,8 @@ def get_roi_verts(subject, xfmname, roi=None, shape=(31, 100, 100)):
     elif isinstance(roi, list):
         roidict = dict()
         for name in roi:
-            roidict[name] = tuple(coords[rois.get_roi(name)].T)
+            #roidict[name] = tuple(coords[rois.get_roi(name)].T)
+            roidict[name] = rois.get_roi(name)
         return roidict
 
 
