@@ -1,4 +1,4 @@
-function ROIpack(svgdoc, callback) {
+function ROIpack(svgdoc, callback, height) {
     this.callback = callback;
     this.svgroi = svgdoc.getElementsByTagName("svg")[0];
     this.svgroi.id = "svgroi";
@@ -16,11 +16,21 @@ function ROIpack(svgdoc, callback) {
     this.labels = $(labels);
     this.svgroi.removeChild(this.svgroi.getElementsByTagName("foreignObject")[0]);
     $("#roilabels").append(this.labels);
-    this.width = this.svgroi.width.baseVal.value;
-    this.height = this.svgroi.height.baseVal.value;
-    this._shadowtex = new ShadowTex(Math.ceil(this.width), Math.ceil(this.height), 4);
+
+    var w = this.svgroi.getAttribute("width");
+    var h = this.svgroi.getAttribute("height");
+    this.aspect = w / h;
+    this.svgroi.setAttribute("viewBox", "0 0 "+w+" "+h);
+    this.setHeight(height === undefined ? h : height);
 }
 ROIpack.prototype = {
+    setHeight: function(height) {
+        this.height = height;
+        this.width = this.height * this.aspect;
+        this.svgroi.setAttribute("width", this.width);
+        this.svgroi.setAttribute("height", this.height);
+        this._shadowtex = new ShadowTex(Math.ceil(this.width), Math.ceil(this.height), 4);
+    }, 
     update: function(renderer) {
         var fo = "fill-opacity:"+$("#roi_fillalpha").slider("option", "value");
         var lo = "stroke-opacity:"+$("#roi_linealpha").slider("option", "value");
@@ -46,6 +56,7 @@ ROIpack.prototype = {
                 renderCallback: function() {
                     this._shadowtex.setRadius(sw/4);
                     var tex = this._shadowtex.blur(renderer, new THREE.Texture(canvas));
+                    //this.callback(tex);
                     canvg(canvas, svg_xml, {
                         ignoreMouse:true,
                         ignoreAnimation:true,
@@ -64,7 +75,7 @@ ROIpack.prototype = {
                 renderCallback:function() {
                     var tex = new THREE.Texture(canvas);
                     tex.needsUpdate = true;
-                    //tex.premultiplyAlpha = true;
+                    tex.premultiplyAlpha = true;
                     this.callback(tex);
                 }.bind(this),
             });
@@ -72,14 +83,12 @@ ROIpack.prototype = {
     }, 
     move: function(viewer) {
         $(this.labels).each(function() {
-            var posdot = viewer.get_pos($(this).data("ptidx"));
+            var posdot = viewer.getPos(this.getAttribute("data-ptidx"));
             var opacity = Math.max(-posdot[1], 0);
             opacity = viewer.flatmix + (1 - viewer.flatmix)*opacity;
-            $(this).css({
-                left: Math.round(posdot[0][0]),
-                top: Math.round(posdot[0][1]),
-                opacity: 1 - Math.exp(-opacity * 20)
-            })
+            this.style.left = Math.round(posdot[0][0])+"px";
+            this.style.top =  Math.round(posdot[0][1])+"px";
+            this.style.opacity = 1 - Math.exp(-opacity * 10);
         })
     },
     saveSVG: function(png, posturl) {

@@ -1,7 +1,12 @@
-var flatscale = .4;
+var flatscale = .3;
 
 var vShadeHead = [
+    THREE.ShaderChunk[ "map_pars_vertex" ], 
+    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+
     "attribute vec2 datamap;",
+    "attribute vec4 auxdat;",
     "uniform sampler2D data[4];",
     "uniform vec2 datasize;",
 
@@ -14,10 +19,9 @@ var vShadeHead = [
     "varying vec3 vViewPosition;",
     "varying vec3 vNormal;",
     "varying vec4 vColor;",
-
-    THREE.ShaderChunk[ "map_pars_vertex" ], 
-    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
-    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+    "varying float vCurv;",
+    "varying float vDrop;",
+    "varying float vMedial;",
 
     "void main() {",
 
@@ -25,9 +29,12 @@ var vShadeHead = [
 
         THREE.ShaderChunk[ "map_vertex" ],
 
-        "float mix = smoothstep(0.,1.,framemix);",
+        //"float mix = smoothstep(0.,1.,framemix);",
         
         "vec2 dcoord = (2.*datamap+1.) / (2.*datasize);",
+        "vDrop = auxdat.x;",
+        "vCurv = auxdat.y;",
+        "vMedial = auxdat.z;",
         "",
 ].join("\n");
 
@@ -68,11 +75,22 @@ var cmapShader = vShadeHead + ([
 var rawShader = vShadeHead + ([
         "vColor  = (1. - framemix) * texture2D(data[0], dcoord);",
         "vColor +=       framemix  * texture2D(data[2], dcoord);",
+        "vColor.rgb *= vColor.a;",
 ].join("\n")) + vShadeTail;
 
 var fragmentShader = [
+    THREE.ShaderChunk[ "map_pars_fragment" ],
+    THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
+
     "uniform sampler2D hatch;",
     "uniform vec2 hatchrep;",
+
+    "uniform float curvAlpha;",
+    "uniform float curvScale;",
+    "uniform float curvLim;",
+    "uniform float dataAlpha;",
+    "uniform float hatchAlpha;",
+    "uniform vec3 hatchColor;",
 
     "uniform vec3 diffuse;",
     "uniform vec3 ambient;",
@@ -81,41 +99,27 @@ var fragmentShader = [
     "uniform float shininess;",
 
     "varying vec4 vColor;",
-    THREE.ShaderChunk[ "map_pars_fragment" ],
-    THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
+    "varying float vCurv;",
+    "varying float vDrop;",
+    "varying float vMedial;",
 
     "void main() {",
-        "vec4 mapcolor = texture2D(map, vUv);",
-        "gl_FragColor.a = mapcolor.a + vColor.a*(1.-mapcolor.a);",
-        "gl_FragColor.rgb = mapcolor.rgb*mapcolor.a + vColor.rgb*vColor.a*(1.-mapcolor.a);",
-        "gl_FragColor.rgb /= gl_FragColor.a;",
-
+        //Curvature Underlay
+        "gl_FragColor = vec4(vec3(clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim)), curvAlpha);",
+        //Data layer
+        "if (vMedial > .5) {",
+            "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
+            //Cross hatch / dropout layer
+            "float hw = max(hatchAlpha*vDrop, float(!gl_FrontFacing));",
+            "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
+            "gl_FragColor = hcolor + gl_FragColor * (1. - hcolor.a);",
+            //roi layer
+            "vec4 roi = texture2D(map, vUv);",
+            "gl_FragColor = roi + gl_FragColor * (1. - roi.a);",
+        "}",
         THREE.ShaderChunk[ "lights_phong_fragment" ],
-
-        "vec4 hcolor = texture2D(hatch, vUv*hatchrep);",
-        "gl_FragColor = gl_FrontFacing ? gl_FragColor : hcolor + gl_FragColor*(1.-hcolor.a);",
     "}"
 
-].join("\n");
-
-var flatVertShade = [
-    "varying vec3 vColor;",
-    "attribute float idx;",
-    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
-    "void main() {",
-        "vColor.r = floor(idx / (256. * 256.)) / 255.;",
-        "vColor.g = mod(idx / 256., 256.) / 255.;",
-        "vColor.b = mod(idx, 256.) / 255.;",
-        THREE.ShaderChunk[ "morphtarget_vertex" ],
-        THREE.ShaderChunk[ "default_vertex" ],
-    "}",
-].join("\n");
-
-var flatFragShade = [
-    "varying vec3 vColor;",
-    "void main() {",
-        "gl_FragColor = vec4(vColor, 1.);",
-    "}"
 ].join("\n");
 
 function MRIview() { 
@@ -127,7 +131,7 @@ function MRIview() {
     this.camera.up.set(0,0,1);
 
     this.scene.add( this.camera );
-    this.controls = new THREE.LandscapeControls( this.scene, this.camera );
+    this.controls = new THREE.LandscapeControls( this.camera );
     
     this.light = new THREE.DirectionalLight( 0xffffff );
     this.light.position.set( -200, -200, 1000 ).normalize();
@@ -141,7 +145,7 @@ function MRIview() {
         preserveDrawingBuffer:true, 
         canvas:$("#brain")[0] 
     });
-    this.renderer.setClearColorHex( 0x0, 1 );
+    this.renderer.setClearColorHex( 0xFFFFFF, 1 );
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
     this.state = "pause";
 
@@ -156,15 +160,24 @@ function MRIview() {
             framemix:   { type:'f',  value:0},
             datasize:   { type:'v2', value:new THREE.Vector2(256, 0)},
             offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
-            hatchrep:   { type:'v2', value:new THREE.Vector2(27, 10) },
+            hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
 
             map:        { type:'t',  value:0, texture: null },
             hatch:      { type:'t',  value:1, texture: makeHatch() },
             colormap:   { type:'t',  value:2, texture: null },
-            data:       { type:'tv', value:3, texture: [null, null, null, null] },
+            dropout:    { type:'t',  value:3, texture: null },
+            curvature:  { type:'t',  value:4, texture: null },
+            data:       { type:'tv', value:5, texture: [null, null, null, null] },
 
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
+
+            curvAlpha:  { type:'f', value:1.},
+            curvScale:  { type:'f', value:.5},
+            curvLim:    { type:'f', value:.2},
+            dataAlpha:  { type:'f', value:.9},
+            hatchAlpha: { type:'f', value:1.},
+            hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
         }
     ])
 
@@ -172,11 +185,13 @@ function MRIview() {
         vertexShader:cmapShader,
         fragmentShader:fragmentShader,
         uniforms: uniforms,
-        attributes: { datamap:true },
+        attributes: { datamap:true, auxdat:true },
         morphTargets:true, 
         morphNormals:true, 
         lights:true, 
         vertexColors:true,
+        blending:THREE.CustomBlending,
+        transparent:true,
     });
     this.shader.map = true;
     this.shader.metal = true;
@@ -187,11 +202,13 @@ function MRIview() {
         vertexShader:rawShader,
         fragmentShader:fragmentShader,
         uniforms: THREE.UniformsUtils.clone(uniforms),
-        attributes: { datamap:true },
+        attributes: { datamap:true, auxdat:true },
         morphTargets:true,
         morphNormals:true,
         lights:true,
         vertexColors:true,
+        blending:THREE.CustomBlending,
+        transparent:true,
     });
     this.rawshader.map = true;
     this.rawshader.metal = true;
@@ -260,7 +277,7 @@ MRIview.prototype = {
                 this.roipack = new ROIpack(svgdoc, function(tex) {
                     this.shader.uniforms.map.texture = tex;
                     this.controls.dispatchEvent({type:"change"});
-                }.bind(this));
+                }.bind(this), 2048);
                 this.roipack.update(this.renderer);
             }.bind(this));
 
@@ -277,6 +294,8 @@ MRIview.prototype = {
                 this.polys.flat[name] = geometries[right].attributes.flatindex;
             }
 
+            this.controls.flatsize = flatscale * this.flatlims[1][0];
+            this.controls.flatoff = this.flatoff[1];
             this.controls.picker = new FacePick(this);
             this.controls.addEventListener("change", function() {
                 if (!this._scheduled && this.state == "pause") {
@@ -290,6 +309,10 @@ MRIview.prototype = {
         }.bind(this), true, true );
     },
     resize: function(width, height) {
+        if (width !== undefined) {
+            $("#brain, #roilabels").css("width", width);
+            width = $("#brain").width();
+        }
         var w = width === undefined ? $("#brain").width()  : width;
         var h = height === undefined ? $("#brain").height()  : height;
         this.renderer.setSize(w, h);
@@ -313,12 +336,10 @@ MRIview.prototype = {
             else
                 window.location.href = png.replace("image/png", "application/octet-stream");
             $("#main").css("opacity", 1);
-            console.log("I die here");
         }.bind(this), 500);
     },
     reset_view: function(center, height) {
-        var flatasp = this.flatlims[1][0] / this.flatlims[1][1];
-        var camasp = height ? flatasp : this.camera.aspect;
+        var camasp = height !== undefined ? this.flatlims[1][0] / this.flatlims[1][1] : this.camera.aspect;
         var size = [flatscale*this.flatlims[1][0], flatscale*this.flatlims[1][1]];
         var min = [flatscale*this.flatlims[0][0], flatscale*this.flatlims[0][1]];
         var xoff = center ? 0 : size[0] / 2 - min[0];
@@ -326,13 +347,12 @@ MRIview.prototype = {
         var h = size[0] / 2 / camasp;
         h /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
         this.controls.target.set(xoff, this.flatoff[1], zoff);
-        this.controls.set(180, 90, h);
+        this.controls.setCamera(180, 90, h);
         this.setMix(1);
         this.setShift(0);
     },
     saveflat: function(height, posturl) {
-        var flatasp = this.flatlims[1][0] / this.flatlims[1][1];
-        var width = height * flatasp;
+        var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
         var roistate = $("#roishow").attr("checked");
         this.screenshot(width, height, function() { 
             this.reset_view(false, height); 
@@ -403,15 +423,22 @@ MRIview.prototype = {
         }
         this.controls.dispatchEvent({type:"change"});
     },
-    addData: function(data, callback) {
+    addData: function(data) {
         if (data instanceof NParray || data instanceof Dataset)
             data = {'data0':data};
 
         var name, names = [];
-        for (var name in data) {
-            names.push(name);
+        if (data.__order__ !== undefined) {
+            names = data.__order__;
+            delete data.__order__;
+        } else {
+            for (name in data) {
+                names.push(name);
+            }
+            names.sort();
         }
-        names.sort();
+
+        var handle = "<div class='handle'><span class='ui-icon ui-icon-carat-2-n-s'></span></div>";
         for (var i = 0; i < names.length; i++) {
             name = names[i];
             if (data[name] instanceof Dataset) {
@@ -419,7 +446,7 @@ MRIview.prototype = {
             } else if (data[name] instanceof NParray) {
                 this.datasets[name] = new Dataset(data[name]);
             }
-            $("#datasets").append("<option value='"+name+"'>"+name+"</option>")
+            $("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
         }
         var func = function() {
             this.setData(names.slice(0,this.colormap.image.height > 10 ? 2 : 1));
@@ -431,39 +458,72 @@ MRIview.prototype = {
             this.colormap.image.addEventListener("load", func);
     },
     setData: function(names) {
-        if (names instanceof Array && names.length > 1) {
+        if (names instanceof Array) {
             if (names.length > (this.colormap.image.height > 10 ? 2 : 1))
                 return false;
 
-            //Validate that the two datasets can be shown on the 2D colormap
-            /*
-            var dataset = [this.datasets[names[0]]];
-            var length = dataset[0].textures.length;
-            var raw = dataset[0].raw;
-            for (var i = 1; i < names.length; i++) {
-                var ds = this.datasets[names[i]];
-                if (ds.textures.length != length || ds.raw != raw)
-                    return false;
-                dataset.push(ds);
-            }
-            this.dataset = dataset;
-            */
-            this.active = [];
-            for (var i = 0; i < names.length; i++) {
-                this.active.push(this.datasets[names[i]]);
-                this.datasets[names[i]].set(this, i);
+            this.active = [this.datasets[names[0]]];
+            this.datasets[names[0]].set(this, 0);
+            $("#datasets li").each(function() {
+                if ($(this).text() == names[0])
+                    $(this).addClass("ui-selected");
+            })
+            if (names.length > 1) {
+                this.active.push(this.datasets[names[1]]);
+                this.datasets[names[1]].set(this, 1);
+                $("#datasets li").each(function() {
+                    if ($(this).text() == names[1])
+                        $(this).addClass("ui-selected");
+                })
+            } else {
+                this.shader.uniforms.data.texture[1] = this.blanktex;
+                this.shader.uniforms.data.texture[3] = this.blanktex;
             }
         } else {
-            if (names instanceof Array)
-                names = names[0];
-            this.active = [this.datasets[names]];
-            this.datasets[names].set(this, 0);
-            this.shader.uniforms.data.texture[1] = null;
-            this.shader.uniforms.data.texture[3] = null;
+            return false;
         }
+        
         this.controls.dispatchEvent({type:"change"});
         $("#datasets").val(names);
+        $("#dataname").text(names.join(" / "));
         return true;
+    },
+
+    addPlugin: function(obj) {
+        $("#bar").css('display', 'table');
+        $("#sidepanel>div").html(obj);
+        var _lastwidth = "60%";
+        var resizepanel = function() {
+            var width = $("#bar").position().left / $(window).width() * 100 + "%";
+            this.resize(width);
+            $("#sidepanel")
+                .width(100-parseFloat(width)+"%")
+                .css("left", width).css('display', 'table');
+            $("#bar").css("left", width);
+            _lastwidth = width;
+        }.bind(this);
+
+        $("#bar")
+            .draggable({axis:'x', drag: resizepanel, stop: resizepanel})
+            .click(function() {
+                var width = document.getElementById("brain").style.width;
+                if (width == "100%" || width == "") {
+                    width = _lastwidth;
+                    $("#sidepanel").css('display', 'table');
+                } else {
+                    width = "100%";
+                    $("#sidepanel").hide();
+                }
+                this.resize(width);
+                $("#bar").css("left", width);
+                $("#sidepanel").width(100-parseFloat(width)+"%").css('left', width);
+            }.bind(this));
+        $("#bar").click();
+    },
+    rmPlugin: function() {
+        $("#bar").hide();
+        this.resize("100%");
+        $("sidepanel").width("0%").hide();
     },
 
     setColormap: function(cmap) {
@@ -480,6 +540,7 @@ MRIview.prototype = {
 
         var func = function() {
             this.colormap.needsUpdate = true;
+            this.colormap.premultiplyAlpha = true;
             this.colormap.flipY = true;
             this.colormap.minFilter = THREE.LinearFilter;
             this.colormap.magFilter = THREE.LinearFilter;
@@ -592,7 +653,7 @@ MRIview.prototype = {
             }
         }
     },
-    get_pos: function(idx) {
+    getPos: function(idx) {
         //Returns the 2D screen coordinate of the given point index
 
         //Which hemi is the point on?
@@ -634,7 +695,7 @@ MRIview.prototype = {
         }
         
         var pos = basepos.multiplyScalar(1-isum).addSelf(mpos);
-        var norm = basenorm.multiplyScalar(1-isum).addSelf(mnorm);
+        var norm = basenorm.multiplyScalar(1-isum).addSelf(mnorm).addSelf(pos);
 
         pos = this.meshes[name].matrix.multiplyVector3(pos);
         pos = this.pivot[name].back.matrix.multiplyVector3(pos);
@@ -644,7 +705,7 @@ MRIview.prototype = {
         norm = this.pivot[name].front.matrix.multiplyVector3(norm);
 
         var cpos = this.camera.position.clone().subSelf(pos).normalize();
-        var dot = norm.subSelf(pos).normalize().dot(cpos);
+        var dot = -norm.subSelf(pos).normalize().dot(cpos);
 
         var spos = this.projector.projectVector(pos, this.camera);
         var w = this.renderer.domElement.width;
@@ -727,6 +788,7 @@ MRIview.prototype = {
         var blanktex = new THREE.DataTexture(new Uint8Array(16*16*4), 16, 16);
         blanktex.needsUpdate = true;
         var _this = this;
+        this.blanktex = blanktex;
         $("#roishow").change(function() {
             if (this.checked) 
                 updateROIs();
@@ -739,6 +801,69 @@ MRIview.prototype = {
         $("#labelshow").change(function() {
             this.roipack.labels.toggle();
         }.bind(this));
+
+        $("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
+            this.shader.uniforms.curvAlpha.value = ui.value;
+            this.controls.dispatchEvent({type:"change"});
+        }.bind(this)})
+        $("#layer_curvmult").slider({ min:.001, max:2, step:.001, value:1, slide:function(event, ui) {
+            this.shader.uniforms.curvScale.value = ui.value;
+            this.controls.dispatchEvent({type:"change"});
+        }.bind(this)})
+        $("#layer_curvlim").slider({ min:0, max:.5, step:.001, value:.2, slide:function(event, ui) {
+            this.shader.uniforms.curvLim.value = ui.value;
+            this.controls.dispatchEvent({type:"change"});
+        }.bind(this)})
+        $("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:.9, slide:function(event, ui) {
+            this.shader.uniforms.dataAlpha.value = ui.value;
+            this.controls.dispatchEvent({type:"change"});
+        }.bind(this)})
+        $("#layer_hatchalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
+            this.shader.uniforms.hatchAlpha.value = ui.value;
+            this.controls.dispatchEvent({type:"change"});
+        }.bind(this)})
+        $("#layer_hatchcolor").miniColors({close: function(hex, rgb) {
+            this.shader.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
+            this.controls.dispatchEvent({type:"change"});
+        }.bind(this)});
+
+        $("#resetfid").click(function() {
+            this.setMix(0);
+            this.controls.target.set(0,0,0);
+            this.controls.setCamera(45, 45, 200);
+            this.controls.dispatchEvent({type:"change"});
+        }.bind(this));
+        $("#resetflat").click(function() {
+            this.reset_view();
+        }.bind(this));
+
+        //Dataset box
+        var setdat = function(event, ui) {
+            var names = [];
+            $("#datasets li.ui-selected").each(function() { names.push($(this).text()); });
+            this.setData(names);
+        }.bind(this)
+        $("#datasets")
+            .sortable({ 
+                handle: ".handle",
+                stop: setdat,
+             })
+            .selectable({
+                selecting: function(event, ui) {
+                    var max = this.colormap.image.height > 10 ? 2 : 1;
+                    var selected = $("#datasets").find("li.ui-selected, li.ui-selecting");
+                    if (selected.length > max) {
+                        $(ui.selecting).removeClass("ui-selecting");
+                    }
+                }.bind(this),
+                unselected: function(event, ui) {
+                    var selected = $("#datasets").find("li.ui-selected, li.ui-selecting");
+                    if (selected.length < 1) {
+                        $(ui.unselected).addClass("ui-selected");
+                    }
+                },
+                stop: setdat,
+            });
 
 
         $("#moviecontrol").click(this.playpause.bind(this));
@@ -760,20 +885,6 @@ MRIview.prototype = {
                 dataset.stim.currentTime = this.value + dataset.delay;
             }
         });
-
-        $("#datasets").change(function(e) {
-            var max = _this.colormap.image.height > 10 ? 2 : 1;
-
-            if ($(this).val().length > max) {
-                $(this).val($(this).data("lastvalid"));
-            } else {
-                if (_this.setData($(this).val())) {
-                    $(this).data("lastvalid", $(this).val());
-                } else {
-                    $(this).val($(this).data("lastvalid"));
-                }
-            }
-        });
     },
 
     _makeFlat: function(geom, polyfilt, right) {
@@ -782,6 +893,7 @@ MRIview.prototype = {
         
         var fmin = this.flatlims[0], fmax = this.flatlims[1];
         var uv = geom.attributes.uv.array;
+        var aux = geom.attributes.auxdat.array;
         var flat = new Float32Array(uv.length / 2 * 3);
         var norms = new Float32Array(uv.length / 2 * 3);
         for (var i = 0, il = uv.length / 2; i < il; i++) {
@@ -809,6 +921,9 @@ MRIview.prototype = {
                 polys[j*3]   = geom.attributes.index.array[i*3];
                 polys[j*3+1] = geom.attributes.index.array[i*3+1];
                 polys[j*3+2] = geom.attributes.index.array[i*3+2];
+                aux[polys[j*3+0]*4+2] = 1;
+                aux[polys[j*3+1]*4+2] = 1;
+                aux[polys[j*3+2]*4+2] = 1;
                 j++;
             }
         }
@@ -839,7 +954,7 @@ MRIview.prototype = {
 
 function makeHatch(size, linewidth, spacing) {
     if (spacing === undefined)
-        spacing = 8;
+        spacing = 32;
     if (size === undefined)
         size = 128;
     var canvas = document.createElement("canvas");
@@ -848,7 +963,8 @@ function makeHatch(size, linewidth, spacing) {
     var ctx = canvas.getContext("2d");
     //ctx.fillStyle = "rgb(255, 255, 255);"
     //ctx.fillRect(0,0,size,size);
-    ctx.lineWidth = linewidth ? linewidth: 1.5;
+    ctx.lineWidth = linewidth ? linewidth: 8;
+    ctx.strokeStyle = "white";
     for (var i = 0, il = size*2; i < il; i+=spacing) {
         ctx.beginPath();
         ctx.moveTo(i-size, 0);
@@ -861,6 +977,7 @@ function makeHatch(size, linewidth, spacing) {
 
     var tex = new THREE.Texture(canvas);
     tex.needsUpdate = true;
+    tex.premultiplyAlpha = true;
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
     tex.magFilter = THREE.LinearFilter;
@@ -1056,10 +1173,6 @@ Dataset.prototype = {
         src.setAttribute("type", 'video/ogg; codecs="theora, vorbis"');
         src.setAttribute("src", url);
         this.stim.appendChild(src);
-        //$("#brain, #roilabels").width("60%");
-        //$("#main").append(this.stim);
-        //this.stim.currentTime = delay;
-        //viewer.resize()
     },
     set: function(viewer, dim) {
         if (dim === undefined)
@@ -1080,14 +1193,13 @@ Dataset.prototype = {
             $(dim == 0 ? "#vrange" : "#vrange2").slider("option", {min: this.lmin, max:this.lmax});
             viewer.setVminmax(this.min, this.max, dim);
 
+            if (dim > 0)
+                return;
+
             if (this.stim === undefined) {
-                if (dim == 0) {
-                    $("#stim_movie").remove();
-                    $("#brain, #roilabels").width("100%");
-                }
+                viewer.rmPlugin();
             } else {
-                $("#brain, #roilabels").width("60%");
-                $("#main").append(this.stim);
+                viewer.addPlugin(this.stim);
                 var delay = viewer.frame + this.delay;
                 if (this.stim.readyState == 4) {
                     this.stim.currentTime = delay;
@@ -1098,7 +1210,6 @@ Dataset.prototype = {
                     });
                 }
             }
-            setTimeout(function() {viewer.resize()}, 500);
         }.bind(this);
         if (this.array !== undefined)
             func();

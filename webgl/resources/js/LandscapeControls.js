@@ -2,7 +2,7 @@
  * @author Eberhard Graether / http://egraether.com/
  */
 
-THREE.LandscapeControls = function ( scene, camera ) {
+THREE.LandscapeControls = function ( camera ) {
 
     THREE.EventTarget.call( this );
 
@@ -16,13 +16,9 @@ THREE.LandscapeControls = function ( scene, camera ) {
 
     this.keystate = null;
     this.camera = camera;
-    this.domElement = document.createElement("div");
-    this.domElement.id = "braincover";
-    $("#main").children().first().before(this.domElement);
-    this.scene = scene;
+    this.domElement = document.getElementById("braincover");
 
     // API
-
     this.enabled = true;
 
     this.rotateSpeed = .4;
@@ -34,7 +30,6 @@ THREE.LandscapeControls = function ( scene, camera ) {
     this.projector = new THREE.Projector();
 
     // internals
-
     this.target = new THREE.Vector3();
     this.azimuth = 45;
     this.altitude = 45;
@@ -52,12 +47,15 @@ THREE.LandscapeControls = function ( scene, camera ) {
 
     this.update = function (flatmix) {
         var mouseChange = _end.clone().subSelf(_start);
+        this.flatmix = flatmix;
+
         this.azlim = flatmix * 180;
         this.altlim = flatmix * 90;
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
             if (statefunc[_state])
                 statefunc[_state](mouseChange);
+
             this.setCamera();
         }
 
@@ -150,12 +148,41 @@ THREE.LandscapeControls = function ( scene, camera ) {
 };
 
 THREE.LandscapeControls.prototype = {
+    _limitview: function() {
+        this.altitude = this.altitude > 179.9999-this.altlim ? 179.9999-this.altlim : this.altitude;
+        this.altitude = this.altitude < 0.0001+this.altlim ? 0.0001+this.altlim : this.altitude;
+
+        if (this.azlim > this.azimuth || this.azimuth > (360 - this.azlim)) {
+            var d1 = this.azlim - this.azimuth;
+            var d2 = 360 - this.azlim - this.azimuth;
+            this.azimuth = Math.abs(d1) > Math.abs(d2) ? 360-this.azlim : this.azlim;
+        }
+
+        var rad = this.radius, target = this.target.clone();
+        if ($("#zlockwhole")[0].checked) {
+            rad  = this.flatsize / 2 / this.camera.aspect;
+            rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
+            rad -= this.flatoff;
+            rad = this.flatmix * rad + (1 - this.flatmix) * this.radius;
+        } else if (!$("#zlocknone")[0].checked) {
+            rad  = this.flatsize / 4 / this.camera.aspect;
+            rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
+            rad -= this.flatoff;
+            rad = this.flatmix * rad + (1 - this.flatmix) * this.radius;
+            if ($("#zlockleft")[0].checked) {
+                target.x = this.flatmix * (-this.flatsize / 4) + (1 - this.flatmix) * target.x;
+            } else if ($("#zlockright")[0].checked) {
+                target.x = this.flatmix * ( this.flatsize / 4) + (1 - this.flatmix) * target.x;
+            }
+        }
+
+        return {radius:rad, target:target};
+    },
     handleEvent: function ( event ) {
         if ( typeof this[ event.type ] == 'function' ) {
             this[ event.type ]( event );
         }
     },
-
     resize: function(w, h) {
         this.domElement.style.width = w+"px";
         this.domElement.style.height = h+"px";
@@ -167,34 +194,29 @@ THREE.LandscapeControls.prototype = {
         return new THREE.Vector2( event.clientX, event.clientY);
     },
 
-    set: function(azimuth, altitude, radius) {
-        if (azimuth !== undefined) this.azimuth = azimuth;
-        if (altitude !== undefined) this.altitude = altitude;
-        if (radius !== undefined) this.radius = radius;
-        this.setCamera();
-    },
+    setCamera: function(az, alt, rad) {
+        if (az !== undefined)
+            this.azimuth = az;
+        if (alt !== undefined)
+            this.altitude = alt;
+        if (rad !== undefined)
+            this.radius = rad;
 
-    setCamera: function() {
-        this.altitude = this.altitude > 179.9999-this.altlim ? 179.9999-this.altlim : this.altitude;
-        this.altitude = this.altitude < 0.0001+this.altlim ? 0.0001+this.altlim : this.altitude;
-
-        if (this.azlim > this.azimuth || this.azimuth > (360 - this.azlim)) {
-            var d1 = this.azlim - this.azimuth;
-            var d2 = 360 - this.azlim - this.azimuth;
-            this.azimuth = Math.abs(d1) > Math.abs(d2) ? 360-this.azlim : this.azlim;
-        }
+        var tar_rad = this._limitview();
 
         var altrad = this.altitude*Math.PI / 180;
         var azirad = (this.azimuth+90)*Math.PI / 180;
 
         var eye = new THREE.Vector3(
-            this.radius*Math.sin(altrad)*Math.cos(azirad),
-            this.radius*Math.sin(altrad)*Math.sin(azirad),
-            this.radius*Math.cos(altrad)
+            tar_rad.radius*Math.sin(altrad)*Math.cos(azirad),
+            tar_rad.radius*Math.sin(altrad)*Math.sin(azirad),
+            tar_rad.radius*Math.cos(altrad)
         );
 
-        this.camera.position.add( this.target, eye );
-        this.camera.lookAt( this.target );
+        this.camera.position.add( tar_rad.target, eye );
+        this.camera.lookAt( tar_rad.target );
+        if (this.picker !== undefined)
+            this.picker._valid = false;
     },
 
     rotate: function ( mouseChange ) {
@@ -234,6 +256,5 @@ THREE.LandscapeControls.prototype = {
         var factor = 1.0 + this.zoomSpeed * -1 * wheelEvent.wheelDelta/10.0;
         this.radius *= factor;
     }
-
 
 }

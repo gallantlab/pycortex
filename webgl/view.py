@@ -3,7 +3,6 @@ import re
 import glob
 import json
 import shutil
-import binascii
 import random
 import mimetypes
 import webbrowser
@@ -164,7 +163,10 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
         def get(self, path):
             path = path.strip("/")
             if not queue.empty():
-                bindat.update(queue.get())
+                d = queue.get()
+                print "Got new data: %r"%d.keys()
+                bindat.update(d)
+
             if path in bindat:
                 self.write(bindat[path])
             else:

@@ -7,7 +7,7 @@ import tempfile
 import numpy as np
 from scipy.spatial import cKDTree
 
-from utils import get_cortical_mask, get_roipack
+from utils import get_cortical_mask, get_roipack, get_curvature
 from db import surfs
 
 class Mesh(ctypes.Structure):
@@ -31,7 +31,8 @@ class Hemi(ctypes.Structure):
         ("between", ctypes.POINTER(Mesh)*6),
         ("names", ctypes.c_char*1024*6),
         ("nbetween", ctypes.c_uint32),
-        ("datamap", ctypes.POINTER(ctypes.c_float))
+        ("datamap", ctypes.POINTER(ctypes.c_float)),
+        ("aux", ctypes.POINTER(ctypes.c_float))
     ]
 
 class Subject(ctypes.Structure):
@@ -55,6 +56,7 @@ lib.newSubject.argtypes = [ctypes.c_char_p]
 lib.hemiAddFid.argtypes = [ctypes.POINTER(Hemi), ctypes.c_char_p]
 lib.hemiAddFlat.argtypes = [ctypes.POINTER(Hemi), ctypes.c_char_p]
 lib.hemiAddSurf.argtypes = [ctypes.POINTER(Hemi), ctypes.c_char_p, ctypes.c_char_p]
+lib.hemiAddAux.argtypes = [ctypes.POINTER(Hemi), np.ctypeslib.ndpointer(np.float32), ctypes.c_uint16]
 lib.hemiAddMap.argtypes = [ctypes.POINTER(Hemi), np.ctypeslib.ndpointer(np.uint32)]
 
 lib.saveCTM.restype = ctypes.POINTER(MinMax)
@@ -84,36 +86,55 @@ class CTMfile(object):
         self.name = subject
         self.xfmname = xfmname
         self.files = surfs.getFiles(subject)
+        self.mask = get_cortical_mask(self.name, self.xfmname)
+        self.coords = surfs.getCoords(self.name, self.xfmname)
 
     def __enter__(self):
         self.subj = lib.newSubject(self.name)
         cont = self.subj.contents
-        for h, hemi, datamap in zip(["lh", "rh"], [cont.left, cont.right], self.maps):
+        for h, hemi, datamap, drop in zip(["lh", "rh"], [cont.left, cont.right], self.maps, self.dropout):
             lib.hemiAddFid(ctypes.byref(hemi), self.files['surfs']['fiducial'][h])
             lib.hemiAddFlat(ctypes.byref(hemi), self.files['surfs']['flat'][h])
             lib.hemiAddMap(ctypes.byref(hemi), datamap)
+            lib.hemiAddAux(ctypes.byref(hemi), drop.astype(np.float32), 0)
         return self
 
     def __exit__(self, type, value, traceback):
         lib.subjFree(self.subj)
 
+    def _vox_to_idx(self, vox):
+        hemis = []
+        for coords in self.coords:
+            idx = np.ravel_multi_index(coords.T, vox.shape[::-1], mode='clip')
+            hemis.append(vox.T.ravel()[idx])
+        return hemis
+
     @property
     def maps(self):
-        indices = []
-        mask = get_cortical_mask(self.name, self.xfmname)
-        imask = mask.astype(np.uint32)
-        imask[imask > 0] = np.arange(mask[mask > 0].sum())
+        imask = self.mask.astype(np.uint32)
+        imask[imask > 0] = np.arange(self.mask[self.mask > 0].sum())
+        return self._vox_to_idx(imask)
 
-        left, right = surfs.getCoords(self.name, self.xfmname)
-        for coords in (left, right):
-            idx = np.ravel_multi_index(coords.T, mask.shape[::-1])
-            indices.append(imask.T.ravel()[idx])
-        return indices
+    @property
+    def dropout(self):
+        import nibabel
+        xfm, ref = surfs.getXfm(self.name, self.xfmname)
+        nib = nibabel.load(ref)
+        data = np.zeros(self.mask.shape, dtype=np.float32)
+        data[self.mask > 0] = nib.get_data().T[self.mask]
+        norm = (data - data.min()) / (data.max() - data.min())
+        return self._vox_to_idx((1-norm)**20)
 
     def addSurf(self, surf):
         cont = self.subj.contents
         for h, hemi in zip(["lh", "rh"], [cont.left, cont.right]):
             lib.hemiAddSurf(ctypes.byref(hemi), self.files['surfs'][surf][h], None)
+
+    def addCurv(self, **kwargs):
+        cont = self.subj.contents
+        curvs = get_curvature(self.name, **kwargs)
+        for h, hemi, curv in zip(['lh', 'rh'], [cont.left, cont.right], curvs):
+            lib.hemiAddAux(ctypes.byref(hemi), curv.astype(np.float32), 1)
 
     def save(self, filename, compmeth='mg2', complevel=9):
         left = tempfile.NamedTemporaryFile()
@@ -158,12 +179,12 @@ class CTMfile(object):
 
         return ptidx, dict(offsets=offsets, flatlims=flatlims)
 
-def make_pack(outfile, subj, xfm, types=("inflated,"), method='raw', level=0):
+def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0, **curvargs):
     fname, ext = os.path.splitext(outfile)
     with CTMfile(subj, xfm) as ctm:
         for t in types:
             ctm.addSurf(t)
-
+        ctm.addCurv(**curvargs)
         ptidx, jsondat = ctm.save("%s.ctm"%fname, compmeth=method, complevel=level)
 
     svgname = "%s.svg"%fname
@@ -196,9 +217,4 @@ def make_pack(outfile, subj, xfm, types=("inflated,"), method='raw', level=0):
     
 
 if __name__ == "__main__":
-    ctmcache = os.path.join(filestore, "ctmcache")
-    fname = os.path.join(ctmcache, "{subj}_{xfm}_[{types}]_{meth}_{lvl}.%s".format(
-        subj=subj, xfm=xfm, types=','.join(types), 
-        meth=method, lvl=level))
-
-    print make_pack("AH", "AH_huth2", types=("inflated", "superinflated"))
+    print make_pack("/tmp/test.json", "AH", "AH_huth2", types=("inflated", "superinflated"), recache=True)

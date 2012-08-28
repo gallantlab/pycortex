@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <link rel="stylesheet" href="resources/css/ui-lightness/jquery-ui-1.8.21.custom.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/jquery.miniColors.css" type='text/css' />
-<script type='text/javascript' src='resources/js/jquery-1.7.2.min.js'></script>
-<script type='text/javascript' src='resources/js/jquery-ui-1.8.21.custom.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery-1.8.0.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery-ui-1.8.23.custom.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.miniColors.js'></script>
 <script type="text/javascript" src="resources/js/rgbcolor.js"></script> 
@@ -61,7 +61,8 @@
 					</td></tr>
 				</table>
 			</fieldset>
-			<fieldset id="roi_fieldset" class='opt_category'>
+			<div class='opt_category'>
+			<fieldset id="roi_fieldset" class='subtable'>
 				<legend>ROIs</legend>
 				<div class='display_opt'>
 					<input id='roishow' type='checkbox' checked='checked'><label for='roishow'>Show</label>
@@ -108,10 +109,70 @@
 					</table>
 				</div>
 			</fieldset>
+			<fieldset id="layers_fieldset" class='subtable'>
+				<legend>Layer Alpha</legend>
+				<div class='display_opt'>
+					<table id='layerCurv'>
+						<tr>
+							<td><label for='layer_curvalpha'>Curvature</label></td>
+							<td><div id='layer_curvalpha'></div></td>
+						</tr>
+						<tr>
+							<td><label for="layer_curvmult">Threshold</label></td>
+							<td><div id='layer_curvmult'></div></td>
+						</tr>
+						<tr>
+							<td><label for="layer_curvlim">Contrast</label></td>
+							<td><div id='layer_curvlim'></div></td>
+						</tr>
+					</table>
+				</div>
+				<div class='display_opt'>
+					<table id='layerData'>
+						<tr>
+							<td><label for='layer_dataalpha'>Data</label></td>
+							<td><div id='layer_dataalpha'></div></td>
+						</tr>
+					</table>
+				</div>
+				<div class='display_opt'>
+					<table id='layerHatch'>
+						<tr>
+							<td><label for='layer_hatchalpha'>Hatching</label></td>
+							<td><div id='layer_hatchalpha'></div></td>
+						</tr>
+						<tr>
+							<td><label for='layer_hatchcolor'>Color</label></td>
+							<td><input type='hidden' id='layer_hatchcolor' value='#000000' /></td>
+						</tr>
+					</table>
+				</div>
+			</fieldset>
+			</div>
+			<fieldset id="viewopt_fieldset" class='opt_category'>
+				<legend>View</legend>
+				<div class='display_opt'>
+					<input id='resetfid' type='button' value='Reset to fiducial'><br />
+			        <input id='resetflat' type='button' value='Reset to flat'>
+			    </div>
+				<div class='display_opt'>
+					<p id='zlocklabel'>Zoom lock:</p>
+					<div id='zlockopts'>
+						<input id='zlocknone' type='radio' name='zoomlock' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='None' checked>
+					    <label for='zlocknone'>​​​​​​​​​​​​​​​​​​​​​None</label><br>
+					    <input id='zlockleft' type='radio' name='zoomlock' value='left'>
+					    <label for='zlockleft'>left</label><br>
+					    <input id='zlockright' type='radio' name='zoomlock' value='right'>
+					    <label for='zlockright'>right</label><br>
+					    <input id='zlockwhole' type='radio' name='zoomlock' value='whole'>
+					    <label for='zlockwhole'>whole</label><br>
+					</div>
+				</div>
+			</fieldset>
 			<fieldset id="dataset_fieldset" class='opt_category'>
 				<legend>Datasets</legend>
-				<select id='datasets' multiple='multiple'>
-				</select>
+				<ul id='datasets'>
+				</ul>
 			</fieldset>
 		</form>
 	</div>
@@ -120,13 +181,24 @@
 	<div id='dataload'><img src='resources/images/loading.gif'>Loading data...</div>
 	<div id='roilabels'>
 		<div id='ctmload'><img src='resources/images/loading.gif'>Loading brain...</div>
+		<div id='dataname'></div>
 	</div>
+	<div id='braincover'></div>
 	<canvas id='brain'></canvas>
+	<div id='bar'>
+		<div class='vcenter'>
+			=<br/>=
+		</div>
+	</div>
+	<div id='sidepanel'>
+	    <div class='vcenter'>
+	        
+	    </div>
+	</div>
+	​
     <div id='hiderois'>
     	<canvas id='canvasrois'></canvas>
 	</div>
-
-	
 </div>
 
 <div id='bottombar' class='infobar'>

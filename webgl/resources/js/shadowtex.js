@@ -68,8 +68,8 @@ var composite = [
 "void main(void) {",
     "vec4 o = texture2D(over, vUv);", 
     "vec4 u = texture2D(under, vUv);", 
+    "gl_FragColor.rgb = o.rgb + u.rgb*(1.-o.a);",
     "gl_FragColor.a = o.a + u.a*(1.-o.a);",
-    "gl_FragColor.rgb = (o.a*o.rgb + (u.rgb*u.a)*(1.-o.a)) / gl_FragColor.a;",
 "}",
 ].join("\n");
 
@@ -81,36 +81,48 @@ function ShadowTex(width, height, radius) {
         minFilter: THREE.LinearFilter,
         magFilter: THREE.LinearFilter,
         format:THREE.RGBAFormat,
+        stencilBuffer:false,
     });
     this.vtex = new THREE.WebGLRenderTarget(width, height, {
         minFilter: THREE.LinearFilter,
         magFilter: THREE.LinearFilter,
         format:THREE.RGBAFormat,
+        stencilBuffer:false,
     });
     this.hpass = new THREE.ShaderMaterial({
         vertexShader:vshade,
         fragmentShader:fshadeh,
+        transparent:true,
+        blending: THREE.CustomBlending,
         uniforms: {
             tex:{type:'t', value:0, texture:null}, 
             blur:{type:'f', value:radius / width}
         }
     })
+    this.hpass.blendSrc = THREE.OneFactor;
     this.vpass = new THREE.ShaderMaterial({
         vertexShader:vshade,
         fragmentShader:fshadev,
+        transparent:true,
+        blending: THREE.CustomBlending,
         uniforms: {
             tex: {type:'t', value:0, texture:this.htex},
             blur:{type:'f', value:radius / height}
         }
     })
+    this.vpass.blendSrc = THREE.OneFactor;
+
     this.opass = new THREE.ShaderMaterial({
         vertexShader:vshade,
         fragmentShader:composite,
+        transparent:true,
+        blending: THREE.CustomBlending,
         uniforms: {
             over: {type:'t', value:0, texture:null},
             under: {type:'t', value:1, texture:null}
         }
     });
+    this.opass.blendSrc = THREE.OneFactor;
     
     this.fsquad = new THREE.Mesh(new THREE.PlaneGeometry(width, height), this.hpass);
     this.fsquad.rotation.x = Math.PI / 2;
@@ -150,6 +162,7 @@ ShadowTex.prototype = {
     }, 
     _setTex: function(tex) {
         tex.needsUpdate = true;
+        tex.premultiplyAlpha = true;
         tex.minFilter = THREE.LinearFilter;
         tex.magFilter = THREE.LinearFilter;
         return tex;

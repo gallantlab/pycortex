@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 from db import surfs, options
 import view
@@ -155,7 +156,7 @@ def get_ctmpack(subject, xfmname, types=("inflated",), method="raw", level=0, re
     if os.path.exists(ctmfile) and not recache:
         return ctmfile
 
-    print "No ctm found in cache, generating..."
+    print "Generating new ctm file..."
     import vtkctm
     return vtkctm.make_pack(ctmfile, subject, xfmname, types, method, level)
 
@@ -166,7 +167,11 @@ def get_cortical_mask(subject, xfmname):
     coords = np.vstack(surfs.getCoords(subject, xfmname))
     pts, polys, norms = surfs.getVTK(subject, "flat", merge=True)
     coords = coords[np.unique(polys)]
-    data.T[tuple(coords.T)] = True
+    d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < shape[2])
+    d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < shape[1])
+    d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < shape[0])
+    valid = np.logical_and(d1, np.logical_and(d2, d3))
+    data.T[tuple(coords[valid].T)] = True
     
     return data
 
@@ -342,3 +347,44 @@ def get_roi_masks(subject,xfmname,roiList=None,shape=(31,100,100),Dst=2,overlapO
     elif overlapOpt=='split':
         pass
     return mask,roiIdx
+
+def get_curvature(subject, smooth=8, neighborhood=2):
+    from tvtk.api import tvtk
+    curvs = []
+    for hemi in surfs.getVTK(subject, "fiducial"):
+        pd = tvtk.PolyData(points=hemi[0], polys=hemi[1])
+        curv = tvtk.Curvatures(input=pd, curvature_type="mean")
+        curv.update()
+        curv = curv.output.point_data.scalars.to_array()
+        if smooth == 0:
+            curvs.append(curv)
+        else:
+            faces = dict()
+            for poly in hemi[1]:
+                for pt in poly:
+                    if pt not in faces:
+                        faces[pt] = set()
+                    faces[pt] |= set(poly)
+
+            def getpts(pt, n):
+                if pt in faces:
+                    for p in faces[pt]:
+                        if n == 0:
+                            yield p
+                        else:
+                            for q in getpts(p, n-1):
+                                yield q
+
+            curvature = np.zeros(len(hemi[0]))
+            for i, pt in enumerate(hemi[0]):
+                neighbors = list(set(getpts(i, neighborhood)))
+                if len(neighbors) > 0:
+                    g = np.exp(-(((hemi[0][neighbors] - pt)**2) / (2*smooth**2)).sum(1))
+                    curvature[i] = (g * curv[neighbors]).mean()
+                
+                if i % 1000 == 0:
+                    print "\r%d"%i ,
+                    sys.stdout.flush()
+            curvs.append(curvature)
+
+    return curvs
