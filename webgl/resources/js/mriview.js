@@ -82,6 +82,8 @@ var fragmentShader = [
     THREE.ShaderChunk[ "map_pars_fragment" ],
     THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
+    "uniform int hide_mwall;",
+
     "uniform sampler2D hatch;",
     "uniform vec2 hatchrep;",
 
@@ -106,9 +108,11 @@ var fragmentShader = [
     "void main() {",
         //Curvature Underlay
         "gl_FragColor = vec4(vec3(clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim)), curvAlpha);",
-        //Data layer
-        "if (vMedial > .5) {",
-            "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
+
+        //Data overlay
+        "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
+
+        "if (vMedial < .999) {",
             //Cross hatch / dropout layer
             "float hw = max(hatchAlpha*vDrop, float(!gl_FrontFacing));",
             "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
@@ -116,10 +120,12 @@ var fragmentShader = [
             //roi layer
             "vec4 roi = texture2D(map, vUv);",
             "gl_FragColor = roi + gl_FragColor * (1. - roi.a);",
+        "} else if (hide_mwall == 1) {",
+            "discard;",
         "}",
+
         THREE.ShaderChunk[ "lights_phong_fragment" ],
     "}"
-
 ].join("\n");
 
 function MRIview() { 
@@ -178,9 +184,10 @@ function MRIview() {
             dataAlpha:  { type:'f', value:.9},
             hatchAlpha: { type:'f', value:1.},
             hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+
+            hide_mwall: { type:'i', value:0},
         }
     ])
-
     this.shader =  this.cmapshader = new THREE.ShaderMaterial( { 
         vertexShader:cmapShader,
         fragmentShader:fragmentShader,
@@ -195,13 +202,12 @@ function MRIview() {
     });
     this.shader.map = true;
     this.shader.metal = true;
-    this.shader.needsUpdate = true;
     this.shader.uniforms.hatch.texture.needsUpdate = true;
 
     this.rawshader = new THREE.ShaderMaterial( {
         vertexShader:rawShader,
         fragmentShader:fragmentShader,
-        uniforms: THREE.UniformsUtils.clone(uniforms),
+        uniforms: uniforms,
         attributes: { datamap:true, auxdat:true },
         morphTargets:true,
         morphNormals:true,
@@ -212,7 +218,6 @@ function MRIview() {
     });
     this.rawshader.map = true;
     this.rawshader.metal = true;
-    this.rawshader.needsUpdate = true;
     this.rawshader.uniforms.hatch.texture.needsUpdate = true;
 
     this.projector = new THREE.Projector();
@@ -261,7 +266,6 @@ MRIview.prototype = {
             this.meshes = {};
             this.pivot = {};
             this.datamap = {};
-            this.polys = { norm:{}, flat:{}}
             this.flatlims = json.flatlims;
             this.flatoff = [
                 Math.max(
@@ -289,9 +293,6 @@ MRIview.prototype = {
                 this.meshes[name] = meshpiv.mesh;
                 this.pivot[name] = meshpiv.pivots;
                 this.scene.add(meshpiv.pivots.front);
-
-                this.polys.norm[name] =  geometries[right].attributes.index;
-                this.polys.flat[name] = geometries[right].attributes.flatindex;
             }
 
             this.controls.flatsize = flatscale * this.flatlims[1][0];
@@ -373,23 +374,21 @@ MRIview.prototype = {
 
         for (var h in this.meshes) {
             var hemi = this.meshes[h];
-            
-            for (var i=0; i < num; i++) {
-                hemi.morphTargetInfluences[i] = 0;
-            }
+            if (hemi !== undefined) {
+                for (var i=0; i < num; i++) {
+                    hemi.morphTargetInfluences[i] = 0;
+                }
 
-            if ((this.lastn2 == flat) ^ (n2 == flat)) {
-                this.setPoly(n2 == flat ? "flat" : "norm");
-            }
+                this.shader.uniforms.hide_mwall.value = (n2 == flat);
 
-            hemi.morphTargetInfluences[n2] = (val * num)%1;
-            if (n1 >= 0)
-                hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
+                hemi.morphTargetInfluences[n2] = (val * num)%1;
+                if (n1 >= 0)
+                    hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
+            }
         }
         this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
         this.setPivot(this.flatmix*180);
         this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
-        this.lastn2 = n2;
         $("#mix").slider("value", val);
         this.controls.update(this.flatmix);
         this.controls.setCamera();
@@ -414,13 +413,6 @@ MRIview.prototype = {
     setShift: function(val) {
         this.pivot.left.front.position.x = -val;
         this.pivot.right.front.position.x = val;
-        this.controls.dispatchEvent({type:"change"});
-    },
-    setPoly: function(polyvar) {
-        for (var name in this.meshes) {
-            this.meshes[name].geometry.attributes.index = this.polys[polyvar][name];
-            this.meshes[name].geometry.offsets[0].count = this.polys[polyvar][name].numItems;
-        }
         this.controls.dispatchEvent({type:"change"});
     },
     addData: function(data) {
@@ -664,6 +656,10 @@ MRIview.prototype = {
         var hemi = this.meshes[name].geometry;
         var influ = this.meshes[name].morphTargetInfluences;
 
+        if (hemi.indexMap !== undefined) {
+            idx = hemi.indexMap[idx];
+        }
+
         var basepos = new THREE.Vector3(
             hemi.attributes.position.array[idx*3+0],
             hemi.attributes.position.array[idx*3+1],
@@ -891,18 +887,15 @@ MRIview.prototype = {
         geom.computeBoundingSphere();
         geom.dynamic = true;
         
-        var fmin = this.flatlims[0], fmax = this.flatlims[1];
         var uv = geom.attributes.uv.array;
-        var aux = geom.attributes.auxdat.array;
+        var fmin = this.flatlims[0], fmax = this.flatlims[1];
         var flat = new Float32Array(uv.length / 2 * 3);
         var norms = new Float32Array(uv.length / 2 * 3);
         for (var i = 0, il = uv.length / 2; i < il; i++) {
             if (!right) {
-                //flat[i*3] = -this.flatoff[0];
                 flat[i*3+1] = flatscale * -uv[i*2] + this.flatoff[1];
                 norms[i*3] = -1;
             } else {
-                //flat[i*3] = this.flatoff[0];
                 flat[i*3+1] = flatscale*uv[i*2] + this.flatoff[1];
                 norms[i*3] = 1;
             }
@@ -913,31 +906,28 @@ MRIview.prototype = {
         geom.morphTargets.push({ array:flat, stride:3 })
         geom.morphNormals.push( norms );
 
-        //Make the triangle indicies with cuts
-        var polys = new Uint16Array(geom.attributes.index.array.length - polyfilt.length*3);
-        var j = 0;
-        for (var i = 0, il = geom.attributes.index.array.length / 3; i < il; i++) {
-            if (i != polyfilt[i-j]) {
-                polys[j*3]   = geom.attributes.index.array[i*3];
-                polys[j*3+1] = geom.attributes.index.array[i*3+1];
-                polys[j*3+2] = geom.attributes.index.array[i*3+2];
-                aux[polys[j*3+0]*4+2] = 1;
-                aux[polys[j*3+1]*4+2] = 1;
-                aux[polys[j*3+2]*4+2] = 1;
-                j++;
+        var m = 0, n = 0, idx, idy, idz;
+        var offsets = geom.offsets;
+        var aux = geom.attributes.auxdat.array;
+        var indices = geom.attributes.index.array;
+        for (var o = 0, ol = offsets.length; o < ol; o++) {
+            var start = offsets[o].start;
+            var index = offsets[o].index;
+            var count = offsets[o].count;
+
+            for (var i = start, il = start + count; i < il; i += 3) {
+                if (n == polyfilt[m]) {
+                    idx = index + indices[i];
+                    aux[idx * 4 + 2] = 1;
+                    idx = index + indices[i+1];
+                    aux[idx * 4 + 2] = 1;
+                    idx = index + indices[i+2];
+                    aux[idx * 4 + 2] = 1;
+                    m++;
+                }
+                n++;
             }
         }
-
-        geom.attributes.flatindex = {itemsize:1, array:polys, numItems:polys.length, stride:1};
-
-        var voxidx = new Uint8Array(uv.length / 2 * 3);
-        for (var i = 0, il = uv.length / 2; i < il; i ++) {
-            voxidx[i*3+0] = Math.floor(i / (256*256));
-            voxidx[i*3+1] = Math.floor(i / 256);
-            voxidx[i*3+2] = i %256;
-        }
-
-        geom.attributes.voxidx = {itemsize:3, array:voxidx, stride:3};
     },
     _makeMesh: function(geom, shader) {
         var mesh = new THREE.Mesh(geom, shader);
@@ -948,6 +938,7 @@ MRIview.prototype = {
         pivots.front.add(pivots.back);
         pivots.back.position.y = geom.boundingBox.min.y - geom.boundingBox.max.y;
         pivots.front.position.y = geom.boundingBox.max.y - geom.boundingBox.min.y + this.flatoff[1];
+
         return {mesh:mesh, pivots:pivots};
     }, 
 }
@@ -961,8 +952,6 @@ function makeHatch(size, linewidth, spacing) {
     canvas.width = size;
     canvas.height = size;
     var ctx = canvas.getContext("2d");
-    //ctx.fillStyle = "rgb(255, 255, 255);"
-    //ctx.fillRect(0,0,size,size);
     ctx.lineWidth = linewidth ? linewidth: 8;
     ctx.strokeStyle = "white";
     for (var i = 0, il = size*2; i < il; i+=spacing) {

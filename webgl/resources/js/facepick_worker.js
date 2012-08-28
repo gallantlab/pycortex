@@ -12,7 +12,7 @@ function genFlatGeom(msg) {
         color[j] = Math.floor(j / 3) + msg.faceoff + 1;
         polys[j] = j % 65535;
     }
-
+    
     for (i = 0, il = msg.morphs.length; i < il; i++) {
         stride = i == il-1 ? 3 : 4; //complete hack; flat is stride 3, all others stride 4
         mpts = new Float32Array(msg.ppolys.length*3);

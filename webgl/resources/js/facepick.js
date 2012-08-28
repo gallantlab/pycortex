@@ -49,23 +49,25 @@ function FacePick(viewer, callback) {
     this.height = $("#brain").height();
 
     var nface, nfaces = 0;
-    for (var name in this.viewer.meshes) {
+    for (var name in {left:"", right:""}) {
         var hemi = this.viewer.meshes[name];
         var morphs = [];
         for (var i = 0, il = hemi.geometry.morphTargets.length; i < il; i++) {
             morphs.push(hemi.geometry.morphTargets[i].array);
         }
-        nface = hemi.geometry.attributes.flatindex.array.length / 3;
+        nface = hemi.geometry.attributes.index.array.length / 3;
         this.idxrange[name] = [nfaces, nfaces + nface];
 
         var worker = new Worker("resources/js/facepick_worker.js");
         worker.onmessage = this.handleworker.bind(this);
         worker.postMessage({
-            func:   "genFlatGeom",
-            name:   name,
-            ppts:   hemi.geometry.attributes.position.array,
-            ppolys: hemi.geometry.attributes.flatindex.array,
-            morphs: morphs,
+            func:    "genFlatGeom",
+            name:    name,
+            ppts:    hemi.geometry.attributes.position.array,
+            ppolys:  hemi.geometry.attributes.index.array,
+            morphs:  morphs,
+            offsets: hemi.geometry.offsets,
+            
             faceoff: nfaces,
         });
         nfaces += nface;
@@ -135,7 +137,7 @@ FacePick.prototype = {
                 var lims = this.idxrange[name];
                 if (lims[0] <= faceidx && faceidx < lims[1]) {
                     faceidx -= lims[0];
-                    var polys = this.viewer.polys.flat[name].array;
+                    var polys = this.viewer.meshes[name].geometry.attributes.index.array;
                     var map = this.viewer.datamap[name];
 
                     var ptidx = polys[faceidx*3];
