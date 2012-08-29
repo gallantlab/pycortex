@@ -134,6 +134,7 @@ FacePick.prototype = {
         var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderbuf.__webglFramebuffer);
         gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         var faceidx = (pix[0] << 16) + (pix[1] << 8) + pix[2];
         if (faceidx == 0)
             return;
@@ -159,7 +160,7 @@ FacePick.prototype = {
                     if (start <= faceidx*3 && faceidx*3 < (start+count)) {
                         //Pick only the first point
                         var ptidx = index + polys[faceidx*3];
-                        console.log(o, hemi, ptidx, faceidx, polys[faceidx*3]);
+                        //console.log(o, hemi, ptidx, faceidx, polys[faceidx*3]);
                         var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
                         ptidx += hemi == "right" ? leftlen : 0;
 
@@ -187,7 +188,9 @@ FacePick.prototype = {
 
         for (var i = 0; i < this.axes.length; i++) {
             if (keep === true) {
-                this.axes[i].obj.material.color.setRGB(0,0,0);
+                this.axes[i].obj.material.color.setRGB(255,255,255);
+
+                this.axes[i].obj.geometry.vertices
             } else {
                 this.axes[i].obj.parent.remove(this.axes[i].obj);
             }
@@ -195,11 +198,11 @@ FacePick.prototype = {
         if (keep !== true)
             this.axes = [];
 
-        var axes = makeAxes(50, 2, 0xff0000);
+        var axes = makeAxes(50, 5, 0xff0000);
         axes.position.copy(vert.norm);
         this.axes.push({idx:ptidx, obj:axes});
         this.viewer.pivot[vert.name].back.add(axes);
-        //this.viewer.controls.dispatchEvent({type:"change"});
+        this.viewer.controls.dispatchEvent({type:"change"});
     }
 }
 

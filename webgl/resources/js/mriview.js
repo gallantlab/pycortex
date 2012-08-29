@@ -242,7 +242,6 @@ MRIview.prototype = {
             this.setFrame(sec);
             requestAnimationFrame(this.draw.bind(this));
         }
-        console.log("render");
         this.renderer.render(this.scene, this.camera);
         if (this.roipack)
             this.roipack.move(this);

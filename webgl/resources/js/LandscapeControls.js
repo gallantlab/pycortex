@@ -117,7 +117,7 @@ THREE.LandscapeControls = function ( camera ) {
         if ( new Date().getTime() - _mousedowntime < this.clickTimeout ) {
             var mouse2D = this.getMouse(event).clone();
             if (this.picker !== undefined)
-                this.picker.pick(mouse2D.x, mouse2D.y);
+                this.picker.pick(mouse2D.x, mouse2D.y, this.keystate == STATE.ZOOM);
         }
     };
 
