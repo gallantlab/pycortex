@@ -137,45 +137,44 @@ class CTMfile(object):
             lib.hemiAddAux(ctypes.byref(hemi), curv.astype(np.float32), 1)
 
     def save(self, filename, compmeth='mg2', complevel=9):
+        cont = self.subj.contents
+        allpts = []
+        for hemi in [cont.left, cont.right]:
+            rpts, rpolys = _getmesh(hemi.fiducial, False) #reference
+            fpts, fpolys = _getmesh(hemi.flat, False)
+            dpolys  = set([tuple(p) for p in np.sort(rpolys, axis=1)])
+            dpolys -= set([tuple(p) for p in np.sort(fpolys, axis=1)])
+            dpolys = np.array(list(dpolys))
+
+            mwall = np.zeros(len(rpts), dtype=np.float32)
+            mwall[dpolys.ravel()] = 1
+            lib.hemiAddAux(ctypes.byref(hemi), mwall, 2)
+            allpts.append(rpts)
+
         left = tempfile.NamedTemporaryFile()
         right = tempfile.NamedTemporaryFile()
         minmax = lib.saveCTM(self.subj, left.name, right.name, compformats[compmeth], complevel)
         flatlims = [tuple(minmax.contents.min), tuple(minmax.contents.max)]
         lib.minmaxFree(minmax)
-        print "Save complete! Hunting down deleted polys"
+        print "CTM saved...",
+        sys.stdout.flush()
 
-        cont = self.subj.contents
-        didx = []
-        ptidx = {}
-        for fp, hemi, name in zip([left, right], [cont.left, cont.right], ["left", "right"]):
-            rpts, rpolys = _getmesh(hemi.fiducial, False) #reference
-            fpts, fpolys = _getmesh(hemi.flat, False) #flat
-            #polygons which need to be removed
-            dpolys  = set([tuple(p) for p in np.sort(rpolys, axis=1)])
-            dpolys -= set([tuple(p) for p in np.sort(fpolys, axis=1)])
-            dpolys = np.array(list(dpolys))
-
+        #Find where the points went
+        ptidx = []
+        for fp, rpts in zip([left, right], allpts):
             pts, polys = readCTM(fp.name)
-            polys = dict([(tuple(p), i) for i, p in enumerate(np.sort(polys, axis=1))])
             kdt = cKDTree(pts)
             diff, idx = kdt.query(rpts)
-            #get the new point indices
-            dpolys = np.sort(idx[dpolys], axis=1)
-            dpolys = [polys[tuple(dpoly)] for dpoly in dpolys if tuple(dpoly) in polys]
-            didx.append(np.array(sorted(dpolys), dtype=np.uint32))
+            ptidx.append((idx, len(rpts)))
             fp.seek(0)
-            ptidx[name] = idx, len(rpts)
         
-        offsets = []
+        offsets = [0]
         with open(filename, "w") as fp:
-            head = struct.pack('2I', len(didx[0]), len(didx[1]))
-            fp.write(head)
-            fp.write(didx[0].tostring())
-            fp.write(didx[1].tostring())
-            offsets.append(fp.tell())
             fp.write(left.read())
             offsets.append(fp.tell())
             fp.write(right.read())
+
+        print "Complete!"
 
         return ptidx, dict(offsets=offsets, flatlims=flatlims)
 
@@ -203,11 +202,11 @@ def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0, **
         layer = roipack.make_text_layer()
         for element in layer.getElementsByTagName("p"):
             idx = int(element.getAttribute("data-ptidx"))
-            if idx < ptidx['left'][1]:
-                idx = ptidx['left'][0][idx]
+            if idx < ptidx[0][1]:
+                idx = ptidx[0][0][idx]
             else:
-                idx -= ptidx['left'][1]
-                idx = ptidx['right'][0][idx] + ptidx['left'][1]
+                idx -= ptidx[0][1]
+                idx = ptidx[1][0][idx] + ptidx[0][1]
             element.setAttribute("data-ptidx", str(idx))
         roipack.svg.getElementsByTagName("svg")[0].appendChild(layer)
         svgout.write(roipack.svg.toxml())
@@ -217,4 +216,4 @@ def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0, **
     
 
 if __name__ == "__main__":
-    print make_pack("/tmp/test.json", "AH", "AH_huth2", types=("inflated", "superinflated"), recache=True)
+    print make_pack("/tmp/test.json", "AH", "AH_huth2", types=("inflated", "superinflated"), method='mg2', level=9)

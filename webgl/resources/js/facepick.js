@@ -1,6 +1,7 @@
 var flatVertShade = [
-    "varying vec3 vColor;",
     "attribute float idx;",
+    "attribute vec4 auxdat;",
+    "varying vec3 vColor;",
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
     "void main() {",
         "vColor.r = floor(idx / (256. * 256.)) / 255.;",
@@ -35,7 +36,7 @@ function FacePick(viewer, callback) {
     this.shader = new THREE.ShaderMaterial({
         vertexShader: flatVertShade,
         fragmentShader: flatFragShade,
-        attributes: { idx: true },
+        attributes: { idx: true, auxdat:true, },
         morphTargets:true
     });
 
@@ -65,9 +66,10 @@ function FacePick(viewer, callback) {
             name:    name,
             ppts:    hemi.geometry.attributes.position.array,
             ppolys:  hemi.geometry.attributes.index.array,
+            aux:     hemi.geometry.attributes.auxdat.array,
             morphs:  morphs,
             offsets: hemi.geometry.offsets,
-            
+            reordered: hemi.geometry.indexMap !== undefined,
             faceoff: nfaces,
         });
         nfaces += nface;
@@ -77,7 +79,10 @@ function FacePick(viewer, callback) {
 }
 FacePick.prototype = {
     resize: function(w, h) {
+        console.log("resized picker: "+w+" / "+h);
+        this._valid = false;
         this.camera.aspect = w / h;
+        this.camera.updateProjectionMatrix();
         this.height = h;
         delete this.renderbuf;
         this.renderbuf = new THREE.WebGLRenderTarget(w, h, {
@@ -138,12 +143,15 @@ FacePick.prototype = {
                 if (lims[0] <= faceidx && faceidx < lims[1]) {
                     faceidx -= lims[0];
                     var polys = this.viewer.meshes[name].geometry.attributes.index.array;
+                    var idxmap = this.viewer.meshes[name].geometry.indexMap;
                     var map = this.viewer.datamap[name];
 
                     var ptidx = polys[faceidx*3];
                     var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
                     ptidx += name == "right" ? leftlen : 0;
 
+                    if (idxmap !== undefined)
+                        ptidx = idxmap[ptidx];
                     this.callback(ptidx, dataidx);
                 }
             }

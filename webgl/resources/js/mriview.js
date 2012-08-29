@@ -1,4 +1,4 @@
-var flatscale = .3;
+var flatscale = .2;
 
 var vShadeHead = [
     THREE.ShaderChunk[ "map_pars_vertex" ], 
@@ -109,10 +109,10 @@ var fragmentShader = [
         //Curvature Underlay
         "gl_FragColor = vec4(vec3(clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim)), curvAlpha);",
 
-        //Data overlay
-        "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
-
         "if (vMedial < .999) {",
+            //Data overlay
+            "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
+
             //Cross hatch / dropout layer
             "float hw = max(hatchAlpha*vDrop, float(!gl_FrontFacing));",
             "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
@@ -247,7 +247,7 @@ MRIview.prototype = {
             this.roipack.move(this);
         this._scheduled = false;
     },
-    load: function(ctminfo) {
+    load: function(ctminfo, callback) {
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
             var rawdata = new Uint32Array(header.length / 4);
@@ -307,6 +307,8 @@ MRIview.prototype = {
             this.draw();
             $("#brain").css("opacity", 1);
             $("#ctmload").hide();
+            if (typeof(callback) == "function")
+                callback();
         }.bind(this), true, true );
     },
     resize: function(width, height) {
@@ -905,29 +907,6 @@ MRIview.prototype = {
         }
         geom.morphTargets.push({ array:flat, stride:3 })
         geom.morphNormals.push( norms );
-
-        var m = 0, n = 0, idx, idy, idz;
-        var offsets = geom.offsets;
-        var aux = geom.attributes.auxdat.array;
-        var indices = geom.attributes.index.array;
-        for (var o = 0, ol = offsets.length; o < ol; o++) {
-            var start = offsets[o].start;
-            var index = offsets[o].index;
-            var count = offsets[o].count;
-
-            for (var i = start, il = start + count; i < il; i += 3) {
-                if (n == polyfilt[m]) {
-                    idx = index + indices[i];
-                    aux[idx * 4 + 2] = 1;
-                    idx = index + indices[i+1];
-                    aux[idx * 4 + 2] = 1;
-                    idx = index + indices[i+2];
-                    aux[idx * 4 + 2] = 1;
-                    m++;
-                }
-                n++;
-            }
-        }
     },
     _makeMesh: function(geom, shader) {
         var mesh = new THREE.Mesh(geom, shader);
