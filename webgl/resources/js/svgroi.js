@@ -1,4 +1,4 @@
-function ROIpack(svgdoc, callback, height) {
+function ROIpack(svgdoc, callback, remap, height) {
     this.callback = callback;
     this.svgroi = svgdoc.getElementsByTagName("svg")[0];
     this.svgroi.id = "svgroi";
@@ -8,7 +8,7 @@ function ROIpack(svgdoc, callback, height) {
     $(this.svgroi).find("foreignObject p").each(function() {
         var name = $(this).text();
         var el = document.createElement("p");
-        el.setAttribute("data-ptidx", $(this).data("ptidx"));
+        el.setAttribute("data-ptidx", remap($(this).data("ptidx")));
         el.className = "roilabel";
         el.innerHTML = name;
         labels.push(el);

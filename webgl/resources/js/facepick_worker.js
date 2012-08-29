@@ -1,20 +1,20 @@
 function genFlatGeom(msg) {
     var pts = new Float32Array(msg.ppolys.length*3);
-    var polys = new Uint16Array(msg.ppolys.length);
     var color = new Float32Array(msg.ppolys.length);
+    var polys = new Uint16Array(msg.ppolys.length);
     var morphs = [];
     var o, ol, i, il, j, jl, k, n = 0, stride, mpts;
     var idx, idy, idz;
+
+    for (i = 0, il = msg.morphs.length; i < il; i++) {
+        mpts = new Float32Array(msg.ppolys.length*3);
+        morphs.push(mpts);
+    }
 
     for (o = 0, ol = msg.offsets.length; o < ol; o++) {
         var start = msg.offsets[o].start;
         var count = msg.offsets[o].count;
         var index = msg.offsets[o].index;
-
-        for (i = 0, il = msg.morphs.length; i < il; i++) {
-            mpts = new Float32Array(msg.ppolys.length*3);
-            morphs.push(mpts);
-        }
 
         for (j = start, jl = start+count; j < jl; j+=3) {
             idx = index + msg.ppolys[j];
@@ -24,6 +24,7 @@ function genFlatGeom(msg) {
 
                 for (k = 0; k < 3; k++) {
                     idx = index + msg.ppolys[j+k];
+
                     pts[n*3+0] = msg.ppts[idx*3+0];
                     pts[n*3+1] = msg.ppts[idx*3+1];
                     pts[n*3+2] = msg.ppts[idx*3+2];

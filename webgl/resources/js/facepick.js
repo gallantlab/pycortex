@@ -27,8 +27,8 @@ function FacePick(viewer, callback) {
     if (typeof(callback) == "function") {
         this.callback = callback;
     } else {
-        this.callback = function(ptidx, idx) {
-            console.log(ptidx, idx);
+        this.callback = function(voxidx) {
+            console.log(voxidx);
         }
     }
 
@@ -80,7 +80,6 @@ function FacePick(viewer, callback) {
 }
 FacePick.prototype = {
     resize: function(w, h) {
-        console.log("resized picker: "+w+" / "+h);
         this._valid = false;
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
@@ -99,7 +98,7 @@ FacePick.prototype = {
             this.pivot[name].back.rotation.z = this.viewer.pivot[name].back.rotation.z;
             this.meshes[name].morphTargetInfluences = this.viewer.meshes[name].morphTargetInfluences;
         }
-        if (debug)
+        if (debug === true)
             this.viewer.renderer.render(this.scene, this.camera);
         else
             this.viewer.renderer.render(this.scene, this.camera, this.renderbuf);
@@ -149,7 +148,7 @@ FacePick.prototype = {
                 faceidx -= lims[0];
                 var geom =  this.viewer.meshes[hemi].geometry;
                 var polys = geom.attributes.index.array;
-                var map = this.viewer.datamap[hemi];
+                var map = geom.attributes.datamap.array;
 
                 //Find which offset
                 for (var o = 0, ol = geom.offsets.length; o < ol; o++) {
@@ -157,9 +156,10 @@ FacePick.prototype = {
                     var index = geom.offsets[o].index;
                     var count = geom.offsets[o].count;
 
-                    if (start <= faceidx && faceidx < (start+count)) {
+                    if (start <= faceidx*3 && faceidx*3 < (start+count)) {
                         //Pick only the first point
-                        var ptidx = polys[(index+faceidx)*3];
+                        var ptidx = index + polys[faceidx*3];
+                        console.log(o, hemi, ptidx, faceidx, polys[faceidx*3]);
                         var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
                         ptidx += hemi == "right" ? leftlen : 0;
 
@@ -177,30 +177,29 @@ FacePick.prototype = {
         var pos, ax;
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
-            pos = this.viewer.getVert(ax.idx)[0]
+            pos = this.viewer.getVert(ax.idx).norm
             ax.obj.position.copy(pos);
         }
     },
 
     addMarker: function(ptidx, keep) {
+        var vert = this.viewer.getVert(ptidx);
+
         for (var i = 0; i < this.axes.length; i++) {
-            if (keep) {
+            if (keep === true) {
                 this.axes[i].obj.material.color.setRGB(0,0,0);
             } else {
-                this.viewer.scene.remove(this.axes[i].obj);
-                delete this.axes[i].obj;
+                this.axes[i].obj.parent.remove(this.axes[i].obj);
             }
         }
-        if (!keep)
-            this.axes = new Array();
+        if (keep !== true)
+            this.axes = [];
 
         var axes = makeAxes(50, 2, 0xff0000);
-        var pos = this.viewer.getVert(ptidx)[0];
-        console.log(pos);
-        axes.position.copy(pos);
+        axes.position.copy(vert.norm);
         this.axes.push({idx:ptidx, obj:axes});
-        this.viewer.scene.add(axes);
-        this.viewer.controls.dispatchEvent({type:"change"});
+        this.viewer.pivot[vert.name].back.add(axes);
+        //this.viewer.controls.dispatchEvent({type:"change"});
     }
 }
 
