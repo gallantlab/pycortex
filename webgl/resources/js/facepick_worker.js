@@ -28,7 +28,7 @@ function genFlatGeom(msg) {
                     pts[n*3+1] = msg.ppts[idx*3+1];
                     pts[n*3+2] = msg.ppts[idx*3+2];
 
-                    color[n] = Math.floor(n / 3) + msg.faceoff + 1;
+                    color[n] = Math.floor(j / 3) + msg.faceoff + 1;
                     polys[n] = n % 65535;
 
                     for (i = 0, il = msg.morphs.length; i < il; i++) {

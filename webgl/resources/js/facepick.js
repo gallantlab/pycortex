@@ -48,6 +48,7 @@ function FacePick(viewer, callback) {
         minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter
     })
     this.height = $("#brain").height();
+    this.axes = [];
 
     var nface, nfaces = 0;
     for (var name in {left:"", right:""}) {
@@ -126,7 +127,7 @@ FacePick.prototype = {
         this.scene.add(meshpiv.pivots.front);
     }, 
 
-    pick: function(x, y) {
+    pick: function(x, y, keep) {
         if (!this._valid)
             this.draw();
         var gl = this.viewer.renderer.context;
@@ -135,33 +136,77 @@ FacePick.prototype = {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderbuf.__webglFramebuffer);
         gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
         var faceidx = (pix[0] << 16) + (pix[1] << 8) + pix[2];
-        if (faceidx > 0) {
-            //adjust for clicking on black area
-            faceidx -= 1;
-            for (var name in this.idxrange) {
-                var lims = this.idxrange[name];
-                if (lims[0] <= faceidx && faceidx < lims[1]) {
-                    faceidx -= lims[0];
-                    var polys = this.viewer.meshes[name].geometry.attributes.index.array;
-                    var idxmap = this.viewer.meshes[name].geometry.indexMap;
-                    var map = this.viewer.datamap[name];
+        if (faceidx == 0)
+            return;
 
-                    var ptidx = polys[faceidx*3];
-                    var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
-                    ptidx += name == "right" ? leftlen : 0;
+        //adjust for clicking on black area
+        faceidx -= 1;
 
-                    if (idxmap !== undefined)
-                        ptidx = idxmap[ptidx];
-                    this.callback(ptidx, dataidx);
+        //Find which hemisphere it's in
+        for (var hemi in this.idxrange) {
+            var lims = this.idxrange[hemi];
+            if (lims[0] <= faceidx && faceidx < lims[1]) {
+                faceidx -= lims[0];
+                var geom =  this.viewer.meshes[hemi].geometry;
+                var polys = geom.attributes.index.array;
+                var map = this.viewer.datamap[hemi];
+
+                //Find which offset
+                for (var o = 0, ol = geom.offsets.length; o < ol; o++) {
+                    var start = geom.offsets[o].start;
+                    var index = geom.offsets[o].index;
+                    var count = geom.offsets[o].count;
+
+                    if (start <= faceidx && faceidx < (start+count)) {
+                        //Pick only the first point
+                        var ptidx = polys[(index+faceidx)*3];
+                        var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
+                        ptidx += hemi == "right" ? leftlen : 0;
+
+                        this.addMarker(ptidx, keep);
+                        this.callback(dataidx);
+                        return;
+                    }
                 }
             }
-        } 
+        }
+
+    },
+
+    setMix: function() {
+        var pos, ax;
+        for (var i = 0, il = this.axes.length; i < il; i++) {
+            ax = this.axes[i];
+            pos = this.viewer.getVert(ax.idx)[0]
+            ax.obj.position.copy(pos);
+        }
+    },
+
+    addMarker: function(ptidx, keep) {
+        for (var i = 0; i < this.axes.length; i++) {
+            if (keep) {
+                this.axes[i].obj.material.color.setRGB(0,0,0);
+            } else {
+                this.viewer.scene.remove(this.axes[i].obj);
+                delete this.axes[i].obj;
+            }
+        }
+        if (!keep)
+            this.axes = new Array();
+
+        var axes = makeAxes(50, 2, 0xff0000);
+        var pos = this.viewer.getVert(ptidx)[0];
+        console.log(pos);
+        axes.position.copy(pos);
+        this.axes.push({idx:ptidx, obj:axes});
+        this.viewer.scene.add(axes);
+        this.viewer.controls.dispatchEvent({type:"change"});
     }
 }
 
 function makeAxes(length, width, color) {
     function v(x,y,z){ 
-        return new THREE.Vertex(new THREE.Vector3(x,y,z)); 
+        return new THREE.Vector3(x,y,z); 
     }
 
     var lineGeo = new THREE.Geometry();

@@ -647,58 +647,31 @@ MRIview.prototype = {
             }
         }
     },
-    getPos: function(idx) {
-        //Returns the 2D screen coordinate of the given point index
-
-        //Which hemi is the point on?
+    getHemi: function(idx) {
         var leftlen = this.meshes.left.geometry.attributes.position.array.length / 3;
         var name = idx < leftlen ? "left" : "right";
         if (idx >= leftlen)
             idx -= leftlen;
-        var hemi = this.meshes[name].geometry;
-        var influ = this.meshes[name].morphTargetInfluences;
+        return {name:name, hemi:this.meshes[name].geometry, idx:idx}
+    },
+    getPos: function(idx, remap) {
+        //Returns the 2D screen coordinate of the given point index
 
-        if (hemi.indexMap !== undefined) {
+        var pn = this.getVert(idx);
+        var pos = pn[0], norm = pn[1];
+
+        //Which hemi is the point on?
+        var heminame = this.getHemi(idx);
+        var name = heminame.name;
+        var hemi = heminame.hemi;
+        var idx = heminame.idx;
+
+        if (remap === true && hemi.indexMap !== undefined) {
             idx = hemi.indexMap[idx];
         }
 
-        var basepos = new THREE.Vector3(
-            hemi.attributes.position.array[idx*3+0],
-            hemi.attributes.position.array[idx*3+1],
-            hemi.attributes.position.array[idx*3+2]
-        );
-        var basenorm = new THREE.Vector3(
-            hemi.attributes.normal.array[idx*3+0],
-            hemi.attributes.normal.array[idx*3+1],
-            hemi.attributes.normal.array[idx*3+2]
-        );
-
-        var isum = 0;
-        var mpos = new THREE.Vector3(0,0,0);
-        var mnorm = new THREE.Vector3(0,0,0);
-        for (var i = 0, il = hemi.morphTargets.length; i < il; i++) {
-            isum += influ[i];
-            var mt = hemi.morphTargets[i];
-            var mn = hemi.morphNormals[i];
-            var pos = new THREE.Vector3(
-                mt.array[mt.stride*idx+0],
-                mt.array[mt.stride*idx+1],
-                mt.array[mt.stride*idx+2]
-            );
-            var norm = new THREE.Vector3(mn[3*idx], mn[3*idx+1], mn[3*idx+2]);
-            pos.multiplyScalar(influ[i]);
-            norm.multiplyScalar(influ[i]);
-            mpos.addSelf(pos);
-            mnorm.addSelf(norm);
-        }
-        
-        var pos = basepos.multiplyScalar(1-isum).addSelf(mpos);
-        var norm = basenorm.multiplyScalar(1-isum).addSelf(mnorm).addSelf(pos);
-
-        pos = this.meshes[name].matrix.multiplyVector3(pos);
         pos = this.pivot[name].back.matrix.multiplyVector3(pos);
         pos = this.pivot[name].front.matrix.multiplyVector3(pos);
-        norm = this.meshes[name].matrix.multiplyVector3(norm);
         norm = this.pivot[name].back.matrix.multiplyVector3(norm);
         norm = this.pivot[name].front.matrix.multiplyVector3(norm);
 
@@ -712,6 +685,43 @@ MRIview.prototype = {
         var y = h - (spos.y + 1) / 2 * h;
 
         return [[x, y], dot];
+    },
+    getVert: function(idx) {
+        var heminame = this.getHemi(idx);
+        var name = heminame.name;
+        var hemi = heminame.hemi;
+        var idx = heminame.idx;        
+
+        var influ = this.meshes[name].morphTargetInfluences;
+        var pos = hemi.attributes.position.array;
+        var norm = hemi.attributes.normal.array;
+        var basepos = new THREE.Vector3(pos[idx*3+0], pos[idx*3+1], pos[idx*3+2]);
+        var basenorm = new THREE.Vector3(norm[idx*3+0], norm[idx*3+1], norm[idx*3+2]);
+
+        var isum = 0;
+        var mpos = new THREE.Vector3(0,0,0);
+        var mnorm = new THREE.Vector3(0,0,0);
+        for (var i = 0, il = hemi.morphTargets.length; i < il; i++) {
+            isum += influ[i];
+            var mt = hemi.morphTargets[i];
+            var mn = hemi.morphNormals[i];
+            var p = new THREE.Vector3(
+                mt.array[mt.stride*idx+0],
+                mt.array[mt.stride*idx+1],
+                mt.array[mt.stride*idx+2]
+            );
+            var n = new THREE.Vector3(mn[3*idx], mn[3*idx+1], mn[3*idx+2]);
+            p.multiplyScalar(influ[i]);
+            n.multiplyScalar(influ[i]);
+            mpos.addSelf(p);
+            mnorm.addSelf(n);
+        }
+        
+        pos = basepos.multiplyScalar(1-isum).addSelf(mpos);
+        norm = basenorm.multiplyScalar(1-isum).addSelf(mnorm).addSelf(pos);
+        pos = this.meshes[name].matrix.multiplyVector3(pos)
+        norm = this.meshes[name].matrix.multiplyVector3(norm)
+        return [pos, norm]
     },
 
     _bindUI: function() {

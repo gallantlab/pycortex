@@ -58,6 +58,8 @@ THREE.LandscapeControls = function ( camera ) {
 
             this.setCamera();
         }
+        if (this.picker)
+            this.picker.setMix();
 
         _start = _end;
     };
