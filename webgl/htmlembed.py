@@ -81,7 +81,10 @@ if (window.webkitURL)
     for script in dom.getElementsByTagName("script"):
         src = script.getAttribute("src")
         if len(src) > 0:
-            _embed_js(dom, script)            
+            try:
+                _embed_js(dom, script)            
+            except:
+                print "Unable to embed script %s" %src
     
     for css in dom.getElementsByTagName("link"):
         if (css.getAttribute("type") == "text/css"):

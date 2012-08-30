@@ -24,7 +24,7 @@ THREE.LandscapeControls = function ( camera ) {
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
     this.panSpeed = 0.3;
-    this.clickTimeout = 200; // milliseconds
+    this.clickTimeout = 500; // milliseconds
 
     // Picker
     this.projector = new THREE.Projector();
@@ -112,9 +112,10 @@ THREE.LandscapeControls = function ( camera ) {
         event.stopPropagation();
 
         _state = STATE.NONE;
+        var ctime = new Date().getTime();
 
         // Run picker if time since mousedown is short enough
-        if ( new Date().getTime() - _mousedowntime < this.clickTimeout ) {
+        if ( ctime - _mousedowntime < this.clickTimeout ) {
             var mouse2D = this.getMouse(event).clone();
             if (this.picker !== undefined)
                 this.picker.pick(mouse2D.x, mouse2D.y, this.keystate == STATE.ZOOM);

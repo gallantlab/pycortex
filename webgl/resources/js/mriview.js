@@ -222,6 +222,7 @@ function MRIview() {
 
     this.projector = new THREE.Projector();
     this._startplay = null;
+    this._staticplugin = false;
 
     this.datasets = {}
     
@@ -440,7 +441,12 @@ MRIview.prototype = {
             } else if (data[name] instanceof NParray) {
                 this.datasets[name] = new Dataset(data[name]);
             }
-            $("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
+            var found = false;
+            $("#datasets li").each(function() {
+                found = found || ($(this).text() == name);
+            })
+            if (!found)
+                $("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
         }
         var func = function() {
             this.setData(names.slice(0,this.colormap.image.height > 10 ? 2 : 1));
@@ -461,6 +467,8 @@ MRIview.prototype = {
             $("#datasets li").each(function() {
                 if ($(this).text() == names[0])
                     $(this).addClass("ui-selected");
+                else
+                    $(this).removeClass("ui-selected");
             })
             if (names.length > 1) {
                 this.active.push(this.datasets[names[1]]);
@@ -483,7 +491,7 @@ MRIview.prototype = {
         return true;
     },
 
-    addPlugin: function(obj) {
+    addPlugin: function(obj, static) {
         $("#bar").css('display', 'table');
         $("#sidepanel>div").html(obj);
         var _lastwidth = "60%";
@@ -513,11 +521,14 @@ MRIview.prototype = {
                 $("#sidepanel").width(100-parseFloat(width)+"%").css('left', width);
             }.bind(this));
         $("#bar").click();
+        this._staticplugin = static === true;
     },
     rmPlugin: function() {
-        $("#bar").hide();
-        this.resize("100%");
-        $("sidepanel").width("0%").hide();
+        if (!this._staticplugin) {
+            $("#bar").hide();
+            this.resize("100%");
+            $("sidepanel").width("0%").hide();
+        }
     },
 
     setColormap: function(cmap) {
@@ -708,20 +719,17 @@ MRIview.prototype = {
 
     remap: function(idx) {
         var leftlen = this.meshes.left.geometry.attributes.position.array.length / 3;
+        var offset = idx < leftlen ? 0 : leftlen;
         var name = idx < leftlen ? "left" : "right";
         var hemi = this.meshes[name].geometry;
-        if (idx >= leftlen)
-            idx -= leftlen;
 
         if (hemi.indexMap === undefined)
             return idx;
 
-        idx = hemi.indexMap[idx]
+        if (idx >= leftlen)
+            idx -= leftlen;
 
-        if (name == "right")
-            return idx + leftlen;
-
-        return idx;
+        return hemi.indexMap[idx] + offset;
     },
 
     _bindUI: function() {

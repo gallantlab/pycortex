@@ -29,6 +29,8 @@
 {% if python_interface %}
 <script type='text/javascript' src='resources/js/python_interface.js'></script>
 {% end %}
+{% block javascripts %}
+{% end %}
 
 <link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
 <script type='text/javascript'>
@@ -144,7 +146,7 @@
 				<div class='display_opt'>
 					<table id='layerHatch'>
 						<tr>
-							<td><label for='layer_hatchalpha'>Hatching</label></td>
+							<td><label for='layer_hatchalpha'>Dropout</label></td>
 							<td><div id='layer_hatchalpha'></div></td>
 						</tr>
 						<tr>
@@ -234,5 +236,9 @@
 		</table>
 	</div>
 </div>
+
+{% block extrahtml %}
+{% end %}
+
 </body>
 </html>

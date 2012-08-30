@@ -18,7 +18,6 @@ import serve
 
 loader = template.Loader(serve.cwd)
 html = loader.load("mixer.html")
-static_template = loader.load("static.html")
 
 name_parse = re.compile(r".*/(\w+).png")
 colormaps = glob.glob(os.path.join(serve.cwd, "resources/colormaps/*.png"))
@@ -93,7 +92,7 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
 
-def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r"):
+def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html"):
     print "You'll probably need nginx to view this, since file:// paths don't handle xsrf correctly"
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
@@ -121,7 +120,8 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     
     #Parse the html file and paste all the js and css files directly into the html
     import htmlembed
-    html = static_template.generate(ctmfile=ctmfile, data=json, colormaps=colormaps, default_cmap=cmap, python_interface=False)
+    template = loader.load(template)
+    html = template.generate(ctmfile=ctmfile, data=json, colormaps=colormaps, default_cmap=cmap, python_interface=False)
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
 
 

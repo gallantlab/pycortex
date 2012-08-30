@@ -71,7 +71,6 @@ function FacePick(viewer, callback) {
             reordered: hemi.geometry.indexMap !== undefined,
             faceoff: nfaces,
         });
-        console.log("Faceoff: "+nfaces);
         nfaces += nface;
     }
     
@@ -197,7 +196,7 @@ FacePick.prototype = {
         if (keep !== true)
             this.axes = [];
 
-        var axes = makeAxes(50, 5, 0xff0000);
+        var axes = makeAxes(50, 0xff0000);
         axes.position.copy(vert.norm);
         this.axes.push({idx:ptidx, obj:axes});
         this.viewer.pivot[vert.name].back.add(axes);
@@ -205,7 +204,7 @@ FacePick.prototype = {
     }
 }
 
-function makeAxes(length, width, color) {
+function makeAxes(length, color) {
     function v(x,y,z){ 
         return new THREE.Vector3(x,y,z); 
     }
@@ -216,7 +215,7 @@ function makeAxes(length, width, color) {
         v(0, -length, 0), v(0, length, 0),
         v(0, 0, -length), v(0, 0, length)
     );
-    var lineMat = new THREE.LineBasicMaterial({ color: color, lineWidth: width});
+    var lineMat = new THREE.LineBasicMaterial({ color: color, lineWidth: 5});
     var axes = new THREE.Line(lineGeo, lineMat);
     axes.type = THREE.Lines;
     return axes;
