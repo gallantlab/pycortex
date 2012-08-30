@@ -114,7 +114,7 @@ var fragmentShader = [
             "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
 
             //Cross hatch / dropout layer
-            "float hw = max(hatchAlpha*vDrop, float(!gl_FrontFacing));",
+            "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
             "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
             "gl_FragColor = hcolor + gl_FragColor * (1. - hcolor.a);",
             //roi layer
@@ -282,7 +282,7 @@ MRIview.prototype = {
                 this.roipack = new ROIpack(svgdoc, function(tex) {
                     this.shader.uniforms.map.texture = tex;
                     this.controls.dispatchEvent({type:"change"});
-                }.bind(this), this.remap.bind(this), 2048);
+                }.bind(this), this.remap.bind(this));
                 this.roipack.update(this.renderer);
             }.bind(this));
 
