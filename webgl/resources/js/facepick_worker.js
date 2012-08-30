@@ -1,9 +1,9 @@
 function genFlatGeom(msg) {
     var pts = new Float32Array(msg.ppolys.length*3);
-    var color = new Float32Array(msg.ppolys.length);
+    var color = new Float32Array(msg.ppolys.length*3);
     var polys = new Uint16Array(msg.ppolys.length);
     var morphs = [];
-    var o, ol, i, il, j, jl, k, n = 0, stride, mpts;
+    var o, ol, i, il, j, jl, k, n = 0, stride, mpts, faceidx;
     var idx, idy, idz;
 
     for (i = 0, il = msg.morphs.length; i < il; i++) {
@@ -16,12 +16,15 @@ function genFlatGeom(msg) {
         var count = msg.offsets[o].count;
         var index = msg.offsets[o].index;
 
+        //For each face
         for (j = start, jl = start+count; j < jl; j+=3) {
             idx = index + msg.ppolys[j];
             idy = index + msg.ppolys[j+1];
             idz = index + msg.ppolys[j+2];
+            //If any vertex is not cut
             if (msg.aux[idx*4+2] == 0 || msg.aux[idy*4+2] == 0 || msg.aux[idz*4+2] == 0) {
-
+                faceidx = (j / 3) + msg.faceoff + 1;
+                //For each vertex
                 for (k = 0; k < 3; k++) {
                     idx = index + msg.ppolys[j+k];
 
@@ -29,7 +32,10 @@ function genFlatGeom(msg) {
                     pts[n*3+1] = msg.ppts[idx*3+1];
                     pts[n*3+2] = msg.ppts[idx*3+2];
 
-                    color[n] = Math.floor(j / 3) + msg.faceoff + 1;
+                    color[n*3+0] = faceidx >> 16;
+                    color[n*3+1] = (faceidx >> 8) % 256;
+                    color[n*3+2] = faceidx % 256;
+
                     polys[n] = n % 65535;
 
                     for (i = 0, il = msg.morphs.length; i < il; i++) {

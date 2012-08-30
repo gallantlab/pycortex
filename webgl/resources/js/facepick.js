@@ -1,12 +1,10 @@
 var flatVertShade = [
-    "attribute float idx;",
+    "attribute vec3 idx;",
     "attribute vec4 auxdat;",
     "varying vec3 vColor;",
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
     "void main() {",
-        "vColor.r = floor(idx / (256. * 256.)) / 255.;",
-        "vColor.g = mod(idx / 256., 256.) / 255.;",
-        "vColor.b = mod(idx, 256.) / 255.;",
+        "vColor = (2.*idx+1.) / 512.;",
         THREE.ShaderChunk[ "morphtarget_vertex" ],
         THREE.ShaderChunk[ "default_vertex" ],
     "}",
@@ -73,6 +71,7 @@ function FacePick(viewer, callback) {
             reordered: hemi.geometry.indexMap !== undefined,
             faceoff: nfaces,
         });
+        console.log("Faceoff: "+nfaces);
         nfaces += nface;
     }
     
@@ -100,8 +99,8 @@ FacePick.prototype = {
         }
         if (debug === true)
             this.viewer.renderer.render(this.scene, this.camera);
-        else
-            this.viewer.renderer.render(this.scene, this.camera, this.renderbuf);
+        
+        this.viewer.renderer.render(this.scene, this.camera, this.renderbuf);
         this._valid = true;
     },
 
@@ -110,7 +109,7 @@ FacePick.prototype = {
         var i, il, geom = new THREE.BufferGeometry();
         geom.attributes.position = {itemSize:3, array:msg.pts, stride:3};
         geom.attributes.index = {itemSize:1, array:msg.polys, stride:1};
-        geom.attributes.idx = {itemSize:1, array:msg.color, stride:1};
+        geom.attributes.idx = {itemSize:3, array:msg.color, stride:3};
         geom.morphTargets = [];
         for (i = 0, il = msg.morphs.length; i < il; i++) {
             geom.morphTargets.push({itemSize:3, array:msg.morphs[i], stride:3});
@@ -121,6 +120,7 @@ FacePick.prototype = {
         }
         geom.computeBoundingBox();
         var meshpiv = this.viewer._makeMesh(geom, this.shader);
+        meshpiv.mesh.doubleSided = false;
         this.meshes[msg.name] = meshpiv.mesh;
         this.pivot[msg.name] = meshpiv.pivots;
         this.scene.add(meshpiv.pivots.front);
@@ -158,9 +158,8 @@ FacePick.prototype = {
                     var count = geom.offsets[o].count;
 
                     if (start <= faceidx*3 && faceidx*3 < (start+count)) {
-                        //Pick only the first point
+                        //Pick only the first point of triangle
                         var ptidx = index + polys[faceidx*3];
-                        //console.log(o, hemi, ptidx, faceidx, polys[faceidx*3]);
                         var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
                         ptidx += hemi == "right" ? leftlen : 0;
 

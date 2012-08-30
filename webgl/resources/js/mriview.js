@@ -680,7 +680,7 @@ MRIview.prototype = {
         var norm = hemi.attributes.normal.array;
         var basepos = new THREE.Vector3(pos[idx*3+0], pos[idx*3+1], pos[idx*3+2]);
         var basenorm = new THREE.Vector3(norm[idx*3+0], norm[idx*3+1], norm[idx*3+2]);
-
+        
         var isum = 0;
         var mpos = new THREE.Vector3(0,0,0);
         var mnorm = new THREE.Vector3(0,0,0);
@@ -699,12 +699,10 @@ MRIview.prototype = {
             mpos.addSelf(p);
             mnorm.addSelf(n);
         }
-        
         pos = basepos.multiplyScalar(1-isum).addSelf(mpos);
         norm = basenorm.multiplyScalar(1-isum).addSelf(mnorm).addSelf(pos);
-        pos = this.meshes[name].matrix.multiplyVector3(pos)
-        norm = this.meshes[name].matrix.multiplyVector3(norm)
-
+        pos = this.meshes[name].matrix.multiplyVector3(pos);
+        norm = this.meshes[name].matrix.multiplyVector3(norm);
         return {hemi:hemi, name:name, pos:pos, norm:norm}
     },
 
