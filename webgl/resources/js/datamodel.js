@@ -183,6 +183,7 @@ Dataset.prototype = {
         this.stim.id = "stim_movie";
         this.stim.setAttribute("preload", "");
         this.stim.setAttribute("autobuffer", "");
+        this.stim.setAttribute("loop", "loop");
         var src = document.createElement("source");
         src.setAttribute("type", 'video/ogg; codecs="theora, vorbis"');
         src.setAttribute("src", url);

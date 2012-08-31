@@ -24,7 +24,7 @@ THREE.LandscapeControls = function ( camera ) {
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
     this.panSpeed = 0.3;
-    this.clickTimeout = 500; // milliseconds
+    this.clickTimeout = 200; // milliseconds
 
     // Picker
     this.projector = new THREE.Projector();

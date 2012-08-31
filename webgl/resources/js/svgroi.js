@@ -1,18 +1,50 @@
-function ROIpack(svgdoc, callback, remap, height) {
+function ROIpack(svgdoc, callback, viewer, height) {
     this.callback = callback;
     this.svgroi = svgdoc.getElementsByTagName("svg")[0];
     this.svgroi.id = "svgroi";
     //document.getElementById("hiderois").appendChild(this.svgroi);
     this.rois = $(this.svgroi).find("path");
+    var geoms = {left:new THREE.Geometry(), right:new THREE.Geometry()};
+    geoms.left.dynamic = true;
+    geoms.right.dynamic = true;
+    var verts = {};
     var labels = [];
+    var colors = 1;
     $(this.svgroi).find("foreignObject p").each(function() {
         var name = $(this).text();
         var el = document.createElement("p");
-        el.setAttribute("data-ptidx", remap($(this).data("ptidx")));
+        var pt = viewer.remap($(this).data("ptidx"));
+        var color = new THREE.Color(colors++);
+        var ptdat = viewer.getVert(pt);
+        //var arr = viewer.meshes[ptdat.name].geometry.attributes.position.array;
+        //console.log(ptdat.norm, arr[pt*3+0], arr[pt*3+1], arr[pt*3+2]);
+        verts[pt] = ptdat.norm;
+        geoms[ptdat.name].vertices.push(ptdat.norm);
+        geoms[ptdat.name].colors.push(color);
+
+        el.setAttribute("data-ptidx", pt);
+        el.setAttribute("data-ptcolor", color.getHex());
         el.className = "roilabel";
         el.innerHTML = name;
         labels.push(el);
     });
+    this.vertices = verts;
+    this.particlemat = new THREE.ParticleBasicMaterial({
+        size:2, 
+        vertexColors:THREE.VertexColors, 
+        depthTest:true,
+        sizeAttenuation:false, 
+        opacity:1.0
+    });
+    this.particles = {
+        left: new THREE.ParticleSystem(geoms.left, this.particlemat),
+        right: new THREE.ParticleSystem(geoms.right, this.particlemat)
+    };
+    this.particles.left.dynamic = true;
+    this.particles.right.dynamic = true;
+    viewer.pivot.left.back.add(this.particles.left);
+    viewer.pivot.right.back.add(this.particles.right);
+
     this.labels = $(labels);
     this.svgroi.removeChild(this.svgroi.getElementsByTagName("foreignObject")[0]);
     $("#roilabels").append(this.labels);
@@ -81,15 +113,34 @@ ROIpack.prototype = {
         }
     }, 
     move: function(viewer) {
+        var pt, opacity, pixel, cull;
+        var gl = viewer.renderer.context;
+        var height = viewer.renderer.domElement.clientHeight;
+        var pix = new Uint8Array(4);
         $(this.labels).each(function() {
-            var posdot = viewer.getPos(this.getAttribute("data-ptidx"), true);
-            var opacity = Math.max(-posdot[1], 0);
+            pt = viewer.getPos(this.getAttribute("data-ptidx"));
+
+            gl.readPixels(pt.norm[0], height - pt.norm[1], 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
+            pixel = (pix[0] << 16) + (pix[1] << 8) + pix[2];
+            cull = pixel == this.getAttribute("data-ptcolor");
+            
+            opacity = Math.max(-pt.dot, 0);
             opacity = viewer.flatmix + (1 - viewer.flatmix)*opacity;
-            this.style.left = Math.round(posdot[0][0])+"px";
-            this.style.top =  Math.round(posdot[0][1])+"px";
-            this.style.opacity = 1 - Math.exp(-opacity * 10);
-        })
+            this.style.left = Math.round(pt.pos[0])+"px";
+            this.style.top =  Math.round(pt.pos[1])+"px";
+            this.style.opacity = cull * (1 - Math.exp(-opacity * 10));
+        });
     },
+    setMix: function(viewer) {
+        var verts = this.vertices;
+        $(this.labels).each(function() {
+            var idx = this.getAttribute("data-ptidx");
+            var vert = viewer.getVert(idx);
+            verts[idx].copy(vert.norm);
+        });
+        this.particles.left.geometry.verticesNeedUpdate = true;
+        this.particles.right.geometry.verticesNeedUpdate = true;
+    }, 
     saveSVG: function(png, posturl) {
         var svgdoc = this.svgroi.parentNode;
         var newsvg = svgdoc.implementation.createDocument(svgdoc.namespaceURI, null, null);

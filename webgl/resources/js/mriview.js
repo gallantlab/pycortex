@@ -235,10 +235,6 @@ MRIview.prototype = {
             var sec = ((new Date()) - this._startplay) / 1000;
             if (sec > this.active[0].textures.length) {
                 sec -= this.active[0].textures.length;
-                if (this.active[0].stim) {
-                    this.active[0].stim.currentTime = this.active[0].delay;
-                    this.active[0].stim.play();
-                }
             }
             this.setFrame(sec);
             requestAnimationFrame(this.draw.bind(this));
@@ -251,16 +247,6 @@ MRIview.prototype = {
     load: function(ctminfo, callback) {
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
-            var rawdata = new Uint32Array(header.length / 4);
-            var charview = new Uint8Array(rawdata.buffer);
-            for (var i = 0, il = header.length; i < il; i++) {
-                charview[i] = header.charCodeAt(i);
-            }
-
-            var polyfilt = {};
-            polyfilt.left = rawdata.subarray(2, rawdata[0]+2);
-            polyfilt.right = rawdata.subarray(rawdata[0]+2);
-
             geometries[0].computeBoundingBox();
             geometries[1].computeBoundingBox();
 
@@ -276,25 +262,25 @@ MRIview.prototype = {
                     geometries[0].boundingBox.min.y, 
                     geometries[1].boundingBox.min.y
                 )];
+
             var names = {left:0, right:1};
-
-            $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
-                this.roipack = new ROIpack(svgdoc, function(tex) {
-                    this.shader.uniforms.map.texture = tex;
-                    this.controls.dispatchEvent({type:"change"});
-                }.bind(this), this.remap.bind(this));
-                this.roipack.update(this.renderer);
-            }.bind(this));
-
             for (var name in names) {
                 var right = names[name];
                 this.datamap[name] = geometries[right].attributes.datamap.array;
-                this._makeFlat(geometries[right], polyfilt[name], right);
+                this._makeFlat(geometries[right], right);
                 var meshpiv = this._makeMesh(geometries[right], this.shader);
                 this.meshes[name] = meshpiv.mesh;
                 this.pivot[name] = meshpiv.pivots;
                 this.scene.add(meshpiv.pivots.front);
             }
+
+            $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
+                this.roipack = new ROIpack(svgdoc, function(tex) {
+                    this.shader.uniforms.map.texture = tex;
+                    this.controls.dispatchEvent({type:"change"});
+                }.bind(this), this);
+                this.roipack.update(this.renderer);
+            }.bind(this));
 
             this.controls.flatsize = flatscale * this.flatlims[1][0];
             this.controls.flatoff = this.flatoff[1];
@@ -305,7 +291,8 @@ MRIview.prototype = {
                     requestAnimationFrame( this.draw.bind(this) );
                 }
             }.bind(this));
-            this.draw();
+            this.controls.dispatchEvent({type:"change"});
+
             $("#brain").css("opacity", 1);
             $("#ctmload").hide();
             if (typeof(callback) == "function")
@@ -394,6 +381,7 @@ MRIview.prototype = {
         this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
         $("#mix").slider("value", val);
         this.controls.update(this.flatmix);
+        this.roipack.setMix(this);
         this.controls.setCamera();
         this.controls.dispatchEvent({type:"change"});
     }, 
@@ -658,26 +646,29 @@ MRIview.prototype = {
             }
         }
     },
-    getPos: function(idx, remap) {
+    getPos: function(idx) {
         //Returns the 2D screen coordinate of the given point index
         var vert = this.getVert(idx);
-        var pos = vert.pos, norm = vert.norm, hemi = vert.hemi, name = vert.name;
+        var name = vert.name;
 
-        pos = this.pivot[name].back.matrix.multiplyVector3(pos);
-        pos = this.pivot[name].front.matrix.multiplyVector3(pos);
-        norm = this.pivot[name].back.matrix.multiplyVector3(norm);
-        norm = this.pivot[name].front.matrix.multiplyVector3(norm);
+        vert.pos = this.pivot[name].back.matrix.multiplyVector3(vert.pos);
+        vert.pos = this.pivot[name].front.matrix.multiplyVector3(vert.pos);
+        vert.norm = this.pivot[name].back.matrix.multiplyVector3(vert.norm);
+        vert.norm = this.pivot[name].front.matrix.multiplyVector3(vert.norm);
 
-        var cpos = this.camera.position.clone().subSelf(pos).normalize();
-        var dot = -norm.subSelf(pos).normalize().dot(cpos);
+        var cpos = this.camera.position.clone().subSelf(vert.pos).normalize();
+        var dot = -vert.norm.clone().subSelf(vert.pos).normalize().dot(cpos);
 
-        var spos = this.projector.projectVector(pos, this.camera);
+        var spos = this.projector.projectVector(vert.pos, this.camera);
+        var snorm = this.projector.projectVector(vert.norm, this.camera);
         var w = this.renderer.domElement.width;
         var h = this.renderer.domElement.height;
         var x = (spos.x + 1) / 2 * w;
         var y = h - (spos.y + 1) / 2 * h;
+        var xn = (snorm.x + 1) / 2 * w;
+        var yn = h - (snorm.y + 1) / 2 * h;
 
-        return [[x, y], dot];
+        return {pos:[x, y], norm:[xn, yn], dot:dot, vert:vert};
     },
     getVert: function(idx) {
         var leftlen = this.meshes.left.geometry.attributes.position.array.length / 3;
@@ -903,7 +894,7 @@ MRIview.prototype = {
         });
     },
 
-    _makeFlat: function(geom, polyfilt, right) {
+    _makeFlat: function(geom, right) {
         geom.computeBoundingSphere();
         geom.dynamic = true;
         
@@ -930,6 +921,7 @@ MRIview.prototype = {
         var mesh = new THREE.Mesh(geom, shader);
         mesh.doubleSided = true;
         mesh.position.y = -this.flatoff[1];
+        mesh.updateMatrix();
         var pivots = {back:new THREE.Object3D(), front:new THREE.Object3D()};
         pivots.back.add(mesh);
         pivots.front.add(pivots.back);
