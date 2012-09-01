@@ -240,8 +240,6 @@ MRIview.prototype = {
             requestAnimationFrame(this.draw.bind(this));
         }
         this.renderer.render(this.scene, this.camera);
-        if (this.roipack)
-            this.roipack.move(this);
         this._scheduled = false;
     },
     load: function(ctminfo, callback) {
@@ -280,6 +278,7 @@ MRIview.prototype = {
                     this.controls.dispatchEvent({type:"change"});
                 }.bind(this), this);
                 this.roipack.update(this.renderer);
+                this.controls.onmove = this.roipack.move.bind(this.roipack, this);
             }.bind(this));
 
             this.controls.flatsize = flatscale * this.flatlims[1][0];
@@ -481,7 +480,7 @@ MRIview.prototype = {
 
     addPlugin: function(obj, static) {
         $("#bar").css('display', 'table');
-        $("#sidepanel>div").html(obj);
+        $("#pluginbox").html(obj);
         var _lastwidth = "60%";
         var resizepanel = function() {
             var width = $("#bar").position().left / $(window).width() * 100 + "%";
@@ -510,6 +509,8 @@ MRIview.prototype = {
             }.bind(this));
         $("#bar").click();
         this._staticplugin = static === true;
+        if (!static)
+            $("#pluginload").show();
     },
     rmPlugin: function() {
         if (!this._staticplugin) {
@@ -627,12 +628,12 @@ MRIview.prototype = {
             }.bind(this);
 
             if (dataset.stim !== undefined) {
-                dataset.stim.currentTime = this.frame+dataset.delay;
-                $(dataset.stim).bind("playing", function() {
+                dataset.stim.callback = function() {
+                    dataset.stim.play();
                     func();
-                    $(dataset.stim).unbind("playing");
-                });
-                dataset.stim.play()
+                    dataset.stim.callback = null;
+                }
+                dataset.stim.seekTo(this.frame+dataset.delay);
             } else {
                 func();
             }
@@ -641,7 +642,6 @@ MRIview.prototype = {
             $("#moviecontrols img").attr("src", "resources/images/control-play.png");
 
             if (dataset.stim !== undefined) {
-                dataset.stim.currentTime = this.frame+dataset.delay;
                 dataset.stim.pause();
             }
         }
@@ -671,6 +671,7 @@ MRIview.prototype = {
         return {pos:[x, y], norm:[xn, yn], dot:dot, vert:vert};
     },
     getVert: function(idx) {
+        //Returns a structure with the hemisphere name, position, and (normal+position) as norm
         var leftlen = this.meshes.left.geometry.attributes.position.array.length / 3;
         var name = idx < leftlen ? "left" : "right";
         var hemi = this.meshes[name].geometry;
@@ -807,6 +808,8 @@ MRIview.prototype = {
 
         $("#labelshow").change(function() {
             this.roipack.labels.toggle();
+            this.roipack.particles.left.visible = !this.roipack.particles.left.visible;
+            this.roipack.particles.right.visible = !this.roipack.particles.right.visible;
         }.bind(this));
 
         $("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
@@ -880,7 +883,7 @@ MRIview.prototype = {
                 this.setFrame(ui.value); 
                 var dataset = this.active[0];
                 if (dataset.stim !== undefined) {
-                    dataset.stim.currentTime = ui.value + dataset.delay;
+                    dataset.stim.seekTo(ui.value + dataset.delay);
                 }
             }.bind(this)
         });
@@ -889,12 +892,13 @@ MRIview.prototype = {
             _this.setFrame(this.value); 
             var dataset = _this.active[0];
             if (dataset.stim !== undefined) {
-                dataset.stim.currentTime = this.value + dataset.delay;
+                dataset.stim.seekTo(this.value + dataset.delay);
             }
         });
     },
 
     _makeFlat: function(geom, right) {
+        //Generates the UV and flatmap morphTarget using the unscaled UV found in the file
         geom.computeBoundingSphere();
         geom.dynamic = true;
         
@@ -918,6 +922,7 @@ MRIview.prototype = {
         geom.morphNormals.push( norms );
     },
     _makeMesh: function(geom, shader) {
+        //Creates the pivots and the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);
         mesh.doubleSided = true;
         mesh.position.y = -this.flatoff[1];
@@ -933,6 +938,7 @@ MRIview.prototype = {
 }
 
 function makeHatch(size, linewidth, spacing) {
+    //Creates a cross-hatching pattern in canvas for the dropout shading
     if (spacing === undefined)
         spacing = 32;
     if (size === undefined)

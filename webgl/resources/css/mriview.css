@@ -132,6 +132,20 @@ table { cell-spacing:0px; }
     display:table;
     overflow:hidden;
 }
+#pluginload {
+    position:absolute;
+    z-index:100;
+    margin:20px;
+    background:rgba(50,50,50,.5);
+    color:white;
+    padding:20px;
+    right:0px;
+}
+#pluginload img {
+    height:16px;
+    vertical-align: middle;
+    margin:0px 10px 0px 0px;
+}
 
 /*************************************************
  * Loading messages

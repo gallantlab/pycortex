@@ -182,12 +182,45 @@ Dataset.prototype = {
         this.stim = document.createElement("video");
         this.stim.id = "stim_movie";
         this.stim.setAttribute("preload", "");
-        this.stim.setAttribute("autobuffer", "");
         this.stim.setAttribute("loop", "loop");
         var src = document.createElement("source");
         src.setAttribute("type", 'video/ogg; codecs="theora, vorbis"');
         src.setAttribute("src", url);
         this.stim.appendChild(src);
+        this.stim.seekTo = function(time) {
+            if (this.seekable.length > 0 && 
+                this.seekable.end(0) >= time) {
+                this.currentTime = time;
+                $("#pluginload").hide()
+                if (typeof(this.callback) == "function")
+                    this.callback();
+            } else {
+                this.seekTarget = time;
+                $("#pluginload").show()
+            }
+        }
+        $(this.stim).bind("progress", function() {
+            if (this.seekTarget != null && 
+                this.seekable.length > 0 && 
+                this.seekable.end(0) >= this.seekTarget &&
+                this.parentNode != null) {
+                var func = function() {
+                    console.log("load sync");
+                    try {
+                        this.currentTime = this.seekTarget;
+                        this.seekTarget = null;
+                        $("#pluginload").hide()
+                        if (typeof(this.callback) == "function")
+                            this.callback();
+                    } catch (e) {
+                        console.error(e);
+                        setTimeout(func, 5);
+                    }
+                }.bind(this);
+                func();
+            }
+        });
+        this.stim.seekTo(delay);
     },
     set: function(viewer, dim) {
         if (dim === undefined)
@@ -214,16 +247,15 @@ Dataset.prototype = {
             if (this.stim === undefined) {
                 viewer.rmPlugin();
             } else {
+                var delay = this.delay;
                 viewer.addPlugin(this.stim);
-                var delay = viewer.frame + this.delay;
-                if (this.stim.readyState == 4) {
-                    this.stim.currentTime = delay;
-                } else {
-                    $(this.stim).bind("loadeddata", function() {
-                        this.currentTime = delay;
-                        $(this).unbind("loadeddata");
-                    });
-                }
+                //this.stim.seekTo(viewer.frame + delay);
+                $(this.stim).bind("timeupdate", function() {
+                    var now = new Date().getTime() / 1000;
+                    var sec = now - viewer._startplay / 1000;
+                    console.log("Time diff: "+(this.currentTime - delay - sec));
+                    viewer._startplay = (now - this.currentTime + delay)*1000;
+                })
             }
         }.bind(this);
         if (this.array !== undefined)

@@ -57,6 +57,8 @@ THREE.LandscapeControls = function ( camera ) {
                 statefunc[_state](mouseChange);
 
             this.setCamera();
+            if (typeof(this.onmove) == "function")
+                this.onmove();
         }
         if (this.picker)
             this.picker.setMix();
