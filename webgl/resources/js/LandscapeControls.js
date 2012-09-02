@@ -20,7 +20,8 @@ THREE.LandscapeControls = function ( camera ) {
 
     // API
     this.enabled = true;
-
+    
+    // Constants
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
     this.panSpeed = 0.3;
@@ -239,6 +240,12 @@ THREE.LandscapeControls.prototype = {
 
 
         this.altitude -= this.rotateSpeed*mouseChange.y;
+
+	// Add panning depending on flatmix
+	var panMouseChange = new Object;
+	panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
+	panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
+	this.pan(panMouseChange);
     }, 
 
     pan: function( mouseChange ) {
