@@ -46,26 +46,27 @@
 <script type="text/javascript" src="/~huth/wngraphsvg-2/jquery.svg.package-1.4.5/jquery.svganim.min.js"></script>
 {% end %}
 
+{% block jsinit %}
+  var viewer, sock, gr;
+{% end %}
+
 {% block onload %}
-	var viewer, sock, gr;
-	$(document).ready(function() {
-		gr = setupGraph();
-		gr.setrgbdata(colordata);
+	gr = setupGraph();
+	gr.setrgbdata(colordata);
 
-		var wngraph = $("#wngraph-plugin").detach();
-		wngraph.css("visibility", "visible");
+	var wngraph = $("#wngraph-plugin").detach();
+	wngraph.css("visibility", "visible");
 
-		viewer = new MRIview();
-		viewer.load("{{ctmfile}}", function() {
-			wngraph.viewer = viewer;
-			viewer.controls.picker.callback = function(idx) {
-				console.log(idx);
-				gr.showvoxel(idx);
-			}
-		});
-		viewer.addData(classify({{data}}));
-		viewer.addPlugin(wngraph, true);
+	viewer = new MRIview();
+	viewer.load("{{ctmfile}}", function() {
+		wngraph.viewer = viewer;
+		viewer.controls.picker.callback = function(idx) {
+			console.log(idx);
+			gr.showvoxel(idx);
+		}
 	});
+	viewer.addData(classify({{data}}));
+	viewer.addPlugin(wngraph, true);
 {% end %}
 
 {% block extrahtml %}

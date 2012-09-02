@@ -55,6 +55,25 @@ table { cell-spacing:0px; }
     text-align:left;
 }
 
+.loadmsg {
+    position:absolute;
+    z-index:100;
+    margin:20px;
+    background:rgba(50,50,50,.5);
+    color:white;
+    padding:20px;
+    right:0px;
+    text-align:center;
+}
+.loadmsg img {
+    height:16px;
+    vertical-align: middle;
+    margin:0px 10px 0px 0px;
+}
+a { color:white; }
+a:hover { color:#AAA; }
+a:visited { color:white; }
+
 /*************************************************
  * WebGL Canvas
  *************************************************/
@@ -132,59 +151,36 @@ table { cell-spacing:0px; }
     display:table;
     overflow:hidden;
 }
-#pluginload {
-    position:absolute;
-    z-index:100;
-    margin:20px;
-    background:rgba(50,50,50,.5);
-    color:white;
-    padding:20px;
-    right:0px;
-}
-#pluginload img {
-    height:16px;
-    vertical-align: middle;
-    margin:0px 10px 0px 0px;
-}
 
 /*************************************************
  * Loading messages
  *************************************************/
+#pluginload {
+    display:none;
+}
 #dataload {
-    position:absolute;
-    z-index:100;
     width:200px;
     left:100px;
     top:100px;
     font-size:150%;
-    padding:20px;
-    color:white;
-    background:rgba(50,50,50,0.5);
-    text-align:center;
 }
 #dataload img {
     height:32px;
-    vertical-align:middle;
-    margin:0px 10px 0px 0px;
 }
 #ctmload {
-    position:absolute;
+    background:none;
     color:#AAA;
-    width:250px;
+    width:400px;
+    height:200px;
     top:50%;
-    margin-top:-8px;
-    margin-left:-125px;
-    text-align:center;
     left:50%;
+    margin-top:-50px;
+    margin-left:-200px;
     text-shadow:0px 1px 1px black;
-}
-#ctmload img {
-    height:16px;
-    margin:0 5px 0px 0px;
-    vertical-align: middle;
 }
 
 #dataname {
+    display:none;
     float:right;
     text-shadow:0px 2px 8px black, 0px 1px 8px black;
     color:white;

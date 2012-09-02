@@ -26,9 +26,6 @@ THREE.LandscapeControls = function ( camera ) {
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
 
-    // Picker
-    this.projector = new THREE.Projector();
-
     // internals
     this.target = new THREE.Vector3();
     this.azimuth = 45;
@@ -47,21 +44,14 @@ THREE.LandscapeControls = function ( camera ) {
 
     this.update = function (flatmix) {
         var mouseChange = _end.clone().subSelf(_start);
-        this.flatmix = flatmix;
-
-        this.azlim = flatmix * 180;
-        this.altlim = flatmix * 90;
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
             if (statefunc[_state])
                 statefunc[_state](mouseChange);
-
-            this.setCamera();
-            if (typeof(this.onmove) == "function")
-                this.onmove();
         }
-        if (this.picker)
-            this.picker.setMix();
+
+        this._limitview(flatmix);
+        this.setCamera();
 
         _start = _end;
     };
@@ -119,8 +109,7 @@ THREE.LandscapeControls = function ( camera ) {
         // Run picker if time since mousedown is short enough
         if ( ctime - _mousedowntime < this.clickTimeout ) {
             var mouse2D = this.getMouse(event).clone();
-            if (this.picker !== undefined)
-                this.picker.pick(mouse2D.x, mouse2D.y, this.keystate == STATE.ZOOM);
+            this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
         }
     };
 
@@ -148,19 +137,22 @@ THREE.LandscapeControls = function ( camera ) {
     window.addEventListener( 'keyup', keyup.bind(this), false );
 
     this.resize($("#brain").width(), $("#brain").height() );
+    this._limitview({flat:0});
     this.setCamera();
-
 };
 
 THREE.LandscapeControls.prototype = {
-    _limitview: function() {
-        this.altitude = this.altitude > 179.9999-this.altlim ? 179.9999-this.altlim : this.altitude;
-        this.altitude = this.altitude < 0.0001+this.altlim ? 0.0001+this.altlim : this.altitude;
+    _limitview: function( flatmix ) {
+        var azlim = flatmix * 180;
+        var altlim = flatmix * 90;
+        
+        this.altitude = this.altitude > 179.9999-altlim ? 179.9999-altlim : this.altitude;
+        this.altitude = this.altitude < 0.0001+altlim ? 0.0001+altlim : this.altitude;
 
-        if (this.azlim > this.azimuth || this.azimuth > (360 - this.azlim)) {
-            var d1 = this.azlim - this.azimuth;
-            var d2 = 360 - this.azlim - this.azimuth;
-            this.azimuth = Math.abs(d1) > Math.abs(d2) ? 360-this.azlim : this.azlim;
+        if (azlim > this.azimuth || this.azimuth > (360 - azlim)) {
+            var d1 = azlim - this.azimuth;
+            var d2 = 360 - azlim - this.azimuth;
+            this.azimuth = Math.abs(d1) > Math.abs(d2) ? 360-azlim : azlim;
         }
 
         var rad = this.radius, target = this.target.clone();
@@ -168,31 +160,26 @@ THREE.LandscapeControls.prototype = {
             rad  = this.flatsize / 2 / this.camera.aspect;
             rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
             rad -= this.flatoff;
-            rad = this.flatmix * rad + (1 - this.flatmix) * this.radius;
+            rad = flatmix * rad + (1 - flatmix) * this.radius;
         } else if (!$("#zlocknone")[0].checked) {
             rad  = this.flatsize / 4 / this.camera.aspect;
             rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
             rad -= this.flatoff;
-            rad = this.flatmix * rad + (1 - this.flatmix) * this.radius;
+            rad = flatmix * rad + (1 - flatmix) * this.radius;
             if ($("#zlockleft")[0].checked) {
-                target.x = this.flatmix * (-this.flatsize / 4) + (1 - this.flatmix) * target.x;
+                target.x = flatmix * (-this.flatsize / 4) + (1 - flatmix) * target.x;
             } else if ($("#zlockright")[0].checked) {
-                target.x = this.flatmix * ( this.flatsize / 4) + (1 - this.flatmix) * target.x;
+                target.x = flatmix * ( this.flatsize / 4) + (1 - flatmix) * target.x;
             }
         }
 
-        return {radius:rad, target:target};
+        this._radius = rad;
+        this._target = target;
     },
-    handleEvent: function ( event ) {
-        if ( typeof this[ event.type ] == 'function' ) {
-            this[ event.type ]( event );
-        }
-    },
+
     resize: function(w, h) {
         this.domElement.style.width = w+"px";
         this.domElement.style.height = h+"px";
-        if (this.picker !== undefined)
-            this.picker.resize(w, h);
     },
 
     getMouse: function ( event ) {
@@ -207,21 +194,17 @@ THREE.LandscapeControls.prototype = {
         if (rad !== undefined)
             this.radius = rad;
 
-        var tar_rad = this._limitview();
-
         var altrad = this.altitude*Math.PI / 180;
         var azirad = (this.azimuth+90)*Math.PI / 180;
 
         var eye = new THREE.Vector3(
-            tar_rad.radius*Math.sin(altrad)*Math.cos(azirad),
-            tar_rad.radius*Math.sin(altrad)*Math.sin(azirad),
-            tar_rad.radius*Math.cos(altrad)
+            this._radius*Math.sin(altrad)*Math.cos(azirad),
+            this._radius*Math.sin(altrad)*Math.sin(azirad),
+            this._radius*Math.cos(altrad)
         );
 
-        this.camera.position.add( tar_rad.target, eye );
-        this.camera.lookAt( tar_rad.target );
-        if (this.picker !== undefined)
-            this.picker._valid = false;
+        this.camera.position.add( this._target, eye );
+        this.camera.lookAt( this._target );
     },
 
     rotate: function ( mouseChange ) {

@@ -57,6 +57,19 @@ function ROIpack(svgdoc, callback, viewer) {
     var gl = viewer.renderer.context;
     var height = Math.min(5120, gl.getParameter(gl.MAX_TEXTURE_SIZE)) / this.aspect;
     this.setHeight(height);
+    
+    this._updatemove = true;
+    this._updatemix = true;
+    this.setLabels = function() {
+        if (this._updatemove) {
+            this.move(viewer);
+            this._updatemove = false;
+        }
+        if (this._updatemix) {
+            this.setMix(viewer);
+            this._updatemix = false;
+        }
+    }.bind(this);
 }
 ROIpack.prototype = {
     setHeight: function(height) {
@@ -117,26 +130,28 @@ ROIpack.prototype = {
     }, 
     move: function(viewer) {
         //Move each label to the 
-        var pt, opacity, pixel, cull;
+        var pt, opacity, pixel, cull, idx;
         var gl = viewer.renderer.context;
+        var width = viewer.renderer.domElement.clientWidth;
         var height = viewer.renderer.domElement.clientHeight;
-        var pix = new Uint8Array(4);
+        var pix = viewer.pixbuf;
+        gl.readPixels(0,0,width,height,gl.RGBA, gl.UNSIGNED_BYTE, pix);
         $(this.labels).each(function() {
             pt = viewer.getPos(this.getAttribute("data-ptidx"));
+
             //Check if the indicator particle is visible
-            gl.readPixels(pt.norm[0], height - pt.norm[1], 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
-            pixel = (pix[0] << 16) + (pix[1] << 8) + pix[2];
+            idx = Math.floor(height - pt.norm[1])*width*4+Math.floor(pt.norm[0])*4;
+            pixel = (pix[idx+0] << 16) + (pix[idx+1]<<8) + pix[idx+2];
             cull = pixel == this.getAttribute("data-ptcolor");
 
-            opacity = Math.max(-pt.dot, 0);
+            opacity = cull*Math.max(-pt.dot, 0);
             opacity = viewer.flatmix + (1 - viewer.flatmix)*opacity;
-            opacity = cull * (1 - Math.exp(-opacity * 10));
+            opacity = 1 - Math.exp(-opacity * 10);
             
-            $(this).css({
-                left:Math.round(pt.norm[0]),
-                top: Math.round(pt.norm[1]),
-                opacity:opacity
-            })
+            this.style.cssText = [
+                "left:", Math.round(pt.norm[0]), "px;",
+                "top:", Math.round(pt.norm[1]), "px;",
+                "opacity:",opacity ].join("");
         });
     },
     setMix: function(viewer) {

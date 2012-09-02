@@ -1,9 +1,9 @@
 {% extends template.html %}
+{% block jsinit %}
+    var viewer, sock;
+{% end %}
 {% block onload %}
-	var viewer, sock;
-	$(document).ready(function() {
-		viewer = new MRIview();
-		viewer.load("{{ctmfile}}");
-		viewer.addData(classify({{data}}));
-	});
+        viewer = new MRIview();
+        viewer.load("{{ctmfile}}");
+        viewer.addData(classify({{data}}));
 {% end %}

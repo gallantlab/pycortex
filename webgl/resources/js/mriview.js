@@ -28,8 +28,6 @@ var vShadeHead = [
         "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
 
         THREE.ShaderChunk[ "map_vertex" ],
-
-        //"float mix = smoothstep(0.,1.,framemix);",
         
         "vec2 dcoord = (2.*datamap+1.) / (2.*datasize);",
         "vDrop = auxdat.x;",
@@ -128,7 +126,16 @@ var fragmentShader = [
     "}"
 ].join("\n");
 
+var buf = {
+    pos: new Float32Array(3),
+    norm: new Float32Array(3),
+    p: new Float32Array(3),
+    n: new Float32Array(3),
+}
+
 function MRIview() { 
+    //Allow objects to listen for mix updates
+    THREE.EventTarget.call( this );
     // scene and camera
     this.scene = new THREE.Scene();
 
@@ -138,6 +145,10 @@ function MRIview() {
 
     this.scene.add( this.camera );
     this.controls = new THREE.LandscapeControls( this.camera );
+    this.controls.addEventListener("change", this.schedule.bind(this));
+    this.addEventListener("resize", function(event) {
+        this.controls.resize(event.width, event.height);
+    }.bind(this));
     
     this.light = new THREE.DirectionalLight( 0xffffff );
     this.light.position.set( -200, -200, 1000 ).normalize();
@@ -229,6 +240,12 @@ function MRIview() {
     this._bindUI();
 }
 MRIview.prototype = { 
+    schedule: function() {
+        if (!this._scheduled && this.state == "pause") {
+            this._scheduled = true;
+            requestAnimationFrame( this.draw.bind(this) );
+        }
+    },
     draw: function () {
         this.controls.update(this.flatmix);
         if (this.state == "play") {
@@ -241,6 +258,7 @@ MRIview.prototype = {
         }
         this.renderer.render(this.scene, this.camera);
         this._scheduled = false;
+        this.dispatchEvent({type:"draw"});
     },
     load: function(ctminfo, callback) {
         var loader = new THREE.CTMLoader(false);
@@ -275,22 +293,35 @@ MRIview.prototype = {
             $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
                 this.roipack = new ROIpack(svgdoc, function(tex) {
                     this.shader.uniforms.map.texture = tex;
-                    this.controls.dispatchEvent({type:"change"});
+                    this.schedule();
                 }.bind(this), this);
                 this.roipack.update(this.renderer);
-                this.controls.onmove = this.roipack.move.bind(this.roipack, this);
+                this.addEventListener("mix", function() {
+                    this.roipack._updatemix = true;
+                }.bind(this));
+                this.controls.addEventListener("change", function() {
+                    this.roipack._updatemove = true;
+                }.bind(this));
+                this.addEventListener("draw", this.roipack.setLabels);
+                this.addEventListener("resize", function() {
+                    this.roipack._updatemove = true;
+                }.bind(this));
             }.bind(this));
 
             this.controls.flatsize = flatscale * this.flatlims[1][0];
             this.controls.flatoff = this.flatoff[1];
-            this.controls.picker = new FacePick(this);
-            this.controls.addEventListener("change", function() {
-                if (!this._scheduled && this.state == "pause") {
-                    this._scheduled = true;
-                    requestAnimationFrame( this.draw.bind(this) );
-                }
+
+            this.picker = new FacePick(this);
+            this.addEventListener("mix", this.picker.setMix.bind(this.picker));
+            this.addEventListener("resize", function(event) {
+                this.picker.resize(event.width, event.height);
             }.bind(this));
-            this.controls.dispatchEvent({type:"change"});
+            this.controls.addEventListener("change", function() {
+                this.picker._valid = false;
+            }.bind(this));
+            this.controls.addEventListener("pick", function(event) {
+                this.picker.pick(event.x, event.y, event.keep);
+            }.bind(this));
 
             $("#brain").css("opacity", 1);
             $("#ctmload").hide();
@@ -307,9 +338,10 @@ MRIview.prototype = {
         var h = height === undefined ? $("#brain").height()  : height;
         this.renderer.setSize(w, h);
         this.camera.aspect = w / h;
-        this.controls.resize(w, h);
         this.camera.updateProjectionMatrix();
-        this.controls.dispatchEvent({type:"change"});
+        this.pixbuf = new Uint8Array(w*h*4);
+        this.dispatchEvent({ type:"resize", width:w, height:h});
+        this.schedule();
     },
     screenshot: function(width, height, pre, post) {
         $("#main").css("opacity", 0);
@@ -379,10 +411,9 @@ MRIview.prototype = {
         this.setPivot(this.flatmix*180);
         this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
         $("#mix").slider("value", val);
-        this.controls.update(this.flatmix);
-        this.roipack.setMix(this);
-        this.controls.setCamera();
-        this.controls.dispatchEvent({type:"change"});
+        
+        this.dispatchEvent({type:"mix", flat:this.flatmix, mix:val});
+        this.schedule();
     }, 
     setPivot: function (val) {
         $("#pivot").slider("option", "value", val);
@@ -398,12 +429,12 @@ MRIview.prototype = {
                 this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
             }
         }
-        this.controls.dispatchEvent({type:"change"});
+        this.schedule();
     },
     setShift: function(val) {
         this.pivot.left.front.position.x = -val;
         this.pivot.right.front.position.x = val;
-        this.controls.dispatchEvent({type:"change"});
+        this.schedule();
     },
     addData: function(data) {
         if (data instanceof NParray || data instanceof Dataset)
@@ -472,13 +503,17 @@ MRIview.prototype = {
             return false;
         }
         
-        this.controls.dispatchEvent({type:"change"});
+        this.schedule();
         $("#datasets").val(names);
         $("#dataname").text(names.join(" / "));
         return true;
     },
 
     addPlugin: function(obj, static) {
+        this._staticplugin = static === true;
+        if (!static)
+            $("#pluginload").show();
+        
         $("#bar").css('display', 'table');
         $("#pluginbox").html(obj);
         var _lastwidth = "60%";
@@ -508,9 +543,6 @@ MRIview.prototype = {
                 $("#sidepanel").width(100-parseFloat(width)+"%").css('left', width);
             }.bind(this));
         $("#bar").click();
-        this._staticplugin = static === true;
-        if (!static)
-            $("#pluginload").show();
     },
     rmPlugin: function() {
         if (!this._staticplugin) {
@@ -539,7 +571,7 @@ MRIview.prototype = {
             this.colormap.minFilter = THREE.LinearFilter;
             this.colormap.magFilter = THREE.LinearFilter;
             this.shader.uniforms.colormap.texture = this.colormap;
-            this.controls.dispatchEvent({type:"change"});
+            this.schedule();
             
             if (this.colormap.image.height > 10) {
                 $(".vcolorbar").show();
@@ -581,7 +613,7 @@ MRIview.prototype = {
         this.active[dim].min = vmin;
         this.active[dim].max = vmax;
 
-        this.controls.dispatchEvent({type:"change"});
+        this.schedule();
     },
     _setShader: function(raw, datasize) {
         if (raw) {
@@ -614,7 +646,7 @@ MRIview.prototype = {
         this.shader.uniforms.framemix.value = frame - fframe;
         $("#movieprogress div").slider("value", frame);
         $("#movieframe").attr("value", frame);
-        this.controls.dispatchEvent({type:"change"});
+        this.schedule();
     },
     playpause: function() {
         var dataset = this.active[0];
@@ -622,7 +654,7 @@ MRIview.prototype = {
             //Start playing
             var func = function() {
                 this._startplay = (new Date()) - this.frame * 1000;
-                this.controls.dispatchEvent({type:"change"});
+                this.schedule();
                 this.state = "play";
                 $("#moviecontrols img").attr("src", "resources/images/control-pause.png");
             }.bind(this);
@@ -681,29 +713,36 @@ MRIview.prototype = {
         var influ = this.meshes[name].morphTargetInfluences;
         var pos = hemi.attributes.position.array;
         var norm = hemi.attributes.normal.array;
-        var basepos = new THREE.Vector3(pos[idx*3+0], pos[idx*3+1], pos[idx*3+2]);
-        var basenorm = new THREE.Vector3(norm[idx*3+0], norm[idx*3+1], norm[idx*3+2]);
+        buf.pos[0] = pos[idx*3+0]; buf.pos[1] = pos[idx*3+1]; buf.pos[2] = pos[idx*3+2];
+        buf.norm[0] = norm[idx*3+0]; buf.norm[1] = norm[idx*3+1]; buf.norm[2] = norm[idx*3+2];
         
-        var isum = 0;
-        var mpos = new THREE.Vector3(0,0,0);
-        var mnorm = new THREE.Vector3(0,0,0);
+        var isum = 0, mt, mn, s;
+        buf.p[0] = 0; buf.p[1] = 0; buf.p[2] = 0;
+        buf.n[0] = 0; buf.n[1] = 0; buf.n[2] = 0;
         for (var i = 0, il = hemi.morphTargets.length; i < il; i++) {
-            isum += influ[i];
-            var mt = hemi.morphTargets[i];
-            var mn = hemi.morphNormals[i];
-            var p = new THREE.Vector3(
-                mt.array[mt.stride*idx+0],
-                mt.array[mt.stride*idx+1],
-                mt.array[mt.stride*idx+2]
-            );
-            var n = new THREE.Vector3(mn[3*idx], mn[3*idx+1], mn[3*idx+2]);
-            p.multiplyScalar(influ[i]);
-            n.multiplyScalar(influ[i]);
-            mpos.addSelf(p);
-            mnorm.addSelf(n);
+            s = influ[i];
+            mt = hemi.morphTargets[i];
+            mn = hemi.morphNormals[i];
+            isum += s;
+            buf.p[0] += s * mt.array[mt.stride*idx+0];
+            buf.p[1] += s * mt.array[mt.stride*idx+1];
+            buf.p[2] += s * mt.array[mt.stride*idx+2];
+            buf.n[0] += s * mn[3*idx+0];
+            buf.n[1] += s * mn[3*idx+1];
+            buf.n[2] += s * mn[3*idx+2];
         }
-        pos = basepos.multiplyScalar(1-isum).addSelf(mpos);
-        norm = basenorm.multiplyScalar(1-isum).addSelf(mnorm).addSelf(pos);
+
+        influ = 1 - isum;
+        buf.pos[0] = influ*buf.pos[0] + buf.p[0];
+        buf.pos[1] = influ*buf.pos[1] + buf.p[1];
+        buf.pos[2] = influ*buf.pos[2] + buf.p[2];
+        influ *= .5;
+        buf.norm[0] = influ*buf.norm[0] + buf.n[0] + buf.pos[0];
+        buf.norm[1] = influ*buf.norm[1] + buf.n[1] + buf.pos[1];
+        buf.norm[2] = influ*buf.norm[2] + buf.n[2] + buf.pos[2];
+        
+        var pos = new THREE.Vector3(buf.pos[0], buf.pos[1], buf.pos[2]);
+        var norm = new THREE.Vector3(buf.norm[0], buf.norm[1], buf.norm[2]);        
         pos = this.meshes[name].matrix.multiplyVector3(pos);
         norm = this.meshes[name].matrix.multiplyVector3(norm);
         return {hemi:hemi, name:name, pos:pos, norm:norm}
@@ -802,46 +841,53 @@ MRIview.prototype = {
                 updateROIs();
             else {
                 _this.shader.uniforms.map.texture = blanktex;
-                _this.controls.dispatchEvent({type:"change"});
+                _this.schedule();
             }
         });
 
         $("#labelshow").change(function() {
-            this.roipack.labels.toggle();
-            this.roipack.particles.left.visible = !this.roipack.particles.left.visible;
-            this.roipack.particles.right.visible = !this.roipack.particles.right.visible;
+            if ($("#labelshow")[0].checked) {
+                this.addEventListener("draw", this.roipack.setLabels);
+                $("#roilabels").show();
+            } else {
+                $("#roilabels").hide();
+                this.removeEventListener("draw", this.roipack.setLabels);
+            }
+            this.roipack.particles.left.visible = $("#labelshow")[0].checked;
+            this.roipack.particles.right.visible = $("#labelshow")[0].checked;
+            this.schedule();
         }.bind(this));
 
         $("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
             this.shader.uniforms.curvAlpha.value = ui.value;
-            this.controls.dispatchEvent({type:"change"});
+            this.schedule();
         }.bind(this)})
         $("#layer_curvmult").slider({ min:.001, max:2, step:.001, value:1, slide:function(event, ui) {
             this.shader.uniforms.curvScale.value = ui.value;
-            this.controls.dispatchEvent({type:"change"});
+            this.schedule();
         }.bind(this)})
         $("#layer_curvlim").slider({ min:0, max:.5, step:.001, value:.2, slide:function(event, ui) {
             this.shader.uniforms.curvLim.value = ui.value;
-            this.controls.dispatchEvent({type:"change"});
+            this.schedule();
         }.bind(this)})
         $("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:.9, slide:function(event, ui) {
             this.shader.uniforms.dataAlpha.value = ui.value;
-            this.controls.dispatchEvent({type:"change"});
+            this.schedule();
         }.bind(this)})
         $("#layer_hatchalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
             this.shader.uniforms.hatchAlpha.value = ui.value;
-            this.controls.dispatchEvent({type:"change"});
+            this.schedule();
         }.bind(this)})
         $("#layer_hatchcolor").miniColors({close: function(hex, rgb) {
             this.shader.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
-            this.controls.dispatchEvent({type:"change"});
+            this.schedule();
         }.bind(this)});
 
         $("#resetfid").click(function() {
             this.setMix(0);
             this.controls.target.set(0,0,0);
             this.controls.setCamera(45, 45, 200);
-            this.controls.dispatchEvent({type:"change"});
+            this.schedule();
         }.bind(this));
         $("#resetflat").click(function() {
             this.reset_view();

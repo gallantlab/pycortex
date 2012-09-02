@@ -34,8 +34,26 @@
 
 <link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
 <script type='text/javascript'>
-	{% block onload %}
+	function webgl() { 
+		try { 
+			return !! window.WebGLRenderingContext && !! document.createElement( 'canvas' ).getContext( 'experimental-webgl' ); 
+		} catch( e ) { 
+			return false; 
+		} 
+	};
+
+	{% block jsinit %}
 	{% end %}
+
+	$(document).ready(function() {
+		if (!webgl()) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
+		} else {
+			{% block onload %}
+			{% end %}
+		}
+	})
 </script>
 </head>
 <body>
@@ -186,10 +204,10 @@
 	</div>
 </div>
 <div id='main'>
-	<div id='dataload'><img src='resources/images/loading.gif'>Loading data...</div>
+	<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
+	<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
+	<div id='dataname'></div>
 	<div id='roilabels'>
-		<div id='ctmload'><img src='resources/images/loading.gif'>Loading brain...</div>
-		<div id='dataname'></div>
 	</div>
 	<div id='braincover'></div>
 	<canvas id='brain'></canvas>
@@ -200,7 +218,7 @@
 	</div>
 	<div id='sidepanel'>
 	    <div class='vcenter'>
-	    	<div id='pluginload'><img src='resources/images/loading.gif'>Loading...</div>
+	    	<div id='pluginload' class='loadmsg'><img src='resources/images/loading.gif'>Loading...</div>
 	    	<div id='pluginbox'>
 	    	</div>
 	    </div>
