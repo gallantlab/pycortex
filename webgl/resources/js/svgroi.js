@@ -1,4 +1,4 @@
-function ROIpack(svgdoc, callback, viewer, height) {
+function ROIpack(svgdoc, callback, viewer) {
     this.callback = callback;
     this.svgroi = svgdoc.getElementsByTagName("svg")[0];
     this.svgroi.id = "svgroi";
@@ -53,7 +53,10 @@ function ROIpack(svgdoc, callback, viewer, height) {
     var h = this.svgroi.getAttribute("height");
     this.aspect = w / h;
     this.svgroi.setAttribute("viewBox", "0 0 "+w+" "+h);
-    this.setHeight(height === undefined ? h : height);
+
+    var gl = viewer.renderer.context;
+    var height = Math.min(5120, gl.getParameter(gl.MAX_TEXTURE_SIZE)) / this.aspect;
+    this.setHeight(height);
 }
 ROIpack.prototype = {
     setHeight: function(height) {
@@ -113,25 +116,32 @@ ROIpack.prototype = {
         }
     }, 
     move: function(viewer) {
+        //Move each label to the 
         var pt, opacity, pixel, cull;
         var gl = viewer.renderer.context;
         var height = viewer.renderer.domElement.clientHeight;
         var pix = new Uint8Array(4);
         $(this.labels).each(function() {
             pt = viewer.getPos(this.getAttribute("data-ptidx"));
-
+            //Check if the indicator particle is visible
             gl.readPixels(pt.norm[0], height - pt.norm[1], 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
             pixel = (pix[0] << 16) + (pix[1] << 8) + pix[2];
             cull = pixel == this.getAttribute("data-ptcolor");
-            
+
             opacity = Math.max(-pt.dot, 0);
             opacity = viewer.flatmix + (1 - viewer.flatmix)*opacity;
-            this.style.left = Math.round(pt.pos[0])+"px";
-            this.style.top =  Math.round(pt.pos[1])+"px";
-            this.style.opacity = cull * (1 - Math.exp(-opacity * 10));
+            opacity = cull * (1 - Math.exp(-opacity * 10));
+            
+            $(this).css({
+                left:Math.round(pt.norm[0]),
+                top: Math.round(pt.norm[1]),
+                opacity:opacity
+            })
         });
     },
     setMix: function(viewer) {
+        //Adjust the indicator particle to match the current mix state
+        //Indicator particles are set off from the surface by the normal
         var verts = this.vertices;
         $(this.labels).each(function() {
             var idx = this.getAttribute("data-ptidx");
@@ -140,6 +150,7 @@ ROIpack.prototype = {
         });
         this.particles.left.geometry.verticesNeedUpdate = true;
         this.particles.right.geometry.verticesNeedUpdate = true;
+        this.move(viewer);
     }, 
     saveSVG: function(png, posturl) {
         var svgdoc = this.svgroi.parentNode;
