@@ -115,7 +115,7 @@ THREE.LandscapeControls = function ( camera ) {
         var ctime = new Date().getTime();
 
         // Run picker if time since mousedown is short enough
-        if ( ctime - _mousedowntime < this.clickTimeout ) {
+        if ( ctime - _mousedowntime < this.clickTimeout && event.button == 0) {
             var mouse2D = this.getMouse(event).clone();
             if (this.picker !== undefined)
                 this.picker.pick(mouse2D.x, mouse2D.y, this.keystate == STATE.ZOOM);
