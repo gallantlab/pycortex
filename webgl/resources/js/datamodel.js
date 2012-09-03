@@ -251,6 +251,7 @@ Dataset.prototype = {
             } else {
                 for (var i = 0; i < allStims.length; i++)
                     $(allStims[i]).unbind("timeupdate");
+                
                 var delay = this.delay;
                 viewer.addPlugin(this.stim);
                 //this.stim.seekTo(viewer.frame + delay);

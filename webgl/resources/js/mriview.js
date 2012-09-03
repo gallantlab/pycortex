@@ -164,6 +164,7 @@ function MRIview() {
     });
     this.renderer.setClearColorHex( 0xFFFFFF, 1 );
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
+    this.pixbuf = new Uint8Array($("#brain").width * $("#brain").height() * 4);
     this.state = "pause";
 
     var uniforms = THREE.UniformsUtils.merge( [
@@ -513,7 +514,7 @@ MRIview.prototype = {
         this._staticplugin = static === true;
         if (!static)
             $("#pluginload").show();
-        
+
         $("#bar").css('display', 'table');
         $("#pluginbox").html(obj);
         var _lastwidth = "60%";
