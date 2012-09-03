@@ -164,7 +164,7 @@ function MRIview() {
     });
     this.renderer.setClearColorHex( 0xFFFFFF, 1 );
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
-    this.pixbuf = new Uint8Array($("#brain").width * $("#brain").height() * 4);
+    this.pixbuf = new Uint8Array($("#brain").width() * $("#brain").height() * 4);
     this.state = "pause";
 
     var uniforms = THREE.UniformsUtils.merge( [
