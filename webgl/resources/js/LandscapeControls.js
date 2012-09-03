@@ -20,7 +20,8 @@ THREE.LandscapeControls = function ( camera ) {
 
     // API
     this.enabled = true;
-
+    
+    // Constants
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
     this.panSpeed = 0.3;
@@ -107,7 +108,7 @@ THREE.LandscapeControls = function ( camera ) {
         var ctime = new Date().getTime();
 
         // Run picker if time since mousedown is short enough
-        if ( ctime - _mousedowntime < this.clickTimeout ) {
+        if ( ctime - _mousedowntime < this.clickTimeout && event.button == 0) {
             var mouse2D = this.getMouse(event).clone();
             this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
         }
@@ -222,6 +223,12 @@ THREE.LandscapeControls.prototype = {
 
 
         this.altitude -= this.rotateSpeed*mouseChange.y;
+
+	// Add panning depending on flatmix
+	var panMouseChange = new Object;
+	panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
+	panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
+	this.pan(panMouseChange);
     }, 
 
     pan: function( mouseChange ) {

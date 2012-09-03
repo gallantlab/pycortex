@@ -115,13 +115,13 @@ a:visited { color:white; }
     width:5px;
     height:100%;
     margin-left:-4px;
-    background-color: #EEE;
+    background-color: #FFF;
     background-image: -webkit-linear-gradient(top, #EEE, #CCC);
     background-image: -moz-linear-gradient(top, #EEE, #CCC);
     background-image: linear-gradient(top, #EEE, #CCC);
     border: 1px solid #CCC;
     border-bottom: 1px solid #BBB;
-    border-radius: 3px;
+    /*border-radius: 3px;*/
     color: #333;
     display:none;
     line-height:.5;
@@ -181,13 +181,14 @@ a:visited { color:white; }
 
 #dataname {
     display:none;
-    float:right;
+    float:left;
     text-shadow:0px 2px 8px black, 0px 1px 8px black;
     color:white;
     font-size:24pt;
     padding:10px;
     margin:20px;
     border-radius:10px;
+    /*border:2px solid rgba(255,255,255,0.4);*/
     background:rgba(255,255,255,.2);
 }
 
@@ -197,9 +198,9 @@ a:visited { color:white; }
  *************************************************/
 #topbar { 
     height:450px; 
-    width:90%;
+    width:100%;
     margin:-440px auto -10px auto;      
-    border-radius: 0px 0px 50px 50px / 0px 0px 10px 10px;
+    border-radius: 0px 0px 10px 10px / 0px 0px 10px 10px;
     text-align:left;
 }
 #topbar:hover, #topbar:active { 
@@ -306,7 +307,7 @@ ul#datasets li .handle {
 #bottombar {
     height:135px;
     margin-top:-10px;
-    border-radius: 50px 50px 0px 0px / 10px 10px 0px 0px;
+    border-radius: 10px 10px 0px 0px / 10px 10px 0px 0px;
     clear:both;
     text-align:left;
 }
