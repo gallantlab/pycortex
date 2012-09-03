@@ -1,4 +1,4 @@
-
+var allStims = [];
 function classify(data) {
     if (data['__class__'] !== undefined) {
         data = window[data['__class__']].fromJSON(data);
@@ -187,6 +187,9 @@ Dataset.prototype = {
         src.setAttribute("type", 'video/ogg; codecs="theora, vorbis"');
         src.setAttribute("src", url);
         this.stim.appendChild(src);
+
+        allStims.push(this.stim);
+
         this.stim.seekTo = function(time) {
             if (this.seekable.length > 0 && 
                 this.seekable.end(0) >= time) {
@@ -205,7 +208,6 @@ Dataset.prototype = {
                 this.seekable.end(0) >= this.seekTarget &&
                 this.parentNode != null) {
                 var func = function() {
-                    console.log("load sync");
                     try {
                         this.currentTime = this.seekTarget;
                         this.seekTarget = null;
@@ -213,7 +215,7 @@ Dataset.prototype = {
                         if (typeof(this.callback) == "function")
                             this.callback();
                     } catch (e) {
-                        console.error(e);
+                        console.log(e);
                         setTimeout(func, 5);
                     }
                 }.bind(this);
@@ -247,6 +249,8 @@ Dataset.prototype = {
             if (this.stim === undefined) {
                 viewer.rmPlugin();
             } else {
+                for (var i = 0; i < allStims.length; i++)
+                    $(allStims[i]).unbind("timeupdate");
                 var delay = this.delay;
                 viewer.addPlugin(this.stim);
                 //this.stim.seekTo(viewer.frame + delay);
