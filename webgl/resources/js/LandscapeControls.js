@@ -52,6 +52,7 @@ THREE.LandscapeControls = function ( camera ) {
         }
 
         this._limitview(flatmix);
+	this.flatmix = flatmix;
         this.setCamera();
 
         _start = _end;
