@@ -63,10 +63,11 @@ class RotationWidget(HasTraits):
         def startmove(obj, evt):
             self.startmove = (self.pos, self.angle, self.radius)
         def endmove(obj, evt):
-            if hasattr(self.callback, "__call__"):
-                self.callback(  self.pos - self.startmove[0], 
+            if hasattr(self.callback, "__call__") and self._btn == 1:
+                self.callback( self, self.pos - self.startmove[0], 
                                 self.angle - self.startmove[1], 
                                 self.radius / self.startmove[2])
+
         self.edge.add_observer("StartInteractionEvent", startmove)
         self.edge.add_observer("InteractionEvent", self._move_edge)
         self.edge.add_observer("EndInteractionEvent", endmove)
@@ -76,7 +77,7 @@ class RotationWidget(HasTraits):
     
     def move(self, pos=(0,0,0), angle=0, radius=1):
         if hasattr(self.callback, "__call__"):
-            self.callback(pos, angle, radius)
+            self.callback(self, pos, angle, radius)
         self.set(pos=self.pos+pos, angle=self.angle+angle, radius=radius*self.radius)
     
     def _move_center(self, obj=None, evt=None):
@@ -90,10 +91,7 @@ class RotationWidget(HasTraits):
 
         angle = np.arctan2(r[1], r[0])
         radius = np.sqrt(np.sum(r**2))
-        if self.constrain:
-            radius = self.startmove[-1]
 
-        self.edge.representation.world_position = r[0], r[1], c[2]
         self.set(angle=angle, radius=radius)
     
     def _gen_circle(self):
@@ -175,10 +173,11 @@ class FlatScene(Scene):
             for o in self.aligner.outlines:
                 o.visible = not o.visible
         else:
-            print evt, dir(evt)
             super(FlatScene, self).OnKeyDown(evt)
 
     def OnButtonDown(self, evt):
+        self.handle._btn = evt.Button
+
         if evt.ShiftDown():
             self.handle.constrain = True
         else:
@@ -427,24 +426,28 @@ class Align(HasTraits):
         width = (side_src.whole_extent[1::2] * spacing)[:2]
         width = np.min(width) * 0.5
 
-        rotaxis = ['rotate_x', 'rotate_y', 'rotate_z']
-        axord = (self.xfm.transform.matrix.to_array()**2).argmax(0)[:-1]
-        def handlemove(pos, angle, radius):
-            axnum = axord[this_axis_number]
-            signs = np.sign(self.xfm.transform.matrix.to_array()[range(3), axord])
+        def handlemove(handle, pos, angle, radius):
+            inv = self.xfm.transform.homogeneous_inverse
+            wpos = handle.center.representation.world_position
+            wpos -= center
+            scale = [radius, radius]
             if this_axis_number == 1:
                 trans = np.insert(pos[:2][::-1], this_axis_number, 0)
+                wpos = np.insert(wpos[:2][::-1], this_axis_number, ipw_3d.ipw.slice_position)
+                scale = np.insert(scale[::-1], this_axis_number, 1)
             else:
                 trans = np.insert(pos[:2], this_axis_number, 0)
-            trans = (trans * signs)[axord]
-            
-            rot = np.degrees(angle)*-signs[axnum]
-            scale = np.repeat(radius, 3)
-            scale[axnum] = 1
+                wpos = np.insert(wpos[:2], this_axis_number, ipw_3d.ipw.slice_position)
+                scale = np.insert(scale, this_axis_number, 1)
 
-            self.xfm.transform.translate(trans)
-            getattr(self.xfm.transform, rotaxis[axnum])(rot)
+            self.xfm.transform.post_multiply()
+            self.xfm.transform.translate(-wpos)
+            self.xfm.transform.rotate_wxyz(np.degrees(angle), *ipw_3d.ipw.normal)
             self.xfm.transform.scale(scale)
+            self.xfm.transform.translate(wpos)
+            self.xfm.transform.translate(trans)
+            self.xfm.transform.pre_multiply()
+
             self.xfm.widget.set_transform(self.xfm.filter.transform)
             self.xfm.update_pipeline()
             self.update_slab()
