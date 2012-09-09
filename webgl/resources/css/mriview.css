@@ -23,10 +23,6 @@ table { cell-spacing:0px; }
     text-align:center;
 }
 
-div#pluginbox {
-    height:100%;
-}
-
 .content { padding:10px; }
 .infobar {
     transition: all .3s; 
