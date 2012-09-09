@@ -42,7 +42,7 @@
 		} 
 	};
 	function vtex(vtmin, atmin) {
-		var gl = document.createElement("canvas").getContext('experiment-webgl');
+		var gl = document.createElement("canvas").getContext('experimental-webgl');
 		var vtex = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
 		var atex = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
 		if (vtex >= vtmin && atex >= atmin)
@@ -215,13 +215,14 @@
 	</div>
 </div>
 <div id='main'>
-	<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
-	<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
-	<div id='dataname'></div>
-	<div id='roilabels'>
+	<div id='left'>
+		<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
+		<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
+		<div id='dataname'></div>
+		<div id='roilabels'></div>
+		<div id='braincover'></div>
+		<canvas id='brain'></canvas>
 	</div>
-	<div id='braincover'></div>
-	<canvas id='brain'></canvas>
 	<div id='bar'>
 		<div class='vcenter'>
 			=<br/>=

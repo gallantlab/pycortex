@@ -522,6 +522,7 @@ MRIview.prototype = {
         var resizepanel = function() {
             var width = $("#bar").position().left / $(window).width() * 100 + "%";
             this.resize(width);
+            $("#left").width(width);
             $("#sidepanel")
                 .width(100-parseFloat(width)+"%")
                 .css("left", width).css('display', 'table');
@@ -792,6 +793,8 @@ MRIview.prototype = {
                 this.playpause();
                 e.stopPropagation();
                 e.preventDefault();
+            } else {
+                console.log("Pressed "+e.keyCode);
             }
         }.bind(this))
         var _this = this;
