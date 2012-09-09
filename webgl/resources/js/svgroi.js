@@ -136,7 +136,7 @@ ROIpack.prototype = {
         var height = viewer.renderer.domElement.clientHeight;
         var pix = viewer.pixbuf;
         gl.readPixels(0,0,width,height,gl.RGBA, gl.UNSIGNED_BYTE, pix);
-        $(this.labels).each(function() {
+        this.labels.each(function() {
             pt = viewer.getPos(this.getAttribute("data-ptidx"));
 
             //Check if the indicator particle is visible
@@ -151,7 +151,8 @@ ROIpack.prototype = {
             this.style.cssText = [
                 "left:", Math.round(pt.norm[0]), "px;",
                 "top:", Math.round(pt.norm[1]), "px;",
-                "opacity:",opacity ].join("");
+                "opacity:", opacity,
+            ].join("");
         });
     },
     setMix: function(viewer) {

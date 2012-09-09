@@ -105,7 +105,8 @@ var fragmentShader = [
 
     "void main() {",
         //Curvature Underlay
-        "gl_FragColor = vec4(vec3(clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim)), curvAlpha);",
+        "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
+        "gl_FragColor = vec4(vec3(curv)*curvAlpha, curvAlpha);",
 
         "if (vMedial < .999) {",
             //Data overlay
@@ -747,6 +748,25 @@ MRIview.prototype = {
         pos = this.meshes[name].matrix.multiplyVector3(pos);
         norm = this.meshes[name].matrix.multiplyVector3(norm);
         return {hemi:hemi, name:name, pos:pos, norm:norm}
+    },
+
+    getImage: function(width, height) {
+        if (width === undefined)
+            width = $("#brain").width();
+        if (height === undefined)
+            height = width * $("#brain").height() / $("#brain").width();
+        var renderbuf = new THREE.WebGLRenderTarget(width, height, {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter,
+            format:THREE.RGBAFormat,
+            stencilBuffer:false,
+        });
+        var clearAlpha = this.renderer.getClearAlpha();
+        var clearColor = this.renderer.getClearColor();
+        this.renderer.setClearColorHex(0x0, 0);
+        this.renderer.render(this.scene, this.camera, renderbuf);
+        this.renderer.setClearColorHex(clearColor, clearAlpha);
+        return getTexture(this.renderer.context, renderbuf);
     },
 
     remap: function(idx) {

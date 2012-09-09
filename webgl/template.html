@@ -41,6 +41,14 @@
 			return false; 
 		} 
 	};
+	function vtex(vtmin, atmin) {
+		var gl = document.createElement("canvas").getContext('experiment-webgl');
+		var vtex = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+		var atex = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+		if (vtex >= vtmin && atex >= atmin)
+			return true;
+		return false;
+	}
 
 	{% block jsinit %}
 	{% end %}
@@ -49,6 +57,9 @@
 		if (!webgl()) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
+		} else if (!vtex(4, 9)) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, your computer does not have the minimum number of texture units :(</p><p>Try upgrading your drivers and/or your browser</p>");
 		} else {
 			{% block onload %}
 			{% end %}
