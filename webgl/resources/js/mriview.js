@@ -507,7 +507,7 @@ MRIview.prototype = {
         
         this.schedule();
         $("#datasets").val(names);
-        $("#dataname").text(names.join(" / "));
+        $("#dataname").text(names.join(" / ")).show();
         return true;
     },
 
