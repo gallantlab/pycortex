@@ -1,0 +1,10 @@
+{% extends template.html %}
+{% block jsinit %}
+    var viewer, sock;
+{% end %}
+{% block onload %}
+		viewer = new MRIview();
+		sock = new Websock();
+		viewer.load("/ctm/");
+		viewer.addData(classify({{data}}));
+{% end %}
