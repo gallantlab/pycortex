@@ -1,3 +1,11 @@
+"""
+VTK surface database functions
+==============================
+
+This module creates a singleton object surfs_ which allows easy access to vtk files in the filestore.
+
+.. _surfs: :class:`Database`
+"""
 import os
 import re
 import glob
@@ -112,6 +120,15 @@ class XfmSet(object):
 
 
 class Database(object):
+    """
+    Database()
+
+    VTK surface database
+
+    Attributes
+    ----------
+    This database object dynamically generates handles to all subjects within the filestore.
+    """
     def __init__(self):
         vtks = glob.glob(os.path.join(filestore, "surfaces", "*.vtk"))
         subjs = set([os.path.split(vtk)[1].split('_')[0] for vtk in vtks])
@@ -138,8 +155,23 @@ class Database(object):
         return ["loadXfm","getXfm", "loadVTK", "getVTK"] + self.subjects.keys()
     
     def loadXfm(self, subject, name, xfm, xfmtype="magnet", epifile=None):
-        """Load a transform into the surface database. If the transform exists already, update it
-        If it does not exist, copy the reference epi into the filestore and insert."""
+        """
+        Load a transform into the surface database. If the transform exists already, update it
+        If it does not exist, copy the reference epi into the filestore and insert.
+
+        Parameters
+        ----------
+        subject : str
+            Name of the subject
+        name : str
+            Name to identify the transform
+        xfm : (4,4) array
+            The affine transformation matrix
+        xfmtype : str, optional
+            Type of the provided transform, either magnet space or coord space. Defaults to magnet.
+        epifile : str, optional
+            The nibabel-compatible reference image associated with this transform. Required if name not in database
+        """
         assert xfmtype in ["magnet", "coord"], "Unknown transform type"
         fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
         if os.path.exists(fname):
@@ -167,6 +199,17 @@ class Database(object):
         json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
     
     def getXfm(self, subject, name, xfmtype="coord"):
+        """Retrieves a transform from the filestore
+
+        Parameters
+        ----------
+        subject : str
+            Name of the subject
+        name : str
+            Name of the transform
+        xfmtype : str, optional
+            Type of transform to return. Defaults to coord.
+        """
         fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
         if not os.path.exists(fname):
             return None
@@ -196,7 +239,7 @@ class Database(object):
         -------
         left, right :
             If request is for both hemispheres, otherwise:
-        pts, polys, norms :
+        pts, polys, norms : ((p,3) array, (f,3) array, (p,3) array or None)
             For single hemisphere
         '''
 
@@ -231,6 +274,17 @@ class Database(object):
             return vtkread(vtkfile)
 
     def getCoords(self, subject, xfmname, hemisphere="both", magnet=None):
+        """Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space
+
+        Parameters
+        ----------
+        subject : str
+            Name of the subject
+        name : str
+            Name of the transform
+        hemisphere : str, optional
+            Which hemisphere to return. If "both", return concatenated. Defaults to "both".
+        """
         if magnet is None:
             xfm, epifile = self.getXfm(subject, xfmname, xfmtype="coord")
         else:
@@ -248,6 +302,8 @@ class Database(object):
         return coords
 
     def getFiles(self, subject):
+        """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
+        """
         vtkparse = re.compile(r'(.*)/(\w+)_(\w+)_(\w+).vtk')
         vtks = os.path.join(filestore, "surfaces", "{subj}_*.vtk").format(subj=subject)
         ctmcache = "%s_{xfmname}_[{types}]_{method}_{level}.json"%subject
