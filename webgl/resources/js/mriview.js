@@ -105,7 +105,8 @@ var fragmentShader = [
 
     "void main() {",
         //Curvature Underlay
-        "gl_FragColor = vec4(vec3(clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim)), curvAlpha);",
+        "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
+        "gl_FragColor = vec4(vec3(curv)*curvAlpha, curvAlpha);",
 
         "if (vMedial < .999) {",
             //Data overlay
@@ -506,7 +507,7 @@ MRIview.prototype = {
         
         this.schedule();
         $("#datasets").val(names);
-        $("#dataname").text(names.join(" / "));
+        $("#dataname").text(names.join(" / ")).show();
         return true;
     },
 
@@ -521,6 +522,7 @@ MRIview.prototype = {
         var resizepanel = function() {
             var width = $("#bar").position().left / $(window).width() * 100 + "%";
             this.resize(width);
+            $("#left").width(width);
             $("#sidepanel")
                 .width(100-parseFloat(width)+"%")
                 .css("left", width).css('display', 'table');
@@ -749,6 +751,25 @@ MRIview.prototype = {
         return {hemi:hemi, name:name, pos:pos, norm:norm}
     },
 
+    getImage: function(width, height) {
+        if (width === undefined)
+            width = $("#brain").width();
+        if (height === undefined)
+            height = width * $("#brain").height() / $("#brain").width();
+        var renderbuf = new THREE.WebGLRenderTarget(width, height, {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter,
+            format:THREE.RGBAFormat,
+            stencilBuffer:false,
+        });
+        var clearAlpha = this.renderer.getClearAlpha();
+        var clearColor = this.renderer.getClearColor();
+        this.renderer.setClearColorHex(0x0, 0);
+        this.renderer.render(this.scene, this.camera, renderbuf);
+        this.renderer.setClearColorHex(clearColor, clearAlpha);
+        return getTexture(this.renderer.context, renderbuf);
+    },
+
     remap: function(idx) {
         var leftlen = this.meshes.left.geometry.attributes.position.array.length / 3;
         var offset = idx < leftlen ? 0 : leftlen;
@@ -772,6 +793,8 @@ MRIview.prototype = {
                 this.playpause();
                 e.stopPropagation();
                 e.preventDefault();
+            } else {
+                console.log("Pressed "+e.keyCode);
             }
         }.bind(this))
         var _this = this;
