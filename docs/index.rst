@@ -20,7 +20,7 @@ For example::
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    
    database
    align
