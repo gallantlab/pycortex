@@ -174,7 +174,7 @@ class ROIpack(traits.HasTraits):
         except:
             print "cannot callback"
 
-    def get_texture(self, texres, bits=32):
+    def get_texture(self, texres, bits=32, background=None):
         '''Renders the current roimap as a png'''
         #set the current size of the texture
         w, h = self.svgshape

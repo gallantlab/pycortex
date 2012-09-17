@@ -39,7 +39,7 @@ def _make_flat_cache(subject, xfmname, height=1024):
     return pcoords, (width, height)
 
 
-def show(data, subject, xfmname, recache=False, height=1024):
+def make(data, subject, xfmname, recache=False, height=1024):
     cacheform = db.surfs.getFiles(subject)['flatcache']
     cachefile = cacheform.format(xfmname=xfmname, height=height, date="*")
     #pull a list of candidate cache files
