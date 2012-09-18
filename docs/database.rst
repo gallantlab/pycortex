@@ -103,7 +103,7 @@ Transforms
 ----------
 Functional data, usually collected by an epi sequence, typically does not have the same scan parameters as the anatomical MPRAGE scan used to generate the surfaces. Additionally, fMRI sequences which are usually optimized for T2* have drastically different and larger distortions than a typical T1 anatomical sequence. While automatic algorithms exist to align these two scan types, they will sometimes fail spectacularly, especially if a partial volume slice prescription is necessary.
 
-pycortex includes a tool based on mayavi_ to do manual alignments. Please see the :module:`align` module for more information. Alternatively, if an automatic algorithm works well enough, you can also commit your own transform to the database. Transforms in pycortex always go from **fiducial to functional** space. They have four variables associated:
+pycortex includes a tool based on mayavi_ to do manual **affine** alignments. Please see the :module:`align` module for more information. Alternatively, if an automatic algorithm works well enough, you can also commit your own transform to the database. Transforms in pycortex always go from **fiducial to functional** space. They have four variables associated:
 
     * **Subject** : name of the subject, must match the surfaces used to create the transform
     * **Name** : A unique identifier for this transform
@@ -139,7 +139,10 @@ Tab complete looks like this::
 
 Adding new transforms
 ^^^^^^^^^^^^^^^^^^^^^
+Transforms from anatomical space to functional space are notoriously tricky. Automated algorithms generally give results optimized for various global energy metrics, but do not attempt to target the alignments for your ROIs. It is highly recommended that you use the included aligner to make your affine transforms. To add a transform, either directly create a transform json in ``{$FILESTORE}/transforms/``, or use this command::
 
+    from cortex import surfs
+    surfs.loadXfm(subject, xfmname, xfm, xfmtype='magnet', epifile='path_to_functional.nii')
 
 Database details
 ----------------

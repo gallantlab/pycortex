@@ -6,6 +6,9 @@
 Welcome to pycortex!
 ====================
 
+.. image:: raw.png
+    :width: 100%
+
 pycortex is a package that provides an accessible way to store a database of surface reconstructions for anatomical MRI images. Additionally, tools are provided to align epi fMRI images with the reconstructions, and project data from the epi to the anatomicals.
 
 For example::
@@ -22,6 +25,7 @@ Contents:
 .. toctree::
    :maxdepth: 3
    
+   install
    database
    align
    view
