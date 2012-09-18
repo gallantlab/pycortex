@@ -210,18 +210,17 @@ def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0, **
     print "Packing up SVG...",
     sys.stdout.flush()
     roipack = get_roipack(subj)
+    layer = roipack.setup_labels()
     with open(svgname, "w") as svgout:
-        layer = roipack.make_text_layer()
-        for element in layer.getElementsByTagName("p"):
-            idx = int(element.getAttribute("data-ptidx"))
+        for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
+            idx = int(element.attrib["data-ptidx"])
             if idx < ptidx[0][1]:
                 idx = ptidx[0][0][idx]
             else:
                 idx -= ptidx[0][1]
                 idx = ptidx[1][0][idx] + ptidx[0][1]
-            element.setAttribute("data-ptidx", str(idx))
-        roipack.svg.getElementsByTagName("svg")[0].appendChild(layer)
-        svgout.write(roipack.svg.toxml())
+            element.attrib["data-ptidx"] = str(idx)
+        svgout.write(roipack.toxml())
     print "Done"
 
     return outfile

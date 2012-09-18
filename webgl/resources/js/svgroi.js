@@ -4,20 +4,19 @@ function ROIpack(svgdoc, callback, viewer) {
     this.svgroi.id = "svgroi";
     //document.getElementById("hiderois").appendChild(this.svgroi);
     this.rois = $(this.svgroi).find("path");
+    this.rois.each(function() { this.removeAttribute("filter"); });
     var geoms = {left:new THREE.Geometry(), right:new THREE.Geometry()};
     geoms.left.dynamic = true;
     geoms.right.dynamic = true;
     var verts = {};
     var labels = [];
     var colors = 1;
-    $(this.svgroi).find("foreignObject p").each(function() {
+    $(this.svgroi).find("#roilabels text").each(function() {
         var name = $(this).text();
         var el = document.createElement("p");
         var pt = viewer.remap($(this).data("ptidx"));
         var color = new THREE.Color(colors++);
         var ptdat = viewer.getVert(pt);
-        //var arr = viewer.meshes[ptdat.name].geometry.attributes.position.array;
-        //console.log(ptdat.norm, arr[pt*3+0], arr[pt*3+1], arr[pt*3+2]);
         verts[pt] = ptdat.norm;
         geoms[ptdat.name].vertices.push(ptdat.norm);
         geoms[ptdat.name].colors.push(color);
@@ -28,6 +27,8 @@ function ROIpack(svgdoc, callback, viewer) {
         el.innerHTML = name;
         labels.push(el);
     });
+    $(this.svgroi).find("#roilabels").remove();
+    $(this.svgroi).find("defs").remove();
     this.vertices = verts;
     this.particlemat = new THREE.ParticleBasicMaterial({
         size:2, 
@@ -46,7 +47,6 @@ function ROIpack(svgdoc, callback, viewer) {
     viewer.pivot.right.back.add(this.particles.right);
 
     this.labels = $(labels);
-    this.svgroi.removeChild(this.svgroi.getElementsByTagName("foreignObject")[0]);
     $("#roilabels").append(this.labels);
 
     var w = this.svgroi.getAttribute("width");
@@ -70,6 +70,7 @@ function ROIpack(svgdoc, callback, viewer) {
             this._updatemix = false;
         }
     }.bind(this);
+    this.canvas = document.createElement("canvas");
 }
 ROIpack.prototype = {
     setHeight: function(height) {
@@ -90,25 +91,23 @@ ROIpack.prototype = {
         this.rois.attr("style", [fo, lo, fc, lc, lw].join(";"));
         var svg_xml = (new XMLSerializer()).serializeToString(this.svgroi);
 
-        var canvas = document.getElementById("canvasrois");
-
         if (sw > 0) {
             var sc = "stroke:"+$("#roi_shadowcolor").val();
             this.rois.attr("style", [sc, fc, fo, lo, lw].join(";"));
             var shadow_xml = (new XMLSerializer()).serializeToString(this.svgroi);
 
-            canvg(canvas, shadow_xml, {
+            canvg(this.canvas, shadow_xml, {
                 ignoreMouse:true, 
                 ignoreAnimation:true,
                 ignoreClear:false,
                 renderCallback: function() {
                     this._shadowtex.setRadius(sw/4);
-                    var tex = this._shadowtex.blur(renderer, new THREE.Texture(canvas));
-                    canvg(canvas, svg_xml, {
+                    var tex = this._shadowtex.blur(renderer, new THREE.Texture(this.canvas));
+                    canvg(this.canvas, svg_xml, {
                         ignoreMouse:true,
                         ignoreAnimation:true,
                         renderCallback: function() {
-                            var tex = this._shadowtex.overlay(renderer, new THREE.Texture(canvas));
+                            var tex = this._shadowtex.overlay(renderer, new THREE.Texture(this.canvas));
                             this.callback(tex);
                         }.bind(this)
                     });
@@ -116,11 +115,11 @@ ROIpack.prototype = {
             });
 
         } else {
-            canvg(canvas, svg_xml, {
+            canvg(this.canvas, svg_xml, {
                 ignoreMouse:true,
                 ignoreAnimation:true,
                 renderCallback:function() {
-                    var tex = new THREE.Texture(canvas);
+                    var tex = new THREE.Texture(this.canvas);
                     tex.needsUpdate = true;
                     tex.premultiplyAlpha = true;
                     this.callback(tex);

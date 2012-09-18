@@ -3,9 +3,12 @@ import time
 import glob
 import Image
 import cPickle
+import cStringIO
+import binascii
 import numpy as np
 
 import db
+import utils
 
 def _gen_flat_mask(subject, height=1024):
     import polyutils
@@ -64,4 +67,33 @@ def make(data, subject, xfmname, recache=False, height=1024):
     validpos = ravelpos[mask.ravel()].astype(int)
     img = np.nan*np.ones_like(ravelpos)
     img[mask.ravel()] = data.T.ravel()[validpos]
-    return img.reshape(size).T[::-1]
+    return img.reshape(size).T[::-1], mask
+
+def make_png(data, subject, xfmname, name=None, recache=False, height=1024, with_rois=False, **kwargs):
+    import Image
+    from matplotlib.pylab import imsave, imread
+
+    if with_rois:
+        pngdat, mask = makepng(data, subject, xfmname, recache=recache, height=height)
+        rois = utils.get_roipack(subject)
+        img = rois.get_texture(height, background=pngdat)
+        im = imread(img)
+        im[~mask.T[::-1], -1] = 0
+        im = Image.fromarray((im*255).astype(np.uint8))
+        im.save(name)
+
+    else:
+        im, mask = make(data, subject, xfmname, recache=recache, height=height)
+
+        if name is None:
+            fname = cStringIO.StringIO()
+            imsave(fname, im, **kwargs)
+            fname.seek(0)
+            return binascii.b2a_base64(fname.read()), mask
+
+        imsave(name, im, **kwargs)
+
+def show(data, subject, xfmname, recache=False, height=1024, **kwargs):
+    from matplotlib.pylab import imshow
+    im, mask = make(data, subject, xfmname, recache=recache, height=height)
+    imshow(im, **kwargs)
