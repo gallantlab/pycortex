@@ -1,0 +1,393 @@
+import tempfile
+import subprocess as sp
+
+import numpy as np
+from scipy.spatial import cKDTree
+from matplotlib.pyplot import imread
+
+from lxml import etree
+from lxml.builder import E
+
+try:
+    import traits.api as traits
+except ImportError as e:
+    import enthought.traits.api as traits
+
+svgns = "http://www.w3.org/2000/svg"
+inkns = "http://www.inkscape.org/namespaces/inkscape"
+sodins = "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+parser = etree.XMLParser(remove_blank_text=True)
+
+from db import options
+default_lw = options['line_width'] if 'line_width' in options else 3.
+
+class ROI(traits.HasTraits):
+    name = traits.Str
+
+    hide = traits.Bool(False)
+    linewidth = traits.Float(default_lw)
+    linecolor = traits.Tuple((0.,0.,0.,1.))
+    roifill = traits.Tuple((0.,0.,0.,0.))
+
+    def __init__(self, parent, xml, **kwargs):
+        super(ROI, self).__init__(**kwargs)
+        self.parent = parent
+        self.name = xml.get("{%s}label"%inkns)
+        self.paths = xml.findall(".//{%s}path"%svgns)
+        pts = [ self._parse_svg_pts(path.get("d")) for path in self.paths]
+        self.coords = [ self.parent.kdt.query(p)[1] for p in pts ]
+        self.hide = "style" in xml.attrib and "display:none" in xml.get("style")
+
+        self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
+        self.update_attribs()
+    
+    def _parse_svg_pts(self, data):
+        data = data.split()
+        if data[0].lower() != "m":
+            raise ValueError("Unknown path format")
+        offset = np.array([float(x) for x in data[1].split(',')])
+        data = data[2:]
+        mode = "l"
+        pts = [[offset[0], offset[1]]]
+        while len(data) > 0:
+            d = data.pop(0)
+            if isinstance(d, (unicode, str)) and len(d) == 1:
+                mode = d
+                continue
+            if mode == "l":
+                offset += map(float, d.split(','))
+            elif mode == "L":
+                offset = np.array(map(float, d.split(',')))
+            elif mode == "c":
+                data.pop(0)
+                offset += map(float, data.pop(0).split(','))
+            elif mode == "C":
+                data.pop(0)
+                offset = np.array(map(float, data.pop(0).split(',')))
+            pts.append([offset[0],offset[1]])
+
+        pts = np.array(pts)
+        pts /= self.parent.svgshape
+        pts[:,1] = 1-pts[:,1]
+        return pts
+    
+    @traits.on_trait_change("linewidth, linecolor, roifill, hide")
+    def update_attribs(self):
+        style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
+                    "stroke-linecap:butt;stroke-linejoin:miter;"+\
+                    "stroke:{lc};stroke-opacity:{lo};{hide}"
+        roifill = np.array(self.roifill)*255
+        linecolor = np.array(self.linecolor)*255
+        hide = "display:none;" if self.hide else ""
+        style = style.format(
+            fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=roifill[-1],
+            lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1], 
+            lw=self.linewidth, hide=hide)
+
+        for path in self.paths:
+            path.attrib["style"] = style
+            if self.parent.shadow > 0:
+                path.attrib["filter"] = "url(#dropshadow)"
+            elif "filter" in path.attrib:
+                del path.attrib['filter']
+    
+    def get_labelpos(self, pts=None, norms=None, fancy=True):
+        if pts is None:
+            pts = self.parent.tcoords
+
+        if fancy:
+            labels = []
+            for coord in self.coords:
+                try:
+                    if norms is None:
+                        labels.append(_labelpos(pts[coord]))
+                    else:
+                        labels.append((_labelpos(pts[coord]), norms[coord].mean(0)))
+                except:
+                    if norms is None:
+                        labels.append(pts[coord].mean(0))
+                    else:
+                        labels.append((pts[coord].mean(0), norms[coord].mean(0)))
+            return labels
+
+        if norms is None:
+            return [pts[coord].mean(0) for coord in self.coords]
+
+        return [(pts[coord].mean(0), norms[coord].mean(0)) for coord in self.coords]
+
+    def get_ptidx(self):
+        return self.coords
+
+class ROIpack(traits.HasTraits):
+    svg = traits.Instance("lxml.etree._ElementTree")
+    svgfile = traits.Str
+
+    linewidth = traits.Float(default_lw)
+    linecolor = traits.Tuple((255.,255.,255.,1.))
+    roifill = traits.Tuple((0.,0.,0.,0.))
+    shadow = traits.Float(3)
+
+    def __init__(self, tcoords, svgfile, callback=None):
+        super(ROIpack, self).__init__()
+        if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
+            tcoords -= tcoords.min(0)
+            tcoords /= tcoords.max(0)
+        self.tcoords = tcoords
+        self.svgfile = svgfile
+        self.callback = callback
+        self.kdt = cKDTree(tcoords)
+        self.reload()
+
+    def reload(self):
+        self.svg = scrub(self.svgfile, process=True)
+        w = float(self.svg.getroot().get("width"))
+        h = float(self.svg.getroot().get("height"))
+        self.svgshape = w, h
+
+        #Set up the ROI dict
+        self.rois = {}
+        #for r in _find_layer(self.svg, "rois").getElementsByTagName("g"):
+        for r in _find_layer(self.svg, "rois").findall("{%s}g"%svgns):
+            roi = ROI(self, r)
+            self.rois[roi.name] = roi
+
+        self.update_style()
+
+    def add_roi(self, name, pngdata):
+        #self.svg deletes the images -- we want to save those, so let's load it again
+        svg = etree.parse(self.svgfile)
+        imglayer = _find_layer(svg, "data")
+        _make_layer(_find_layer(svg, "rois"), name)
+
+        #Hide all the other layers in the image
+        for layer in imglayer.findall(".//{%s}g"%svgns):
+            layer.attrib["style"] = "display:hidden;"
+
+        layer = _make_layer(imglayer, "img_%s"%name)
+        layer.append(E.image(
+            {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%pngdata},
+            id="image_%s"%name, x="0", y="0",
+            width=str(self.svgshape[0]),
+            height=str(self.svgshape[1]),
+        ))
+
+        with open(self.svgfile, "w") as xml:
+            xml.write(etree.tostring(svg, pretty_print=True))
+
+    @traits.on_trait_change("linewidth, linecolor, roifill")
+    def update_style(self):
+        for roi in self.rois.values():
+            roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill)
+        try:
+            if self.callback is not None:
+                self.callback()
+        except:
+            print "cannot callback"
+
+    def _shadow_changed(self):
+        self.svg.find("//feGaussianBlur").attrib["stdDeviation"] = str(self.shadow)
+
+    def get_texture(self, texres, name=None, background=None, labels=True):
+        '''Renders the current roimap as a png'''
+        #set the current size of the texture
+        w, h = self.svgshape
+        dpi = texres / h * 90
+
+        if background is not None:
+            img = E.image(
+                {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%background},
+                id="image_%s"%name, x="0", y="0",
+                width=str(self.svgshape[0]),
+                height=str(self.svgshape[1]),
+            )
+            self.svg.getroot().insert(0, img)
+
+        labellayer = self.setup_labels()
+        if labels:
+            labellayer.attrib['{%s}style'%svgns] = "display:inline;"
+        else:
+            labellayer.attrib['{%s}style'%svgns] = "display:none;"
+
+        pngfile = name
+        if name is None:
+            png = tempfile.NamedTemporaryFile(suffix=".png")
+            pngfile = png.name
+
+        with tempfile.NamedTemporaryFile(suffix=".svg") as svgfile:
+            svgfile.write(etree.tostring(self.svg))
+            svgfile.flush()
+
+            cmd = "inkscape -d {dpi} -f {infile} -z -e {outfile}"
+            cmd = cmd.format(dpi=dpi, infile=svgfile.name, outfile=pngfile)
+            sp.call(cmd.split())
+
+        if background is not None:
+            self.svg.getroot().remove(img)
+
+        if name is None:
+            return png
+
+    def get_labelpos(self, pts=None, norms=None, fancy=True):
+        return dict([(name, roi.get_labelpos(pts, norms, fancy)) for name, roi in self.rois.items()])
+
+    def get_ptidx(self):
+        return dict([(name, roi.get_ptidx()) for name, roi in self.rois.items()])
+
+    def get_roi(self, roiname):
+        state = dict()
+        for name, roi in self.rois.items():
+            #Store what the ROI style so we can restore
+            state[name] = dict(linewidth=roi.linewidth, roifill=roi.roifill, hide=roi.hide)
+            if name == roiname:
+                roi.set(linewidth=0, roifill=(0,0,0,1), hide=False)
+            else:
+                roi.hide = True
+        
+        im = self.get_texture(self.svgshape[1])
+        im.seek(0)
+        imdat = imread(im)[::-1,:,0]
+        idx = (self.tcoords*(np.array(self.svgshape)-1)).round().astype(int)[:,::-1]
+        roiidx = np.nonzero(imdat[tuple(idx.T)] == 0)[0]
+
+        #restore the old roi settings
+        for name, roi in self.rois.items():
+            roi.set(**state[name])
+
+        return roiidx
+    
+    @property
+    def names(self):
+        return self.rois.keys()
+
+    def __getitem__(self, name):
+        return self.rois[name]
+
+    def setup_labels(self, size="16pt", color="#FFFFFF"):
+        try:
+            layer = _find_layer(self.svg, "roilabels")
+        except AssertionError:
+            layer = _make_layer(self.svg.getroot(), "roilabels")
+
+        labelpos, candidates = [], []
+        for roi in self.rois.values():
+            for i, pos in enumerate(roi.get_labelpos()):
+                labelpos.append(pos)
+                candidates.append((roi, i))
+
+        w, h = self.svgshape
+        nolabels = set(candidates)
+        txtstyle = "font-family:sans;font-size:%s;font-weight:bold;font-style:italic;fill:%s;text-anchor:middle;"%(size, color)
+        for text in layer.findall(".//{%s}text"%svgns):
+            x = float(text.get('x'))
+            y = float(text.get('y'))
+            text.attrib['style'] = txtstyle
+            text.attrib['data-ptidx'] = str(self.kdt.query((x / w, y / h))[1])
+            pts, cand = [], []
+            for p, c in zip(labelpos, candidates):
+                if c[0].name == text.text:
+                    pts.append((p[0]*w, (1-p[1])*h))
+                    cand.append(c)
+            d, idx = cKDTree(pts).query((x,y))
+            nolabels.remove(cand[idx])
+
+        for roi, i in nolabels:
+            x, y = roi.get_labelpos()[i]
+            text = etree.SubElement(layer, "{%s}text"%svgns)
+            text.text = roi.name
+            text.attrib["x"] = str(x*w)
+            text.attrib["y"] = str((1-y)*h)
+            text.attrib['filter'] = "url(#dropshadow)"
+            text.attrib['style'] = txtstyle
+            text.attrib['data-ptidx'] = str(self.kdt.query((x, y))[1])
+
+        return layer
+
+    def toxml(self, pretty=True):
+        return etree.tostring(self.svg, pretty_print=pretty)
+
+
+###################################################################################
+# SVG Helper functions
+###################################################################################
+def _find_layer(svg, label):
+    layers = [l for l in svg.findall("//{%s}g[@{%s}label]"%(svgns, inkns)) if l.get("{%s}label"%inkns) == label]
+    assert len(layers) > 0, "Cannot find layer %s"%label
+    return layers[0]
+
+def _make_layer(parent, name):
+    layer = etree.SubElement(parent, "{%s}g"%svgns)
+    layer.attrib['id'] = name
+    layer.attrib['style'] = "display:inline;"
+    layer.attrib["{%s}label"%inkns] = name
+    layer.attrib["{%s}groupmode"%inkns] = "layer"
+    return layer
+
+try:
+    from shapely.geometry import Polygon
+    def _center_pts(pts):
+        '''Fancy label position generator, using erosion to get label coordinate'''
+        min = pts.min(0)
+        pts -= min
+        max = pts.max(0)
+        pts /= max
+
+        poly = Polygon([tuple(p) for p in pts])
+        for i in np.linspace(0,1,100):
+            if poly.buffer(-i).is_empty:
+                return list(poly.buffer(-last_i).centroid.coords)[0] * max + min
+            last_i = i
+
+        print "unable to find zero centroid..."
+        return list(poly.buffer(-100).centroid.coords)[0] * max + min
+
+except ImportError:
+    print "Cannot find shapely, using simple label placement"
+    def _center_pts(pts):
+        return pts.mean(0)
+
+def _labelpos(pts):
+    if pts.ndim < 3:
+        return _center_pts(pts)
+
+    ptm = pts.copy().astype(float)
+    ptm -= ptm.mean(0)
+    u, s, v = np.linalg.svd(ptm, full_matrices=False)
+    sp = np.diag(s)
+    sp[-1,-1] = 0
+    try:
+        x, y = _center_pts(np.dot(ptm, np.dot(v.T, sp))[:,:2])
+    except Exception as e:
+        print e
+
+    sp = np.diag(1./(s+np.finfo(float).eps))
+    pt = np.dot(np.dot(np.array([x,y,0]), sp), v)
+    return pt + pts.mean(0)
+
+def scrub(svgfile, process=False):
+    svg = etree.parse(svgfile, parser=parser)
+    rmnode = _find_layer(svg, "data")
+    rmnode.getparent().remove(rmnode)
+    svgtag = svg.getroot()
+    svgtag.attrib['id'] = "svgroi"
+    del svgtag.attrib["{%s}version"%inkns]
+    try:
+        for tagname in ["{%s}defs"%svgns, "{%s}namedview"%sodins, "{%s}metadata"%svgns]:
+            for tag in svg.findall(".//%s"%tagname):
+                tag.getparent().remove(tag)
+    except:
+        import traceback
+        traceback.print_exc()
+
+    if process:
+        svg.getroot().append(E.defs(
+            E.filter(
+                E.feGaussianBlur({"in":"SourceAlpha"}, stdDeviation="3"),
+                E.feMerge(
+                    E.feMergeNode(),
+                    E.feMergeNode({"in":"SourceGraphic"})
+                ),
+                id="dropshadow"
+            )
+        ))
+
+    return svg
