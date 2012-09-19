@@ -1,8 +1,7 @@
 import os
 import sys
 import numpy as np
-from db import surfs, options
-import view
+from db import surfs
 
 def unmask(mask, data):
     '''unmask(mask, data)
@@ -11,23 +10,12 @@ def unmask(mask, data):
 
     Parameters
     ----------
-    mask : array_like or str or docdb.orm.ImageDoc
-        The data mask -- if string, assume it's the experiment name and query the
-        BrainMaskFSL document. Otherwise, stuff data into mask
+    mask : array_like
+        The data mask
     data : array_like
         Actual MRI data to unmask
     '''
-    #assert len(data.shape) == 2, "Are you sure this is masked data?"
-    try:
-        import docdb
-        if isinstance(mask, str):
-            client = docdb.getclient()
-            mask = client.query(experiment_name=mask, generated_by_name="BrainMaskFSL")[0]
-
-        if isinstance(mask, docdb.orm.ImageDoc):
-            mask = mask.get_data()[:]
-    except:
-        assert isinstance(mask, np.ndarray)
+    assert isinstance(mask, np.ndarray)
 
     output = np.zeros(mask.shape, dtype=data.dtype)
     output[mask > 0] = data
@@ -103,15 +91,6 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
 
     return output
 
-def flatten(data, subject=None, xfmname=None, **kwargs):
-    import view
-    import matplotlib.pyplot as plt
-    data = view.quickflat(data, 
-        subject or options['default_subject'],
-        xfmname or options['default_xfm'])
-    plt.imshow(data, aspect='equal', **kwargs)
-    return data
-
 def epi_to_anat(data, subject=None, xfmname=None, filename=None):
     '''/usr/share/fsl/4.1/bin/flirt -in /tmp/epidat.nii -applyxfm -init /tmp/coordmat.mat -out /tmp/realign.nii.gz -paddingsize 0.0 -interp trilinear -ref /tmp/anat.nii'''
     import nifti
@@ -144,11 +123,17 @@ def epi_to_anat(data, subject=None, xfmname=None, filename=None):
     os.unlink(xfmfile)
     return output
 
-def get_roipack(subject):
+def get_roipack(subject, remove_medial=False):
     import svgroi
     flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
+    if remove_medial:
+        valid = np.unique(polys)
+        flat = flat[valid]
     svgfile = surfs.getFiles(subject)['rois']
-    return svgroi.ROIpack(flat[:,:2], svgfile)
+    rois = svgroi.ROIpack(flat[:,:2], svgfile)
+    if remove_medial:
+        return rois, valid
+    return rois
 
 def get_ctmpack(subject, xfmname, types=("inflated",), method="raw", level=0, recache=False):
     ctmform = surfs.getFiles(subject)['ctmcache']
@@ -176,7 +161,7 @@ def get_cortical_mask(subject, xfmname):
     return data
 
 
-def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
+def get_vox_dist(subject, xfmname):
     '''Get the distance (in mm) from each functional voxel to the closest
     point on the surface.
 
@@ -197,7 +182,9 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
     argdist : ndarray
         Point index for the closest point
     '''
+    import nibabel
     from scipy.spatial import cKDTree
+    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
     fiducial, polys, norms = surfs.getVTK(subject, "fiducial", merge=True)
     xfm, epi = surfs.getXfm(subject, xfmname)
     idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
@@ -211,10 +198,12 @@ def get_vox_dist(subject, xfmname, shape=(31, 100, 100)):
     return dist, argdist
 
 
-def get_hemi_masks(subject, xfmname, shape=(31,100,100)):
+def get_hemi_masks(subject, xfmname):
     '''Returns a binary mask of the left and right hemisphere
     surface voxels for the given subject.
     '''
+    import nibabel
+    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
     lco, rco = surfs.getCoords(subject, xfmname)
     lmask = np.zeros(shape, dtype=np.bool)
     lmask.T[tuple(lco.T)] = True
@@ -222,20 +211,15 @@ def get_hemi_masks(subject, xfmname, shape=(31,100,100)):
     rmask.T[tuple(rco.T)] = True
     return lmask, rmask
 
-def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
+def get_roi_mask(subject, xfmname, roi=None):
     '''Return a bitmask for the given ROIs'''
-    import svgroi
-    flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
-    valid = np.unique(polys)
-    flat = flat[valid]
+    import nibabel
+    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
+
+    rois, valid = get_roipack(subject, remove_medial=True)
     
     coords = np.vstack(surfs.getCoords(subject, xfmname))
     coords = coords[valid]
-
-    svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
-    rois = svgroi.ROIpack(flat[:,:2], svgfile)
-
-    #return rois, flat, coords
 
     if roi is None:
         roi = rois.names
@@ -252,18 +236,12 @@ def get_roi_mask(subject, xfmname, roi=None, shape=(31, 100, 100)):
             roidict[name] = mask
         return roidict
 
-def get_roi_verts(subject, xfmname, roi=None, shape=(31, 100, 100)):
+def get_roi_verts(subject, xfmname, roi=None):
     '''Return vertices for the given ROIs'''
-    import svgroi
-    flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
-    valid = np.unique(polys)
-    flat = flat[valid]
+    rois, valid = get_roipack(subject, remove_medial=True)
     
     coords = np.vstack(surfs.getCoords(subject, xfmname))
     coords = coords[valid]
-
-    svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
-    rois = svgroi.ROIpack(flat[:,:2], svgfile)
 
     if roi is None:
         roi = rois.names
@@ -278,17 +256,19 @@ def get_roi_verts(subject, xfmname, roi=None, shape=(31, 100, 100)):
         return roidict
 
 
-def get_roi_masks(subject,xfmname,roiList=None,shape=(31,100,100),Dst=2,overlapOpt='cut'):
+def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     '''
     Return a numbered mask + dictionary of roi numbers
     roiList is a list of ROIs (which better be defined in the .svg file)
 
     '''
-    import svgroi
-    # merge = True returns LEFT HEM as first (nL) values, then RIGHT
-    flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
-    vertIdx = np.unique(polys) # Needed for determining index for ROIs later
-    flat = flat[vertIdx]
+    # Get ROIs from inkscape SVGs
+    rois, vertIdx = get_roipack(subject, remove_medial=True)
+
+    # Retrieve shape from the reference
+    import nibabel
+    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
+    
     # Get 3D coords
     coords = np.vstack(surfs.getCoords(subject, xfmname))
     nVerts = np.max(coords.shape)
@@ -305,9 +285,6 @@ def get_roi_masks(subject,xfmname,roiList=None,shape=(31,100,100),Dst=2,overlapO
     Lmask = (voxIdx < nL).flatten()
     Rmask = np.logical_not(Lmask)
     CxMask = (voxDst < Dst).flatten()
-    # Get ROIs from inkscape SVGs
-    svgfile = os.path.join(options['file_store'], "overlays", "{subj}_rois.svg".format(subj=subject))
-    rois = svgroi.ROIpack(flat[:,:2], svgfile)
     
     #return rois, flat, coords, voxDst, voxIdx ## rois is a list of class svgROI; flat = flat cortex coords; coords = 3D coords
     if roiList is None:

@@ -27,6 +27,7 @@ Contents:
    
    install
    database
+   rois
    align
    view
 
