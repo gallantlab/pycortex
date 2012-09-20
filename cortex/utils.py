@@ -1,5 +1,7 @@
 import os
 import sys
+import binascii
+import cStringIO
 import numpy as np
 from db import surfs
 
@@ -130,6 +132,9 @@ def get_roipack(subject, remove_medial=False):
         valid = np.unique(polys)
         flat = flat[valid]
     svgfile = surfs.getFiles(subject)['rois']
+    if not os.path.exists(svgfile):
+        with open(svgfile, "w") as fp:
+            fp.write(svgroi.make_svg(flat.copy(), polys))
     rois = svgroi.ROIpack(flat[:,:2], svgfile)
     if remove_medial:
         return rois, valid
@@ -210,6 +215,19 @@ def get_hemi_masks(subject, xfmname):
     rmask = np.zeros(shape, dtype=np.bool)
     rmask.T[tuple(rco.T)] = True
     return lmask, rmask
+
+def add_roi(data, subject, xfmname, name="new_roi", **kwargs):
+    import subprocess as sp
+    from matplotlib.pylab import imsave
+    from utils import get_roipack
+    import quickflat
+    rois = get_roipack(subject)
+    im = quickflat.make(data, subject, xfmname, height=1024, with_rois=False)
+    fp = cStringIO.StringIO()
+    imsave(fp, im, **kwargs)
+    fp.seek(0)
+    rois.add_roi(name, binascii.b2a_base64(fp.read()))
+    return sp.call(["inkscape", '-f', rois.svgfile])
 
 def get_roi_mask(subject, xfmname, roi=None):
     '''Return a bitmask for the given ROIs'''

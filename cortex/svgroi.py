@@ -1,3 +1,5 @@
+import os
+import shlex
 import tempfile
 import subprocess as sp
 
@@ -17,6 +19,8 @@ svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
 sodins = "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
 parser = etree.XMLParser(remove_blank_text=True)
+
+cwd = os.path.abspath(os.path.split(__file__)[0])
 
 from db import options
 default_lw = options['line_width'] if 'line_width' in options else 3.
@@ -139,14 +143,13 @@ class ROIpack(traits.HasTraits):
         self.reload()
 
     def reload(self):
-        self.svg = scrub(self.svgfile, process=True)
+        self.svg = scrub(self.svgfile)
         w = float(self.svg.getroot().get("width"))
         h = float(self.svg.getroot().get("height"))
         self.svgshape = w, h
 
         #Set up the ROI dict
         self.rois = {}
-        #for r in _find_layer(self.svg, "rois").getElementsByTagName("g"):
         for r in _find_layer(self.svg, "rois").findall("{%s}g"%svgns):
             roi = ROI(self, r)
             self.rois[roi.name] = roi
@@ -219,7 +222,7 @@ class ROIpack(traits.HasTraits):
 
             cmd = "inkscape -d {dpi} -f {infile} -z -e {outfile}"
             cmd = cmd.format(dpi=dpi, infile=svgfile.name, outfile=pngfile)
-            sp.call(cmd.split())
+            sp.call(shlex.split(cmd))
 
         if background is not None:
             self.svg.getroot().remove(img)
@@ -363,7 +366,7 @@ def _labelpos(pts):
     pt = np.dot(np.dot(np.array([x,y,0]), sp), v)
     return pt + pts.mean(0)
 
-def scrub(svgfile, process=False):
+def scrub(svgfile):
     svg = etree.parse(svgfile, parser=parser)
     rmnode = _find_layer(svg, "data")
     rmnode.getparent().remove(rmnode)
@@ -371,23 +374,28 @@ def scrub(svgfile, process=False):
     svgtag.attrib['id'] = "svgroi"
     del svgtag.attrib["{%s}version"%inkns]
     try:
-        for tagname in ["{%s}defs"%svgns, "{%s}namedview"%sodins, "{%s}metadata"%svgns]:
+        for tagname in ["{%s}namedview"%sodins, "{%s}metadata"%svgns]:
             for tag in svg.findall(".//%s"%tagname):
                 tag.getparent().remove(tag)
     except:
         import traceback
         traceback.print_exc()
 
-    if process:
-        svg.getroot().append(E.defs(
-            E.filter(
-                E.feGaussianBlur({"in":"SourceAlpha"}, stdDeviation="3"),
-                E.feMerge(
-                    E.feMergeNode(),
-                    E.feMergeNode({"in":"SourceGraphic"})
-                ),
-                id="dropshadow"
-            )
-        ))
+    return svg
+
+def make_svg(pts, polys):
+    from polyutils import trace_both
+    pts -= pts.min(0)
+    pts *= 1024 / pts.max(0)[1]
+    pts[:,1] = 1024 - pts[:,1]
+    path = ""
+    for poly in trace_both(pts, polys):
+        path +="M%f %f L"%tuple(pts[poly.pop(0), :2])
+        path += ', '.join(['%f %f'%tuple(pts[p, :2]) for p in poly])
+        path += 'Z '
+
+    w, h = pts.max(0)[:2]
+    with open(os.path.join(cwd, "svgbase.xml")) as fp:
+        svg = fp.read().format(width=w, height=h, clip=path)
 
     return svg

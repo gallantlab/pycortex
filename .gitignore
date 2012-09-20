@@ -4,3 +4,4 @@ defaults.json
 *.so
 *.o
 _build
+build

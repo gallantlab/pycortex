@@ -18,7 +18,7 @@ def _gen_flat_mask(subject, height=1024):
     pts = pts.copy()[:,:2]
     pts -= pts.min(0)
     pts *= height / pts.max(0)[1]
-    im = Image.new('L', pts.max(0), 0)
+    im = Image.new('L', pts.max(0).astype(int), 0)
     draw = ImageDraw.Draw(im)
 
     left, right = polyutils.trace_both(pts, polys)
@@ -42,7 +42,7 @@ def _make_flat_cache(subject, xfmname, height=1024):
     return pcoords, (width, height)
 
 
-def make(data, subject, xfmname, recache=False, height=1024):
+def make(data, subject, xfmname, recache=False, height=1024, with_rois=False, **kwargs):
     cacheform = db.surfs.getFiles(subject)['flatcache']
     cachefile = cacheform.format(xfmname=xfmname, height=height, date="*")
     #pull a list of candidate cache files
@@ -67,33 +67,34 @@ def make(data, subject, xfmname, recache=False, height=1024):
     validpos = ravelpos[mask.ravel()].astype(int)
     img = np.nan*np.ones_like(ravelpos)
     img[mask.ravel()] = data.T.ravel()[validpos]
-    return img.reshape(size).T[::-1], mask
-
-def make_png(data, subject, xfmname, name=None, recache=False, height=1024, with_rois=False, **kwargs):
-    import Image
-    from matplotlib.pylab import imsave, imread
+    im = img.reshape(size).T[::-1]
 
     if with_rois:
-        pngdat, mask = makepng(data, subject, xfmname, recache=recache, height=height)
+        from matplotlib.pylab import imsave, imread
+        fname = cStringIO.StringIO()
+        imsave(fname, im, **kwargs)
+        fname.seek(0)
+        img = binascii.b2a_base64(fname.read())
         rois = utils.get_roipack(subject)
-        img = rois.get_texture(height, background=pngdat)
-        im = imread(img)
-        im[~mask.T[::-1], -1] = 0
-        im = Image.fromarray((im*255).astype(np.uint8))
-        im.save(name)
+        im = imread(rois.get_texture(height, background=img))
 
-    else:
-        im, mask = make(data, subject, xfmname, recache=recache, height=height)
+    return im
 
-        if name is None:
-            fname = cStringIO.StringIO()
-            imsave(fname, im, **kwargs)
-            fname.seek(0)
-            return binascii.b2a_base64(fname.read()), mask
 
-        imsave(name, im, **kwargs)
+def make_png(data, subject, xfmname, name=None, **kwargs):
+    import Image
+    im = make(data, subject, xfmname, **kwargs)
+    im = Image.from_array((im*255).astype(np.uint8))
+    if name is None:
+        fp = cStringIO.StringIO()
+        im.save(fp)
+        fp.seek(0)
+        return fp.read()
 
-def show(data, subject, xfmname, recache=False, height=1024, **kwargs):
+    im.save(name)
+
+
+def show(data, subject, xfmname, recache=False, height=1024, with_rois=True, **kwargs):
     from matplotlib.pylab import imshow
-    im, mask = make(data, subject, xfmname, recache=recache, height=height)
+    im = make(data, subject, xfmname, recache=recache, height=height, with_rois=with_rois)
     imshow(im, **kwargs)
