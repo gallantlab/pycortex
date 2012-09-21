@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.spatial import distance
 
-import matplotlib.pyplot as plt
 from matplotlib.path import Path
 from matplotlib import patches
 
@@ -129,6 +128,7 @@ def _test_inside(close, pts):
     return np.cross(pts[close[0]-1] - ref, pts[close[1]] - ref) > 0
 
 def draw_curves(closest, pts, factor=1):
+    import matplotlib.pyplot as plt
     path = Path(*make_path(closest, pts, factor=factor))
     patch = patches.PathPatch(path, lw=1, facecolor='none')
     ax = plt.gca()
@@ -136,6 +136,7 @@ def draw_curves(closest, pts, factor=1):
     ax.plot(pts.T[0], pts.T[1], 'x-')
 
 def draw_lines(closest, pts):
+    import matplotlib.pyplot as plt
     inside, outside = [], []
     for close in closest:
         if _test_inside(close, pts[...,:2]):

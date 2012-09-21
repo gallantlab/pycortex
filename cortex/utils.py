@@ -216,13 +216,13 @@ def get_hemi_masks(subject, xfmname):
     rmask.T[tuple(rco.T)] = True
     return lmask, rmask
 
-def add_roi(data, subject, xfmname, name="new_roi", **kwargs):
+def add_roi(data, subject, xfmname, name="new_roi", recache=False, **kwargs):
     import subprocess as sp
     from matplotlib.pylab import imsave
     from utils import get_roipack
     import quickflat
     rois = get_roipack(subject)
-    im = quickflat.make(data, subject, xfmname, height=1024, with_rois=False)
+    im = quickflat.make(data, subject, xfmname, height=1024, recache=recache, with_rois=False)
     fp = cStringIO.StringIO()
     imsave(fp, im, **kwargs)
     fp.seek(0)
