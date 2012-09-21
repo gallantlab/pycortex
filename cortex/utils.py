@@ -254,12 +254,9 @@ def get_roi_mask(subject, xfmname, roi=None):
             roidict[name] = mask
         return roidict
 
-def get_roi_verts(subject, xfmname, roi=None):
+def get_roi_verts(subject, roi=None):
     '''Return vertices for the given ROIs'''
     rois, valid = get_roipack(subject, remove_medial=True)
-    
-    coords = np.vstack(surfs.getCoords(subject, xfmname))
-    coords = coords[valid]
 
     if roi is None:
         roi = rois.names

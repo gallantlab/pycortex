@@ -70,7 +70,7 @@ def get_mixer_args(subject, xfmname, types=('inflated',)):
     if not os.path.exists(overlay):
         #Can't find the roi overlay, create a new one!
         ptpolys = db.surfs.getVTK(subject, "flat", hemisphere="both")
-        pts = np.vstack(ptpolys[0][0][:,:2], ptpolys[0][1][:,:2])
+        pts = np.vstack([ptpolys[0][0][:,:2], ptpolys[0][1][:,:2]])
         size = pts.max(0) - pts.min(0)
         aspect = size[0] / size[-1]
         with open(overlay, "w") as xml:
