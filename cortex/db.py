@@ -181,8 +181,11 @@ class Database(object):
             jsdict = json.load(open(fname))
         else:
             assert epifile is not None, "Please specify a reference epi"
-            assert os.path.splitext(epifile)[1].lower() == ".nii", "Reference epi must be a nifti"
-            filename = "{subj}_{name}_refepi.nii".format(subj=subject, name=name)
+            fname, ext = os.path.splitext(epifile)
+            fname, niiext = os.path.splitext(fname)
+            if len(niiext) > 0:
+                ext = "%s.%s"%(niiext, ext)
+            filename = "{subj}_{name}_refepi.{ext}".format(subj=subject, name=name, ext=ext)
             fpath = os.path.join(filestore, "references", filename)
             if not os.path.exists(fpath):
                 shutil.copy2(epifile, fpath)
