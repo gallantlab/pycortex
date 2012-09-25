@@ -106,7 +106,7 @@ THREE.CTMLoader.prototype.load = function( url, callback, useWorker, useBuffers,
 
 				if ( useWorker ) {
 
-					var worker = new Worker( "ctm/CTMWorker.js" );
+					var worker = new Worker( "resources/js/ctm/CTMWorker.js" );
 
 					worker.onmessage = function( event ) {
 
