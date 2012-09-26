@@ -1,5 +1,6 @@
 import numpy as np
 import Image
+import scipy.io as sio
 
 def makeImage(cmap, fname):
     cmarr = (cmap*255).astype(np.uint8)
