@@ -132,8 +132,11 @@ class CTMfile(object):
         import nibabel
         xfm, ref = surfs.getXfm(self.name, self.xfmname)
         nib = nibabel.load(ref)
+        rawdata = nib.get_data().T
+        if len(rawdata.shape) > 3:
+            rawdata = rawdata.mean(0)
         data = np.zeros(self.mask.shape, dtype=np.float32)
-        data[self.mask > 0] = nib.get_data().T[self.mask]
+        data[self.mask > 0] = rawdata[self.mask]
         norm = (data - data.min()) / (data.max() - data.min())
         return self._vox_to_idx((1-norm)**20)
 
