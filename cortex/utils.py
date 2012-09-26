@@ -153,6 +153,9 @@ def get_ctmpack(subject, xfmname, types=("inflated",), method="raw", level=0, re
 def get_cortical_mask(subject, xfmname):
     import nibabel
     shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
+    if len(shape) > 3:
+        shape = shape[1:]
+    
     data = np.zeros(shape, dtype=bool)
     coords = np.vstack(surfs.getCoords(subject, xfmname))
     pts, polys, norms = surfs.getVTK(subject, "flat", merge=True)
@@ -190,6 +193,9 @@ def get_vox_dist(subject, xfmname):
     import nibabel
     from scipy.spatial import cKDTree
     shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
+    if len(shape) > 3:
+        shape = shape[1:]
+
     fiducial, polys, norms = surfs.getVTK(subject, "fiducial", merge=True)
     xfm, epi = surfs.getXfm(subject, xfmname)
     idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
@@ -209,6 +215,9 @@ def get_hemi_masks(subject, xfmname):
     '''
     import nibabel
     shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
+    if len(shape) > 3:
+        shape = shape[1:]
+
     lco, rco = surfs.getCoords(subject, xfmname)
     lmask = np.zeros(shape, dtype=np.bool)
     lmask.T[tuple(lco.T)] = True
@@ -233,6 +242,8 @@ def get_roi_mask(subject, xfmname, roi=None):
     '''Return a bitmask for the given ROIs'''
     import nibabel
     shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
+    if len(shape) > 3:
+        shape = shape[1:]
 
     rois, valid = get_roipack(subject, remove_medial=True)
     
@@ -283,6 +294,8 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     # Retrieve shape from the reference
     import nibabel
     shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
+    if len(shape) > 3:
+        shape = shape[1:]
     
     # Get 3D coords
     coords = np.vstack(surfs.getCoords(subject, xfmname))
