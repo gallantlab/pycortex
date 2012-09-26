@@ -94,8 +94,11 @@ def make_png(data, subject, xfmname, name=None, with_rois=True, recache=False, h
 
 
 def show(data, subject, xfmname, recache=False, height=1024, with_rois=True, **kwargs):
-    from matplotlib.pylab import imshow, imread
+    from matplotlib.pylab import imshow, imread, axis
     im = make(data, subject, xfmname, recache=recache, height=height)
     if with_rois:
         im = imread(overlay_rois(im, subject, height=height, **kwargs))
-    imshow(im, **kwargs)
+    ax = imshow(im, **kwargs)
+    ax.axes.set_aspect('equal')
+    axis('off')
+    return ax
