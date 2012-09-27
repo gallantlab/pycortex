@@ -303,7 +303,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     coords = coords[vertIdx]
     nValidVerts = np.max(coords.shape)
     # Get voxDst,voxIdx (voxIdx has NOT had invalid 2-D vertices removed by "vertIdx" index)
-    voxDst,voxIdx = get_vox_dist(subject,xfmname,shape)
+    voxDst,voxIdx = get_vox_dist(subject,xfmname)
     voxIdxF = voxIdx.flatten()
     # Get L,R hem separately
     L,R = surfs.getVTK(subject, "flat", merge=False, nudge=True)

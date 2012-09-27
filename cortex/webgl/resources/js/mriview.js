@@ -253,6 +253,7 @@ MRIview.prototype = {
         if (this.state == "play") {
             var sec = ((new Date()) - this._startplay) / 1000;
             if (sec > this.active[0].textures.length) {
+                this._startplay += this.active[0].textures.length;
                 sec -= this.active[0].textures.length;
             }
             this.setFrame(sec);
@@ -509,6 +510,9 @@ MRIview.prototype = {
         $("#datasets").val(names);
         $("#dataname").text(names.join(" / ")).show();
         return true;
+    },
+    nextData: function(dir) {
+        
     },
 
     addPlugin: function(obj, static) {
@@ -793,6 +797,9 @@ MRIview.prototype = {
                 this.playpause();
                 e.stopPropagation();
                 e.preventDefault();
+            } else if (e.keyCode == 43) {
+
+            } else if (e.keyCode == 45) {
             } else {
                 console.log("Pressed "+e.keyCode);
             }

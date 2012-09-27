@@ -155,6 +155,7 @@ class ROIpack(traits.HasTraits):
             self.rois[roi.name] = roi
 
         self.update_style()
+        self.labels = self.setup_labels()
 
     def add_roi(self, name, pngdata):
         #self.svg deletes the images -- we want to save those, so let's load it again
@@ -188,13 +189,15 @@ class ROIpack(traits.HasTraits):
             print "cannot callback"
 
     def _shadow_changed(self):
-        self.svg.find("//feGaussianBlur").attrib["stdDeviation"] = str(self.shadow)
+        self.svg.find("//{%s}feGaussianBlur"%svgns).attrib["stdDeviation"] = str(self.shadow)
+        for roi in self.rois.values():
+            roi.update_attribs()
 
-    def get_texture(self, texres, name=None, background=None, labels=True):
+    def get_texture(self, texres, name=None, background=None, labels=True, shadow=True):
         '''Renders the current roimap as a png'''
         #set the current size of the texture
         w, h = self.svgshape
-        dpi = texres / h * 90
+        dpi = texres / h
 
         if background is not None:
             img = E.image(
@@ -205,11 +208,10 @@ class ROIpack(traits.HasTraits):
             )
             self.svg.getroot().insert(0, img)
 
-        labellayer = self.setup_labels()
         if labels:
-            labellayer.attrib['{%s}style'%svgns] = "display:inline;"
+            self.labels.attrib['style'] = "display:inline;"
         else:
-            labellayer.attrib['{%s}style'%svgns] = "display:none;"
+            self.labels.attrib['style'] = "display:none;"
 
         pngfile = name
         if name is None:
@@ -217,12 +219,21 @@ class ROIpack(traits.HasTraits):
             pngfile = png.name
 
         with tempfile.NamedTemporaryFile(suffix=".svg") as svgfile:
+            s = self.shadow
+            if shadow:
+                cmd = "inkscape -d {dpi} -f {infile} -z -e {outfile}"
+                dpi *= 90
+            else:
+                self.shadow = 0
+                cmd = "convert -density {dpi} {infile} {outfile}"
+                dpi *= 72
+
             svgfile.write(etree.tostring(self.svg))
             svgfile.flush()
 
-            cmd = "inkscape -d {dpi} -f {infile} -z -e {outfile}"
             cmd = cmd.format(dpi=dpi, infile=svgfile.name, outfile=pngfile)
             sp.call(shlex.split(cmd))
+            self.shadow = s
 
         if background is not None:
             self.svg.getroot().remove(img)
@@ -246,9 +257,9 @@ class ROIpack(traits.HasTraits):
             else:
                 roi.hide = True
         
-        im = self.get_texture(self.svgshape[1])
+        im = self.get_texture(self.svgshape[1], labels=False, shadow=False)
         im.seek(0)
-        imdat = imread(im)[::-1,:,0]
+        imdat = imread(im)[::-1]
         idx = (self.tcoords*(np.array(self.svgshape)-1)).round().astype(int)[:,::-1]
         roiidx = np.nonzero(imdat[tuple(idx.T)] == 0)[0]
 
