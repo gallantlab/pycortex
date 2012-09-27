@@ -1,11 +1,11 @@
 import os
 import shlex
+import Image
 import tempfile
 import subprocess as sp
 
 import numpy as np
 from scipy.spatial import cKDTree
-from matplotlib.pyplot import imread
 
 from lxml import etree
 from lxml.builder import E
@@ -193,11 +193,11 @@ class ROIpack(traits.HasTraits):
         for roi in self.rois.values():
             roi.update_attribs()
 
-    def get_texture(self, texres, name=None, background=None, labels=True, shadow=True):
+    def get_texture(self, texres, name=None, background=None, labels=True, bits=32):
         '''Renders the current roimap as a png'''
         #set the current size of the texture
         w, h = self.svgshape
-        dpi = texres / h
+        dpi = texres / h * 72
 
         if background is not None:
             img = E.image(
@@ -218,27 +218,16 @@ class ROIpack(traits.HasTraits):
             png = tempfile.NamedTemporaryFile(suffix=".png")
             pngfile = png.name
 
-        with tempfile.NamedTemporaryFile(suffix=".svg") as svgfile:
-            s = self.shadow
-            if shadow:
-                cmd = "inkscape -d {dpi} -f {infile} -z -e {outfile}"
-                dpi *= 90
-            else:
-                self.shadow = 0
-                cmd = "convert -density {dpi} {infile} {outfile}"
-                dpi *= 72
-
-            svgfile.write(etree.tostring(self.svg))
-            svgfile.flush()
-
-            cmd = cmd.format(dpi=dpi, infile=svgfile.name, outfile=pngfile)
-            sp.call(shlex.split(cmd))
-            self.shadow = s
+        cmd = "convert -background none -density {dpi} SVG:- PNG{bits}:{outfile}"
+        cmd = cmd.format(dpi=dpi, outfile=pngfile, bits=bits)
+        proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
+        proc.communicate(etree.tostring(self.svg))
 
         if background is not None:
             self.svg.getroot().remove(img)
 
         if name is None:
+            png.seek(0)
             return png
 
     def get_labelpos(self, pts=None, norms=None, fancy=True):
@@ -248,6 +237,9 @@ class ROIpack(traits.HasTraits):
         return dict([(name, roi.get_ptidx()) for name, roi in self.rois.items()])
 
     def get_roi(self, roiname):
+        shadow = self.shadow
+        self.shadow = 0
+
         state = dict()
         for name, roi in self.rois.items():
             #Store what the ROI style so we can restore
@@ -257,16 +249,16 @@ class ROIpack(traits.HasTraits):
             else:
                 roi.hide = True
         
-        im = self.get_texture(self.svgshape[1], labels=False, shadow=False)
-        im.seek(0)
-        imdat = imread(im)[::-1]
+        im = self.get_texture(self.svgshape[1], labels=False, bits=8)
+        imdat = np.array(Image.open(im))[::-1]
         idx = (self.tcoords*(np.array(self.svgshape)-1)).round().astype(int)[:,::-1]
-        roiidx = np.nonzero(imdat[tuple(idx.T)] == 0)[0]
+        roiidx = np.nonzero(imdat[tuple(idx.T)] == 1)[0]
 
         #restore the old roi settings
         for name, roi in self.rois.items():
             roi.set(**state[name])
 
+        self.shadow = shadow
         return roiidx
     
     @property
