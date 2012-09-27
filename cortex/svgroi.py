@@ -222,7 +222,7 @@ class ROIpack(traits.HasTraits):
         cmd = cmd.format(dpi=dpi, outfile=pngfile, bits=bits)
         proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
         proc.communicate(etree.tostring(self.svg))
-
+        
         if background is not None:
             self.svg.getroot().remove(img)
 

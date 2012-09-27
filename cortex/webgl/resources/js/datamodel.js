@@ -247,7 +247,6 @@ Dataset.prototype = {
                 return;
 
             if (this.stim === undefined) {
-                console.log("No stimulus, removing... ", this);
                 viewer.rmPlugin();
             } else {
                 for (var i = 0; i < allStims.length; i++)

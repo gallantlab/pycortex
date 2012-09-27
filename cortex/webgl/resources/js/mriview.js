@@ -134,6 +134,10 @@ var buf = {
     n: new Float32Array(3),
 }
 
+Number.prototype.mod = function(n) {
+    return ((this%n)+n)%n;
+}
+
 function MRIview() { 
     //Allow objects to listen for mix updates
     THREE.EventTarget.call( this );
@@ -512,7 +516,25 @@ MRIview.prototype = {
         return true;
     },
     nextData: function(dir) {
-        
+        var i = 0, found = false;
+        var datasets = [];
+        $("#datasets li").each(function() {
+            if (!found) {
+                if (this.className.indexOf("ui-selected") > 0)
+                    found = true;
+                else
+                    i++;
+            }
+            datasets.push($(this).text())
+        });
+        if (dir === undefined)
+            dir = 1
+        if (this.colormap.image.height > 10) {
+            var idx = (i + dir * 2).mod(datasets.length);
+            this.setData(datasets.slice(idx, idx+2));
+        } else {
+            this.setData([datasets[(i+dir).mod(datasets.length)]]);
+        }
     },
 
     addPlugin: function(obj, static) {
@@ -798,8 +820,9 @@ MRIview.prototype = {
                 e.stopPropagation();
                 e.preventDefault();
             } else if (e.keyCode == 43) {
-
+                this.nextData(1);
             } else if (e.keyCode == 45) {
+                this.nextData(-1);
             } else {
                 console.log("Pressed "+e.keyCode);
             }

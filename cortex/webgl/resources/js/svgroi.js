@@ -129,19 +129,24 @@ ROIpack.prototype = {
     }, 
     move: function(viewer) {
         //Move each label to the 
-        var pt, opacity, pixel, cull, idx;
+        var pt, opacity, pixel, idx, cull = 1;
         var gl = viewer.renderer.context;
         var width = viewer.renderer.domElement.clientWidth;
         var height = viewer.renderer.domElement.clientHeight;
         var pix = viewer.pixbuf;
-        gl.readPixels(0,0,width,height,gl.RGBA, gl.UNSIGNED_BYTE, pix);
+        var labelcull = $("#labelcull").attr("checked") == "checked";
+
+        if (labelcull)
+            gl.readPixels(0,0,width,height,gl.RGBA, gl.UNSIGNED_BYTE, pix);
         this.labels.each(function() {
             pt = viewer.getPos(this.getAttribute("data-ptidx"));
 
             //Check if the indicator particle is visible
-            idx = Math.floor(height - pt.norm[1])*width*4+Math.floor(pt.norm[0])*4;
-            pixel = (pix[idx+0] << 16) + (pix[idx+1]<<8) + pix[idx+2];
-            cull = pixel == this.getAttribute("data-ptcolor");
+            if (labelcull) {
+                idx = Math.floor(height - pt.norm[1])*width*4+Math.floor(pt.norm[0])*4;
+                pixel = (pix[idx+0] << 16) + (pix[idx+1]<<8) + pix[idx+2];
+                cull = pixel == this.getAttribute("data-ptcolor");
+            }
 
             opacity = cull*Math.max(-pt.dot, 0);
             opacity = viewer.flatmix + (1 - viewer.flatmix)*opacity;
