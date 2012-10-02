@@ -50,7 +50,7 @@ def _embed_js(dom, script):
             jssrc = jssrc.replace(src, "'%s'"%serve.make_base64(imgpath))
 
         script.removeAttribute("src")
-        script.appendChild(dom.createTextNode(jssrc))
+        script.appendChild(dom.createTextNode(jssrc.decode('utf-8')))
 
 def _embed_worker(worker):
     wpath = os.path.split(worker)[0]
@@ -101,7 +101,7 @@ if (window.webkitURL)
             img.setAttribute("src", serve.make_base64(imgfile))
         else:
             print "Cannot find image to embed: %s"%imgfile
-
+            
     #Save out the new html file
     with open(outfile, "w") as htmlfile:
         serializer = html5lib.serializer.htmlserializer.HTMLSerializer()

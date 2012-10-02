@@ -10,6 +10,7 @@ pycortex relies on a large number of open source projects:
     traits
     mayavi
     lxml
+    html5lib
 
     jquery
     jquery-ui

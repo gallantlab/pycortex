@@ -196,7 +196,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
             return Proxy(height, "mixer.html")
 
     class WebApp(serve.WebApp):
-        disconnect_close = autoclose
+        disconnect_on_close = autoclose
         def get_client(self):
             self.c_evt.wait()
             self.c_evt.clear()
