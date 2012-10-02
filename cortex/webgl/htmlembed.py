@@ -101,11 +101,11 @@ if (window.webkitURL)
             img.setAttribute("src", serve.make_base64(imgfile))
         else:
             print "Cannot find image to embed: %s"%imgfile
-            
+
     #Save out the new html file
     with open(outfile, "w") as htmlfile:
         serializer = html5lib.serializer.htmlserializer.HTMLSerializer()
         walker = html5lib.treewalkers.getTreeWalker("dom")
 
         for line in serializer.serialize(walker(dom)):
-            htmlfile.write(line)
+            htmlfile.write(line.encode("utf-8"))
