@@ -68,14 +68,14 @@ def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
     img[mask] = data.T.ravel()[idx]
     return img.reshape(size).T[::-1]
 
-def overlay_rois(im, subject, name=None, height=1024, **kwargs):
+def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
     from matplotlib.pylab import imsave
     fp = cStringIO.StringIO()
     imsave(fp, im, **kwargs)
     fp.seek(0)
     img = binascii.b2a_base64(fp.read())
     rois = utils.get_roipack(subject)
-    return rois.get_texture(height, background=img, name=name)
+    return rois.get_texture(height, background=img, name=name, labels=labels)
 
 def make_png(data, subject, xfmname, name=None, with_rois=True, recache=False, height=1024, **kwargs):
     import Image
