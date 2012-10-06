@@ -104,11 +104,10 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     fname, ext = os.path.splitext(fname)
     for ext in ['json','ctm', 'svg']:
         newfile = os.path.join(outpath, "%s.%s"%(fname, ext))
-        if not os.path.exists(newfile):
-            print "copying %s file"%ext
-            shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
-        else:
-            print "%s file already exists"%ext
+        if os.path.exists(newfile):
+            os.unlink(newfile)
+        print "copying %s file"%ext
+        shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
     ctmfile = os.path.split(ctmfile)[1]
 
     #Generate the data binary objects and save them into the outpath

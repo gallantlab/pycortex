@@ -59,7 +59,7 @@ def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
         #save them into the proper file
         date = time.strftime("%Y%m%d")
         cachename = cacheform.format(xfmname=xfmname, height=height, date=date)
-        cPickle.dump((coords, size, mask), open(cachefile, "w"), 2)
+        cPickle.dump((coords, size, mask), open(cachename, "w"), 2)
     else:
         coords, size, mask = cPickle.load(open(files[0]))
 

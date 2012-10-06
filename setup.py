@@ -13,8 +13,8 @@ setup(name='pycortex',
             ['cortex/vtkctm.c',
              'OpenCTM-1.0.3/lib/openctm.c',
              'OpenCTM-1.0.3/lib/stream.c',
-             'OpenCTM-1.0.3/lib/compressMG1.c',
              'OpenCTM-1.0.3/lib/compressRAW.c',
+             'OpenCTM-1.0.3/lib/compressMG1.c',
              'OpenCTM-1.0.3/lib/compressMG2.c',
              'OpenCTM-1.0.3/lib/liblzma/Alloc.c',
              'OpenCTM-1.0.3/lib/liblzma/LzFind.c',
@@ -24,7 +24,10 @@ setup(name='pycortex',
             ], libraries=['m'], include_dirs=
             ['OpenCTM-1.0.3/lib/', 
              'OpenCTM-1.0.3/lib/liblzma/'
-            ], define_macros=[('LZMA_PREFIX_CTM', None)]
+            ], define_macros=[
+                  ('LZMA_PREFIX_CTM', None),
+                  ('OPENCTM_BUILD', None),
+            ]
         )
       ],
       package_data={'cortex.webgl':
@@ -38,5 +41,5 @@ setup(name='pycortex',
              'resources/colormaps/*.png',
              'resources/images/*',
             ]},
-      requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>2.1)', 'shapely'],
+      requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>2.1)', 'shapely', 'html5lib'],
 )

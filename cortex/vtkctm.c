@@ -301,13 +301,16 @@ MinMax* saveCTM(Subject* subj, char* leftname, char* rightname, CTMenum compmeth
         fidmm->max[1] = fidmm->max[1] - fidmm->min[1];
         fidmm->max[2] = fidmm->max[2] - fidmm->min[2];
         ctmDefineMesh(ctx[i], mesh->pts, mesh->npts, mesh->polys, mesh->npolys, NULL);
+        err = ctmGetError(ctx[i]);
+        if (err != CTM_NONE)
+            printf("Fiducial CTM error: %s, %d\n", ctmErrorString(err), err);
 
         idx = ctmAddUVMap(ctx[i], hemis[i]->flat->pts, "uv", NULL);
         if (idx == CTM_NONE)
-            printf("CTM error!\n");
+            printf("Flat CTM error!\n");
         err = ctmGetError(ctx[i]);
         if (err != CTM_NONE)
-            printf("CTM error: %s, %d\n", ctmErrorString(err), err);
+            printf("Flat CTM error: %s, %d\n", ctmErrorString(err), err);
 
         for (j = 0; j < hemis[i]->nbetween; j++) {
             mesh = hemis[i]->between[j];

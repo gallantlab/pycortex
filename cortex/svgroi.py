@@ -287,7 +287,7 @@ class ROIpack(traits.HasTraits):
             x = float(text.get('x'))
             y = float(text.get('y'))
             text.attrib['style'] = txtstyle
-            text.attrib['data-ptidx'] = str(self.kdt.query((x / w, y / h))[1])
+            text.attrib['data-ptidx'] = str(self.kdt.query((x / w, 1-(y / h)))[1])
             pts, cand = [], []
             for p, c in zip(labelpos, candidates):
                 if c[0].name == text.text:
