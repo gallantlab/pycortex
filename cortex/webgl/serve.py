@@ -217,6 +217,7 @@ class ClientSocket(websocket.WebSocketHandler):
             self.parent._response.send(message)
 
 class WebApp(mp.Process):
+    disconnect_on_close = True
     def __init__(self, handlers, port):
         super(WebApp, self).__init__()
         self.handlers = handlers + [

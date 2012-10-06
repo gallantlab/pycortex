@@ -253,7 +253,6 @@ MRIview.prototype = {
         }
     },
     draw: function () {
-        this.controls.update(this.flatmix);
         if (this.state == "play") {
             var sec = ((new Date()) - this._startplay) / 1000;
             if (sec > this.active[0].textures.length) {
@@ -262,7 +261,16 @@ MRIview.prototype = {
             }
             this.setFrame(sec);
             requestAnimationFrame(this.draw.bind(this));
+        } else if (this.state == "animate") {
+            var sec = ((new Date()) - this._startplay) / 1000;
+            if (this._animate(sec))
+                requestAnimationFrame(this.draw.bind(this));
+            else {
+                this.state = "pause";
+                delete this._anim;
+            }
         }
+        this.controls.update(this.flatmix);
         this.renderer.render(this.scene, this.camera);
         this._scheduled = false;
         this.dispatchEvent({type:"draw"});
@@ -350,20 +358,88 @@ MRIview.prototype = {
         this.dispatchEvent({ type:"resize", width:w, height:h});
         this.schedule();
     },
+    getState: function(state) {
+        switch (state) {
+            case 'mix':
+                return $("#mix").slider("value");
+            case 'pivot':
+                return $("#pivot").slider("value");
+            case 'frame':
+                return this.frame;
+            case 'azimuth':
+                return this.controls.azimuth;
+            case 'altitude':
+                return this.controls.altitude;
+            case 'radius':
+                return this.controls.radius;
+        };
+    },
+    setState: function(state, value) {
+        switch (state) {
+            case 'mix':
+                return this.setMix(value);
+            case 'pivot':
+                return this.setPivot(value);
+            case 'frame':
+                return this.setFrame(value);
+            case 'azimuth':
+                return this.controls.setCamera(value);
+            case 'altitude':
+                return this.controls.setCamera(undefined, value);
+            case 'radius':
+                return this.controls.setCamera(undefined, undefined, value);
+        };
+    },
+    animate: function(animation, post) {
+        var state = {};
+        var anim = [];
+        for (var i = 0, il = animation.length; i < il; i++) {
+            var key = {};
+            var f = animation[i];
+
+            if (state[f.state] === undefined)
+                state[f.state] = {idx:0, val:this.getState(f.state)};
+            key.start = {idx:state[f.state].idx, state:f.state, value:state[f.state].val}
+            key.end = {idx:f.idx, state:f.state, value:f.value};
+            state[f.state].idx = f.idx;
+            state[f.state].val = f.value;
+            if (key.start.value != key.end.value)
+                anim.push(key);
+        }
+        this._anim = anim;
+        this._startplay = new Date();
+        this.schedule();
+        this.state = "animate";
+    },
+    _animate: function(sec) {
+        var state = false;
+        for (var i = 0, il = this._anim.length; i < il; i++) {
+            var f = this._anim[i];
+            if (f.start.idx <= sec && sec < f.end.idx) {
+                var idx = (sec - f.start.idx) / (f.end.idx - f.start.idx);
+                var val = f.start.value * (1-idx) + f.end.value * idx;
+                this.setState(f.start.state, val);
+                state = true;
+            }
+        }
+        return state;
+    },
+    saveIMG: function(post) {
+        this.draw();
+        var png = $("#brain")[0].toDataURL();
+        if (typeof(post) == "function")
+            post(png);
+        else
+            window.location.href = png.replace("image/png", "application/octet-stream");
+    },
     screenshot: function(width, height, pre, post) {
         $("#main").css("opacity", 0);
         setTimeout(function() {
             if (typeof(pre) == "function")
                 pre();
             this.resize(width, height);
-            this.draw();
-            var png = $("#brain")[0].toDataURL();
+            this.saveShot(post);
             this.resize();
-            
-            if (typeof(post) == "function")
-                post(png);
-            else
-                window.location.href = png.replace("image/png", "application/octet-stream");
             $("#main").css("opacity", 1);
         }.bind(this), 500);
     },
@@ -501,7 +577,7 @@ MRIview.prototype = {
                 $("#datasets li").each(function() {
                     if ($(this).text() == names[1])
                         $(this).addClass("ui-selected");
-                })
+                });
             } else {
                 this.shader.uniforms.data.texture[1] = this.blanktex;
                 this.shader.uniforms.data.texture[3] = this.blanktex;

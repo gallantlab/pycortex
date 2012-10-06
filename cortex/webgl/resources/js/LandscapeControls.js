@@ -51,8 +51,7 @@ THREE.LandscapeControls = function ( camera ) {
                 statefunc[_state](mouseChange);
         }
 
-        this._limitview(flatmix);
-	this.flatmix = flatmix;
+        this.flatmix = flatmix;
         this.setCamera();
 
         _start = _end;
@@ -139,12 +138,13 @@ THREE.LandscapeControls = function ( camera ) {
     window.addEventListener( 'keyup', keyup.bind(this), false );
 
     this.resize($("#brain").width(), $("#brain").height() );
-    this._limitview({flat:0});
+    this.flatmix = 0;
     this.setCamera();
 };
 
 THREE.LandscapeControls.prototype = {
-    _limitview: function( flatmix ) {
+    _limitview: function( ) {
+        var flatmix = this.flatmix;
         var azlim = flatmix * 180;
         var altlim = flatmix * 90;
         
@@ -190,11 +190,13 @@ THREE.LandscapeControls.prototype = {
 
     setCamera: function(az, alt, rad) {
         if (az !== undefined)
-            this.azimuth = az;
+            this.azimuth = ((az % 360)+360)%360;
         if (alt !== undefined)
             this.altitude = alt;
         if (rad !== undefined)
             this.radius = rad;
+
+        this._limitview();
 
         var altrad = this.altitude*Math.PI / 180;
         var azirad = (this.azimuth+90)*Math.PI / 180;
@@ -225,11 +227,11 @@ THREE.LandscapeControls.prototype = {
 
         this.altitude -= this.rotateSpeed*mouseChange.y;
 
-	// Add panning depending on flatmix
-	var panMouseChange = new Object;
-	panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
-	panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
-	this.pan(panMouseChange);
+    // Add panning depending on flatmix
+    var panMouseChange = new Object;
+    panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
+    panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
+    this.pan(panMouseChange);
     }, 
 
     pan: function( mouseChange ) {

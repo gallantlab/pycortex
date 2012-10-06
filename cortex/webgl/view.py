@@ -142,7 +142,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     mask = utils.get_cortical_mask(subject, xfmname)
     jsondat, bindat = _make_bindat(_normalize_data(data, mask), fmt='data/%s/')
 
-    savesvg = mp.Array('c', 8192)
+    saveimg = mp.Array('c', 8192)
     queue = mp.Queue()
     
     class CTMHandler(web.RequestHandler):
@@ -191,7 +191,12 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
 
         def saveflat(self, filename, height=1024):
             Proxy = serve.JSProxy(self.send, "window.viewer.saveflat")
-            savesvg.value = filename
+            saveimg.value = filename
+            return Proxy(height, "mixer.html")
+
+        def saveIMG(self, filename, height=1024):
+            Proxy = serve.JSProxy(self.send, "window.viewer.saveIMG")
+            saveimg.value = filename
             return Proxy(height, "mixer.html")
 
     class WebApp(serve.WebApp):
