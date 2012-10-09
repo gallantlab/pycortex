@@ -100,6 +100,7 @@ class CTMfile(object):
         self.files = surfs.getFiles(subject)
         self.mask = get_cortical_mask(self.name, self.xfmname)
         self.coords = surfs.getCoords(self.name, self.xfmname)
+        self.curvs = np.load(surfs.getAnat(self.name, type='curvature'))
 
     def __enter__(self):
         self.subj = lib.newSubject(self.name)
@@ -147,8 +148,7 @@ class CTMfile(object):
 
     def addCurv(self, **kwargs):
         cont = self.subj.contents
-        curvs = get_curvature(self.name, **kwargs)
-        for h, hemi, curv in zip(['lh', 'rh'], [cont.left, cont.right], curvs):
+        for h, hemi, curv in zip(['lh', 'rh'], [cont.left, cont.right], [self.curvs['left'], self.curvs['right']]):
             lib.hemiAddAux(ctypes.byref(hemi), curv.astype(np.float32), 1)
 
     def save(self, filename, compmeth='mg2', complevel=9):

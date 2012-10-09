@@ -21,27 +21,21 @@ if os.path.exists(os.path.join(cwd, "defaults.json")):
     options = json.load(open(os.path.join(cwd, "defaults.json")))
     filestore = options['file_store']
 
+class AnatDB(object):
+    def __init__(self, subj):
+        self.subj = subj
+
+
 class SubjectDB(object):
     def __init__(self, subj):
         self.transforms = XfmDB(subj)
         self.surfaces = SurfaceDB(subj)
-        self.anatfile = None
-        anatname = "{subj}_anatomical_both.*".format(subj=subj)
-        anatname = glob.glob(os.path.join(filestore, "surfaces", anatname))
-        if len(anatname) > 0:
-            self.anatfile = anatname[0]
     
     def __dir__(self):
         names = ["transforms", "surfaces"]
         if self.anatfile is not None:
             names.append("anatomical")
         return names
-    
-    def __getattr__(self, attr):
-        if attr == "anatomical" and self.anatfile is not None:
-            import nibabel
-            return nibabel.load(os.path.join(filestore, "surfaces", self.anatfile))
-        raise AttributeError
 
 class SurfaceDB(object):
     def __init__(self, subj):
@@ -156,6 +150,26 @@ class Database(object):
     
     def __dir__(self):
         return ["loadXfm","getXfm", "loadVTK", "getVTK"] + self.subjects.keys()
+
+    def loadAnat(self, subject, anatfile, type='raw', process=True):
+        fname = os.path.join(filestore, "anatomicals", "{subj}_{type}.nii.gz").format(subj=subject, type=type)
+        import nibabel
+        data = nibabel.load(anatfile)
+        nibabel.save(data, fname)
+        if type == "raw" and process:
+            import anat
+            anat.whitematter(subject)
+
+    def getAnat(self, subject, type='raw', recache=False, **kwargs):
+        assert type in ('raw', 'brainmask', 'whitematter', 'curvature')
+        anatform = self.getFiles(subject)['anats']
+        assert os.path.exists(anatform.format(type='raw')), "No anatomicals associated with this subject!"
+        if not os.path.exists(anatform.format(type=type)) or recache:
+            print "%s anatomical not found, generating..."%type
+            import anat
+            getattr(anat, type)(subject, **kwargs)
+
+        return anatform.format(type=type)
     
     def loadXfm(self, subject, name, xfm, xfmtype="magnet", epifile=None):
         """
@@ -181,26 +195,23 @@ class Database(object):
             jsdict = json.load(open(fname))
         else:
             assert epifile is not None, "Please specify a reference epi"
-            fname, ext = os.path.splitext(epifile)
-            fname, niiext = os.path.splitext(fname)
-            if len(niiext) > 0:
-                ext = "%s.%s"%(niiext, ext)
-            filename = "{subj}_{name}_refepi.{ext}".format(subj=subject, name=name, ext=ext)
-            fpath = os.path.join(filestore, "references", filename)
-            if not os.path.exists(fpath):
-                shutil.copy2(epifile, fpath)
+            import nibabel
+            outname = "{subj}_{name}_refepi.nii.gz".format(subj=subject, name=name)
+            fpath = os.path.join(filestore, "references", outname)
+            with nibabel.load(epifile) as nib:
+                nibabel.save(nib, fpath)
 
-            jsdict = dict(epifile=filename, subject=subject)
+            jsdict = dict(epifile=outname, subject=subject)
 
         import nibabel
-        nib = nibabel.load(os.path.join(filestore, "references", jsdict['epifile']))
-        if xfmtype == "magnet":
-            jsdict['magnet'] = xfm.tolist()
-            aff = np.linalg.inv(nib.get_affine())
-            jsdict['coord'] = np.dot(aff, xfm).tolist()
-        elif xfmtype == "coord":
-            jsdict['coord'] = xfm.tolist()
-            jsdict['magnet'] = np.dot(nib.get_affine(), xfm).tolist()
+        with nibabel.load(os.path.join(filestore, "references", jsdict['epifile'])) as nib:
+            if xfmtype == "magnet":
+                jsdict['magnet'] = xfm.tolist()
+                aff = np.linalg.inv(nib.get_affine())
+                jsdict['coord'] = np.dot(aff, xfm).tolist()
+            elif xfmtype == "coord":
+                jsdict['coord'] = xfm.tolist()
+                jsdict['magnet'] = np.dot(nib.get_affine(), xfm).tolist()
         
         json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
     
@@ -312,6 +323,7 @@ class Database(object):
         """
         vtkparse = re.compile(r'(.*)/(\w+)_(\w+)_(\w+).vtk')
         vtks = os.path.join(filestore, "surfaces", "{subj}_*.vtk").format(subj=subject)
+        anatfiles = '%s_{type}.nii.gz'%subject
         ctmcache = "%s_{xfmname}_[{types}]_{method}_{level}.json"%subject
         flatcache = "%s_{xfmname}_{height}_{date}.pkl"%subject
 
@@ -320,9 +332,11 @@ class Database(object):
             path, subj, stype, hemi = vtkparse.match(vtk).groups()
             if stype not in surfs:
                 surfs[stype] = dict()
-            surfs[stype][hemi] = vtk
+            surfs[stype][hemi] = os.path.abspath(vtk)
 
-        filenames = dict(surfs=surfs, 
+        filenames = dict(
+            surfs=surfs,
+            anats=os.path.join(filestore, "anatomicals", anatfiles), 
             ctmcache=os.path.join(filestore, "ctmcache", ctmcache),
             flatcache=os.path.join(filestore, "flatcache", flatcache),
             rois=os.path.join(filestore, "overlays", "{subj}_rois.svg").format(subj=subject),
@@ -331,7 +345,36 @@ class Database(object):
         return filenames
 
     def autoAlign(self, subject, name, epifile):
-        pass
+        '''
+        Attempts to create an automatic alignment
+        '''
+        import subprocess as sp
+        import tempfile
+        import shutil
+        import shlex
 
+        try:
+            cache = tempfile.mkdtemp()
+            epifile = os.path.abspath(epifile)
+            raw = self.getAnat(subject, type='raw')
+            bet = self.getAnat(subject, type='brainmask')
+            wmseg = self.getAnat(subject, type='whitematter')
+
+            print 'FLIRT pre-alignment'
+            cmd = 'fsl5.0-flirt -ref {bet} -in {epi} -dof 6 -omat {cache}/init.mat'.format(cache=cache, epi=epifile, bet=bet)
+            assert sp.call(cmd, shell=True) == 0, 'Error calling initial FLIRT'
+
+            print 'Running BBR'
+            cmd = 'fsl5.0-flirt -ref {raw} -in {epi} -dof 12 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
+            cmd = cmd.format(cache=cache, raw=raw, wmseg=wmseg, epi=epifile)
+            assert sp.call(cmd, shell=True) == 0, 'Error calling BBR flirt'
+
+            with open(os.path.join(cache, "out.mat")) as xfmfile:
+                xfm = xfmfile.read()
+
+        finally:
+            shutil.rmtree(cache)
+
+        return np.array(map(float, xfm.split())).reshape(4, 4)
 
 surfs = Database()

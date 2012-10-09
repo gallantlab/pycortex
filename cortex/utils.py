@@ -93,38 +93,6 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
 
     return output
 
-def epi_to_anat(data, subject=None, xfmname=None, filename=None):
-    '''/usr/share/fsl/4.1/bin/flirt -in /tmp/epidat.nii -applyxfm -init /tmp/coordmat.mat -out /tmp/realign.nii.gz -paddingsize 0.0 -interp trilinear -ref /tmp/anat.nii'''
-    import nifti
-    import shlex
-    import tempfile
-    import subprocess as sp
-    epifile = tempfile.mktemp(suffix=".nii")
-    anatfile = tempfile.mktemp(suffix=".nii")
-    xfmfile = tempfile.mktemp()
-    if filename is None:
-        filename = tempfile.mktemp(suffix=".nii")
-
-    #load up relevant data, get transforms
-    anatdat = surfs.subjects[subject].anatomical
-    anataff = anatdat.get_affine()
-    epixfm = np.linalg.inv(surfs.getXfm(subject, xfmname)[0])
-    xfm = np.dot(np.abs(anataff), epixfm)
-    np.savetxt(xfmfile, xfm, "%f")
-
-    #save the epi data and the anatomical (probably in hdr/img) into nifti
-    nifti.NiftiImage(data).save(epifile)
-    nifti.NiftiImage(np.array(anatdat.get_data()).T).save(anatfile)
-
-    cmd = "fsl4.1-flirt -in {epi} -applyxfm -init {xfm} -out {out} -paddingsize 0.0 -interp trilinear -ref {anat}"
-    sp.Popen(shlex.split(cmd.format(epi=epifile, xfm=xfmfile, anat=anatfile, out=filename))).wait()
-    output = nifti.NiftiImage(filename).data.copy()
-    print "Saving to %s"%filename
-    os.unlink(epifile)
-    os.unlink(anatfile)
-    os.unlink(xfmfile)
-    return output
-
 def get_roipack(subject, remove_medial=False):
     import svgroi
     flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
@@ -353,7 +321,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         pass
     return mask,roiIdx
 
-def get_curvature(subject, smooth=8, neighborhood=2):
+def get_curvature(subject, smooth=8, neighborhood=5):
     from tvtk.api import tvtk
     curvs = []
     for hemi in surfs.getVTK(subject, "fiducial"):
