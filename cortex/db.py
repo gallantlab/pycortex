@@ -330,5 +330,8 @@ class Database(object):
 
         return filenames
 
+    def autoAlign(self, subject, name, epifile):
+        pass
+
 
 surfs = Database()

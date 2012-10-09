@@ -43,8 +43,7 @@ def _make_flat_cache(subject, xfmname, height=1024):
 
     return coords[idx], (width, height), mask
 
-
-def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
+def get_cache(subject, xfmname, recache=False, height=1024):
     cacheform = db.surfs.getFiles(subject)['flatcache']
     cachefile = cacheform.format(xfmname=xfmname, height=height, date="*")
     #pull a list of candidate cache files
@@ -63,6 +62,10 @@ def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
     else:
         coords, size, mask = cPickle.load(open(files[0]))
 
+    return coords, size, mask
+
+def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
+    coords, size, mask = get_cache(subject, xfmname, recache=recache, height=height)
     idx = np.ravel_multi_index(coords.T, data.T.shape, mode='clip')
     img = np.nan*np.ones(size, dtype=data.dtype)
     img[mask] = data.T.ravel()[idx]
@@ -91,6 +94,9 @@ def make_png(data, subject, xfmname, name=None, with_rois=True, recache=False, h
         return fp
 
     imsave(name, im, **kwargs)
+
+def make_movie(name, data, subject, xfmname, with_rois=True, recache=False, height=1024, **kwargs):
+    pass
 
 
 def show(data, subject, xfmname, recache=False, height=1024, with_rois=True, **kwargs):
