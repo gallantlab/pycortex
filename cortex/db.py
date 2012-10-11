@@ -163,13 +163,17 @@ class Database(object):
     def getAnat(self, subject, type='raw', recache=False, **kwargs):
         assert type in ('raw', 'brainmask', 'whitematter', 'curvature')
         anatform = self.getFiles(subject)['anats']
-        assert os.path.exists(anatform.format(type='raw')), "No anatomicals associated with this subject!"
-        if not os.path.exists(anatform.format(type=type)) or recache:
+        anatfile = anatform.format(type=type)
+        if type == "curvature":
+            path, ext = os.path.splitext(anatform.format(type=type))
+            anatfile = "%s.npz"%path
+            
+        if not os.path.exists(anatfile) or recache:
             print "%s anatomical not found, generating..."%type
             import anat
             getattr(anat, type)(subject, **kwargs)
-
-        return anatform.format(type=type)
+            
+        return anatfile
     
     def loadXfm(self, subject, name, xfm, xfmtype="magnet", epifile=None):
         """

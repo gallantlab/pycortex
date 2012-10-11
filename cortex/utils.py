@@ -323,7 +323,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         pass
     return mask,roiIdx
 
-def get_curvature(subject, smooth=8, neighborhood=5):
+def get_curvature(subject, smooth=8, neighborhood=3):
     from tvtk.api import tvtk
     curvs = []
     for hemi in surfs.getVTK(subject, "fiducial"):

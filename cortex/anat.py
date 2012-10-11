@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import subprocess as sp
 
+import numpy as np
 import nibabel
 
 import db

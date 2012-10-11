@@ -390,21 +390,21 @@ MRIview.prototype = {
                 return this.controls.setCamera(undefined, undefined, value);
         };
     },
-    animate: function(animation, post) {
+    animate: function(animation) {
         var state = {};
         var anim = [];
+        animation.sort(function(a, b) { return a.idx - b.idx});
         for (var i = 0, il = animation.length; i < il; i++) {
-            var key = {};
             var f = animation[i];
 
             if (state[f.state] === undefined)
                 state[f.state] = {idx:0, val:this.getState(f.state)};
-            key.start = {idx:state[f.state].idx, state:f.state, value:state[f.state].val}
-            key.end = {idx:f.idx, state:f.state, value:f.value};
+            var start = {idx:state[f.state].idx, state:f.state, value:state[f.state].val}
+            var end = {idx:f.idx, state:f.state, value:f.value};
             state[f.state].idx = f.idx;
             state[f.state].val = f.value;
-            if (key.start.value != key.end.value)
-                anim.push(key);
+            if (start.value != end.value)
+                anim.push({start:start, end:end});
         }
         this._anim = anim;
         this._startplay = new Date();
@@ -425,10 +425,9 @@ MRIview.prototype = {
         return state;
     },
     saveIMG: function(post) {
-        this.draw();
         var png = $("#brain")[0].toDataURL();
-        if (typeof(post) == "function")
-            post(png);
+        if (post !== undefined)
+            $.post(post, {png:png});
         else
             window.location.href = png.replace("image/png", "application/octet-stream");
     },

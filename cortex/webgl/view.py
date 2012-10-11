@@ -4,6 +4,7 @@ import glob
 import json
 import shutil
 import random
+import binascii
 import mimetypes
 import webbrowser
 import multiprocessing as mp
@@ -142,6 +143,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     mask = utils.get_cortical_mask(subject, xfmname)
     jsondat, bindat = _make_bindat(_normalize_data(data, mask), fmt='data/%s/')
 
+    saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
     queue = mp.Queue()
     
@@ -178,9 +180,19 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
             self.write(html.generate(data=jsondat, colormaps=colormaps, default_cmap=cmap, python_interface=True))
 
         def post(self):
-            print "saving file to %s"%savesvg.value
-            with open(savesvg.value, "w") as svgfile:
-                svgfile.write(self.get_argument("svg"))
+            print "saving file to %s"%saveimg.value
+            data = self.get_argument("svg", default=None)
+            png = self.get_argument("png", default=None)
+            with open(saveimg.value, "wb") as svgfile:
+                if png is not None:
+                    data = png[22:].strip()
+                    try:
+                        data = binascii.a2b_base64(data)
+                    except:
+                        print "Error writing image!"
+                        data = png
+                svgfile.write(data)
+            saveevt.set()
 
     class JSMixer(serve.JSProxy):
         def addData(self, **kwargs):
@@ -194,10 +206,38 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
             saveimg.value = filename
             return Proxy(height, "mixer.html")
 
-        def saveIMG(self, filename, height=1024):
+        def saveIMG(self, filename):
             Proxy = serve.JSProxy(self.send, "window.viewer.saveIMG")
             saveimg.value = filename
-            return Proxy(height, "mixer.html")
+            return Proxy("mixer.html")
+
+        def makeMovie(self, animation, filename="brainmovie%07d.png", fps=30, shape=(1920, 1080)):
+            state = dict()
+            anim = []
+            for f in sorted(animation, key=lambda x:x['idx']):
+                if f['idx'] == 0:
+                    state[f['state']] = dict(idx=f['idx'], val=f['value'])
+                else:
+                    if f['state'] not in state:
+                        state[f['state']] = dict(idx=0, val=self.getState(f['state'])[0])
+                    start = dict(idx=state[f['state']]['idx'], state=f['state'], value=state[f['state']]['val'])
+                    end = dict(idx=f['idx'], state=f['state'], value=f['value'])
+                    state[f['state']]['idx'] = f['idx']
+                    state[f['state']]['val'] = f['value']
+                    if start['value'] != end['value']:
+                        anim.append((start, end))
+
+            print anim
+            self.resize(*shape)
+            for i, sec in enumerate(np.arange(0, anim[-1][1]['idx'], 1./fps)):
+                for start, end in anim:
+                    if start['idx'] < sec < end['idx']:
+                        idx = (sec - start['idx']) / (end['idx'] - start['idx'])
+                        val = start['value'] * (1-idx) + end['value'] * idx
+                        self.setState(start['state'], val)
+                saveevt.clear()
+                self.saveIMG(filename%i)
+                saveevt.wait()
 
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
