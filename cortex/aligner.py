@@ -195,7 +195,7 @@ class Align(HasTraits):
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
     outlines = List
-    ptcolor = Color(value=options['ptcolor'] if 'ptcolor' in options else 'navy')
+    ptcolor = Color(value=options['ptcolor'] if 'ptcolor' in options else 'blue')
     epi_filter = Enum(None, "median", "gradient")
     filter_strength = Range(1, 20, value=3)
 
@@ -245,6 +245,7 @@ class Align(HasTraits):
         self.pts, self.polys = pts, polys
         self._undolist = []
         self._redo = None
+        self.ipw_space = dict()
         super(Align, self).__init__(**traits)
         
         # Force the creation of the image_plane_widgets:
@@ -275,6 +276,7 @@ class Align(HasTraits):
 
         self.center = self.spacing*nii.get_shape()[:3] / 2 + self.origin
 
+        self.padshape = 2**(np.ceil(np.log2(np.array(epi.shape))))
         self.epi_orig = epi - epi.min()
         self.epi_orig /= self.epi_orig.max()
         self.epi_orig *= 2
@@ -285,7 +287,7 @@ class Align(HasTraits):
     # Default values
     #---------------------------------------------------------------------------
     def _position_default(self):
-        return np.abs(self.origin)
+        return np.abs(self.origin) + ((np.array(self.epi.shape)+1)%2) * np.abs(self.spacing) / 2
 
     def _epi_src_default(self):
         sf = mlab.pipeline.scalar_field(self.epi,
@@ -328,6 +330,23 @@ class Align(HasTraits):
         ipw.ipw.texture_interpolate = 0
         ipw.ipw.reslice_interpolate = 'nearest_neighbour'
         ipw.ipw.color_map.output_format = 'rgb'
+
+        anum = self._axis_names[axis_name]
+        space = list(np.abs(self.spacing))
+        shape = list(np.array(self.epi.shape) / self.padshape)
+        space.pop(anum)
+        shape.pop(anum)
+        if axis_name is 'y':
+            space = space[::-1]
+            shape = shape[::-1]
+        space.append(1)
+        shape = [(0,0), (shape[0],0), (0, shape[1]), (shape[0],shape[1])]
+
+        self.ipw_space[axis_name] = (space, shape)
+        ipw.ipw.reslice.output_spacing = space
+        ipw.ipw.reslice.output_origin = [space[0] / 2., space[1] / 2., 0]
+        ipw.ipw.poly_data_algorithm.output.point_data.t_coords = shape
+
         slab = mlab.pipeline.user_defined(self.surf, filter='GeometryFilter', 
                             figure=self.scene3d.mayavi_scene)
         slab.filter.extent_clipping = True
@@ -359,7 +378,7 @@ class Align(HasTraits):
         scene = getattr(self, 'scene_%s' % axis_name)
         scene.scene.parallel_projection = True
         
-        side_src = ipw_3d.ipw._get_reslice_output()
+        side_src = ipw_3d.ipw.reslice_output
         ipw = mlab.pipeline.image_plane_widget( side_src,
                             plane_orientation='z_axes',
                             figure=scene.mayavi_scene,
@@ -400,7 +419,8 @@ class Align(HasTraits):
         this_axis_number = self._axis_names[axis_name]
         def move_view(obj, evt):
             # Disable rendering on all scene
-            position = list(obj.GetCurrentCursorPosition()*spacing)[:2]
+            cpos = obj.GetCurrentCursorPosition()
+            position = list(cpos*spacing)[:2]
             position.insert(this_axis_number, self.position[this_axis_number])
             # We need to special case y, as the view has been rotated.
             if axis_name is 'y':
@@ -422,8 +442,13 @@ class Align(HasTraits):
         mlab.text(0.01, 0.8, axis_name, width=0.08)
 
         # Choose a view that makes sense
-        center = side_src.whole_extent[1::2] * spacing / 2.
-        width = (side_src.whole_extent[1::2] * spacing)[:2]
+        shape = list(self.epi.shape)
+        shape.pop(this_axis_number)
+        if axis_name is 'y':
+            shape = shape[::-1]
+        shape.append(0)
+        center = shape * spacing / 2. + ((np.array(shape)+1)%2) * spacing / 2.
+        width = (shape * spacing)[:2]
         width = np.min(width) * 0.5
 
         def handlemove(handle, pos, angle, radius):
@@ -524,7 +549,12 @@ class Align(HasTraits):
 
         for axis_name, axis_number in self._axis_names.iteritems():
             ipw3d = getattr(self, 'ipw_3d_%s' % axis_name)
-            ipw3d.ipw.slice_position = self.position[axis_number]+origin[axis_number] + offset[axis_number]
+            spos = self.position[axis_number] + origin[axis_number]
+            ipw3d.ipw.slice_position = spos
+            space, shape = self.ipw_space[axis_name]
+            ipw3d.ipw.reslice.output_spacing = space
+            ipw3d.ipw.reslice.output_origin = [space[0] / 2., space[1] / 2., 0]
+            ipw3d.ipw.poly_data_algorithm.output.point_data.t_coords = shape
             
             p = list(self.position + offset)
             p.pop(axis_number)

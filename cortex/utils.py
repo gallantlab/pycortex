@@ -17,10 +17,12 @@ def unmask(mask, data):
     data : array_like
         Actual MRI data to unmask
     '''
-    assert isinstance(mask, np.ndarray)
-
-    output = np.zeros(mask.shape, dtype=data.dtype)
-    output[mask > 0] = data
+    if data.ndims > 1:
+        output = np.zeros((len(data),)+mask.shape, dtype=data.dtype)
+        output[:, mask > 0] = data
+    else:
+        output = np.zeros(mask.shape, dtype=data.dtype)
+        output[mask > 0] = data
     return output
 
 def detrend_volume_median(data, kernel=15):

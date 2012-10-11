@@ -375,6 +375,13 @@ class Database(object):
         finally:
             shutil.rmtree(cache)
 
-        return np.array(map(float, xfm.split())).reshape(4, 4)
+        fsl = np.array(map(float, xfm.split())).reshape(4, 4)
+        anatspace = anat.get_affine().copy()
+        anatspace[:3, -1] = abs(anatspace[:3, -1])
+        epispace = epi.get_header().get_base_affine()
+        epispace[:3, -1] = 0
+        coord = np.dot(np.linalg.inv(abs(epispace)), np.dot(np.linalg.inv(fsl), anatspace))
+        magnet = np.dot(epi.get_affine(), coord)
+
 
 surfs = Database()
