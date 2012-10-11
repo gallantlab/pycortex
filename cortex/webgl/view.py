@@ -216,6 +216,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
             anim = []
             for f in sorted(animation, key=lambda x:x['idx']):
                 if f['idx'] == 0:
+                    self.setState(f['state'], f['value'])
                     state[f['state']] = dict(idx=f['idx'], val=f['value'])
                 else:
                     if f['state'] not in state:
@@ -233,8 +234,11 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
                 for start, end in anim:
                     if start['idx'] < sec < end['idx']:
                         idx = (sec - start['idx']) / (end['idx'] - start['idx'])
-                        val = start['value'] * (1-idx) + end['value'] * idx
-                        self.setState(start['state'], val)
+                        val = np.array(start['value']) * (1-idx) + np.array(end['value']) * idx
+                        if isinstance(val, np.ndarray):
+                            self.setState(start['state'], list(val))
+                        else:
+                            self.setState(start['state'], val)
                 saveevt.clear()
                 self.saveIMG(filename%i)
                 saveevt.wait()

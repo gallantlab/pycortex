@@ -357,6 +357,8 @@ class Database(object):
         import shutil
         import shlex
 
+        import nibabel
+
         try:
             cache = tempfile.mkdtemp()
             epifile = os.path.abspath(epifile)
@@ -376,16 +378,21 @@ class Database(object):
             with open(os.path.join(cache, "out.mat")) as xfmfile:
                 xfm = xfmfile.read()
 
+            fsl = np.array(map(float, xfm.split())).reshape(4, 4)
+            anatspace = nibabel.load(raw).get_affine().copy()
+            anatspace[:3, -1] = abs(anatspace[:3, -1])
+
+            epi = nibabel.load(epifile)
+            epispace = epi.get_header().get_base_affine()
+            epispace[:3, -1] = 0
+
+            coord = np.dot(np.linalg.inv(abs(epispace)), np.dot(np.linalg.inv(fsl), anatspace))
+            magnet = np.dot(epi.get_affine(), coord)
+            
+            self.loadXfm(subject, name, magnet, xfmtype="magnet", epifile=epifile)
+            self.loadXfm(subject, name, coord, xfmtype="coord")
+
         finally:
             shutil.rmtree(cache)
-
-        fsl = np.array(map(float, xfm.split())).reshape(4, 4)
-        anatspace = anat.get_affine().copy()
-        anatspace[:3, -1] = abs(anatspace[:3, -1])
-        epispace = epi.get_header().get_base_affine()
-        epispace[:3, -1] = 0
-        coord = np.dot(np.linalg.inv(abs(epispace)), np.dot(np.linalg.inv(fsl), anatspace))
-        magnet = np.dot(epi.get_affine(), coord)
-
 
 surfs = Database()

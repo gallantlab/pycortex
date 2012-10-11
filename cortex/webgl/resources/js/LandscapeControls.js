@@ -189,12 +189,19 @@ THREE.LandscapeControls.prototype = {
     },
 
     setCamera: function(az, alt, rad) {
-        if (az !== undefined)
+        var changed = false;
+        if (az !== undefined) {
             this.azimuth = ((az % 360)+360)%360;
-        if (alt !== undefined)
+            changed = true;
+        }
+        if (alt !== undefined) {
             this.altitude = alt;
-        if (rad !== undefined)
+            changed = true;
+        }
+        if (rad !== undefined) {
             this.radius = rad;
+            changed = true;
+        }
 
         this._limitview();
 
@@ -209,6 +216,8 @@ THREE.LandscapeControls.prototype = {
 
         this.camera.position.add( this._target, eye );
         this.camera.lookAt( this._target );
+        if (changed)
+            this.dispatchEvent( {type:'change'} );
     },
 
     rotate: function ( mouseChange ) {

@@ -138,6 +138,7 @@ FacePick.prototype = {
         if (faceidx == 0) {
             for (var i = 0; i < this.axes.length; i++)
                 this.axes[i].obj.parent.remove(this.axes[i].obj);
+            this.axes = [];
             return;
         }
 
