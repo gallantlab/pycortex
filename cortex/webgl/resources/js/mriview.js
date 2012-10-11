@@ -372,6 +372,9 @@ MRIview.prototype = {
                 return this.controls.altitude;
             case 'radius':
                 return this.controls.radius;
+            case 'target':
+                var t = this.controls.target;
+                return [t.x, t.y, t.z];
         };
     },
     setState: function(state, value) {
@@ -388,6 +391,8 @@ MRIview.prototype = {
                 return this.controls.setCamera(undefined, value);
             case 'radius':
                 return this.controls.setCamera(undefined, undefined, value);
+            case 'target':
+                return this.controls.target.set(value[0], value[1], value[2]);
         };
     },
     animate: function(animation) {
@@ -396,16 +401,27 @@ MRIview.prototype = {
         animation.sort(function(a, b) { return a.idx - b.idx});
         for (var i = 0, il = animation.length; i < il; i++) {
             var f = animation[i];
-
-            if (state[f.state] === undefined)
-                state[f.state] = {idx:0, val:this.getState(f.state)};
-            var start = {idx:state[f.state].idx, state:f.state, value:state[f.state].val}
-            var end = {idx:f.idx, state:f.state, value:f.value};
-            state[f.state].idx = f.idx;
-            state[f.state].val = f.value;
-            if (start.value != end.value)
-                anim.push({start:start, end:end});
+            if (f.idx == 0) {
+                this.setState(f.state, f.value);
+                state[f.state] = {idx:0, val:f.value};
+            } else {
+                if (state[f.state] === undefined)
+                    state[f.state] = {idx:0, val:this.getState(f.state)};
+                var start = {idx:state[f.state].idx, state:f.state, value:state[f.state].val}
+                var end = {idx:f.idx, state:f.state, value:f.value};
+                state[f.state].idx = f.idx;
+                state[f.state].val = f.value;
+                if (start.value instanceof Array) {
+                    var test = true;
+                    for (var j = 0; test && j < start.value.length; j++)
+                        test = test && (start.value[j] == end.value[j]);
+                    if (!test)
+                        anim.push({start:start, end:end});
+                } else if (start.value != end.value)
+                    anim.push({start:start, end:end});
+            }
         }
+        console.log(anim);
         this._anim = anim;
         this._startplay = new Date();
         this.schedule();
@@ -413,11 +429,20 @@ MRIview.prototype = {
     },
     _animate: function(sec) {
         var state = false;
-        for (var i = 0, il = this._anim.length; i < il; i++) {
-            var f = this._anim[i];
+        var idx, val, f, i, j;
+        for (i = 0, il = this._anim.length; i < il; i++) {
+            f = this._anim[i];
+            //console.log(f.start.state, f.start.value, f.end.value, f.start.idx, sec, f.end.idx);
             if (f.start.idx <= sec && sec < f.end.idx) {
-                var idx = (sec - f.start.idx) / (f.end.idx - f.start.idx);
-                var val = f.start.value * (1-idx) + f.end.value * idx;
+                idx = (sec - f.start.idx) / (f.end.idx - f.start.idx);
+                if (f.start.value instanceof Array) {
+                    val = [];
+                    for (j = 0; j < f.start.value.length; j++) {
+                        val.push(f.start.value[j]*(1-idx) + f.end.value[j]*idx);
+                    }
+                } else {
+                    val = f.start.value * (1-idx) + f.end.value * idx;
+                }
                 this.setState(f.start.state, val);
                 state = true;
             }

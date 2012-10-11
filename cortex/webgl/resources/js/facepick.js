@@ -135,8 +135,11 @@ FacePick.prototype = {
         gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         var faceidx = (pix[0] << 16) + (pix[1] << 8) + pix[2];
-        if (faceidx == 0)
+        if (faceidx == 0) {
+            for (var i = 0; i < this.axes.length; i++)
+                this.axes[i].obj.parent.remove(this.axes[i].obj);
             return;
+        }
 
         //adjust for clicking on black area
         faceidx -= 1;
