@@ -202,20 +202,20 @@ class Database(object):
             import nibabel
             outname = "{subj}_{name}_refepi.nii.gz".format(subj=subject, name=name)
             fpath = os.path.join(filestore, "references", outname)
-            with nibabel.load(epifile) as nib:
-                nibabel.save(nib, fpath)
+            nib = nibabel.load(epifile)
+            nibabel.save(nib, fpath)
 
             jsdict = dict(epifile=outname, subject=subject)
 
         import nibabel
-        with nibabel.load(os.path.join(filestore, "references", jsdict['epifile'])) as nib:
-            if xfmtype == "magnet":
-                jsdict['magnet'] = xfm.tolist()
-                aff = np.linalg.inv(nib.get_affine())
-                jsdict['coord'] = np.dot(aff, xfm).tolist()
-            elif xfmtype == "coord":
-                jsdict['coord'] = xfm.tolist()
-                jsdict['magnet'] = np.dot(nib.get_affine(), xfm).tolist()
+        nib = nibabel.load(os.path.join(filestore, "references", jsdict['epifile']))
+        if xfmtype == "magnet":
+            jsdict['magnet'] = xfm.tolist()
+            aff = np.linalg.inv(nib.get_affine())
+            jsdict['coord'] = np.dot(aff, xfm).tolist()
+        elif xfmtype == "coord":
+            jsdict['coord'] = xfm.tolist()
+            jsdict['magnet'] = np.dot(nib.get_affine(), xfm).tolist()
         
         json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
     
@@ -378,19 +378,20 @@ class Database(object):
             with open(os.path.join(cache, "out.mat")) as xfmfile:
                 xfm = xfmfile.read()
 
-            fsl = np.array(map(float, xfm.split())).reshape(4, 4)
-            anatspace = nibabel.load(raw).get_affine().copy()
-            anatspace[:3, -1] = abs(anatspace[:3, -1])
+            with open("/tmp/fsl_bbr.mat", "w") as fp:
+                fp.write(xfm)
 
-            epi = nibabel.load(epifile)
-            epispace = epi.get_header().get_base_affine()
-            epispace[:3, -1] = 0
+            epi = nibabel.load(epifile).get_header().get_base_affine()
+            M = nibabel.load(raw).get_affine()
+            A = np.abs(np.diag(np.diag(M)))
+            X = np.array(map(float, xfm.split())).reshape(4, 4)
+            S = np.abs(np.diag(np.diag(epi)))
 
-            coord = np.dot(np.linalg.inv(abs(epispace)), np.dot(np.linalg.inv(fsl), anatspace))
-            magnet = np.dot(epi.get_affine(), coord)
-            
-            self.loadXfm(subject, name, magnet, xfmtype="magnet", epifile=epifile)
-            self.loadXfm(subject, name, coord, xfmtype="coord")
+            inv = np.linalg.inv
+            coord = np.dot(np.dot(inv(S), inv(X)), np.dot(A, inv(M)))
+
+            #coord = np.dot(np.linalg.inv(abs(epispace)), np.dot(np.linalg.inv(fsl), anatspace))
+            self.loadXfm(subject, name, coord, xfmtype="coord", epifile=epifile)
 
         finally:
             shutil.rmtree(cache)
