@@ -337,6 +337,12 @@ MRIview.prototype = {
             this.controls.addEventListener("pick", function(event) {
                 this.picker.pick(event.x, event.y, event.keep);
             }.bind(this));
+	    this.controls.addEventListener("dblpick", function(event) {
+                this.picker.dblpick(event.x, event.y, event.keep);
+            }.bind(this));
+            this.controls.addEventListener("undblpick", function(event) {
+                this.picker.undblpick();
+            }.bind(this));
 
             $("#brain").css("opacity", 1);
             $("#ctmload").hide();
