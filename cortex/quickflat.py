@@ -109,7 +109,11 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
     imsave(fp, im, **kwargs)
     fp.seek(0)
     out, err = proc.communicate(fp.read())
-    return out
+    if len(out) > 0:
+        fp = cStringIO.StringIO()
+        fp.write(out)
+        fp.seek(0)
+        return fp
 
 def make_png(data, subject, xfmname, name=None, with_rois=True, recache=False, height=1024, **kwargs):
     import Image
@@ -163,8 +167,14 @@ def make_movie(name, data, subject, xfmname, with_rois=True, tr=2, interp='linea
 def show(data, subject, xfmname, recache=False, height=1024, with_rois=True, **kwargs):
     from matplotlib.pylab import imshow, imread, axis
     im = make(data, subject, xfmname, recache=recache, height=height)
+
     if with_rois:
+        #split the kwargs, since imsave is only a subset of imshow
+        keys = set(('vmin', 'vmax', 'cmap', 'format', 'origin', 'dpi'))
+        kwsave = dict((k, kwargs[k]) for k in keys if k in kwargs)
+        kwargs = dict((k, kwargs[k]) for k in set(kwargs.keys()) - keys)
         im = imread(overlay_rois(im, subject, height=height, **kwargs))
+
     ax = imshow(im, **kwargs)
     ax.axes.set_aspect('equal')
     axis('off')
