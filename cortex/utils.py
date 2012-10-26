@@ -17,7 +17,7 @@ def unmask(mask, data):
     data : array_like
         Actual MRI data to unmask
     '''
-    if data.ndims > 1:
+    if data.ndim > 1:
         output = np.zeros((len(data),)+mask.shape, dtype=data.dtype)
         output[:, mask > 0] = data
     else:
