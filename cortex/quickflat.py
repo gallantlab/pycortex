@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import glob
 import Image
@@ -90,15 +91,25 @@ def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
 
 rois = dict()
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
+    import shlex
+    import subprocess as sp
     from matplotlib.pylab import imsave
+
+    if name is None:
+        name = 'png:-'
+
+    key = (subject, labels)
+    if key not in rois:
+        print "loading %s"%subject
+        rois[key] = utils.get_roipack(subject).get_texture(height, labels=labels)
+    cmd = "composite {rois} - {name}".format(rois=rois[key].name, name=name)
+    proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
+
     fp = cStringIO.StringIO()
     imsave(fp, im, **kwargs)
     fp.seek(0)
-    img = binascii.b2a_base64(fp.read())
-    if subject not in rois:
-        print "loading %s"%subject
-        rois[subject] = utils.get_roipack(subject).get_texture(height)
-    return rois[subject].get_texture(height, background=img, name=name, labels=labels)
+    out, err = proc.communicate(fp.read())
+    return out
 
 def make_png(data, subject, xfmname, name=None, with_rois=True, recache=False, height=1024, **kwargs):
     import Image
@@ -115,7 +126,7 @@ def make_png(data, subject, xfmname, name=None, with_rois=True, recache=False, h
 
     imsave(name, im, **kwargs)
 
-def make_movie(name, data, subject, xfmname, with_rois=True, tr=2, interp='linear', fps=30, vcodec='vorbis', **kwargs):
+def make_movie(name, data, subject, xfmname, with_rois=True, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
     import shlex
     import shutil
     import tempfile
@@ -129,16 +140,23 @@ def make_movie(name, data, subject, xfmname, with_rois=True, tr=2, interp='linea
     ims = make(data, subject, xfmname, **kwargs)
     times = np.arange(0, len(ims)*tr, tr)
     interp = interp1d(times, ims, kind=interp, axis=0, copy=False)
+
+    if vmin is None:
+        vmin = ims.min()
+    if vmax is None:
+        vmax = ims.max()
     
     def overlay(idxts):
         idx, ts = idxts
-        overlay_rois(interp(ts), subject, name=impath%idx)
+        print '\r%d...        '%idx,
+        sys.stdout.flush()
+        overlay_rois(interp(ts), subject, name=impath%idx, vmin=vmin, vmax=vmax)
 
     #pool = mp.Pool()
     frames = np.linspace(0, times[-1], (len(times)-1)*tr*fps+1)
     map(overlay, enumerate(frames))
 
-    cmd = "avconv -i {path} -vcodec {vcodec} -r {fps} {name}".format(path=impath, vcodec=vcodec, fps=fps, name=name)
+    cmd = "avconv -i {path} -vcodec {vcodec} -r {fps} -b {br} {name}".format(path=impath, vcodec=vcodec, fps=fps, br=bitrate, name=name)
     sp.call(shlex.split(cmd))
     shutil.rmtree(path)
 
