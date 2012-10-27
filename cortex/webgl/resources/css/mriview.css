@@ -277,7 +277,14 @@ p#zlocklabel {
 }
 
 /* datasets */
-ul#datasets { width: 200px; list-style: none; margin: 0; padding: 0; }
+ul#datasets { 
+    width: 200px; 
+    list-style: none; 
+    margin: 0; 
+    padding: 0; 
+    overflow:auto;
+    max-height:300px;
+}
 ul#datasets li { 
     background: white; 
     position:relative; 

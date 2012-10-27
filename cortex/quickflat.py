@@ -173,7 +173,7 @@ def show(data, subject, xfmname, recache=False, height=1024, with_rois=True, **k
         keys = set(('vmin', 'vmax', 'cmap', 'format', 'origin', 'dpi'))
         kwsave = dict((k, kwargs[k]) for k in keys if k in kwargs)
         kwargs = dict((k, kwargs[k]) for k in set(kwargs.keys()) - keys)
-        im = imread(overlay_rois(im, subject, height=height, **kwargs))
+        im = imread(overlay_rois(im, subject, height=height, **kwsave))
 
     ax = imshow(im, **kwargs)
     ax.axes.set_aspect('equal')
