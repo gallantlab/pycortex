@@ -38,6 +38,8 @@ THREE.LandscapeControls = function ( camera ) {
         _end = new THREE.Vector3();
 
     var _mousedowntime = 0;
+    var _clicktime = 0; // Time of last click (mouseup event)
+    var _indblpick = 0; // In double-click and hold?
 
     // events
 
@@ -84,6 +86,12 @@ THREE.LandscapeControls = function ( camera ) {
             _state = this.keystate ? this.keystate : event.button;
             _start = _end = this.getMouse(event);
             _mousedowntime = new Date().getTime();
+	    // Run double-click event if time since last click is short enough
+	    if ( _mousedowntime - _clicktime < this.clickTimeout && event.button == 0 ) {
+                var mouse2D = this.getMouse(event).clone();
+                this.dispatchEvent({ type:"dblpick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM });
+                _indblpick = 1;
+            }
         }
     };
 
@@ -105,12 +113,17 @@ THREE.LandscapeControls = function ( camera ) {
         event.stopPropagation();
 
         _state = STATE.NONE;
-        var ctime = new Date().getTime();
+        _clicktime = new Date().getTime();
 
         // Run picker if time since mousedown is short enough
-        if ( ctime - _mousedowntime < this.clickTimeout && event.button == 0) {
+        if ( _clicktime - _mousedowntime < this.clickTimeout && event.button == 0) {
             var mouse2D = this.getMouse(event).clone();
             this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
+        }
+
+        if ( event.button == 0 && _indblpick == 1 ) {
+            this.dispatchEvent({ type:"undblpick" });
+            _indblpick = 0;
         }
     };
 

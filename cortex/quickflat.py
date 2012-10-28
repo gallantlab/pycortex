@@ -115,10 +115,13 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
     imsave(fp, im, **kwargs)
     fp.seek(0)
     out, err = proc.communicate(fp.read())
-    return out
+    if len(out) > 0:
+        fp = cStringIO.StringIO()
+        fp.write(out)
+        fp.seek(0)
+        return fp
 
 def make_png(data, subject, xfmname, name=None, with_rois=True, recache=False, height=1024, **kwargs):
-    import Image
     im = make(data, subject, xfmname, recache=recache, height=height)
 
     if with_rois:
@@ -131,6 +134,34 @@ def make_png(data, subject, xfmname, name=None, with_rois=True, recache=False, h
         return fp
 
     imsave(name, im, **kwargs)
+
+def make_figure(data, subject, xfmname, name=None, recache=False, height=1024, with_rois=True, labels=True, colorbar=True, dpi=100, **kwargs):
+    im = make(data, subject, xfmname, recache=recache, height=height)
+
+    from matplotlib import pyplot as plt
+    fig = plt.figure()
+    ax = fig.add_axes((0,0,1,1))
+    cimg = ax.imshow(im, aspect='equal', **kwargs)
+    ax.axis('off')
+
+    if colorbar:
+        cbar = fig.add_axes((.4, .07, .2, .05))
+        fig.colorbar(cimg, cax=cbar, orientation='horizontal')
+
+    if with_rois:
+        rois = utils.get_roipack(subject)
+        overlay = plt.imread(rois.get_texture(height, labels=labels))
+        oax = fig.add_axes((0,0,1,1))
+        oimg = oax.imshow(overlay, aspect='equal', interpolation='nearest')
+
+    fig.set_dpi(dpi)
+    fig.set_size_inches(np.array(im.shape)[::-1] / float(dpi))
+
+    if name is None:
+        return fig
+    
+    fig.savefig(name, transparent=True)
+    plt.close()
 
 def make_movie(name, data, subject, xfmname, with_rois=True, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
     import shlex
@@ -167,8 +198,14 @@ def make_movie(name, data, subject, xfmname, with_rois=True, tr=2, interp='linea
 def show(data, subject, xfmname, recache=False, height=1024, with_rois=True, **kwargs):
     from matplotlib.pylab import imshow, imread, axis
     im = make(data, subject, xfmname, recache=recache, height=height)
+
     if with_rois:
-        im = imread(overlay_rois(im, subject, height=height, **kwargs))
+        #split the kwargs, since imsave is only a subset of imshow
+        keys = set(('vmin', 'vmax', 'cmap', 'format', 'origin', 'dpi'))
+        kwsave = dict((k, kwargs[k]) for k in keys if k in kwargs)
+        kwargs = dict((k, kwargs[k]) for k in set(kwargs.keys()) - keys)
+        im = imread(overlay_rois(im, subject, height=height, **kwsave))
+
     ax = imshow(im, **kwargs)
     ax.axes.set_aspect('equal')
     axis('off')
