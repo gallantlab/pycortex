@@ -53,7 +53,12 @@ def _make_flat_cache(subject, xfmname, height=1024):
 
     return mcoords[idx], mask
 
+cache = dict()
 def get_cache(subject, xfmname, recache=False, height=1024):
+    key = (subject, xfmname)
+    if not recache and key in cache:
+        return cache[key]
+
     cacheform = db.surfs.getFiles(subject)['flatcache']
     cachefile = cacheform.format(xfmname=xfmname, height=height, date="*")
     #pull a list of candidate cache files
@@ -72,6 +77,7 @@ def get_cache(subject, xfmname, recache=False, height=1024):
     else:
         coords, mask = cPickle.load(open(files[0]))
 
+    cache[key] = coords, mask
     return coords, mask
 
 def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
@@ -148,8 +154,6 @@ def make_movie(name, data, subject, xfmname, with_rois=True, tr=2, interp='linea
     
     def overlay(idxts):
         idx, ts = idxts
-        print '\r%d...        '%idx,
-        sys.stdout.flush()
         overlay_rois(interp(ts), subject, name=impath%idx, vmin=vmin, vmax=vmax)
 
     #pool = mp.Pool()
