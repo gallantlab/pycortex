@@ -1,0 +1,89 @@
+{% extends template.html %}
+{% block javascripts %}
+<style type=text/css>
+#wngraph {
+    position: relative;
+    width: 100%;
+    height: 70%;
+    padding-left: 5px;
+    min-height: 615px;
+}
+
+#wngraph-plugin {
+    background-color:black;
+    left:10px;
+    width:100%;
+    height:100%;
+    text-align:left;
+    /*min-height: 700px;*/
+}
+
+#wngraph-definition {
+    position:relative;
+    margin-left:10px;
+    text-align:left;
+    color:white;
+    font-size:12pt;
+    font-family:"Times New Roman",Georgia,Serif;
+}
+
+#wngraph-def-synset {
+    font-weight:bold;
+    font-size:16pt;
+}
+
+#wngraph-title {
+    float:right;
+    color:white;
+    font-size:20pt;
+    padding:10px;
+    margin-top:20px;
+}
+
+</style>
+
+<!-- WN graph stuff -->
+
+<script type='text/javascript' src='resources/json/wngraph-nodenames.json'></script>
+<script type='text/javascript' src='resources/json/wngraph-definitions.json'></script>
+<script type='text/javascript' src='resources/json/wngraph-rgbcolors.json'></script>
+
+<!-- Code -->
+<script type='text/javascript' src='resources/js/hoverintent.min.js'></script>
+<script type='text/javascript' src='resources/js/graphview.js'></script>
+<script type="text/javascript" src="resources/js/jquery.svg.min.js"></script>
+<script type="text/javascript" src="resources/js/jquery.svganim.min.js"></script>
+{% end %}
+
+{% block jsinit %}
+    var viewer, sock, gr;
+{% end %}
+
+{% block onload %}
+	gr = setupGraph();
+	gr.setrgbdata(colordata);
+
+	var wngraph = $("#wngraph-plugin").detach();
+	wngraph.css("visibility", "visible");
+
+	viewer = new MRIview();
+	viewer.load("{{ctmfile}}", function() {
+		gr.viewer = viewer;
+		viewer.picker.callback = function(idx) {
+			console.log(idx);
+			gr.showvoxel(idx);
+		}
+	});
+
+	viewer.addData(classify({{data}}));
+	viewer.addPlugin(wngraph, true);
+{% end %}
+
+{% block extrahtml %}
+<div id="wngraph-plugin" style="visibility:hidden">
+	<div id="wngraph-title">Group semantic space</div>
+	{% include wngraph.svg %}
+	<div id="wngraph-definition"></div>
+	<!--<button onclick="gr.setrgbdata(colordata)">RGB data</button>-->
+</div>
+{% end %}
