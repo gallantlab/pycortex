@@ -53,7 +53,12 @@ def _make_flat_cache(subject, xfmname, height=1024):
 
     return mcoords[idx], mask
 
+cache = dict()
 def get_cache(subject, xfmname, recache=False, height=1024):
+    key = (subject, xfmname)
+    if not recache and key in cache:
+        return cache[key]
+
     cacheform = db.surfs.getFiles(subject)['flatcache']
     cachefile = cacheform.format(xfmname=xfmname, height=height, date="*")
     #pull a list of candidate cache files
@@ -72,6 +77,7 @@ def get_cache(subject, xfmname, recache=False, height=1024):
     else:
         coords, mask = cPickle.load(open(files[0]))
 
+    cache[key] = coords, mask
     return coords, mask
 
 def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
@@ -109,24 +115,41 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
     imsave(fp, im, **kwargs)
     fp.seek(0)
     out, err = proc.communicate(fp.read())
-    return out
-
-def make_png(data, subject, xfmname, name=None, with_rois=True, recache=False, height=1024, **kwargs):
-    import Image
-    im = make(data, subject, xfmname, recache=recache, height=height)
-
-    if with_rois:
-        return overlay_rois(im, subject, name=name, height=height, **kwargs)
-
-    if name is None:
+    if len(out) > 0:
         fp = cStringIO.StringIO()
-        imsave(fp, im, **kwargs)
+        fp.write(out)
         fp.seek(0)
         return fp
 
-    imsave(name, im, **kwargs)
+def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=True, dpi=100, **kwargs):
+    from matplotlib import pyplot as plt
+    fig = plt.figure()
+    ax = fig.add_axes((0,0,1,1))
+    cimg = ax.imshow(im, aspect='equal', **kwargs)
+    ax.axis('off')
 
-def make_movie(name, data, subject, xfmname, with_rois=True, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
+    if colorbar:
+        cbar = fig.add_axes((.4, .07, .2, .04))
+        fig.colorbar(cimg, cax=cbar, orientation='horizontal')
+
+    if with_rois:
+        key = (subject, labels)
+        if key not in rois:
+            roi = utils.get_roipack(subject)
+            rois[key] = roi.get_texture(im.shape[0], labels=labels)
+            overlay = plt.imread(rois[key])
+        oax = fig.add_axes((0,0,1,1))
+        oimg = oax.imshow(overlay, aspect='equal', interpolation='bicubic')
+
+    if name is None:
+        return fig
+    
+    fig.set_size_inches(np.array(im.shape)[::-1] / float(dpi))
+    fig.savefig(name, transparent=True, dpi=dpi)
+    plt.close()
+
+def make_movie(name, data, subject, xfmname, recache=False, height=1024, dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
+    import sys
     import shlex
     import shutil
     import tempfile
@@ -135,37 +158,45 @@ def make_movie(name, data, subject, xfmname, with_rois=True, tr=2, interp='linea
     
     from scipy.interpolate import interp1d
 
-    path = tempfile.mkdtemp()
-    impath = os.path.join(path, "im%09d.png")
-    ims = make(data, subject, xfmname, **kwargs)
+    #make the flatmaps
+    ims = make(data, subject, xfmname, recache=recache, height=height)
+    if vmin is None:
+        vmin = np.nanmin(ims)
+    if vmax is None:
+        vmax = np.nanmax(ims)
+
+    #Create the matplotlib figure
+    fig = make_figure(ims[0], subject, vmin=vmin, vmax=vmax, **kwargs)
+    fig.set_size_inches(np.array([ims.shape[2], ims.shape[1]]) / float(dpi))
+    img = fig.axes[0].images[0]
+
+    #set up interpolation
     times = np.arange(0, len(ims)*tr, tr)
     interp = interp1d(times, ims, kind=interp, axis=0, copy=False)
-
-    if vmin is None:
-        vmin = ims.min()
-    if vmax is None:
-        vmax = ims.max()
-    
-    def overlay(idxts):
-        idx, ts = idxts
-        print '\r%d...        '%idx,
-        sys.stdout.flush()
-        overlay_rois(interp(ts), subject, name=impath%idx, vmin=vmin, vmax=vmax)
-
-    #pool = mp.Pool()
     frames = np.linspace(0, times[-1], (len(times)-1)*tr*fps+1)
-    map(overlay, enumerate(frames))
+    
+    try:
+        path = tempfile.mkdtemp()
+        impath = os.path.join(path, "im%09d.png")
 
-    cmd = "avconv -i {path} -vcodec {vcodec} -r {fps} -b {br} {name}".format(path=impath, vcodec=vcodec, fps=fps, br=bitrate, name=name)
-    sp.call(shlex.split(cmd))
-    shutil.rmtree(path)
+        def overlay(idxts):
+            idx, ts = idxts
+            img.set_data(interp(ts))
+            fig.savefig(impath%idx, transparent=True, dpi=dpi)
+            print "      \r%.02f%%...."%(float(idx) / len(frames) * 100) ,
+            sys.stdout.flush()
 
-def show(data, subject, xfmname, recache=False, height=1024, with_rois=True, **kwargs):
-    from matplotlib.pylab import imshow, imread, axis
+        map(overlay, enumerate(frames))
+
+        cmd = "avconv -i {path} -vcodec {vcodec} -r {fps} -b {br} {name}".format(path=impath, vcodec=vcodec, fps=fps, br=bitrate, name=name)
+        sp.call(shlex.split(cmd))
+    finally:
+        shutil.rmtree(path)
+
+def make_png(name, data, subject, xfmname, recache=False, height=1024, **kwargs):
     im = make(data, subject, xfmname, recache=recache, height=height)
-    if with_rois:
-        im = imread(overlay_rois(im, subject, height=height, **kwargs))
-    ax = imshow(im, **kwargs)
-    ax.axes.set_aspect('equal')
-    axis('off')
-    return ax
+    return make_figure(im, subject, name=filename, **kwargs)
+
+def show(data, subject, xfmname, recache=False, height=1024, **kwargs):
+    im = make(data, subject, xfmname, recache=recache, height=height)
+    return make_figure(im, subject, **kwargs)

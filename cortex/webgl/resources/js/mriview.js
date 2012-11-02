@@ -422,9 +422,9 @@ MRIview.prototype = {
                     for (var j = 0; test && j < start.value.length; j++)
                         test = test && (start.value[j] == end.value[j]);
                     if (!test)
-                        anim.push({start:start, end:end});
+                        anim.push({start:start, end:end, ended:false});
                 } else if (start.value != end.value)
-                    anim.push({start:start, end:end});
+                    anim.push({start:start, end:end, ended:false});
             }
         }
         console.log(anim);
@@ -439,18 +439,23 @@ MRIview.prototype = {
         for (i = 0, il = this._anim.length; i < il; i++) {
             f = this._anim[i];
             //console.log(f.start.state, f.start.value, f.end.value, f.start.idx, sec, f.end.idx);
-            if (f.start.idx <= sec && sec < f.end.idx) {
-                idx = (sec - f.start.idx) / (f.end.idx - f.start.idx);
-                if (f.start.value instanceof Array) {
-                    val = [];
-                    for (j = 0; j < f.start.value.length; j++) {
-                        val.push(f.start.value[j]*(1-idx) + f.end.value[j]*idx);
+            if (!f.ended) {
+                if (f.start.idx <= sec && sec < f.end.idx) {
+                    idx = (sec - f.start.idx) / (f.end.idx - f.start.idx);
+                    if (f.start.value instanceof Array) {
+                        val = [];
+                        for (j = 0; j < f.start.value.length; j++) {
+                            val.push(f.start.value[j]*(1-idx) + f.end.value[j]*idx);
+                        }
+                    } else {
+                        val = f.start.value * (1-idx) + f.end.value * idx;
                     }
-                } else {
-                    val = f.start.value * (1-idx) + f.end.value * idx;
+                    this.setState(f.start.state, val);
+                    state = true;
+                } else if (sec >= f.end.idx) {
+                    this.setState(f.end.state, val);
+                    f.ended = true;
                 }
-                this.setState(f.start.state, val);
-                state = true;
             }
         }
         return state;
