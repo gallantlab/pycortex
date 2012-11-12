@@ -256,7 +256,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     '''
     Return a numbered mask + dictionary of roi numbers
     roiList is a list of ROIs (which better be defined in the .svg file)
-
+    poop.
     '''
     # Get ROIs from inkscape SVGs
     rois, vertIdx = get_roipack(subject, remove_medial=True)
@@ -293,18 +293,31 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     # First: get all roi voxels into 4D volume
     tmpMask = np.zeros((np.prod(shape),len(roiList),2),np.bool)
     for ir,roi in enumerate(roiList):
-        # Irritating index switching:
-        roiIdxB1 = np.zeros((nValidVerts,),np.bool) # binary index 1
-        roiIdxS1 = rois.get_roi(roi) # substitution index 1 (in valid vertex space)
-        roiIdxB1[roiIdxS1] = True
-        roiIdxB2 = np.zeros((nVerts,),np.bool) # binary index 2
-        roiIdxB2[vertIdx] = roiIdxB1
-        roiIdxS2 = np.nonzero(roiIdxB2)[0] # substitution index 2 (in ALL fiducial vertex space)
-        roiIdxB3 = np.in1d(voxIdxF,roiIdxS2) # binary index to 3D volume (flattened, though)
+        if roi.lower()=='cortex':
+            roiIdxB3 = np.ones(Lmask.shape)>0
+        else:
+            # Irritating index switching:
+            roiIdxB1 = np.zeros((nValidVerts,),np.bool) # binary index 1
+            roiIdxS1 = rois.get_roi(roi) # substitution index 1 (in valid vertex space)
+            roiIdxB1[roiIdxS1] = True
+            roiIdxB2 = np.zeros((nVerts,),np.bool) # binary index 2
+            roiIdxB2[vertIdx] = roiIdxB1
+            roiIdxS2 = np.nonzero(roiIdxB2)[0] # substitution index 2 (in ALL fiducial vertex space)
+            roiIdxB3 = np.in1d(voxIdxF,roiIdxS2) # binary index to 3D volume (flattened, though)
         tmpMask[:,ir,0] = np.all(np.array([roiIdxB3,Lmask,CxMask]),axis=0)
         tmpMask[:,ir,1] = np.all(np.array([roiIdxB3,Rmask,CxMask]),axis=0)
-    
-    # cover 
+    roiListL = [r.lower() for r in roiList]
+    # Kill all overlap btw. "Cortex" and other ROIs
+    if 'cortex' in roiListL:
+        cIdx = roiListL.index('cortex')
+        # Left:
+        OtherROIs = tmpMask[:,np.arange(len(roiList))!=cIdx,0]
+        tmpMask[:,cIdx,0] = np.logical_and(np.logical_not(np.any(OtherROIs,axis=1)),tmpMask[:,cIdx,0])
+        # Right:
+        OtherROIs = tmpMask[:,np.arange(len(roiList))!=cIdx,1]
+        tmpMask[:,cIdx,1] = np.logical_and(np.logical_not(np.any(OtherROIs,axis=1)),tmpMask[:,cIdx,1])
+
+    # Second: 
     mask = np.zeros(np.prod(shape),dtype=np.int64)
     roiIdx = {}
     if overlapOpt=='cut':
