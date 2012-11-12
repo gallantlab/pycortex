@@ -137,9 +137,9 @@ def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=Tr
         if key not in rois:
             roi = utils.get_roipack(subject)
             rois[key] = roi.get_texture(im.shape[0], labels=labels)
-            overlay = plt.imread(rois[key])
+        rois[key].seek(0)
         oax = fig.add_axes((0,0,1,1))
-        oimg = oax.imshow(overlay, aspect='equal', interpolation='bicubic')
+        oimg = oax.imshow(plt.imread(rois[key]), aspect='equal', interpolation='bicubic')
 
     if name is None:
         return fig
@@ -195,7 +195,7 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, dpi=100
 
 def make_png(name, data, subject, xfmname, recache=False, height=1024, **kwargs):
     im = make(data, subject, xfmname, recache=recache, height=height)
-    return make_figure(im, subject, name=filename, **kwargs)
+    return make_figure(im, subject, name=name, **kwargs)
 
 def show(data, subject, xfmname, recache=False, height=1024, **kwargs):
     im = make(data, subject, xfmname, recache=recache, height=height)
