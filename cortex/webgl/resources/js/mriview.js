@@ -453,7 +453,7 @@ MRIview.prototype = {
                     this.setState(f.start.state, val);
                     state = true;
                 } else if (sec >= f.end.idx) {
-                    this.setState(f.end.state, val);
+                    this.setState(f.end.state, f.end.value);
                     f.ended = true;
                 }
             }
