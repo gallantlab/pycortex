@@ -86,14 +86,24 @@ def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
     if data.ndim in (1, 3):
         data = data[np.newaxis]
 
-    if data.ndim == 4:
+    if data.ndim in (4, 5):
         cmask = utils.get_cortical_mask(subject, xfmname)
-        data = data[:, cmask]
+        data = data[..., cmask]
 
-    length = data.shape[0]
-    img = np.nan*np.ones((length,)+mask.shape, dtype=data.dtype)
-    img[:, mask] = data[:, coords]
-    return img.reshape((length,)+mask.shape).swapaxes(1, 2)[:,::-1].squeeze()
+    if data.dtype == np.uint8:
+        if data.ndim == 2:
+            data = data[np.newaxis]
+        shape = (data.shape[0],)+mask.shape+(4,)
+        cdim = data.shape[1]
+        img = np.zeros(shape, dtype=np.uint8)
+        img[:, mask, -1] = 255
+        img[:, mask, :cdim] = data[..., coords].swapaxes(1, 2)
+    else:
+        shape = (data.shape[0],) + mask.shape
+        img = np.nan*np.ones(shape, dtype=data.dtype)
+        img[:, mask] = data[:, coords]
+
+    return img.swapaxes(1, 2)[:,::-1].squeeze()
 
 rois = dict()
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
