@@ -53,7 +53,13 @@
 	{% block jsinit %}
 	{% end %}
 
+	var cmapnames = {}
+
 	$(document).ready(function() {
+		$("#colormap option").each(function(idx) {
+			cmapnames[$(this).text()] = idx;
+		});
+
 		if (!webgl()) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();

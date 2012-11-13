@@ -31,16 +31,22 @@ def _normalize_data(data, mask):
     json = dict()
     for name, dat in data.items():
         json[name] = dict( __class__="Dataset")
+
         if isinstance(dat, dict):
             data = _fixarray(dat['data'], mask)
-            json[name]['stim'] = dat['stim']
+            if 'stim' in dat:
+                json[name]['stim'] = dat['stim']
             json[name]['delay'] = dat['delay'] if 'delay' in dat else 0
         elif isinstance(dat, np.ndarray):
             data = _fixarray(dat, mask)
 
         json[name]['data'] = data
-        json[name]['min'] = scoreatpercentile(data.ravel(), 1)
-        json[name]['max'] = scoreatpercentile(data.ravel(), 99)
+        json[name]['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
+        json[name]['max'] = scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max']
+        if 'cmap' in dat:
+            json[name]['cmap'] = dat['cmap']
+        if 'rate' in dat:
+            json[name]['rate'] = dat['rate']
 
     return json
 

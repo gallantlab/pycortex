@@ -125,6 +125,8 @@ Dataset.fromJSON = function(json) {
         ds.addStim(json.stim, json.delay);
     ds.min = json.min;
     ds.max = json.max;
+    ds.cmap = json.cmap;
+    ds.rate = json.rate === undefined ? 1 : json.rate;
     return ds;
 }
 Dataset.maketex = function(array, shape, raw, slice) {
@@ -184,7 +186,16 @@ Dataset.prototype = {
         this.stim.setAttribute("preload", "");
         this.stim.setAttribute("loop", "loop");
         var src = document.createElement("source");
-        src.setAttribute("type", 'video/ogg; codecs="theora, vorbis"');
+        var ext = url.match(/^(.*)\.(\w{3,4})$/);
+        if (ext.length == 3) {
+            if (ext[2] == 'ogv') {
+                src.setAttribute('type', 'video/ogg; codecs="theora, vorbis"');
+            } else if (ext[2] == 'webm') {
+                src.setAttribute('type', 'video/webm; codecs="vp8, vorbis"');
+            } else if (ext[2] == 'mp4') {
+                src.setAttribute('type', 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+            }
+        }
         src.setAttribute("src", url);
         this.stim.appendChild(src);
 
@@ -238,6 +249,10 @@ Dataset.prototype = {
                 viewer.shader.uniforms.data.texture[dim] = this.textures[0];
                 $("#moviecontrols").hide();
                 $("#bottombar").removeClass("bbar_controls");
+            }
+
+            if (this.cmap !== undefined) {
+                viewer.setColormap(this.cmap);
             }
 
             $(dim == 0 ? "#vrange" : "#vrange2").slider("option", {min: this.lmin, max:this.lmax});

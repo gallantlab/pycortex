@@ -1,5 +1,4 @@
 var flatscale = .2;
-
 var vShadeHead = [
     THREE.ShaderChunk[ "map_pars_vertex" ], 
     THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -242,6 +241,7 @@ function MRIview() {
     this._staticplugin = false;
 
     this.datasets = {}
+    this.active = [];
     
     this._bindUI();
 }
@@ -254,7 +254,8 @@ MRIview.prototype = {
     },
     draw: function () {
         if (this.state == "play") {
-            var sec = ((new Date()) - this._startplay) / 1000;
+            var rate = this.active[0].rate;
+            var sec = ((new Date()) - this._startplay) / 1000 * rate;
             if (sec > this.active[0].textures.length) {
                 this._startplay += this.active[0].textures.length;
                 sec -= this.active[0].textures.length;
@@ -337,7 +338,7 @@ MRIview.prototype = {
             this.controls.addEventListener("pick", function(event) {
                 this.picker.pick(event.x, event.y, event.keep);
             }.bind(this));
-	    this.controls.addEventListener("dblpick", function(event) {
+            this.controls.addEventListener("dblpick", function(event) {
                 this.picker.dblpick(event.x, event.y, event.keep);
             }.bind(this));
             this.controls.addEventListener("undblpick", function(event) {
@@ -693,7 +694,12 @@ MRIview.prototype = {
     },
 
     setColormap: function(cmap) {
-        if (cmap instanceof Image || cmap instanceof Element) {
+        if (typeof(cmap) == 'string') {
+            if (cmapnames[cmap] !== undefined)
+                $("#colormap").ddslick('select', {index:cmapnames[cmap]});
+
+            return;
+        } else if (cmap instanceof Image || cmap instanceof Element) {
             this.colormap = new THREE.Texture(cmap);
         } else if (cmap instanceof NParray) {
             var ncolors = cmap.shape[cmap.shape.length-1];
@@ -703,6 +709,9 @@ MRIview.prototype = {
             var fmt = ncolors == 3 ? THREE.RGBFormat : THREE.RGBAFormat;
             this.colormap = new THREE.DataTexture(cmap.data, cmap.shape[0], height, fmt);
         }
+
+        if (this.active[0] !== undefined)
+            this.active[0].cmap = $("#colormap .dd-selected label").text();
 
         var func = function() {
             this.colormap.needsUpdate = true;
@@ -793,7 +802,7 @@ MRIview.prototype = {
         if (this.state == "pause") {
             //Start playing
             var func = function() {
-                this._startplay = (new Date()) - this.frame * 1000;
+                this._startplay = (new Date()) - (this.frame * dataset.rate) * 1000;
                 this.schedule();
                 this.state = "play";
                 $("#moviecontrols img").attr("src", "resources/images/control-pause.png");

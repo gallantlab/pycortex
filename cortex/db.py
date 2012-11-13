@@ -30,12 +30,6 @@ class SubjectDB(object):
     def __init__(self, subj):
         self.transforms = XfmDB(subj)
         self.surfaces = SurfaceDB(subj)
-    
-    def __dir__(self):
-        names = ["transforms", "surfaces"]
-        if self.anatfile is not None:
-            names.append("anatomical")
-        return names
 
 class SurfaceDB(object):
     def __init__(self, subj):
