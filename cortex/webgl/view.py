@@ -60,7 +60,9 @@ def _make_bindat(json, fmt="%s.bin"):
             newjs[name] = dict(data)
             newjs[name]['data'] = fmt%name
             bindat[name] = serve.make_binarray(data['data'])
-            
+        else:
+            newjs[name] = data
+
     return newjs, bindat
 
 def _fixarray(data, mask):
