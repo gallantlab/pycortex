@@ -204,14 +204,12 @@ a:visited { color:white; }
 #topbar { 
     height:450px; 
     width:100%;
-    /*margin:-440px auto -10px auto;      */
-    margin:-440px 0 -10px 0;      
+    margin:-440px auto -10px auto;      
     border-radius: 0px 0px 10px 10px / 0px 0px 10px 10px;
     text-align:left;
 }
 #topbar:hover, #topbar:active { 
-    /*margin:0px auto -450px auto;*/
-    margin:0px 0 -450px 0;
+    margin:0px auto -450px auto;
 }
 
 #display_options fieldset {
@@ -320,12 +318,10 @@ ul#datasets li .handle {
 
 #bottombar {
     height:135px;
-    margin-top:-80px;
+    margin-top:-10px;
     border-radius: 10px 10px 0px 0px / 10px 10px 0px 0px;
     clear:both;
     text-align:left;
-    z-index:10;
-    position:relative;
 }
 #bottombar table {
     padding:4px;
@@ -334,9 +330,9 @@ ul#datasets li .handle {
     width:5%;
     min-width:80px;
 }
-/*#bottombar:hover, #bottombar:active {
+#bottombar:hover, #bottombar:active {
     margin-top:-80px;
-}*/
+}
 #moviecontrols {
     width:100%;
     text-align:center;
