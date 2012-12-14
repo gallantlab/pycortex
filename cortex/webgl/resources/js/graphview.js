@@ -1,6 +1,11 @@
 function Graph() {
     this.nodes = {};
     this.selcategory = null;
+    this.voxdir = null;
+    this.subject = null;
+    this.catmapdir = null;
+    this.lastdataname = "";
+    this.showinglabels = true;
 }
 Graph.prototype.setrgbdata = function(data) {
     // Changes what is shown on the graph to the given [data].
@@ -42,13 +47,11 @@ Graph.prototype.setlindata = function(data) {
 Graph.prototype.showvoxel = function(voxind) {
     // Shows the data for voxel [voxind] on the graph.
     // Automatically loads from a set directory..
-    var subject = "AH";
-    var voxdir = "/~huth/wngraphsvg-2/voxeldata-AH/";
     var gr = this;
-    var voxcorr = this.viewer.datasets.ZCorrelation.array.data[voxind].toFixed(3);
+    var voxcorr = this.viewer.datasets.ModelPerformance.array.data[voxind].toFixed(3);
     console.log("Showing STRF for voxel "+voxind);
-    $("#wngraph-title").html("Voxel "+subject+"-"+voxind+", <i>r</i>="+voxcorr);
-    var data = NParray.fromURL(voxdir+subject+"-"+voxind+".bin", 
+    $("#wngraph-title").html("Voxel "+this.subject+"-"+voxind+", <i>r</i>="+voxcorr);
+    var data = NParray.fromURL(this.voxdir+this.subject+"-"+voxind+".bin", 
         function (npa) {
             for (var i=0; i<nodenames.length; i++) {
                 var val = npa.data[i];
@@ -58,11 +61,8 @@ Graph.prototype.showvoxel = function(voxind) {
     });
 }
 Graph.prototype.showcategory = function(catname) {
-    var subject = "AH";
-    var catmapdir = "/~huth/wngraphsvg-2/catmaps/";
     // If there was a previously selected node, un-select it
     this.hideselcategory();
-    
     this.selcategory = catname;
     var node = this.nodes[catname];
     
@@ -75,10 +75,16 @@ Graph.prototype.showcategory = function(catname) {
     
     for (var i=0; i<nodenames.length; i++) {
         if (nodenames[i]==catname) {
-            console.log("Showing map for category "+nodenames[i]+", from url "+catmapdir+subject+"-"+i+".bin");
-            NParray.fromURL(catmapdir+subject+"-"+i+".bin", 
+            console.log("Showing map for category "+nodenames[i]+", from url "+this.catmapdir+this.subject+"-"+i+".bin");
+            if (this.lastdataname != "") {
+                this.viewer.rmData(this.lastdataname);
+            }
+            this.lastdataname = 'Category: '+catname.split(".")[0].replace(/_/g, " ");
+            NParray.fromURL(this.catmapdir+this.subject+"-"+i+".bin", 
                 function (data) {
-                    this.viewer.addData({catmap:data});
+                    var catdata = Object();
+                    catdata['Category: '+catname.split(".")[0].replace(/_/g, " ")] = data;
+                    this.viewer.addData(catdata);
                 });
         }
     }
@@ -87,6 +93,20 @@ Graph.prototype.hideselcategory = function() {
     if (this.selcategory != null) {
 	var oldsel = this.nodes[this.selcategory];
 	$(oldsel).animate({svgStrokeWidth:oldsel.origsw, svgR:oldsel.origr}, 100, "swing");
+    }
+}
+Graph.prototype.togglelabels = function() {
+    if (this.showinglabels) {
+        // Hide them!
+        $("#wngraph > g#biglabels").animate({svgOpacity: 0.0}, 500, "swing");
+        $("#wnlabelbutton").text("Show Labels");
+        this.showinglabels = false;
+    }
+    else {
+        // Show them!
+        $("#wngraph > g#biglabels").animate({svgOpacity: 1.0}, 500, "swing");
+        $("#wnlabelbutton").text("Hide Labels");
+        this.showinglabels = true;
     }
 }
 
