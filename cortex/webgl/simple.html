@@ -110,67 +110,10 @@
 				<div class='display_opt'>
 					<input id='roishow' type='checkbox' checked='checked'><label for='roishow'>Show</label>
 					<input id='labelshow' type='checkbox' checked='checked'><label for='labelshow'>Labels</label>
-					<input id='labelcull' type='checkbox' checked='checked'><label for='labelcull'>Cull</label>
-				</div>
-				<div class='display_opt'>
-					<table id='roilines'>
-						<tr>
-							<td><label for='roi_linecolor'>Line color</label></td>
-							<td><input type='hidden' id='roi_linecolor' value='#FFFFFF' /></td>
-						</tr>
-						<tr>
-							<td><label for="roi_linealpha">Alpha</label></td>
-							<td><div id='roi_linealpha'></div></td>
-						</tr>
-						<tr>
-							<td><label for="roi_linealpha">Width</label></td>
-							<td><div id='roi_linewidth'></div></td>
-						</tr>
-					</table>
-				</div>
-				<div class='display_opt'>
-					<table id='roifill'>
-						<tr>
-							<td><label for='roi_fillcolor'>Fill color</label></td>
-							<td><input type='hidden' id='roi_fillcolor' value='#000000' /></td>
-						</tr>
-						<tr>
-							<td><label for="roi_fillalpha">Alpha</label></td>
-							<td><div id='roi_fillalpha'></div></td>
-						</tr>
-					</table>
-				</div>
-				<div class='display_opt'>
-					<table id='roishadow'>
-						<tr>
-							<td><label for='roi_shadowcolor'>Shadow</label></td>
-							<td><input type='hidden' id='roi_shadowcolor' value='#000000' /></td>
-						</tr>
-						<tr>
-							<td><label for="roi_shadowalpha">Radius</label></td>
-							<td><div id='roi_shadowalpha'></div></td>
-						</tr>
-					</table>
 				</div>
 			</fieldset>
 			<fieldset id="layers_fieldset" class='subtable'>
 				<legend>Layer Alpha</legend>
-				<div class='display_opt'>
-					<table id='layerCurv'>
-						<tr>
-							<td><label for='layer_curvalpha'>Curvature</label></td>
-							<td><div id='layer_curvalpha'></div></td>
-						</tr>
-						<tr>
-							<td><label for="layer_curvmult">Threshold</label></td>
-							<td><div id='layer_curvmult'></div></td>
-						</tr>
-						<tr>
-							<td><label for="layer_curvlim">Contrast</label></td>
-							<td><div id='layer_curvlim'></div></td>
-						</tr>
-					</table>
-				</div>
 				<div class='display_opt'>
 					<table id='layerData'>
 						<tr>
@@ -179,36 +122,8 @@
 						</tr>
 					</table>
 				</div>
-				<div class='display_opt'>
-					<table id='layerHatch'>
-						<tr>
-							<td><label for='layer_hatchalpha'>Dropout</label></td>
-							<td><div id='layer_hatchalpha'></div></td>
-						</tr>
-						<tr>
-							<td><label for='layer_hatchcolor'>Color</label></td>
-							<td><input type='hidden' id='layer_hatchcolor' value='#000000' /></td>
-						</tr>
-					</table>
-				</div>
 			</fieldset>
 			</div>
-			<fieldset id="viewopt_fieldset" class='opt_category'>
-				<legend>View</legend>
-				<div class='display_opt'>
-					<p id='zlocklabel'>Zoom lock:</p>
-					<div id='zlockopts'>
-						<input id='zlocknone' type='radio' name='zoomlock' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='None' checked>
-					    <label for='zlocknone'>​​​​​​​​​​​​​​​​​​​​​None</label><br>
-					    <input id='zlockleft' type='radio' name='zoomlock' value='left'>
-					    <label for='zlockleft'>left</label><br>
-					    <input id='zlockright' type='radio' name='zoomlock' value='right'>
-					    <label for='zlockright'>right</label><br>
-					    <input id='zlockwhole' type='radio' name='zoomlock' value='whole'>
-					    <label for='zlockwhole'>whole</label><br>
-					</div>
-				</div>
-			</fieldset>
 			<fieldset id="dataset_fieldset" class='opt_category'>
 				<legend>Datasets</legend>
 				<ul id='datasets'>
@@ -258,14 +173,6 @@
 			<tr>
 				<td><label for='mix'>Mix</label></td>
 				<td><div id="mix"></div></td>
-			</tr>
-			<tr>
-				<td><label for='pivot'>Pivot</label></td>
-				<td><div id="pivot"></div></td>
-			</tr>
-			<tr>
-				<td><label for='shifthemis'>Shift</label></td>
-				<td><div id="shifthemis"></div></td>
 			</tr>
 		</table>
 	</div>

@@ -7,9 +7,15 @@ import html5lib
 
 import serve
 
+def _open(fname):
+    try:
+        return open(fname)
+    except IOError:
+        return open(os.path.join(serve.cwd, fname))
+
 def _embed_css(cssfile):
     csspath, fname = os.path.split(cssfile)
-    with open(cssfile) as fp:
+    with _open(cssfile) as fp:
         css = fp.read()
         cssparse = re.compile(r'(.*?){(.*?)}', re.S)
         urlparse = re.compile(r'url\((.*?)\)')
@@ -29,39 +35,42 @@ def _embed_css(cssfile):
         return '\n'.join(cssout)
 
 def _embed_js(dom, script):
-    assert script.hasAttribute("src")
-    with open(os.path.join(serve.cwd, script.getAttribute("src"))) as jsfile:
+    wparse = re.compile(r"new Worker\(\s*(['\"].*?['\"])\s*\)", re.S)
+    aparse = re.compile(r"attr\(\s*['\"]src['\"]\s*,\s*(.*?)\)")
+    with _open(script.getAttribute("src"))) as jsfile:
         jssrc = jsfile.read()
-        wparse = re.compile(r"new Worker\(\s*(['\"].*?['\"])\s*\)", re.S)
-        aparse = re.compile(r"attr\(\s*['\"]src['\"]\s*,\s*(.*?)\)")
         for worker in wparse.findall(jssrc):
-            wfile = os.path.join(serve.cwd, worker.strip('"\''))
             wid = os.path.splitext(os.path.split(worker.strip('"\''))[1])[0]
+            wtext = _embed_worker(worker.strip('"\''))
             wscript = dom.createElement("script")
             wscript.setAttribute("type", "text/js-worker")
             wscript.setAttribute("id", wid)
-            wscript.appendChild(dom.createTextNode(_embed_worker(wfile)))
+            wscript.appendChild(dom.createTextNode(wtext))
             script.parentNode.insertBefore(wscript, script)
             rplc = "window.URL.createObjectURL(new Blob([document.getElementById('%s').textContent]))"%wid
             jssrc = jssrc.replace(worker, rplc)
 
         for src in aparse.findall(jssrc):
-            imgpath = os.path.join(serve.cwd, src.strip('\'"'))
+            if os.path.exists(src.strip('\'"')):
+                imgpath = src.strip('\'"')
+            else:
+                imgpath = os.path.join(serve.cwd, src.strip('\'"'))
+
             jssrc = jssrc.replace(src, "'%s'"%serve.make_base64(imgpath))
 
         script.removeAttribute("src")
         script.appendChild(dom.createTextNode(jssrc.decode('utf-8')))
 
 def _embed_worker(worker):
-    wpath = os.path.split(worker)[0]
     wparse = re.compile(r"importScripts\((.*)\)")
-    with open(worker) as wfile:
+    wpath = os.path.split(worker)[0]
+    with _open(worker) as wfile:
         wdata = wfile.read()
         for simport in wparse.findall(wdata):
             imports = []
             for fname in simport.split(','):
                 iname = os.path.join(wpath, fname.strip('\'" '))
-                with open(iname) as fp:
+                with _open(iname) as fp:
                     imports.append(fp.read())
             wdata = wdata.replace("importScripts(%s)"%simport, '\n'.join(imports))
         return wdata
@@ -82,26 +91,27 @@ if (window.webkitURL)
         src = script.getAttribute("src")
         if len(src) > 0:
             try:
-                _embed_js(dom, script)            
+                _embed_js(dom, script)
             except:
                 print "Unable to embed script %s" %src
     
     for css in dom.getElementsByTagName("link"):
         if (css.getAttribute("type") == "text/css"):
-            csspath = os.path.join(serve.cwd, css.getAttribute("href"))
+            csstext = _embed_css(css.getAttribute("href"))
             ncss = dom.createElement("style")
             ncss.setAttribute("type", "text/css")
-            ncss.appendChild(dom.createTextNode(_embed_css(csspath)))
+            ncss.appendChild(dom.createTextNode(csstext))
             css.parentNode.insertBefore(ncss, css)
             css.parentNode.removeChild(css)
 
     for img in dom.getElementsByTagName("img"):
-        imgfile = os.path.join(serve.cwd, img.getAttribute("src"))
-        if os.path.exists(imgfile):
-            img.setAttribute("src", serve.make_base64(imgfile))
+        if os.path.exists(img.getAttribute("src")):
+            imgfile = img.getAttribute("src")
         else:
-            print "Cannot find image to embed: %s"%imgfile
+            imgfile = os.path.join(serve.cwd, img.getAttribute("src"))
 
+        img.setAttribute("src", serve.make_base64(imgfile)
+    
     #Save out the new html file
     with open(outfile, "w") as htmlfile:
         serializer = html5lib.serializer.htmlserializer.HTMLSerializer()

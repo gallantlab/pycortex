@@ -1,0 +1,9 @@
+{% extends simple.html %}
+{% block jsinit %}
+    var viewer, sock;
+{% end %}
+{% block onload %}
+        viewer = new MRIview();
+        viewer.load("{{ctmfile}}");
+        viewer.addData(classify({{data}}));
+{% end %}

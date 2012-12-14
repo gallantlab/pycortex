@@ -44,17 +44,7 @@ class Subject(ctypes.Structure):
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 
-## Load the right library
-try:
-    lib = ctypes.cdll.LoadLibrary(os.path.join(cwd, "_vtkctm.so"))
-except OSError as e:
-    print e
-    print "Error loading _vtkctm.so, trying older version.."
-    try:
-        lib = ctypes.cdll.LoadLibrary(os.path.join(cwd, "_vtkctm_oneiric.so"))
-    except OSError as e2:
-        print "Error loading _vtkctm_oneiric.so, failing.."
-        raise e2
+lib = ctypes.cdll.LoadLibrary(os.path.join(cwd, "_vtkctm.so"))
 
 lib.readVTK.restype = ctypes.POINTER(Mesh)
 lib.readVTK.argtypes = [ctypes.c_char_p, ctypes.c_bool]

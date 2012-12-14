@@ -345,8 +345,47 @@ MRIview.prototype = {
                 this.picker.undblpick();
             }.bind(this));
 
-            $("#brain").css("opacity", 1);
+            //Create the surface inflat/unfold buttons
+            var td, btn, name;
+            td = document.createElement("td");
+            btn = document.createElement("input");
+            btn.setAttribute("type", "button");
+            btn.setAttribute("value", "Fiducial");
+            td.setAttribute("style", "text-align:left;");
+            btn.addEventListener("click", function() {
+                this.setMix(0);
+                this.controls.target.set(0,0,0);
+                this.controls.setCamera(45, 45, 200);
+                this.schedule();
+            }.bind(this));
+            td.appendChild(btn);
+            $("#mixbtns").append(td);
+            for (var i = 0; i < json.names.length; i++) {
+                name = json.names[i][0].toUpperCase() + json.names[i].slice(1);
+                td = document.createElement("td");
+                btn = document.createElement("input");
+                btn.setAttribute("type", "button");
+                btn.setAttribute("value", name);
+                btn.addEventListener("click", function() {
+                    this.setMix(i / (json.names.length+1));
+                }.bind(this));
+                td.appendChild(btn);
+                $("#mixbtns").append(td);
+            }
+            td = document.createElement("td");
+            btn = document.createElement("input");
+            btn.setAttribute("type", "button");
+            btn.setAttribute("value", "Flat");
+            td.setAttribute("style", "text-align:right;");
+            btn.addEventListener("click", function() {
+                this.reset_view();
+            }.bind(this));
+            td.appendChild(btn);
+            $("#mixbtns").append(td);
+            $("#mix, #pivot, #shifthemis").parent().attr("colspan", json.names.length+2);
+
             $("#ctmload").hide();
+            $("#brain").css("opacity", 1);
             if (typeof(callback) == "function")
                 callback();
         }.bind(this), true, true );
@@ -1057,12 +1096,6 @@ MRIview.prototype = {
             this.schedule();
         }.bind(this)});
 
-        $("#resetfid").click(function() {
-            this.setMix(0);
-            this.controls.target.set(0,0,0);
-            this.controls.setCamera(45, 45, 200);
-            this.schedule();
-        }.bind(this));
         $("#resetflat").click(function() {
             this.reset_view();
         }.bind(this));

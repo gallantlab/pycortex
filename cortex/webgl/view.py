@@ -17,8 +17,8 @@ from .. import utils
 
 import serve
 
-loader = template.Loader(serve.cwd)
-html = loader.load("mixer.html")
+sloader = template.Loader(serve.cwd)
+lloader = template.Loader("./")
 
 name_parse = re.compile(r".*/(\w+).png")
 colormaps = glob.glob(os.path.join(serve.cwd, "resources/colormaps/*.png"))
@@ -29,34 +29,38 @@ def _normalize_data(data, mask):
         data = dict(data0=data)
 
     json = dict()
+    json['__order__'] = data.keys()
     for name, dat in data.items():
-        json[name] = dict( __class__="Dataset")
+        ds = dict(__class__="Dataset")
 
         if isinstance(dat, dict):
             data = _fixarray(dat['data'], mask)
             if 'stim' in dat:
-                json[name]['stim'] = dat['stim']
-            json[name]['delay'] = dat['delay'] if 'delay' in dat else 0
+                ds['stim'] = dat['stim']
+            ds['delay'] = dat['delay'] if 'delay' in dat else 0
         elif isinstance(dat, np.ndarray):
             data = _fixarray(dat, mask)
 
-        json[name]['data'] = data
-        json[name]['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
-        json[name]['max'] = scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max']
+        ds['data'] = data
+        ds['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
+        ds['max'] = scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max']
         if 'cmap' in dat:
-            json[name]['cmap'] = dat['cmap']
+            ds['cmap'] = dat['cmap']
         if 'rate' in dat:
-            json[name]['rate'] = dat['rate']
+            ds['rate'] = dat['rate']
+
+        json[name] = ds
 
     return json
 
 def _make_bindat(json, fmt="%s.bin"):
     newjs, bindat = dict(), dict()
     for name, data in json.items():
-        newjs[name] = dict(data)
-        newjs[name]['data'] = fmt%name
-        bindat[name] = serve.make_binarray(data['data'])
-
+        if "data" in data:
+            newjs[name] = dict(data)
+            newjs[name]['data'] = fmt%name
+            bindat[name] = serve.make_binarray(data['data'])
+            
     return newjs, bindat
 
 def _fixarray(data, mask):
@@ -99,7 +103,7 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
 
-def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html"):
+def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", **kwargs):
     print "You'll probably need nginx to view this, since file:// paths don't handle xsrf correctly"
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
@@ -113,7 +117,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
         newfile = os.path.join(outpath, "%s.%s"%(fname, ext))
         if os.path.exists(newfile):
             os.unlink(newfile)
-        print "copying %s file"%ext
+        
         shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
     ctmfile = os.path.split(ctmfile)[1]
 
@@ -126,8 +130,11 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     
     #Parse the html file and paste all the js and css files directly into the html
     import htmlembed
-    template = loader.load(template)
-    html = template.generate(ctmfile=ctmfile, data=json, colormaps=colormaps, default_cmap=cmap, python_interface=False)
+    if os.path.exists(os.path.join("./", template)):
+        template = lloader.load(template)
+    else:
+        template = sloader.load(template)
+    html = template.generate(ctmfile=ctmfile, data=json, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
 
 
@@ -145,6 +152,8 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     Regular cortical movie: [t, vox]
     Regular cortical image: [vox]
     '''
+    html = sloader.load("mixer.html")
+
     ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)
     mask = utils.get_cortical_mask(subject, xfmname)
     jsondat, bindat = _make_bindat(_normalize_data(data, mask), fmt='data/%s/')
