@@ -55,7 +55,7 @@ function ROIpack(svgdoc, callback, viewer) {
     this.svgroi.setAttribute("viewBox", "0 0 "+w+" "+h);
 
     var gl = viewer.renderer.context;
-    var height = Math.min(5120, gl.getParameter(gl.MAX_TEXTURE_SIZE)) / this.aspect;
+    var height = Math.min(4096, gl.getParameter(gl.MAX_TEXTURE_SIZE)) / this.aspect;
     this.setHeight(height);
     
     this._updatemove = true;
@@ -81,18 +81,25 @@ ROIpack.prototype = {
         this._shadowtex = new ShadowTex(Math.ceil(this.width), Math.ceil(this.height), 4);
     }, 
     update: function(renderer) {
-        var fo = "fill-opacity:"+$("#roi_fillalpha").slider("option", "value");
-        var lo = "stroke-opacity:"+$("#roi_linealpha").slider("option", "value");
-        var fc = "fill:"+$("#roi_fillcolor").attr("value");
-        var lc = "stroke:"+$("#roi_linecolor").attr("value");
-        var lw = "stroke-width:"+$("#roi_linewidth").slider("option", "value") + "px";
-        var sw = parseInt($("#roi_shadowalpha").slider("option", "value"));
+        var fo = $("#roi_fillalpha").length > 0 ? $("#roi_fillalpha").slider("option", "value") : 0;
+        var lo = $("#roi_linealpha").length > 0 ? $("#roi_linealpha").slider("option", "value") : 1;
+        var fc = $("#roi_fillcolor").length > 0 ? $("#roi_fillcolor").attr("value") : "#000";
+        var lc = $("#roi_linecolor").length > 0 ? $("#roi_linecolor").attr("value") : "#FFF";
+        var lw = $("#roi_linewidth").length > 0 ? $("#roi_linewidth").slider("option", "value") : 3;
+        var sw = $("#roi_shadowalpha").length > 0 ? $("#roi_shadowalpha").slider("option", "value") : 5 ;
+        fo = "fill-opacity:" + fo;
+        lo = "stroke-opacity:" + lo;
+        fc = "fill:" + fc;
+        lc = "stroke:" + lc;
+        lw = "stroke-width:" + lw + "px";
+        sw = parseInt(sw);
 
         this.rois.attr("style", [fo, lo, fc, lc, lw].join(";"));
         var svg_xml = (new XMLSerializer()).serializeToString(this.svgroi);
 
         if (sw > 0) {
-            var sc = "stroke:"+$("#roi_shadowcolor").val();
+            var sc = $("#roi_shadowcolor").length > 0 ? $("#roi_shadowcolor").val() : "#000";
+            sc = "stroke:" + sc;
             this.rois.attr("style", [sc, fc, fo, lo, lw].join(";"));
             var shadow_xml = (new XMLSerializer()).serializeToString(this.svgroi);
 
