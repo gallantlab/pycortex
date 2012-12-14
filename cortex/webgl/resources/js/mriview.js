@@ -687,6 +687,13 @@ MRIview.prototype = {
             this.setData([datasets[(i+dir).mod(datasets.length)]]);
         }
     },
+    rmData: function(name) {
+        delete this.datasets[name];
+        $("#datasets li").each(function() {
+            if ($(this).text() == name)
+                $(this).remove();
+        })
+    },
 
     addPlugin: function(obj, static) {
         this._staticplugin = static === true;
