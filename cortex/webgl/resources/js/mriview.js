@@ -346,6 +346,7 @@ MRIview.prototype = {
             }.bind(this));
 
             //Create the surface inflat/unfold buttons
+            var btnspeed = 0.5; // How long should folding/unfolding animations take?
             var td, btn, name;
             td = document.createElement("td");
             btn = document.createElement("input");
@@ -353,10 +354,8 @@ MRIview.prototype = {
             btn.setAttribute("value", "Fiducial");
             td.setAttribute("style", "text-align:left;");
             btn.addEventListener("click", function() {
-                this.setMix(0);
-                this.controls.target.set(0,0,0);
-                this.controls.setCamera(45, 45, 200);
-                this.schedule();
+                this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
+                              {idx:btnspeed, state:"mix", value:0.0}]);
             }.bind(this));
             td.appendChild(btn);
             $("#mixbtns").append(td);
@@ -366,9 +365,11 @@ MRIview.prototype = {
                 btn = document.createElement("input");
                 btn.setAttribute("type", "button");
                 btn.setAttribute("value", name);
-                btn.addEventListener("click", function() {
-                    this.setMix(i / (json.names.length+1));
-                }.bind(this));
+
+                btn.addEventListener("click", function(j) {
+                    // this.setMix(i / (json.names.length+1));
+                    this.animate([{idx:btnspeed, state:"mix", value: (j+1) / (json.names.length+1)}]);
+                }.bind(this, i));
                 td.appendChild(btn);
                 $("#mixbtns").append(td);
             }
@@ -378,7 +379,8 @@ MRIview.prototype = {
             btn.setAttribute("value", "Flat");
             td.setAttribute("style", "text-align:right;");
             btn.addEventListener("click", function() {
-                this.reset_view();
+                // this.reset_view();
+                this.animate([{idx:btnspeed, state:"mix", value:1.0}]);
             }.bind(this));
             td.appendChild(btn);
             $("#mixbtns").append(td);
@@ -707,12 +709,15 @@ MRIview.prototype = {
             var width = $("#bar").position().left / $(window).width() * 100 + "%";
             this.resize(width);
             $("#left").width(width);
+            $("#bottombar").width(width);
+            $("#topbar").width(width);
             $("#sidepanel")
                 .width(100-parseFloat(width)+"%")
                 .css("left", width).css('display', 'table');
             $("#bar").css("left", width);
             _lastwidth = width;
         }.bind(this);
+        // this.resizepanel();
 
         $("#bar")
             .draggable({axis:'x', drag: resizepanel, stop: resizepanel})
@@ -728,6 +733,8 @@ MRIview.prototype = {
                 this.resize(width);
                 $("#bar").css("left", width);
                 $("#sidepanel").width(100-parseFloat(width)+"%").css('left', width);
+                $("#bottombar").width(width);
+                $("#topbar").width(width);
             }.bind(this));
         $("#bar").click();
     },
