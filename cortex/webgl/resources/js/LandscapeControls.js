@@ -171,20 +171,22 @@ THREE.LandscapeControls.prototype = {
         }
 
         var rad = this.radius, target = this.target.clone();
-        if ($("#zlockwhole")[0].checked) {
-            rad  = this.flatsize / 2 / this.camera.aspect;
-            rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
-            rad -= this.flatoff;
-            rad = flatmix * rad + (1 - flatmix) * this.radius;
-        } else if (!$("#zlocknone")[0].checked) {
-            rad  = this.flatsize / 4 / this.camera.aspect;
-            rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
-            rad -= this.flatoff;
-            rad = flatmix * rad + (1 - flatmix) * this.radius;
-            if ($("#zlockleft")[0].checked) {
-                target.x = flatmix * (-this.flatsize / 4) + (1 - flatmix) * target.x;
-            } else if ($("#zlockright")[0].checked) {
-                target.x = flatmix * ( this.flatsize / 4) + (1 - flatmix) * target.x;
+        if ($("#zlockwhole").length > 0) {
+            if ($("#zlockwhole")[0].checked) {
+                rad  = this.flatsize / 2 / this.camera.aspect;
+                rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
+                rad -= this.flatoff;
+                rad = flatmix * rad + (1 - flatmix) * this.radius;
+            } else if (!$("#zlocknone")[0].checked) {
+                rad  = this.flatsize / 4 / this.camera.aspect;
+                rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
+                rad -= this.flatoff;
+                rad = flatmix * rad + (1 - flatmix) * this.radius;
+                if ($("#zlockleft")[0].checked) {
+                    target.x = flatmix * (-this.flatsize / 4) + (1 - flatmix) * target.x;
+                } else if ($("#zlockright")[0].checked) {
+                    target.x = flatmix * ( this.flatsize / 4) + (1 - flatmix) * target.x;
+                }
             }
         }
 
