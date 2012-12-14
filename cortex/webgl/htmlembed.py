@@ -37,7 +37,7 @@ def _embed_css(cssfile):
 def _embed_js(dom, script):
     wparse = re.compile(r"new Worker\(\s*(['\"].*?['\"])\s*\)", re.S)
     aparse = re.compile(r"attr\(\s*['\"]src['\"]\s*,\s*(.*?)\)")
-    with _open(script.getAttribute("src"))) as jsfile:
+    with _open(script.getAttribute("src")) as jsfile:
         jssrc = jsfile.read()
         for worker in wparse.findall(jssrc):
             wid = os.path.splitext(os.path.split(worker.strip('"\''))[1])[0]
@@ -111,7 +111,7 @@ if (window.webkitURL)
             imgfile = os.path.join(serve.cwd, img.getAttribute("src"))
 
         img.setAttribute("src", serve.make_base64(imgfile)
-    
+
     #Save out the new html file
     with open(outfile, "w") as htmlfile:
         serializer = html5lib.serializer.htmlserializer.HTMLSerializer()
