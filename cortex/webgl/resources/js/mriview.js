@@ -467,7 +467,6 @@ MRIview.prototype = {
                     anim.push({start:start, end:end, ended:false});
             }
         }
-        console.log(anim);
         this._anim = anim;
         this._startplay = new Date();
         this.schedule();
@@ -478,7 +477,6 @@ MRIview.prototype = {
         var idx, val, f, i, j;
         for (i = 0, il = this._anim.length; i < il; i++) {
             f = this._anim[i];
-            //console.log(f.start.state, f.start.value, f.end.value, f.start.idx, sec, f.end.idx);
             if (!f.ended) {
                 if (f.start.idx <= sec && sec < f.end.idx) {
                     idx = (sec - f.start.idx) / (f.end.idx - f.start.idx);

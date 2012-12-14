@@ -6,6 +6,26 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <link rel="stylesheet" href="resources/css/ui-lightness/jquery-ui-1.8.21.custom.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/jquery.miniColors.css" type='text/css' />
+<style type='text/css'>
+	ul#datasets li .handle {
+		display:none;
+	}
+	#helpmenu {
+		position:absolute;
+	    background:rgba(255, 255, 255, 0.2);
+	    transition:opacity 0.25s;
+	    -moz-transition:opacity 0.25s;
+	    -webkit-transition:opacity 0.25s;
+	    padding:0.5em;
+	    margin:2em;
+	    margin-top:-20em;
+	    width:15em;
+	    z-index:100;
+	    border-radius:5px;
+	    color:white;
+	    text-shadow:0 0 3px black;
+	}
+</style>
 
 <script type='text/javascript' src='resources/js/jquery-1.8.0.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery-ui-1.8.23.custom.min.js'></script>
@@ -58,6 +78,11 @@
 	$(document).ready(function() {
 		$("#colormap option").each(function(idx) {
 			cmapnames[$(this).text()] = idx;
+		});
+
+		window.addEventListener("keypress", function(e) {
+			if (e.keyCode == 104)
+				$("#helpmenu").css("opacity", $("#helpmenu").css("opacity") == 1 ? 0 : 1);
 		});
 
 		if (!webgl()) {
@@ -154,6 +179,15 @@
 	    </div>
 	</div>
 </div>
+
+<table id='helpmenu'>
+	<tr><td>h</td><td>Help</td></tr>
+	<tr><td>+</td><td>Next Dataset</td></tr>
+	<tr><td>-</td><td>Prev Dataset</td></tr>
+	<tr><td>Left mouse</td><td>Rotate / Pick</td></tr>
+	<tr><td>Middle mouse</td><td>Pan</td></tr>
+	<tr><td>Right mouse</td><td>Zoom</td></tr>
+</table>
 
 <div id='bottombar' class='infobar'>
 	<div class='content'>

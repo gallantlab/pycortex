@@ -141,7 +141,7 @@ ROIpack.prototype = {
         var width = viewer.renderer.domElement.clientWidth;
         var height = viewer.renderer.domElement.clientHeight;
         var pix = viewer.pixbuf;
-        var labelcull = $("#labelcull").attr("checked") == "checked";
+        var labelcull = $("#labelcull").length > 0 ? $("#labelcull").attr("checked") == "checked" : true;
 
         if (labelcull)
             gl.readPixels(0,0,width,height,gl.RGBA, gl.UNSIGNED_BYTE, pix);
