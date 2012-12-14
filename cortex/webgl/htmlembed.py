@@ -28,6 +28,8 @@ def _embed_css(cssfile):
                     url = urlparse.search(val)
                     if url is not None:
                         imgfile = os.path.join(csspath, url.group(1))
+                        if not os.path.exists(imgfile):
+                            imgfile = os.path.join(serve.cwd, csspath, url.group(1))
                         imgdat = "url(%s)"%serve.make_base64(imgfile)
                         val = urlparse.sub(imgdat, val)
                     lines.append("%s:%s"%(attr, val))
@@ -110,7 +112,7 @@ if (window.webkitURL)
         else:
             imgfile = os.path.join(serve.cwd, img.getAttribute("src"))
 
-        img.setAttribute("src", serve.make_base64(imgfile)
+        img.setAttribute("src", serve.make_base64(imgfile))
 
     #Save out the new html file
     with open(outfile, "w") as htmlfile:
