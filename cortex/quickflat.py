@@ -154,7 +154,7 @@ def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=Tr
     if name is None:
         return fig
     
-    fig.set_size_inches(np.array(im.shape)[::-1] / float(dpi))
+    fig.set_size_inches(np.array(im.shape[:2])[::-1] / float(dpi))
     fig.savefig(name, transparent=True, dpi=dpi)
     plt.close()
 
