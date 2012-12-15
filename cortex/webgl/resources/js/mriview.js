@@ -349,9 +349,8 @@ MRIview.prototype = {
             var btnspeed = 0.5; // How long should folding/unfolding animations take?
             var td, btn, name;
             td = document.createElement("td");
-            btn = document.createElement("input");
-            btn.setAttribute("type", "button");
-            btn.setAttribute("value", "Fiducial");
+            btn = document.createElement("button");
+            btn.innerHTML = "Fiducial";
             td.setAttribute("style", "text-align:left;");
             btn.addEventListener("click", function() {
                 this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
@@ -362,9 +361,8 @@ MRIview.prototype = {
             for (var i = 0; i < json.names.length; i++) {
                 name = json.names[i][0].toUpperCase() + json.names[i].slice(1);
                 td = document.createElement("td");
-                btn = document.createElement("input");
-                btn.setAttribute("type", "button");
-                btn.setAttribute("value", name);
+                btn = document.createElement("button");
+                btn.innerHTML = name;
 
                 btn.addEventListener("click", function(j) {
                     // this.setMix(i / (json.names.length+1));
@@ -374,9 +372,8 @@ MRIview.prototype = {
                 $("#mixbtns").append(td);
             }
             td = document.createElement("td");
-            btn = document.createElement("input");
-            btn.setAttribute("type", "button");
-            btn.setAttribute("value", "Flat");
+            btn = document.createElement("button");
+            btn.innerHTML = "Flat";
             td.setAttribute("style", "text-align:right;");
             btn.addEventListener("click", function() {
                 // this.reset_view();

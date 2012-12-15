@@ -12,7 +12,8 @@ Graph.prototype.setrgbdata = function(data) {
     // [data] should be an associative array of either
     // 1. Hex color string and float size pairs
     // 2. Floating point values
-
+    this.hideselcategory();
+    
     // Right now let's just assume the former
     for (var name in data) {
         // console.log(name);
