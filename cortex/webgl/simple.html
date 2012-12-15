@@ -52,6 +52,22 @@
 	    color:white;
 	    text-shadow:0 0 3px black;
 	}
+	#intro {
+		position:absolute;
+		width:60%;
+		height:50%;
+		left:20%;
+		top:20%;
+		border-radius:10px;
+		padding:2em;
+		z-index:100;
+		background:rgba(255,255,255,0.6);
+	}
+	#introclose {
+		float:right;
+		margin-top:-3em;
+		margin-right:-3em;
+	}
 	#topbar {
 		margin:-190px 0 -10px 0; 
 		height:200px;
@@ -124,6 +140,8 @@
 		$("#colormap option").each(function(idx) {
 			cmapnames[$(this).text()] = idx;
 		});
+
+		$("#introclose").click(function() { $("#intro").hide(); });
 
 		window.addEventListener("keypress", function(e) {
 			if (e.keyCode == 104)
@@ -202,6 +220,12 @@
 		</form>
 	</div>
 </div>
+
+<div id='intro'>
+	<button id='introclose'>x</button>
+	Welcome to pycortex's webgl MRI view!
+</div>
+
 <div id='main'>
 	<div id='left'>
 		<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
@@ -223,10 +247,6 @@
 	    	</div>
 	    </div>
 	</div>
-</div>
-
-<div id='intro'>
-	<button id='closeintro'>
 </div>
 
 <table id='helpmenu'>
