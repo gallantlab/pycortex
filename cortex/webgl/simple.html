@@ -6,27 +6,6 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <link rel="stylesheet" href="resources/css/ui-lightness/jquery-ui-1.8.21.custom.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/jquery.miniColors.css" type='text/css' />
-<style type='text/css'>
-	ul#datasets li .handle {
-		display:none;
-	}
-	#helpmenu {
-		position:absolute;
-	    background:rgba(255, 255, 255, 0.2);
-	    transition:opacity 0.25s;
-	    -moz-transition:opacity 0.25s;
-	    -webkit-transition:opacity 0.25s;
-	    padding:0.5em;
-	    margin:2em;
-	    margin-top:-20em;
-	    width:15em;
-	    z-index:100;
-	    border-radius:5px;
-	    color:white;
-	    text-shadow:0 0 3px black;
-	    display:none;
-	}
-</style>
 
 <script type='text/javascript' src='resources/js/jquery-1.8.0.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery-ui-1.8.23.custom.min.js'></script>
@@ -54,6 +33,51 @@
 {% end %}
 
 <link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
+<style type='text/css'>
+	ul#datasets li .handle {
+		display:none;
+	}
+	#helpmenu {
+		position:absolute;
+	    background:rgba(255, 255, 255, 0.2);
+	    transition:opacity 0.25s;
+	    -moz-transition:opacity 0.25s;
+	    -webkit-transition:opacity 0.25s;
+	    padding:0.5em;
+	    margin:2em;
+	    margin-top:-20em;
+	    width:15em;
+	    z-index:100;
+	    border-radius:5px;
+	    color:white;
+	    text-shadow:0 0 3px black;
+	}
+	#topbar {
+		margin:-440px 0 -10px 0; 
+	}
+	#topbar:hover, #topbar:active {
+		margin:0px 0 -450px 0;
+	}
+	#bottombar {
+		margin-top:-80px;
+		z-index:10;
+		position:relative;
+	}
+	#bottombar table {
+		padding:4px;
+		width:100%;
+	}
+	#bottombar table td {
+		width:25% !important;
+	}
+	#bottombar:hover, #bottombar:active {
+		margin-top:-80px;
+	}
+	div#pluginbox {
+		height:100%;
+	}
+</style>
+
 <script type='text/javascript'>
 	function webgl() { 
 		try { 
