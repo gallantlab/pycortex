@@ -239,6 +239,7 @@ function MRIview() {
     this.projector = new THREE.Projector();
     this._startplay = null;
     this._staticplugin = false;
+    this._loaded = false;
 
     this.datasets = {}
     this.active = [];
@@ -247,7 +248,7 @@ function MRIview() {
 }
 MRIview.prototype = { 
     schedule: function() {
-        if (!this._scheduled && this.state == "pause") {
+        if (this._loaded && !this._scheduled && this.state == "pause") {
             this._scheduled = true;
             requestAnimationFrame( this.draw.bind(this) );
         }
@@ -367,7 +368,6 @@ MRIview.prototype = {
                 btn.setAttribute("value", name);
 
                 btn.addEventListener("click", function(j) {
-                    // this.setMix(i / (json.names.length+1));
                     this.animate([{idx:btnspeed, state:"mix", value: (j+1) / (json.names.length+1)}]);
                 }.bind(this, i));
                 td.appendChild(btn);
@@ -379,13 +379,14 @@ MRIview.prototype = {
             btn.setAttribute("value", "Flat");
             td.setAttribute("style", "text-align:right;");
             btn.addEventListener("click", function() {
-                // this.reset_view();
                 this.animate([{idx:btnspeed, state:"mix", value:1.0}]);
             }.bind(this));
             td.appendChild(btn);
             $("#mixbtns").append(td);
             $("#mix, #pivot, #shifthemis").parent().attr("colspan", json.names.length+2);
 
+            this._loaded = true;
+            this.draw();
             $("#ctmload").hide();
             $("#brain").css("opacity", 1);
             if (typeof(callback) == "function")
@@ -440,6 +441,7 @@ MRIview.prototype = {
             case 'radius':
                 return this.controls.setCamera(undefined, undefined, value);
             case 'target':
+                this.roipack._updatemove = true;
                 return this.controls.target.set(value[0], value[1], value[2]);
         };
     },
