@@ -197,7 +197,7 @@ function MRIview() {
             curvAlpha:  { type:'f', value:1.},
             curvScale:  { type:'f', value:.5},
             curvLim:    { type:'f', value:.2},
-            dataAlpha:  { type:'f', value:.9},
+            dataAlpha:  { type:'f', value:1.0},
             hatchAlpha: { type:'f', value:1.},
             hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
 
@@ -707,7 +707,7 @@ MRIview.prototype = {
             this.resize(width);
             $("#left").width(width);
             $("#bottombar").width(width);
-            $("#topbar").width(width);
+            // $("#topbar").width(width);
             $("#sidepanel")
                 .width(100-parseFloat(width)+"%")
                 .css("left", width).css('display', 'table');
@@ -731,7 +731,7 @@ MRIview.prototype = {
                 $("#bar").css("left", width);
                 $("#sidepanel").width(100-parseFloat(width)+"%").css('left', width);
                 $("#bottombar").width(width);
-                $("#topbar").width(width);
+                // $("#topbar").width(width);
             }.bind(this));
         $("#bar").click();
     },
@@ -1094,7 +1094,7 @@ MRIview.prototype = {
             this.shader.uniforms.curvLim.value = ui.value;
             this.schedule();
         }.bind(this)})
-        $("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:.9, slide:function(event, ui) {
+        $("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:1.0, slide:function(event, ui) {
             this.shader.uniforms.dataAlpha.value = ui.value;
             this.schedule();
         }.bind(this)})
