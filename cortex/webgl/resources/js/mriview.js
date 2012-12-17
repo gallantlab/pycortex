@@ -6,7 +6,8 @@ var vShadeHead = [
 
     "attribute vec2 datamap;",
     "attribute vec4 auxdat;",
-    "uniform sampler2D data[4];",
+    "uniform sampler2D ds_x;",
+    "uniform sampler2D ds_y;",
     "uniform vec2 datasize;",
 
     "uniform sampler2D colormap;",
@@ -28,7 +29,11 @@ var vShadeHead = [
 
         THREE.ShaderChunk[ "map_vertex" ],
         
-        "vec2 dcoord = (2.*datamap+1.) / (2.*datasize);",
+        "vec2 dcoord0 = (2.*datamap+1.) / (2.*datasize);",
+        "vec2 dcoord1 = (2.*datamap+1.) / (2.*datasize);",
+        "dcoord0.y *= 0.5;",
+        "dcoord1.y = dcoord1.y * 0.5 + 0.5;",
+
         "vDrop = auxdat.x;",
         "vCurv = auxdat.y;",
         "vMedial = auxdat.z;",
@@ -51,10 +56,10 @@ var vShadeTail = [ "",
 ].join("\n");
 
 var cmapShader = vShadeHead + ([
-        "float vdata0 = texture2D(data[0], dcoord).r;",
-        "float vdata1 = texture2D(data[1], dcoord).r;",
-        "float vdata2 = texture2D(data[2], dcoord).r;",
-        "float vdata3 = texture2D(data[3], dcoord).r;",
+        "float vdata0 = texture2D(ds_x, dcoord0).r;",
+        "float vdata1 = texture2D(ds_y, dcoord0).r;",
+        "float vdata2 = texture2D(ds_x, dcoord1).r;",
+        "float vdata3 = texture2D(ds_y, dcoord1).r;",
 
         "float vnorm0 = (vdata0 - vmin[0]) / (vmax[0] - vmin[0]);",
         "float vnorm1 = (vdata1 - vmin[1]) / (vmax[1] - vmin[1]);",
@@ -67,7 +72,6 @@ var cmapShader = vShadeHead + ([
         "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
 
         "vColor  = texture2D(colormap, cuv);",
-        //"vColor = vec4(vec3(cuv, 0.), 1.);",
 ].join("\n")) + vShadeTail;
 
 var rawShader = vShadeHead + ([
@@ -188,9 +192,8 @@ function MRIview() {
             map:        { type:'t',  value:0, texture: null },
             hatch:      { type:'t',  value:1, texture: makeHatch() },
             colormap:   { type:'t',  value:2, texture: null },
-            dropout:    { type:'t',  value:3, texture: null },
-            curvature:  { type:'t',  value:4, texture: null },
-            data:       { type:'tv', value:5, texture: [null, null, null, null] },
+            ds_x:       { type:'t',  value:3, texture: null },
+            ds_y:       { type:'t',  value:4, texture: null },
 
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
@@ -653,9 +656,6 @@ MRIview.prototype = {
                     if ($(this).text() == names[1])
                         $(this).addClass("ui-selected");
                 });
-            } else {
-                this.shader.uniforms.data.texture[1] = this.blanktex;
-                this.shader.uniforms.data.texture[3] = this.blanktex;
             }
         } else {
             return false;
@@ -836,12 +836,10 @@ MRIview.prototype = {
         this.frame = frame;
         var fframe = Math.floor(frame);
         if (this.active[0].array !== undefined) {
-            this.shader.uniforms.data.texture[0] = this.active[0].textures[fframe];
-            this.shader.uniforms.data.texture[2] = this.active[0].textures[fframe+1];
+            this.shader.uniforms.ds_x.texture = this.active[0].textures[fframe];
         }
         if (this.active.length > 1 && this.active[1].array !== undefined) {
-            this.shader.uniforms.data.texture[1] = this.active[1].textures[fframe];
-            this.shader.uniforms.data.texture[3] = this.active[1].textures[fframe+1];
+            this.shader.uniforms.ds_y.texture = this.active[1].textures[fframe];
         }
         this.shader.uniforms.framemix.value = frame - fframe;
         $("#movieprogress div").slider("value", frame);

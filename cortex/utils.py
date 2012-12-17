@@ -376,3 +376,35 @@ def get_curvature(subject, smooth=8, neighborhood=3):
             curvs.append(curvature)
 
     return curvs
+
+def decimate_mesh(subject, proportion = 0.5):
+    from scipy.spatial import Delaunay
+    from polyutils import trace_both
+    flat = surfs.getVTK(subject, "flat")
+    fiducial = surfs.getVTK(subject, "fiducial")
+    edges = map(np.array, trace_both(*surfs.getVTK(subject, "flat", merge=True, nudge=True)[:2]))
+    edges[1] -= len(flat[0][0])
+
+    masks, newpolys = [], []
+    for (fpts, fpolys, _), (pts, polys, _), edge in zip(flat, fiducial, edges):
+        valid = np.unique(polys)
+
+        edge_set = set(edge)
+
+        mask = np.zeros((len(pts),), dtype=bool)
+        mask[valid] = True
+        mask[np.random.permutation(len(pts))[:len(pts)*(1-proportion)]] = False
+        mask[edge] = True
+        midx = np.nonzero(mask)[0]
+
+        tri = Delaunay(fpts[mask, :2])
+        #cull all the triangles from concave surfaces
+        pmask = np.array([midx[p] in edge_set for p in tri.vertices.ravel()]).reshape(-1, 3).all(1)
+
+        cutfaces = np.array([p in edge_set for p in polys.ravel()]).reshape(-1, 3).all(1)
+
+        newpolys.append(tri.vertices[~pmask])
+        fullpolys.append()
+        masks.append(mask)
+
+    return masks, newpolys

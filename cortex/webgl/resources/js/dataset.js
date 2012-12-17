@@ -1,4 +1,3 @@
-
 function Dataset(nparray) {
     if (nparray instanceof NParray) {
         this.init(nparray);
@@ -31,7 +30,10 @@ Dataset.maketex = function(array, shape, raw, slice) {
     
     data = new array.data.constructor(len*2);
     data.subarray(0, len).set(arr.data);
-    data.subarray(len).set(arr.data);
+    if (slice+1 < array.shape[0]) {
+        arr = array.view(slice+1);
+        data.subarray(len).set(arr.data);
+    }
     
     if (raw) {
         form = size == 4 ? THREE.RGBAFormat : THREE.RGBFormat;
@@ -142,7 +144,7 @@ Dataset.prototype = {
                 $("#bottombar").addClass("bbar_controls");
                 $("#movieprogress div").slider("option", {min:0, max:this.textures.length});
             } else {
-                viewer.shader.uniforms.data.texture[dim] = this.textures[0];
+                viewer.shader.uniforms['ds_' + (dim ? 'y':'x')].texture = this.textures[0];
                 $("#moviecontrols").hide();
                 $("#bottombar").removeClass("bbar_controls");
             }

@@ -21,6 +21,7 @@
 <script type="text/javascript" src="resources/js/canvg.js"></script> 
 
 <script type='text/javascript' src='resources/js/datamodel.js'></script>
+<script type='text/javascript' src='resources/js/dataset.js'></script>
 <script type='text/javascript' src='resources/js/svgroi.js'></script>
 <script type='text/javascript' src='resources/js/shadowtex.js'></script>
 <script type='text/javascript' src='resources/js/facepick.js'></script>
@@ -63,7 +64,7 @@
 		if (!webgl()) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
-		} else if (!vtex(5, 9)) {
+		} else if (!vtex(3, 5)) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, your computer does not have the minimum number of texture units :(</p><p>Try upgrading your drivers and/or your browser</p>");
 		} else {
