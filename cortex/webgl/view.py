@@ -105,7 +105,37 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
 
-def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", **kwargs):
+def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", anonymize=False, **kwargs):
+    '''
+    Creates a static instance of the webGL MRI viewer that can easily be posted 
+    or shared. 
+
+    Parameters
+    ----------
+    outpath : string
+        The directory where the static viewer will be saved. Will be created if it
+        doesn't already exist.
+    data : array_like or dict
+        The data to be displayed on the surface. For details see docs for show().
+    subject : string
+        Subject identifier (e.g. "JG").
+    xfmname : string
+        Name of functional -> anatomical transform.
+    types : tuple, optional
+        Types of surfaces to include. Fiducial and flat surfaces are automatically
+        included. Default ("inflated",)
+    recache : bool, optional
+        Whether to recreate CTM and SVG files for surfaces. Default False
+    cmap : string, optional
+        Name of default colormap used to show data. Default "RdBu_r"
+    template : string, optional
+        Name of template HTML file. Default "static.html"
+    anonymize : bool, optional
+        Whether to rename CTM and SVG files generically, for public distribution.
+        Default False
+    **kwargs : dict, optional
+        All additional keyword arguments are passed to the template renderer.
+    '''
     print "You'll probably need nginx to view this, since file:// paths don't handle xsrf correctly"
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
@@ -115,13 +145,32 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     ctmfile = utils.get_ctmpack(subject, xfmname, types, method='mg2', level=9, recache=recache)
     oldpath, fname = os.path.split(ctmfile)
     fname, ext = os.path.splitext(fname)
+
+    ## Rename files to anonymize?
+    if anonymize:
+        newfname = "surface"
+    else:
+        newfname = fname
+
     for ext in ['json','ctm', 'svg']:
-        newfile = os.path.join(outpath, "%s.%s"%(fname, ext))
+        newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
         if os.path.exists(newfile):
             os.unlink(newfile)
         
         shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
-    ctmfile = os.path.split(ctmfile)[1]
+
+        if ext == "json" and anonymize:
+            ## change filenames in json
+            nfh = open(newfile)
+            jsoncontents = nfh.read()
+            nfh.close()
+            
+            ofh = open(newfile, "w")
+            ofh.write(jsoncontents.replace(fname, newfname))
+            ofh.close()
+
+    #ctmfile = os.path.split(ctmfile)[1]
+    ctmfile = newfname+".json"
 
     #Generate the data binary objects and save them into the outpath
     mask = utils.get_cortical_mask(subject, xfmname)
