@@ -140,7 +140,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
 
 
-def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", autoclose=True, open_browser=True):
+def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None):
     '''Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
     sub dictionary with keys [data, stim, delay].
 
@@ -266,13 +266,14 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
             self.c_evt.wait()
             self.c_evt.clear()
             return JSMixer(self.send, "window.viewer")
-
+    if port is None:
+        port = random.randint(1024, 65536)
+        
     server = WebApp([
             (r'/ctm/(.*)', CTMHandler),
             (r'/data/(.*)', DataHandler),
             (r'/mixer.html', MixerHandler),
-        ], 
-        random.randint(1024, 65536))
+        ], port)
     server.start()
     print "Started server on port %d"%server.port
     if open_browser:

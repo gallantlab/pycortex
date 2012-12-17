@@ -217,7 +217,31 @@ def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0, **
     print "Done"
 
     return outfile
-    
+
+def downsample(subject, angle=20):
+    from tvtk.api import tvtk
+    outputs = []
+    fpolys = [polys for pts, polys, norms in surfs.getVTK(subject, "flat")]
+    for (pts, polys, _), fpoly in zip(surfs.getVTK(subject, "fiducial"), fpolys):
+        pts = pts.astype(np.float32)
+        pd = tvtk.PolyData(points=pts, polys=fpoly)
+        decimate = tvtk.DecimatePro(input=pd)
+        decimate.set(
+            boundary_vertex_deletion = False,
+            feature_angle = angle, 
+            preserve_topology = True,
+            splitting = False,
+            target_reduction = 1)
+        decimate.update()
+        dpts = dict((tuple(sorted(p)), i) for i, p in enumerate(decimate.output.points.to_array()))
+        mask = np.array([tuple(sorted(p)) in dpts for p in pts])
+
+        cutfaces = set(tuple(sorted(f)) for f in polys) - set(tuple(sorted(f)) for f in fpoly)
+        dpoly = np.array([ dpts[tuple(sorted(pts[f]))] for f in np.array(list(cutfaces)).ravel() ])
+
+        outputs.append((mask, dpoly.reshape(-1, 3), decimate.output.polys.to_array().reshape(-1, 3)))
+
+    return outputs
 
 if __name__ == "__main__":
     print make_pack("/tmp/test.json", "AH", "AH_huth2", types=("inflated", "superinflated"), method='mg2', level=9)
