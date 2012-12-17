@@ -142,7 +142,7 @@ Dataset.prototype = {
                 viewer.setFrame(0);
                 $("#moviecontrols").show();
                 $("#bottombar").addClass("bbar_controls");
-                $("#movieprogress div").slider("option", {min:0, max:this.textures.length});
+                $("#movieprogress div").slider("option", {min:0, max:this.textures.length-1});
             } else {
                 viewer.shader.uniforms['ds_' + (dim ? 'y':'x')].texture = this.textures[0];
                 $("#moviecontrols").hide();
