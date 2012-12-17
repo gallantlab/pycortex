@@ -67,6 +67,7 @@ var cmapShader = vShadeHead + ([
         "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
 
         "vColor  = texture2D(colormap, cuv);",
+        //"vColor = vec4(vec3(cuv, 0.), 1.);",
 ].join("\n")) + vShadeTail;
 
 var rawShader = vShadeHead + ([
