@@ -120,8 +120,10 @@ tr#wnbuttons td {
         setTimeout(function() {
             //$("#labelshow")[0].checked = false;
             //$("#labelshow").change();
+            viewer.setMix(0.667);
             viewer.animate([{idx:3, state:"azimuth", value:310},
-                            {idx:3, state:"altitude", value:120}]);
+                            {idx:3, state:"altitude", value:120},
+                            {idx:3, state:"mix", value:0.0}]);
                         }, 1000);
             //$("#labelshow")[0].checked = true;
             //$("#labelshow").change();
