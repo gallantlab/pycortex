@@ -75,8 +75,8 @@ var cmapShader = vShadeHead + ([
 ].join("\n")) + vShadeTail;
 
 var rawShader = vShadeHead + ([
-        "vColor  = (1. - framemix) * texture2D(data[0], dcoord);",
-        "vColor +=       framemix  * texture2D(data[2], dcoord);",
+        "vColor  = (1. - framemix) * texture2D(ds_x, dcoord0);",
+        "vColor +=       framemix  * texture2D(ds_x, dcoord1);",
         "vColor.rgb *= vColor.a;",
 ].join("\n")) + vShadeTail;
 
