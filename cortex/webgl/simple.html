@@ -37,6 +37,9 @@
 	ul#datasets li .handle {
 		display:none;
 	}
+	fieldset > legend {
+		font-weight: bold;
+	}
 	#helpmenu {
 		position:absolute;
 	    background:rgba(0, 0, 0, 0.6);
@@ -69,7 +72,7 @@
 		padding-left:10px;
 		z-index:100;
 		text-shadow:none;
-		background-color:rgba(0,0,0,0.8);
+		background-color:rgba(0,0,0,0.9);
 		-moz-border-radius:10px;
 		-webkit-border-radius:10px;
 		border-radius:10px;
@@ -81,6 +84,10 @@
 		margin-top:-3em;
 		margin-left:-3em;
 	}
+	#introclose:hover {
+		background-color:rgba(48,48,48,1.0);
+		position:relative;
+	}
 	#introtext {
 		overflow: scroll;
 		text-align:left;
@@ -88,13 +95,40 @@
 		height:100%;
 		font-size:16pt;
 	}
+	.infobar {
+		background-color: rgba(0,0,0,0.8);
+		border-bottom: 2px solid white;
+	}
+	.infobar:hover, .infobar:active {
+		background-color: rgba(0,0,0,0.8);
+	}
 	#topbar {
 		margin:-190px 0 -10px 0; 
 		height:200px;
 		width:auto;
+		border-radius: 0 0 0 0 / 0 0 0 0;
+		color:white;
 	}
 	#topbar:hover, #topbar:active {
 		margin:0px 0 -200px 0;
+	}
+	#topgrab {
+		color:white;
+		margin-left: auto;
+		margin-right: auto;
+		text-align: center;
+		position: absolute;
+		top:100%;
+		margin-top:-15px;
+		width:100%;
+	}
+	#display_options fieldset {
+	    border:1px solid #fff;
+	    border-radius: 5px 5px 5px 5px / 5px 5px 5px 5px;
+	}
+	ul#datasets { 
+		color:black;
+		width:300px;
 	}
 	#bottombar {
 		margin-top:-100px;
@@ -118,6 +152,8 @@
 	}
 	div#pluginbox {
 		height:100%;
+		min-height:100%;
+		position:relative;
 	}
 	button {
 		background-color:rgba(0,0,0,0.6);
@@ -134,7 +170,7 @@
 		text-decoration:none;
 	}
 	button:hover {
-		background-color:rgba(50,50,50,0.6);
+		background-color:rgba(80,80,80,0.6);
 		position:relative;
 		/*top:1px;*/
 	}
@@ -203,7 +239,7 @@
 	<div class='content'>
 		<form id='display_options'>
 			<fieldset id='color_fieldset' class='opt_category'>
-				<legend>Colormap</legend>
+				<legend>Data Range</legend>
 				<table>
 					<tr><td class='vcolorbar'>
 						<div id='vminmax2'>
@@ -237,12 +273,12 @@
 					<input id='labelshow' type='checkbox' checked='checked'><label for='labelshow'>Labels</label>
 				</div>
 			</fieldset>
-			<fieldset id="layers_fieldset" class='subtable'>
-				<legend>Layer Alpha</legend>
+			<fieldset id="layers_fieldset" class='subtable' style="height: 40px;">
+				<legend>Data Opacity</legend>
 				<div class='display_opt'>
 					<table id='layerData'>
 						<tr>
-							<td><label for='layer_dataalpha'>Data</label></td>
+							<!-- <td><label for='layer_dataalpha'>Data</label></td> -->
 							<td><div id='layer_dataalpha'></div></td>
 						</tr>
 					</table>
@@ -256,24 +292,26 @@
 			</fieldset>
 		</form>
 	</div>
+	<div id="topgrab">=</div>
 </div>
 
 <div id='intro'>
 	<button id='introclose'>x</button>
 	<div id='introtext'>
-	<p style="font-size:18pt;text-align:center;">Welcome to pycortex's webgl MRI viewer!</p>
-	<p>The data shown here is published in <a href='http://dx.doi.org/10.1016/j.neuron.2012.10.014' target='_blank'>"A continuous semantic space describes the representation of thousands of object and action categories across the human brain"</a>, <em>Neuron</em>, 2012 by Huth, Nishimoto, Vu, and Gallant at <a href='http://www.berkeley.edu/' target='_blank'>UC Berkeley</a>. The webgl brain viewer was developed by James Gao.
+	<p style="font-size:18pt;text-align:center;">Welcome to the pycortex WebGL MRI viewer!</p>
+	<p>
+	This viewer shows how information about thousands of object and action categories are distributed across human neocortex. The data come from brain activity measurements made using fMRI while one participant watched hours of movie trailers. Computational modeling procedures were used to determine how 1705 distinct object and action categories are mapped across the cortical surface. Further details on this work can be found in Huth, Nishimoto, Vu and Gallant (2012), <a href='http://dx.doi.org/10.1016/j.neuron.2012.10.014' target='_blank'>"A continuous semantic space describes the representation of thousands of object and action categories across the human brain"</a>, <em>Neuron</em>, ##, ####. <strong>All data are copyright UC Regents and Gallant lab. WordNet is copyright the trustees of Princeton University.</strong>
 	</p>
+	<p><strong style="color:rgb(255,100,100)">Warning:</strong>This page uses WebGL, an experimental web technology. It will not work in all browsers or on all platforms. For the best experience we recommend using <a href='http://www.google.com/chrome'>Google Chrome</a>.</p> 
 	<p><strong>Instructions:</strong>
-	On the left is a 3D model of one participant's cortical surface. Use your left mouse button to rotate, right mouse button to zoom, and middle mouse button to pan. You can change the type of surface that is shown by pressing the buttons at the bottom. When viewing the 2D flat surface, use the left mouse button to pan.<br/>
-	The colors on the surface tell you which categories of objects and actions each part of the brain responds to. These colors match the colors of the categories on the right. <br/>
-	On the right is a tree showing hundreds of categories. Mouse over a category to see its name and its definition. Click on a category to see how it's represented across the cortical surface. Mouse over the gray bar at the top of the brain viewer window, and then click "Semantic Space" under "Datasets" to return to the original colorful view.<br/>
-	Back on the brain viewer, click on the brain to show the estimated responses of that point to each category. Under the category graph, click on "Show Semantic Space" to return to the original colorful view.
+	On the left is a 3D model of one participant's cortical surface. Use the left mouse button to rotate, right mouse button to zoom, and middle mouse button to pan. The buttons at the bottom change the way the surface is shown. When viewing the 2D flat surface, use the left mouse button to pan.<br/>
+	The colors on the surface indicate which object and action categories are represented in each part of the brain. These colors match the colors of the categories on the right. <br/>
+	On the right is a tree showing 1705 object and action categories. Mouse over a category to see its name and definition. Click on a category to see how it is represented across the cortical surface. To return to the original colorful view mouse over the bar at the very top of the brain viewer window, and then click "Semantic Space" (under "Datasets"). <br/>
+	Back on the brain viewer, click on the brain to show which categories are represented at each location on the tree. To return the tree to the original colorful view, click on "Show Semantic Space" under the category tree.
 	</p>
-	<p><strong>Caveat:</strong> All of the category-specific responses shown here is based on blood-oxygen level dependent (BOLD) responses to 2 hours of natural movies. BOLD was measured using fMRI, which is noisy and imperfect. Please do not try to read too much into the category responses for a single brain area.</p>
-	<p><strong>Hints:</strong> If the 3D viewer is very slow (as it tends to be), you can disable the ROI labels to speed it up. To do this, mouse over the gray bar at the top of the brain viewer window and uncheck the box next to "Labels". <br/>
-	Another hint: while you look at the flat cortex, if you want to know where some point is in the brain, double left click and hold to see that location on the fiducial (folded) 3D surface. Releasing the mouse button will return you to your original view. </p>
-	<p>All data is copyright UC Regents and Gallant lab. WordNet is copyright the trustees of Princeton University.</p>
+	<p><strong>Caveat:</strong> All of the category-specific responses shown here are based on blood-oxygen level dependent (BOLD) responses recorded while participants watched 2 hours of natural movies. BOLD was measured using fMRI, which is very noisy and which only reveals a small fraction of the information represented in the brain. Please do not try to read too much into the category responses for a single brain area.</p>
+	<p><strong>Hints:</strong> The 3D viewer will run much faster if the ROI labels are disabled. To do this, mouse over the bar at the very top of the brain viewer window and uncheck the box next to "Labels". <br/>
+	While the viewer is showing the inflated or flattened cortex, a double left click and hold will show the same location on the fiducial (folded) 3D surface. Releasing the mouse button will return to the folded/inflated view.</p>
 	</div>
 </div>
 
@@ -301,12 +339,13 @@
 </div>
 
 <table id='helpmenu'>
-	<tr><td>h</td><td>Show/hide this box</td></tr>
+	<tr><td>h</td><td>Toggle this box</td></tr>
+	<tr><td>i</td><td>Toggle intro msg</td></tr>
 	<tr><td>+</td><td>Next Dataset</td></tr>
 	<tr><td>-</td><td>Prev Dataset</td></tr>
-	<tr><td>Left mouse</td><td>Rotate / Pick</td></tr>
-	<tr><td>Middle mouse</td><td>Pan</td></tr>
-	<tr><td>Right mouse</td><td>Zoom</td></tr>
+	<tr><td>Lft mouse</td><td>Rotate</td></tr>
+	<tr><td>Mid mouse</td><td>Pan</td></tr>
+	<tr><td>Rgt mouse</td><td>Zoom</td></tr>
 </table>
 
 <div id='bottombar'>
@@ -324,7 +363,7 @@
 			<tr id='mixbtns'>
 			</tr>
 			<tr>
-				<td><div id="mix"></div></td>
+				<td><div id="mix" title="Slide to control how inflated the brain is"></div></td>
 			</tr>
 		</table>
 	</div>

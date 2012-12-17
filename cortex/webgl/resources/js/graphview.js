@@ -13,7 +13,7 @@ Graph.prototype.setrgbdata = function(data) {
     // 1. Hex color string and float size pairs
     // 2. Floating point values
     this.hideselcategory();
-    
+
     // Right now let's just assume the former
     for (var name in data) {
         // console.log(name);
@@ -50,8 +50,8 @@ Graph.prototype.showvoxel = function(voxind) {
     // Automatically loads from a set directory..
     var gr = this;
     var voxcorr = this.viewer.datasets.ModelPerformance.array.data[voxind].toFixed(3);
-    console.log("Showing STRF for voxel "+voxind);
-    $("#wngraph-title").html("Voxel "+this.subject+"-"+voxind+", <i>r</i>="+voxcorr);
+    // console.log("Showing STRF for voxel "+voxind);
+    $("#wngraph-title").html("Voxel "+this.subject+"-"+voxind+", <span title='Correlation between model prediction and actual responses. r over 0.1 is significant, r over 0.3 is good. Only trust voxels where r is over 0.1'><i>r</i>&nbsp;=&nbsp;"+voxcorr+"</span>");
     var data = NParray.fromURL(this.voxdir+this.subject+"-"+voxind+".bin", 
         function (npa) {
             for (var i=0; i<nodenames.length; i++) {
@@ -76,7 +76,7 @@ Graph.prototype.showcategory = function(catname) {
     
     for (var i=0; i<nodenames.length; i++) {
         if (nodenames[i]==catname) {
-            console.log("Showing map for category "+nodenames[i]+", from url "+this.catmapdir+this.subject+"-"+i+".bin");
+            // console.log("Showing map for category "+nodenames[i]+", from url "+this.catmapdir+this.subject+"-"+i+".bin");
             if (this.lastdataname != "") {
                 this.viewer.rmData(this.lastdataname);
             }
@@ -84,7 +84,11 @@ Graph.prototype.showcategory = function(catname) {
             NParray.fromURL(this.catmapdir+this.subject+"-"+i+".bin", 
                 function (data) {
                     var catdata = Object();
-                    catdata['Category: '+catname.split(".")[0].replace(/_/g, " ")] = data;
+                    var dset = new Dataset(data);
+                    dset.cmap = "RdBu_r";
+                    dset.min = -3;
+                    dset.max = 3;
+                    catdata['Category: '+catname.split(".")[0].replace(/_/g, " ")] = dset;
                     this.viewer.addData(catdata);
                 });
         }

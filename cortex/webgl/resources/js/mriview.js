@@ -351,6 +351,7 @@ MRIview.prototype = {
             var td, btn, name;
             td = document.createElement("td");
             btn = document.createElement("button");
+            btn.setAttribute("title", "Return to the folded, fiducial view of the brain");
             btn.innerHTML = "Fiducial";
             td.setAttribute("style", "text-align:left;");
             btn.addEventListener("click", function() {
@@ -364,6 +365,7 @@ MRIview.prototype = {
                 td = document.createElement("td");
                 btn = document.createElement("button");
                 btn.innerHTML = name;
+                btn.setAttribute("title", "Switch to the "+name+" view of the brain");
 
                 btn.addEventListener("click", function(j) {
                     this.animate([{idx:btnspeed, state:"mix", value: (j+1) / (json.names.length+1)}]);
@@ -374,6 +376,7 @@ MRIview.prototype = {
             td = document.createElement("td");
             btn = document.createElement("button");
             btn.innerHTML = "Flat";
+            btn.setAttribute("title", "Switch to the flattened view of the brain");
             td.setAttribute("style", "text-align:right;");
             btn.addEventListener("click", function() {
                 this.animate([{idx:btnspeed, state:"mix", value:1.0}]);
