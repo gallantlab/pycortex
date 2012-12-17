@@ -179,7 +179,7 @@ FacePick.prototype = {
     
     dblpick: function(x, y, keep) {
         //console.log("DOUBLE PICK");
-        var speed = 0.3;
+        var speed = 0.6;
 
         if (!this._valid)
             this.draw();
@@ -250,7 +250,7 @@ FacePick.prototype = {
     },
 
     undblpick: function() {
-        var speed = 0.3;
+        var speed = 0.6;
         viewer.animate([{idx:speed, state:"mix", value:this._last_mix}, 
 			{idx:speed, state:"radius", value:this._last_radius}, 
 			{idx:speed, state:"target", value:this._last_target}, 
@@ -258,12 +258,15 @@ FacePick.prototype = {
 			{idx:speed, state:"altitude", value:this._last_altitude}]);
     },
 
-    setMix: function() {
+    setMix: function(mixevt) {
+        // console.log(mixevt);
         var pos, ax;
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
-            pos = this.viewer.getVert(ax.idx).norm
+            pos = this.viewer.getVert(ax.idx).norm;
             ax.obj.position.copy(pos);
+            // Rescale axes for flat view
+            ax.obj.scale.x = 1.0001-mixevt.flat;
         }
     },
 
@@ -272,7 +275,7 @@ FacePick.prototype = {
 
         for (var i = 0; i < this.axes.length; i++) {
             if (keep === true) {
-                this.axes[i].obj.material.color.setRGB(255,255,255);
+                this.axes[i].obj.material.color.setRGB(180,180,180);
 
                 this.axes[i].obj.geometry.vertices
             } else {
@@ -282,8 +285,9 @@ FacePick.prototype = {
         if (keep !== true)
             this.axes = [];
 
-        var axes = makeAxes(50, 0xff0000);
+        var axes = makeAxes(50, 0xffffff);
         axes.position.copy(vert.norm);
+        axes.scale.x = 1.0001-this.viewer.flatmix;
         this.axes.push({idx:ptidx, obj:axes});
         this.viewer.pivot[vert.name].back.add(axes);
         this.viewer.controls.dispatchEvent({type:"change"});
@@ -301,7 +305,7 @@ function makeAxes(length, color) {
         v(0, -length, 0), v(0, length, 0),
         v(0, 0, -length), v(0, 0, length)
     );
-    var lineMat = new THREE.LineBasicMaterial({ color: color, lineWidth: 5});
+    var lineMat = new THREE.LineBasicMaterial({ color: color, linewidth: 2});
     var axes = new THREE.Line(lineGeo, lineMat);
     axes.type = THREE.Lines;
     return axes;
