@@ -11,7 +11,6 @@ var roilabel_vshader = [
         "gl_PointSize = size;",
         "vidx = idx;",
         "gl_Position = projectionMatrix * mvPosition;",
-        "gl_Position.z += 1000;",
     "}",
 ].join("\n");
 
@@ -19,22 +18,41 @@ var roilabel_fshader = [
     "uniform float size;",
     "uniform float aspect;",
 
-    "uniform vec2 screen;",
+    "uniform vec2 scale;",
     "uniform vec2 texsize;",
     "uniform sampler2D text;",
     "uniform sampler2D depth;",
 
     "varying vec2 vidx;",
 
-    "float unpack_depth(vec4 cdepth) {",
+    "float unpack_depth(const in vec4 cdepth) {",
         "const vec4 bit_shift = vec4( 1.0 / ( 256.0 * 256.0 * 256.0 ), 1.0 / ( 256.0 * 256.0 ), 1.0 / 256.0, 1.0 );",
-        "return dot( rgba_depth, bit_shift );",
+        "float depth = dot( cdepth, bit_shift );",
+        "return depth;",
+    "}",
+
+    "float avg_depth( const in vec2 text, const in vec2 screen ) {",
+        "const float w = 4.;",
+        "vec2 center = (size * (vec2(0.5) - text) + screen) / scale;",
+        "float avg = 0.;",
+        "vec2 pos = vec2(0.);",
+        "for (float i = -w; i <= w; i++) {",
+            "for (float j = -w; j <= w; j++) {",
+                "pos = center + vec2(i, j) / scale;",
+                "avg += unpack_depth(texture2D(depth, pos));",
+            "}",
+        "}",
+
+        "return avg / (9.*9.);",
     "}",
 
     "void main() {",
-        "vec2 pos = gl_FragCoord + ",
-        "float d = unpack_depth(texture2D(depth, pos));",
-        "if (d < gl_FragCoord.z - 1000) {",
+        //"vec2 scoord = gl_FragCoord.xy / scale;",
+        "vec2 p = gl_PointCoord;",
+        "p.y = 1. - p.y;",
+        "float d = avg_depth(p, gl_FragCoord.xy);",
+        "if ( gl_FragCoord.z >= d && d > 0. ) {",
+            "gl_FragColor = vec4(1., 0., 0., 1.);",
             "discard;",
         "} else {",
             "vec2 c = gl_PointCoord;",
@@ -42,7 +60,10 @@ var roilabel_fshader = [
             "c.y = clamp(c.y, 0., 1.);",
             "vec2 tcoord = c*texsize+vidx;",
 
+            //"gl_FragColor = vec4(pos, 0., 1.);",
+            //"gl_FragColor = texture2D(depth, pos);",
             "gl_FragColor = texture2D(text, tcoord);",
+            //"gl_FragColor = vec4(tcoord, 0., 1.);",
         "}",
     "}",
 ].join("\n");
@@ -206,23 +227,23 @@ ROIpack.prototype = {
     }
 }
 
-function ROIlabels(viewer, names) {
+function ROIlabels(names) {
     this.names = names;
     this.canvas = document.createElement("canvas");
     this.geometry =  {left:new THREE.Geometry(), right:new THREE.Geometry()};
-    this.shader = {
-        left: new THREE.ShaderMaterial({
-            uniforms: {
+    var uniforms = {
                 text:   {type:'t', value:0},
-                depth:   {type:'t', value:0},
+                depth:  {type:'t', value:1},
                 size:   {type:'f', value:10},
                 mix:    {type:'f', value:0},
                 aspect: {type:'f', value:0},
                 texsize:{type:'v2', value:new THREE.Vector2()},
-            },
-            attributes: { 
-                idx:    {type:'v2', value:[]},
-            }, 
+                scale:  {type:'v2', value:new THREE.Vector2()},
+            };
+    this.shader = {
+        left: new THREE.ShaderMaterial({
+            uniforms: THREE.UniformsUtils.clone(uniforms),
+            attributes: { idx:{type:'v2', value:[]} }, 
             vertexShader: roilabel_vshader,
             fragmentShader: roilabel_fshader,
             blending: THREE.CustomBlending,
@@ -231,16 +252,8 @@ function ROIlabels(viewer, names) {
             depthWrite: false,
         }),
         right: new THREE.ShaderMaterial({
-            uniforms: {
-                text:   {type:'t', value:0},
-                size:   {type:'f', value:10},
-                mix:    {type:'f', value:0},
-                aspect: {type:'f', value:0},
-                texsize:{type:'v2', value:new THREE.Vector2()},
-            },
-            attributes: { 
-                idx:    {type:'v2', value:[]},
-            }, 
+            uniforms: THREE.UniformsUtils.clone(uniforms),
+            attributes: { idx:{type:'v2', value:[]} }, 
             vertexShader: roilabel_vshader,
             fragmentShader: roilabel_fshader,
             blending: THREE.CustomBlending,
@@ -255,7 +268,8 @@ function ROIlabels(viewer, names) {
     this.depthmat =  new THREE.ShaderMaterial( { 
         fragmentShader: depthShader.fragmentShader, 
         vertexShader: depthShader.vertexShader, 
-        uniforms: depthUniforms, 
+        uniforms: depthUniforms,
+        blending: THREE.NoBlending,
         morphTargets: true 
     });
 
@@ -280,6 +294,10 @@ ROIlabels.prototype = {
             format:THREE.RGBAFormat,
             stencilBuffer:false,
         });
+        this.shader.left.uniforms.depth.texture = this.depth;
+        this.shader.right.uniforms.depth.texture = this.depth;
+        this.shader.left.uniforms.scale.value.set( width, height);
+        this.shader.right.uniforms.scale.value.set( width, height);
     },
     update: function(viewer, height) {
         height *= 2;
@@ -298,7 +316,7 @@ ROIlabels.prototype = {
         var ntall = Math.ceil(nwide * aspect);
         this.texPos = {};
         this.aspect = aspect;
-        this.width = width;
+        this.size = width;
         this.canvas.width = width * nwide;
         this.canvas.height = height * ntall;
         ctx.font = 'italic bold '+(height*0.5)+'px helvetica';
@@ -357,6 +375,7 @@ ROIlabels.prototype = {
         this.shader.left.uniforms.text.texture = tex;
         this.shader.right.uniforms.size.value = width;
         this.shader.right.uniforms.text.texture = tex;
+        this.resize($("#brain").width(), $("#brain").height());
     },
 
     setMix: function(viewer) {
@@ -379,8 +398,18 @@ ROIlabels.prototype = {
     }, 
 
     render: function(viewer, renderer) {
+        var clearAlpha = renderer.getClearAlpha();
+        var clearColor = renderer.getClearColor();
+        renderer.setClearColorHex(0x0, 0);
         viewer.scene.overrideMaterial = this.depthmat;
-        renderer.render(viewer.scene, viewer.camera);
+        renderer.render(viewer.scene, viewer.camera, this.depth);
+        renderer.setClearColor(clearColor, clearAlpha);
+
         viewer.scene.overrideMaterial = null;
+        viewer.pivot.left.back.add(this.particles.left);
+        viewer.pivot.right.back.add(this.particles.right);
+        renderer.render(viewer.scene, viewer.camera);
+        viewer.pivot.left.back.remove(this.particles.left);
+        viewer.pivot.right.back.remove(this.particles.right);
     }
 };

@@ -148,7 +148,7 @@ function MRIview() {
     // scene and camera
     this.scene = new THREE.Scene();
 
-    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 0.1, 5000 );
+    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 0.5, 1000 );
     this.camera.position.set(200, 200, 200);
     this.camera.up.set(0,0,1);
 
@@ -171,6 +171,7 @@ function MRIview() {
         preserveDrawingBuffer:true, 
         canvas:$("#brain")[0] 
     });
+    this.renderer.sortObjects = false;
     this.renderer.setClearColorHex( 0xFFFFFF, 1 );
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
     this.pixbuf = new Uint8Array($("#brain").width() * $("#brain").height() * 4);
@@ -278,7 +279,7 @@ MRIview.prototype = {
             }
         }
         this.controls.update(this.flatmix);
-        if (this.labelshow) {
+        if (this.labelshow && this.roipack) {
             this.roipack.labels.render(this, this.renderer);
         } else {
             this.renderer.render(this.scene, this.camera);
@@ -323,10 +324,9 @@ MRIview.prototype = {
                 }.bind(this), this);
                 this.roipack.update(this.renderer);
                 this.addEventListener("mix", function() {
-                    this.roipack._updatemix = true;
+                    this.roipack.labels.setMix(this);
                 }.bind(this));
-                this.addEventListener("draw", this.roipack.setLabels);
-                this.addEventListener("resize", function() {
+                this.addEventListener("resize", function(event) {
                     this.roipack.resize(event.width, event.height);
                 }.bind(this));
             }.bind(this));
