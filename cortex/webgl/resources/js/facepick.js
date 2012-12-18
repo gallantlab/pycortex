@@ -126,6 +126,8 @@ FacePick.prototype = {
     }, 
 
     pick: function(x, y, keep) {
+        // DISABLE MULTI-CURSORS to make linking to voxels easy
+        keep = false;
         if (!this._valid)
             this.draw();
         var gl = this.viewer.renderer.context;
@@ -166,8 +168,9 @@ FacePick.prototype = {
                         var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
                         ptidx += hemi == "right" ? leftlen : 0;
 
+                        console.log("Picked voxel "+dataidx+", vertex "+ptidx);
                         this.addMarker(ptidx, keep);
-                        this.callback(dataidx);
+                        this.callback(dataidx, ptidx);
                         return;
                     }
                 }
@@ -178,7 +181,6 @@ FacePick.prototype = {
 
     
     dblpick: function(x, y, keep) {
-        //console.log("DOUBLE PICK");
         var speed = 0.6;
 
         if (!this._valid)
@@ -230,7 +232,6 @@ FacePick.prototype = {
                         //console.log("New az.: " + newaz);
 			var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / PI;
                         //console.log("New el.: " + newel);
-                        //console.log("X: "+vpos[ptidx*3]+", Y: "+vpos[ptidx*3+1]+", Z: "+vpos[ptidx*3+2]);
                         this._last_mix = viewer.getState("mix");
                         this._last_radius = viewer.getState("radius");
                         this._last_target = viewer.getState("target");
@@ -259,7 +260,6 @@ FacePick.prototype = {
     },
 
     setMix: function(mixevt) {
-        // console.log(mixevt);
         var pos, ax;
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];

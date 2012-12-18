@@ -100,51 +100,69 @@ tr#wnbuttons td {
     var viewer, sock, gr;
 {% end %}
 
+<script type='text/javascript'>
 {% block onload %}
-	gr = setupGraph();
+    if (JSON.stringify($.getUrlVars()) == '["vox","vert"]') {
+        $("div#intro").toggle();
+    }
+    gr = setupGraph();
     gr.voxdir = '{{voxdir}}';
     gr.subject = '{{subjectid}}';
     gr.catmapdir = '{{catmapdir}}';
-	gr.setrgbdata(colordata);
+    gr.setrgbdata(colordata);
 
-	var wngraph = $("#wngraph-plugin").detach();
-	wngraph.css("visibility", "visible");
+    var wngraph = $("#wngraph-plugin").detach();
+    wngraph.css("visibility", "visible");
 
-	viewer = new MRIview();
-	viewer.load("{{ctmfile}}", function() {
-		gr.viewer = viewer;
-		viewer.picker.callback = function(idx) {
-			console.log(idx);
-			gr.showvoxel(idx);
-		}
-        setTimeout(function() {
-            //$("#labelshow")[0].checked = false;
-            //$("#labelshow").change();
-            viewer.setMix(0.667);
-            viewer.animate([{idx:3, state:"azimuth", value:310},
-                            {idx:3, state:"altitude", value:120},
-                            {idx:3, state:"mix", value:0.0}]);
-                        }, 1000);
-            //$("#labelshow")[0].checked = true;
-            //$("#labelshow").change();
-	});
+    viewer = new MRIview();
+    viewer.load("{{ctmfile}}", function() {
+        gr.viewer = viewer;
+        viewer.picker.callback = gr.showvoxel.bind(gr);
 
-	viewer.addData(classify({{data}}));
-	viewer.addPlugin(wngraph, true);
+        // Check if there are URL parameters
+        if (JSON.stringify($.getUrlVars()) == '["vox","vert"]') {
+            var vox = $.getUrlVar("vox");
+            var vert = $.getUrlVar("vert");
+
+            // Create marker
+            viewer.picker.addMarker(vert, false);
+
+            // Animate viewer to show voxel/vertex
+            viewer.setMix(1.0);
+            var vpos = viewer.getVert(vert).pos;
+            viewer.setState("target", [vpos.y,vpos.x,vpos.z]);
+
+            // Show voxel in graph
+            setTimeout(function() {gr.showvoxel(vox,vert);}, 1000);
+            
+        }
+        else {
+            setTimeout(function() {
+                viewer.setMix(0.667);
+                viewer.animate([{idx:3, state:"azimuth", value:310},
+                                {idx:3, state:"altitude", value:120},
+                                {idx:3, state:"mix", value:0.0}]);
+                            }, 1000);
+        }
+    });
+
+    viewer.addData(classify({{data}}));
+    viewer.addPlugin(wngraph, true);
     $('#pluginbox').height($('#sidepanel').height());
 
 {% end %}
+</script>
 
 {% block extrahtml %}
 <div id="wngraph-plugin" style="visibility:hidden">
     <div id="wngraph-content">
-    	<div id="wngraph-title">Semantic Space</div>
-    	{% include wngraph-labeled.svg %}
+        <div id="wngraph-title">Semantic Space</div>
+        {% include wngraph-labeled.svg %}
     </div>
     <div id="wngraph-definition"></div>
     <table id="wnbuttontable">
         <tr id="wnbuttons">
-           <td><button class="roundbutton" onclick='gr.setrgbdata(colordata);$("#wngraph-title").html("Semantic Space");' title="Show colorful semantic space on tree">Show Semantic Space</button></td>
+           <td><button class="roundbutton" onclick='gr.showrgb()' title="Show colorful semantic space on tree">Show Semantic Space</button></td>
            <td><button class="roundbutton" id="wnlabelbutton" onclick="gr.togglelabels()" title="Hide/show labels on tree">Hide Labels</button></td>
        </tr>
    </table>

@@ -445,7 +445,7 @@ MRIview.prototype = {
             case 'radius':
                 return this.controls.setCamera(undefined, undefined, value);
             case 'target':
-                this.roipack._updatemove = true;
+                if (this.roipack) this.roipack._updatemove = true;
                 return this.controls.target.set(value[0], value[1], value[2]);
         };
     },

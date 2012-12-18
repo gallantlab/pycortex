@@ -45,7 +45,7 @@ Graph.prototype.setlindata = function(data) {
         }
     }
 }
-Graph.prototype.showvoxel = function(voxind) {
+Graph.prototype.showvoxel = function(voxind, vertind) {
     // Shows the data for voxel [voxind] on the graph.
     // Automatically loads from a set directory..
     var gr = this;
@@ -60,6 +60,11 @@ Graph.prototype.showvoxel = function(voxind) {
                 $(gr.nodes[nodenames[i]]).attr("fill", nodecolor).attr("r", 2*Math.sqrt(Math.abs(val)));
             }
     });
+    // Setup link
+    var voxurl = window.location.href.split("?")[0]+"?vox="+voxind+"&vert="+vertind;
+    $("#linkurl").val(voxurl);
+    $("#linkurl").hide();
+    $("#viewlink").show();
 }
 Graph.prototype.showcategory = function(catname) {
     // If there was a previously selected node, un-select it
@@ -113,6 +118,15 @@ Graph.prototype.togglelabels = function() {
         $("#wnlabelbutton").text("Hide Labels");
         this.showinglabels = true;
     }
+}
+Graph.prototype.showrgb = function() {
+    this.setrgbdata(colordata);
+    $("#wngraph-title").html("Semantic Space");
+    $("#viewlink").hide();
+    $("#linkurl").hide();
+    this.viewer.picker.axes[0].obj.parent.remove(this.viewer.picker.axes[0].obj);
+    this.viewer.picker.axes = [];
+    this.viewer.controls.dispatchEvent({type:"change"});
 }
 
 function setupGraph() {
