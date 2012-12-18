@@ -1,6 +1,7 @@
 var label_size = 22;
 var roilabel_vshader = [
     "uniform float size;",
+
     "attribute vec2 idx;",
 
     "varying vec2 vidx;",
@@ -17,18 +18,31 @@ var roilabel_fshader = [
     "uniform float size;",
     "uniform float aspect;",
 
+    "uniform vec2 screen;",
     "uniform vec2 texsize;",
     "uniform sampler2D text;",
+    "uniform sampler2D depth;",
 
     "varying vec2 vidx;",
 
-    "void main() {",
-        "vec2 c = gl_PointCoord;",
-        "c.y = (c.y - 0.5) * aspect + 0.5;",
-        "c.y = clamp(c.y, 0., 1.);",
-        "vec2 tcoord = c*texsize+vidx;",
+    "float unpack_depth(vec4 cdepth) {",
+        "const vec4 bit_shift = vec4( 1.0 / ( 256.0 * 256.0 * 256.0 ), 1.0 / ( 256.0 * 256.0 ), 1.0 / 256.0, 1.0 );",
+        "return dot( rgba_depth, bit_shift );",
+    "}",
 
-        "gl_FragColor = texture2D(text, tcoord);",
+    "void main() {",
+        "vec2 pos = gl_FragCoord + ",
+        "float d = unpack_depth(texture2D(depth, pos));",
+        "if (d < gl_FragCoord.z) {",
+            "discard;",
+        "} else {",
+            "vec2 c = gl_PointCoord;",
+            "c.y = (c.y - 0.5) * aspect + 0.5;",
+            "c.y = clamp(c.y, 0., 1.);",
+            "vec2 tcoord = c*texsize+vidx;",
+
+            "gl_FragColor = texture2D(text, tcoord);",
+        "}",
     "}",
 ].join("\n");
 
@@ -39,54 +53,6 @@ function ROIpack(svgdoc, callback, viewer) {
     this.rois = $(this.svgroi).find("path");
     this.rois.each(function() { this.removeAttribute("filter"); });
 
-    this.labels = { 
-        canvas: document.createElement("canvas"),
-        geometry: {left:new THREE.Geometry(), right:new THREE.Geometry()},
-        shader: {
-            left: new THREE.ShaderMaterial({
-                uniforms: {
-                    text:   {type:'t', value:0},
-                    size:   {type:'f', value:10},
-                    mix:    {type:'f', value:0},
-                    aspect: {type:'f', value:0},
-                    texsize:{type:'v2', value:new THREE.Vector2()},
-                },
-                attributes: { 
-                    idx:    {type:'v2', value:[]},
-                }, 
-                vertexShader: roilabel_vshader,
-                fragmentShader: roilabel_fshader,
-                blending: THREE.CustomBlending,
-                depthTest: false,
-                transparent: true,
-                depthWrite: false,
-            }),
-            right: new THREE.ShaderMaterial({
-                uniforms: {
-                    text:   {type:'t', value:0},
-                    size:   {type:'f', value:10},
-                    mix:    {type:'f', value:0},
-                    aspect: {type:'f', value:0},
-                    texsize:{type:'v2', value:new THREE.Vector2()},
-                },
-                attributes: { 
-                    idx:    {type:'v2', value:[]},
-                }, 
-                vertexShader: roilabel_vshader,
-                fragmentShader: roilabel_fshader,
-                blending: THREE.CustomBlending,
-                depthTest: false,
-                transparent: true,
-                depthWrite: false,
-            }),
-        }
-    };
-    var geoms = this.labels.geometry;
-    geoms.left.dynamic = true;
-    geoms.right.dynamic = true;
-    geoms.left.attributes = {idx:{type:'v2', value:null}};
-    geoms.right.attributes = {idx:{type:'v2', value:null}};
-    var names = {};
     $(this.svgroi).find("#roilabels").children().each(function() {
         var name = $(this).text();
         if (names[name] === undefined)
@@ -96,19 +62,8 @@ function ROIpack(svgdoc, callback, viewer) {
     $(this.svgroi).find("#roilabels").remove();
     $(this.svgroi).find("defs").remove();
 
-    var w, maxwidth = 0;
-    this.labels.geometry = geoms;
-    this.labels.names = names;
-    this.updateLabels(viewer, 22);
-
-    this.particles = {
-        left: new THREE.ParticleSystem(geoms.left, this.labels.shader.left),
-        right: new THREE.ParticleSystem(geoms.right, this.labels.shader.right)
-    };
-    this.particles.left.dynamic = true;
-    this.particles.right.dynamic = true;
-    viewer.pivot.left.back.add(this.particles.left);
-    viewer.pivot.right.back.add(this.particles.right);
+    this.labels = new ROIlabels(names);
+    this.labels.update(viewer, 22);
 
     var w = this.svgroi.getAttribute("width");
     var h = this.svgroi.getAttribute("height");
@@ -119,20 +74,12 @@ function ROIpack(svgdoc, callback, viewer) {
     var height = Math.min(4096, gl.getParameter(gl.MAX_TEXTURE_SIZE)) / this.aspect;
     this.setHeight(height);
     
-    this._updatemove = true;
-    this._updatemix = true;
-    this.setLabels = function() {
-        if (this._updatemove) {
-            this._updatemove = false;
-        }
-        if (this._updatemix) {
-            this.setMix(viewer);
-            this._updatemix = false;
-        }
-    }.bind(this);
     this.canvas = document.createElement("canvas");
 }
 ROIpack.prototype = {
+    resize: function(width, height) {
+        this.labels.resize(width, height);
+    },
     setHeight: function(height) {
         this.height = height;
         this.width = this.height * this.aspect;
@@ -194,102 +141,7 @@ ROIpack.prototype = {
             });
         }
     }, 
-    updateLabels: function(viewer, height) {
-        height *= 2;
-        var w, width = 0, allnames = [], names = this.labels.names;
-        var ctx = this.labels.canvas.getContext('2d');
-        ctx.font = 'italic bold '+(height*0.5)+'px helvetica';
-        for (var name in names) {
-            w = ctx.measureText(name).width;
-            if (width < w)
-                width = w;
-            allnames.push(name);
-        }
-        
-        var aspect = width / height;
-        var nwide = Math.ceil(Math.sqrt(allnames.length / aspect));
-        var ntall = Math.ceil(nwide * aspect);
-        this.labels.texPos = {};
-        this.labels.aspect = aspect;
-        this.labels.width = width;
-        this.labels.canvas.width = width * nwide;
-        this.labels.canvas.height = height * ntall;
-        ctx.font = 'italic bold '+(height*0.5)+'px helvetica';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'black';
 
-        var n = 0, name;
-        for (var i = 0; i < ntall; i++) {
-            for (var j = 0; j < nwide; j++) {
-                if (n < allnames.length) {
-                    name = allnames[n++];
-                    ctx.fillText(name, (j+.5)*width, (i+.5)*height);
-                    this.labels.texPos[name] = new THREE.Vector2(j / nwide, i / ntall);
-                }
-            }
-        }
-
-        var shadow = new ShadowTex(this.labels.canvas.width, this.labels.canvas.height, 1.);
-        var tex = new THREE.Texture(this.labels.canvas);
-        tex.flipY = false;
-        tex = shadow.blur(viewer.renderer, tex);
-
-        ctx.clearRect(0, 0, this.labels.canvas.width, this.labels.canvas.height);
-        ctx.fillStyle = 'white';
-        n = 0;
-        for (var i = 0; i < ntall; i++) {
-            for (var j = 0; j < nwide; j++) {
-                if (n < allnames.length) {
-                    ctx.fillText(allnames[n++], (j+.5)*width, (i+.5)*height);
-                }
-            }
-        }
-
-        tex = new THREE.Texture(this.labels.canvas);
-        tex.flipY = false;
-        tex = shadow.overlay(viewer.renderer, tex);
-
-        this.labels.shader.left.uniforms.aspect.value = aspect;
-        this.labels.shader.right.uniforms.aspect.value = aspect;
-        this.labels.shader.left.uniforms.texsize.value.set(1/nwide, 1/ntall);
-        this.labels.shader.right.uniforms.texsize.value.set(1/nwide, 1/ntall);
-        this.labels.shader.left.attributes.idx.value = [];
-        this.labels.shader.right.attributes.idx.value = [];
-        var hemi, ptdat;
-        for (var name in names) {
-            for (var i = 0; i < names[name].length; i++) {
-                ptdat = viewer.getVert(names[name][i]);
-                hemi = this.labels.shader[ptdat.name];
-                hemi.attributes.idx.value.push(this.labels.texPos[name]);
-            }
-        }
-        this.setMix(viewer);
-
-        this.labels.shader.left.uniforms.size.value = width;
-        this.labels.shader.left.uniforms.text.texture = tex;
-        this.labels.shader.right.uniforms.size.value = width;
-        this.labels.shader.right.uniforms.text.texture = tex;
-    },
-
-    setMix: function(viewer) {
-        //Adjust the indicator particle to match the current mix state
-        //Indicator particles are set off from the surface by the normal
-        this.labels.geometry.left.vertices = [];
-        this.labels.geometry.right.vertices = [];
-
-        var hemi, ptdat;
-        for (var name in this.labels.names) {
-            for (var i = 0; i < this.labels.names[name].length; i++) {
-                ptdat = viewer.getVert(this.labels.names[name][i]);
-                hemi = this.labels.geometry[ptdat.name];
-                hemi.vertices.push(ptdat.norm);
-            }
-        }
-
-        this.labels.geometry.left.verticesNeedUpdate = true;
-        this.labels.geometry.right.verticesNeedUpdate = true;
-    }, 
     saveSVG: function(png, posturl) {
         var svgdoc = this.svgroi.parentNode;
         var newsvg = svgdoc.implementation.createDocument(svgdoc.namespaceURI, null, null);
@@ -351,3 +203,164 @@ ROIpack.prototype = {
         }
     }
 }
+
+function ROIlabels(viewer, names) {
+    this.names = names;
+    this.canvas = document.createElement("canvas");
+    this.geometry =  {left:new THREE.Geometry(), right:new THREE.Geometry()};
+    this.shader = {
+        left: new THREE.ShaderMaterial({
+            uniforms: {
+                text:   {type:'t', value:0},
+                depth:   {type:'t', value:0},
+                size:   {type:'f', value:10},
+                mix:    {type:'f', value:0},
+                aspect: {type:'f', value:0},
+                texsize:{type:'v2', value:new THREE.Vector2()},
+            },
+            attributes: { 
+                idx:    {type:'v2', value:[]},
+            }, 
+            vertexShader: roilabel_vshader,
+            fragmentShader: roilabel_fshader,
+            blending: THREE.CustomBlending,
+            depthTest: false,
+            transparent: true,
+            depthWrite: false,
+        }),
+        right: new THREE.ShaderMaterial({
+            uniforms: {
+                text:   {type:'t', value:0},
+                size:   {type:'f', value:10},
+                mix:    {type:'f', value:0},
+                aspect: {type:'f', value:0},
+                texsize:{type:'v2', value:new THREE.Vector2()},
+            },
+            attributes: { 
+                idx:    {type:'v2', value:[]},
+            }, 
+            vertexShader: roilabel_vshader,
+            fragmentShader: roilabel_fshader,
+            blending: THREE.CustomBlending,
+            depthTest: false,
+            transparent: true,
+            depthWrite: false,
+        }),
+    }
+
+    this.geometry.left.dynamic = true;
+    this.geometry.right.dynamic = true;
+    this.geometry.left.attributes = {idx:{type:'v2', value:null}};
+    this.geometry.right.attributes = {idx:{type:'v2', value:null}};
+
+    this.particles = {
+        left: new THREE.ParticleSystem(geoms.left, this.shader.left),
+        right: new THREE.ParticleSystem(geoms.right, this.shader.right)
+    };
+    this.particles.left.dynamic = true;
+    this.particles.right.dynamic = true;
+}
+
+ROIlabels.prototype = {
+    update: function(viewer, height) {
+        height *= 2;
+        var w, width = 0, allnames = [], names = this.names;
+        var ctx = this.canvas.getContext('2d');
+        ctx.font = 'italic bold '+(height*0.5)+'px helvetica';
+        for (var name in names) {
+            w = ctx.measureText(name).width;
+            if (width < w)
+                width = w;
+            allnames.push(name);
+        }
+        
+        var aspect = width / height;
+        var nwide = Math.ceil(Math.sqrt(allnames.length / aspect));
+        var ntall = Math.ceil(nwide * aspect);
+        this.texPos = {};
+        this.aspect = aspect;
+        this.width = width;
+        this.canvas.width = width * nwide;
+        this.canvas.height = height * ntall;
+        ctx.font = 'italic bold '+(height*0.5)+'px helvetica';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'black';
+
+        var n = 0, name;
+        for (var i = 0; i < ntall; i++) {
+            for (var j = 0; j < nwide; j++) {
+                if (n < allnames.length) {
+                    name = allnames[n++];
+                    ctx.fillText(name, (j+.5)*width, (i+.5)*height);
+                    this.texPos[name] = new THREE.Vector2(j / nwide, i / ntall);
+                }
+            }
+        }
+
+        var shadow = new ShadowTex(this.canvas.width, this.canvas.height, 1.);
+        var tex = new THREE.Texture(this.canvas);
+        tex.flipY = false;
+        tex = shadow.blur(viewer.renderer, tex);
+
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.fillStyle = 'white';
+        n = 0;
+        for (var i = 0; i < ntall; i++) {
+            for (var j = 0; j < nwide; j++) {
+                if (n < allnames.length) {
+                    ctx.fillText(allnames[n++], (j+.5)*width, (i+.5)*height);
+                }
+            }
+        }
+
+        tex = new THREE.Texture(this.canvas);
+        tex.flipY = false;
+        tex = shadow.overlay(viewer.renderer, tex);
+
+        this.shader.left.uniforms.aspect.value = aspect;
+        this.shader.right.uniforms.aspect.value = aspect;
+        this.shader.left.uniforms.texsize.value.set(1/nwide, 1/ntall);
+        this.shader.right.uniforms.texsize.value.set(1/nwide, 1/ntall);
+        this.shader.left.attributes.idx.value = [];
+        this.shader.right.attributes.idx.value = [];
+        var hemi, ptdat;
+        for (var name in names) {
+            for (var i = 0; i < names[name].length; i++) {
+                ptdat = viewer.getVert(names[name][i]);
+                hemi = this.shader[ptdat.name];
+                hemi.attributes.idx.value.push(this.texPos[name]);
+            }
+        }
+        this.setMix(viewer);
+
+        this.shader.left.uniforms.size.value = width;
+        this.shader.left.uniforms.text.texture = tex;
+        this.shader.right.uniforms.size.value = width;
+        this.shader.right.uniforms.text.texture = tex;
+    },
+
+    setMix: function(viewer) {
+        //Adjust the indicator particle to match the current mix state
+        //Indicator particles are set off from the surface by the normal
+        this.geometry.left.vertices = [];
+        this.geometry.right.vertices = [];
+
+        var hemi, ptdat;
+        for (var name in this.names) {
+            for (var i = 0; i < this.names[name].length; i++) {
+                ptdat = viewer.getVert(this.names[name][i]);
+                hemi = this.geometry[ptdat.name];
+                hemi.vertices.push(ptdat.norm);
+            }
+        }
+
+        this.geometry.left.verticesNeedUpdate = true;
+        this.geometry.right.verticesNeedUpdate = true;
+    }, 
+
+    render: function(viewer, renderer) {
+        
+        renderer.render(viewer.scene, viewer.camera, 
+    }
+};

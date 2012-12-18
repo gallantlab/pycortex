@@ -244,6 +244,7 @@ function MRIview() {
     this._startplay = null;
     this._staticplugin = false;
     this._loaded = false;
+    this.labelshow = true;
 
     this.datasets = {}
     this.active = [];
@@ -277,7 +278,11 @@ MRIview.prototype = {
             }
         }
         this.controls.update(this.flatmix);
-        this.renderer.render(this.scene, this.camera);
+        if (this.labelshow) {
+            this.roipack.labels.render(this, this.renderer);
+        } else {
+            this.renderer.render(this.scene, this.camera);
+        }
         this._scheduled = false;
         this.dispatchEvent({type:"draw"});
     },
@@ -320,12 +325,9 @@ MRIview.prototype = {
                 this.addEventListener("mix", function() {
                     this.roipack._updatemix = true;
                 }.bind(this));
-                this.controls.addEventListener("change", function() {
-                    this.roipack._updatemove = true;
-                }.bind(this));
                 this.addEventListener("draw", this.roipack.setLabels);
                 this.addEventListener("resize", function() {
-                    this.roipack._updatemove = true;
+                    this.roipack.resize(event.width, event.height);
                 }.bind(this));
             }.bind(this));
 
