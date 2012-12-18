@@ -11,6 +11,7 @@ var roilabel_vshader = [
         "gl_PointSize = size;",
         "vidx = idx;",
         "gl_Position = projectionMatrix * mvPosition;",
+        "gl_Position.z += 1000;",
     "}",
 ].join("\n");
 
@@ -33,7 +34,7 @@ var roilabel_fshader = [
     "void main() {",
         "vec2 pos = gl_FragCoord + ",
         "float d = unpack_depth(texture2D(depth, pos));",
-        "if (d < gl_FragCoord.z) {",
+        "if (d < gl_FragCoord.z - 1000) {",
             "discard;",
         "} else {",
             "vec2 c = gl_PointCoord;",
@@ -53,6 +54,7 @@ function ROIpack(svgdoc, callback, viewer) {
     this.rois = $(this.svgroi).find("path");
     this.rois.each(function() { this.removeAttribute("filter"); });
 
+    var names = {};
     $(this.svgroi).find("#roilabels").children().each(function() {
         var name = $(this).text();
         if (names[name] === undefined)
@@ -248,20 +250,37 @@ function ROIlabels(viewer, names) {
         }),
     }
 
+    var depthShader = THREE.ShaderLib["depthRGBA"];
+    var depthUniforms = THREE.UniformsUtils.clone(depthShader.uniforms);
+    this.depthmat =  new THREE.ShaderMaterial( { 
+        fragmentShader: depthShader.fragmentShader, 
+        vertexShader: depthShader.vertexShader, 
+        uniforms: depthUniforms, 
+        morphTargets: true 
+    });
+
     this.geometry.left.dynamic = true;
     this.geometry.right.dynamic = true;
     this.geometry.left.attributes = {idx:{type:'v2', value:null}};
     this.geometry.right.attributes = {idx:{type:'v2', value:null}};
 
     this.particles = {
-        left: new THREE.ParticleSystem(geoms.left, this.shader.left),
-        right: new THREE.ParticleSystem(geoms.right, this.shader.right)
+        left: new THREE.ParticleSystem(this.geometry.left, this.shader.left),
+        right: new THREE.ParticleSystem(this.geometry.right, this.shader.right)
     };
     this.particles.left.dynamic = true;
     this.particles.right.dynamic = true;
 }
 
 ROIlabels.prototype = {
+    resize: function(width, height) {
+        this.depth = new THREE.WebGLRenderTarget(width, height, {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter,
+            format:THREE.RGBAFormat,
+            stencilBuffer:false,
+        });
+    },
     update: function(viewer, height) {
         height *= 2;
         var w, width = 0, allnames = [], names = this.names;
@@ -360,7 +379,8 @@ ROIlabels.prototype = {
     }, 
 
     render: function(viewer, renderer) {
-        
-        renderer.render(viewer.scene, viewer.camera, 
+        viewer.scene.overrideMaterial = this.depthmat;
+        renderer.render(viewer.scene, viewer.camera);
+        viewer.scene.overrideMaterial = null;
     }
 };

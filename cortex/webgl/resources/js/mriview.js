@@ -392,7 +392,7 @@ MRIview.prototype = {
             $("#mix, #pivot, #shifthemis").parent().attr("colspan", json.names.length+2);
 
             this._loaded = true;
-            this.draw();
+            this.schedule();
             $("#ctmload").hide();
             $("#brain").css("opacity", 1);
             if (typeof(callback) == "function")
