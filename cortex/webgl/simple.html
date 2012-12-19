@@ -37,6 +37,21 @@ REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, TH
 <script type='text/javascript' src='resources/js/facepick.js'></script>
 <script type='text/javascript' src="resources/js/LandscapeControls.js"></script>
 <script type='text/javascript' src='resources/js/mriview.js'></script>
+
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-22310405-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
 {% if python_interface %}
 <script type='text/javascript' src='resources/js/python_interface.js'></script>
 {% end %}
@@ -275,10 +290,10 @@ REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, TH
 			e.stopPropagation();
 		});
 
-		window.addEventListener("keypress", function(e) {
-			if (e.keyCode == 104)
+		window.addEventListener("keydown", function(e) {
+			if (e.keyCode == 72)
 				$("#helpmenu").css("opacity", $("#helpmenu").css("opacity") == 1 ? 0 : 1);
-			if (e.keyCode == 105)
+			if (e.keyCode == 73)
 				$("div#intro").toggle();
 		});
 

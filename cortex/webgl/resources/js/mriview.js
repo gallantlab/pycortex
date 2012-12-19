@@ -172,7 +172,7 @@ function MRIview() {
         canvas:$("#brain")[0] 
     });
     this.renderer.sortObjects = false;
-    this.renderer.setClearColorHex( 0xFFFFFF, 1 );
+    this.renderer.setClearColorHex( 0x0, 1 );
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
     this.pixbuf = new Uint8Array($("#brain").width() * $("#brain").height() * 4);
     this.state = "pause";
@@ -986,17 +986,19 @@ MRIview.prototype = {
     },
 
     _bindUI: function() {
+        $(window).scrollTop(0);
         $(window).resize(function() { this.resize(); }.bind(this));
         $("#brain").resize(function() { this.resize(); }.bind(this));
         window.addEventListener( 'keydown', function(e) {
             btnspeed = 0.3;
-            if (e.keyCode == 32 && this.active[0].textures.length > 1) {
-                this.playpause();         //space
-                e.stopPropagation();
+            if (e.keyCode == 32) {         //space
+                if (this.active[0].textures.length > 1)
+                    this.playpause();
                 e.preventDefault();
-            } else if (e.keyCode == 43) { //+
+                e.stopPropagation();
+            } else if (e.keyCode == 107) { //+
                 this.nextData(1);
-            } else if (e.keyCode == 45) { //-
+            } else if (e.keyCode == 109) { //-
                 this.nextData(-1);
             } else if (e.keyCode == 82) { //r
                 this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
@@ -1009,7 +1011,7 @@ MRIview.prototype = {
                 this.schedule();
                 e.stopPropagation();
                 e.preventDefault();
-            } 
+            }
         }.bind(this))
         var _this = this;
         $("#mix").slider({

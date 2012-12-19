@@ -68,7 +68,6 @@ var roilabel_fshader = [
         "p.y = 1. - p.y;",
         "float d = min_depth(p, gl_FragCoord.xy);",
         "if ( gl_FragCoord.z >= d && d > 0. ) {",
-            "gl_FragColor = vec4(1., 0., 0., 1.);",
             "discard;",
         "} else {",
             "vec2 c = gl_PointCoord;",
@@ -76,10 +75,9 @@ var roilabel_fshader = [
             "c.y = clamp(c.y, 0., 1.);",
             "vec2 tcoord = c*texsize+vidx;",
 
-            //"gl_FragColor = vec4(pos, 0., 1.);",
             //"gl_FragColor = texture2D(depth, scoord);",
             "gl_FragColor = texture2D(text, tcoord);",
-            //"gl_FragColor = vec4(d, 0., 0., 1.);",
+            //"gl_FragColor = vec4(gl_PointCoord, 0., 1.);",
         "}",
     "}",
 ].join("\n");
@@ -248,8 +246,8 @@ function ROIlabels(names) {
     this.canvas = document.createElement("canvas");
     this.geometry =  {left:new THREE.Geometry(), right:new THREE.Geometry()};
     var uniforms = {
-                text:   {type:'t', value:0},
-                depth:  {type:'t', value:1},
+                text:   {type:'t', value:1},
+                depth:  {type:'t', value:2},
                 size:   {type:'f', value:10},
                 mix:    {type:'f', value:0},
                 aspect: {type:'f', value:0},

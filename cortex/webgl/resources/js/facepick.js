@@ -89,7 +89,6 @@ FacePick.prototype = {
     },
 
     draw: function(debug) {
-        console.log("redrawing facepick");
         this.camera.lookAt(this.viewer.controls.target);
         for (var name in this.meshes) {
             this.pivot[name].front.rotation.z = this.viewer.pivot[name].front.rotation.z;
@@ -141,6 +140,7 @@ FacePick.prototype = {
             for (var i = 0; i < this.axes.length; i++)
                 this.axes[i].obj.parent.remove(this.axes[i].obj);
             this.axes = [];
+            this.viewer.schedule();
             return;
         }
 
