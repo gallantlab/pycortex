@@ -32,7 +32,8 @@ var roilabel_fshader = [
     "}",
 
     "float avg_depth( const in vec2 text, const in vec2 screen ) {",
-        "const float w = 4.;",
+        "const float w = 1.;",
+        "const float d = 1. / ((w * 2. + 1.) * (w * 2. + 1.));",
         "vec2 center = (size * (vec2(0.5) - text) + screen) / scale;",
         "float avg = 0.;",
         "vec2 pos = vec2(0.);",
@@ -43,14 +44,29 @@ var roilabel_fshader = [
             "}",
         "}",
 
-        "return avg / (9.*9.);",
+        "return avg * d;",
+    "}",
+
+    "float min_depth( const in vec2 text, const in vec2 screen ) {",
+        "const float w = 1.;",
+        "vec2 center = (size * (vec2(0.5) - text) + screen) / scale;",
+        "float minum = 1000.;",
+        "vec2 pos = vec2(0.);",
+        "for (float i = -w; i <= w; i++) {",
+            "for (float j = -w; j <= w; j++) {",
+                "pos = center + vec2(i, j) / scale;",
+                "minum = min(minum, unpack_depth(texture2D(depth, pos)));",
+            "}",
+        "}",
+
+        "return minum;",
     "}",
 
     "void main() {",
         //"vec2 scoord = gl_FragCoord.xy / scale;",
         "vec2 p = gl_PointCoord;",
         "p.y = 1. - p.y;",
-        "float d = avg_depth(p, gl_FragCoord.xy);",
+        "float d = min_depth(p, gl_FragCoord.xy);",
         "if ( gl_FragCoord.z >= d && d > 0. ) {",
             "gl_FragColor = vec4(1., 0., 0., 1.);",
             "discard;",
@@ -61,9 +77,9 @@ var roilabel_fshader = [
             "vec2 tcoord = c*texsize+vidx;",
 
             //"gl_FragColor = vec4(pos, 0., 1.);",
-            //"gl_FragColor = texture2D(depth, pos);",
+            //"gl_FragColor = texture2D(depth, scoord);",
             "gl_FragColor = texture2D(text, tcoord);",
-            //"gl_FragColor = vec4(tcoord, 0., 1.);",
+            //"gl_FragColor = vec4(d, 0., 0., 1.);",
         "}",
     "}",
 ].join("\n");
@@ -284,6 +300,8 @@ function ROIlabels(names) {
     };
     this.particles.left.dynamic = true;
     this.particles.right.dynamic = true;
+    this.particles.left.sortParticles = true;
+    this.particles.right.sortParticles = true;
 }
 
 ROIlabels.prototype = {

@@ -988,18 +988,28 @@ MRIview.prototype = {
     _bindUI: function() {
         $(window).resize(function() { this.resize(); }.bind(this));
         $("#brain").resize(function() { this.resize(); }.bind(this));
-        window.addEventListener( 'keypress', function(e) {
+        window.addEventListener( 'keydown', function(e) {
+            btnspeed = 0.3;
             if (e.keyCode == 32 && this.active[0].textures.length > 1) {
-                this.playpause();
+                this.playpause();         //space
                 e.stopPropagation();
                 e.preventDefault();
-            } else if (e.keyCode == 43) {
+            } else if (e.keyCode == 43) { //+
                 this.nextData(1);
-            } else if (e.keyCode == 45) {
+            } else if (e.keyCode == 45) { //-
                 this.nextData(-1);
-            } else {
-                console.log("Pressed "+e.keyCode);
-            }
+            } else if (e.keyCode == 82) { //r
+                this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
+                              {idx:btnspeed, state:"mix", value:0.0}]);
+            } else if (e.keyCode == 70) { //f
+                this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
+                              {idx:btnspeed, state:"mix", value:1.0}]);
+            } else if (e.keyCode == 76) { //l
+                this.labelshow = !this.labelshow;
+                this.schedule();
+                e.stopPropagation();
+                e.preventDefault();
+            } 
         }.bind(this))
         var _this = this;
         $("#mix").slider({
@@ -1074,15 +1084,7 @@ MRIview.prototype = {
         });
 
         $("#labelshow").change(function() {
-            if ($("#labelshow")[0].checked) {
-                this.addEventListener("draw", this.roipack.setLabels);
-                $("#roilabels").show();
-            } else {
-                $("#roilabels").hide();
-                this.removeEventListener("draw", this.roipack.setLabels);
-            }
-            this.roipack.particles.left.visible = $("#labelshow")[0].checked;
-            this.roipack.particles.right.visible = $("#labelshow")[0].checked;
+            this.labelshow = !this.labelshow;
             this.schedule();
         }.bind(this));
 

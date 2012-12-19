@@ -29,7 +29,7 @@ function FacePick(viewer, callback) {
             console.log(voxidx);
         }
     }
-
+    
     this.scene = new THREE.Scene();
     this.shader = new THREE.ShaderMaterial({
         vertexShader: flatVertShade,
