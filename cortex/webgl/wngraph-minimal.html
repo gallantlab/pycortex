@@ -148,7 +148,8 @@ tr#wnbuttons td {
 
     viewer.addData(classify({{data}}));
     viewer.addPlugin(wngraph, true);
-    $('#pluginbox').height($('#sidepanel').height());
+    window.addEventListener("resize", function() {$('#pluginbox').height($('window').height());}, false);
+    
 
 {% end %}
 </script>
