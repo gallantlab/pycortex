@@ -310,8 +310,7 @@ REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, TH
 			$("#helpmenu").hide();
 			$("div#intro").hide();
 			$(".loadmsg").hide();
-			$("#ctmload").html("<p>Sorry, mobile browsers are not supported.</p><p>Unfortunately, Android and iOS devices do not support WebGL.</p><p>Please ask Apple and Google for WebGL support in their browsers!</p>
-				<p>For more information about the science, visit <a href='http://newscenter.berkeley.edu/2012/12/19/semanticspace/'>Berkeley News Center</a></p>").show();
+			$("#ctmload").html("<p>Sorry, mobile browsers are not supported.</p><p>Unfortunately, Android and iOS devices do not support WebGL.</p><p>Please ask Apple and Google for WebGL support in their browsers!</p><p>For more information about the science, visit <a href='http://newscenter.berkeley.edu/2012/12/19/semanticspace/'>Berkeley News Center</a></p>").show();
 		} else if (!webgl()) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
@@ -419,7 +418,8 @@ REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, TH
 	<p><strong>Caveat:</strong> All of the category-specific responses shown here are based on blood-oxygen level dependent (BOLD) responses recorded while participants watched 2 hours of natural movies. BOLD was measured using fMRI, which is very noisy and which only reveals a small fraction of the information represented in the brain. Please do not try to read too much into the category responses for a single brain area.</p>
 	<p><strong>Hints:</strong> The 3D viewer will run much faster if the ROI labels are disabled. To do this, mouse over the bar at the very top of the brain viewer window and uncheck the box next to "Labels". <br/>
 	While the viewer is showing the inflated or flattened cortex, a double left click and hold will show the same location on the fiducial (folded) 3D surface. Releasing the mouse button will return to the folded/inflated view.</p>
-	<p><strong>Credits:</strong> The pycortex WebGL MRI viewer was written by James Gao. All data are copyright UC Regents and Gallant lab. WordNet is copyright the trustees of Princeton University. This software is copyright UC Regents (see source of this page for details). The software makes use of <a href='http://jquery.com'>jQuery</a>, <a href='https://github.com/mrdoob/three.js/'>Three.js</a>, and <a href='http://openctm.sourceforge.net/'>OpenCTM</a>.
+	<p><strong>Credits:</strong> The pycortex WebGL MRI viewer was written by James Gao. All data are copyright UC Regents and Gallant lab. WordNet is copyright the trustees of Princeton University. This software is copyright UC Regents (see source of this page for details). The software makes use of <a href='http://jquery.com'>jQuery</a>, <a href='https://github.com/mrdoob/three.js/'>Three.js</a>, and <a href='http://openctm.sourceforge.net/'>OpenCTM</a>.<br/>
+	The work was supported by grants from the National Eye Institute (EY019684) and from the Center for Science of Information (CSoI), an NSF Science and Technology Center, under grant agreement CCF-0939370.
 	</div>
 </div>
 
