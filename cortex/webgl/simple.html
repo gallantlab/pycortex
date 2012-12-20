@@ -101,11 +101,11 @@ REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, TH
 		position:absolute;
 		color:white;
 		width:60%;
-		height:50%;
+		height:60%;
 		left:20%;
 		top:20%;
 		border-radius:10px;
-		padding:2em;
+		padding:20px;
 		padding-left:14px;
 		padding-left:10px;
 		z-index:100;
@@ -116,15 +116,20 @@ REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, TH
 		border-radius:10px;
 		border:2px solid #ffffff;
 	}
+	#intro a, a:visited {
+		color:#86BF84;
+	}
 	#introclose {
 		float:left;
 		background-color:black;
-		margin-top:-3em;
-		margin-left:-3em;
+		margin-top:-22px;
+		margin-left:-12px;
+		border: 2px solid white;
+		border-radius: 10px 0px 10px 0px;
+		cursor:pointer;
 	}
 	#introclose:hover {
 		background-color:rgba(48,48,48,1.0);
-		position:relative;
 	}
 	#introtext {
 		overflow-y: scroll;
@@ -147,6 +152,7 @@ REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, TH
 		width:auto;
 		border-radius: 0 0 0 0 / 0 0 0 0;
 		color:white;
+		min-width:1000px;
 	}
 	#topbar:hover, #topbar:active {
 		margin:0px 0 -200px 0;
@@ -392,7 +398,7 @@ REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, TH
 	<div id='introtext'>
 	<p style="font-size:18pt;text-align:center;">Welcome to the pycortex WebGL MRI viewer!</p>
 	<p>
-	This viewer shows how information about thousands of object and action categories are distributed across human neocortex. The data come from brain activity measurements made using fMRI while one participant watched hours of movie trailers. Computational modeling procedures were used to determine how 1705 distinct object and action categories are mapped across the cortical surface. Further details on this work can be found in Huth, Nishimoto, Vu and Gallant (2012), <a href='http://dx.doi.org/10.1016/j.neuron.2012.10.014' target='_blank'>"A continuous semantic space describes the representation of thousands of object and action categories across the human brain"</a>, <em>Neuron</em>, ##, ####. All data are copyright UC Regents and Gallant lab. WordNet is copyright the trustees of Princeton University.
+	This viewer shows how information about thousands of object and action categories is represented across human neocortex. The data come from brain activity measurements made using fMRI while a participant watched hours of movie trailers. Computational modeling procedures were used to determine how 1705 distinct object and action categories are represented in the brain. Further details on this work can be found in <a href='http://www.youtube.com/watch?v=u9nMfaWqkVE' target='_blank'>this video</a> or in the paper by Huth, Nishimoto, Vu and Gallant (2012), <a href='http://dx.doi.org/10.1016/j.neuron.2012.10.014' target='_blank'>"A continuous semantic space describes the representation of thousands of object and action categories across the human brain"</a>, <em>Neuron</em> 2012. <br/>If you have problems, <a href='mailto:brainviewer@lists.berkeley.edu'>email us</a>.
 	</p>
 	<p><strong style="color:rgb(255,100,100)">Warning:</strong>This page uses WebGL, an experimental web technology. It will not work in all browsers or on all platforms. For the best experience we recommend using <a href='http://www.google.com/chrome'>Google Chrome</a>, maximizing the size of your browser window, and closing other running applications (this viewer takes quite a bit of RAM).</p> 
 	<p><strong>Instructions:</strong>
@@ -404,7 +410,7 @@ REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, TH
 	<p><strong>Caveat:</strong> All of the category-specific responses shown here are based on blood-oxygen level dependent (BOLD) responses recorded while participants watched 2 hours of natural movies. BOLD was measured using fMRI, which is very noisy and which only reveals a small fraction of the information represented in the brain. Please do not try to read too much into the category responses for a single brain area.</p>
 	<p><strong>Hints:</strong> The 3D viewer will run much faster if the ROI labels are disabled. To do this, mouse over the bar at the very top of the brain viewer window and uncheck the box next to "Labels". <br/>
 	While the viewer is showing the inflated or flattened cortex, a double left click and hold will show the same location on the fiducial (folded) 3D surface. Releasing the mouse button will return to the folded/inflated view.</p>
-	<p><strong>Credits:</strong>The pycortex WebGL MRI viewer was written by James Gao. This software is copyright UC Regents (see source of this page for details). It makes use of <a href='http://jquery.com'>jQuery</a>, <a href='https://github.com/mrdoob/three.js/'>Three.js</a>, and <a href='http://openctm.sourceforge.net/'>OpenCTM</a>.
+	<p><strong>Credits:</strong> The pycortex WebGL MRI viewer was written by James Gao. All data are copyright UC Regents and Gallant lab. WordNet is copyright the trustees of Princeton University. This software is copyright UC Regents (see source of this page for details). The software makes use of <a href='http://jquery.com'>jQuery</a>, <a href='https://github.com/mrdoob/three.js/'>Three.js</a>, and <a href='http://openctm.sourceforge.net/'>OpenCTM</a>.
 	</div>
 </div>
 
