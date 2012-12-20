@@ -307,8 +307,8 @@ REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, TH
 		});
 
 		if (mobile()) {
-			$("#.loadmsg").hide();
-			alert("Sorry, mobile browsers are not supported. Please ask Apple and Google for WebGL support in their browsers!");
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, mobile browsers are not supported.</p><p>Unfortunately, Android and iOS devices do not support WebGL.</p><p>Please ask Apple and Google for WebGL support in their browsers!</p>").show();
 		} else if (!webgl()) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();

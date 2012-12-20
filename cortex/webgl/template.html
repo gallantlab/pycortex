@@ -35,6 +35,9 @@
 
 <link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
 <script type='text/javascript'>
+	function mobile() {
+		return /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
+	}
 	function webgl() { 
 		try { 
 			return !! window.WebGLRenderingContext && !! document.createElement( 'canvas' ).getContext( 'experimental-webgl' ); 
@@ -61,12 +64,15 @@
 			cmapnames[$(this).text()] = idx;
 		});
 
-		if (!webgl()) {
+		if (mobile()) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, mobile browsers are not supported.</p><p>Unfortunately, Android and iOS devices do not support WebGL.</p><p>Please ask Apple and Google for WebGL support in their browsers!</p>").show();
+		} else if (!webgl()) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
 		} else if (!vtex(3, 5)) {
 			$(".loadmsg").hide();
-			$("#ctmload").html("<p>Sorry, your computer does not have the minimum number of texture units :(</p><p>Try upgrading your drivers and/or your browser</p>");
+			$("#ctmload").html("<p>Sorry, your computer does not have the minimum number of texture units :(</p><p>Try upgrading your drivers and/or your browser</p>").show();
 		} else {
 			{% block onload %}
 			{% end %}
