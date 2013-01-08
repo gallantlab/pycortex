@@ -1,16 +1,10 @@
 #!/usr/bin/env python
 
 from distutils.core import setup, Extension
+from Cython.Build import cythonize
 
-setup(name='pycortex',
-      version='0.1.0',
-      description='Python Cortical mapping software for fMRI data',
-      author='James Gao',
-      author_email='james@jamesgao.com',
-      packages=['cortex', 'cortex.webgl'],
-      ext_modules=[
-        Extension('cortex._vtkctm', 
-            ['cortex/vtkctm.c',
+ctm = Extension('cortex.openctm', 
+            ['cortex/openctm.pyx',
              'OpenCTM-1.0.3/lib/openctm.c',
              'OpenCTM-1.0.3/lib/stream.c',
              'OpenCTM-1.0.3/lib/compressRAW.c',
@@ -29,7 +23,15 @@ setup(name='pycortex',
                   ('OPENCTM_BUILD', None),
             ]
         )
-      ],
+
+
+setup(name='pycortex',
+      version='0.1.0',
+      description='Python Cortical mapping software for fMRI data',
+      author='James Gao',
+      author_email='james@jamesgao.com',
+      packages=['cortex', 'cortex.webgl'],
+      ext_modules=cythonize([ctm]),
       package_data={
             'cortex':[ 'svgbase.xml' ],
             'cortex.webgl':
