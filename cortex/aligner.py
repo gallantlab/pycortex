@@ -569,7 +569,7 @@ class Align(HasTraits):
     
     def update_slab(self, obj=None, evt=None):
         self.disable_render = True
-        origin = self.origin * np.sign(self.spacing)
+        origin = self.origin * np.sign(self.spacing) - np.abs(self.spacing) / 2.
         limit = self.epi_src.scalar_data.shape * abs(self.spacing) + origin
         xfmpts = self.xfm.outputs[0].points.to_array()
         
