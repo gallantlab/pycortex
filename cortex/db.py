@@ -342,9 +342,9 @@ class Database(object):
 
         return filenames
 
-    def autoAlign(self, subject, name, epifile):
+    def autoAlign(self, subject, name, epifile, noclean=False):
         '''
-        Attempts to create an automatic alignment
+        Attempts to create an automatic alignment. If [noclean], intermediate files will not be removed from /tmp.
         '''
         import subprocess as sp
         import tempfile
@@ -365,29 +365,54 @@ class Database(object):
             assert sp.call(cmd, shell=True) == 0, 'Error calling initial FLIRT'
 
             print 'Running BBR'
-            cmd = 'fsl5.0-flirt -ref {raw} -in {epi} -dof 12 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
+            cmd = 'fsl5.0-flirt -ref {raw} -in {epi} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
             cmd = cmd.format(cache=cache, raw=raw, wmseg=wmseg, epi=epifile)
             assert sp.call(cmd, shell=True) == 0, 'Error calling BBR flirt'
 
-            with open(os.path.join(cache, "out.mat")) as xfmfile:
-                xfm = xfmfile.read()
+            #with open(os.path.join(cache, "out.mat")) as xfmfile:
+            #    xfm = xfmfile.read()
+            xfm = np.loadtxt(os.path.join(cache, "out.mat"))
 
-            with open("/tmp/fsl_bbr.mat", "w") as fp:
-                fp.write(xfm)
-
+            #with open("/tmp/fsl_bbr.mat", "w") as fp:
+            #    fp.write(xfm)
+            
             epi = nibabel.load(epifile).get_header().get_base_affine()
             M = nibabel.load(raw).get_affine()
-            A = np.abs(np.diag(np.diag(M)))
-            X = np.array(map(float, xfm.split())).reshape(4, 4)
-            S = np.abs(np.diag(np.diag(epi)))
+            X = xfm
 
             inv = np.linalg.inv
-            coord = np.dot(np.dot(inv(S), inv(X)), np.dot(A, inv(M)))
+            
+            ## Adapted from dipy.external.fsl.flirt2aff
+            #from dipy.external.fsl import _x_flipper
+            import numpy.linalg as npl
+            
+            in_hdr = nibabel.load(epifile).get_header()
+            ref_hdr = nibabel.load(raw).get_header()
+            
+            # get_zooms gets the positive voxel sizes as returned in the header
+            inspace = np.diag(in_hdr.get_zooms() + (1,))
+            refspace = np.diag(ref_hdr.get_zooms() + (1,))
+            
+            if npl.det(in_hdr.get_best_affine())>=0:
+                inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
+            if npl.det(ref_hdr.get_best_affine())>=0:
+                refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
-            #coord = np.dot(np.linalg.inv(abs(epispace)), np.dot(np.linalg.inv(fsl), anatspace))
+            coord = np.dot(npl.inv(inspace), np.dot(inv(X), np.dot(refspace, inv(M))))
             self.loadXfm(subject, name, coord, xfmtype="coord", epifile=epifile)
 
         finally:
-            shutil.rmtree(cache)
+            if not noclean:
+                shutil.rmtree(cache)
+            else:
+                pass
+
+        return locals()
+
+def _x_flipper(N_i):
+    flipr = np.diag([-1, 1, 1, 1])
+    flipr[0,3] = N_i - 1
+    return flipr
+
 
 surfs = Database()
