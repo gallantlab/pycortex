@@ -55,7 +55,7 @@ def _make_flat_cache(subject, xfmname, height=1024):
 
 cache = dict()
 def get_cache(subject, xfmname, recache=False, height=1024):
-    key = (subject, xfmname)
+    key = (subject, xfmname, height)
     if not recache and key in cache:
         return cache[key]
 
@@ -131,7 +131,7 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=True, dpi=100, **kwargs):
+def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=True, bgcolor=None, dpi=100, **kwargs):
     from matplotlib import pyplot as plt
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
@@ -155,7 +155,10 @@ def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=Tr
         return fig
     
     fig.set_size_inches(np.array(im.shape[:2])[::-1] / float(dpi))
-    fig.savefig(name, transparent=True, dpi=dpi)
+    if bgcolor is None:
+        fig.savefig(name, transparent=True, dpi=dpi)
+    else:
+        fig.savefig(name, facecolor=bgcolor, transparent=False, dpi=dpi)
     plt.close()
 
 def make_movie(name, data, subject, xfmname, recache=False, height=1024, dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
