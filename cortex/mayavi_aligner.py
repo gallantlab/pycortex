@@ -1,11 +1,6 @@
-#/usr/bin/env python
-import os
 import types
-import numpy as np
 import nibabel
-
-import utils
-from db import options
+import numpy as np
 
 try:
     from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, Int, on_trait_change, Button
@@ -29,6 +24,8 @@ except ImportError:
     from enthought.mayavi.core.ui import lut_manager
     from enthought.mayavi.core.api import PipelineBase, Source, Filter, Module
     from enthought.mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
+
+from db import options
 
 class RotationWidget(HasTraits):
     radius = Float(value=1)
@@ -743,90 +740,3 @@ def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
 
     data = db.surfs.getVTK(subject, 'fiducial', merge=True)
     return Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
-
-def align(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
-    def save_callback(aligner):
-        import db
-        db.surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epi)
-        print "saved xfm"
-
-    m = get_aligner(subject, xfmname, epi=epi, xfm=xfm, xfmtype=xfmtype)
-    m.save_callback = save_callback
-    m.configure_traits()
-
-    magnet = m.get_xfm("magnet")
-    epi = os.path.abspath(m.epi_file.get_filename())
-
-    checked = False
-    while not checked:
-        resp = raw_input("Save? (Y/N) ").lower().strip()
-        if resp in ["y", "yes", "n", "no"]:
-            checked = True
-            if resp in ["y", "yes"]:
-                print "Saving..."
-                try:
-                    import db
-                    db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epi)
-                except Exception as e:
-                    print "AN ERROR OCCURRED, THE TRANSFORM WAS NOT SAVED: %s"%e
-                print "Complete!"
-            else:
-                print "Cancelled... %s"%resp
-        else:
-            print "Didn't get that, please try again.."
-    
-    return m
-
-################################################################################
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description="Align a fiducial surface to an epi image")
-    parser.add_argument("--epi", type=str,
-        help="Epi image to align to (in nifti format). Not required if using the database")
-    
-    group = parser.add_mutually_exclusive_group(required=True)
-    
-    #these next two arguments must be mutually exclusive, whether we draw from database or not
-    group.add_argument("--subject", "-S", dest="subject", type=str, 
-        help="Subject name (draws from database)")
-    group.add_argument("--fiducials", "-F", nargs=2, 
-        help="Pair of fiducial VTK's. Mutually exclusive with --subject!")
-
-    #following only applies without the database
-    parser.add_argument("--transform", "-T", dest="transform", type=str,
-        help="Initial transform without database. Must be in magnet space.") #optional
-    parser.add_argument("--out", "-o", dest="out", type=str,
-        help="Output file without database. Transform will be in magnet space") #mandatory
-
-    #following only applies with the database
-    parser.add_argument("--name", type=str,
-        help="Transform name within the database")
-
-    args = parser.parse_args()
-
-    if args.subject is not None:
-        assert args.name is not None, "Please provide the transform name for the database!"
-        if args.fiducials is not None:
-            print "Fiducials ignored -- drawing from database"
-        xfm = None
-        if args.transform is not None:
-            xfm = np.loadtxt(args.transform)
-        xfm = align(args.subject, args.name, epi=args.epi, xfm=xfm)
-        if args.out is not None:
-            np.savetxt(args.out, xfm, fmt="%.6f")
-    else:
-        assert args.fiducials is not None, "Please provide surfaces to align!"
-        assert args.out is not None, "Please provide an output file!"
-        assert args.epi is not None, "Please provide an epi file to align to!"
-        import vtkutils
-        pts, polys, norms = vtkutils .read(args.fiducials)
-        xfm = None
-        if args.transform is not None:
-            xfm = np.loadtxt(args.transform)
-        m = Align(pts, polys, args.epi, xfm=xfm)
-        m.configure_traits()
-        xfm = m.get_xfm("magnet")
-        np.savetxt(args.out, xfm, fmt="%.6f")
-
-    
-    #/auto/k7/james/docdb/13611980401580143636.nii
