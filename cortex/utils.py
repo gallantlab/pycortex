@@ -195,7 +195,7 @@ def get_hemi_masks(subject, xfmname):
     rmask.T[tuple(rco.T)] = True
     return lmask, rmask
 
-def add_roi(data, subject, xfmname, name="new_roi", recache=False, **kwargs):
+def add_roi(data, subject, xfmname, name="new_roi", recache=False, open_inkscape=True, add_path=True, **kwargs):
     import subprocess as sp
     from matplotlib.pylab import imsave
     from utils import get_roipack
@@ -205,8 +205,9 @@ def add_roi(data, subject, xfmname, name="new_roi", recache=False, **kwargs):
     fp = cStringIO.StringIO()
     imsave(fp, im, **kwargs)
     fp.seek(0)
-    rois.add_roi(name, binascii.b2a_base64(fp.read()))
-    return sp.call(["inkscape", '-f', rois.svgfile])
+    rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
+    if open_inkscape:
+        return sp.call(["inkscape", '-f', rois.svgfile])
 
 def get_roi_mask(subject, xfmname, roi=None):
     '''Return a bitmask for the given ROIs'''

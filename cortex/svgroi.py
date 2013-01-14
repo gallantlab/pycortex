@@ -157,11 +157,12 @@ class ROIpack(traits.HasTraits):
         self.update_style()
         self.labels = self.setup_labels()
 
-    def add_roi(self, name, pngdata):
+    def add_roi(self, name, pngdata, add_path=True):
         #self.svg deletes the images -- we want to save those, so let's load it again
         svg = etree.parse(self.svgfile)
         imglayer = _find_layer(svg, "data")
-        _make_layer(_find_layer(svg, "rois"), name)
+        if add_path:
+            _make_layer(_find_layer(svg, "rois"), name)
 
         #Hide all the other layers in the image
         for layer in imglayer.findall(".//{%s}g"%svgns):
