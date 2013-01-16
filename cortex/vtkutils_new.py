@@ -29,3 +29,19 @@ def read(vtk):
 			line = vtk.next()
 		return pts, polys, None
 
+
+def write(outfile, pts, polys, norms=None):
+	with open(outfile, "w") as fp:
+		fp.write("# vtk DataFile Version 3.0\nASCII\nDATASET POLYDATA\n")
+		fp.write("POINTS %d float\n"%len(pts))
+		np.savetxt(fp, pts, fmt='%0.12g')
+		fp.write("\n")
+
+		fp.write("POLYGONS %d %d\n"%(len(polys), 4*len(polys)))
+		spolys = np.hstack((3*np.ones((len(polys),1), dtype=polys.dtype), polys))
+		np.savetxt(fp, spolys.ravel(), fmt='%d')
+		fp.write("\n")
+
+		if norms is not None and len(norms) == len(pts):
+			fp.write("NORMALS Normals float")
+			np.savetxt(fp, norms.ravel(), fmt='%0.12g')
