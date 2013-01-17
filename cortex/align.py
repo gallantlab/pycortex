@@ -74,8 +74,8 @@ def automatic(subject, name, epifile, noclean=False):
         ref_hdr = nibabel.load(raw).get_header()
         
         # get_zooms gets the positive voxel sizes as returned in the header
-        inspace = np.diag(in_hdr.get_zooms() + (1,))
-        refspace = np.diag(ref_hdr.get_zooms() + (1,))
+        inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
+        refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
         
         if npl.det(in_hdr.get_best_affine())>=0:
             inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))

@@ -26,6 +26,7 @@ except ImportError:
     from enthought.mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 
 from db import options
+import utils
 
 class RotationWidget(HasTraits):
     radius = Float(value=1)
@@ -143,6 +144,7 @@ class ThreeDScene(MayaviScene):
             self.aligner.xfm.update_pipeline()
             self.aligner.update_slab()
         else:
+            print "Unknown key, %s"%key
             super(ThreeDScene, self).OnKeyDown(evt)
         self.aligner.scene3d.renderer.reset_camera_clipping_range()
         self.aligner.scene3d.render()

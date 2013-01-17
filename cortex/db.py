@@ -143,7 +143,7 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["loadXfm","getXfm", "loadVTK", "getVTK"] + self.subjects.keys()
+        return ["loadXfm","getXfm", "getVTK"] + self.subjects.keys()
 
     def loadAnat(self, subject, anatfile, type='raw', process=True):
         fname = os.path.join(filestore, "anatomicals", "{subj}_{type}.nii.gz").format(subj=subject, type=type)
@@ -319,7 +319,7 @@ class Database(object):
     def getFiles(self, subject):
         """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
         """
-        vtkparse = re.compile(r'(.*)/(\w+)_(\w+)_(\w+).vtk')
+        vtkparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).vtk')
         vtks = os.path.join(filestore, "surfaces", "{subj}_*.vtk").format(subj=subject)
         anatfiles = '%s_{type}.nii.gz'%subject
         ctmcache = "%s_{xfmname}_[{types}]_{method}_{level}.json"%subject

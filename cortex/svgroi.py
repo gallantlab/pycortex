@@ -376,7 +376,9 @@ def scrub(svgfile):
     rmnode.getparent().remove(rmnode)
     svgtag = svg.getroot()
     svgtag.attrib['id'] = "svgroi"
-    del svgtag.attrib["{%s}version"%inkns]
+    inkver = "{%s}version"%inkns
+    if inkver in svgtag.attrib:
+        del svgtag.attrib[inkver]
     try:
         for tagname in ["{%s}namedview"%sodins, "{%s}metadata"%svgns]:
             for tag in svg.findall(".//%s"%tagname):

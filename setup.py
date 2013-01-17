@@ -30,16 +30,19 @@ setup(name='pycortex',
             ]
         )
       ],
-      package_data={'cortex.webgl':
-            ['*.html', 
-             'favicon.ico', 
-             'resources/js/*.js',
-             'resources/js/ctm/*.js',
-             'resources/css/*.css',
-             'resources/css/ui-lightness/*.css',
-             'resources/css/ui-lightness/images/*',
-             'resources/colormaps/*.png',
-             'resources/images/*',
-            ]},
+      package_data={
+            'cortex':[ 'svgbase.xml' ],
+            'cortex.webgl':
+                  ['*.html', 
+                   'favicon.ico', 
+                   'resources/js/*.js',
+                   'resources/js/ctm/*.js',
+                   'resources/css/*.css',
+                   'resources/css/ui-lightness/*.css',
+                   'resources/css/ui-lightness/images/*',
+                   'resources/colormaps/*.png',
+                   'resources/images/*',
+                  ]
+            },
       requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>2.1)', 'shapely', 'html5lib'],
 )
