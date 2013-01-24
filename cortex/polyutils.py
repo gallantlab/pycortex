@@ -68,9 +68,17 @@ class Surface(object):
             for face in faces:
                 poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == p)[0][0])
                 pts.append(self.pts[poly].mean(0))
-                pts.append(self.pts[poly[:2]].mean(0))
+                pts.append(self.pts[poly[[0, 1]]].mean(0))
                 pts.append(self.pts[p])
                 pts.append(self.pts[poly[[0, 2]]].mean(0))
+                polys.append([0, 1, 2, 3])
+                pts.append(wm[poly].mean(0))
+                pts.append(wm[poly[[0, 2]]].mean(0))
+                pts.append(wm[p])
+                pts.append(wm[poly[[0, 2]]].mean(0))
+                polys.append([4, 5, 6, 7])
+                polys.append([0, 1, 5, 4])
+                polys.append([4, 7, 3, 0])
 
 
 def _tetra_vol(pts):
