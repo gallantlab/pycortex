@@ -64,8 +64,13 @@ class Surface(object):
     def surface_polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
         for p, faces in enumerate(self.members):
+            pts, polys = [], []
             for face in faces:
-                self.polys[face]
+                poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == p)[0][0])
+                pts.append(self.pts[poly].mean(0))
+                pts.append(self.pts[poly[:2]].mean(0))
+                pts.append(self.pts[p])
+                pts.append(self.pts[poly[[0, 2]]].mean(0))
 
 
 def _tetra_vol(pts):
