@@ -4,6 +4,85 @@ from scipy.spatial import distance
 from matplotlib.path import Path
 from matplotlib import patches
 
+class Surface(object):
+    def __init__(self, pts, polys):
+        self.pts = pts
+        self.polys = polys
+        self.members = [[] for _ in range(len(pts))]
+        for i, poly in enumerate(polys):
+            for p in poly:
+                self.members[p].append(i)
+
+    @property
+    def normals(self):
+        fnorms = np.zeros((len(self.polys),3))
+        for i, face in enumerate(self.polys):
+            x, y, z = self.pts[face]
+            fnorms[i] = np.cross(y-x, z-x)
+
+        vnorms = np.zeros((len(self.pts),3))
+        for i in range(len(self.pts)):
+            vnorms[i] = fnorms[self.members[i]].mean(0)
+
+        return vnorms
+
+    def extract_chunk(self, nfaces=100, seed=None, auxpts=None):
+        '''Extract a chunk of the surface using breadth first search, for testing purposes'''
+        node = seed
+        if seed is None:
+            node = np.random.randint(len(self.pts))
+
+        ptmap = dict()
+        queue = [node]
+        faces = set()
+        visited = set([node])
+        while len(faces) < nfaces and len(queue) > 0:
+            node = queue.pop(0)
+            for face in self.members[node]:
+                if face not in faces:
+                    faces.add(face)
+                    for pt in self.polys[face]:
+                        if pt not in visited:
+                            visited.add(pt)
+                            queue.append(pt)
+
+        pts, aux, polys = [], [], []
+        for face in faces:
+            for pt in self.polys[face]:
+                if pt not in ptmap:
+                    ptmap[pt] = len(pts)
+                    pts.append(self.pts[pt])
+                    if auxpts is not None:
+                        aux.append(auxpts[pt])
+            polys.append([ptmap[p] for p in self.polys[face]])
+
+        if auxpts is not None:
+            return np.array(pts), np.array(aux), np.array(polys)
+
+        return np.array(pts), np.array(polys)
+
+    def surface_polyhedra(self, wm):
+        '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
+        for p, faces in enumerate(self.members):
+            for face in faces:
+                self.polys[face]
+
+
+def _tetra_vol(pts):
+    tetra = pts[1:] - pts[0]
+    return np.abs(np.dot(tetra[0], np.cross(tetra[1], tetra[2]))) / 6
+
+def _brick_vol(pts):
+    return _tetra_vol(pts[[0, 1, 2, 4]]) + _tetra_vol(pts[[0, 2, 3, 4]]) + _tetra_vol(pts[[2, 3, 4, 5]])
+
+def face_volume(pts1, pts2, polys):
+    vols = np.zeros((len(polys),))
+    for i, face in enumerate(polys):
+        vols[i] = _brick_vol(np.append(pts1[face], pts2[face], axis=0))
+        if i % 1000 == 0:
+            print i
+    return vols
+
 def get_connected(polys):
     data = [set([]) for _ in range(polys.max()+1)]
     for i, poly in enumerate(polys):
