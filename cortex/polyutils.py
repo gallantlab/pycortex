@@ -65,20 +65,64 @@ class Surface(object):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
         for p, faces in enumerate(self.members):
             pts, polys = [], []
-            for face in faces:
-                poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == p)[0][0])
-                pts.append(self.pts[poly].mean(0))
-                pts.append(self.pts[poly[[0, 1]]].mean(0))
-                pts.append(self.pts[p])
-                pts.append(self.pts[poly[[0, 2]]].mean(0))
-                polys.append([0, 1, 2, 3])
-                pts.append(wm[poly].mean(0))
-                pts.append(wm[poly[[0, 2]]].mean(0))
+            if len(faces) > 0:
+                sortfaces = []
+                for face in faces:
+                    poly = np.roll(self.polys[faces], -np.nonzero(self.polys[faces] == p)[0][0])
+                    sortfaces.append(poly)
+
+                poly = np.roll(self.polys[faces[0]], -np.nonzero(self.polys[faces[0]] == p)[0][0])
                 pts.append(wm[p])
-                pts.append(wm[poly[[0, 2]]].mean(0))
-                polys.append([4, 5, 6, 7])
-                polys.append([0, 1, 5, 4])
-                polys.append([4, 7, 3, 0])
+                pts.append(self.pts[p])
+                pts.append(wm[poly[[0, 1]]].mean(0))
+                pts.append(self.pts[poly[[0, 1]]].mean(0))
+
+                iterable = zip(range(4, 4*len(faces), 4), faces[:-1])
+                if len(faces) in [1, 2]:
+                    iterable = zip(range(4, 4*len(faces)+1, 4), faces)
+
+                for i, face in iterable:
+                    poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == p)[0][0])
+                    pts.append(wm[poly].mean(0))
+                    pts.append(self.pts[poly].mean(0))
+                    pts.append(wm[poly[[0, 2]]].mean(0))
+                    pts.append(self.pts[poly[[0, 2]]].mean(0))
+
+                    polys.append([0, i+2, i])
+                    polys.append([0, i, i-2])
+                    polys.append([1, i-1, i+1])
+                    polys.append([1, i+1, i+3])
+                    polys.append([i-1, i-2, i])
+                    polys.append([i-1, i, i+1])
+                    polys.append([i+1, i, i+2])
+                    polys.append([i+1, i+2, i+3])
+
+                if len(faces) == 1:
+                    polys.append([0, 1, 7])
+                    polys.append([0, 7, 6])
+                    polys.append([0, 2, 3])
+                    polys.append([0, 3, 1])
+                elif len(faces) == 2:
+                    polys.append([0, 1, 11])
+                    polys.append([0, 11, 10])
+                    polys.append([0, 2, 3])
+                    polys.append([0, 3, 1])
+                else:
+                    poly = np.roll(self.polys[faces[-1]], -np.nonzero(self.polys[faces[-1]] == p)[0][0])
+                    pts.append(wm[poly].mean(0))
+                    pts.append(self.pts[poly].mean(0))
+
+                    i = 4*len(faces)
+                    polys.append([0, 2, i])
+                    polys.append([0, i, i-2])
+                    polys.append([1, i-1, i+1])
+                    polys.append([1, i+1, 3])
+                    polys.append([i-1, i-2, i])
+                    polys.append([i-1, i, i+1])
+                    polys.append([i, 2, 3])
+                    polys.append([i, 3, i+1])
+
+            yield np.array(pts), np.array(polys)
 
 
 def _tetra_vol(pts):
