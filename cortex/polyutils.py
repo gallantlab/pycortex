@@ -1,6 +1,6 @@
+from collections import OrderedDict
 import numpy as np
 from scipy.spatial import distance
-
 from matplotlib.path import Path
 from matplotlib import patches
 
@@ -61,69 +61,65 @@ class Surface(object):
 
         return np.array(pts), np.array(polys)
 
-    def surface_polyhedra(self, wm):
+    def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
         for p, faces in enumerate(self.members):
-            pts, polys = [], []
+            pts, polys = _ptset(), _quadset()
             if len(faces) > 0:
-                sortfaces = []
-                for face in faces:
-                    poly = np.roll(self.polys[faces], -np.nonzero(self.polys[faces] == p)[0][0])
-                    sortfaces.append(poly)
-
                 poly = np.roll(self.polys[faces[0]], -np.nonzero(self.polys[faces[0]] == p)[0][0])
-                pts.append(wm[p])
-                pts.append(self.pts[p])
-                pts.append(wm[poly[[0, 1]]].mean(0))
-                pts.append(self.pts[poly[[0, 1]]].mean(0))
+                assert pts[wm[p]] == 0
+                assert pts[self.pts[p]] == 1
+                pts[wm[poly[[0, 1]]].mean(0)]
+                pts[self.pts[poly[[0, 1]]].mean(0)]
 
-                iterable = zip(range(4, 4*len(faces), 4), faces[:-1])
-                if len(faces) in [1, 2]:
-                    iterable = zip(range(4, 4*len(faces)+1, 4), faces)
-
-                for i, face in iterable:
+                for i, face in zip(range(4, 4*len(faces)+1, 4), faces):
                     poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == p)[0][0])
-                    pts.append(wm[poly].mean(0))
-                    pts.append(self.pts[poly].mean(0))
-                    pts.append(wm[poly[[0, 2]]].mean(0))
-                    pts.append(self.pts[poly[[0, 2]]].mean(0))
+                    a = pts[wm[poly].mean(0)]
+                    b = pts[self.pts[poly].mean(0)]
+                    c = pts[wm[poly[[0, 2]]].mean(0)]
+                    d = pts[self.pts[poly[[0, 2]]].mean(0)]
+                    e = pts[wm[poly[[0, 1]]].mean(0)]
+                    f = pts[self.pts[poly[[0, 1]]].mean(0)]
 
-                    polys.append([0, i+2, i])
-                    polys.append([0, i, i-2])
-                    polys.append([1, i-1, i+1])
-                    polys.append([1, i+1, i+3])
-                    polys.append([i-1, i-2, i])
-                    polys.append([i-1, i, i+1])
-                    polys.append([i+1, i, i+2])
-                    polys.append([i+1, i+2, i+3])
+                    polys((0, c, a, e))
+                    polys((1, f, b, d))
+                    polys((1, d, c, 0))
+                    polys((1, 0, e, f))
+                    polys((f, e, a, b))
+                    polys((d, b, a, c))
 
-                if len(faces) == 1:
-                    polys.append([0, 1, 7])
-                    polys.append([0, 7, 6])
-                    polys.append([0, 2, 3])
-                    polys.append([0, 3, 1])
-                elif len(faces) == 2:
-                    polys.append([0, 1, 11])
-                    polys.append([0, 11, 10])
-                    polys.append([0, 2, 3])
-                    polys.append([0, 3, 1])
-                else:
-                    poly = np.roll(self.polys[faces[-1]], -np.nonzero(self.polys[faces[-1]] == p)[0][0])
-                    pts.append(wm[poly].mean(0))
-                    pts.append(self.pts[poly].mean(0))
+            yield pts.points, np.array(list(polys.triangles))
+            del pts, polys, a, b, c, d, e, f        
 
-                    i = 4*len(faces)
-                    polys.append([0, 2, i])
-                    polys.append([0, i, i-2])
-                    polys.append([1, i-1, i+1])
-                    polys.append([1, i+1, 3])
-                    polys.append([i-1, i-2, i])
-                    polys.append([i-1, i, i+1])
-                    polys.append([i, 2, 3])
-                    polys.append([i, 3, i+1])
+class _ptset(object):
+    def __init__(self):
+        self.idx = OrderedDict()
+    def __getitem__(self, idx):
+        idx = tuple(idx)
+        if idx not in self.idx:
+            self.idx[idx] = len(self.idx)
+        return self.idx[idx]
 
-            yield np.array(pts), np.array(polys)
+    @property
+    def points(self):
+        return np.array(self.idx.keys())
 
+class _quadset(object):
+    def __init__(self):
+        self.polys = dict()
+
+    def __call__(self, quad):
+        idx = tuple(sorted(quad))
+        if idx in self.polys:
+            del self.polys[idx]
+        else:
+            self.polys[idx] = quad
+
+    @property
+    def triangles(self):
+        for quad in self.polys.values():
+            yield quad[:3]
+            yield [quad[0], quad[2], quad[3]]
 
 def _tetra_vol(pts):
     tetra = pts[1:] - pts[0]
@@ -139,6 +135,9 @@ def face_volume(pts1, pts2, polys):
         if i % 1000 == 0:
             print i
     return vols
+
+def transform(xfm, pts):
+    return np.dot(xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
 
 def get_connected(polys):
     data = [set([]) for _ in range(polys.max()+1)]
