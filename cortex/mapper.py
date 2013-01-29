@@ -110,6 +110,7 @@ class Mapper(object):
 		return (left * self.masks[0]).reshape(self.shape), (right * self.masks[1]).reshape(self.shape)
 
 	def _recache(self, left, right):
+		self.nverts = left.shape[0] + right.shape[0]
 		self.masks = [left, right]
 		np.savez(self.cachefile, 
 			left_data=left.data, 
@@ -124,27 +125,65 @@ class Mapper(object):
 class Nearest(Mapper):
 	'''Maps epi volume data to surface using nearest neighbor interpolation'''
 	def _recache(self, subject, xfmname):
-		import nibabel
 		masks = []
-
 		coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
 		fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
 		flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
 
 		for (pts, _, _), (_, polys, _) in zip(fid, flat):
-			shape = (len(pts), np.prod(self.shape))
 			valid = np.unique(polys)
 			coords = polyutils.transform(coord, pts[valid]).round().astype(int)
 			ravelidx = np.ravel_multi_index(coords.T[::-1], self.shape, mode='clip')
 
+			csrshape = len(pts), np.prod(self.shape)
 			csr = np.ones((len(valid),), dtype=bool), np.array([valid, ravelidx])
-			masks.append(sparse.csr_matrix(csr, dtype=bool, shape=shape))
+			masks.append(sparse.csr_matrix(csr, dtype=bool, shape=csrshape))
 			
 		super(Nearest, self)._recache(masks[0], masks[1])
 
 class Trilinear(Mapper):
 	def _recache(self, subject, xfmname):
-		
+		#trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
+		masks = []
+		coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
+		fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
+		flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
+
+		for (pts, _, _), (_, polys, _) in zip(fid, flat):
+			valid = np.unique(polys)
+			coords = polyutils.transform(coord, pts[valid])
+			xyz, floor = np.modf(coords.T)
+			floor = floor.astype(int)
+			ceil = floor + 1
+			x, y, z = xyz
+
+			i000 = np.ravel_multi_index((floor[2], floor[1], floor[0]), self.shape, mode='clip')
+			i100 = np.ravel_multi_index((floor[2], floor[1],  ceil[0]), self.shape, mode='clip')
+			i010 = np.ravel_multi_index((floor[2],  ceil[1], floor[0]), self.shape, mode='clip')
+			i001 = np.ravel_multi_index(( ceil[2], floor[1], floor[0]), self.shape, mode='clip')
+			i101 = np.ravel_multi_index(( ceil[2], floor[1],  ceil[0]), self.shape, mode='clip')
+			i011 = np.ravel_multi_index(( ceil[2],  ceil[1], floor[0]), self.shape, mode='clip')
+			i110 = np.ravel_multi_index((floor[2],  ceil[1],  ceil[0]), self.shape, mode='clip')
+			i111 = np.ravel_multi_index(( ceil[2],  ceil[1],  ceil[0]), self.shape, mode='clip')
+
+			v000 = (1 - x) * (1 - y) * (1 - z)
+			v100 =      x  * (1 - y) * (1 - z)
+			v010 = (1 - x) *      y  * (1 - z)
+			v001 = (1 - x) * (1 - y) *      z
+			v101 =      x  * (1 - y) *      z
+			v011 = (1 - x) *      y  *      z
+			v110 =      x  *      y  * (1 - z)
+			v111 = 		x  * 	  y  *      z
+
+			i    = np.tile(valid, [8])
+			j    = np.hstack([i000, i100, i010, i001, i101, i001, i110, i111])
+			data = np.hstack([v000, v100, v010, v001, v101, v001, v110, v111])
+			csrshape = len(pts), np.prod(self.shape)
+			import ipdb
+			ipdb.set_trace()
+			masks.append(sparse.csr_matrix((data, (i, j)), shape=csrshape))
+
+		super(Trilinear, self)._recache(masks[0], masks[1])
 
 class Gaussian(Mapper):
 	def _recache(self, subject, xfmname, std=2):

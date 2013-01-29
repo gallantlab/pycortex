@@ -191,6 +191,6 @@ def make_png(name, data, subject, xfmname, recache=False, height=1024, **kwargs)
     im = make(data, subject, xfmname, recache=recache, height=height)
     return make_figure(im, subject, name=name, **kwargs)
 
-def show(data, subject, xfmname, recache=False, height=1024, **kwargs):
-    im = make(data, subject, xfmname, recache=recache, height=height)
+def show(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
+    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
     return make_figure(im, subject, **kwargs)
