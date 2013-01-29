@@ -300,6 +300,9 @@ class Database(object):
         hemisphere : str, optional
             Which hemisphere to return. If "both", return concatenated. Defaults to "both".
         """
+        import warnings
+        warnings.warn('Please use a Mapper object instead', DeprecationWarning)
+
         if magnet is None:
             xfm, epifile = self.getXfm(subject, xfmname, xfmtype="coord")
         else:
@@ -324,7 +327,7 @@ class Database(object):
         anatfiles = '%s_{type}.nii.gz'%subject
         xfms = "%s_{xfmname}.xfm"%subject
         ctmcache = "%s_{xfmname}_[{types}]_{method}_{level}.json"%subject
-        flatcache = "%s_{xfmname}_{height}_{date}.pkl"%subject
+        flatcache = "%s_{xfmname}_{height}_{date}_v2.pkl"%subject
         projcache = "%s_{xfmname}_{projection}.npz"%subject
 
         surfs = dict()

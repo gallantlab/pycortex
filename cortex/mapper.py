@@ -7,34 +7,53 @@ from scipy import sparse
 import polyutils
 from db import surfs
 
-class Projection(object):
-	'''Projects data from epi volume onto surface using various projection methods'''
-	def __init__(self, subject, xfmname, **kwargs):
-		ptype = self.__class__.__name__.lower()
+class Mapper(object):
+	'''Maps data from epi volume onto surface using various projections'''
+	def __init__(self, subject, xfmname, recache=False, **kwargs):
+		self.subject, self.xfmname = subject, xfmname
 		fnames = surfs.getFiles(subject)
+		ptype = self.__class__.__name__.lower()
+		kwds ='_'.join(['%s%s'%(k,str(v)) for k, v in kwargs.items()])
+		if len(kwds) > 0:
+			ptype += '_'+kwds
+		self.cachefile = fnames['projcache'].format(xfmname=xfmname, projection=ptype)
+
 		xfm, epifile = surfs.getXfm(subject, xfmname)
 		nib = nibabel.load(epifile)
 		self.shape = nib.get_shape()[:3][::-1]
-		self.xfmfile = fnames['xfms'].format(xfmname=xfmname)
-		self.cachefile = fnames['projcache'].format(xfmname=xfmname, projection=ptype)
 
+		xfmfile = fnames['xfms'].format(xfmname=xfmname)
 		try:
 			npz = np.load(self.cachefile)
-			if npz['mtime'] != os.stat(self.xfmfile).st_mtime:
+			if recache or os.stat(self.cachefile).st_mtime < os.stat(xfmfile).st_mtime:
 				raise IOError
-			self.mask_l = npz['left']
-			self.mask_r = npz['right']
+
+			left = (npz['left_data'], npz['left_indices'], npz['left_indptr'])
+			right = (npz['right_data'], npz['right_indices'], npz['right_indptr'])
+			lsparse = sparse.csr_matrix(left, shape=npz['left_shape'])
+			rsparse = sparse.csr_matrix(right, shape=npz['right_shape'])
+			self.masks = [lsparse, rsparse]
+			self.nverts = lsparse.shape[0] + rsparse.shape[0]
 		except IOError:
 			self._recache(subject, xfmname, **kwargs)
 
 	@property
 	def mask(self):
-		mask = np.array(self.mask_l.sum(0) + self.mask_r.sum(0))
-		return (mask.squeeze() != 0).reshape(*self.shape)
+		mask = np.array(self.masks[0].sum(0) + self.masks[1].sum(0))
+		return (mask.squeeze() != 0).reshape(self.shape)
+
+	@property
+	def hemimasks(self):
+		func = lambda m: (np.array(m.sum(0)).squeeze != 0).reshape(self.shape)
+		return map(func, self.masks)
+
+	def __repr__(self):
+		ptype = self.__class__.__name__
+		return '<%s mapper for (%s, %s) with %d vertices>'%(ptype, self.subject, self.xfmname, self.nverts)
 
 	def __call__(self, data):
-		projected = []
-		for mask in [self.mask_l, self.mask_r]:
+		mapped = []
+		for mask in self.masks:
 			if data.ndim in (1, 2):
 				#pre-masked data
 				if data.ndim == 1:
@@ -43,48 +62,106 @@ class Projection(object):
 				else:
 					assert data.shape[1] == self.mask.sum(), 'Invalid mask size'
 					shape = (np.prod(self.shape), data.shape[0])
-				normalized = sparse.csc_matrix(shape)
-				normalized[self.mask.ravel()] = data.T
+				norm = sparse.csc_matrix(shape)
+				norm[self.mask.ravel()] = data.T
 			elif data.ndim == 3:
-				normalized = data.ravel()
+				norm = data.ravel()
 			elif data.ndim == 4:
-				normalized = data.reshape(len(data), -1).T
+				norm = data.reshape(len(data), -1).T
 			else:
 				raise ValueError
 
-			projected.append(np.array(self.mask * normalized).T.squeeze())
+			mapped.append(np.array(mask * norm).T)
 
-		return projected
+		return mapped
+
+	def backwards(self, verts):
+		'''Projects vertex data back into volume space
+
+		Parameters
+		----------
+		verts : array_like
+			If uint array and max <= nverts, assume binary mask of vertices
+			If float array and len == nverts, project float values into volume
+		'''
+		if isinstance(verts, (list, tuple)) and len(verts) == 2:
+			if len(verts[0]) == len(left):
+				left = verts[0]
+				right = verts[1]
+			elif verts[0].max() < len(left):
+				left = np.zeros((self.masks[0].shape[0],), dtype=bool)
+				right = np.zeros((self.masks[1].shape[0],), dtype=bool)
+				left[verts[0]] = True
+				right[verts[1]] = True
+			else:
+				raise ValueError
+		else:
+			if len(verts) == self.nverts:
+				left = verts[:len(left)]
+				right = verts[len(left):]
+			elif verts.max() < self.nverts:
+				left = np.zeros((self.masks[0].shape[0],), dtype=bool)
+				right = np.zeros((self.masks[1].shape[0],), dtype=bool)
+				left[verts[verts < len(left)]] = True
+				right[verts[verts >= len(left)] - len(left)] = True
+			else:
+				raise ValueError
+
+		return (left * self.masks[0]).reshape(self.shape), (right * self.masks[1]).reshape(self.shape)
 
 	def _recache(self, left, right):
-		self.mask_l = left
-		self.mask_r = right
-		np.savez(self.cachefile, mtime=os.stat(self.xfmfile).st_mtime, left=left, right=right)
+		self.masks = [left, right]
+		np.savez(self.cachefile, 
+			left_data=left.data, 
+			left_indices=left.indices, 
+			left_indptr=left.indptr,
+			left_shape=left.shape,
+			right_data=right.data,
+			right_indices=right.indices,
+			right_indptr=right.indptr,
+			right_shape=right.shape)
 
-class Nearest(Projection):
+class Nearest(Mapper):
+	'''Maps epi volume data to surface using nearest neighbor interpolation'''
 	def _recache(self, subject, xfmname):
+		import nibabel
 		masks = []
-		for hemi in surfs.getCoords(subject, xfmname):
-			mask = sparse.csr_matrix((len(hemi), np.prod(self.shape)), dtype=bool)
-			ravelidx = np.ravel_multi_index(hemi.T[::-1], self.shape)
-			for i, idx in enumerate(ravelidx):
-				mask[i, idx] = True
-			masks.append(mask)
-		super(Nearest, self)._recache(mask[0], mask[1])
 
-class Trilinear(Projection):
+		coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
+		try:
+			fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
+		except:
+			#construct the fiducial from pia and whitematter average
+			pia = surfs.getVTK(subject, 'pia', merge=False, nudge=False)
+			wm = surfs.getVTK(subject, 'whitematter', merge=False, nudge=False)
+			fid = [(.5*(pia[0][0] + wm[0][0]), None, None), (.5*(pia[1][0] + wm[1][0]), None, None)]
+
+		flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
+
+		for (pts, _, _), (_, polys, _) in zip(fid, flat):
+			shape = (len(pts), np.prod(self.shape))
+			valid = np.unique(polys)
+			coords = polyutils.transform(coord, pts[valid]).round().astype(int)
+			ravelidx = np.ravel_multi_index(coords.T[::-1], self.shape, mode='clip')
+
+			csr = np.ones((len(valid),), dtype=bool), np.array([valid, ravelidx])
+			masks.append(sparse.csr_matrix(csr, dtype=bool, shape=shape))
+			
+		super(Nearest, self)._recache(masks[0], masks[1])
+
+class Trilinear(Mapper):
 	def _recache(self, subject, xfmname):
-		raise NotImplementedError
+		
 
-class Gaussian(Projection):
+class Gaussian(Mapper):
 	def _recache(self, subject, xfmname, std=2):
 		raise NotImplementedError
 
-class GaussianThickness(Projection):
+class GaussianThickness(Mapper):
 	def _recache(self, subject, xfmname, std=2):
 		raise NotImplementedError
 
-class Polyhedral(Projection):
+class Polyhedral(Mapper):
 	def _recache(self, subject, xfmname):
 		from tvtk.api import tvtk
 
@@ -101,20 +178,23 @@ class Polyhedral(Projection):
 		trivox.set_input(voxel.get_output())
 		measure = tvtk.MassProperties()
 		bop = tvtk.BooleanOperationPolyDataFilter()
+		bop.set_input(0, poly)
+		bop.set_input(1, trivox.get_output())
 		
 		masks = []
 		for (wpts, _, _), (ppts, _, _), (_, polys, _) in zip(pia, wm, flat):
 			#iterate over hemispheres
 			mask = sparse.csr_matrix((len(wpts), np.prod(self.shape)))
 
-			surf = polyutils.Surface(polyutils.transform(coord, ppts), polys)
-			for i, (pts, polys) in enumerate(surf.polyhedra(polyutils.transform(coord, wpts))):
+			tpia = polyutils.transform(coord, ppts)
+			twm = polyutils.transform(coord, wpts)
+			surf = polyutils.Surface(tpia, polys)
+			for i, (pts, polys) in enumerate(surf.polyhedra(twm)):
 				if len(pt) > 0:
 					poly.set(points=pts, polys=polys)
 					measure.set_input(poly)
 					measure.update()
 					totalvol = measure.volume
-					bop.set_input(0, poly)
 
 					bmin = pt.min(0).round()
 					bmax = pt.max(0).round() + 1
@@ -123,7 +203,6 @@ class Polyhedral(Projection):
 						voxel.center = vox
 						voxel.update()
 						trivox.update()
-						bop.set_input(1, trivox.get_output())
 						bop.update()
 						measure.set_input(bop.get_output())
 						measure.update()

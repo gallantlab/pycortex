@@ -37,21 +37,14 @@ def _make_flat_cache(subject, xfmname, height=1024):
     aspect = size[0] / size[1]
     width = int(aspect * height)
 
-    #Get the mask idx for each vertex
-    cmask = utils.get_cortical_mask(subject, xfmname)
-    imask = cmask.astype(np.uint32)
-    imask[cmask > 0] = np.arange(cmask.sum())
-    coords = np.vstack(db.surfs.getCoords(subject, xfmname))
-    ridx = np.ravel_multi_index(coords.T, cmask.shape[::-1], mode='clip')
-    mcoords = imask.T.ravel()[ridx[valid]]
-
     mask = _gen_flat_mask(subject, height=height).T
     assert mask.shape[0] == width and mask.shape[1] == height
-    flatpos = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
-    kdt = cKDTree(flat[valid,:2])
-    dist, idx = kdt.query(flatpos.T[mask.ravel()])
 
-    return mcoords[idx], mask
+    grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
+    kdt = cKDTree(flat[valid,:2])
+    dist, idx = kdt.query(grid.T[mask.ravel()])
+
+    return valid[idx], mask
 
 cache = dict()
 def get_cache(subject, xfmname, recache=False, height=1024):
@@ -69,39 +62,27 @@ def get_cache(subject, xfmname, recache=False, height=1024):
             os.unlink(f)
         print "Generating a flatmap cache"
         #pull points and transform from database
-        coords, mask = _make_flat_cache(subject, xfmname, height=height)
+        verts, mask = _make_flat_cache(subject, xfmname, height=height)
         #save them into the proper file
         date = time.strftime("%Y%m%d")
         cachename = cacheform.format(xfmname=xfmname, height=height, date=date)
-        cPickle.dump((coords, mask), open(cachename, "w"), 2)
+        cPickle.dump((verts, mask), open(cachename, "w"), 2)
     else:
-        coords, mask = cPickle.load(open(files[0]))
+        verts, mask = cPickle.load(open(files[0]))
 
-    cache[key] = coords, mask
-    return coords, mask
+    cache[key] = verts, mask
+    return verts, mask
 
-def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
-    coords, mask = get_cache(subject, xfmname, recache=recache, height=height)
+def make(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
+    mapper = utils.get_mapper(subject, xfmname, type=projection)
+    verts, mask = get_cache(subject, xfmname, recache=recache, height=height)
 
     if data.ndim in (1, 3):
         data = data[np.newaxis]
 
-    if data.ndim in (4, 5):
-        cmask = utils.get_cortical_mask(subject, xfmname)
-        data = data[..., cmask]
-
-    if data.dtype == np.uint8:
-        if data.ndim == 2:
-            data = data[np.newaxis]
-        shape = (data.shape[0],)+mask.shape+(4,)
-        cdim = data.shape[1]
-        img = np.zeros(shape, dtype=np.uint8)
-        img[:, mask, -1] = 255
-        img[:, mask, :cdim] = data[..., coords].swapaxes(1, 2)
-    else:
-        shape = (data.shape[0],) + mask.shape
-        img = np.nan*np.ones(shape, dtype=data.dtype)
-        img[:, mask] = data[:, coords]
+    shape = (data.shape[0],) + mask.shape
+    img = np.nan*np.ones(shape, dtype=data.dtype)
+    img[:, mask] = np.hstack(mapper(data))[:,verts]
 
     return img.swapaxes(1, 2)[:,::-1].squeeze()
 
