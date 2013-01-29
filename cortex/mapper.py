@@ -128,14 +128,7 @@ class Nearest(Mapper):
 		masks = []
 
 		coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
-		try:
-			fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
-		except:
-			#construct the fiducial from pia and whitematter average
-			pia = surfs.getVTK(subject, 'pia', merge=False, nudge=False)
-			wm = surfs.getVTK(subject, 'whitematter', merge=False, nudge=False)
-			fid = [(.5*(pia[0][0] + wm[0][0]), None, None), (.5*(pia[1][0] + wm[1][0]), None, None)]
-
+		fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
 		flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
 
 		for (pts, _, _), (_, polys, _) in zip(fid, flat):
