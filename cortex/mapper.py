@@ -75,6 +75,9 @@ class Mapper(object):
 
         return mapped
 
+    def _normverts(self, verts):
+        pass
+
     def backwards(self, verts):
         '''Projects vertex data back into volume space
 
@@ -84,13 +87,13 @@ class Mapper(object):
             If uint array and max <= nverts, assume binary mask of vertices
             If float array and len == nverts, project float values into volume
         '''
+        left = np.zeros((self.masks[0].shape[0],), dtype=bool)
+        right = np.zeros((self.masks[1].shape[0],), dtype=bool)
         if isinstance(verts, (list, tuple)) and len(verts) == 2:
             if len(verts[0]) == len(left):
                 left = verts[0]
                 right = verts[1]
             elif verts[0].max() < len(left):
-                left = np.zeros((self.masks[0].shape[0],), dtype=bool)
-                right = np.zeros((self.masks[1].shape[0],), dtype=bool)
                 left[verts[0]] = True
                 right[verts[1]] = True
             else:
@@ -100,14 +103,17 @@ class Mapper(object):
                 left = verts[:len(left)]
                 right = verts[len(left):]
             elif verts.max() < self.nverts:
-                left = np.zeros((self.masks[0].shape[0],), dtype=bool)
-                right = np.zeros((self.masks[1].shape[0],), dtype=bool)
                 left[verts[verts < len(left)]] = True
                 right[verts[verts >= len(left)] - len(left)] = True
             else:
                 raise ValueError
 
-        return (left * self.masks[0]).reshape(self.shape), (right * self.masks[1]).reshape(self.shape)
+        output = []
+        for mask, data in zip(self.masks, [left, right]):
+            proj = data * mask
+            output.append(np.array(proj).reshape(self.shape))
+
+        return output
 
     def _recache(self, left, right):
         self.nverts = left.shape[0] + right.shape[0]
@@ -140,6 +146,9 @@ class Nearest(Mapper):
             masks.append(sparse.csr_matrix(csr, dtype=bool, shape=csrshape))
             
         super(Nearest, self)._recache(masks[0], masks[1])
+
+    def backwards(self, verts):
+        pass
 
 class Trilinear(Mapper):
     def _recache(self, subject, xfmname):

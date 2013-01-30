@@ -142,7 +142,7 @@ def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=Tr
         fig.savefig(name, facecolor=bgcolor, transparent=False, dpi=dpi)
     plt.close()
 
-def make_movie(name, data, subject, xfmname, recache=False, height=1024, dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
+def make_movie(name, data, subject, xfmname, recache=False, height=1024, projection='nearest', dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
     import sys
     import shlex
     import shutil
@@ -153,7 +153,7 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, dpi=100
     from scipy.interpolate import interp1d
 
     #make the flatmaps
-    ims = make(data, subject, xfmname, recache=recache, height=height)
+    ims = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
     if vmin is None:
         vmin = np.nanmin(ims)
     if vmax is None:
@@ -187,8 +187,8 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, dpi=100
     finally:
         shutil.rmtree(path)
 
-def make_png(name, data, subject, xfmname, recache=False, height=1024, **kwargs):
-    im = make(data, subject, xfmname, recache=recache, height=height)
+def make_png(name, data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
+    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
     return make_figure(im, subject, name=name, **kwargs)
 
 def show(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
