@@ -1,8 +1,143 @@
+from collections import OrderedDict
 import numpy as np
 from scipy.spatial import distance
-
 from matplotlib.path import Path
 from matplotlib import patches
+
+class Surface(object):
+    def __init__(self, pts, polys):
+        self.pts = pts
+        self.polys = polys
+        self.members = [[] for _ in range(len(pts))]
+        for i, poly in enumerate(polys):
+            for p in poly:
+                self.members[p].append(i)
+
+    @property
+    def normals(self):
+        fnorms = np.zeros((len(self.polys),3))
+        for i, face in enumerate(self.polys):
+            x, y, z = self.pts[face]
+            fnorms[i] = np.cross(y-x, z-x)
+
+        vnorms = np.zeros((len(self.pts),3))
+        for i in range(len(self.pts)):
+            vnorms[i] = fnorms[self.members[i]].mean(0)
+
+        return vnorms
+
+    def extract_chunk(self, nfaces=100, seed=None, auxpts=None):
+        '''Extract a chunk of the surface using breadth first search, for testing purposes'''
+        node = seed
+        if seed is None:
+            node = np.random.randint(len(self.pts))
+
+        ptmap = dict()
+        queue = [node]
+        faces = set()
+        visited = set([node])
+        while len(faces) < nfaces and len(queue) > 0:
+            node = queue.pop(0)
+            for face in self.members[node]:
+                if face not in faces:
+                    faces.add(face)
+                    for pt in self.polys[face]:
+                        if pt not in visited:
+                            visited.add(pt)
+                            queue.append(pt)
+
+        pts, aux, polys = [], [], []
+        for face in faces:
+            for pt in self.polys[face]:
+                if pt not in ptmap:
+                    ptmap[pt] = len(pts)
+                    pts.append(self.pts[pt])
+                    if auxpts is not None:
+                        aux.append(auxpts[pt])
+            polys.append([ptmap[p] for p in self.polys[face]])
+
+        if auxpts is not None:
+            return np.array(pts), np.array(aux), np.array(polys)
+
+        return np.array(pts), np.array(polys)
+
+    def polyhedra(self, wm):
+        '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
+        for p, faces in enumerate(self.members):
+            pts, polys = _ptset(), _quadset()
+            if len(faces) > 0:
+                poly = np.roll(self.polys[faces[0]], -np.nonzero(self.polys[faces[0]] == p)[0][0])
+                assert pts[wm[p]] == 0
+                assert pts[self.pts[p]] == 1
+                pts[wm[poly[[0, 1]]].mean(0)]
+                pts[self.pts[poly[[0, 1]]].mean(0)]
+
+                for i, face in zip(range(4, 4*len(faces)+1, 4), faces):
+                    poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == p)[0][0])
+                    a = pts[wm[poly].mean(0)]
+                    b = pts[self.pts[poly].mean(0)]
+                    c = pts[wm[poly[[0, 2]]].mean(0)]
+                    d = pts[self.pts[poly[[0, 2]]].mean(0)]
+                    e = pts[wm[poly[[0, 1]]].mean(0)]
+                    f = pts[self.pts[poly[[0, 1]]].mean(0)]
+
+                    polys((0, c, a, e))
+                    polys((1, f, b, d))
+                    polys((1, d, c, 0))
+                    polys((1, 0, e, f))
+                    polys((f, e, a, b))
+                    polys((d, b, a, c))
+
+            yield pts.points, np.array(list(polys.triangles))
+            del pts, polys, a, b, c, d, e, f        
+
+class _ptset(object):
+    def __init__(self):
+        self.idx = OrderedDict()
+    def __getitem__(self, idx):
+        idx = tuple(idx)
+        if idx not in self.idx:
+            self.idx[idx] = len(self.idx)
+        return self.idx[idx]
+
+    @property
+    def points(self):
+        return np.array(self.idx.keys())
+
+class _quadset(object):
+    def __init__(self):
+        self.polys = dict()
+
+    def __call__(self, quad):
+        idx = tuple(sorted(quad))
+        if idx in self.polys:
+            del self.polys[idx]
+        else:
+            self.polys[idx] = quad
+
+    @property
+    def triangles(self):
+        for quad in self.polys.values():
+            yield quad[:3]
+            yield [quad[0], quad[2], quad[3]]
+
+def _tetra_vol(pts):
+    tetra = pts[1:] - pts[0]
+    return np.abs(np.dot(tetra[0], np.cross(tetra[1], tetra[2]))) / 6
+
+def _brick_vol(pts):
+    return _tetra_vol(pts[[0, 1, 2, 4]]) + _tetra_vol(pts[[0, 2, 3, 4]]) + _tetra_vol(pts[[2, 3, 4, 5]])
+
+def face_volume(pts1, pts2, polys):
+    vols = np.zeros((len(polys),))
+    for i, face in enumerate(polys):
+        vols[i] = _brick_vol(np.append(pts1[face], pts2[face], axis=0))
+        if i % 1000 == 0:
+            print i
+    return vols
+
+def transform(xfm, pts):
+    return np.dot(xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
 
 def get_connected(polys):
     data = [set([]) for _ in range(polys.max()+1)]

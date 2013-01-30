@@ -322,8 +322,10 @@ class Database(object):
         vtkparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).vtk')
         vtks = os.path.join(filestore, "surfaces", "{subj}_*.vtk").format(subj=subject)
         anatfiles = '%s_{type}.nii.gz'%subject
+        xfms = "%s_{xfmname}.xfm"%subject
         ctmcache = "%s_{xfmname}_[{types}]_{method}_{level}.json"%subject
         flatcache = "%s_{xfmname}_{height}_{date}.pkl"%subject
+        projcache = "%s_{xfmname}_{projection}.npz"%subject
 
         surfs = dict()
         for vtk in glob.glob(vtks):
@@ -335,8 +337,10 @@ class Database(object):
         filenames = dict(
             surfs=surfs,
             anats=os.path.join(filestore, "anatomicals", anatfiles), 
+            xfms=os.path.join(filestore, "transforms", xfms),
             ctmcache=os.path.join(filestore, "ctmcache", ctmcache),
             flatcache=os.path.join(filestore, "flatcache", flatcache),
+            projcache=os.path.join(filestore, "projcache", projcache),
             rois=os.path.join(filestore, "overlays", "{subj}_rois.svg").format(subj=subject),
         )
 

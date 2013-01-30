@@ -868,7 +868,7 @@ MRIview.prototype = {
                     func();
                     dataset.stim.callback = null;
                 }
-                dataset.stim.seekTo(this.frame+dataset.delay);
+                dataset.stim.seekTo(this.frame-dataset.delay);
             } else {
                 func();
             }
@@ -1155,7 +1155,7 @@ MRIview.prototype = {
                 this.setFrame(ui.value); 
                 var dataset = this.active[0];
                 if (dataset.stim !== undefined) {
-                    dataset.stim.seekTo(ui.value + dataset.delay);
+                    dataset.stim.seekTo(ui.value - dataset.delay);
                 }
             }.bind(this)
         });
@@ -1164,7 +1164,7 @@ MRIview.prototype = {
             _this.setFrame(this.value); 
             var dataset = _this.active[0];
             if (dataset.stim !== undefined) {
-                dataset.stim.seekTo(this.value + dataset.delay);
+                dataset.stim.seekTo(this.value - dataset.delay);
             }
         });
     },

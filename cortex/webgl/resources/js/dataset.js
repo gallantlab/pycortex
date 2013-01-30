@@ -131,7 +131,6 @@ Dataset.prototype = {
                 func();
             }
         });
-        this.stim.seekTo(delay);
     },
     set: function(viewer, dim) {
         if (dim === undefined)
@@ -167,12 +166,15 @@ Dataset.prototype = {
                 
                 var delay = this.delay;
                 viewer.addPlugin(this.stim);
-                //this.stim.seekTo(viewer.frame + delay);
+                if (delay >= 0)
+                    this.stim.seekTo(viewer.frame - delay);
+                else
+                    viewer.setFrame(-delay);
                 $(this.stim).bind("timeupdate", function() {
                     var now = new Date().getTime() / 1000;
                     var sec = now - viewer._startplay / 1000;
-                    console.log("Time diff: "+(this.currentTime - delay - sec));
-                    viewer._startplay = (now - this.currentTime + delay)*1000;
+                    console.log("Time diff: "+(this.currentTime + delay - sec));
+                    viewer._startplay = (now - this.currentTime - delay)*1000;
                 })
             }
         }.bind(this);
