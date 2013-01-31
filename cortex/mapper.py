@@ -62,7 +62,7 @@ class Mapper(object):
                 else:
                     assert data.shape[1] == self.mask.sum(), 'Invalid mask size'
                     shape = (np.prod(self.shape), data.shape[0])
-                norm = sparse.csc_matrix(shape)
+                norm = np.zeros(shape)
                 norm[self.mask.ravel()] = data.T
             elif data.ndim == 3:
                 norm = data.ravel()
@@ -74,10 +74,7 @@ class Mapper(object):
             mapped.append(np.array(mask * norm).T)
 
         return mapped
-
-    def _normverts(self, verts):
-        pass
-
+        
     def backwards(self, verts):
         '''Projects vertex data back into volume space
 
@@ -146,9 +143,6 @@ class Nearest(Mapper):
             masks.append(sparse.csr_matrix(csr, dtype=bool, shape=csrshape))
             
         super(Nearest, self)._recache(masks[0], masks[1])
-
-    def backwards(self, verts):
-        pass
 
 class Trilinear(Mapper):
     def _recache(self, subject, xfmname):
