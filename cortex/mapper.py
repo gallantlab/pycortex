@@ -134,13 +134,20 @@ class Nearest(Mapper):
         flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
 
         for (pts, _, _), (_, polys, _) in zip(fid, flat):
-            valid = np.unique(polys)
-            coords = polyutils.transform(coord, pts[valid]).round().astype(int)
+            valid = np.zeros((len(pts),), dtype=bool)
+            valid[np.unique(polys)] = True
+            coords = polyutils.transform(coord, pts).round().astype(int)
+            d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < self.shape[2])
+            d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < self.shape[1])
+            d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < self.shape[0])
+            valid = np.logical_and(np.logical_and(valid, d1), np.logical_and(d2, d3))
+
             ravelidx = np.ravel_multi_index(coords.T[::-1], self.shape, mode='clip')
 
+            ij = np.array([np.nonzero(valid)[0], ravelidx[valid]])
+            data = np.ones((len(ij.T),), dtype=bool)
             csrshape = len(pts), np.prod(self.shape)
-            csr = np.ones((len(valid),), dtype=bool), np.array([valid, ravelidx])
-            masks.append(sparse.csr_matrix(csr, dtype=bool, shape=csrshape))
+            masks.append(sparse.csr_matrix((data, ij), dtype=bool, shape=csrshape))
             
         super(Nearest, self)._recache(masks[0], masks[1])
 
