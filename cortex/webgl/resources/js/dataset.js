@@ -21,32 +21,6 @@ Dataset.fromJSON = function(json) {
     ds.rate = json.rate === undefined ? 1 : json.rate;
     return ds;
 }
-Dataset.maketex = function(array, shape, raw, slice) {
-    //Creates paired textures on top of each other
-    var tex, data, form;
-    var arr = slice === undefined ? array : array.view(slice);
-    var size = array.shape[array.shape.length-1];
-    var len = shape[0] * shape[1] * (raw ? size : 1);
-    
-    data = new array.data.constructor(len*2);
-    data.subarray(0, len).set(arr.data);
-    if (slice+1 < array.shape[0]) {
-        arr = array.view(slice+1);
-        data.subarray(len).set(arr.data);
-    }
-    
-    if (raw) {
-        form = size == 4 ? THREE.RGBAFormat : THREE.RGBFormat;
-        tex = new THREE.DataTexture(data, shape[0], shape[1]*2, form, THREE.UnsignedByteType);
-    } else {
-        tex = new THREE.DataTexture(data, shape[0], shape[1]*2, THREE.LuminanceFormat, THREE.FloatType);
-    }
-    tex.needsUpdate = true;
-    tex.flipY = false;
-    tex.minFilter = THREE.NearestFilter;
-    tex.magFilter = THREE.NearestFilter;
-    return tex;
-}
 Dataset.prototype = { 
     init: function(nparray) {
         this.array = nparray;
@@ -55,14 +29,12 @@ Dataset.prototype = {
 
         if ((this.raw && nparray.shape.length > 2) || (!this.raw && nparray.shape.length > 1)) {
             //Movie
-            this.datasize = new THREE.Vector2(256, Math.ceil(nparray.shape[1] / 256));
             for (var i = 0; i < nparray.shape[0]; i++) {
-                this.textures.push(Dataset.maketex(nparray, [this.datasize.x, this.datasize.y], this.raw, i));
+                this.textures.push(nparray.view(i).data);
             }
         } else {
             //Single frame
-            this.datasize = new THREE.Vector2(256, Math.ceil(nparray.shape[0] / 256));
-            this.textures.push(Dataset.maketex(nparray, [this.datasize.x, this.datasize.y], this.raw));
+            this.textures.push(nparray.data);
         }
         var minmax = nparray.minmax();
         this.lmin = minmax[0];
@@ -136,14 +108,14 @@ Dataset.prototype = {
         if (dim === undefined)
             dim = 0;
         var func = function() {
-            viewer._setShader(this.raw, this.datasize);
+            viewer._setShader(this.raw);
             if (this.textures.length > 1) {
                 viewer.setFrame(0);
                 $("#moviecontrols").show();
                 $("#bottombar").addClass("bbar_controls");
                 $("#movieprogress div").slider("option", {min:0, max:this.textures.length-1});
             } else {
-                viewer.shader.uniforms['ds_' + (dim ? 'y':'x')].texture = this.textures[0];
+                viewer._setVerts(this.textures[0], dim);
                 $("#moviecontrols").hide();
                 $("#bottombar").removeClass("bbar_controls");
             }

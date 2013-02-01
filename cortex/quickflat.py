@@ -77,13 +77,18 @@ def make(data, subject, xfmname, recache=False, height=1024, projection='nearest
     mapper = utils.get_mapper(subject, xfmname, type=projection)
     verts, mask = get_cache(subject, xfmname, recache=recache, height=height)
 
-    if data.ndim in (1, 3):
-        data = data[np.newaxis]
+    mdata = np.hstack(mapper(data))
+    if mdata.dtype == np.uint8:
+        mdata = mdata.swapaxes(-1, -2)
+        if mdata.ndim == 2:
+            mdata = mdata[np.newaxis]
+        shape = (mdata.shape[0],) + mask.shape + (mdata.shape[-1],)
+    elif mdata.ndim == 1:
+        mdata = mdata[np.newaxis]
+        shape = (data.shape[0],) + mask.shape
 
-    shape = (data.shape[0],) + mask.shape
     img = np.nan*np.ones(shape, dtype=data.dtype)
-    img[:, mask] = np.hstack(mapper(data))[:,verts]
-
+    img[:, mask] = mdata[:,verts]
     return img.swapaxes(1, 2)[:,::-1].squeeze()
 
 rois = dict()

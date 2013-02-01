@@ -24,7 +24,7 @@ name_parse = re.compile(r".*/(\w+).png")
 colormaps = glob.glob(os.path.join(serve.cwd, "resources/colormaps/*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
-def _normalize_data(data, mask):
+def _normalize_data(data, mapper):
     if not isinstance(data, dict):
         data = dict(data0=data)
 
@@ -34,12 +34,19 @@ def _normalize_data(data, mask):
         ds = dict(__class__="Dataset")
 
         if isinstance(dat, dict):
-            data = _fixarray(dat['data'], mask)
+            data = _fixarray(dat['data'], mapper)
             if 'stim' in dat:
                 ds['stim'] = dat['stim']
             ds['delay'] = dat['delay'] if 'delay' in dat else 0
         elif isinstance(dat, np.ndarray):
-            data = _fixarray(dat, mask)
+            data = _fixarray(dat, mapper)
+        elif isinstance(dat, str):
+            if os.path.splitext(dat.lower())[1] == '.hdf':
+                import tables
+                h5 = tables.openFile(dat)
+                data = _fxarray(h5.root.data[:], mapper)
+            else:
+                raise TypeError
 
         ds['data'] = data
         ds['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
@@ -65,38 +72,30 @@ def _make_bindat(json, fmt="%s.bin"):
 
     return newjs, bindat
 
-def _fixarray(data, mask):
+def _fixarray(data, mapper):
     if isinstance(data, str):
         import nibabel
         data = nibabel.load(data).get_data().T
-    if data.dtype == np.float:
+    if data.dtype != np.uint8:
         data = data.astype(np.float32)
 
     raw = data.dtype.type == np.uint8
-    assert raw and data.shape[0] in [3, 4] or not raw
-    shape = data.shape[1:] if raw else data.shape
-    movie = len(shape) in [2, 4]
-    volume = len(shape) in [3, 4]
+    mapped = mapper.nverts in data.shape
 
     if raw:
-        if volume:
-            if movie:
-                return data[:, :, mask].transpose(1, 2, 0)
+        assert mapped and data.shape[-2] in (3, 4)
+        if data.shape[-2] == 3:
+            if data.ndim == 2:
+                data = np.vstack([data, 255*np.ones((1, mapper.nverts), dtype=np.uint8)])
             else:
-                return data[:, mask].T
-        else: #cortical
-            if movie:
-                return data.transpose(1,2,0)
-            else:
-                return data.T
+                data = np.hstack([data, 255*np.ones((len(data), 1, mapper.nverts), dtype=np.uint8)])
+                
+        return data.swapaxes(-1, -2)
     else: #regular
-        if volume:
-            if movie:
-                return data[:, mask]
-            else:
-                return data[mask]
-        else: #cortical
+        if mapped:
             return data
+        else: #volume
+            return np.hstack(mapper(data)).astype(np.float32)
 
 def make_movie(stim, outfile, fps=15, size="640x480"):
     import shlex
@@ -105,7 +104,7 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
 
-def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", anonymize=False, **kwargs):
+def make_static(outpath, data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, cmap="RdBu_r", template="static.html", anonymize=False, **kwargs):
     '''
     Creates a static instance of the webGL MRI viewer that can easily be posted 
     or shared. 
@@ -173,8 +172,8 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     ctmfile = newfname+".json"
 
     #Generate the data binary objects and save them into the outpath
-    mask = utils.get_cortical_mask(subject, xfmname)
-    json, sdat = _make_bindat(_normalize_data(data, mask))
+    mapper = utils.get_mapper(subject, xfmname, type=projection)
+    json, sdat = _make_bindat(_normalize_data(data, mapper))
     for name, dat in sdat.items():
         with open(os.path.join(outpath, "%s.bin"%name), "w") as binfile:
             binfile.write(dat)
@@ -189,7 +188,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
 
 
-def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None):
+def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None):
     '''Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
     sub dictionary with keys [data, stim, delay].
 
@@ -206,8 +205,8 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     html = sloader.load("mixer.html")
 
     ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)
-    mask = utils.get_cortical_mask(subject, xfmname)
-    jsondat, bindat = _make_bindat(_normalize_data(data, mask), fmt='data/%s/')
+    mapper = utils.get_mapper(subject, xfmname, type=projection)
+    jsondat, bindat = _make_bindat(_normalize_data(data, mapper), fmt='data/%s/')
 
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
@@ -261,9 +260,10 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
             saveevt.set()
 
     class JSMixer(serve.JSProxy):
-        def addData(self, **kwargs):
+        def addData(self, projection='nearest', **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
-            json, data = _make_bindat(_normalize_data(kwargs, mask), fmt='data/%s/')
+            mapper = utils.get_mapper(subject, xfmname, type=projection)
+            json, data = _make_bindat(_normalize_data(kwargs, mapper), fmt='data/%s/')
             queue.put(data)
             return Proxy(json)
 
