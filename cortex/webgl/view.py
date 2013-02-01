@@ -41,10 +41,15 @@ def _normalize_data(data, mapper):
         elif isinstance(dat, np.ndarray):
             data = _fixarray(dat, mapper)
         elif isinstance(dat, str):
-            if os.path.splitext(dat.lower())[1] == '.hdf':
-                import tables
-                h5 = tables.openFile(dat)
-                data = _fxarray(h5.root.data[:], mapper)
+            if os.path.splitext(dat.lower())[1] in ('.mat', '.hdf'):
+                try:
+                    import tables
+                    h5 = tables.openFile(dat)
+                    data = _fixarray(h5.root.data[:], mapper)
+                except IOError:
+                    import scipy.io as sio
+                    matfile = sio.loadmat(dat)
+                    data = _fixarray(matfile['data'].T)
             else:
                 raise TypeError
 
