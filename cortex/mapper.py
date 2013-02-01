@@ -52,26 +52,25 @@ class Mapper(object):
         return '<%s mapper for (%s, %s) with %d vertices>'%(ptype, self.subject, self.xfmname, self.nverts)
 
     def __call__(self, data):
+        if self.nverts in data.shape:
+            llen = self.masks[0].shape[0]
+            return data[..., :llen], data[..., llen:]
+
+        if data.ndim in (1, 3):
+            data = data[np.newaxis]
+
         mapped = []
         for mask in self.masks:
-            if data.ndim in (1, 2):
-                #pre-masked data
-                if data.ndim == 1:
-                    assert len(data) == self.mask.sum(), 'Invalid mask size'
-                    shape = (np.prod(self.shape), 1)
-                else:
-                    assert data.shape[1] == self.mask.sum(), 'Invalid mask size'
-                    shape = (np.prod(self.shape), data.shape[0])
+            if self.mask.sum() in data.shape:
+                shape = (np.prod(self.shape), data.shape[0])
                 norm = np.zeros(shape)
                 norm[self.mask.ravel()] = data.T
-            elif data.ndim == 3:
-                norm = data.ravel()
             elif data.ndim == 4:
                 norm = data.reshape(len(data), -1).T
             else:
                 raise ValueError
 
-            mapped.append(np.array(mask * norm).T)
+            mapped.append(np.array(mask * norm).T.squeeze())
 
         return mapped
         

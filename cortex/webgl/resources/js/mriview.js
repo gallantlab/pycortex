@@ -1,14 +1,6 @@
 var flatscale = .2;
 var vShadeHead = [
-    THREE.ShaderChunk[ "map_pars_vertex" ], 
-    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
-    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
-
-    "attribute vec2 datamap;",
     "attribute vec4 auxdat;",
-    "uniform sampler2D ds_x;",
-    "uniform sampler2D ds_y;",
-    "uniform vec2 datasize;",
 
     "uniform sampler2D colormap;",
     "uniform float vmin[2];",
@@ -28,11 +20,6 @@ var vShadeHead = [
         "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
 
         THREE.ShaderChunk[ "map_vertex" ],
-        
-        "vec2 dcoord0 = (2.*datamap+1.) / (2.*datasize);",
-        "vec2 dcoord1 = (2.*datamap+1.) / (2.*datasize);",
-        "dcoord0.y *= 0.5;",
-        "dcoord1.y = dcoord1.y * 0.5 + 0.5;",
 
         "vDrop = auxdat.x;",
         "vCurv = auxdat.y;",
@@ -55,16 +42,19 @@ var vShadeTail = [ "",
 
 ].join("\n");
 
-var cmapShader = vShadeHead + ([
-        "float vdata0 = texture2D(ds_x, dcoord0).r;",
-        "float vdata1 = texture2D(ds_y, dcoord0).r;",
-        "float vdata2 = texture2D(ds_x, dcoord1).r;",
-        "float vdata3 = texture2D(ds_y, dcoord1).r;",
-
-        "float vnorm0 = (vdata0 - vmin[0]) / (vmax[0] - vmin[0]);",
-        "float vnorm1 = (vdata1 - vmin[1]) / (vmax[1] - vmin[1]);",
-        "float vnorm2 = (vdata2 - vmin[0]) / (vmax[0] - vmin[0]);",
-        "float vnorm3 = (vdata3 - vmin[1]) / (vmax[1] - vmin[1]);",
+var cmapShader = ([
+    THREE.ShaderChunk[ "map_pars_vertex" ], 
+    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+    "attribute float data0;",
+    "attribute float data1;",
+    "attribute float data2;",
+    "attribute float data3;",
+    ]).join("\n") + vShadeHead + ([
+        "float vnorm0 = (data0 - vmin[0]) / (vmax[0] - vmin[0]);",
+        "float vnorm1 = (data1 - vmin[1]) / (vmax[1] - vmin[1]);",
+        "float vnorm2 = (data2 - vmin[0]) / (vmax[0] - vmin[0]);",
+        "float vnorm3 = (data3 - vmin[1]) / (vmax[1] - vmin[1]);",
 
         "float fnorm0 = (1. - framemix) * vnorm0 + framemix * vnorm2;",
         "float fnorm1 = (1. - framemix) * vnorm1 + framemix * vnorm3;",
@@ -74,9 +64,15 @@ var cmapShader = vShadeHead + ([
         "vColor  = texture2D(colormap, cuv);",
 ].join("\n")) + vShadeTail;
 
-var rawShader = vShadeHead + ([
-        "vColor  = (1. - framemix) * texture2D(ds_x, dcoord0);",
-        "vColor +=       framemix  * texture2D(ds_x, dcoord1);",
+var rawShader = ([
+    THREE.ShaderChunk[ "map_pars_vertex" ], 
+    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+    "attribute vec4 data0;",
+    "attribute vec4 data2;",
+    ]).join("\n") + vShadeHead + ([
+        "vColor  = (1. - framemix) * data0 * vec4(1. / 255.);",
+        "vColor +=       framemix  * data2 * vec4(1. / 255.);",
         "vColor.rgb *= vColor.a;",
 ].join("\n")) + vShadeTail;
 
@@ -186,15 +182,11 @@ function MRIview() {
             shininess:  { type:'f',  value:200},
 
             framemix:   { type:'f',  value:0},
-            datasize:   { type:'v2', value:new THREE.Vector2(256, 0)},
-            offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
             hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
-
+            offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
             map:        { type:'t',  value:0, texture: null },
             hatch:      { type:'t',  value:1, texture: makeHatch() },
             colormap:   { type:'t',  value:2, texture: null },
-            ds_x:       { type:'t',  value:3, texture: null },
-            ds_y:       { type:'t',  value:4, texture: null },
 
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
@@ -213,7 +205,7 @@ function MRIview() {
         vertexShader:cmapShader,
         fragmentShader:fragmentShader,
         uniforms: uniforms,
-        attributes: { datamap:true, auxdat:true },
+        attributes: { data0:true, data1:true, data2:true, data3:true, auxdat:true },
         morphTargets:true, 
         morphNormals:true, 
         lights:true, 
@@ -229,7 +221,7 @@ function MRIview() {
         vertexShader:rawShader,
         fragmentShader:fragmentShader,
         uniforms: uniforms,
-        attributes: { datamap:true, auxdat:true },
+        attributes: { data0:true, data1:true, data2:true, data3:true, auxdat:true },
         morphTargets:true,
         morphNormals:true,
         lights:true,
@@ -245,6 +237,8 @@ function MRIview() {
     this._startplay = null;
     this._staticplugin = false;
     this._loaded = false;
+    this.loaded = $.Deferred();
+    this.cmapload = $.Deferred();
     this.labelshow = true;
 
     this.datasets = {}
@@ -395,8 +389,10 @@ MRIview.prototype = {
             this.schedule();
             $("#ctmload").hide();
             $("#brain").css("opacity", 1);
+            
             if (typeof(callback) == "function")
-                callback();
+                this.loaded.done(callback);
+            this.loaded.resolve();
         }.bind(this), true, true );
     },
     resize: function(width, height) {
@@ -632,14 +628,10 @@ MRIview.prototype = {
             if (!found)
                 $("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
         }
-        var func = function() {
-            this.setData(names.slice(0,this.colormap.image.height > 10 ? 2 : 1));
-        }.bind(this);
 
-        if (this.colormap.image.complete)
-            func();
-        else
-            this.colormap.image.addEventListener("load", func);
+        $.when(this.cmapload, this.loaded).then(function() {
+            this.setData(names.slice(0,this.colormap.image.height > 10 ? 2 : 1));
+        }.bind(this));
     },
     setData: function(names) {
         if (names instanceof Array) {
@@ -769,7 +761,8 @@ MRIview.prototype = {
         if (this.active[0] !== undefined)
             this.active[0].cmap = $("#colormap .dd-selected label").text();
 
-        var func = function() {
+        this.cmapload = $.Deferred();
+        this.cmapload.done(function() {
             this.colormap.needsUpdate = true;
             this.colormap.premultiplyAlpha = true;
             this.colormap.flipY = true;
@@ -783,12 +776,12 @@ MRIview.prototype = {
             } else {
                 $(".vcolorbar").hide();
             }
-        }.bind(this);
+        }.bind(this));
 
         if ((cmap instanceof Image || cmap instanceof Element) && !cmap.complete) {
-            cmap.addEventListener("load", func);
+            cmap.addEventListener("load", function() { this.cmapload.resolve(); }.bind(this));
         } else {
-            func();
+            this.cmapload.resolve();
         }
     },
 
@@ -820,31 +813,17 @@ MRIview.prototype = {
 
         this.schedule();
     },
-    _setShader: function(raw, datasize) {
-        if (raw) {
-            this.shader = this.rawshader;
-            if (this.meshes && this.meshes.left) {
-                this.meshes.left.material = this.rawshader;
-                this.meshes.right.material = this.rawshader;
-            }
-        } else {
-            this.shader = this.cmapshader;
-            if (this.meshes && this.meshes.left) {
-                this.meshes.left.material = this.cmapshader;
-                this.meshes.right.material = this.cmapshader;
-            }
-        }
-        this.shader.uniforms.datasize.value = datasize;
-    }, 
 
     setFrame: function(frame) {
         this.frame = frame;
         var fframe = Math.floor(frame);
         if (this.active[0].array !== undefined) {
-            this.shader.uniforms.ds_x.texture = this.active[0].textures[fframe];
+            this._setVerts(this.active[0].textures[fframe], 0);
+            this._setVerts(this.active[0].textures[fframe + 1], 2);
         }
         if (this.active.length > 1 && this.active[1].array !== undefined) {
-            this.shader.uniforms.ds_y.texture = this.active[1].textures[fframe];
+            this._setVerts(this.active[1].textures[fframe], 1);
+            this._setVerts(this.active[1].textures[fframe + 1], 3);
         }
         this.shader.uniforms.framemix.value = frame - fframe;
         $("#movieprogress div").slider("value", frame);
@@ -1192,6 +1171,13 @@ MRIview.prototype = {
         }
         geom.morphTargets.push({ array:flat, stride:3 })
         geom.morphNormals.push( norms );
+
+        var len = geom.attributes.position.array.length / 3;
+        var arr = this.active.length > 0 ? this.active[0].textures[0] : new Float32Array(len);
+        geom.attributes.data0 = {array:arr, itemSize:1, stride:1, numItems:len}
+        geom.attributes.data1 = {array:arr, itemSize:1, stride:1, numItems:len}
+        geom.attributes.data2 = {array:arr, itemSize:1, stride:1, numItems:len}
+        geom.attributes.data3 = {array:arr, itemSize:1, stride:1, numItems:len}
     },
     _makeMesh: function(geom, shader) {
         //Creates the pivots and the mesh object given the geometry and shader
@@ -1206,6 +1192,53 @@ MRIview.prototype = {
         pivots.front.position.y = geom.boundingBox.max.y - geom.boundingBox.min.y + this.flatoff[1];
 
         return {mesh:mesh, pivots:pivots};
+    },
+    _setVerts: function(array, idx) {
+        if (this.meshes && this.meshes.left) {
+            var attributes = this.meshes.left.geometry.attributes;
+            var length = attributes.position.array.length / 3;
+            if (array instanceof Uint8Array)
+                length *= 4;
+            attributes['data'+idx].array = array.subarray(0, length);
+            attributes['data'+idx].needsUpdate = true;
+            attributes = this.meshes.right.geometry.attributes;
+            attributes['data'+idx].array = array.subarray(length);
+            attributes['data'+idx].needsUpdate = true;
+        }
+    },
+    _setShader: function(raw) {
+        if (this.meshes && this.meshes.left) {
+            if (raw) {
+                this.shader = this.rawshader;
+                this.meshes.left.material = this.rawshader;
+                this.meshes.right.material = this.rawshader;
+            } else {
+                this.shader = this.cmapshader;
+                this.meshes.left.material = this.cmapshader;
+                this.meshes.right.material = this.cmapshader;
+            }
+
+            var val, len;
+            for (var i = 0; i < 2; i++) {
+                for (var j = 0; j < 4; j++) {
+                    var attributes = this.meshes[i ? 'left' : 'right'].geometry.attributes;
+                    var dattr = attributes['data' + j];
+
+                    len = attributes.position.numItems / 3;
+                    if (raw) {
+                        val = 4;
+                        dattr.array = new Uint8Array(val*len);
+                    } else {
+                        val = 1;
+                        dattr.array = new Float32Array(len);
+                    }
+
+                    dattr.itemSize = val;
+                    dattr.stride = val;
+                    dattr.numItems = val * len;
+                }
+            }
+        }
     }, 
 }
 
