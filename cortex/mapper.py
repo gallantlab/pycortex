@@ -3,6 +3,7 @@ import os
 import nibabel
 import numpy as np
 from scipy import sparse
+from itertools import product
 
 import polyutils
 from db import surfs
@@ -194,6 +195,58 @@ class Trilinear(Mapper):
             masks.append(sparse.csr_matrix((data, (i, j)), shape=csrshape))
 
         super(Trilinear, self)._recache(masks[0], masks[1])
+
+class Lanczos(Mapper):
+    def _recache(self, subject, xfmname, window=3, renorm=True):
+        masks = []
+        coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
+        nZ, nY, nX = self.shape
+
+        fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
+        flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
+        
+        for (pts, _, _), (_, polys, _) in zip(fid, flat):
+            # valid = np.unique(polys)
+            # coords = polyutils.transform(coord, pts[valid])
+            coords = polyutils.transform(coord, pts)
+
+            dx = coords[:,0] - np.atleast_2d(np.arange(nX)).T
+            dy = coords[:,1] - np.atleast_2d(np.arange(nY)).T
+            dz = coords[:,2] - np.atleast_2d(np.arange(nZ)).T
+
+            def lanczos(x):
+                out = np.zeros_like(x)
+                sel = np.abs(x)<window
+                selx = x[sel]
+                out[sel] = np.sin(np.pi * selx) * np.sin(np.pi * selx / window) * (window / (np.pi**2 * selx**2))
+                return out
+
+            Lx = lanczos(dx)
+            Ly = lanczos(dy)
+            Lz = lanczos(dz)
+
+            mask = sparse.lil_matrix((len(pts), np.prod(self.shape)))
+            for v in range(len(pts)):
+                ix = np.nonzero(Lx[:,v])[0]
+                iy = np.nonzero(Ly[:,v])[0]
+                iz = np.nonzero(Lz[:,v])[0]
+
+                vx = Lx[ix,v]
+                vy = Ly[iy,v]
+                vz = Lz[iz,v]
+
+                inds = np.ravel_multi_index(np.array(list(product(iz, iy, ix))).T, self.shape)
+                vals = np.prod(np.array(list(product(vz, vy, vx))), 1)
+                if renorm:
+                    vals /= vals.sum()
+                mask[v,inds] = vals
+
+                if not v % 1000:
+                    print v
+
+            masks.append(mask.tocsr())
+
+        super(Lanczos, self)._recache(masks[0], masks[1])
 
 class Gaussian(Mapper):
     def _recache(self, subject, xfmname, std=2):

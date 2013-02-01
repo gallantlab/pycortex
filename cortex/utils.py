@@ -101,7 +101,8 @@ def get_mapper(subject, xfmname, type='nearest', **kwargs):
         nearest=mapper.Nearest,
         trilinear=mapper.Trilinear,
         gaussian=mapper.Gaussian,
-        polyhedral=mapper.Polyhedral)
+        polyhedral=mapper.Polyhedral,
+        lanczos=mapper.Lanczos)
     return mapfunc[type](subject, xfmname, **kwargs)
 
 def get_roipack(subject, remove_medial=False):
