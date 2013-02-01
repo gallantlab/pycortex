@@ -40,6 +40,13 @@ def _normalize_data(data, mapper):
             ds['delay'] = dat['delay'] if 'delay' in dat else 0
         elif isinstance(dat, np.ndarray):
             data = _fixarray(dat, mapper)
+        elif isinstance(dat, str):
+            if os.path.splitext(dat.lower())[1] == '.hdf':
+                import tables
+                h5 = tables.openFile(dat)
+                data = _fxarray(h5.root.data[:], mapper)
+            else:
+                raise TypeError
 
         ds['data'] = data
         ds['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
