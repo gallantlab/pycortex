@@ -24,11 +24,6 @@ ctm = Extension('cortex.openctm',
             ]
         )
 
-
-<<<<<<< HEAD
-=======
-
->>>>>>> f21d654329d9e0abbae407d19631e0949316b934
 setup(name='pycortex',
       version='0.1.0',
       description='Python Cortical mapping software for fMRI data',
@@ -36,7 +31,6 @@ setup(name='pycortex',
       author_email='james@jamesgao.com',
       packages=['cortex', 'cortex.webgl'],
       ext_modules=cythonize([ctm]),
-<<<<<<< HEAD
       package_data={
             'cortex':[ 'svgbase.xml' ],
             'cortex.webgl':
@@ -51,18 +45,5 @@ setup(name='pycortex',
                    'resources/images/*',
                   ]
             },
-=======
-      package_data={'cortex.webgl':
-            ['*.html', 
-             'favicon.ico', 
-             'resources/js/*.js',
-             'resources/js/ctm/*.js',
-             'resources/css/*.css',
-             'resources/css/ui-lightness/*.css',
-             'resources/css/ui-lightness/images/*',
-             'resources/colormaps/*.png',
-             'resources/images/*',
-            ]},
->>>>>>> f21d654329d9e0abbae407d19631e0949316b934
       requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>2.1)', 'shapely', 'html5lib'],
 )
