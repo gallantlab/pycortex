@@ -37,21 +37,14 @@ def _make_flat_cache(subject, xfmname, height=1024):
     aspect = size[0] / size[1]
     width = int(aspect * height)
 
-    #Get the mask idx for each vertex
-    cmask = utils.get_cortical_mask(subject, xfmname)
-    imask = cmask.astype(np.uint32)
-    imask[cmask > 0] = np.arange(cmask.sum())
-    coords = np.vstack(db.surfs.getCoords(subject, xfmname))
-    ridx = np.ravel_multi_index(coords.T, cmask.shape[::-1], mode='clip')
-    mcoords = imask.T.ravel()[ridx[valid]]
-
     mask = _gen_flat_mask(subject, height=height).T
     assert mask.shape[0] == width and mask.shape[1] == height
-    flatpos = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
-    kdt = cKDTree(flat[valid,:2])
-    dist, idx = kdt.query(flatpos.T[mask.ravel()])
 
-    return mcoords[idx], mask
+    grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
+    kdt = cKDTree(flat[valid,:2])
+    dist, idx = kdt.query(grid.T[mask.ravel()])
+
+    return valid[idx], mask
 
 cache = dict()
 def get_cache(subject, xfmname, recache=False, height=1024):
@@ -69,40 +62,33 @@ def get_cache(subject, xfmname, recache=False, height=1024):
             os.unlink(f)
         print "Generating a flatmap cache"
         #pull points and transform from database
-        coords, mask = _make_flat_cache(subject, xfmname, height=height)
+        verts, mask = _make_flat_cache(subject, xfmname, height=height)
         #save them into the proper file
         date = time.strftime("%Y%m%d")
         cachename = cacheform.format(xfmname=xfmname, height=height, date=date)
-        cPickle.dump((coords, mask), open(cachename, "w"), 2)
+        cPickle.dump((verts, mask), open(cachename, "w"), 2)
     else:
-        coords, mask = cPickle.load(open(files[0]))
+        verts, mask = cPickle.load(open(files[0]))
 
-    cache[key] = coords, mask
-    return coords, mask
+    cache[key] = verts, mask
+    return verts, mask
 
-def make(data, subject, xfmname, recache=False, height=1024, **kwargs):
-    coords, mask = get_cache(subject, xfmname, recache=recache, height=height)
+def make(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
+    mapper = utils.get_mapper(subject, xfmname, type=projection)
+    verts, mask = get_cache(subject, xfmname, recache=recache, height=height)
 
-    if data.ndim in (1, 3):
-        data = data[np.newaxis]
-
-    if data.ndim in (4, 5):
-        cmask = utils.get_cortical_mask(subject, xfmname)
-        data = data[..., cmask]
-
-    if data.dtype == np.uint8:
-        if data.ndim == 2:
-            data = data[np.newaxis]
-        shape = (data.shape[0],)+mask.shape+(4,)
-        cdim = data.shape[1]
-        img = np.zeros(shape, dtype=np.uint8)
-        img[:, mask, -1] = 255
-        img[:, mask, :cdim] = data[..., coords].swapaxes(1, 2)
-    else:
+    mdata = np.hstack(mapper(data))
+    if mdata.dtype == np.uint8:
+        mdata = mdata.swapaxes(-1, -2)
+        if mdata.ndim == 2:
+            mdata = mdata[np.newaxis]
+        shape = (mdata.shape[0],) + mask.shape + (mdata.shape[-1],)
+    elif mdata.ndim == 1:
+        mdata = mdata[np.newaxis]
         shape = (data.shape[0],) + mask.shape
-        img = np.nan*np.ones(shape, dtype=data.dtype)
-        img[:, mask] = data[:, coords]
 
+    img = np.nan*np.ones(shape, dtype=data.dtype)
+    img[:, mask] = mdata[:,verts]
     return img.swapaxes(1, 2)[:,::-1].squeeze()
 
 rois = dict()
@@ -161,7 +147,7 @@ def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=Tr
         fig.savefig(name, facecolor=bgcolor, transparent=False, dpi=dpi)
     plt.close()
 
-def make_movie(name, data, subject, xfmname, recache=False, height=1024, dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
+def make_movie(name, data, subject, xfmname, recache=False, height=1024, projection='nearest', dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
     import sys
     import shlex
     import shutil
@@ -172,7 +158,7 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, dpi=100
     from scipy.interpolate import interp1d
 
     #make the flatmaps
-    ims = make(data, subject, xfmname, recache=recache, height=height)
+    ims = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
     if vmin is None:
         vmin = np.nanmin(ims)
     if vmax is None:
@@ -206,10 +192,10 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, dpi=100
     finally:
         shutil.rmtree(path)
 
-def make_png(name, data, subject, xfmname, recache=False, height=1024, **kwargs):
-    im = make(data, subject, xfmname, recache=recache, height=height)
+def make_png(name, data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
+    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
     return make_figure(im, subject, name=name, **kwargs)
 
-def show(data, subject, xfmname, recache=False, height=1024, **kwargs):
-    im = make(data, subject, xfmname, recache=recache, height=height)
+def show(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
+    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
     return make_figure(im, subject, **kwargs)

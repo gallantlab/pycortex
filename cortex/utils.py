@@ -95,6 +95,16 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
 
     return output
 
+def get_mapper(subject, xfmname, type='nearest', **kwargs):
+    import mapper
+    mapfunc = dict(
+        nearest=mapper.Nearest,
+        trilinear=mapper.Trilinear,
+        gaussian=mapper.Gaussian,
+        polyhedral=mapper.Polyhedral,
+        lanczos=mapper.Lanczos)
+    return mapfunc[type](subject, xfmname, **kwargs)
+
 def get_roipack(subject, remove_medial=False):
     import svgroi
     flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
@@ -120,24 +130,8 @@ def get_ctmpack(subject, xfmname, types=("inflated",), method="raw", level=0, re
     import vtkctm
     return vtkctm.make_pack(ctmfile, subject, xfmname, types, method, level)
 
-def get_cortical_mask(subject, xfmname):
-    import nibabel
-    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
-    if len(shape) > 3:
-        shape = shape[1:]
-    
-    data = np.zeros(shape, dtype=bool)
-    coords = np.vstack(surfs.getCoords(subject, xfmname))
-    pts, polys, norms = surfs.getVTK(subject, "flat", merge=True)
-    coords = coords[np.unique(polys)]
-    d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < shape[2])
-    d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < shape[1])
-    d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < shape[0])
-    valid = np.logical_and(d1, np.logical_and(d2, d3))
-    data.T[tuple(coords[valid].T)] = True
-    
-    return data
-
+def get_cortical_mask(subject, xfmname, type='nearest'):
+    return get_mapper(subject, xfmname, type=type).mask
 
 def get_vox_dist(subject, xfmname):
     '''Get the distance (in mm) from each functional voxel to the closest
@@ -179,62 +173,25 @@ def get_vox_dist(subject, xfmname):
     return dist, argdist
 
 
-def get_hemi_masks(subject, xfmname):
+def get_hemi_masks(subject, xfmname, type='nearest'):
     '''Returns a binary mask of the left and right hemisphere
     surface voxels for the given subject.
     '''
-    import nibabel
-    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
-    if len(shape) > 3:
-        shape = shape[1:]
+    return get_mapper(subject, xfmname, type=type).hemimasks
 
-    lco, rco = surfs.getCoords(subject, xfmname)
-    lmask = np.zeros(shape, dtype=np.bool)
-    lmask.T[tuple(lco.T)] = True
-    rmask = np.zeros(shape, dtype=np.bool)
-    rmask.T[tuple(rco.T)] = True
-    return lmask, rmask
-
-def add_roi(data, subject, xfmname, name="new_roi", recache=False, open_inkscape=True, add_path=True, **kwargs):
+def add_roi(data, subject, xfmname, name="new_roi", recache=False, open_inkscape=True, add_path=True, projection='nearest', **kwargs):
     import subprocess as sp
     from matplotlib.pylab import imsave
     from utils import get_roipack
     import quickflat
     rois = get_roipack(subject)
-    im = quickflat.make(data, subject, xfmname, height=1024, recache=recache, with_rois=False)
+    im = quickflat.make(data, subject, xfmname, height=1024, recache=recache, projection=projection, with_rois=False)
     fp = cStringIO.StringIO()
     imsave(fp, im, **kwargs)
     fp.seek(0)
     rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
     if open_inkscape:
         return sp.call(["inkscape", '-f', rois.svgfile])
-
-def get_roi_mask(subject, xfmname, roi=None):
-    '''Return a bitmask for the given ROIs'''
-    import nibabel
-    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
-    if len(shape) > 3:
-        shape = shape[1:]
-
-    rois, valid = get_roipack(subject, remove_medial=True)
-    
-    coords = np.vstack(surfs.getCoords(subject, xfmname))
-    coords = coords[valid]
-
-    if roi is None:
-        roi = rois.names
-
-    if isinstance(roi, str):
-        mask = np.zeros(shape, dtype=bool)
-        mask.T[tuple(coords[rois.get_roi(roi)].T)] = True
-        return mask
-    elif isinstance(roi, list):
-        roidict = dict()
-        for name in roi:
-            mask = np.zeros(shape, dtype=np.bool)
-            mask.T[tuple(coords[rois.get_roi(name)].T)] = True
-            roidict[name] = mask
-        return roidict
 
 def get_roi_verts(subject, roi=None):
     '''Return vertices for the given ROIs'''
@@ -243,15 +200,26 @@ def get_roi_verts(subject, roi=None):
     if roi is None:
         roi = rois.names
 
+    roidict = dict()
     if isinstance(roi, str):
-        raise Exception
-    elif isinstance(roi, list):
-        roidict = dict()
-        for name in roi:
-            #roidict[name] = tuple(coords[rois.get_roi(name)].T)
-            roidict[name] = rois.get_roi(name)
-        return roidict
+        roi = [roi]
 
+    for name in roi:
+        roidict[name] = rois.get_roi(name)
+
+    return roidict
+
+def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
+    '''Return a bitmask for the given ROIs'''
+
+    mapper = get_mapper(subject, xfmname, type=projection)
+    rois = get_roi_verts(subject, roi=roi)
+    output = dict()
+    for name, verts in rois.items():
+        left, right = mapper.backwards(verts)
+        output[name] = left + right
+        
+    return output
 
 def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     '''
