@@ -38,20 +38,8 @@ def _normalize_data(data, mapper):
             if 'stim' in dat:
                 ds['stim'] = dat['stim']
             ds['delay'] = dat['delay'] if 'delay' in dat else 0
-        elif isinstance(dat, np.ndarray):
+        else:
             data = _fixarray(dat, mapper)
-        elif isinstance(dat, str):
-            if os.path.splitext(dat.lower())[1] in ('.mat', '.hdf'):
-                try:
-                    import tables
-                    h5 = tables.openFile(dat)
-                    data = _fixarray(h5.root.data[:], mapper)
-                except IOError:
-                    import scipy.io as sio
-                    matfile = sio.loadmat(dat)
-                    data = _fixarray(matfile['data'].T)
-            else:
-                raise TypeError
 
         ds['data'] = data
         ds['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
@@ -79,8 +67,16 @@ def _make_bindat(json, fmt="%s.bin"):
 
 def _fixarray(data, mapper):
     if isinstance(data, str):
-        import nibabel
-        data = nibabel.load(data).get_data().T
+        if os.path.splitext(data)[1] in ('.hdf', '.mat'):
+            try:
+                import tables
+                data = tables.openFile(data).root.data[:]
+            except IOError:
+                import scipy.io as sio
+                data = sio.loadmat(data)['data'].T
+        elif '.nii' in data:
+            import nibabel
+            data = nibabel.load(data).get_data().T
     if data.dtype != np.uint8:
         data = data.astype(np.float32)
 
@@ -198,14 +194,14 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     sub dictionary with keys [data, stim, delay].
 
     Data array can be a variety of shapes:
-    Raw volume movie:      [[3, 4], t, z, y, x]
-    Raw volume image:      [[3, 4], z, y, x]
-    Raw cortical movie:    [[3, 4], t, vox]
-    Raw cortical image:    [[3, 4], vox]
-    Regular volume movie:  [t, z, y, x]
-    Regular volume image:  [z, y, x]
-    Regular cortical movie: [t, vox]
-    Regular cortical image: [vox]
+    Regular volume movie: [t, z, y, x]
+    Regular volume image: [z, y, x]
+    Regular masked movie: [t, vox]
+    Regular masked image: [vox]
+    Regular vertex movie: [t, verts]
+    Regular vertex image: [verts]
+    Raw vertex movie:     [[3, 4], t, verts]
+    Raw vertex image:     [[3, 4], verts]
     '''
     html = sloader.load("mixer.html")
 
