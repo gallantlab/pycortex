@@ -180,12 +180,11 @@ class Axis(HasTraits):
     ipw_3d = Instance(PipelineBase)
     ipw = Instance(PipelineBase)
     cursor = Instance(Module)
-    surf = Instance(Module)
-    outline = Instance(Module)
-    planes = List
-    slab = Instance(PipelineBase)
+    surf = Instance(PipelineBase)
+    outline = Instance(PipelineBase)
+    slab = Instance(tvtk.ClipPolyData)
     handle = Instance(RotationWidget)
-    clip = Instance(tvtk.ClipPolyData)
+    planes = List
 
     scene_3d = DelegatesTo('parent')
     position = DelegatesTo('parent')
@@ -194,7 +193,11 @@ class Axis(HasTraits):
 
     def __init__(self, **kwargs):
         super(Axis, self).__init__(**kwargs)
-        spacing = self.parent.spacing
+        self.slab
+        self.outline
+        self.ipw
+
+        spacing = list(self.parent.spacing)
         spacing.pop(self.axis)
         spacing.append(1)
         shape = list(self.parent.epi.shape)
@@ -202,8 +205,11 @@ class Axis(HasTraits):
         if self.axis == 1:
             shape = shape[::-1]
         shape.append(0)
-        center = shape * spacing / 2. + ((np.array(shape)+1)%2) * spacing / 2.
-        width = (shape * spacing)[:2]
+        self.spacing = np.array(spacing)
+        self.shape = np.array(shape)
+
+        center = self.shape * self.spacing / 2. + (self.shape + 1) % 2 * self.spacing / 2.
+        width = (self.shape * self.spacing)[:2]
         width = np.min(width) * 0.5
 
         self.scene.scene_editor.handle = self.handle
@@ -214,18 +220,16 @@ class Axis(HasTraits):
                   figure=self.scene.mayavi_scene)
         self.scene.scene.parallel_projection = True
         self.scene.scene.camera.parallel_scale = width * 1.2
-        # 2D interaction: only pan and zoom
         self.scene.scene.interactor.interactor_style = tvtk.InteractorStyleImage()
         def focusfunc(vtkobj, i):
             self.scene.scene_editor.control.SetFocusFromKbd()
         self.scene.scene.interactor.add_observer("MouseMoveEvent", focusfunc)
 
-    @on_trait_change("scene_3d.activated")
+    @on_trait_change("parent.scene_3d.activated")
     def activate_3d(self):
-        self.surf
         self.ipw_3d
-        self.ipw
-        self.outline
+        self.ipw_3d.ipw.interaction = 0
+        self.surf
 
     def _planes_default(self):
         clipnorms = [0, 0, 0]
@@ -235,25 +239,43 @@ class Axis(HasTraits):
         bot = tvtk.Planes(normals=[list(clipnorms)], points=[list(clipnorms)])
         return [top, bot]
 
-    def _clip_default(self):
-        cliptop = tvtk.ClipPolyData(clip_function=self.planes[0], inside_out=1)
-        clipbot = tvtk.ClipPolyData(clip_function=self.planes[1], inside_out=1)
-        cliptop.set_input(self.parent.surf.parent.parent.filter.output)
-        clipbot.set_input(cliptop.output)
-        clipbot.update()
-        return clipbot
-
     def _slab_default(self):
-        return mlab.pipeline.add_dataset(self.clip.output, figure=self.scene.mayavi_scene)
+        top = tvtk.ClipPolyData(clip_function=self.planes[0], inside_out=1, 
+            input=self.parent.surf.parent.parent.filter.output)
+        bot = tvtk.ClipPolyData(clip_function=self.planes[1], inside_out=1, 
+            input=top.output)
+        bot.update()
+        return bot
+
+    def _outline_default(self):
+        origin, spacing = self.parent.origin, self.parent.spacing
+        translate = origin * np.sign(spacing) - np.array([.5, .5, .5])
+        mlab.figure(self.scene.mayavi_scene)
+        pts = self.slab.output.points.to_array()
+        polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
+        src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, 
+            figure=self.scene.mayavi_scene)
+        xfm = mlab.pipeline.transform_data(src, figure=self.scene.mayavi_scene)
+        xfm.filter.transform.translate(-translate)
+        xfm.widget.enabled = False
+        surf = mlab.pipeline.surface(xfm, 
+            figure=self.scene.mayavi_scene, 
+            color=(1,1,1),
+            representation='wireframe')
+        surf.actor.property.line_width = 0.1
+        return src
 
     def _surf_default(self):
-        slab = mlab.pipeline.add_dataset(self.clip.output, figure=self.scene_3d.mayavi_scene)
-        surf = mlab.pipeline.surface(slab, 
+        pts = self.slab.output.points.to_array()
+        polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
+        src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, 
+            figure=self.scene_3d.mayavi_scene)
+        surf = mlab.pipeline.surface(src, 
             color=(1,1,1), 
             figure=self.scene_3d.mayavi_scene, 
             representation='wireframe')
-        surf.actor.property.line_width = 5
-        return surf
+        surf.actor.property.line_width = 0.1
+        return src
 
     def _ipw_3d_default(self):
         space = list(np.abs(self.parent.spacing))
@@ -277,7 +299,6 @@ class Axis(HasTraits):
         ipw.ipw.set(texture_interpolate=0, reslice_interpolate='nearest_neighbour')
         ipw.ipw.reslice.set(output_spacing=space, output_origin=origin)
         ipw.ipw.poly_data_algorithm.output.point_data.t_coords = shape
-        ipw.ipw.interaction = 0
         return ipw
 
     def _ipw_default(self):
@@ -302,7 +323,8 @@ class Axis(HasTraits):
             figure=self.scene.mayavi_scene,
             name='Cut view %s' % self.axis,
             )
-        ipw.ipw.set(left_button_action=0, texture_interpolate=0, reslice_interpolate='nearest_neighbour')
+
+        ipw.ipw.set(left_button_action=0, middle_button_action=0, texture_interpolate=0, reslice_interpolate='nearest_neighbour')
         ipw.parent.scalar_lut_manager.set(use_default_range=False, default_data_range=[-1,1], data_range=[-1,1])
         ipw.ipw.add_observer('InteractionEvent', move_view)
         ipw.ipw.add_observer('StartInteractionEvent', move_view)
@@ -314,14 +336,8 @@ class Axis(HasTraits):
             name='Cursor view %s' % self.axis)
 
     def _handle_default(self):
-        spacing = self.ipw_3d.ipw.reslice_output.spacing
-        shape = list(self.parent.epi.shape)
-        shape.pop(self.axis)
-        if self.axis == 1:
-            shape = shape[::-1]
-        shape.append(0)
-        center = shape * spacing / 2. + ((np.array(shape)+1)%2) * spacing / 2.
-        width = (shape * spacing)[:2]
+        center = self.shape * self.spacing / 2. + (self.shape + 1) % 2 * self.spacing / 2.
+        width = (self.shape * self.spacing)[:2]
         width = np.min(width) * 0.5
 
         def handlemove(handle, pos, angle, radius):
@@ -386,10 +402,14 @@ class Axis(HasTraits):
         pos = self.ipw_3d.ipw.slice_position
         pts = [0, 0, 0]
         pts[self.axis] = pos+gap
-        self.planes[0].points = [list(pts)]
+        self.planes[0].points = [tuple(pts)]
         pts[self.axis] = pos-gap 
-        self.planes[1].points = [list(pts)]
-        self.surf.update_pipeline()
+        self.planes[1].points = [tuple(pts)]
+        self.slab.update()
+        
+        self.outline.data.set(points=self.slab.output.points, polys=self.slab.output.polys)
+        self.surf.data.set(points=self.slab.output.points, polys=self.slab.output.polys)
+        #self.outline.update_pipeline()
 
         self.disable_render = False
 
@@ -397,38 +417,23 @@ class XAxis(Axis):
     axis = 0
     scene = DelegatesTo('parent', 'scene_x')
     def _outline_default(self):
-        origin, spacing = self.parent.origin, self.parent.spacing
-        translate = origin * spacing - np.abs(spacing) / 2.
-        xfm = mlab.pipeline.transform_data(self.slab, figure=self.scene.mayavi_scene)
-        #xfm.filter.transform.translate(-translate)
-        xfm.filter.transform.rotate_y(90)
-        xfm.filter.transform.rotate_z(90)
-        xfm.widget.enabled = False
-        return mlab.pipeline.surface(xfm, figure=self.scene.mayavi_scene, color=(1,1,1))
+        surf = super(XAxis, self)._outline_default()
+        surf.children[0].filter.transform.rotate_y(-90)
+        surf.children[0].filter.transform.rotate_x(-90)
+        return surf
 
 class YAxis(Axis):
     axis = 1
     scene = DelegatesTo('parent', 'scene_y')
     def _outline_default(self):
-        origin, spacing = self.parent.origin, self.parent.spacing
-        translate = origin * spacing - np.abs(spacing) / 2.
-        xfm = mlab.pipeline.transform_data(self.slab, figure=self.scene.mayavi_scene)
-        #xfm.filter.transform.translate(-translate)
-        xfm.filter.transform.rotate_x(-90)
-        xfm.widget.enabled = False
-        return mlab.pipeline.surface(xfm, figure=self.scene.mayavi_scene, color=(1,1,1))
+        surf = super(YAxis, self)._outline_default()
+        surf.children[0].filter.transform.rotate_x(90)
+        surf.children[0].filter.transform.rotate_y(90)
+        return surf
 
 class ZAxis(Axis):
     axis = 2
     scene = DelegatesTo('parent', 'scene_z')
-    def _outline_default(self):
-        origin, spacing = self.parent.origin, self.parent.spacing
-        translate = origin * spacing - np.abs(spacing) / 2.
-        translate[2] = 1
-        xfm = mlab.pipeline.transform_data(self.slab, figure=self.scene.mayavi_scene)
-        #xfm.filter.transform.translate(-translate)
-        xfm.widget.enabled = False
-        return mlab.pipeline.surface(xfm, figure=self.scene.mayavi_scene, color=(1,1,1))
 
 class Align(HasTraits):
     # The position of the view
