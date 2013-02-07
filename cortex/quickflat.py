@@ -85,7 +85,7 @@ def make(data, subject, xfmname, recache=False, height=1024, projection='nearest
         shape = (mdata.shape[0],) + mask.shape + (mdata.shape[-1],)
     elif mdata.ndim == 1:
         mdata = mdata[np.newaxis]
-        shape = (data.shape[0],) + mask.shape
+        shape = (mdata.shape[0],) + mask.shape
 
     img = np.nan*np.ones(shape, dtype=data.dtype)
     img[:, mask] = mdata[:,verts]

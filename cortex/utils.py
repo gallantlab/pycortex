@@ -377,3 +377,4 @@ def decimate_mesh(subject, proportion = 0.5):
         masks.append(mask)
 
     return masks, newpolys
+
