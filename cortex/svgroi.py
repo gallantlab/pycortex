@@ -1,6 +1,5 @@
 import os
 import shlex
-import Image
 import tempfile
 import subprocess as sp
 
@@ -238,6 +237,7 @@ class ROIpack(traits.HasTraits):
         return dict([(name, roi.get_ptidx()) for name, roi in self.rois.items()])
 
     def get_roi(self, roiname):
+        import Image
         shadow = self.shadow
         self.shadow = 0
 

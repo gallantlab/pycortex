@@ -116,6 +116,7 @@ static CTMint _ctmCheckMeshIntegrity(_CTMcontext * self)
   if(!self->mVertices || !self->mIndices || (self->mVertexCount < 1) ||
      (self->mTriangleCount < 1))
   {
+    printf("Error in vertex count\n");
     return CTM_FALSE;
   }
 
@@ -124,6 +125,7 @@ static CTMint _ctmCheckMeshIntegrity(_CTMcontext * self)
   {
     if(self->mIndices[i] >= self->mVertexCount)
     {
+      printf("Index not in vertex length\n");
       return CTM_FALSE;
     }
   }
@@ -133,6 +135,7 @@ static CTMint _ctmCheckMeshIntegrity(_CTMcontext * self)
   {
     if(!isfinite(self->mVertices[i]))
     {
+      printf("Vertex is NaN or Inf\n");
       return CTM_FALSE;
     }
   }
@@ -157,6 +160,7 @@ static CTMint _ctmCheckMeshIntegrity(_CTMcontext * self)
     {
       if(!isfinite(map->mValues[i]))
       {
+        printf("UVs are NaN or Inf\n");
         return CTM_FALSE;
       }
     }
@@ -171,6 +175,7 @@ static CTMint _ctmCheckMeshIntegrity(_CTMcontext * self)
     {
       if(!isfinite(map->mValues[i]))
       {
+        printf("Attribute %s is NaN or Inf at %d\n", map->mName, i);
         return CTM_FALSE;
       }
     }

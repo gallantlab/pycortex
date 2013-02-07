@@ -36,6 +36,7 @@ THREE.LandscapeControls = function ( camera ) {
     var _state = STATE.NONE,
         _start = new THREE.Vector3(),
         _end = new THREE.Vector3();
+        _touch = false;
 
     var _mousedowntime = 0;
     var _clicktime = 0; // Time of last click (mouseup event)
@@ -47,7 +48,13 @@ THREE.LandscapeControls = function ( camera ) {
     var changeEvent = { type: 'change' };
 
     this.update = function (flatmix) {
-        var mouseChange = _end.clone().subSelf(_start);
+        var mousechange;
+
+        if (_touch) {
+            _state = 0;
+            mouseChange = _end;
+        } else 
+            mouseChange = _end.clone().subSelf(_start);
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
             if (statefunc[_state])
@@ -135,6 +142,13 @@ THREE.LandscapeControls = function ( camera ) {
         this.dispatchEvent( changeEvent );
     };
 
+    function touchmove( event ) {
+        $(this.domElement).append("touch");
+        _touch = true;
+        _end = new THREE.Vector2(event.touches[0].clientX, event.touches[1].clientY);
+        this.dispatchEvent( changeEvent );
+    };
+
     function mousewheel( event ) {
         if ( ! this.enabled ) return;
 
@@ -146,6 +160,9 @@ THREE.LandscapeControls = function ( camera ) {
         this.dispatchEvent( changeEvent );
 
     };
+
+    this.domElement.addEventListener( 'touchmove', touchmove.bind(this));
+    this.domElement.addEventListener( 'touchend', function() { _touch = false; }, false);
 
     this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
 
