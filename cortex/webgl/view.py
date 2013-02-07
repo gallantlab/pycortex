@@ -176,7 +176,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     mapper = utils.get_mapper(subject, xfmname, type=projection)
     json, sdat = _make_bindat(_normalize_data(data, mapper))
     for name, dat in sdat.items():
-        with open(os.path.join(outpath, "%s.bin"%name), "w") as binfile:
+        with open(os.path.join(outpath, "%s.bin"%name), "wb") as binfile:
             binfile.write(dat)
     
     #Parse the html file and paste all the js and css files directly into the html

@@ -16,13 +16,15 @@ cdef class CTMfile:
 	cdef object pts
 	cdef object polys
 	cdef object norms
-	cdef object attribs
-	cdef object uvs
+	cdef dict attribs
+	cdef dict uvs
 
 	def __cinit__(self, bytes filename, str mode='r'):
 		cdef openctm.CTMenum err
 		self.filename = filename
 		self.mode = mode
+		self.attribs = {}
+		self.uvs = {}
 
 		if mode == 'r':
 			self.ctx = openctm.ctmNewContext(openctm.CTM_IMPORT)
@@ -33,8 +35,6 @@ cdef class CTMfile:
 
 		elif mode == 'w':
 			self.ctx = openctm.ctmNewContext(openctm.CTM_EXPORT)
-			self.method = 'mg2'
-			self.complevel = 9
 			self.length = 0
 		else:
 			raise IOError
@@ -46,7 +46,7 @@ cdef class CTMfile:
 	def __len__(self):
 		return self.length
 
-	def setMesh(self, object[np.double_t, ndim=2] pts, object polys, object[np.double_t, ndim=2] norms = None):
+	def setMesh(self, object[np.double_t, ndim=2] pts, object[np.uint32_t, ndim=2] polys, object[np.double_t, ndim=2] norms = None):
 		if self.mode == "r":
 			raise IOError
 		if self.length == 0:
@@ -54,11 +54,11 @@ cdef class CTMfile:
 		elif self.length != len(pts):
 			raise TypeError('Invalid number of vertices')
 
-		self.pts = np.array(pts).astype(np.float32)
-		self.polys = np.array(polys).astype(np.uint32)
+		self.pts = np.ascontiguousarray(pts).astype(np.float32)
+		self.polys = np.ascontiguousarray(polys).astype(np.uint32)
 
 		if norms is not None:
-			self.norms = np.array(norms).astype(np.float32)
+			self.norms = np.ascontiguousarray(norms).astype(np.float32)
 
 	def addAttrib(self, object[np.double_t, ndim=2] attrib, str name=None):
 		if self.mode == "r":
@@ -70,7 +70,7 @@ cdef class CTMfile:
 
 		if name is None:
 			name = 'attrib_%d'%len(self.attribs)
-		self.attribs[name] = np.array(attrib).astype(np.float32)
+		self.attribs[name] = np.ascontiguousarray(attrib).astype(np.float32)
 
 	def addUV(self, object[np.double_t, ndim=2] uv, str name=None, str filename=None):
 		if self.mode == "r":
@@ -82,7 +82,7 @@ cdef class CTMfile:
 
 		if name is None:
 			name = 'uv_%d'%len(self.uvs)
-		self.uvs[name] = filename, np.array(uv).astype(np.float32)
+		self.uvs[name] = filename, np.ascontiguousarray(uv).astype(np.float32)
 
 	@cython.boundscheck(False)
 	def getMesh(self):
@@ -111,41 +111,43 @@ cdef class CTMfile:
 
 		return pts, polys, norms
 
-	def save(self):
+	def save(self, str method='mg2', int complevel=9):
 		cdef float* cnorms
 		cdef openctm.CTMenum err
-		cdef openctm.CTMenum method
+		cdef openctm.CTMenum ctmmeth
 
 		cdef np.ndarray[np.float32_t, ndim=2] pts
 		cdef np.ndarray[np.uint32_t, ndim=2] polys
 		cdef np.ndarray[np.float32_t, ndim=2] norms
+		cdef char *cname
 
 		if self.norms is not None:
 			norms = self.norms
 			cnorms = <float*>norms.data
 
-		if self.method == "mg2":
-			method = openctm.CTM_METHOD_MG2
-		elif self.method == "mg1":
-			method = openctm.CTM_METHOD_MG1
-		elif self.method == "raw":
-			method = openctm.CTM_METHOD_RAW
+		if method == "mg2":
+			ctmmeth = openctm.CTM_METHOD_MG2
+		elif method == "mg1":
+			ctmmeth = openctm.CTM_METHOD_MG1
+		elif method == "raw":
+			ctmmeth = openctm.CTM_METHOD_RAW
 		else:
 			raise TypeError('Invalid compression method')
 
-		openctm.ctmCompressionMethod(self.ctx, method)
+		openctm.ctmCompressionMethod(self.ctx, ctmmeth)
 		err = openctm.ctmGetError(self.ctx)
 		if err != openctm.CTM_NONE:
 			raise Exception(openctm.ctmErrorString(err))
 
-		if self.method != "raw":
-			openctm.ctmCompressionLevel(self.ctx, self.complevel)
+		if method != "raw":
+			openctm.ctmCompressionLevel(self.ctx, complevel)
 			err = openctm.ctmGetError(self.ctx)
 			if err != openctm.CTM_NONE:
 				raise Exception(openctm.ctmErrorString(err))
 
 		pts = self.pts
 		polys = self.polys
+		print pts.data[0], pts.data[1], pts.data[2]
 		openctm.ctmDefineMesh(self.ctx, <float*>pts.data, self.length, 
 			<unsigned int*> polys.data, <unsigned int>len(self.polys), cnorms)
 
@@ -155,14 +157,16 @@ cdef class CTMfile:
 
 		for name, attrib in self.attribs.items():
 			pts = attrib
-			err = openctm.ctmAddAttribMap(self.ctx, <float*> pts.data, name)
+			err = openctm.ctmAddAttribMap(self.ctx, <float*> pts.data, <char*>cname)
 			if err == openctm.CTM_NONE:
 				err = openctm.ctmGetError(self.ctx)
 				raise Exception(openctm.ctmErrorString(err))
 
 		for name, (fname, uv) in self.uvs.items():
+			if fname is not None:
+				cname = fname
 			pts = uv
-			err = openctm.ctmAddUVMap(self.ctx, <float*>pts.data, name, fname)
+			err = openctm.ctmAddUVMap(self.ctx, <float*>pts.data, <char*>cname, cname)
 			if err == openctm.CTM_NONE:
 				err = openctm.ctmGetError(self.ctx)
 				raise Exception(openctm.ctmErrorString(err))
