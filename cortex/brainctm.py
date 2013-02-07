@@ -1,6 +1,8 @@
 import os
+import json
 import tempfile
 import numpy as np
+from scipy.spatial import cKDTree
 
 from db import surfs
 from utils import get_cortical_mask, get_mapper, get_roipack
@@ -19,7 +21,7 @@ class BrainCTM(object):
         left, right = surfs.getVTK(subject, "flat", nudge=True, merge=False)
         flatmerge = np.vstack([left[0][:,:2], right[0][:,:2]])
         fmin, fmax = flatmerge.min(0), flatmerge.max(0)
-        self.flatlims = -fmin, fmax-fmin
+        self.flatlims = list(-fmin), list(fmax-fmin)
         self.left.setFlat(left[0])
         self.right.setFlat(right[0])
 
@@ -54,12 +56,16 @@ class BrainCTM(object):
         self.left.aux[:,1] = npz['left']
         self.right.aux[:,1] = npz['right']
 
+    def addMap(self):
+        pass
+
     def save(self, path, method='mg2', **kwargs):
         ctmname = path+".ctm"
         svgname = path+".svg"
         jsname = path+".json"
         ptmapname = path+".npz"
 
+        ##### Save CTM concatenation
         (lpts, _, _), lbin = self.left.save(method=method, **kwargs)
         (rpts, _, _), rbin = self.right.save(method=method, **kwargs)
 
@@ -69,9 +75,11 @@ class BrainCTM(object):
             offsets.append(fp.tell())
             fp.write(rbin)
 
+        ##### Save the JSON descriptor
         json.dump(dict(rois=os.path.split(svgname)[1], data=ctmname, names=self.types, 
             materials=[], offsets=offsets, flatlims=self.flatlims), open(jsname, 'w'))
 
+        ##### Compute and save the index map
         if method != 'raw':
             ptmap = []
             for hemi, pts in zip([self.left, self.right], [lpts, rpts]):
@@ -83,14 +91,18 @@ class BrainCTM(object):
 
         np.savez(ptmapname, left=ptmap[0], right=ptmap[1])
 
+
+        ##### Save the SVG with remapped indices
+        roipack = get_roipack(self.subject)
+        layer = roipack.setup_labels()
         with open(svgname, "w") as fp:
             for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
                 idx = int(element.attrib["data-ptidx"])
-                if idx < len(ptidx[0]):
-                    idx = ptidx[0][idx]
+                if idx < len(ptmap[0]):
+                    idx = ptmap[0][idx]
                 else:
-                    idx -= len(ptidx[0])
-                    idx = ptidx[1][idx] + len(ptidx[0])
+                    idx -= len(ptmap[0])
+                    idx = ptmap[1][idx] + len(ptmap[0])
                 element.attrib["data-ptidx"] = str(idx)
             fp.write(roipack.toxml())
 
@@ -108,8 +120,9 @@ class Hemi(object):
     def addSurf(self, pts):
         '''Scales the in-between surfaces to be same scale as fiducial'''
         norm = (pts - pts.min(0)) / (pts.max(0) - pts.min(0))
-        rnorm = (norm - self.pts.min(0)) * self.pts.max(0)
-        self.ctm.addAttrib(rnorm, 'morphTarget%d'%self.nsurfs)
+        rnorm = norm * (self.pts.max(0) - self.pts.min(0)) - self.pts.min(0)
+        attrib = np.hstack([rnorm, np.zeros((len(rnorm),1))])
+        self.ctm.addAttrib(attrib, 'morphTarget%d'%self.nsurfs)
         self.nsurfs += 1
 
     def setFlat(self, pts):
@@ -118,9 +131,8 @@ class Hemi(object):
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')
         self.ctm.save(**kwargs)
-        self.tf.seek(0)
 
-        ctm = CTMfile(fname)
+        ctm = CTMfile(self.tf.name)
         return ctm.getMesh(), self.tf.read()
 
 if __name__ == "__main__":
@@ -128,4 +140,5 @@ if __name__ == "__main__":
     ctm.addDropout()
     ctm.addCurvature()
     ctm.addSurf("inflated")
+    ctm.addSurf("superinflated")
     ctm.save("/tmp/test")

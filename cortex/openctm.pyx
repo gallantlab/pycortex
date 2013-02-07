@@ -67,6 +67,8 @@ cdef class CTMfile:
 			self.length = len(attrib)
 		elif self.length != len(attrib):
 			raise TypeError('Invalid attribute length')
+		if attrib.shape[1] != 4:
+			raise TypeError('Attributes must be 4-tuples')
 
 		if name is None:
 			name = 'attrib_%d'%len(self.attribs)
@@ -112,18 +114,42 @@ cdef class CTMfile:
 		return pts, polys, norms
 
 	def save(self, str method='mg2', int complevel=9):
-		cdef float* cnorms
+		cdef float* cnorms = NULL
 		cdef openctm.CTMenum err
 		cdef openctm.CTMenum ctmmeth
 
 		cdef np.ndarray[np.float32_t, ndim=2] pts
 		cdef np.ndarray[np.uint32_t, ndim=2] polys
 		cdef np.ndarray[np.float32_t, ndim=2] norms
-		cdef char *cname
+		cdef char *cname = NULL
 
 		if self.norms is not None:
 			norms = self.norms
 			cnorms = <float*>norms.data
+
+		pts = self.pts
+		polys = self.polys
+		openctm.ctmDefineMesh(self.ctx, <float*>pts.data, <unsigned int>self.length, 
+			<unsigned int*> polys.data, <unsigned int>len(self.polys), cnorms)
+		err = openctm.ctmGetError(self.ctx)
+		if err != openctm.CTM_NONE:
+			raise Exception(openctm.ctmErrorString(err))
+
+		for name, attrib in self.attribs.items():
+			pts = attrib
+			err = openctm.ctmAddAttribMap(self.ctx, <float*> pts.data, <char*>name)
+			if err == openctm.CTM_NONE:
+				err = openctm.ctmGetError(self.ctx)
+				raise Exception(openctm.ctmErrorString(err))
+
+		for name, (fname, uv) in self.uvs.items():
+			if fname is not None:
+				cname = fname
+			pts = uv
+			err = openctm.ctmAddUVMap(self.ctx, <float*>pts.data, <char*>name, cname)
+			if err == openctm.CTM_NONE:
+				err = openctm.ctmGetError(self.ctx)
+				raise Exception(openctm.ctmErrorString(err))
 
 		if method == "mg2":
 			ctmmeth = openctm.CTM_METHOD_MG2
@@ -143,32 +169,6 @@ cdef class CTMfile:
 			openctm.ctmCompressionLevel(self.ctx, complevel)
 			err = openctm.ctmGetError(self.ctx)
 			if err != openctm.CTM_NONE:
-				raise Exception(openctm.ctmErrorString(err))
-
-		pts = self.pts
-		polys = self.polys
-		print pts.data[0], pts.data[1], pts.data[2]
-		openctm.ctmDefineMesh(self.ctx, <float*>pts.data, self.length, 
-			<unsigned int*> polys.data, <unsigned int>len(self.polys), cnorms)
-
-		err = openctm.ctmGetError(self.ctx)
-		if err != openctm.CTM_NONE:
-			raise Exception(openctm.ctmErrorString(err))
-
-		for name, attrib in self.attribs.items():
-			pts = attrib
-			err = openctm.ctmAddAttribMap(self.ctx, <float*> pts.data, <char*>cname)
-			if err == openctm.CTM_NONE:
-				err = openctm.ctmGetError(self.ctx)
-				raise Exception(openctm.ctmErrorString(err))
-
-		for name, (fname, uv) in self.uvs.items():
-			if fname is not None:
-				cname = fname
-			pts = uv
-			err = openctm.ctmAddUVMap(self.ctx, <float*>pts.data, <char*>cname, cname)
-			if err == openctm.CTM_NONE:
-				err = openctm.ctmGetError(self.ctx)
 				raise Exception(openctm.ctmErrorString(err))
 
 		openctm.ctmSave(self.ctx, self.filename)
