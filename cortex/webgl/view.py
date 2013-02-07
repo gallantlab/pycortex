@@ -142,7 +142,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
         os.makedirs(outpath)
 
     #Create a new mg2 compressed CTM and move it into the outpath
-    ctmfile = utils.get_ctmpack(subject, xfmname, types, method='mg2', level=9, recache=recache)
+    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache)
     oldpath, fname = os.path.split(ctmfile)
     fname, ext = os.path.splitext(fname)
 
@@ -173,7 +173,6 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     ctmfile = newfname+".json"
 
     #Generate the data binary objects and save them into the outpath
-    mapper = utils.get_mapper(subject, xfmname, type=projection)
     json, sdat = _make_bindat(_normalize_data(data, mapper))
     for name, dat in sdat.items():
         with open(os.path.join(outpath, "%s.bin"%name), "wb") as binfile:
@@ -205,8 +204,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     '''
     html = sloader.load("mixer.html")
 
-    ctmfile = utils.get_ctmpack(subject, xfmname, types, method='raw', level=0, recache=recache)
-    mapper = utils.get_mapper(subject, xfmname, type=projection)
+    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache)
     jsondat, bindat = _make_bindat(_normalize_data(data, mapper), fmt='data/%s/')
 
     saveevt = mp.Event()

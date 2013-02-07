@@ -9,8 +9,6 @@ cdef class CTMfile:
 
 	cdef public bytes filename
 	cdef public str mode
-	cdef public str method
-	cdef public int complevel
 
 	cdef unsigned int length
 	cdef object pts
@@ -81,6 +79,8 @@ cdef class CTMfile:
 			self.length = len(uv)
 		elif self.length != len(uv):
 			raise TypeError('Invalid UV length')
+		if uv.shape[1] != 2:
+			raise TypeError('UVs must be 2-tuples')
 
 		if name is None:
 			name = 'uv_%d'%len(self.uvs)
@@ -113,7 +113,8 @@ cdef class CTMfile:
 
 		return pts, polys, norms
 
-	def save(self, str method='mg2', int complevel=9):
+	def save(self, str method='mg2', int level=9):
+		cdef char* cname = NULL
 		cdef float* cnorms = NULL
 		cdef openctm.CTMenum err
 		cdef openctm.CTMenum ctmmeth
@@ -121,7 +122,27 @@ cdef class CTMfile:
 		cdef np.ndarray[np.float32_t, ndim=2] pts
 		cdef np.ndarray[np.uint32_t, ndim=2] polys
 		cdef np.ndarray[np.float32_t, ndim=2] norms
-		cdef char *cname = NULL
+
+		if method == "mg2":
+			ctmmeth = openctm.CTM_METHOD_MG2
+		elif method == "mg1":
+			ctmmeth = openctm.CTM_METHOD_MG1
+		elif method == "raw":
+			ctmmeth = openctm.CTM_METHOD_RAW
+		else:
+			raise TypeError('Invalid compression method')
+
+		openctm.ctmCompressionMethod(self.ctx, ctmmeth)
+		err = openctm.ctmGetError(self.ctx)
+		if err != openctm.CTM_NONE:
+			raise Exception(openctm.ctmErrorString(err))
+
+		if method != "raw":
+			openctm.ctmCompressionLevel(self.ctx, level)
+			err = openctm.ctmGetError(self.ctx)
+			if err != openctm.CTM_NONE:
+				raise Exception(openctm.ctmErrorString(err))
+
 
 		if self.norms is not None:
 			norms = self.norms
@@ -129,7 +150,7 @@ cdef class CTMfile:
 
 		pts = self.pts
 		polys = self.polys
-		openctm.ctmDefineMesh(self.ctx, <float*>pts.data, <unsigned int>self.length, 
+		openctm.ctmDefineMesh(self.ctx, <float*>pts.data, self.length, 
 			<unsigned int*> polys.data, <unsigned int>len(self.polys), cnorms)
 		err = openctm.ctmGetError(self.ctx)
 		if err != openctm.CTM_NONE:
@@ -149,26 +170,6 @@ cdef class CTMfile:
 			err = openctm.ctmAddUVMap(self.ctx, <float*>pts.data, <char*>name, cname)
 			if err == openctm.CTM_NONE:
 				err = openctm.ctmGetError(self.ctx)
-				raise Exception(openctm.ctmErrorString(err))
-
-		if method == "mg2":
-			ctmmeth = openctm.CTM_METHOD_MG2
-		elif method == "mg1":
-			ctmmeth = openctm.CTM_METHOD_MG1
-		elif method == "raw":
-			ctmmeth = openctm.CTM_METHOD_RAW
-		else:
-			raise TypeError('Invalid compression method')
-
-		openctm.ctmCompressionMethod(self.ctx, ctmmeth)
-		err = openctm.ctmGetError(self.ctx)
-		if err != openctm.CTM_NONE:
-			raise Exception(openctm.ctmErrorString(err))
-
-		if method != "raw":
-			openctm.ctmCompressionLevel(self.ctx, complevel)
-			err = openctm.ctmGetError(self.ctx)
-			if err != openctm.CTM_NONE:
 				raise Exception(openctm.ctmErrorString(err))
 
 		openctm.ctmSave(self.ctx, self.filename)

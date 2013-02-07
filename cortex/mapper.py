@@ -11,6 +11,7 @@ from db import surfs
 class Mapper(object):
     '''Maps data from epi volume onto surface using various projections'''
     def __init__(self, subject, xfmname, recache=False, **kwargs):
+        self.idxmap = None
         self.subject, self.xfmname = subject, xfmname
         fnames = surfs.getFiles(subject)
         ptype = self.__class__.__name__.lower()
@@ -72,6 +73,10 @@ class Mapper(object):
                 raise ValueError
 
             mapped.append(np.array(mask * norm).T.squeeze())
+
+        if self.idxmap is not None:
+            mapped[0] = mapped[0][..., self.idxmap[0]]
+            mapped[1] = mapped[1][..., self.idxmap[1]]
 
         return mapped
         

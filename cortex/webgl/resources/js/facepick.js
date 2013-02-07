@@ -154,7 +154,7 @@ FacePick.prototype = {
                 faceidx -= lims[0];
                 var geom =  this.viewer.meshes[hemi].geometry;
                 var polys = geom.attributes.index.array;
-                var map = geom.attributes.datamap.array;
+                var map = geom.attributes.auxdat.array;
 
                 //Find which offset
                 for (var o = 0, ol = geom.offsets.length; o < ol; o++) {
@@ -165,7 +165,7 @@ FacePick.prototype = {
                     if (start <= faceidx*3 && faceidx*3 < (start+count)) {
                         //Pick only the first point of triangle
                         var ptidx = index + polys[faceidx*3];
-                        var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
+                        var dataidx = map[ptidx*4+3];
                         ptidx += hemi == "right" ? leftlen : 0;
 
                         console.log("Picked voxel "+dataidx+", vertex "+ptidx);

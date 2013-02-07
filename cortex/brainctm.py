@@ -15,6 +15,13 @@ class BrainCTM(object):
         self.files = surfs.getFiles(subject)
         self.types = []
 
+        xfm, epifile = surfs.getXfm(subject, xfmname)
+        import nibabel
+        nib = nibabel.load(epifile)
+        self.shape = nib.get_shape()[::-1]
+        if len(self.shape) > 3:
+            self.shape = self.shape[-3:]
+
         self.left, self.right = map(Hemi, surfs.getVTK(subject, base))
 
         #Find the flatmap limits
@@ -27,8 +34,10 @@ class BrainCTM(object):
 
         #set medial wall
         for hemi, ptpoly in zip([self.left, self.right], [left, right]):
-            mwall = np.ones(len(hemi.ctm))
-            mwall[np.unique(ptpoly[1])] = 0
+            fidpolys = set(tuple(f) for f in np.sort(hemi.polys, axis=1))
+            flatpolys = set(tuple(f) for f in np.sort(ptpoly[1], axis=1))
+            mwall = np.zeros(len(hemi.ctm))
+            mwall[np.array(list(fidpolys - flatpolys))] = 1
             hemi.aux[:,2] = mwall
 
     def addSurf(self, typename):
@@ -57,7 +66,10 @@ class BrainCTM(object):
         self.right.aux[:,1] = npz['right']
 
     def addMap(self):
-        pass
+        mapper = get_mapper(self.subject, self.xfmname, 'nearest')
+        mask = mapper.mask.astype(np.uint32)
+        mask[mask > 0] = np.arange(mask.sum())
+        self.left.aux[:, 3], self.right.aux[:,3] = mapper(mask)
 
     def save(self, path, method='mg2', **kwargs):
         ctmname = path+".ctm"
@@ -77,20 +89,20 @@ class BrainCTM(object):
 
         ##### Save the JSON descriptor
         json.dump(dict(rois=os.path.split(svgname)[1], data=ctmname, names=self.types, 
-            materials=[], offsets=offsets, flatlims=self.flatlims), open(jsname, 'w'))
+            materials=[], offsets=offsets, flatlims=self.flatlims, shape=self.shape), open(jsname, 'w'))
 
         ##### Compute and save the index map
         if method != 'raw':
-            ptmap = []
+            ptmap, inverse = [], []
             for hemi, pts in zip([self.left, self.right], [lpts, rpts]):
                 kdt = cKDTree(hemi.pts)
                 diff, idx = kdt.query(pts)
                 ptmap.append(idx)
+                inverse.append(idx.argsort())
+
+            np.savez(ptmapname, left=ptmap[0], right=ptmap[1])
         else:
-            ptmap = np.arange(self.left.ctm), np.arange(self.right.ctm)
-
-        np.savez(ptmapname, left=ptmap[0], right=ptmap[1])
-
+            inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
         ##### Save the SVG with remapped indices
         roipack = get_roipack(self.subject)
@@ -98,11 +110,11 @@ class BrainCTM(object):
         with open(svgname, "w") as fp:
             for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
                 idx = int(element.attrib["data-ptidx"])
-                if idx < len(ptmap[0]):
-                    idx = ptmap[0][idx]
+                if idx < len(inverse[0]):
+                    idx = inverse[0][idx]
                 else:
-                    idx -= len(ptmap[0])
-                    idx = ptmap[1][idx] + len(ptmap[0])
+                    idx -= len(inverse[0])
+                    idx = inverse[1][idx] + len(inverse[0])
                 element.attrib["data-ptidx"] = str(idx)
             fp.write(roipack.toxml())
 
@@ -114,19 +126,22 @@ class Hemi(object):
         self.tf = tempfile.NamedTemporaryFile()
         self.ctm = CTMfile(self.tf.name, "w")
         self.ctm.setMesh(*fiducial)
-        self.aux = np.zeros((len(self.ctm), 4))        
+        
         self.pts = fiducial[0]
+        self.polys = fiducial[1]
+        self.aux = np.zeros((len(self.ctm), 4))
 
     def addSurf(self, pts):
         '''Scales the in-between surfaces to be same scale as fiducial'''
         norm = (pts - pts.min(0)) / (pts.max(0) - pts.min(0))
-        rnorm = norm * (self.pts.max(0) - self.pts.min(0)) - self.pts.min(0)
+        rnorm = norm * (self.pts.max(0) - self.pts.min(0)) + self.pts.min(0)
         attrib = np.hstack([rnorm, np.zeros((len(rnorm),1))])
         self.ctm.addAttrib(attrib, 'morphTarget%d'%self.nsurfs)
         self.nsurfs += 1
 
     def setFlat(self, pts):
-        self.ctm.addUV(pts, 'uv')
+        assert np.all(pts[:,2] == 0)
+        self.ctm.addUV(pts[:,:2], 'uv')
 
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')
@@ -135,10 +150,12 @@ class Hemi(object):
         ctm = CTMfile(self.tf.name)
         return ctm.getMesh(), self.tf.read()
 
-if __name__ == "__main__":
-    ctm = BrainCTM("AH", "AH_huth")
+def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0):
+    ctm = BrainCTM(subj, xfm)
+    ctm.addMap()
     ctm.addDropout()
     ctm.addCurvature()
-    ctm.addSurf("inflated")
-    ctm.addSurf("superinflated")
-    ctm.save("/tmp/test")
+    for name in types:
+        ctm.addSurf(name)
+
+    return ctm.save(os.path.splitext(outfile)[0], method=method, level=level)

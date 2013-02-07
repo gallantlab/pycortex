@@ -120,15 +120,23 @@ def get_roipack(subject, remove_medial=False):
         return rois, valid
     return rois
 
-def get_ctmpack(subject, xfmname, types=("inflated",), method="raw", level=0, recache=False):
+def get_ctmpack(subject, xfmname, types=("inflated",), projection='nearest', method="raw", level=0, recache=False):
     ctmform = surfs.getFiles(subject)['ctmcache']
     ctmfile = ctmform.format(xfmname=xfmname, types=','.join(types), method=method, level=level)
+    mapper = get_mapper(subject, xfmname, projection)
     if os.path.exists(ctmfile) and not recache:
-        return ctmfile
+        mapfile = os.path.splitext(ctmfile)[0]+'.npz'
+        if os.path.exists(mapfile):
+            ptmap = np.load(mapfile)
+            mapper.idxmap = ptmap['left'], ptmap['right']
+        return ctmfile, mapper
 
     print "Generating new ctm file..."
-    import vtkctm
-    return vtkctm.make_pack(ctmfile, subject, xfmname, types, method, level)
+    import brainctm
+    ptmap = brainctm.make_pack(ctmfile, subject, xfmname, types, method, level)
+    if ptmap is not None:
+        mapper.idxmap = ptmap
+    return ctmfile, mapper
 
 def get_cortical_mask(subject, xfmname, type='nearest'):
     return get_mapper(subject, xfmname, type=type).mask

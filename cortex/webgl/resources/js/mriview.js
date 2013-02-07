@@ -303,7 +303,7 @@ MRIview.prototype = {
             var names = {left:0, right:1};
             for (var name in names) {
                 var right = names[name];
-                this.datamap[name] = geometries[right].attributes.datamap.array;
+                //this.datamap[name] = geometries[right].attributes.datamap.array;
                 this._makeFlat(geometries[right], right);
                 var meshpiv = this._makeMesh(geometries[right], this.shader);
                 this.meshes[name] = meshpiv.mesh;
@@ -1158,12 +1158,12 @@ MRIview.prototype = {
         var flat = new Float32Array(uv.length / 2 * 3);
         var norms = new Float32Array(uv.length / 2 * 3);
         for (var i = 0, il = uv.length / 2; i < il; i++) {
-            if (!right) {
-                flat[i*3+1] = flatscale * -uv[i*2] + this.flatoff[1];
-                norms[i*3] = -1;
-            } else {
+            if (right) {
                 flat[i*3+1] = flatscale*uv[i*2] + this.flatoff[1];
                 norms[i*3] = 1;
+            } else {
+                flat[i*3+1] = flatscale * -uv[i*2] + this.flatoff[1];
+                norms[i*3] = -1;
             }
             flat[i*3+2] = flatscale*uv[i*2+1];
             uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
