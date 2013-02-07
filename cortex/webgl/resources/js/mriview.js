@@ -51,17 +51,21 @@ var cmapShader = ([
     "attribute float data2;",
     "attribute float data3;",
     ]).join("\n") + vShadeHead + ([
-        "float vnorm0 = (data0 - vmin[0]) / (vmax[0] - vmin[0]);",
-        "float vnorm1 = (data1 - vmin[1]) / (vmax[1] - vmin[1]);",
-        "float vnorm2 = (data2 - vmin[0]) / (vmax[0] - vmin[0]);",
-        "float vnorm3 = (data3 - vmin[1]) / (vmax[1] - vmin[1]);",
+        'if (!(data0 <= 0. || 0. <= data0)) {',
+            'vColor = vec4(0.);',
+        '} else {',
+            "float vnorm0 = (data0 - vmin[0]) / (vmax[0] - vmin[0]);",
+            "float vnorm1 = (data1 - vmin[1]) / (vmax[1] - vmin[1]);",
+            "float vnorm2 = (data2 - vmin[0]) / (vmax[0] - vmin[0]);",
+            "float vnorm3 = (data3 - vmin[1]) / (vmax[1] - vmin[1]);",
 
-        "float fnorm0 = (1. - framemix) * vnorm0 + framemix * vnorm2;",
-        "float fnorm1 = (1. - framemix) * vnorm1 + framemix * vnorm3;",
+            "float fnorm0 = (1. - framemix) * vnorm0 + framemix * vnorm2;",
+            "float fnorm1 = (1. - framemix) * vnorm1 + framemix * vnorm3;",
 
-        "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
+            "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
 
-        "vColor  = texture2D(colormap, cuv);",
+            "vColor  = texture2D(colormap, cuv);",
+        '}',
 ].join("\n")) + vShadeTail;
 
 var rawShader = ([
@@ -71,9 +75,13 @@ var rawShader = ([
     "attribute vec4 data0;",
     "attribute vec4 data2;",
     ]).join("\n") + vShadeHead + ([
-        "vColor  = (1. - framemix) * data0 * vec4(1. / 255.);",
-        "vColor +=       framemix  * data2 * vec4(1. / 255.);",
-        "vColor.rgb *= vColor.a;",
+        'if (isnan(data0)) {',
+            'vColor = vec4(0.);',
+        '} else {',
+            "vColor  = (1. - framemix) * data0 * vec4(1. / 255.);",
+            "vColor +=       framemix  * data2 * vec4(1. / 255.);",
+            "vColor.rgb *= vColor.a;",
+        '}',
 ].join("\n")) + vShadeTail;
 
 var fragmentShader = [
