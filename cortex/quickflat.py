@@ -2,7 +2,6 @@ import os
 import sys
 import time
 import glob
-import Image
 import cPickle
 import cStringIO
 import binascii

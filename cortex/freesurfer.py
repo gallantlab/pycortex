@@ -8,6 +8,22 @@ import numpy as np
 
 import vtkutils_new as vtk
 
+def parse_surf(filename):
+    with open(filename) as fp:
+        #skip magic
+        fp.seek(3)
+        comment = ' '
+        while comment[-1] != '\n':
+            comment += fp.read(1)
+        comment += fp.read(1)
+        print comment[1:-2]
+        verts, faces = struct.unpack('>2I', fp.read(8))
+        pts = np.fromstring(fp.read(4*3*verts), dtype='f4').byteswap()
+        polys = np.fromstring(fp.read(4*3*faces), dtype='I4').byteswap()
+        print fp.read()
+        return pts.reshape(-1, 3), polys.reshape(-1, 3)
+
+
 def parse_curv(filename):
     with open(filename) as fp:
         fp.seek(15)
@@ -17,12 +33,11 @@ def show_surf(subject, hemi, type):
     from mayavi import mlab
     from tvtk.api import tvtk
 
-    tf = tempfile.NamedTemporaryFile(suffix='.vtk')
     path = os.path.join(os.environ['SUBJECTS_DIR'], subject)
     surf_file = os.path.join(path, "surf", hemi+'.'+type)
     curv_file = os.path.join(path, "surf", hemi+'.curv')
-    proc = sp.call(shlex.split('mris_convert {path} {tf}'.format(path=surf_file, tf=tf.name)))
-    pts, polys, norms = vtk.read(tf.name)
+    
+    pts, polys = parse_surf(surf_file)
     curv = parse_curv(curv_file)
     
     fig = mlab.figure()
