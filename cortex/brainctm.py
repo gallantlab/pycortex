@@ -88,7 +88,7 @@ class BrainCTM(object):
             fp.write(rbin)
 
         ##### Save the JSON descriptor
-        json.dump(dict(rois=os.path.split(svgname)[1], data=ctmname, names=self.types, 
+        json.dump(dict(rois=os.path.split(svgname)[1], data=os.path.split(ctmname)[1], names=self.types, 
             materials=[], offsets=offsets, flatlims=self.flatlims, shape=self.shape), open(jsname, 'w'))
 
         ##### Compute and save the index map
