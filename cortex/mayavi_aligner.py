@@ -262,7 +262,7 @@ class Axis(HasTraits):
             figure=self.scene.mayavi_scene, 
             color=(1,1,1),
             representation='wireframe')
-        surf.actor.property.line_width = 0.1
+        surf.actor.property.line_width = 1
         return src
 
     def _surf_default(self):
@@ -274,7 +274,7 @@ class Axis(HasTraits):
             color=(1,1,1), 
             figure=self.scene_3d.mayavi_scene, 
             representation='wireframe')
-        surf.actor.property.line_width = 0.1
+        surf.actor.property.line_width = 1
         return src
 
     def _ipw_3d_default(self):
@@ -303,14 +303,13 @@ class Axis(HasTraits):
 
     def _ipw_default(self):
         side_src = self.ipw_3d.ipw.reslice_output
-        spacing = side_src.spacing
 
         # Add a callback on the image plane widget interaction to
         # move the others
         def move_view(obj, evt):
             # Disable rendering on all scene
             cpos = obj.GetCurrentCursorPosition()
-            position = list(cpos*spacing)[:2]
+            position = list(cpos*side_src.spacing)[:2]
             position.insert(self.axis, self.position[self.axis])
             # We need to special case y, as the view has been rotated.
             if self.axis == 1:
