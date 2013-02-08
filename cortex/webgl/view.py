@@ -186,7 +186,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
         template = sloader.load(template)
     html = template.generate(ctmfile=ctmfile, data=json, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
-
+    return mapper
 
 def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None):
     '''Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
