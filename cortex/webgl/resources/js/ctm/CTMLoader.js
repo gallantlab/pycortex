@@ -240,7 +240,7 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 
 				if (attrname.slice(0, 11) == "morphTarget") {
 
-					morphTargets.push( { itemSize:3, array:array, stride:4 } );
+					morphTargets.push( { num:parseInt(attrname.slice(11)), itemSize:3, array:array, stride:4 } );
 
 				} else {
 
@@ -255,7 +255,7 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 		// attributes
 
 		scope.attributes = attributes;
-		scope.morphTargets = morphTargets;
+		scope.morphTargets = morphTargets.sort(function(a, b){ return a.num - b.num});
 
 		// reorder vertices
 		// (needed for buffer splitting, to keep together face vertices)

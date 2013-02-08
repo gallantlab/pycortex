@@ -56,7 +56,12 @@ class Mapper(object):
     def __call__(self, data):
         if self.nverts in data.shape:
             llen = self.masks[0].shape[0]
-            return data[..., :llen], data[..., llen:]
+            left, right = data[..., :llen], data[..., llen:]
+
+            if self.idxmap is not None:
+                return left[..., self.idxmap[0]], right[..., self.idxmap[0]]
+            return left, right
+            
 
         if data.ndim in (1, 3):
             data = data[np.newaxis]

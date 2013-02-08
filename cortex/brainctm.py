@@ -1,3 +1,18 @@
+'''Generates the OpenCTM file that holds the brain mesh for the webgl viewer. 
+This ctm file contains the following information:
+
+pts, polys
+  Forms the base of the brain mesh, in the fiducial space
+
+morphTarget%d
+  Holds additional surfaces (inflated, etc) as morphTargets for three.js.
+  Morphtargets are normalized to the same extent as the fiducial, for better
+  morphing effect.
+
+uv
+  Actually stores the raw flatmap coordinates, unnormalized. Normalization is handled
+  in javascript, in the load function
+'''
 import os
 import json
 import tempfile

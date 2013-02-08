@@ -90,13 +90,11 @@ def _fixarray(data, mapper):
                 data = np.vstack([data, 255*np.ones((1, mapper.nverts), dtype=np.uint8)])
             else:
                 data = np.hstack([data, 255*np.ones((len(data), 1, mapper.nverts), dtype=np.uint8)])
-                
+
+        data = np.hstack(mapper(data.reshape(-1, mapper.nverts))).reshape(-1, 4, mapper.nverts)
         return data.swapaxes(-1, -2)
     else: #regular
-        if mapped:
-            return data
-        else: #volume
-            return np.hstack(mapper(data)).astype(np.float32)
+        return np.hstack(mapper(data)).astype(np.float32)
 
 def make_movie(stim, outfile, fps=15, size="640x480"):
     import shlex
