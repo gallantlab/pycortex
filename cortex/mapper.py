@@ -59,7 +59,7 @@ class Mapper(object):
             left, right = data[..., :llen], data[..., llen:]
 
             if self.idxmap is not None:
-                return left[..., self.idxmap[0]], right[..., self.idxmap[0]]
+                return left[..., self.idxmap[0]], right[..., self.idxmap[1]]
             return left, right
             
 

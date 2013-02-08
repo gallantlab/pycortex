@@ -91,7 +91,9 @@ def _fixarray(data, mapper):
             else:
                 data = np.hstack([data, 255*np.ones((len(data), 1, mapper.nverts), dtype=np.uint8)])
 
-        data = np.hstack(mapper(data.reshape(-1, mapper.nverts))).reshape(-1, 4, mapper.nverts)
+        data = np.hstack(mapper(data.reshape(-1, mapper.nverts)))
+        if data.shape[-2] != 4:
+            data = data.reshape(-1, 4, mapper.nverts)
         return data.swapaxes(-1, -2)
     else: #regular
         return np.hstack(mapper(data)).astype(np.float32)
