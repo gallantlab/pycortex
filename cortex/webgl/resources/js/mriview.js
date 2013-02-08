@@ -75,7 +75,7 @@ var rawShader = ([
     "attribute vec4 data0;",
     "attribute vec4 data2;",
     ]).join("\n") + vShadeHead + ([
-        'if (isnan(data0)) {',
+        'if (!(data0 <= 0. || 0. <= data0)) {',
             'vColor = vec4(0.);',
         '} else {',
             "vColor  = (1. - framemix) * data0 * vec4(1. / 255.);",
