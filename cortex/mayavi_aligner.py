@@ -189,25 +189,31 @@ class Axis(HasTraits):
     scene_3d = DelegatesTo('parent')
     position = DelegatesTo('parent')
     disable_render = DelegatesTo('parent')
+    outline_color = DelegatesTo('parent')
     xfm = DelegatesTo('parent')
 
     def __init__(self, **kwargs):
         super(Axis, self).__init__(**kwargs)
         self.slab
         self.outline
+        self.ipw_3d
         self.ipw
+        self._last = -1
 
-        spacing = list(self.parent.spacing)
-        spacing.pop(self.axis)
-        spacing.append(1)
+        spacing = list(np.abs(self.parent.spacing))
         shape = list(self.parent.epi.shape)
+        spacing.pop(self.axis)
         shape.pop(self.axis)
         if self.axis == 1:
             shape = shape[::-1]
+            spacing = spacing[::-1]
         shape.append(0)
+        spacing.append(1)
         self.spacing = np.array(spacing)
         self.shape = np.array(shape)
+        self.reset_view()
 
+    def reset_view(self):
         center = self.shape * self.spacing / 2. + (self.shape + 1) % 2 * self.spacing / 2.
         width = (self.shape * self.spacing)[:2]
         width = np.min(width) * 0.5
@@ -215,28 +221,31 @@ class Axis(HasTraits):
         self.scene.scene_editor.handle = self.handle
         self.scene.scene_editor.aligner = self.parent
         self.scene.scene.background = (0, 0, 0)
-        mlab.view(*([(0, 0), (90, 180), (0, 0)][self.axis]),
+        mlab.view(*([(0, 0), (90, 0), (0, 0)][self.axis]),
                   focalpoint=center,
                   figure=self.scene.mayavi_scene)
         self.scene.scene.parallel_projection = True
         self.scene.scene.camera.parallel_scale = width * 1.2
-        self.scene.scene.interactor.interactor_style = tvtk.InteractorStyleImage()
+        #self.scene.scene.interactor.interactor_style = tvtk.InteractorStyleImage()
         def focusfunc(vtkobj, i):
             self.scene.scene_editor.control.SetFocusFromKbd()
         self.scene.scene.interactor.add_observer("MouseMoveEvent", focusfunc)
 
     @on_trait_change("parent.scene_3d.activated")
     def activate_3d(self):
-        self.ipw_3d
         self.ipw_3d.ipw.interaction = 0
         self.surf
 
     def _planes_default(self):
-        clipnorms = [0, 0, 0]
-        clipnorms[self.axis] = 1
-        top = tvtk.Planes(normals=[list(clipnorms)], points=[list(clipnorms)])
-        clipnorms[self.axis] = -1
-        bot = tvtk.Planes(normals=[list(clipnorms)], points=[list(clipnorms)])
+        pos = [0, 0, 0]
+        vec = [0, 0, 0]
+        off = (self.parent.epi.shape[self.axis] + 1) % 2 * abs(self.parent.spacing[self.axis]) / 2.
+        vec[self.axis] = 1
+        pos[self.axis] = off + abs(self.parent.spacing[self.axis]) / 2.
+        top = tvtk.Planes(normals=[vec[:]], points=[pos[:]])
+        vec[self.axis] = -1
+        pos[self.axis] = off - abs(self.parent.spacing[self.axis]) / 2.
+        bot = tvtk.Planes(normals=[vec[:]], points=[pos[:]])
         return [top, bot]
 
     def _slab_default(self):
@@ -249,13 +258,14 @@ class Axis(HasTraits):
 
     def _outline_default(self):
         origin, spacing = self.parent.origin, self.parent.spacing
-        translate = origin * np.sign(spacing) - np.array([.5, .5, .5])
+        translate = origin * np.sign(spacing) - spacing / 2.
         mlab.figure(self.scene.mayavi_scene)
         pts = self.slab.output.points.to_array()
         polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
         src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, 
             figure=self.scene.mayavi_scene)
         xfm = mlab.pipeline.transform_data(src, figure=self.scene.mayavi_scene)
+        xfm.filter.transform.post_multiply()
         xfm.filter.transform.translate(-translate)
         xfm.widget.enabled = False
         surf = mlab.pipeline.surface(xfm, 
@@ -278,6 +288,7 @@ class Axis(HasTraits):
         return src
 
     def _ipw_3d_default(self):
+        spos = self.position + self.parent.origin * np.sign(self.parent.spacing)
         space = list(np.abs(self.parent.spacing))
         shape = list(np.array(self.parent.epi.shape) / self.parent.padshape)
         space.pop(self.axis)
@@ -285,6 +296,7 @@ class Axis(HasTraits):
         if self.axis == 1:
             space = space[::-1]
             shape = shape[::-1]
+
         space.append(1)
         shape = [(0,0), (shape[0],0), (0, shape[1]), (shape[0],shape[1])]
         origin = [space[0] / 2., space[1] / 2., 0]
@@ -296,14 +308,18 @@ class Axis(HasTraits):
             plane_orientation='%s_axes' % 'xyz'[self.axis],
             name='Cut %s' % self.axis)
         ipw.ipw.color_map.output_format = 'rgb'
-        ipw.ipw.set(texture_interpolate=0, reslice_interpolate='nearest_neighbour')
+        ipw.ipw.set(texture_interpolate=0, reslice_interpolate='nearest_neighbour', slice_position=spos[self.axis])
         ipw.ipw.reslice.set(output_spacing=space, output_origin=origin)
         ipw.ipw.poly_data_algorithm.output.point_data.t_coords = shape
         return ipw
 
     def _ipw_default(self):
-        side_src = self.ipw_3d.ipw.reslice_output
+        extent = list(np.abs(self.parent.epi.shape * self.parent.spacing))
+        extent.pop(self.axis)
+        if self.axis == 1:
+            extent = extent[::-1]
 
+        side_src = self.ipw_3d.ipw.reslice_output
         # Add a callback on the image plane widget interaction to
         # move the others
         def move_view(obj, evt):
@@ -320,10 +336,10 @@ class Axis(HasTraits):
         ipw = mlab.pipeline.image_plane_widget( side_src,
             plane_orientation='z_axes',
             figure=self.scene.mayavi_scene,
-            name='Cut view %s' % self.axis,
-            )
-
-        ipw.ipw.set(left_button_action=0, middle_button_action=0, texture_interpolate=0, reslice_interpolate='nearest_neighbour')
+            name='Cut view %s' % self.axis)
+        ipw.ipw.plane_property.opacity = 0
+        ipw.ipw.poly_data_algorithm.set(point1=[extent[0], 0, 0], point2=[0, extent[1], 0])
+        ipw.ipw.set(left_button_action=0, right_button_auto_modifier=2, texture_interpolate=0, reslice_interpolate='nearest_neighbour')
         ipw.parent.scalar_lut_manager.set(use_default_range=False, default_data_range=[-1,1], data_range=[-1,1])
         ipw.ipw.add_observer('InteractionEvent', move_view)
         ipw.ipw.add_observer('StartInteractionEvent', move_view)
@@ -366,26 +382,22 @@ class Axis(HasTraits):
             self.parent.update_slabs()
 
             self.parent._undolist.append(self.xfm.transform.matrix.to_array())
-            np.save("/tmp/last_xfm.npy", self.get_xfm())
+            np.save("/tmp/last_xfm.npy", self.parent.get_xfm())
 
         return RotationWidget(self.scene.scene.mayavi_scene, handlemove, radius=width, pos=center)
 
     def _disable_render_changed(self):
         self.scene.scene.disable_render = self.disable_render
 
-    def _position_changed(self):
+    def _outline_color_changed(self):
+        self.outline.children[0].children[0].actor
+
+    def update_position(self):
         """ Update the position of the cursors on each side view, as well
             as the image_plane_widgets in the 3D view.
         """
-        self.disable_render = True
-        origin = self.parent.origin * np.sign(self.parent.spacing)
-        offset = np.abs(self.parent.spacing) / 2
 
-        space, shape = self.ipw_space
-        self.ipw_3d.ipw.slice_position = self.position[self.axis] + origin[self.axis]
-        self.ipw_3d.ipw.reslice.set(output_spacing=space, output_origin=[space[0] / 2., space[1] / 2., 0])
-        self.ipw_3d.ipw.poly_data_algorithm.output.point_data.t_coords = shape
-        
+        offset = np.abs(self.parent.spacing) / 2
         p = list(self.position + offset)
         p.pop(self.axis)
         if self.axis == 1:
@@ -393,32 +405,40 @@ class Axis(HasTraits):
         p.append(0)
         self.cursor.parent.parent.data.points = [p]
 
-        origin, spacing = self.parent.origin, self.parent.spacing
-        origin = origin * np.sign(spacing) - np.abs(spacing) / 2.
-        limit = self.parent.epi_src.scalar_data.shape * abs(spacing) + origin
-        
-        gap = abs(spacing[self.axis]) / 2
-        pos = self.ipw_3d.ipw.slice_position
-        pts = [0, 0, 0]
-        pts[self.axis] = pos+gap
-        self.planes[0].points = [tuple(pts)]
-        pts[self.axis] = pos-gap 
-        self.planes[1].points = [tuple(pts)]
+        if self.position[self.axis] != self._last:
+            self._last = self.position[self.axis]
+            origin = self.parent.origin * np.sign(self.parent.spacing)
+
+            space, shape = self.ipw_space
+            self.ipw_3d.ipw.slice_position = self.position[self.axis] + origin[self.axis]
+            self.ipw_3d.ipw.reslice.set(output_spacing=space, output_origin=[space[0] / 2., space[1] / 2., 0])
+            self.ipw_3d.ipw.poly_data_algorithm.output.point_data.t_coords = shape
+            self.ipw.ipw.poly_data_algorithm.output.point_data.t_coords = shape
+
+            origin, spacing = self.parent.origin, self.parent.spacing
+            origin = origin * np.sign(spacing) - np.abs(spacing) / 2.
+            
+            gap = abs(spacing[self.axis]) / 2.
+            pos = self.ipw_3d.ipw.slice_position
+            pts = [0, 0, 0]
+            pts[self.axis] = pos+gap
+            self.planes[0].points = [tuple(pts)]
+            pts[self.axis] = pos-gap 
+            self.planes[1].points = [tuple(pts)]
+            self.update_slab()
+    
+    def update_slab(self):
         self.slab.update()
-        
         self.outline.data.set(points=self.slab.output.points, polys=self.slab.output.polys)
         self.surf.data.set(points=self.slab.output.points, polys=self.slab.output.polys)
-        #self.outline.update_pipeline()
-
-        self.disable_render = False
 
 class XAxis(Axis):
     axis = 0
     scene = DelegatesTo('parent', 'scene_x')
     def _outline_default(self):
         surf = super(XAxis, self)._outline_default()
-        surf.children[0].filter.transform.rotate_y(-90)
         surf.children[0].filter.transform.rotate_x(-90)
+        surf.children[0].filter.transform.rotate_y(-90)
         return surf
 
 class YAxis(Axis):
@@ -426,8 +446,8 @@ class YAxis(Axis):
     scene = DelegatesTo('parent', 'scene_y')
     def _outline_default(self):
         surf = super(YAxis, self)._outline_default()
-        surf.children[0].filter.transform.rotate_x(90)
         surf.children[0].filter.transform.rotate_y(90)
+        surf.children[0].filter.transform.rotate_x(90)
         return surf
 
 class ZAxis(Axis):
@@ -443,8 +463,8 @@ class Align(HasTraits):
     opacity = Range(0., 1.)
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
-    outlines = List
-    ptcolor = Color(value=options['ptcolor'] if 'ptcolor' in options else 'blue')
+
+    outline_color = Color(value='red')
     epi_filter = Enum(None, "median", "gradient")
     filter_strength = Range(1, 20, value=3)
 
@@ -570,6 +590,12 @@ class Align(HasTraits):
         self.xfm.widget.enabled = False
         self.colormap = options['colormap'] if 'colormap' in options else 'gray'
 
+        self.disable_render = True
+        for ax in [self.x_axis, self.y_axis, self.z_axis]:
+            ax.update_position()
+            ax.reset_view()
+        self.disable_render = False
+
     @on_trait_change('scene_x.activated')
     def display_scene_x(self):
         self.x_axis = XAxis(parent=self)
@@ -590,6 +616,15 @@ class Align(HasTraits):
         if self.save_callback is not None:
             self.save_callback(self)
 
+    def _disable_render_changed(self):
+        self.scene_3d.scene.disable_render = self.disable_render
+
+    def _position_changed(self):
+        self.disable_render = True
+        for ax in [self.x_axis, self.y_axis, self.z_axis]:
+            ax.update_position()
+        self.disable_render = False
+
     @on_trait_change("colormap, fliplut")
     def update_colormap(self):
         for ax in [self.x_axis, self.y_axis, self.z_axis]:
@@ -597,17 +632,12 @@ class Align(HasTraits):
                 ax.ipw_3d.parent.scalar_lut_manager.set(lut_mode=self.colormap, reverse_lut=self.fliplut)
                 ax.ipw.parent.scalar_lut_manager.set(lut_mode=self.colormap, reverse_lut=self.fliplut)
 
-    @on_trait_change('disable_render')
-    def _render_enable(self):
-        self.scene_3d.scene.disable_render = self.disable_render
+    def _opacity_changed(self):
+        self.surf.actor.property.opacity = self.opacity
     
     @on_trait_change("brightness,contrast")
     def update_brightness(self):
         self.epi_src.scalar_data = (self.epi*self.contrast)+self.brightness
-    
-    @on_trait_change("opacity")
-    def update_opacity(self):
-        self.surf.actor.property.opacity = self.opacity
     
     @on_trait_change("flip_ud")
     def update_flipud(self):
@@ -644,6 +674,12 @@ class Align(HasTraits):
             self.epi = utils.detrend_volume_gradient(self.epi_orig.T, self.filter_strength).T
         
         self.update_brightness()
+
+    def update_slabs(self):
+        self.disable_render = True
+        for ax in [self.x_axis, self.y_axis, self.z_axis]:
+            ax.update_slab()
+        self.disable_render = False
     
     def get_xfm(self, xfmtype="magnet"):
         if xfmtype in ["anat->epicoord", "coord"]:
@@ -698,7 +734,7 @@ class Align(HasTraits):
                                               path=lut_manager.lut_image_dir)),
                         "fliplut",
                         "_", "flip_ud", "flip_lr", "flip_fb", 
-                        "_", Item('ptcolor', editor=ColorEditor()),
+                        "_", Item('outline_color', editor=ColorEditor()),
 
                   )
                 ), 
