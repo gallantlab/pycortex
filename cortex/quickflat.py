@@ -86,7 +86,7 @@ def make(data, subject, xfmname, recache=False, height=1024, projection='nearest
         mdata = mdata[np.newaxis]
         shape = (mdata.shape[0],) + mask.shape
 
-    img = np.nan*np.ones(shape, dtype=data.dtype)
+    img = (np.nan*np.ones(shape)).astype(mdata.dtype)
     img[:, mask] = mdata[:,verts]
     return img.swapaxes(1, 2)[:,::-1].squeeze()
 
