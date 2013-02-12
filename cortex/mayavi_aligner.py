@@ -162,7 +162,6 @@ class FlatScene(Scene):
         elif ckey == '\x1a' and evt.CmdDown():
             self.aligner.undo()
         else:
-            print key
             super(FlatScene, self).OnKeyDown(evt)
 
     def OnButtonDown(self, evt):
@@ -238,6 +237,7 @@ class Axis(HasTraits):
         self.scene.scene.interactor.interactor_style = tvtk.InteractorStyleImage()
         def focusfunc(vtkobj, i):
             self.scene.scene_editor.control.SetFocusFromKbd()
+
         self.scene.scene.interactor.add_observer("MouseMoveEvent", focusfunc)
 
     @on_trait_change("parent.scene_3d.activated")
