@@ -130,9 +130,8 @@ class ThreeDScene(MayaviScene):
             self.aligner.xfm.transform.set_matrix(self.aligner._undolist[-1].ravel())
             self.aligner.xfm.widget.set_transform(self.aligner.xfm.transform)
             self.aligner.xfm.update_pipeline()
-            self.aligner.update_slab()
+            self.aligner.update_slabs()
         else:
-            print "Unknown key, %s"%key
             super(ThreeDScene, self).OnKeyDown(evt)
         self.aligner.scene_3d.renderer.reset_camera_clipping_range()
         self.aligner.scene_3d.render()
@@ -140,6 +139,7 @@ class ThreeDScene(MayaviScene):
 class FlatScene(Scene):
     handle = Instance(RotationWidget)
     aligner = Instance("Align")
+    axis = Instance("Axis")
     invert = Bool(value=False)
 
     def OnKeyDown(self, evt):
@@ -157,8 +157,11 @@ class FlatScene(Scene):
         elif key == 367:
             self.handle.move(angle=-np.pi / 120.*i*mult)
         elif chr(key % 256) == "h":
-            for o in self.aligner.outlines:
-                o.visible = not o.visible
+            self.aligner.outlines_visible = not self.aligner.outlines_visible
+        elif chr(key % 256) == ']':
+            self.axis.next_slice()
+        elif chr(key % 256) == '[':
+            self.axis.prev_slice()
         else:
             super(FlatScene, self).OnKeyDown(evt)
 
@@ -189,8 +192,12 @@ class Axis(HasTraits):
     scene_3d = DelegatesTo('parent')
     position = DelegatesTo('parent')
     disable_render = DelegatesTo('parent')
-    outline_color = DelegatesTo('parent')
     xfm = DelegatesTo('parent')
+
+    outline_color = DelegatesTo('parent')
+    outline_rep = DelegatesTo('parent')
+    line_width = DelegatesTo('parent')
+    point_size = DelegatesTo('parent')
 
     def __init__(self, **kwargs):
         super(Axis, self).__init__(**kwargs)
@@ -220,13 +227,14 @@ class Axis(HasTraits):
 
         self.scene.scene_editor.handle = self.handle
         self.scene.scene_editor.aligner = self.parent
+        self.scene.scene_editor.axis = self
         self.scene.scene.background = (0, 0, 0)
         mlab.view(*([(0, 0), (90, 0), (0, 0)][self.axis]),
                   focalpoint=center,
                   figure=self.scene.mayavi_scene)
         self.scene.scene.parallel_projection = True
         self.scene.scene.camera.parallel_scale = width * 1.2
-        #self.scene.scene.interactor.interactor_style = tvtk.InteractorStyleImage()
+        self.scene.scene.interactor.interactor_style = tvtk.InteractorStyleImage()
         def focusfunc(vtkobj, i):
             self.scene.scene_editor.control.SetFocusFromKbd()
         self.scene.scene.interactor.add_observer("MouseMoveEvent", focusfunc)
@@ -271,8 +279,9 @@ class Axis(HasTraits):
         surf = mlab.pipeline.surface(xfm, 
             figure=self.scene.mayavi_scene, 
             color=(1,1,1),
-            representation='wireframe')
-        surf.actor.property.line_width = 1
+            representation=self.outline_rep)
+        surf.actor.property.line_width = self.line_width
+        surf.actor.property.point_size = self.point_size
         return src
 
     def _surf_default(self):
@@ -283,8 +292,9 @@ class Axis(HasTraits):
         surf = mlab.pipeline.surface(src, 
             color=(1,1,1), 
             figure=self.scene_3d.mayavi_scene, 
-            representation='wireframe')
-        surf.actor.property.line_width = 1
+            representation=self.outline_rep)
+        surf.actor.property.line_width = self.line_width
+        surf.actor.property.point_size = self.point_size
         return src
 
     def _ipw_3d_default(self):
@@ -389,8 +399,35 @@ class Axis(HasTraits):
     def _disable_render_changed(self):
         self.scene.scene.disable_render = self.disable_render
 
+    def toggle_outline(self):
+        self.outline.children[0].children[0].visible = self.parent.outlines_visible
+
     def _outline_color_changed(self):
-        self.outline.children[0].children[0].actor
+        color = tuple([c/255. for c in tuple(self.outline_color)])
+        self.surf.children[0].children[0].actor.property.color = color
+        self.outline.children[0].children[0].children[0].actor.property.color = color
+
+    def _outline_rep_changed(self):
+        self.surf.children[0].children[0].actor.property.representation = self.outline_rep
+        self.outline.children[0].children[0].children[0].actor.property.representation = self.outline_rep
+
+    def _line_width_changed(self):
+        self.surf.children[0].children[0].actor.property.line_width = self.line_width
+        self.outline.children[0].children[0].children[0].actor.property.line_width = self.line_width
+
+    def _point_size_changed(self):
+        self.surf.children[0].children[0].actor.property.point_size = self.point_size
+        self.outline.children[0].children[0].children[0].actor.property.point_size = self.point_size
+
+    def next_slice(self):
+        pos = list(self.position)
+        pos[self.axis] += np.abs(self.parent.spacing)[self.axis]
+        self.position = pos
+
+    def prev_slice(self):
+        pos = list(self.position)
+        pos[self.axis] -= np.abs(self.parent.spacing)[self.axis]
+        self.position = pos
 
     def update_position(self):
         """ Update the position of the cursors on each side view, as well
@@ -450,6 +487,10 @@ class YAxis(Axis):
         surf.children[0].filter.transform.rotate_x(90)
         return surf
 
+    def reset_view(self):
+        self.scene.scene_editor.invert = True
+        super(YAxis, self).reset_view()
+
 class ZAxis(Axis):
     axis = 2
     scene = DelegatesTo('parent', 'scene_z')
@@ -464,7 +505,12 @@ class Align(HasTraits):
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
 
-    outline_color = Color(value='red')
+    outline_color = Color()
+    outlines_visible = Bool(default_value=True)
+    outline_rep = Enum('wireframe', 'points', 'surface')
+    line_width = Range(0., 10., value=1.)
+    point_size = Range(0., 10., value=5.)
+
     epi_filter = Enum(None, "median", "gradient")
     filter_strength = Range(1, 20, value=3)
 
@@ -569,7 +615,7 @@ class Align(HasTraits):
             np.save("/tmp/last_xfm.npy", self.get_xfm())
 
         xfm.widget.add_observer("EndInteractionEvent", savexfm)
-        #xfm.widget.add_observer("EndInteractionEvent", self.update_slab)
+        xfm.widget.add_observer("EndInteractionEvent", self.update_slabs)
         xfm.transform.set_matrix(self.startxfm.ravel())
         xfm.widget.set_transform(xfm.transform)
         return xfm
@@ -623,6 +669,12 @@ class Align(HasTraits):
         self.disable_render = True
         for ax in [self.x_axis, self.y_axis, self.z_axis]:
             ax.update_position()
+        self.disable_render = False
+
+    def _outlines_visible_changed(self):
+        self.disable_render = True
+        for ax in [self.x_axis, self.y_axis, self.z_axis]:
+            ax.toggle_outline()
         self.disable_render = False
 
     @on_trait_change("colormap, fliplut")
@@ -704,7 +756,7 @@ class Align(HasTraits):
         self.xfm.transform.set_matrix(matrix.ravel())
         self.xfm.widget.set_transform(self.xfm.transform)
         self.xfm.update_pipeline()
-        self.update_slab()
+        self.update_slabs()
 
     #---------------------------------------------------------------------------
     # The layout of the dialog created
@@ -734,7 +786,7 @@ class Align(HasTraits):
                                               path=lut_manager.lut_image_dir)),
                         "fliplut",
                         "_", "flip_ud", "flip_lr", "flip_fb", 
-                        "_", Item('outline_color', editor=ColorEditor()),
+                        "_", Item('outline_color', editor=ColorEditor()), 'outline_rep', 'line_width', 'point_size'
 
                   )
                 ), 
@@ -755,5 +807,5 @@ def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
     else:
         dbxfm, epi = data
 
-    data = db.surfs.getVTK(subject, 'fiducial', merge=True)
+    data = db.surfs.getVTK(subject, 'fiducial', merge=True, nudge=False)
     return Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
