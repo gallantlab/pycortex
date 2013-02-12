@@ -69,11 +69,12 @@ class BrainCTM(object):
         if rawdata.ndim > 3:
             rawdata = rawdata.mean(0)
 
-        norm = (rawdata - rawdata.min()) / (rawdata.max() - rawdata.min())
         mapper = get_mapper(self.subject, self.xfmname, projection)
-        left, right = mapper(norm**power)
-        self.left.aux[:,0] = left
-        self.right.aux[:,0] = right
+        left, right = mapper(rawdata)
+        lnorm = (left - left.min()) / (left.max() - left.min())
+        rnorm = (right - right.min()) / (right.max() - right.min())
+        self.left.aux[:,0] = (1-lnorm) ** power
+        self.right.aux[:,0] = (1-rnorm) ** power
 
     def addCurvature(self, **kwargs):
         npz = np.load(surfs.getAnat(self.subject, type='curvature', **kwargs))
