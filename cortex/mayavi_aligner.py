@@ -266,7 +266,8 @@ class Axis(HasTraits):
 
     def _outline_default(self):
         origin, spacing = self.parent.origin, self.parent.spacing
-        translate = origin * np.sign(spacing) - spacing / 2.
+        translate = origin * np.sign(spacing) - np.abs(spacing) / 2.
+
         mlab.figure(self.scene.mayavi_scene)
         pts = self.slab.output.points.to_array()
         polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
@@ -349,8 +350,16 @@ class Axis(HasTraits):
             name='Cut view %s' % self.axis)
         ipw.ipw.plane_property.opacity = 0
         ipw.ipw.poly_data_algorithm.set(point1=[extent[0], 0, 0], point2=[0, extent[1], 0])
-        ipw.ipw.set(left_button_action=0, right_button_auto_modifier=2, texture_interpolate=0, reslice_interpolate='nearest_neighbour')
-        ipw.parent.scalar_lut_manager.set(use_default_range=False, default_data_range=[-1,1], data_range=[-1,1])
+        ipw.ipw.set(
+            left_button_action=0, 
+            middle_button_auto_modifier=2, 
+            right_button_auto_modifier=2, 
+            texture_interpolate=0, 
+            reslice_interpolate='nearest_neighbour')
+        ipw.parent.scalar_lut_manager.set(
+            use_default_range=False, 
+            default_data_range=[-1,1], 
+            data_range=[-1,1])
         ipw.ipw.add_observer('InteractionEvent', move_view)
         ipw.ipw.add_observer('StartInteractionEvent', move_view)
         return ipw
