@@ -5,3 +5,5 @@ defaults.json
 *.o
 _build
 build
+*.c
+scripts
