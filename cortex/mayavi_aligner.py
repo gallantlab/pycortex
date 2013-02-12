@@ -125,12 +125,8 @@ class ThreeDScene(MayaviScene):
         elif key == "7":
             self.aligner.scene_3d.camera.position = focus + [0, 1e-6, self.state[2]*500]
             self.state[2] = -self.state[2]
-        elif key == "\x1a" and evt.CmdDown() and len(self.aligner._undolist) > 0:
-            self.aligner._redo = self.aligner._undolist.pop()
-            self.aligner.xfm.transform.set_matrix(self.aligner._undolist[-1].ravel())
-            self.aligner.xfm.widget.set_transform(self.aligner.xfm.transform)
-            self.aligner.xfm.update_pipeline()
-            self.aligner.update_slabs()
+        elif key == "\x1a" and evt.CmdDown():
+            self.aligner.undo()
         else:
             super(ThreeDScene, self).OnKeyDown(evt)
         self.aligner.scene_3d.renderer.reset_camera_clipping_range()
@@ -145,6 +141,7 @@ class FlatScene(Scene):
     def OnKeyDown(self, evt):
         i = -1 if self.invert else 1
         key = evt.GetKeyCode()
+        ckey = chr(key % 256)
         moves = {314:(-2,0,0), 315:(0,2,0), 316:(2,0,0), 317:(0,-2,0)}
         if self.invert:
             moves = {314:(0,-2,0), 315:(2,0,0), 316:(0,2,0), 317:(-2,0,0)}
@@ -156,13 +153,16 @@ class FlatScene(Scene):
             self.handle.move(angle=np.pi / 120.*i*mult)
         elif key == 367:
             self.handle.move(angle=-np.pi / 120.*i*mult)
-        elif chr(key % 256) == "h":
+        elif ckey == "h":
             self.aligner.outlines_visible = not self.aligner.outlines_visible
-        elif chr(key % 256) == ']':
+        elif ckey == ']':
             self.axis.next_slice()
-        elif chr(key % 256) == '[':
+        elif ckey == '[':
             self.axis.prev_slice()
+        elif ckey == '\x1a' and evt.CmdDown():
+            self.aligner.undo()
         else:
+            print key
             super(FlatScene, self).OnKeyDown(evt)
 
     def OnButtonDown(self, evt):
@@ -172,6 +172,7 @@ class FlatScene(Scene):
             self.handle.constrain = True
         else:
             self.handle.constrain = False
+            
         super(FlatScene, self).OnButtonDown(evt)
 
 ################################################################################
@@ -349,6 +350,7 @@ class Axis(HasTraits):
             figure=self.scene.mayavi_scene,
             name='Cut view %s' % self.axis)
         ipw.ipw.plane_property.opacity = 0
+        ipw.ipw.selected_plane_property.opacity = 0
         ipw.ipw.poly_data_algorithm.set(point1=[extent[0], 0, 0], point2=[0, extent[1], 0])
         ipw.ipw.set(
             left_button_action=0, 
@@ -388,6 +390,8 @@ class Axis(HasTraits):
                 wpos = np.insert(wpos[:2], self.axis, self.ipw_3d.ipw.slice_position)
                 scale = np.insert(scale, self.axis, 1)
 
+            self.parent._undolist.append(self.xfm.transform.matrix.to_array())
+
             self.xfm.transform.post_multiply()
             self.xfm.transform.translate(-wpos)
             self.xfm.transform.rotate_wxyz(np.degrees(angle), *self.ipw_3d.ipw.normal)
@@ -400,7 +404,6 @@ class Axis(HasTraits):
             self.xfm.update_pipeline()
             self.parent.update_slabs()
 
-            self.parent._undolist.append(self.xfm.transform.matrix.to_array())
             np.save("/tmp/last_xfm.npy", self.parent.get_xfm())
 
         return RotationWidget(self.scene.scene.mayavi_scene, handlemove, radius=width, pos=center)
@@ -766,6 +769,14 @@ class Align(HasTraits):
         self.xfm.widget.set_transform(self.xfm.transform)
         self.xfm.update_pipeline()
         self.update_slabs()
+
+    def undo(self):
+        if len(self._undolist) > 0:
+            self.xfm.transform.set_matrix(self._undolist[-1].ravel())
+            self.xfm.widget.set_transform(self.xfm.transform)
+            self.xfm.update_pipeline()
+            self.update_slabs()
+            self._redo = self._undolist.pop()
 
     #---------------------------------------------------------------------------
     # The layout of the dialog created
