@@ -14,17 +14,13 @@ import json
 import shutil
 import numpy as np
 
-cwd = os.path.split(os.path.abspath(__file__))[0]
+import options
 
-filestore = os.path.join(cwd, "filestore")
-if os.path.exists(os.path.join(cwd, "defaults.json")):
-    options = json.load(open(os.path.join(cwd, "defaults.json")))
-    filestore = options['file_store']
+filestore = options.config.get('basic', 'filestore')
 
 class AnatDB(object):
     def __init__(self, subj):
         self.subj = subj
-
 
 class SubjectDB(object):
     def __init__(self, subj):
