@@ -3,6 +3,7 @@
 from distutils.core import setup, Extension
 from Cython.Build import cythonize
 
+
 ctm = Extension('cortex.openctm', 
             ['cortex/openctm.pyx',
              'OpenCTM-1.0.3/lib/openctm.c',
@@ -32,18 +33,23 @@ setup(name='pycortex',
       packages=['cortex', 'cortex.webgl'],
       ext_modules=cythonize([ctm]),
       package_data={
-            'cortex':[ 'svgbase.xml' ],
-            'cortex.webgl':
-                  ['*.html', 
-                   'favicon.ico', 
-                   'resources/js/*.js',
-                   'resources/js/ctm/*.js',
-                   'resources/css/*.css',
-                   'resources/css/ui-lightness/*.css',
-                   'resources/css/ui-lightness/images/*',
-                   'resources/colormaps/*.png',
-                   'resources/images/*',
-                  ]
-            },
+            'cortex':[ 
+                  'svgbase.xml',
+                  'defaults.cfg'
+            ],
+            'cortex.webgl': [
+                  '*.html', 
+                  'favicon.ico', 
+                  'resources/js/*.js',
+                  'resources/js/ctm/*.js',
+                  'resources/css/*.css',
+                  'resources/css/ui-lightness/*.css',
+                  'resources/css/ui-lightness/images/*',
+                  'resources/colormaps/*.png',
+                  'resources/images/*'
+            ]
+      },
+      data_files = [{:['filestore/*'],
+      }]
       requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>2.1)', 'shapely', 'html5lib'],
 )
