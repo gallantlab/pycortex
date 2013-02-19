@@ -1,8 +1,31 @@
 #!/usr/bin/env python
 
+import os
+import ConfigParser
+from distutils.command.install import install
 from distutils.core import setup, Extension
 from Cython.Build import cythonize
 
+def set_default_filestore(prefix, optfile):
+    config = ConfigParser.ConfigParser()
+    config.read(optfile)
+    config.set("basic", "filestore", os.path.join(prefix))
+    config.set("webgl", "colormaps", os.path.join(prefix, "colormaps"))
+    with open(optfile, 'w') as fp:
+        config.write(fp)
+
+class my_install(install):
+    def run(self):
+        install.run(self)
+        optfile = [f for f in self.get_outputs() if 'defaults.cfg' in f]
+        prefix = os.path.join(self.install_data, "share", "pycortex")
+        set_default_filestore(prefix, optfile[0])
+        self.copy_tree('filestore', prefix)
+        for root, folders, files in os.walk(prefix):
+            for folder in folders:
+                os.chmod(os.path.join(root, folder), 511)
+            for fname in files:
+                os.chmod(os.path.join(root, fname), 438)
 
 ctm = Extension('cortex.openctm', 
             ['cortex/openctm.pyx',
@@ -20,8 +43,8 @@ ctm = Extension('cortex.openctm',
             ['OpenCTM-1.0.3/lib/', 
              'OpenCTM-1.0.3/lib/liblzma/'
             ], define_macros=[
-                  ('LZMA_PREFIX_CTM', None),
-                  ('OPENCTM_BUILD', None),
+                ('LZMA_PREFIX_CTM', None),
+                ('OPENCTM_BUILD', None),
             ]
         )
 
@@ -34,22 +57,20 @@ setup(name='pycortex',
       ext_modules=cythonize([ctm]),
       package_data={
             'cortex':[ 
-                  'svgbase.xml',
-                  'defaults.cfg'
+                'svgbase.xml',
+                'defaults.cfg'
             ],
             'cortex.webgl': [
-                  '*.html', 
-                  'favicon.ico', 
-                  'resources/js/*.js',
-                  'resources/js/ctm/*.js',
-                  'resources/css/*.css',
-                  'resources/css/ui-lightness/*.css',
-                  'resources/css/ui-lightness/images/*',
-                  'resources/colormaps/*.png',
-                  'resources/images/*'
+                '*.html', 
+                'favicon.ico', 
+                'resources/js/*.js',
+                'resources/js/ctm/*.js',
+                'resources/css/*.css',
+                'resources/css/ui-lightness/*.css',
+                'resources/css/ui-lightness/images/*',
+                'resources/images/*'
             ]
       },
-      data_files = [{:['filestore/*'],
-      }]
       requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>2.1)', 'shapely', 'html5lib'],
+      cmdclass=dict(install=my_install),
 )

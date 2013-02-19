@@ -8,11 +8,9 @@ from scipy.spatial import cKDTree
 
 from lxml import etree
 from lxml.builder import E
+import traits.api as traits
 
-try:
-    import traits.api as traits
-except ImportError as e:
-    import enthought.traits.api as traits
+from cortex.options import config
 
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
@@ -21,16 +19,13 @@ parser = etree.XMLParser(remove_blank_text=True)
 
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
-from db import options
-default_lw = options['line_width'] if 'line_width' in options else 3.
-
 class ROI(traits.HasTraits):
     name = traits.Str
 
     hide = traits.Bool(False)
-    linewidth = traits.Float(default_lw)
-    linecolor = traits.Tuple((0.,0.,0.,1.))
-    roifill = traits.Tuple((0.,0.,0.,0.))
+    linewidth = traits.Float(float(config.get("rois", "line_width")))
+    linecolor = traits.Tuple(tuple(map(float, config.get("rois", "line_color").split(','))))
+    roifill = traits.Tuple(tuple(map(float, config.get('rois', 'fill_color').split(','))))
 
     def __init__(self, parent, xml, **kwargs):
         super(ROI, self).__init__(**kwargs)
@@ -125,10 +120,10 @@ class ROIpack(traits.HasTraits):
     svg = traits.Instance("lxml.etree._ElementTree")
     svgfile = traits.Str
 
-    linewidth = traits.Float(default_lw)
-    linecolor = traits.Tuple((255.,255.,255.,1.))
-    roifill = traits.Tuple((0.,0.,0.,0.))
-    shadow = traits.Float(3)
+    linewidth = traits.Float(float(config.get("rois", "line_width")))
+    linecolor = traits.Tuple(tuple(map(float, config.get("rois", "line_color").split(','))))
+    roifill = traits.Tuple(tuple(map(float, config.get("rois", "fill_color").split(','))))
+    shadow = traits.Float(float(config.get("rois", "shadow")))
 
     def __init__(self, tcoords, svgfile, callback=None):
         super(ROIpack, self).__init__()

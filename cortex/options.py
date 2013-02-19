@@ -2,15 +2,14 @@ import os
 import ConfigParser
 import appdirs
 
+cwd = os.path.split(os.path.abspath(__file__))[0]
 userdir = appdirs.user_data_dir("pycortex", "JamesGao")
 usercfg = os.path.join(userdir, "options.cfg")
 
 config = ConfigParser.ConfigParser()
-config = config.readfp(open('defaults.cfg'))
-config.read(usercfg)
+config.readfp(open(os.path.join(cwd, 'defaults.cfg')))
 
-def set_default_filestore(path):
-    store = os.path.expanduser('~/pycortex_store/')
-    config.set("basic", "filestore", store)
-    with open(path, 'w') as fp:
-        config.write(fp)
+if len(config.read(usercfg)) == 0:
+	os.makedirs(userdir)
+	with open(usercfg, 'w') as fp:
+		config.write(fp)

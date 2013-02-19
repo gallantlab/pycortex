@@ -13,7 +13,7 @@ from scipy.stats import scoreatpercentile
 
 from tornado import web, template
 
-from .. import utils
+from .. import utils, options
 
 import serve
 
@@ -21,7 +21,8 @@ sloader = template.Loader(serve.cwd)
 lloader = template.Loader("./")
 
 name_parse = re.compile(r".*/(\w+).png")
-colormaps = glob.glob(os.path.join(serve.cwd, "resources/colormaps/*.png"))
+cmapdir = options.config.get('webgl', 'colormaps')
+colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
 def _normalize_data(data, mapper):
