@@ -146,7 +146,9 @@ class Nearest(Mapper):
         for (pts, _, _), (_, polys, _) in zip(fid, flat):
             valid = np.zeros((len(pts),), dtype=bool)
             valid[np.unique(polys)] = True
-            coords = polyutils.transform(coord, pts).round().astype(int)
+            #np.round is fucked
+            coords = polyutils.transform(coord, pts)
+            coords = np.where(np.mod(coords, 2) == 0.5, np.ceil(coords), np.around(coords))
             d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < self.shape[2])
             d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < self.shape[1])
             d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < self.shape[0])
