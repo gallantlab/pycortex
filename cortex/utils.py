@@ -6,7 +6,7 @@ import numpy as np
 from db import surfs
 
 def unmask(mask, data):
-    '''unmask(mask, data)
+    """unmask(mask, data)
 
     "Unmasks" the data, assuming it's been masked.
 
@@ -16,7 +16,7 @@ def unmask(mask, data):
         The data mask
     data : array_like
         Actual MRI data to unmask
-    '''
+    """
     if data.ndim > 1:
         output = np.zeros((len(data),)+mask.shape, dtype=data.dtype)
         output[:, mask > 0] = data
@@ -57,7 +57,7 @@ def detrend_volume_poly(data, polyorder = 10, mask=None):
 
 
 def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
-    '''mosaic(data, xy=(6, 5), trim=10, skip=1)
+    """mosaic(data, xy=(6, 5), trim=10, skip=1)
 
     Turns volume data into a mosaic, useful for quickly viewing volumetric data
     IN RADIOLOGICAL COORDINATES (LEFT SIDE OF FIGURE IS RIGHT SIDE OF SUBJECT)
@@ -72,7 +72,7 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
         How many pixels to trim from the edges of each image. Default 10
     skip : int, optional
         How many slices to skip in the beginning. Default 1
-    '''
+    """
     assert len(data.shape) == 3, "Are you sure this is volumetric?"
     dat = data.copy()
     if trim>0:
@@ -142,7 +142,7 @@ def get_cortical_mask(subject, xfmname, type='nearest'):
     return get_mapper(subject, xfmname, type=type).mask
 
 def get_vox_dist(subject, xfmname):
-    '''Get the distance (in mm) from each functional voxel to the closest
+    """Get the distance (in mm) from each functional voxel to the closest
     point on the surface.
 
     Parameters
@@ -161,7 +161,7 @@ def get_vox_dist(subject, xfmname):
 
     argdist : ndarray
         Point index for the closest point
-    '''
+    """
     import nibabel
     from scipy.spatial import cKDTree
     shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
@@ -386,3 +386,29 @@ def decimate_mesh(subject, proportion = 0.5):
 
     return masks, newpolys
 
+def get_flatmap_distortion(sub):
+    """Computes the areal distortion for each triangle in the flatmap, defined as the
+    log ratio of the area in the fiducial mesh to the area in the flat mesh. Returns
+    a per-vertex value that is the average of the neighboring triangles.
+    """
+    ratios = []
+    for hem in ["lh", "rh"]:
+        fidvert, fidtri, etc = cortex.surfs.getVTK(sub, "fiducial", hem)
+        flatvert, flattri, etc = cortex.surfs.getVTK(sub, "flat", hem)
+
+        triareas = lambda tr,v: np.array([np.linalg.norm(np.cross(a-b, a-c))/2
+                                          for a,b,c in v[tr,:]])
+
+        fidareas = triareas(flattri, fidvert)
+        flatareas = triareas(flattri, flatvert)
+
+        vertratios = np.zeros((len(fidvert),))
+        vertratios[flattri[:,0]] += flatareas/fidareas
+        vertratios[flattri[:,1]] += flatareas/fidareas
+        vertratios[flattri[:,2]] += flatareas/fidareas
+        vertratios /= np.bincount(flattri.ravel())
+        vertratios = np.nan_to_num(vertratios)
+        vertratios[vertratios==0] = 1
+        ratios.append(np.log(vertratios))
+
+    return ratios
