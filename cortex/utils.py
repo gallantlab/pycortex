@@ -386,29 +386,62 @@ def decimate_mesh(subject, proportion = 0.5):
 
     return masks, newpolys
 
-def get_flatmap_distortion(sub):
-    """Computes the areal distortion for each triangle in the flatmap, defined as the
+def get_flatmap_distortion(sub, type="areal"):
+    """Computes distortion of flatmap relative to fiducial surface. Several different
+    types of distortion are available:
+    
+    'areal': computes the areal distortion for each triangle in the flatmap, defined as the
     log ratio of the area in the fiducial mesh to the area in the flat mesh. Returns
     a per-vertex value that is the average of the neighboring triangles.
+    See: http://brainvis.wustl.edu/wiki/index.php/Caret:Operations/Morphing
+    
+    'metric': computes the linear distortion for each vertex in the flatmap, defined as
+    the mean squared difference between distances in the fiducial map and distances in
+    the flatmap, for each pair of neighboring vertices. See Fishl, Sereno, and Dale, 1999.
     """
-    ratios = []
+    distortions = []
     for hem in ["lh", "rh"]:
-        fidvert, fidtri, etc = cortex.surfs.getVTK(sub, "fiducial", hem)
-        flatvert, flattri, etc = cortex.surfs.getVTK(sub, "flat", hem)
+        fidvert, fidtri, etc = surfs.getVTK(sub, "fiducial", hem)
+        flatvert, flattri, etc = surfs.getVTK(sub, "flat", hem)
 
-        triareas = lambda tr,v: np.array([np.linalg.norm(np.cross(a-b, a-c))/2
-                                          for a,b,c in v[tr,:]])
+        if type=="areal":
+            triareas = lambda tr,v: np.array([np.linalg.norm(np.cross(a-b, a-c))/2
+                                              for a,b,c in v[tr,:]])
 
-        fidareas = triareas(flattri, fidvert)
-        flatareas = triareas(flattri, flatvert)
+            fidareas = triareas(flattri, fidvert)
+            flatareas = triareas(flattri, flatvert)
 
-        vertratios = np.zeros((len(fidvert),))
-        vertratios[flattri[:,0]] += flatareas/fidareas
-        vertratios[flattri[:,1]] += flatareas/fidareas
-        vertratios[flattri[:,2]] += flatareas/fidareas
-        vertratios /= np.bincount(flattri.ravel())
-        vertratios = np.nan_to_num(vertratios)
-        vertratios[vertratios==0] = 1
-        ratios.append(np.log(vertratios))
+            vertratios = np.zeros((len(fidvert),))
+            vertratios[flattri[:,0]] += flatareas/fidareas
+            vertratios[flattri[:,1]] += flatareas/fidareas
+            vertratios[flattri[:,2]] += flatareas/fidareas
+            vertratios /= np.bincount(flattri.ravel())
+            vertratios = np.nan_to_num(vertratios)
+            vertratios[vertratios==0] = 1
+            distortions.append(np.log(vertratios))
+            
+        elif type=="metric":
+            import networkx as nx
+            def iter_surfedges(tris):
+                for a,b,c in tris:
+                    yield a,b
+                    yield b,c
+                    yield a,c
 
-    return ratios
+            def make_surface_graph(tris):
+                graph = nx.Graph()
+                graph.add_edges_from(iter_surfedges(tris))
+                return graph
+
+            G = make_surface_graph(flattri)
+            selverts = np.unique(flattri.ravel())
+            fid_dists = [np.sqrt(((fidvert[G.neighbors(ii)] - fidvert[ii])**2).sum(1))
+                         for ii in selverts]
+            flat_dists = [np.sqrt(((flatvert[G.neighbors(ii)] - flatvert[ii])**2).sum(1))
+                          for ii in selverts]
+            msdists = np.array([(fl-fi).mean() for fi,fl in zip(fid_dists, flat_dists)])
+            alldists = np.zeros((len(fidvert),))
+            alldists[selverts] = msdists
+            distortions.append(alldists)
+
+    return distortions
