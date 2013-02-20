@@ -301,8 +301,8 @@ def draw_lines(closest, pts):
 if __name__ == "__main__":
     import cPickle
     import db
-    pts, polys, norm = db.surfs.JG.surfaces.flat.get()
-    fpts, fpolys, norm = db.surfs.JG.surfaces.fiducial.get()
+    pts, polys, norm = db.surfs.getVTK("JG", "flat", merge=True, nudge=True)
+    fpts, fpolys, norm = db.surfs.getVTK("JG", "fiducial", merge=True, nudge=False)
     #pts, polys, fpts = cPickle.load(open("/tmp/ptspolys.pkl"))
     left, right = trace_both(pts, polys)
     dist = get_dist(fpts[left])

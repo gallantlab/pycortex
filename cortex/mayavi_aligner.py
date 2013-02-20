@@ -13,7 +13,7 @@ from mayavi.core.ui import lut_manager
 from mayavi.core.api import PipelineBase, Source, Filter, Module
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 
-from db import options
+import options
 import utils
 
 class RotationWidget(HasTraits):
@@ -646,7 +646,7 @@ class Align(HasTraits):
 
         self.opacity = 0.1
         self.xfm.widget.enabled = False
-        self.colormap = options['colormap'] if 'colormap' in options else 'gray'
+        self.colormap = options.config.get("mayavi_aligner", "colormap")
 
         self.disable_render = True
         for ax in [self.x_axis, self.y_axis, self.z_axis]:

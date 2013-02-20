@@ -23,13 +23,20 @@ def parse_surf(filename):
         print fp.read()
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
-
 def parse_curv(filename):
     with open(filename) as fp:
         fp.seek(15)
         return np.fromstring(fp.read(), dtype='>f4').byteswap()
 
-def show_surf(subject, hemi, type):
+def parse_patch(filename):
+    with open(filename) as fp:
+        header, = struct.unpack('>i', fp.read(4))
+        nverts, = struct.unpack('>i', fp.read(4))
+        data = np.fromstring(fp.read(), dtype=[('vert', '>i4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4')])
+        assert len(data) == nverts
+        return data
+
+def show_surf(subject, hemi, type, patch=None):
     from mayavi import mlab
     from tvtk.api import tvtk
 
@@ -39,6 +46,18 @@ def show_surf(subject, hemi, type):
     
     pts, polys = parse_surf(surf_file)
     curv = parse_curv(curv_file)
+
+    if patch is not None:
+        patch_file = os.path.join(path, "surf", hemi+'.'+patch+'.patch.3d')
+        patch = parse_patch(patch_file)
+        verts = patch[patch['vert'] > 0]['vert'] - 1
+        edges = -patch[patch['vert'] < 0]['vert'] - 1
+
+        idx = np.zeros((len(pts),), dtype=bool)
+        idx[verts] = True
+        idx[edges] = True
+        valid = idx[polys.ravel()].reshape(-1, 3).all(1)
+        polys = polys[valid]
     
     fig = mlab.figure()
     src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, scalars=curv, figure=fig)
