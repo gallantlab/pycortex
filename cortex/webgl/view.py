@@ -107,7 +107,7 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     sp.call(shlex.split(fcmd))
 
 def make_static(outpath, data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, cmap="RdBu_r", template="static.html", anonymize=False, **kwargs):
-    '''
+    """
     Creates a static instance of the webGL MRI viewer that can easily be posted 
     or shared. 
 
@@ -136,8 +136,9 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
         Default False
     **kwargs : dict, optional
         All additional keyword arguments are passed to the template renderer.
-    '''
-    print("You'll probably need nginx to view this, since file:// paths don't handle xsrf correctly")
+
+    You'll probably need nginx to view this, since file:// paths don't handle xsrf correctly
+    """
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
         os.makedirs(outpath)
@@ -189,8 +190,8 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
     return mapper
 
-def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None):
-    '''Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
+def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, recache_mapper=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None):
+    """Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
     sub dictionary with keys [data, stim, delay].
 
     Data array can be a variety of shapes:
@@ -202,10 +203,10 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     Regular vertex image: [verts]
     Raw vertex movie:     [[3, 4], t, verts]
     Raw vertex image:     [[3, 4], verts]
-    '''
+    """
     html = sloader.load("mixer.html")
 
-    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache)
+    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache, recache_mapper=recache_mapper)
     jsondat, bindat = _make_bindat(_normalize_data(data, mapper), fmt='data/%s/')
 
     saveevt = mp.Event()

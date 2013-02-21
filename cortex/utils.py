@@ -120,10 +120,10 @@ def get_roipack(subject, remove_medial=False):
         return rois, valid
     return rois
 
-def get_ctmpack(subject, xfmname, types=("inflated",), projection='nearest', method="raw", level=0, recache=False):
+def get_ctmpack(subject, xfmname, types=("inflated",), projection='nearest', method="raw", level=0, recache=False, recache_mapper=False):
     ctmform = surfs.getFiles(subject)['ctmcache']
     ctmfile = ctmform.format(xfmname=xfmname, types=','.join(types), method=method, level=level)
-    mapper = get_mapper(subject, xfmname, projection)
+    mapper = get_mapper(subject, xfmname, projection, recache=recache_mapper)
     if os.path.exists(ctmfile) and not recache:
         mapfile = os.path.splitext(ctmfile)[0]+'.npz'
         if os.path.exists(mapfile):
