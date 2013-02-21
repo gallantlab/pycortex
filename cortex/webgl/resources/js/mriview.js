@@ -629,6 +629,16 @@ MRIview.prototype = {
             } else if (data[name] instanceof NParray) {
                 this.datasets[name] = new Dataset(data[name]);
             }
+
+            $.when(this.loaded, this.datasets[name].loaded).then(function() {
+                if (this.meshes.left.geometry.indexMap !== undefined) {
+                    this.datasets[name].rearrange(
+                        this.meshes.left.geometry.attributes.position.array.length / 3, 
+                        this.meshes.left.geometry.indexMap, 
+                        this.meshes.right.geometry.indexMap);
+                }
+            }.bind(this));
+
             var found = false;
             $("#datasets li").each(function() {
                 found = found || ($(this).text() == name);

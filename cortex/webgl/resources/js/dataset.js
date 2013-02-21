@@ -1,4 +1,6 @@
 function Dataset(nparray) {
+    this.loaded = $.Deferred();
+    this.reordered = false;
     if (nparray instanceof NParray) {
         this.init(nparray);
     }
@@ -44,10 +46,7 @@ Dataset.prototype = {
         if (this.max === undefined)
             this.max = this.lmax;
 
-        if (this._func !== undefined) {
-            this._func();
-            delete this._func;
-        }
+        this.loaded.resolve();
     },
     addStim: function(url, delay) {
         this.delay = delay;
@@ -107,7 +106,8 @@ Dataset.prototype = {
     set: function(viewer, dim) {
         if (dim === undefined)
             dim = 0;
-        var func = function() {
+
+        $.when(this.loaded).then(function() {
             viewer._setShader(this.raw);
             if (this.textures.length > 1) {
                 viewer.setFrame(0);
@@ -149,10 +149,24 @@ Dataset.prototype = {
                     viewer._startplay = (now - this.currentTime - delay)*1000;
                 })
             }
-        }.bind(this);
-        if (this.array !== undefined)
-            func();
-        else
-            this._func = func;
+        }.bind(this));
+    },
+    rearrange: function(lsize, left, right) {
+        if (!this.reordered) {
+            this.reordered = true;
+            var newtex = [];
+            for (var t = 0; t < this.textures.length; t++) {
+                var oarr = this.textures[t];
+                var narr = new Float32Array(oarr.length);
+                for (var i = 0, il = oarr.length; i < il; i++) {
+                    if (i < lsize) 
+                        narr[left[i]] = oarr[i];
+                    else
+                        narr[right[i-lsize]+lsize] = oarr[i];
+                }
+                newtex.push(narr);
+            }
+            this.textures = newtex;
+        }
     },
 }

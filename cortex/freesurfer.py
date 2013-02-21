@@ -36,16 +36,21 @@ def parse_patch(filename):
         assert len(data) == nverts
         return data
 
-def show_surf(subject, hemi, type, patch=None):
-    from mayavi import mlab
-    from tvtk.api import tvtk
-
+def get_surf(subject, hemi, type, patch=None, curv='wm'):
     path = os.path.join(os.environ['SUBJECTS_DIR'], subject)
+
+    if type == "patch":
+        assert patch is not None
+        type = "smoothwm"
+
     surf_file = os.path.join(path, "surf", hemi+'.'+type)
-    curv_file = os.path.join(path, "surf", hemi+'.curv')
+    
+    if curv == "wm":
+        curv_file = os.path.join(path, "surf", hemi+'.curv')
+    else:
+        curv_file = os.path.join(path, 'surf', hemi+'.curv.'+curv)
     
     pts, polys = parse_surf(surf_file)
-    curv = parse_curv(curv_file)
 
     if patch is not None:
         patch_file = os.path.join(path, "surf", hemi+'.'+patch+'.patch.3d')
@@ -58,6 +63,17 @@ def show_surf(subject, hemi, type, patch=None):
         idx[edges] = True
         valid = idx[polys.ravel()].reshape(-1, 3).all(1)
         polys = polys[valid]
+
+    if type == "patch":
+        return patch[['x', 'y', 'z']], polys
+
+    return pts, polys, parse_curv(curv_file)
+
+def show_surf(subject, hemi, type, patch=None):
+    from mayavi import mlab
+    from tvtk.api import tvtk
+
+    pts, polys = get_surf(subject, hemi, type, patch)
     
     fig = mlab.figure()
     src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, scalars=curv, figure=fig)
@@ -86,3 +102,39 @@ def show_surf(subject, hemi, type, patch=None):
     picker.tolerance = 0.01
 
     return surf
+
+def write_dot(fname, pts, polys, name="test"):
+    import networkx as nx
+    def iter_surfedges(tris):
+        for a,b,c in tris:
+            yield a,b
+            yield b,c
+            yield a,c
+    graph = nx.Graph()
+    graph.add_edges_from(iter_surfedges(polys))
+    lengths = []
+    with open(fname, "w") as fp:
+        fp.write("graph %s {\n"%name)
+        fp.write('node [shape=point,label=""];\n')
+        for a, b in graph.edges_iter():
+            l = np.sqrt(((pts[a] - pts[b])**2).sum(-1))
+            lengths.append(l)
+            fp.write("%s -- %s [len=%f];\n"%(a, b, l))
+        fp.write("maxiter=1000000;\n");
+        fp.write("}")
+
+def read_dot(fname, pts):
+    import re
+    parse = re.compile(r'\s(\d+)\s\[label="", pos="([\d\.]+),([\d\.]+)".*];')
+    data = np.zeros((len(pts), 2))
+    with open(fname) as fp:
+        fp.readline()
+        fp.readline()
+        fp.readline()
+        fp.readline()
+        el = fp.readline().split(' ')
+        while el[1] != '--':
+            x, y = el[2][5:-2].split(',')
+            data[int(el[0][1:])] = float(x), float(y)
+            el = fp.readline().split(' ')
+    return data

@@ -148,7 +148,7 @@ class Nearest(Mapper):
             valid[np.unique(polys)] = True
             #np.round is fucked
             coords = polyutils.transform(coord, pts)
-            coords = np.where(np.mod(coords, 2) == 0.5, np.ceil(coords), np.around(coords))
+            coords = np.where(np.mod(coords, 2) == 0.5, np.ceil(coords), np.around(coords)).astype(int)
             d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < self.shape[2])
             d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < self.shape[1])
             d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < self.shape[0])
