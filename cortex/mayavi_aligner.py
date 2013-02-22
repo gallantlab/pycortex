@@ -827,5 +827,12 @@ def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
     else:
         dbxfm, epi = data
 
-    data = db.surfs.getVTK(subject, 'fiducial', merge=True, nudge=False)
-    return Align(data[0], data[1], epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
+    try:
+        wpts, wpolys, norms = db.surfs.getVTK(subject, 'wm', merge=True, nudge=False)
+        ppts, ppolys, norms = db.surfs.getVTK(subject, 'pia', merge=True, nudge=False)
+        pts = np.vstack([wpts, ppts])
+        polys = np.vstack([wpolys, ppolys+len(wpts)])
+    except ValueError:
+        pts, polys, norms = db.surfs.getVTK(subject, 'fiducial', merge=True, nudge=False)
+        
+    return Align(pts, polys, epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)

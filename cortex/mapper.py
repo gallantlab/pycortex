@@ -273,7 +273,7 @@ class Polyhedral(Mapper):
         from tvtk.api import tvtk
 
         pia = surfs.getVTK(subject, "pia")
-        wm = surfs.getVTK(subject, "whitematter")
+        wm = surfs.getVTK(subject, "wm")
         flat = surfs.getVTK(subject, "flat")
 
         coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')

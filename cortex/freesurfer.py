@@ -4,9 +4,43 @@ import tempfile
 import shlex
 import subprocess as sp
 
+import nibabel
 import numpy as np
 
+import db
 import vtkutils_new as vtk
+
+def import_subj(subject, sname=None):
+    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.vtk")
+    anats = os.path.join(db.filestore, "anatomicals", "{subj}_{name}.{type}")
+    fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
+
+    if sname is None:
+        sname = subject
+
+    #import anatomicals
+    for fsname, name in dict(T1="raw", wm="whitematter").items():
+        path = os.path.join(fspath, "{fsname}.mgz").format(fsname=fsname)
+        out = anats.format(subj=sname, name=name, type='nii.gz')
+        cmd = "mri_convert {path} {out}".format(path=path, out=out)
+        sp.call(shlex.split(cmd))
+
+    #Freesurfer uses FOV/2 for center, let's set the surfaces to use the magnet isocenter
+    trans = nibabel.load(out).get_affine()[:3, -1]
+    surfmove = trans - np.sign(trans) * [128, 128, 128]
+
+    curvs = dict(lh=[], rh=[])
+    #import surfaces
+    for fsname, name in dict(smoothwm="wm", pial="pia", inflated="inflated").items():
+        for hemi in ("lh", "rh"):
+            pts, polys, curv = get_surf(subject, hemi, fsname)
+            fname = surfs.format(subj=sname, name=name, hemi=hemi)
+            vtk.write(fname, pts + surfmove, polys)
+            if fsname == 'smoothwm':
+                curvs[hemi] = curv
+
+    np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
+
 
 def parse_surf(filename):
     with open(filename) as fp:
@@ -20,7 +54,7 @@ def parse_surf(filename):
         verts, faces = struct.unpack('>2I', fp.read(8))
         pts = np.fromstring(fp.read(4*3*verts), dtype='f4').byteswap()
         polys = np.fromstring(fp.read(4*3*faces), dtype='I4').byteswap()
-        print fp.read()
+        #print fp.read()
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
 def parse_curv(filename):
