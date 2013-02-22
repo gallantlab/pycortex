@@ -19,8 +19,8 @@ import tempfile
 import numpy as np
 from scipy.spatial import cKDTree
 
-from db import surfs
-from utils import get_cortical_mask, get_mapper, get_roipack
+from .db import surfs
+from .utils import get_cortical_mask, get_mapper, get_roipack
 from openctm import CTMfile
 
 class BrainCTM(object):
@@ -37,7 +37,7 @@ class BrainCTM(object):
         if len(self.shape) > 3:
             self.shape = self.shape[-3:]
 
-        self.left, self.right = map(Hemi, surfs.getVTK(subject, base))
+        self.left, self.right = list(map(Hemi, surfs.getVTK(subject, base)))
 
         #Find the flatmap limits
         left, right = surfs.getVTK(subject, "flat", nudge=True, merge=False)

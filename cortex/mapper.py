@@ -5,8 +5,8 @@ import numpy as np
 from scipy import sparse
 from itertools import product
 
-import polyutils
-from db import surfs
+from . import polyutils
+from .db import surfs
 
 class Mapper(object):
     '''Maps data from epi volume onto surface using various projections'''
@@ -15,7 +15,7 @@ class Mapper(object):
         self.subject, self.xfmname = subject, xfmname
         fnames = surfs.getFiles(subject)
         ptype = self.__class__.__name__.lower()
-        kwds ='_'.join(['%s%s'%(k,str(v)) for k, v in kwargs.items()])
+        kwds ='_'.join(['%s%s'%(k,str(v)) for k, v in list(kwargs.items())])
         if len(kwds) > 0:
             ptype += '_'+kwds
         self.cachefile = fnames['projcache'].format(xfmname=xfmname, projection=ptype)
@@ -47,7 +47,7 @@ class Mapper(object):
     @property
     def hemimasks(self):
         func = lambda m: (np.array(m.sum(0)).squeeze != 0).reshape(self.shape)
-        return map(func, self.masks)
+        return list(map(func, self.masks))
 
     def __repr__(self):
         ptype = self.__class__.__name__
@@ -254,7 +254,7 @@ class Lanczos(Mapper):
                 mask[v,inds] = vals
 
                 if not v % 1000:
-                    print v
+                    print(v)
 
             masks.append(mask.tocsr())
 
@@ -318,7 +318,7 @@ class Polyhedral(Mapper):
                             mask[i, idx] = measure.volume / totalvol
 
                 if i % 100 == 0:
-                    print i
+                    print(i)
 
             masks.append(mask)
         super(Polyhedral, self)._recache(masks[0], masks[1])

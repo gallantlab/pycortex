@@ -1,5 +1,5 @@
-from db import surfs
-from utils import *
+from .db import surfs
+from .utils import *
 
-import quickflat
-import align
+#from . import quickflat
+#from . import align

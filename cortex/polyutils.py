@@ -72,7 +72,7 @@ class Surface(object):
                 pts[wm[poly[[0, 1]]].mean(0)]
                 pts[self.pts[poly[[0, 1]]].mean(0)]
 
-                for i, face in zip(range(4, 4*len(faces)+1, 4), faces):
+                for i, face in zip(list(range(4, 4*len(faces)+1, 4)), faces):
                     poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == p)[0][0])
                     a = pts[wm[poly].mean(0)]
                     b = pts[self.pts[poly].mean(0)]
@@ -102,7 +102,7 @@ class _ptset(object):
 
     @property
     def points(self):
-        return np.array(self.idx.keys())
+        return np.array(list(self.idx.keys()))
 
 class _quadset(object):
     def __init__(self):
@@ -117,7 +117,7 @@ class _quadset(object):
 
     @property
     def triangles(self):
-        for quad in self.polys.values():
+        for quad in list(self.polys.values()):
             yield quad[:3]
             yield [quad[0], quad[2], quad[3]]
 
@@ -133,7 +133,7 @@ def face_volume(pts1, pts2, polys):
     for i, face in enumerate(polys):
         vols[i] = _brick_vol(np.append(pts1[face], pts2[face], axis=0))
         if i % 1000 == 0:
-            print i
+            print(i)
     return vols
 
 def transform(xfm, pts):
@@ -186,7 +186,7 @@ def get_closest_nonadj(dist, adjthres=10):
         if len(find) > 0:
             closest.append((i, find[0]+i))
 
-    return np.array(filter(lambda x: (x[1], x[0]) not in closest, closest))
+    return np.array([x for x in closest if (x[1], x[0]) not in closest])
 
 def make_rot(close, pts):
     pair = pts[close, :2]
@@ -299,8 +299,8 @@ def draw_lines(closest, pts):
     '''
 
 if __name__ == "__main__":
-    import cPickle
-    import db
+    import pickle
+    from . import db
     pts, polys, norm = db.surfs.getVTK("JG", "flat", merge=True, nudge=True)
     fpts, fpolys, norm = db.surfs.getVTK("JG", "fiducial", merge=True, nudge=False)
     #pts, polys, fpts = cPickle.load(open("/tmp/ptspolys.pkl"))

@@ -5,7 +5,7 @@ import mimetypes
 
 import html5lib
 
-import serve
+from . import serve
 
 def _open(fname):
     try:
@@ -95,7 +95,7 @@ if (window.webkitURL)
             try:
                 _embed_js(dom, script)
             except:
-                print "Unable to embed script %s" %src
+                print("Unable to embed script %s" %src)
     
     for css in dom.getElementsByTagName("link"):
         if (css.getAttribute("type") == "text/css"):

@@ -49,19 +49,19 @@ class ROI(traits.HasTraits):
         pts = [[offset[0], offset[1]]]
         while len(data) > 0:
             d = data.pop(0)
-            if isinstance(d, (unicode, str)) and len(d) == 1:
+            if isinstance(d, str) and len(d) == 1:
                 mode = d
                 continue
             if mode == "l":
-                offset += map(float, d.split(','))
+                offset += list(map(float, d.split(',')))
             elif mode == "L":
-                offset = np.array(map(float, d.split(',')))
+                offset = np.array(list(map(float, d.split(','))))
             elif mode == "c":
                 data.pop(0)
-                offset += map(float, data.pop(0).split(','))
+                offset += list(map(float, data.pop(0).split(',')))
             elif mode == "C":
                 data.pop(0)
-                offset = np.array(map(float, data.pop(0).split(',')))
+                offset = np.array(list(map(float, data.pop(0).split(','))))
             pts.append([offset[0],offset[1]])
 
         pts = np.array(pts)
@@ -175,17 +175,17 @@ class ROIpack(traits.HasTraits):
 
     @traits.on_trait_change("linewidth, linecolor, roifill")
     def update_style(self):
-        for roi in self.rois.values():
+        for roi in list(self.rois.values()):
             roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill)
         try:
             if self.callback is not None:
                 self.callback()
         except:
-            print "cannot callback"
+            print("cannot callback")
 
     def _shadow_changed(self):
         self.svg.find("//{%s}feGaussianBlur"%svgns).attrib["stdDeviation"] = str(self.shadow)
-        for roi in self.rois.values():
+        for roi in list(self.rois.values()):
             roi.update_attribs()
 
     def get_texture(self, texres, name=None, background=None, labels=True, bits=32):
@@ -226,10 +226,10 @@ class ROIpack(traits.HasTraits):
             return png
 
     def get_labelpos(self, pts=None, norms=None, fancy=True):
-        return dict([(name, roi.get_labelpos(pts, norms, fancy)) for name, roi in self.rois.items()])
+        return dict([(name, roi.get_labelpos(pts, norms, fancy)) for name, roi in list(self.rois.items())])
 
     def get_ptidx(self):
-        return dict([(name, roi.get_ptidx()) for name, roi in self.rois.items()])
+        return dict([(name, roi.get_ptidx()) for name, roi in list(self.rois.items())])
 
     def get_roi(self, roiname):
         import Image
@@ -237,7 +237,7 @@ class ROIpack(traits.HasTraits):
         self.shadow = 0
 
         state = dict()
-        for name, roi in self.rois.items():
+        for name, roi in list(self.rois.items()):
             #Store what the ROI style so we can restore
             state[name] = dict(linewidth=roi.linewidth, roifill=roi.roifill, hide=roi.hide)
             if name == roiname:
@@ -251,7 +251,7 @@ class ROIpack(traits.HasTraits):
         roiidx = np.nonzero(imdat[tuple(idx.T)] == 1)[0]
 
         #restore the old roi settings
-        for name, roi in self.rois.items():
+        for name, roi in list(self.rois.items()):
             roi.set(**state[name])
 
         self.shadow = shadow
@@ -259,7 +259,7 @@ class ROIpack(traits.HasTraits):
     
     @property
     def names(self):
-        return self.rois.keys()
+        return list(self.rois.keys())
 
     def __getitem__(self, name):
         return self.rois[name]
@@ -271,7 +271,7 @@ class ROIpack(traits.HasTraits):
             layer = _make_layer(self.svg.getroot(), "roilabels")
 
         labelpos, candidates = [], []
-        for roi in self.rois.values():
+        for roi in list(self.rois.values()):
             for i, pos in enumerate(roi.get_labelpos()):
                 labelpos.append(pos)
                 candidates.append((roi, i))
@@ -339,11 +339,11 @@ try:
                 return list(poly.buffer(-last_i).centroid.coords)[0] * max + min
             last_i = i
 
-        print "unable to find zero centroid..."
+        print("unable to find zero centroid...")
         return list(poly.buffer(-100).centroid.coords)[0] * max + min
 
 except ImportError:
-    print "Cannot find shapely, using simple label placement"
+    print("Cannot find shapely, using simple label placement")
     def _center_pts(pts):
         return pts.mean(0)
 
@@ -359,7 +359,7 @@ def _labelpos(pts):
     try:
         x, y = _center_pts(np.dot(ptm, np.dot(v.T, sp))[:,:2])
     except Exception as e:
-        print e
+        print(e)
 
     sp = np.diag(1./(s+np.finfo(float).eps))
     pt = np.dot(np.dot(np.array([x,y,0]), sp), v)
@@ -385,7 +385,7 @@ def scrub(svgfile):
     return svg
 
 def make_svg(pts, polys):
-    from polyutils import trace_both
+    from .polyutils import trace_both
     pts -= pts.min(0)
     pts *= 1024 / pts.max(0)[1]
     pts[:,1] = 1024 - pts[:,1]

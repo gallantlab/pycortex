@@ -15,7 +15,7 @@ from tornado import web, template
 
 from .. import utils, options
 
-import serve
+from . import serve
 
 sloader = template.Loader(serve.cwd)
 lloader = template.Loader("./")
@@ -30,8 +30,8 @@ def _normalize_data(data, mapper):
         data = dict(data0=data)
 
     json = dict()
-    json['__order__'] = data.keys()
-    for name, dat in data.items():
+    json['__order__'] = list(data.keys())
+    for name, dat in list(data.items()):
         ds = dict(__class__="Dataset")
 
         if isinstance(dat, dict):
@@ -56,7 +56,7 @@ def _normalize_data(data, mapper):
 
 def _make_bindat(json, fmt="%s.bin"):
     newjs, bindat = dict(), dict()
-    for name, data in json.items():
+    for name, data in list(json.items()):
         if "data" in data:
             newjs[name] = dict(data)
             newjs[name]['data'] = fmt%name
@@ -137,7 +137,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     **kwargs : dict, optional
         All additional keyword arguments are passed to the template renderer.
     '''
-    print "You'll probably need nginx to view this, since file:// paths don't handle xsrf correctly"
+    print("You'll probably need nginx to view this, since file:// paths don't handle xsrf correctly")
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
         os.makedirs(outpath)
@@ -175,12 +175,12 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
 
     #Generate the data binary objects and save them into the outpath
     json, sdat = _make_bindat(_normalize_data(data, mapper))
-    for name, dat in sdat.items():
+    for name, dat in list(sdat.items()):
         with open(os.path.join(outpath, "%s.bin"%name), "wb") as binfile:
             binfile.write(dat)
     
     #Parse the html file and paste all the js and css files directly into the html
-    import htmlembed
+    from . import htmlembed
     if os.path.exists(os.path.join("./", template)):
         template = lloader.load(template)
     else:
@@ -230,7 +230,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
             path = path.strip("/")
             if not queue.empty():
                 d = queue.get()
-                print "Got new data: %r"%d.keys()
+                print("Got new data: %r"%list(d.keys()))
                 bindat.update(d)
 
             if path in bindat:
@@ -245,7 +245,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
             self.write(html.generate(data=jsondat, colormaps=colormaps, default_cmap=cmap, python_interface=True))
 
         def post(self):
-            print "saving file to %s"%saveimg.value
+            print("saving file to %s"%saveimg.value)
             data = self.get_argument("svg", default=None)
             png = self.get_argument("png", default=None)
             with open(saveimg.value, "wb") as svgfile:
@@ -254,7 +254,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
                     try:
                         data = binascii.a2b_base64(data)
                     except:
-                        print "Error writing image!"
+                        print("Error writing image!")
                         data = png
                 svgfile.write(data)
             saveevt.set()
@@ -294,7 +294,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
                     if start['value'] != end['value']:
                         anim.append((start, end))
 
-            print anim
+            print(anim)
             self.resize(*shape)
             for i, sec in enumerate(np.arange(0, anim[-1][1]['idx'], 1./fps)):
                 for start, end in anim:
@@ -324,7 +324,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
             (r'/mixer.html', MixerHandler),
         ], port)
     server.start()
-    print "Started server on port %d"%server.port
+    print("Started server on port %d"%server.port)
     if open_browser:
         webbrowser.open("http://%s:%d/mixer.html"%(serve.hostname, server.port))
 

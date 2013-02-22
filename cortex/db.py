@@ -14,7 +14,7 @@ import json
 import shutil
 import numpy as np
 
-import options
+from . import options
 
 filestore = options.config.get('basic', 'filestore')
 
@@ -40,10 +40,10 @@ class SurfaceDB(object):
             self.types[name] = Surf(subj, name)
     
     def __repr__(self):
-        return "Surfaces: [{surfs}]".format(surfs=', '.join(self.types.keys()))
+        return "Surfaces: [{surfs}]".format(surfs=', '.join(list(self.types.keys())))
     
     def __dir__(self):
-        return self.types.keys()
+        return list(self.types.keys())
 
     def __getattr__(self, attr):
         if attr in self.types:
@@ -59,7 +59,7 @@ class Surf(object):
         return surfs.getVTK(self.subject, self.surftype, hemisphere)
     
     def show(self, hemisphere="both"):
-        import vtkutils
+        from . import vtkutils
         lh = self.fname.format(subj=self.subject, name=self.surftype, hemi="lh")
         rh = self.fname.format(subj=self.subject, name=self.surftype, hemi="rh")
         if hemisphere == "both":
@@ -139,7 +139,7 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["loadXfm","getXfm", "getVTK"] + self.subjects.keys()
+        return ["loadXfm","getXfm", "getVTK"] + list(self.subjects.keys())
 
     def loadAnat(self, subject, anatfile, type='raw', process=True):
         fname = os.path.join(filestore, "anatomicals", "{subj}_{type}.nii.gz").format(subj=subject, type=type)
@@ -147,7 +147,7 @@ class Database(object):
         data = nibabel.load(anatfile)
         nibabel.save(data, fname)
         if type == "raw" and process:
-            import anat
+            from . import anat
             anat.whitematter(subject)
 
     def getAnat(self, subject, type='raw', recache=False, **kwargs):
@@ -159,8 +159,8 @@ class Database(object):
             anatfile = "%s.npz"%path
             
         if not os.path.exists(anatfile) or recache:
-            print "%s anatomical not found, generating..."%type
-            import anat
+            print("%s anatomical not found, generating..."%type)
+            from . import anat
             getattr(anat, type)(subject, **kwargs)
             
         return anatfile
@@ -254,7 +254,7 @@ class Database(object):
             For single hemisphere
         '''
 
-        from vtkutils_new import read as vtkread
+        from .vtkutils_new import read as vtkread
         fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
 
         if hemisphere == "both":

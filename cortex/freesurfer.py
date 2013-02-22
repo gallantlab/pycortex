@@ -41,29 +41,28 @@ def import_subj(subject, sname=None):
 
     np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
 
-
 def parse_surf(filename):
-    with open(filename) as fp:
+    with open(filename, 'rb') as fp:
         #skip magic
         fp.seek(3)
-        comment = ' '
-        while comment[-1] != '\n':
+        comment = b' '
+        while comment[-1] != 10:
             comment += fp.read(1)
         comment += fp.read(1)
-        print comment[1:-2]
+        print(comment[1:-2])
         verts, faces = struct.unpack('>2I', fp.read(8))
         pts = np.fromstring(fp.read(4*3*verts), dtype='f4').byteswap()
         polys = np.fromstring(fp.read(4*3*faces), dtype='I4').byteswap()
-        #print fp.read()
+
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
 def parse_curv(filename):
-    with open(filename) as fp:
+    with open(filename, 'rb') as fp:
         fp.seek(15)
-        return np.fromstring(fp.read(), dtype='>f4').byteswap()
+        return np.fromstring(fp.read(), dtype='>f4').byteswap().newbyteorder()
 
 def parse_patch(filename):
-    with open(filename) as fp:
+    with open(filename, 'rb') as fp:
         header, = struct.unpack('>i', fp.read(4))
         nverts, = struct.unpack('>i', fp.read(4))
         data = np.fromstring(fp.read(), dtype=[('vert', '>i4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4')])

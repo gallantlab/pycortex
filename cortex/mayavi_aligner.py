@@ -13,8 +13,8 @@ from mayavi.core.ui import lut_manager
 from mayavi.core.api import PipelineBase, Source, Filter, Module
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 
-import options
-import utils
+from . import options
+from . import utils
 
 class RotationWidget(HasTraits):
     radius = Float(value=1)
@@ -90,7 +90,7 @@ class RotationWidget(HasTraits):
     def _set_circle(self):
         if hasattr(self, "circle"):
             self.center.representation.world_position = self.pos
-            rpos = map(lambda f: self.radius*f(self.angle), [np.cos, np.sin])
+            rpos = [self.radius*f(self.angle) for f in [np.cos, np.sin]]
             self.edge.representation.world_position = self.pos + (rpos+[0])
             
             #self.circle.mlab_source.set(dict(zip(("x", "y", "z"), self._gen_circle())))
@@ -581,7 +581,7 @@ class Align(HasTraits):
         elif xfmtype == "magnet":
             self.startxfm = np.dot(np.dot(base, np.linalg.inv(self.affine)), xfm)
         else:
-            print "using xfmtype %s"%xfmtype
+            print("using xfmtype %s"%xfmtype)
             self.startxfm = xfm
 
         self.center = self.spacing*nii.get_shape()[:3] / 2 + self.origin
@@ -815,7 +815,7 @@ class Align(HasTraits):
             )
 
 def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
-    import db
+    from . import db
     data = db.surfs.getXfm(subject, xfmname, xfmtype='magnet')
     if data is None:
         data = db.surfs.getXfm(subject, xfmname, xfmtype='coord')

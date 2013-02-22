@@ -9,7 +9,7 @@ def read_old(vtk):
 def read(vtk):
 	with open(vtk) as vtk:
 		pts, polys = None, None
-		line = vtk.next()
+		line = next(vtk)
 		stopped = False
 		while len(line) > 0 and (pts is None or polys is None) and not stopped:
 			if line.startswith("POINTS"):
@@ -28,7 +28,7 @@ def read(vtk):
 					data += vtk.next().split()
 				polys = np.array(data, dtype=np.uint32).reshape(int(n), 4)[:,1:]
 			try:
-				line = vtk.next()
+				line = next(vtk)
 			except StopIteration:
 				stopped = True
 		return pts, polys, None

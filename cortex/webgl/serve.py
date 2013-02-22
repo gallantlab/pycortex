@@ -239,7 +239,7 @@ class WebApp(mp.Process):
         self.ioloop.start()
 
     def stop(self):
-        print "Stopping server"
+        print("Stopping server")
         self.ioloop.stop()
 
     def _send(self, fd, event):
@@ -252,7 +252,7 @@ class WebApp(mp.Process):
                 sock.write_message(msg)
 
     def send(self, **msg):
-        if not isinstance(msg, (str, unicode)):
+        if not isinstance(msg, str):
             msg = json.dumps(msg, cls=NPEncode)
 
         os.write(self.pipe, struct.pack('I', len(msg))+msg)        

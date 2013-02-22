@@ -1,1 +1,1 @@
-from view import show, make_static
+from .view import show, make_static

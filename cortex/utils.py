@@ -1,9 +1,9 @@
 import os
 import sys
 import binascii
-import cStringIO
+import io
 import numpy as np
-from db import surfs
+from .db import surfs
 
 def unmask(mask, data):
     """unmask(mask, data)
@@ -96,7 +96,7 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     return output
 
 def get_mapper(subject, xfmname, type='nearest', **kwargs):
-    import mapper
+    from . import mapper
     mapfunc = dict(
         nearest=mapper.Nearest,
         trilinear=mapper.Trilinear,
@@ -106,7 +106,7 @@ def get_mapper(subject, xfmname, type='nearest', **kwargs):
     return mapfunc[type](subject, xfmname, **kwargs)
 
 def get_roipack(subject, remove_medial=False):
-    import svgroi
+    from . import svgroi
     flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
     if remove_medial:
         valid = np.unique(polys)
@@ -131,8 +131,8 @@ def get_ctmpack(subject, xfmname, types=("inflated",), projection='nearest', met
             mapper.idxmap = ptmap['left'], ptmap['right']
         return ctmfile, mapper
 
-    print "Generating new ctm file..."
-    import brainctm
+    print("Generating new ctm file...")
+    from . import brainctm
     ptmap = brainctm.make_pack(ctmfile, subject, xfmname, types, method, level)
     if ptmap is not None:
         mapper.idxmap = ptmap
@@ -190,11 +190,11 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
 def add_roi(data, subject, xfmname, name="new_roi", recache=False, open_inkscape=True, add_path=True, projection='nearest', **kwargs):
     import subprocess as sp
     from matplotlib.pylab import imsave
-    from utils import get_roipack
-    import quickflat
+    from .utils import get_roipack
+    from . import quickflat
     rois = get_roipack(subject)
     im = quickflat.make(data, subject, xfmname, height=1024, recache=recache, projection=projection, with_rois=False)
-    fp = cStringIO.StringIO()
+    fp = io.StringIO()
     imsave(fp, im, **kwargs)
     fp.seek(0)
     rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
@@ -223,7 +223,7 @@ def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
     mapper = get_mapper(subject, xfmname, type=projection)
     rois = get_roi_verts(subject, roi=roi)
     output = dict()
-    for name, verts in rois.items():
+    for name, verts in list(rois.items()):
         left, right = mapper.backwards(verts)
         output[name] = left + right
         
@@ -302,7 +302,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         # Note that indexing by voxIdx guarantees that there will be no overlap in ROIs
         # (unless there are overlapping assignments to ROIs on the surface), due to 
         # each voxel being assigned only ONE closest vertex
-        print('%d voxels cut'%np.sum(toCut))
+        print(('%d voxels cut'%np.sum(toCut)))
         tmpMask[toCut] = False 
         for ir,roi in enumerate(roiList):
             mask[tmpMask[:,ir,0]] = -ir-1
@@ -348,7 +348,7 @@ def get_curvature(subject, smooth=8, neighborhood=3):
                     curvature[i] = (g * curv[neighbors]).mean()
                 
                 if i % 1000 == 0:
-                    print "\r%d"%i ,
+                    print("\r%d"%i, end=' ')
                     sys.stdout.flush()
             curvs.append(curvature)
 
@@ -356,10 +356,10 @@ def get_curvature(subject, smooth=8, neighborhood=3):
 
 def decimate_mesh(subject, proportion = 0.5):
     from scipy.spatial import Delaunay
-    from polyutils import trace_both
+    from .polyutils import trace_both
     flat = surfs.getVTK(subject, "flat")
     fiducial = surfs.getVTK(subject, "fiducial")
-    edges = map(np.array, trace_both(*surfs.getVTK(subject, "flat", merge=True, nudge=True)[:2]))
+    edges = list(map(np.array, trace_both(*surfs.getVTK(subject, "flat", merge=True, nudge=True)[:2])))
     edges[1] -= len(flat[0][0])
 
     masks, newpolys = [], []

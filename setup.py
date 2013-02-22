@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 import os
-import ConfigParser
+import configparser
 from distutils.command.install import install
 from distutils.core import setup, Extension
 from Cython.Build import cythonize
 
 def set_default_filestore(prefix, optfile):
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     config.read(optfile)
     config.set("basic", "filestore", os.path.join(prefix))
     config.set("webgl", "colormaps", os.path.join(prefix, "colormaps"))

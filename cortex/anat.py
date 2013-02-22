@@ -7,12 +7,12 @@ import subprocess as sp
 import numpy as np
 import nibabel
 
-import db
-import utils
+from . import db
+from . import utils
 
 def brainmask(subject):
     anatform = db.surfs.getFiles(subject)['anats']
-    print 'Brain masking anatomical...'
+    print('Brain masking anatomical...')
     raw = anatform.format(type='raw')
     bet = anatform.format(type='brainmask')
     cmd = 'fsl5.0-bet {raw} {bet} -B -v'.format(raw=raw, bet=bet)
@@ -27,7 +27,7 @@ def whitematter(subject):
 
     try:
         cache = tempfile.mkdtemp()
-        print "Segmenting the brain..."
+        print("Segmenting the brain...")
         cmd = 'fsl5.0-fast -o {cache}/fast {bet}'.format(cache=cache, bet=bet)
         assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
         cmd = 'fsl5.0-fslmaths {cache}/fast_pve_2 -thr 0.5 -bin {out}'.format(cache=cache, out=fast)

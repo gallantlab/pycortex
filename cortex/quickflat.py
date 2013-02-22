@@ -2,16 +2,16 @@ import os
 import sys
 import time
 import glob
-import cPickle
-import cStringIO
+import pickle
+import io
 import binascii
 import numpy as np
 
-import db
-import utils
+from . import db
+from . import utils
 
 def _gen_flat_mask(subject, height=1024):
-    import polyutils
+    from . import polyutils
     import Image
     import ImageDraw
     pts, polys, norm = db.surfs.getVTK(subject, "flat", merge=True, nudge=True)
@@ -59,15 +59,15 @@ def get_cache(subject, xfmname, recache=False, height=1024):
         #if recaching, delete all existing files
         for f in files:
             os.unlink(f)
-        print "Generating a flatmap cache"
+        print("Generating a flatmap cache")
         #pull points and transform from database
         verts, mask = _make_flat_cache(subject, xfmname, height=height)
         #save them into the proper file
         date = time.strftime("%Y%m%d")
         cachename = cacheform.format(xfmname=xfmname, height=height, date=date)
-        cPickle.dump((verts, mask), open(cachename, "w"), 2)
+        pickle.dump((verts, mask), open(cachename, "w"), 2)
     else:
-        verts, mask = cPickle.load(open(files[0]))
+        verts, mask = pickle.load(open(files[0]))
 
     cache[key] = verts, mask
     return verts, mask
@@ -101,17 +101,17 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
 
     key = (subject, labels)
     if key not in rois:
-        print "loading %s"%subject
+        print("loading %s"%subject)
         rois[key] = utils.get_roipack(subject).get_texture(height, labels=labels)
     cmd = "composite {rois} - {name}".format(rois=rois[key].name, name=name)
     proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
 
-    fp = cStringIO.StringIO()
+    fp = io.StringIO()
     imsave(fp, im, **kwargs)
     fp.seek(0)
     out, err = proc.communicate(fp.read())
     if len(out) > 0:
-        fp = cStringIO.StringIO()
+        fp = io.StringIO()
         fp.write(out)
         fp.seek(0)
         return fp
@@ -181,10 +181,10 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, project
             idx, ts = idxts
             img.set_data(interp(ts))
             fig.savefig(impath%idx, transparent=True, dpi=dpi)
-            print "      \r%.02f%%...."%(float(idx) / len(frames) * 100) ,
+            print("      \r%.02f%%...."%(float(idx) / len(frames) * 100), end=' ')
             sys.stdout.flush()
 
-        map(overlay, enumerate(frames))
+        list(map(overlay, enumerate(frames)))
 
         cmd = "avconv -i {path} -vcodec {vcodec} -r {fps} -b {br} {name}".format(path=impath, vcodec=vcodec, fps=fps, br=bitrate, name=name)
         sp.call(shlex.split(cmd))
