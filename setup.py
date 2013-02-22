@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
 import os
-import configparser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 from distutils.command.install import install
 from distutils.core import setup, Extension
 from Cython.Build import cythonize

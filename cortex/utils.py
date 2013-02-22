@@ -347,9 +347,6 @@ def get_curvature(subject, smooth=8, neighborhood=3):
                     g = np.exp(-(((hemi[0][neighbors] - pt)**2) / (2*smooth**2)).sum(1))
                     curvature[i] = (g * curv[neighbors]).mean()
                 
-                if i % 1000 == 0:
-                    print("\r%d"%i, end=' ')
-                    sys.stdout.flush()
             curvs.append(curvature)
 
     return curvs

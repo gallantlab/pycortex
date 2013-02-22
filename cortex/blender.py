@@ -47,5 +47,5 @@ def show(data, subject, xfmname, types=('inflated',)):
 	from .db import surfs
 	surfs.getVTK(data, "fiducial")
 
-def flatten(subjfs, retinotopy):
+def flatten(subjfs, retinotopy=None):
 	pass
