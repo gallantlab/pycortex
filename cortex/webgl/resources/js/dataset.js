@@ -157,12 +157,24 @@ Dataset.prototype = {
             var newtex = [];
             for (var t = 0; t < this.textures.length; t++) {
                 var oarr = this.textures[t];
-                var narr = new Float32Array(oarr.length);
-                for (var i = 0, il = oarr.length; i < il; i++) {
-                    if (i < lsize) 
-                        narr[left[i]] = oarr[i];
-                    else
-                        narr[right[i-lsize]+lsize] = oarr[i];
+                if (this.raw) {
+                    var narr = new Uint8Array(oarr.length);
+                    for (var i = 0, il = oarr.length / 4; i < il; i++) {
+                        for (var j = 0; j < 4; j++) {
+                            if (i < lsize)
+                                narr[left[i]*4+j] = oarr[4*i+j];
+                            else
+                                narr[(right[i-lsize]+lsize)*4+j] = oarr[4*i+j];
+                        }
+                    }
+                } else {
+                    var narr = new Float32Array(oarr.length);
+                    for (var i = 0, il = oarr.length; i < il; i++) {
+                        if (i < lsize) 
+                            narr[left[i]] = oarr[i];
+                        else
+                            narr[right[i-lsize]+lsize] = oarr[i];
+                    }
                 }
                 newtex.push(narr);
             }

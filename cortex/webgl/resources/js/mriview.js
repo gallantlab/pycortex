@@ -75,13 +75,9 @@ var rawShader = ([
     "attribute vec4 data0;",
     "attribute vec4 data2;",
     ]).join("\n") + vShadeHead + ([
-        'if (isnan(data0)) {',
-            'vColor = vec4(0.);',
-        '} else {',
-            "vColor  = (1. - framemix) * data0 * vec4(1. / 255.);",
-            "vColor +=       framemix  * data2 * vec4(1. / 255.);",
-            "vColor.rgb *= vColor.a;",
-        '}',
+        "vColor  = (1. - framemix) * data0 * vec4(1. / 255.);",
+        "vColor +=       framemix  * data2 * vec4(1. / 255.);",
+        "vColor.rgb *= vColor.a;",
 ].join("\n")) + vShadeTail;
 
 var fragmentShader = [
