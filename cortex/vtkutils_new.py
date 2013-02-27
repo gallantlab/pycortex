@@ -9,28 +9,25 @@ def read_old(vtk):
 def read(vtk):
 	with open(vtk) as vtk:
 		pts, polys = None, None
-		line = next(vtk)
-		stopped = False
-		while len(line) > 0 and (pts is None or polys is None) and not stopped:
+		line = vtk.readline()
+		while len(line) > 0 and (pts is None or polys is None):
 			if line.startswith("POINTS"):
 				_, n, dtype = line.split()
-				data = vtk.next().split()
+				data = vtk.readline().split()
 				n = int(n)
 				nel = n*3
 				while len(data) < nel:
-					data += vtk.next().split()
+					data += vtk.readline().split()
 				pts = np.array(data, dtype=float).reshape(n, 3)
 			elif line.startswith("POLYGONS"):
 				_, n, nel = line.split()
 				nel = int(nel)
-				data = vtk.next().split()
+				data = vtk.readline().split()
 				while len(data) < nel:
-					data += vtk.next().split()
+					data += vtk.readline().split()
 				polys = np.array(data, dtype=np.uint32).reshape(int(n), 4)[:,1:]
-			try:
-				line = next(vtk)
-			except StopIteration:
-				stopped = True
+
+			line = vtk.readline()
 		return pts, polys, None
 
 

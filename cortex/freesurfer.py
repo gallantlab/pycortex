@@ -4,13 +4,13 @@ import tempfile
 import shlex
 import subprocess as sp
 
-import nibabel
 import numpy as np
 
-import db
-import vtkutils_new as vtk
+from . import db
+from . import vtkutils_new as vtk
 
 def import_subj(subject, sname=None):
+    import nibabel
     surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.vtk")
     anats = os.path.join(db.filestore, "anatomicals", "{subj}_{name}.{type}")
     fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
@@ -38,23 +38,31 @@ def import_subj(subject, sname=None):
             vtk.write(fname, pts + surfmove, polys)
             if fsname == 'smoothwm':
                 curvs[hemi] = curv
-
+    import ipdb
+    ipdb.set_trace()
     np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
 
 def parse_surf(filename):
     with open(filename, 'rb') as fp:
         #skip magic
         fp.seek(3)
-        comment = b' '
-        while comment[-1] != 10:
-            comment += fp.read(1)
-        comment += fp.read(1)
-        print(comment[1:-2])
+        comment = fp.readline()
+        fp.readline()
+        print(comment)
         verts, faces = struct.unpack('>2I', fp.read(8))
         pts = np.fromstring(fp.read(4*3*verts), dtype='f4').byteswap()
         polys = np.fromstring(fp.read(4*3*faces), dtype='I4').byteswap()
 
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
+
+def write_surf(filename, pts, polys, comment=''):
+    with open(filename, 'wb') as fp:
+        fp.write('\xff\xff\xfe')
+        fp.write(comment+'\n\n')
+        fp.write(struct.pack('>2I', len(pts), len(polys)))
+        fp.write(pts.astype(np.float32).byteswap().tostring())
+        fp.write(polys.astype(np.uint32).byteswap().tostring())
+        fp.write('\n')
 
 def parse_curv(filename):
     with open(filename, 'rb') as fp:
@@ -74,9 +82,9 @@ def get_surf(subject, hemi, type, patch=None, curv='wm'):
 
     if type == "patch":
         assert patch is not None
-        type = "smoothwm"
-
-    surf_file = os.path.join(path, "surf", hemi+'.'+type)
+        surf_file = os.path.join(path, "surf", hemi+'.smoothwm')
+    else:
+        surf_file = os.path.join(path, "surf", hemi+'.'+type)
     
     if curv == "wm":
         curv_file = os.path.join(path, "surf", hemi+'.curv')
@@ -87,7 +95,11 @@ def get_surf(subject, hemi, type, patch=None, curv='wm'):
 
     if patch is not None:
         patch_file = os.path.join(path, "surf", hemi+'.'+patch+'.patch.3d')
-        patch = parse_patch(patch_file)
+        try:
+            patch = parse_patch(patch_file)
+        except IOError:
+            patch_file = os.path.join(path, "surf", patch)
+            patch = parse_patch(patch_file)
         verts = patch[patch['vert'] > 0]['vert'] - 1
         edges = -patch[patch['vert'] < 0]['vert'] - 1
 
@@ -96,9 +108,15 @@ def get_surf(subject, hemi, type, patch=None, curv='wm'):
         idx[edges] = True
         valid = idx[polys.ravel()].reshape(-1, 3).all(1)
         polys = polys[valid]
+        idx = np.zeros((len(pts),))
+        idx[verts] = 1
+        idx[edges] = -1
 
     if type == "patch":
-        return patch[['x', 'y', 'z']], polys
+        for i, x in enumerate(['x', 'y', 'z']):
+            pts[verts, i] = patch[patch['vert'] > 0][x]
+            pts[edges, i] = patch[patch['vert'] < 0][x]
+        return pts, polys, idx
 
     return pts, polys, parse_curv(curv_file)
 
@@ -106,7 +124,7 @@ def show_surf(subject, hemi, type, patch=None):
     from mayavi import mlab
     from tvtk.api import tvtk
 
-    pts, polys = get_surf(subject, hemi, type, patch)
+    pts, polys, curv = get_surf(subject, hemi, type, patch)
     
     fig = mlab.figure()
     src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, scalars=curv, figure=fig)
@@ -171,3 +189,25 @@ def read_dot(fname, pts):
             data[int(el[0][1:])] = float(x), float(y)
             el = fp.readline().split(' ')
     return data
+
+def write_decimated(path, pts, polys):
+    from .polyutils import decimate, boundary_edges
+    dpts, dpolys = decimate(pts, polys)
+    write_surf(path+'.smoothwm', dpts, dpolys)
+    edges = boundary_edges(dpolys)
+    data = np.zeros((len(dpts),), dtype=[('vert', '>i4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4')])
+    data['vert'] = np.arange(len(dpts))+1
+    data['vert'][edges] *= -1
+    data['x'] = dpts[:,0]
+    data['y'] = dpts[:,1]
+    data['z'] = dpts[:,2]
+    with open(path+'.full.patch.3d', 'wb') as fp:
+        fp.write(struct.pack('>i', -1))
+        fp.write(struct.pack('>i', len(dpts)))
+        fp.write(data.tostring())
+
+def spring(pts, polys, pins=None):
+    if pins is None:
+        pins = np.zeros((len(pts),), dtype=bool)
+    moveable = pts[~pins]
+    import networkx as nx

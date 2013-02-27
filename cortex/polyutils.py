@@ -298,6 +298,32 @@ def draw_lines(closest, pts):
     ax.add_patch(patch)
     '''
 
+def decimate(pts, polys):
+    from tvtk.api import tvtk
+    pd = tvtk.PolyData(points=pts, polys=polys)
+    dec = tvtk.DecimatePro(input=pd)
+    dec.set(preserve_topology=True, splitting=False, boundary_vertex_deletion=False, target_reduction=1.0)
+    dec.update()
+    return dec.output.points.to_array(), dec.output.polys.to_array().reshape(-1, 4)[:,1:]
+
+def boundary_edges(polys):
+    edges = dict()
+    for i, poly in enumerate(polys):
+        p = np.sort(poly)
+        for a, b in [(0,1), (1,2), (0, 2)]:
+            key = p[a], p[b]
+            if key not in edges:
+                edges[key] = []
+            edges[key].append(i)
+
+    verts = set()
+    for (v1, v2), faces in edges.items():
+        if len(faces) == 1:
+            verts.add(v1)
+            verts.add(v2)
+    
+    return np.array(list(verts))
+
 if __name__ == "__main__":
     import pickle
     from . import db
