@@ -442,3 +442,108 @@ def get_flatmap_distortion(sub, type="areal"):
             distortions.append(alldists)
 
     return distortions
+
+def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
+    import networkx as nx
+    def iter_surfedges(tris):
+        for a,b,c in tris:
+            yield a,b
+            yield b,c
+            yield a,c
+
+    def make_surface_graph(tris):
+        graph = nx.Graph()
+        graph.add_edges_from(iter_surfedges(tris))
+        return graph
+
+    def dilate_vertset(vset, graph, iters=1):
+        outset = set(vset)
+        for ii in range(iters):
+            newset = set(outset)
+            for v in outset:
+                newset.update(graph[v].keys())
+            outset = set(newset)
+        return outset
+
+    def get_path_len_mm(path, verts):
+        if len(path)==1:
+            return 0
+        hops = zip(path[:-1], path[1:])
+        hopvecs = np.vstack([verts[a] - verts[b] for a,b in hops])
+        return np.sqrt((hopvecs**2).sum(1)).sum()
+
+    def memo_get_path_len_mm(path, verts, memo=dict()):
+        if len(path)==1:
+            return 0
+        if tuple(path) in memo:
+            return memo[tuple(path)]
+        lasthoplen = np.sqrt(((verts[path[-2]] - verts[path[-1]])**2).sum())
+        pathlen = memo_get_path_len_mm(path[:-1], verts, memo) + lasthoplen
+        memo[tuple(path)] = pathlen
+        return pathlen
+
+    tissots = []
+    allcenters = []
+    for hem in ["lh", "rh"]:
+        fidvert, fidtri, etc = surfs.getVTK(sub, "fiducial", hem)
+        G = make_surface_graph(fidtri)
+        nvert = fidvert.shape[0]
+        tissot_array = np.zeros((nvert,))
+
+        #maxfails = 20
+        numfails = 0
+        cnum = 0
+        centers = []
+        while numfails < maxfails:
+            ## Pick random vertex
+            centervert = np.random.randint(nvert)
+            print "Trying vertex %d.." % centervert
+
+            ## Find distance from this center to all previous centers
+            #center_dists = [get_path_len_mm(nx.algorithms.shortest_path(G, centervert, cv), fidvert)
+            #                for cv in centers]
+
+            ## Check whether new center is sufficiently far from previous
+            paths = nx.algorithms.single_source_shortest_path(G, centervert, spacing/2 + 20)
+            scrap = False
+            for cv in centers:
+                if cv in paths:
+                    center_dist = get_path_len_mm(paths[cv], fidvert)
+                    if center_dist < spacing:
+                        scrap = True
+                        break
+
+            if scrap:
+                numfails += 1
+                print "Vertex too close to others, scrapping (nfails=%d).." % numfails
+                continue
+
+            print "Vertex is good center, continuing.."
+            centers.append(centervert)
+            numfails = 0
+
+            paths = nx.algorithms.single_source_shortest_path(G, centervert, radius*2)
+            ## Find all vertices within a few steps of the center
+            #nearbyverts = dilate_vertset(set([centervert]), G, radius/2 + 10)
+
+            ## Pull out small graph containing only these vertices
+            #subG = G.subgraph(nearbyverts)
+
+            ## Find distance from center to each vertex
+            #paths = nx.algorithms.single_source_shortest_path(subG, centervert)
+            mymemo = dict()
+            dists = dict([(vi,memo_get_path_len_mm(p, fidvert, mymemo)) for vi,p in paths.iteritems()])
+
+            ## Find appropriate set of vertices
+            distfun = lambda d: np.tanh(radius-d)/2 + 0.5
+            #selverts = np.array([vi for vi,d in dists.iteritems() if d<radius])
+            #tissot_array[selverts] = cnum
+            verts, vals = map(np.array, zip(*[(vi,distfun(d)) for vi,d in dists.iteritems()]))
+            tissot_array[verts] += vals
+            print vals.sum()
+            cnum += 1
+
+        tissots.append(tissot_array)
+        allcenters.append(np.array(centers))
+
+    return tissots, allcenters
