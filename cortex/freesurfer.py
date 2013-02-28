@@ -207,8 +207,67 @@ def write_decimated(path, pts, polys):
         fp.write(struct.pack('>i', len(dpts)))
         fp.write(data.tostring())
 
-def spring(pts, polys, pins=None):
-    if pins is None:
-        pins = np.zeros((len(pts),), dtype=bool)
-    moveable = pts[~pins]
-    import networkx as nx
+from scipy.spatial import cKDTree
+class SpringLayout(object):
+    def __init__(self, pts, polys, dpts=None, pins=None, stepsize=.1):
+        import networkx as nx
+        self.pts = pts
+        self.polys = polys
+        self.stepsize = stepsize
+        if pins is None:
+            pins = np.zeros((len(pts),), dtype=bool)
+        self.pins = pins
+        self.neighbors = [set() for _ in range(len(pts))]
+        self.graph = nx.Graph()
+        for i, j, k in polys:
+            self.neighbors[i].add(j)
+            self.neighbors[i].add(k)
+            self.neighbors[j].add(i)
+            self.neighbors[j].add(k)
+            self.neighbors[k].add(i)
+            self.neighbors[k].add(j)
+            self.graph.add_edges_from([(i,j), (i,k), (j,k)])
+
+        for i in range(len(self.neighbors)):
+            self.neighbors[i] = list(self.neighbors[i])
+
+        if dpts is None:
+            dpts = pts
+
+        self.dists = []
+        for i, neighbors in enumerate(self.neighbors):
+            self.dists.append(np.sqrt(((dpts[neighbors] - dpts[i])**2).sum(-1)))
+
+        self.kdt = cKDTree(self.pts)
+        self._next = self.pts.copy()
+
+    def _spring(self, i):
+        diff = self.pts[self.neighbors[i]] - self.pts[i]
+        dist = np.sqrt((diff**2).sum(1))
+        mag = self.stepsize * (self.dists[i] - dist)
+        return (mag * diff.T).T.mean(0)
+
+    def _estatic(self, idx):
+        dist, neighbors = self.kdt.query(self.pts[idx], k=20)
+        valid = dist > 0
+        mag = self.stepsize * (1 / dist)
+        diff = self.pts[neighbors] - self.pts[idx]
+        return (mag[valid] * diff[valid].T).T.mean(0)
+
+    def step(self):
+        for i in range(len(self.pts)):
+            self._next[i] -= self._spring(i) #+ self._estatic(i)
+        self.pts[:] = self._next
+        #self.kdt = cKDTree(self.pts)
+
+    def run(self, n=1000, show=False):
+        if show:
+            import matplotlib.pyplot as plt
+            import networkx as nx
+            nx.draw(self.graph, pos=self.pts)
+        for _ in range(n):
+            self.step()
+            if show:
+                plt.clf()
+                nx.draw(self.graph, pos=self.pts)
+                plt.show()
