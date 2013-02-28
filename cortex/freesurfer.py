@@ -124,6 +124,7 @@ def show_surf(subject, hemi, type, patch=None):
     from mayavi import mlab
     from tvtk.api import tvtk
 
+    path = os.path.join(os.environ['SUBJECTS_DIR'], subject)
     pts, polys, curv = get_surf(subject, hemi, type, patch)
     
     fig = mlab.figure()
@@ -144,7 +145,7 @@ def show_surf(subject, hemi, type, patch=None):
         if picker.actor in surf.actor.actors:
             npts = np.append(cursors.data.points.to_array(), [pts[picker.point_id]], axis=0)
             cursors.data.points = npts
-
+            print picker.point_id
             x, y, z = pts[picker.point_id]
             with open(os.path.join(path, 'tmp', 'edit.dat'), 'w') as fp:
                 fp.write('%f %f %f\n'%(x, y, z))

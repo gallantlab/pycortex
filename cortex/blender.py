@@ -15,16 +15,16 @@ def make_object(pts, polys, name="mesh"):
 
 class Hemi(object):
     def __init__(self, pts, polys, curv=None, name='hemi'):
-        self.mesh, self.obj = make_object(pts, polys, name=name)
-        self._loopidx = np.zeros((len(self.mesh.loops),), dtype=np.uint32)
-        self.mesh.loops.foreach_get('vertex_index', self._loopidx)
+        self.obj, self.mesh = make_object(pts, polys, name=name)
         self.obj.scale = .1, .1, .1
         C.scene.objects.active = self.obj
+        self._loopidx = np.zeros((len(self.mesh.loops),), dtype=np.uint32)
+        self.mesh.loops.foreach_get('vertex_index', self._loopidx)
+        self.addVColor(curv, name='curvature', vmin=-.6, vmax=.6)
         #Add basis shape
         bpy.ops.object.shape_key_add()
-        self.addVColor(curv, name='curvature',vmin=-1, vmax=1)
     
-    def addVColor(self, color, name='color', cmap=cm.RdBu_r, vmin=None, vmax=None):
+    def addVColor(self, color, name='color', cmap=cm.RdBu, vmin=None, vmax=None):
         if color.ndim == 1:
             if vmin is None:
                 vmin = color.min()
@@ -54,10 +54,8 @@ def show(data, subject, xfmname, types=('inflated',)):
 
 def fs_cut(subject, hemi):
     from .freesurfer import get_surf
-    wpts, polys, curv = get_surf(subject, hemi, )
-    ipts, polys, _ = surfs.getVTK(subjfs, 'inflated', hemi)
-    npz = np.load(surfs.getAnat(subjfs, 'curvature'))
-    curv = npz[dict(lh='left', rh='right')[hemi]]
+    wpts, polys, curv = get_surf(subject, hemi, 'smoothwm')
+    ipts, _, _ = get_surf(subject, hemi, 'inflated')
     
     hemi = Hemi(wpts, polys, curv=curv)
     hemi.addShape(ipts, name='inflated')

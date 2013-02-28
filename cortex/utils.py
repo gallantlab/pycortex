@@ -415,7 +415,8 @@ def get_flatmap_distortion(sub, type="areal"):
             vertratios /= np.bincount(flattri.ravel())
             vertratios = np.nan_to_num(vertratios)
             vertratios[vertratios==0] = 1
-            distortions.append(np.log(vertratios))
+            dist = np.log(vertratios)
+            distortions.append(dist - dist.mean())
             
         elif type=="metric":
             import networkx as nx
