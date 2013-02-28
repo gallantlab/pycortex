@@ -497,7 +497,7 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
         while numfails < maxfails:
             ## Pick random vertex
             centervert = np.random.randint(nvert)
-            print "Trying vertex %d.." % centervert
+            print("Trying vertex %d.." % centervert)
 
             ## Find distance from this center to all previous centers
             #center_dists = [get_path_len_mm(nx.algorithms.shortest_path(G, centervert, cv), fidvert)
@@ -515,10 +515,10 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
 
             if scrap:
                 numfails += 1
-                print "Vertex too close to others, scrapping (nfails=%d).." % numfails
+                print("Vertex too close to others, scrapping (nfails=%d).." % numfails)
                 continue
 
-            print "Vertex is good center, continuing.."
+            print("Vertex is good center, continuing..")
             centers.append(centervert)
             numfails = 0
 
@@ -540,7 +540,7 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
             #tissot_array[selverts] = cnum
             verts, vals = map(np.array, zip(*[(vi,distfun(d)) for vi,d in dists.iteritems()]))
             tissot_array[verts] += vals
-            print vals.sum()
+            print(vals.sum())
             cnum += 1
 
         tissots.append(tissot_array)
