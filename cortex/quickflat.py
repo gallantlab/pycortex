@@ -181,8 +181,6 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, project
             idx, ts = idxts
             img.set_data(interp(ts))
             fig.savefig(impath%idx, transparent=True, dpi=dpi)
-            print("      \r%.02f%%...."%(float(idx) / len(frames) * 100), end=' ')
-            sys.stdout.flush()
 
         list(map(overlay, enumerate(frames)))
 

@@ -52,9 +52,9 @@ def show(data, subject, xfmname, types=('inflated',)):
     from .db import surfs
     surfs.getVTK(data, "fiducial")
 
-def flatten(subjfs, hemi):
-    from .db import surfs
-    wpts, polys, _ = surfs.getVTK(subjfs, 'wm', hemi)
+def fs_cut(subject, hemi):
+    from .freesurfer import get_surf
+    wpts, polys, curv = get_surf(subject, hemi, )
     ipts, polys, _ = surfs.getVTK(subjfs, 'inflated', hemi)
     npz = np.load(surfs.getAnat(subjfs, 'curvature'))
     curv = npz[dict(lh='left', rh='right')[hemi]]
@@ -117,7 +117,7 @@ def write_patch(outfile, hemi):
     with open(outfile, 'wb') as fp:
         fp.write(struct.pack('>2i', -1, len(verts)))
         for v in verts:
-            pt = mesh.vertices[v].co
+            pt = D.shape_keys['Key'].key_blocks['inflated'].data[v].co
             if v in edges:
                 fp.write(struct.pack('>i3f', -v-1, *pt))
             else:
