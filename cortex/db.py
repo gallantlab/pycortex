@@ -228,6 +228,47 @@ class Database(object):
         assert xfmdict['subject'] == subject, "Incorrect subject for the name"
         return np.array(xfmdict[xfmtype]), os.path.join(filestore, "references", xfmdict['epifile'])
 
+    def getXfmFSL(self, subject, name):
+        """Retrieves and translates the transform from the filestore. Returned
+        transform is functional -> anatomical and is FSL compatible.
+
+        Parameters
+        ----------
+        subject : str
+            Name of the subject
+        name : str
+            Name of the transform
+        """
+        import nibabel
+        
+        xfm, epifile = self.getXfm(subject, name)
+        raw = self.getAnat(subject, type='raw')
+        
+        import numpy.linalg as npl
+        def _x_flipper(N_i):
+            #Copied from dipy
+            flipr = np.diag([-1, 1, 1, 1])
+            flipr[0,3] = N_i - 1
+            return flipr
+
+        in_hdr = nibabel.load(epifile).get_header()
+        ref_hdr = nibabel.load(raw).get_header()
+        
+        # get_zooms gets the positive voxel sizes as returned in the header
+        inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
+        refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
+        
+        if npl.det(in_hdr.get_best_affine())>=0:
+            inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
+        if npl.det(ref_hdr.get_best_affine())>=0:
+            refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
+
+        M = nibabel.load(raw).get_affine()
+        inv = np.linalg.inv
+
+        fslx = inv(np.dot(inspace, np.dot(xfm, np.dot(M, inv(refspace)))))
+        return fslx
+
     def getVTK(self, subject, type, hemisphere="both", merge=False, nudge=False):
         '''Return the VTK pair for the given subject, surface type, and hemisphere.
 

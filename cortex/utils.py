@@ -547,3 +547,48 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
         allcenters.append(np.array(centers))
 
     return tissots, allcenters
+
+def epi2anatspace(data, subject, xfm):
+    """Resamples epi-space [data] into the anatomical space for the given [subject]
+    using the given transformation [xfm].
+
+    Returns the data and a temporary filename.
+    """
+    import nibabel
+    import tempfile
+    import subprocess
+
+    ## Get transform, save out into ascii file
+    x, epifile = surfs.getXfm(subject, xfm)
+    fslxfm = surfs.getXfmFSL(subject, xfm)
+
+    xfmfilename = tempfile.mktemp(".mat")
+    with open(xfmfilename, "w") as xfmh:
+        for ll in fslxfm.tolist():
+            xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
+
+    ## Save out data into nifti file
+    template = nibabel.load(epifile)
+    datafile = nibabel.Nifti1Image(data.T, template.get_affine(), template.get_header())
+    datafilename = tempfile.mktemp(".nii")
+    nibabel.save(datafile, datafilename)
+
+    ## Reslice epi-space image
+    raw = surfs.getAnat(subject, type='raw')
+    outfilename = tempfile.mktemp(".nii")
+    subprocess.call(["fsl5.0-flirt",
+                     "-ref", raw,
+                     "-in", datafilename,
+                     "-applyxfm",
+                     "-init", xfmfilename,
+                     #"-interp", "sinc",
+                     "-out", outfilename])
+
+    ## Load resliced image
+    outdata = nibabel.load(outfilename+".gz").get_data().T
+
+    return outdata, outfilename
+
+def fslview(*imfilenames):
+    import subprocess
+    subprocess.call(["fslview"] + list(imfilenames))

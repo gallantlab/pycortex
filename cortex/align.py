@@ -85,10 +85,9 @@ def automatic(subject, name, epifile, noclean=False):
 
         epi = nibabel.load(epifile).get_header().get_base_affine()
         M = nibabel.load(raw).get_affine()
-        X = xfm
         inv = np.linalg.inv
 
-        coord = np.dot(npl.inv(inspace), np.dot(inv(X), np.dot(refspace, inv(M))))
+        coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
         db.surfs.loadXfm(subject, name, coord, xfmtype="coord", epifile=epifile)
 
     finally:
