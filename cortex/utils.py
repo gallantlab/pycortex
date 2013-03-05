@@ -407,16 +407,16 @@ def get_flatmap_distortion(sub, type="areal"):
 
             fidareas = triareas(flattri, fidvert)
             flatareas = triareas(flattri, flatvert)
-
+            tridists = np.log2(flatareas/fidareas)
+            
             vertratios = np.zeros((len(fidvert),))
-            vertratios[flattri[:,0]] += flatareas/fidareas
-            vertratios[flattri[:,1]] += flatareas/fidareas
-            vertratios[flattri[:,2]] += flatareas/fidareas
+            vertratios[flattri[:,0]] += tridists
+            vertratios[flattri[:,1]] += tridists
+            vertratios[flattri[:,2]] += tridists
             vertratios /= np.bincount(flattri.ravel())
             vertratios = np.nan_to_num(vertratios)
             vertratios[vertratios==0] = 1
-            dist = np.log(vertratios)
-            distortions.append(dist - dist.mean())
+            distortions.append(vertratios)
             
         elif type=="metric":
             import networkx as nx
