@@ -321,8 +321,11 @@ def boundary_edges(polys):
         if len(faces) == 1:
             verts.add(v1)
             verts.add(v2)
-    
+
     return np.array(list(verts))
+
+def polysmooth(scalars, polys):
+    pass
 
 if __name__ == "__main__":
     import pickle

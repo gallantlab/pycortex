@@ -9,6 +9,15 @@ import numpy as np
 from . import db
 from . import vtkutils_new as vtk
 
+def get_paths(subject, hemi, type="patch"):
+    base = os.path.join(os.environ['SUBJECTS_DIR'], subject)
+    if type == "patch":
+        return os.path.join(base, "surf", hemi+".{name}.patch.3d")
+    elif type == "surf":
+        return os.path.join(base, "surf", hemi+".{name}")
+    elif type == "curv":
+        return os.path.join(base, "surf", hemi+".curv{name}")
+
 def import_subj(subject, sname=None):
     import nibabel
     surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.vtk")
@@ -41,6 +50,12 @@ def import_subj(subject, sname=None):
     import ipdb
     ipdb.set_trace()
     np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
+
+def make_fiducial(subject, hemi):
+    spts, polys, _ = get_surf(subject, hemi, "smoothwm")
+    ppts, _, _ = get_surf(subject, hemi, "pial")
+    fname = get_paths(subject, hemi, "surf").format(name="fiducial")
+    write_surf(fname, (spts + ppts) / 2, polys)
 
 def parse_surf(filename):
     with open(filename, 'rb') as fp:
@@ -77,29 +92,30 @@ def parse_patch(filename):
         assert len(data) == nverts
         return data
 
-def get_surf(subject, hemi, type, patch=None, curv='wm'):
-    path = os.path.join(os.environ['SUBJECTS_DIR'], subject)
+def write_patch(filename, pts, edges=None):
+    if edges is None:
+        edges = set()
 
+    with open(filename, 'wb') as fp:
+        fp.write(struct.pack('>2i', -1, len(pts)))
+        for i, pt in pts:
+            if i in edges:
+                fp.write(struct.pack('>i3f', -i-1, *pt))
+            else:
+                fp.write(struct.pack('>i3f', i+1, *pt))
+
+def get_surf(subject, hemi, type, patch=None):
     if type == "patch":
         assert patch is not None
-        surf_file = os.path.join(path, "surf", hemi+'.smoothwm')
+        surf_file = get_paths(subject, hemi, 'surf').format(name='smoothwm')
     else:
-        surf_file = os.path.join(path, "surf", hemi+'.'+type)
-    
-    if curv == "wm":
-        curv_file = os.path.join(path, "surf", hemi+'.curv')
-    else:
-        curv_file = os.path.join(path, 'surf', hemi+'.curv.'+curv)
+        surf_file = get_paths(subject, hemi, 'surf').format(name=type)
     
     pts, polys = parse_surf(surf_file)
 
     if patch is not None:
-        patch_file = os.path.join(path, "surf", hemi+'.'+patch+'.patch.3d')
-        try:
-            patch = parse_patch(patch_file)
-        except IOError:
-            patch_file = os.path.join(path, "surf", patch)
-            patch = parse_patch(patch_file)
+        patch_file = get_paths(subject, hemi, 'patch').format(name=patch)
+        patch = parse_patch(patch_file)
         verts = patch[patch['vert'] > 0]['vert'] - 1
         edges = -patch[patch['vert'] < 0]['vert'] - 1
 
@@ -118,14 +134,25 @@ def get_surf(subject, hemi, type, patch=None, curv='wm'):
             pts[edges, i] = patch[patch['vert'] < 0][x]
         return pts, polys, idx
 
-    return pts, polys, parse_curv(curv_file)
+    return pts, polys, get_curv(subject, hemi)
 
-def show_surf(subject, hemi, type, patch=None):
+def get_curv(subject, hemi, type='wm'):
+    if type == "wm":
+        curv_file = get_paths(subject, hemi, 'curv').format(name='')
+    else:
+        curv_file = get_paths(subject, hemi, 'curv').format(name='.'+type)
+
+    return parse_curv(curv_file)
+
+def show_surf(subject, hemi, type, patch=None, curv=True):
     from mayavi import mlab
     from tvtk.api import tvtk
 
-    path = os.path.join(os.environ['SUBJECTS_DIR'], subject)
-    pts, polys, curv = get_surf(subject, hemi, type, patch)
+    pts, polys, idx = get_surf(subject, hemi, type, patch)
+    if curv:
+        curv = get_curv(subject, hemi)
+    else:
+        curv = idx
     
     fig = mlab.figure()
     src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, scalars=curv, figure=fig)
@@ -141,11 +168,12 @@ def show_surf(subject, hemi, type, patch=None):
     fig.scene.background = (0,0,0)
     fig.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
 
+    path = os.path.join(os.environ['SUBJECTS_DIR'], subject)
     def picker_callback(picker):
         if picker.actor in surf.actor.actors:
             npts = np.append(cursors.data.points.to_array(), [pts[picker.point_id]], axis=0)
             cursors.data.points = npts
-            print picker.point_id
+            print(picker.point_id)
             x, y, z = pts[picker.point_id]
             with open(os.path.join(path, 'tmp', 'edit.dat'), 'w') as fp:
                 fp.write('%f %f %f\n'%(x, y, z))
@@ -207,18 +235,18 @@ def write_decimated(path, pts, polys):
         fp.write(struct.pack('>i', len(dpts)))
         fp.write(data.tostring())
 
-from scipy.spatial import cKDTree
+import copy
 class SpringLayout(object):
-    def __init__(self, pts, polys, dpts=None, pins=None, stepsize=.1):
-        import networkx as nx
+    def __init__(self, pts, polys, dpts=None, pins=None, stepsize=1, neighborhood=0):
         self.pts = pts
         self.polys = polys
         self.stepsize = stepsize
-        if pins is None:
-            pins = np.zeros((len(pts),), dtype=bool)
-        self.pins = pins
+        pinmask = np.zeros((len(pts),), dtype=bool)
+        if isinstance(pins, (list, set, np.ndarray)):
+            pinmask[pins] = True
+        self.pins = pinmask
         self.neighbors = [set() for _ in range(len(pts))]
-        self.graph = nx.Graph()
+        
         for i, j, k in polys:
             self.neighbors[i].add(j)
             self.neighbors[i].add(k)
@@ -226,26 +254,48 @@ class SpringLayout(object):
             self.neighbors[j].add(k)
             self.neighbors[k].add(i)
             self.neighbors[k].add(j)
-            self.graph.add_edges_from([(i,j), (i,k), (j,k)])
+
+        for _ in range(neighborhood):
+            _neighbors = copy.deepcopy(self.neighbors)
+            for v, neighbors in enumerate(self.neighbors):
+                for n in neighbors:
+                    _neighbors[v] |= self.neighbors[n]
+            self.neighbors = _neighbors
 
         for i in range(len(self.neighbors)):
-            self.neighbors[i] = list(self.neighbors[i])
+            self.neighbors[i] = list(self.neighbors[i] - set([i]))
 
         if dpts is None:
             dpts = pts
 
-        self.dists = []
-        for i, neighbors in enumerate(self.neighbors):
-            self.dists.append(np.sqrt(((dpts[neighbors] - dpts[i])**2).sum(-1)))
-
-        self.kdt = cKDTree(self.pts)
+        #self.kdt = cKDTree(self.pts)
         self._next = self.pts.copy()
 
-    def _spring(self, i):
-        diff = self.pts[self.neighbors[i]] - self.pts[i]
-        dist = np.sqrt((diff**2).sum(1))
-        mag = self.stepsize * (self.dists[i] - dist)
-        return (mag * diff.T).T.mean(0)
+        width = max(len(n) for n in self.neighbors)
+        self._mask = np.zeros((len(pts), width), dtype=bool)
+        self._move = np.zeros((len(pts), width, 3))
+        #self._mean = np.zeros((len(pts), width))
+        self._num = np.zeros((len(pts),))
+        self._dists = []
+        self._idx = []
+        for i, n in enumerate(self.neighbors):
+            self._mask[i, :len(n)] = True
+            self._dists.append(np.sqrt(((dpts[n] - dpts[i])**2).sum(-1)))
+            self._idx.append(np.ones((len(n),))*i)
+            self._num[i] = len(n)
+        self._dists = np.hstack(self._dists)
+        self._idx = np.hstack(self._idx).astype(np.uint)
+        self._neigh = np.hstack(self.neighbors).astype(np.uint)
+        self.figure = None
+
+    def _spring(self):
+        svec = self.pts[self._neigh] - self.pts[self._idx]
+        slen = np.sqrt((svec**2).sum(-1))
+        force = (slen - self._dists) # / self._dists
+        svec /= slen[:,np.newaxis]
+        fvec = force[:, np.newaxis] * svec
+        self._move[self._mask] = self.stepsize * fvec
+        return self._move.sum(1) / self._num[:, np.newaxis]
 
     def _estatic(self, idx):
         dist, neighbors = self.kdt.query(self.pts[idx], k=20)
@@ -255,19 +305,35 @@ class SpringLayout(object):
         return (mag[valid] * diff[valid].T).T.mean(0)
 
     def step(self):
-        for i in range(len(self.pts)):
-            self._next[i] -= self._spring(i) #+ self._estatic(i)
-        self.pts[:] = self._next
+        move = self._spring()[~self.pins]
+        self._next[~self.pins] += move #+ self._estatic(i)
+        self.pts = self._next.copy()
+        return dict(x=self.pts[:,0],y=self.pts[:, 1], z=self.pts[:,2]), move
         #self.kdt = cKDTree(self.pts)
 
-    def run(self, n=1000, show=False):
-        if show:
-            import matplotlib.pyplot as plt
-            import networkx as nx
-            nx.draw(self.graph, pos=self.pts)
+    def run(self, n=1000):
         for _ in range(n):
             self.step()
-            if show:
-                plt.clf()
-                nx.draw(self.graph, pos=self.pts)
-                plt.show()
+            print(_)
+
+    def view_step(self):
+        from mayavi import mlab
+        if self.figure is None:
+            self.figure = mlab.triangular_mesh(self.pts[:,0], self.pts[:,1], self.pts[:,2], self.polys, representation='wireframe')
+        self.step()
+        self.figure.mlab_source.set(x=self.pts[:,0], y=self.pts[:,1], z=self.pts[:,2])
+
+def stretch_mwall(pts, polys, mwall):
+    inflated = pts.copy()
+    center = pts[mwall].mean(0)
+    radius = max((pts.max(0) - pts.min(0))[1:])
+    angles = np.arctan2(pts[mwall][:,2], pts[mwall][:,1])
+    pts[mwall, 0] = center[0]
+    pts[mwall, 1] = radius * np.cos(angles) + center[1]
+    pts[mwall, 2] = radius * np.sin(angles) + center[2]
+    return SpringLayout(pts, polys, inflated, pins=mwall)
+
+def test():
+    pts, polys, curvs = get_surf("JGfs2", "lh", "inflated", patch="inferiorout")
+    mwall = np.load("/tmp/lh_mwall_verts.npy")
+    return stretch_mwall(pts, polys, mwall)

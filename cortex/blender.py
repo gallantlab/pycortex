@@ -1,3 +1,4 @@
+import os
 import struct
 import numpy as np
 from matplotlib import cm, colors
@@ -61,15 +62,14 @@ def fs_cut(subject, hemi):
     hemi.addShape(ipts, name='inflated')
     return hemi
 
-def write_patch(outfile, hemi):
-    if isinstance(hemi, Hemi):
-        mesh = hemi.mesh
-    else:
-        mesh = hemi
+def write_patch(subject, hemi, name, mesh='hemi'):
+    from .freesurfer import get_paths, write_patch
+    if isinstance(mesh, str):
+        mesh = D.meshes[mesh]
 
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.select_all()
+    bpy.ops.mesh.select_all(action='DESELECT')
     C.tool_settings.mesh_select_mode = False, True, False
     bpy.ops.mesh.select_non_manifold()
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -82,7 +82,7 @@ def write_patch(outfile, hemi):
 
     bpy.ops.object.mode_set(mode='EDIT') 
     C.tool_settings.mesh_select_mode = True, False, False
-    bpy.ops.mesh.select_all()
+    bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.object.mode_set(mode='OBJECT')
     seam = set()
     for edge in mesh.edges:
@@ -100,7 +100,7 @@ def write_patch(outfile, hemi):
             smore.add(i)
 
     bpy.ops.object.mode_set(mode='EDIT') 
-    bpy.ops.mesh.select_all()
+    bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.object.mode_set(mode='OBJECT')
 
     fverts = set()
@@ -111,12 +111,5 @@ def write_patch(outfile, hemi):
 
     edges = mwall_edge | (smore - seam)
     verts = fverts - seam
-
-    with open(outfile, 'wb') as fp:
-        fp.write(struct.pack('>2i', -1, len(verts)))
-        for v in verts:
-            pt = D.shape_keys['Key'].key_blocks['inflated'].data[v].co
-            if v in edges:
-                fp.write(struct.pack('>i3f', -v-1, *pt))
-            else:
-                fp.write(struct.pack('>i3f', v+1, *pt))
+    pts = [(v, D.shape_keys['Key'].key_blocks['inflated'].data[v].co) for v in verts]
+    write_patch(get_paths(subject, hemi).format(name=name), pts, edges)
