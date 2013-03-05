@@ -89,7 +89,7 @@ class Surface(object):
                     polys((d, b, a, c))
 
             yield pts.points, np.array(list(polys.triangles))
-            del pts, polys, a, b, c, d, e, f        
+            del pts, polys, a, b, c, d, e, f
 
 class _ptset(object):
     def __init__(self):
@@ -127,6 +127,57 @@ def _tetra_vol(pts):
 
 def _brick_vol(pts):
     return _tetra_vol(pts[[0, 1, 2, 4]]) + _tetra_vol(pts[[0, 2, 3, 4]]) + _tetra_vol(pts[[2, 3, 4, 5]])
+
+class Distortion(object):
+    def __init__(self, flat, ref, polys):
+        self.flat = flat
+        self.ref = ref
+        self.polys = polys
+
+    @property
+    def areal(self):
+        def area(pts, polys):
+            ppts = pts[polys]
+            cross = np.cross(ppts[:,1] - ppts[:,0], ppts[:,2] - ppts[:,0])
+            return np.sqrt((cross**2).sum(-1))
+
+        refarea = area(self.ref, self.polys)
+        flatarea = area(self.flat, self.polys)
+        tridists = np.log2(flatarea/refarea)
+        
+        vertratios = np.zeros((len(self.ref),))
+        vertratios[self.polys[:,0]] += tridists
+        vertratios[self.polys[:,1]] += tridists
+        vertratios[self.polys[:,2]] += tridists
+        vertratios /= np.bincount(self.polys.ravel())
+        vertratios = np.nan_to_num(vertratios)
+        vertratios[vertratios==0] = 1
+        return vertratios
+
+    @property
+    def metric(self):
+        import networkx as nx
+        def iter_surfedges(tris):
+            for a,b,c in tris:
+                yield a,b
+                yield b,c
+                yield a,c
+
+        def make_surface_graph(tris):
+            graph = nx.Graph()
+            graph.add_edges_from(iter_surfedges(tris))
+            return graph
+
+        G = make_surface_graph(self.polys)
+        selverts = np.unique(self.polys.ravel())
+        ref_dists = [np.sqrt(((self.ref[G.neighbors(ii)] - self.ref[ii])**2).sum(1))
+                     for ii in selverts]
+        flat_dists = [np.sqrt(((self.flat[G.neighbors(ii)] - self.flat[ii])**2).sum(1))
+                      for ii in selverts]
+        msdists = np.array([(fl-fi).mean() for fi,fl in zip(ref_dists, flat_dists)])
+        alldists = np.zeros((len(self.ref),))
+        alldists[selverts] = msdists
+        return alldists
 
 def face_volume(pts1, pts2, polys):
     vols = np.zeros((len(polys),))

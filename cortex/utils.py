@@ -396,51 +396,14 @@ def get_flatmap_distortion(sub, type="areal"):
     the mean squared difference between distances in the fiducial map and distances in
     the flatmap, for each pair of neighboring vertices. See Fishl, Sereno, and Dale, 1999.
     """
+    from polyutils import Distortion
     distortions = []
     for hem in ["lh", "rh"]:
         fidvert, fidtri, etc = surfs.getVTK(sub, "fiducial", hem)
         flatvert, flattri, etc = surfs.getVTK(sub, "flat", hem)
 
-        if type=="areal":
-            triareas = lambda tr,v: np.array([np.linalg.norm(np.cross(a-b, a-c))/2
-                                              for a,b,c in v[tr,:]])
-
-            fidareas = triareas(flattri, fidvert)
-            flatareas = triareas(flattri, flatvert)
-            tridists = np.log2(flatareas/fidareas)
-            
-            vertratios = np.zeros((len(fidvert),))
-            vertratios[flattri[:,0]] += tridists
-            vertratios[flattri[:,1]] += tridists
-            vertratios[flattri[:,2]] += tridists
-            vertratios /= np.bincount(flattri.ravel())
-            vertratios = np.nan_to_num(vertratios)
-            vertratios[vertratios==0] = 1
-            distortions.append(vertratios)
-            
-        elif type=="metric":
-            import networkx as nx
-            def iter_surfedges(tris):
-                for a,b,c in tris:
-                    yield a,b
-                    yield b,c
-                    yield a,c
-
-            def make_surface_graph(tris):
-                graph = nx.Graph()
-                graph.add_edges_from(iter_surfedges(tris))
-                return graph
-
-            G = make_surface_graph(flattri)
-            selverts = np.unique(flattri.ravel())
-            fid_dists = [np.sqrt(((fidvert[G.neighbors(ii)] - fidvert[ii])**2).sum(1))
-                         for ii in selverts]
-            flat_dists = [np.sqrt(((flatvert[G.neighbors(ii)] - flatvert[ii])**2).sum(1))
-                          for ii in selverts]
-            msdists = np.array([(fl-fi).mean() for fi,fl in zip(fid_dists, flat_dists)])
-            alldists = np.zeros((len(fidvert),))
-            alldists[selverts] = msdists
-            distortions.append(alldists)
+        dist = getattr(Distortion(flatvert, fidvert, flattri), type)
+        distortions.append(dist)
 
     return distortions
 
