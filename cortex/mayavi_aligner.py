@@ -814,8 +814,8 @@ class Align(HasTraits):
                 title='Aligner'
             )
 
-def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet"):
-    from . import db
+def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", decimate=False):
+    from . import db, polyutils
     data = db.surfs.getXfm(subject, xfmname, xfmtype='magnet')
     if data is None:
         data = db.surfs.getXfm(subject, xfmname, xfmtype='coord')
@@ -834,5 +834,8 @@ def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet"):
         polys = np.vstack([wpolys, ppolys+len(wpts)])
     except ValueError:
         pts, polys, norms = db.surfs.getVTK(subject, 'fiducial', merge=True, nudge=False)
+
+    if decimate:
+        pts, polys = polyutils.decimate(pts, polys)
         
     return Align(pts, polys, epifile, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)

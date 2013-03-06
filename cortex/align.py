@@ -4,14 +4,14 @@ import numpy as np
 
 from . import utils
 
-def manual(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet"):
+def manual(subject, xfmname, **kwargs):
     from .mayavi_aligner import get_aligner
     def save_callback(aligner):
         from . import db
         db.surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epifile)
         print("saved xfm")
 
-    m = get_aligner(subject, xfmname, epifile=epifile, xfm=xfm, xfmtype=xfmtype)
+    m = get_aligner(subject, xfmname, **kwargs)
     m.save_callback = save_callback
     m.configure_traits()
     
