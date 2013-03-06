@@ -296,22 +296,21 @@ class Polyhedral(Mapper):
             tpia = polyutils.transform(coord, ppts)
             twm = polyutils.transform(coord, wpts)
             surf = polyutils.Surface(tpia, polys)
-            for i, (pts, polys) in enumerate(surf.polyhedra(twm)):
+            for i, (pt, polys) in enumerate(surf.polyhedra(twm)):
                 if len(pt) > 0:
-                    poly.set(points=pts, polys=polys)
+                    poly.set(points=pt, polys=polys)
                     measure.set_input(poly)
+                    import ipdb
+                    ipdb.set_trace()
                     measure.update()
                     totalvol = measure.volume
 
-                    bmin = pt.min(0).round()
-                    bmax = pt.max(0).round() + 1
+                    measure.set_input(bop.output)
+                    bmin = pt.min(0).round().astype(int)
+                    bmax = (pt.max(0).round() + 1).astype(int)
                     vidx = np.mgrid[bmin[0]:bmax[0], bmin[1]:bmax[1], bmin[2]:bmax[2]]
                     for vox in vidx.reshape(3, -1).T:
                         voxel.center = vox
-                        voxel.update()
-                        trivox.update()
-                        bop.update()
-                        measure.set_input(bop.get_output())
                         measure.update()
                         if measure.volume > 1e-6:
                             idx = np.ravel_multi_index(vox[::-1], self.shape)

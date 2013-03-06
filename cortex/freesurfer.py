@@ -47,15 +47,26 @@ def import_subj(subject, sname=None):
             vtk.write(fname, pts + surfmove, polys)
             if fsname == 'smoothwm':
                 curvs[hemi] = curv
-    import ipdb
-    ipdb.set_trace()
+
     np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
 
-def make_fiducial(subject, hemi):
-    spts, polys, _ = get_surf(subject, hemi, "smoothwm")
-    ppts, _, _ = get_surf(subject, hemi, "pial")
-    fname = get_paths(subject, hemi, "surf").format(name="fiducial")
-    write_surf(fname, (spts + ppts) / 2, polys)
+def import_flat(subject, patch, sname=None):
+    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.vtk")
+    if sname is None:
+        sname = subject
+    for hemi in ['lh', 'rh']:
+        pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat")
+        flat = pts[:,[1, 0, 2]]
+        flat[:,1] = -flat[:,1]
+        fname = surfs.format(subj=sname, name="flat", hemi=hemi)
+        vtk.write(fname, flat, polys)
+
+def make_fiducial(subject):
+    for hemi in ['lh', 'rh']:
+        spts, polys, _ = get_surf(subject, hemi, "smoothwm")
+        ppts, _, _ = get_surf(subject, hemi, "pial")
+        fname = get_paths(subject, hemi, "surf").format(name="fiducial")
+        write_surf(fname, (spts + ppts) / 2, polys)
 
 def parse_surf(filename):
     with open(filename, 'rb') as fp:
