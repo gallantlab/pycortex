@@ -739,7 +739,7 @@ class Align(HasTraits):
         
         self.update_brightness()
 
-    def update_slabs(self):
+    def update_slabs(self, *args, **kwargs):
         self.disable_render = True
         for ax in [self.x_axis, self.y_axis, self.z_axis]:
             ax.update_slab()
@@ -814,18 +814,18 @@ class Align(HasTraits):
                 title='Aligner'
             )
 
-def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
+def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet"):
     from . import db
     data = db.surfs.getXfm(subject, xfmname, xfmtype='magnet')
     if data is None:
         data = db.surfs.getXfm(subject, xfmname, xfmtype='coord')
         if data is not None:
-            dbxfm, epi = data
+            dbxfm, epifile = data
         else:
             dbxfm = None
-        assert epi is not None, "Unknown transform"
+        assert epifile is not None, "Unknown transform"
     else:
-        dbxfm, epi = data
+        dbxfm, epifile = data
 
     try:
         wpts, wpolys, norms = db.surfs.getVTK(subject, 'wm', merge=True, nudge=False)
@@ -835,4 +835,4 @@ def get_aligner(subject, xfmname, epi=None, xfm=None, xfmtype="magnet"):
     except ValueError:
         pts, polys, norms = db.surfs.getVTK(subject, 'fiducial', merge=True, nudge=False)
         
-    return Align(pts, polys, epi, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
+    return Align(pts, polys, epifile, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)

@@ -11,7 +11,7 @@ def manual(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet"):
         db.surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epifile)
         print("saved xfm")
 
-    m = get_aligner(subject, xfmname, epifile=epi, xfm=xfm, xfmtype=xfmtype)
+    m = get_aligner(subject, xfmname, epifile=epifile, xfm=xfm, xfmtype=xfmtype)
     m.save_callback = save_callback
     m.configure_traits()
     
@@ -20,7 +20,7 @@ def manual(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet"):
 
     checked = False
     while not checked:
-        resp = input("Save? (Y/N) ").lower().strip()
+        resp = raw_input("Save? (Y/N) ").lower().strip()
         if resp in ["y", "yes", "n", "no"]:
             checked = True
             if resp in ["y", "yes"]:
