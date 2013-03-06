@@ -1,9 +1,12 @@
 import os
+import warnings
 
 import nibabel
 import numpy as np
 from scipy import sparse
 from itertools import product
+
+warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
 from . import polyutils
 from .db import surfs
@@ -277,16 +280,14 @@ class Polyhedral(Mapper):
         flat = surfs.getVTK(subject, "flat")
 
         coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
-                
+        
         #All necessary tvtk objects for measuring intersections
-        poly = tvtk.PolyData()
         voxel = tvtk.CubeSource()
         trivox = tvtk.TriangleFilter()
-        trivox.set_input(voxel.get_output())
+        trivox.set_input(voxel.output)
         measure = tvtk.MassProperties()
-        bop = tvtk.BooleanOperationPolyDataFilter()
-        bop.set_input(0, poly)
-        bop.set_input(1, trivox.get_output())
+        bop = tvtk.BooleanOperationPolyDataFilter(operation='difference')
+        bop.set_input(0, trivox.output)
         
         masks = []
         for (wpts, _, _), (ppts, _, _), (_, polys, _) in zip(pia, wm, flat):
@@ -296,25 +297,30 @@ class Polyhedral(Mapper):
             tpia = polyutils.transform(coord, ppts)
             twm = polyutils.transform(coord, wpts)
             surf = polyutils.Surface(tpia, polys)
-            for i, (pt, polys) in enumerate(surf.polyhedra(twm)):
+            for i, (pt, poly) in enumerate(surf.polyhedra(twm)):
                 if len(pt) > 0:
-                    poly.set(points=pt, polys=polys)
-                    measure.set_input(poly)
-                    import ipdb
-                    ipdb.set_trace()
+                    polyhedron = tvtk.PolyData(points=pt, polys=poly)
+                    measure.set_input(polyhedron)
                     measure.update()
                     totalvol = measure.volume
 
+                    bop.set_input(1, polyhedron)
                     measure.set_input(bop.output)
+
                     bmin = pt.min(0).round().astype(int)
                     bmax = (pt.max(0).round() + 1).astype(int)
                     vidx = np.mgrid[bmin[0]:bmax[0], bmin[1]:bmax[1], bmin[2]:bmax[2]]
                     for vox in vidx.reshape(3, -1).T:
                         voxel.center = vox
-                        measure.update()
-                        if measure.volume > 1e-6:
+                        bop.update()
+                        if len(bop.output.points) > 0:
+                            measure.update()
                             idx = np.ravel_multi_index(vox[::-1], self.shape)
                             mask[i, idx] = measure.volume / totalvol
+
+                            if measure.volume > 2*totalvol:
+                                import ipdb
+                                ipdb.set_trace()            
 
                 if i % 100 == 0:
                     print(i)
