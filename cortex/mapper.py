@@ -320,7 +320,7 @@ class Polyhedral(Mapper):
                         #polygons.append((p1, p2))
                         if ccs.output.polys.number_of_cells > 2:
                             measure.update()
-                            idx = np.ravel_multi_index(vox[::-1], self.shape)
+                            idx = np.ravel_multi_index(vox[::-1], self.shape, mode='clip')
                             mask[i, idx] = measure.volume
 
                     if mask[i].sum() > 1.5*totalvol:

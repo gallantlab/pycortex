@@ -90,6 +90,9 @@ class Surface(object):
 
             yield pts.points, np.array(list(polys.triangles))
 
+    def polyparts(self, wm, idx):
+        pass
+
 class _ptset(object):
     def __init__(self):
         self.idx = OrderedDict()
