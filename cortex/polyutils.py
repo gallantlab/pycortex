@@ -89,7 +89,6 @@ class Surface(object):
                     polys((d, b, a, c))
 
             yield pts.points, np.array(list(polys.triangles))
-            del pts, polys, a, b, c, d, e, f
 
 class _ptset(object):
     def __init__(self):
