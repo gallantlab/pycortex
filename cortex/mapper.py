@@ -286,50 +286,53 @@ class Polyhedral(Mapper):
         planes = tvtk.PlaneCollection()
         for norm in np.vstack([-np.eye(3), np.eye(3)]):
             planes.append(tvtk.Plane(normal=norm))
-        ccs = tvtk.ClipClosedSurface(clipping_planes=planes, tolerance=1e-9)
-        
-        bad = 0
+        ccs = tvtk.ClipClosedSurface(clipping_planes=planes, tolerance=1e-8)
+
         masks = []
+        #iterate over hemispheres
         for (wpts, _, _), (ppts, _, _), (_, polys, _) in zip(pia, wm, flat):
-            #iterate over hemispheres
             mask = sparse.csr_matrix((len(wpts), np.prod(self.shape)))
 
             tpia = polyutils.transform(coord, ppts)
             twm = polyutils.transform(coord, wpts)
             surf = polyutils.Surface(tpia, polys)
-            for i, (pt, faces) in enumerate(surf.polyhedra(twm)):
-                if len(pt) > 0:
-                    poly = tvtk.PolyData(points=pt, polys=faces)
+            for i, (pts, faces) in enumerate(surf.polyhedra(twm)):
+                if len(pts) > 0:
+                    poly = tvtk.PolyData(points=pts, polys=faces)
                     measure.set_input(poly)
                     measure.update()
                     totalvol = measure.volume
-                    #polygons = []
-
                     ccs.set_input(poly)
                     measure.set_input(ccs.output)
 
-                    bmin = pt.min(0).round().astype(int)
-                    bmax = (pt.max(0).round() + 1).astype(int)
+                    # polygons = []
+                    bmin = pts.min(0).round().astype(int)
+                    bmax = (pts.max(0).round() + 1).astype(int)
                     vidx = np.mgrid[bmin[0]:bmax[0], bmin[1]:bmax[1], bmin[2]:bmax[2]]
                     for vox in vidx.reshape(3, -1).T:
-                        for plane, m in zip(planes, [.5, .5, .5, -.5, -.5, -.5]):
-                            plane.origin = vox+m
-                        ccs.update()
-                        #p1 = ccs.output.points.to_array()
-                        #p2 = ccs.output.polys.to_array().reshape(-1, 4)[:,1:]
-                        #polygons.append((p1, p2))
-                        if ccs.output.polys.number_of_cells > 2:
-                            measure.update()
-                            idx = np.ravel_multi_index(vox[::-1], self.shape, mode='clip')
-                            mask[i, idx] = measure.volume
+                        try:
+                            idx = np.ravel_multi_index(vox[::-1], self.shape)
+                            for plane, m in zip(planes, [.5, .5, .5, -.5, -.5, -.5]):
+                                plane.origin = vox+m
 
-                    if mask[i].sum() > 1.5*totalvol:
-                        #import cPickle
-                        #cPickle.dump(polygons, open("/tmp/test.pkl", "w"), 2)
-                        bad += 1
-                        print "Boo... %d"%bad
+                            ccs.update()
+                            # p1 = ccs.output.points.to_array()
+                            # p2 = ccs.output.polys.to_array().reshape(-1, 4)[:,1:]
+                            # polygons.append((p1, p2))
+                            if ccs.output.number_of_cells > 2:
+                                measure.update()
+                                mask[i, idx] = measure.volume
+        
+                        except ValueError:
+                            print('Voxel not in volume: (%d, %d, %d)'%tuple(vox))
 
                     mask.data[mask.indptr[i]:mask.indptr[i+1]] /= mask[i].sum()
+
+                # if mask[i].sum() > 1.2*totalvol:
+                #     import cPickle
+                #     cPickle.dump(polygons, open("/tmp/test.pkl", "w"), 2)
+                #     import ipdb
+                #     ipdb.set_trace()
 
                 if i % 100 == 0:
                     print(i)

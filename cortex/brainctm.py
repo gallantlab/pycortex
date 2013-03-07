@@ -156,7 +156,7 @@ class Hemi(object):
         self.nsurfs += 1
 
     def setFlat(self, pts):
-        assert np.all(pts[:,2] == 0)
+        #assert np.all(pts[:,2] == 0)
         self.ctm.addUV(pts[:,:2], 'uv')
 
     def save(self, **kwargs):

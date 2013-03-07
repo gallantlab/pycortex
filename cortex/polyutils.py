@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import numpy as np
-from scipy.spatial import distance
+from scipy.spatial import distance, Delaunay
 from matplotlib.path import Path
 from matplotlib import patches
 
@@ -72,7 +72,7 @@ class Surface(object):
                 pts[wm[poly[[0, 1]]].mean(0)]
                 pts[self.pts[poly[[0, 1]]].mean(0)]
 
-                for i, face in zip(list(range(4, 4*len(faces)+1, 4)), faces):
+                for face in faces:
                     poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == p)[0][0])
                     a = pts[wm[poly].mean(0)]
                     b = pts[self.pts[poly].mean(0)]
@@ -91,7 +91,25 @@ class Surface(object):
             yield pts.points, np.array(list(polys.triangles))
 
     def polyparts(self, wm, idx):
-        pass
+        #polypart = np.array([[0, 1, 2], [0, 3, 1], [3, 4, 1], [4, 5, 1], [5, 2, 1], [0, 2, 5], [0, 5, 3], [3, 5, 4]])
+        faces = self.members[idx]
+        if len(faces) > 0:
+            p0 = self.pts[idx]
+            w0 = wm[idx]
+            for face in faces:
+                poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == idx)[0][0])
+                p1 = self.pts[poly[[0,1]]].mean(0)
+                p2 = self.pts[poly].mean(0)
+                p3 = self.pts[poly[[0,2]]].mean(0)
+                w1 = wm[poly[[0,1]]].mean(0)
+                w2 = wm[poly].mean(0)
+                w3 = wm[poly[[0,2]]].mean(0)
+
+                tri1 = np.vstack([p0, p1, p2, w0, w1, w2])
+                tri2 = np.vstack([p0, p2, p3, w0, w2, w3])
+                yield tri1, Delaunay(tri1).convex_hull
+                yield tri2, Delaunay(tri2).convex_hull
+
 
 class _ptset(object):
     def __init__(self):

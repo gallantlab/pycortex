@@ -319,6 +319,14 @@ class Database(object):
             else:
                 raise TypeError("Not a valid hemisphere name")
             
+            if type == 'fiducial':
+                try:
+                    wpts, polys, _ = self.getVTK(subject, 'wm', hemi)
+                    ppts, _, norms = self.getVTK(subject, 'pia', hemi)
+                    return (wpts + ppts) / 2, polys, norms
+                except ValueError:
+                    pass
+
             vtkfile = fname.format(subj=subject, type=type, hemi=hemi)
             if not os.path.exists(vtkfile):
                 raise ValueError("Cannot find given subject and type")
