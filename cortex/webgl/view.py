@@ -206,7 +206,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     """
     html = sloader.load("mixer.html")
 
-    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='raw', level=0, recache=recache, recache_mapper=recache_mapper)
+    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache, recache_mapper=recache_mapper)
     jsondat, bindat = _make_bindat(_normalize_data(data, mapper), fmt='data/%s/')
 
     saveevt = mp.Event()

@@ -385,6 +385,8 @@ class Axis(HasTraits):
                 trans = np.insert(pos[:2][::-1], self.axis, 0)
                 wpos = np.insert(wpos[:2][::-1], self.axis, self.ipw_3d.ipw.slice_position)
                 scale = np.insert(scale[::-1], self.axis, 1)
+                angle = -angle
+                trans[0] = -trans[0]
             else:
                 trans = np.insert(pos[:2], self.axis, 0)
                 wpos = np.insert(wpos[:2], self.axis, self.ipw_3d.ipw.slice_position)

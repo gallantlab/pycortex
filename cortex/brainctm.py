@@ -118,7 +118,7 @@ class BrainCTM(object):
 
             np.savez(ptmapname, left=ptmap[0], right=ptmap[1])
         else:
-            inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
+            ptmap = inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
         ##### Save the SVG with remapped indices
         roipack = get_roipack(self.subject)
@@ -167,7 +167,10 @@ class Hemi(object):
         return ctm.getMesh(), self.tf.read()
 
 def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0):
-    ctm = BrainCTM(subj, xfm)
+    base = 'fiducial'
+    if method == 'mg2':
+        base = 'pia'
+    ctm = BrainCTM(subj, xfm, base=base)
     ctm.addMap()
     ctm.addDropout()
     ctm.addCurvature()

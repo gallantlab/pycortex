@@ -102,7 +102,8 @@ def get_mapper(subject, xfmname, type='nearest', **kwargs):
         trilinear=mapper.Trilinear,
         gaussian=mapper.Gaussian,
         polyhedral=mapper.Polyhedral,
-        lanczos=mapper.Lanczos)
+        lanczos=mapper.Lanczos,
+        convexnn=mapper.ConvexNN)
     return mapfunc[type](subject, xfmname, **kwargs)
 
 def get_roipack(subject, remove_medial=False):
@@ -194,7 +195,11 @@ def add_roi(data, subject, xfmname, name="new_roi", recache=False, open_inkscape
     from . import quickflat
     rois = get_roipack(subject)
     im = quickflat.make(data, subject, xfmname, height=1024, recache=recache, projection=projection, with_rois=False)
-    fp = io.StringIO()
+    try:
+        import cStringIO
+        fp = cStringIO.StringIO()
+    except:
+        fp = io.StringIO()
     imsave(fp, im, **kwargs)
     fp.seek(0)
     rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
