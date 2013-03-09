@@ -184,7 +184,7 @@ class Nearest(Mapper):
         ij = np.array([np.nonzero(valid)[0], ravelidx[valid]])
         data = np.ones((len(ij.T),), dtype=bool)
         csrshape = len(coords), np.prod(self.shape)
-        return sparse.csr_matrix((data, ij), dtype=bool, shape=csrshape))
+        return sparse.csr_matrix((data, ij), dtype=bool, shape=csrshape)
 
 class Trilinear(Mapper):
     def _getmask(self, coords, polys):
@@ -272,6 +272,8 @@ class GaussianThickness(Mapper):
         raise NotImplementedError
 
 class Polyhedral(ThickMapper):
+    '''Uses an actual (likely concave) polyhedra betwen the pial and white surfaces
+    to estimate the thickness'''
     def _getmask(self, pia, wm, polys):
         mask = sparse.csr_matrix((len(wpts), np.prod(self.shape)))
 
@@ -292,7 +294,6 @@ class Polyhedral(ThickMapper):
                 ccs.set_input(poly)
                 measure.set_input(ccs.output)
 
-                # polygons = []
                 bmin = pts.min(0).round().astype(int)
                 bmax = (pts.max(0).round() + 1).astype(int)
                 vidx = np.mgrid[bmin[0]:bmax[0], bmin[1]:bmax[1], bmin[2]:bmax[2]]
@@ -303,9 +304,6 @@ class Polyhedral(ThickMapper):
                             plane.origin = vox+m
 
                         ccs.update()
-                        # p1 = ccs.output.points.to_array()
-                        # p2 = ccs.output.polys.to_array().reshape(-1, 4)[:,1:]
-                        # polygons.append((p1, p2))
                         if ccs.output.number_of_cells > 2:
                             measure.update()
                             mask[i, idx] = measure.volume
@@ -323,13 +321,13 @@ class ConvexPolyhedra(Mapper):
         mask = sparse.csr_matrix((len(wpts), np.prod(self.shape)))
 
         surf = polyutils.Surface(pia, polys)
-        for i, (pts, faces) in enumerate(surf.polyhedra(wm)):
+        for i, (pts, polys) in enumerate(surf.polyhedra(wm)):
             if len(pts) > 0:
                 #generate points within the bounding box
                 samples = rand * (pts.max(0) - pts.min(0)) + pts.min(0)
-                hull = spatial.Delaunay(pts).convex_hull
-                #check which random points are inside the polyhedron
-                inside = delaunay.find_simplex(samples) != -1
+                #check which points are inside the polyhedron
+                inside = polyutils.inside_convex_poly(pts)(samples)
+
                 for idx, value in self._sample(samples[inside]):
                     mask[i, idx] = value / float(sum(inside))
 
