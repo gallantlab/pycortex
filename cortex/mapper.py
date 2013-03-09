@@ -1,10 +1,11 @@
 import os
 import warnings
+from itertools import product
+from collections import Counter
 
 import nibabel
 import numpy as np
-from scipy import sparse
-from itertools import product
+from scipy import sparse, spatial
 
 warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
@@ -125,7 +126,19 @@ class Mapper(object):
 
         return output
 
-    def _recache(self, left, right):
+    def _recache(self, subject, xfmname, **kwargs):
+        masks = []
+        coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
+        fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
+        flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
+
+        for (pts, _, _), (_, polys, _) in zip(fid, flat):
+            coords = polyutils.transform(coord, pts)
+            mask.append(self._getmask(coords, polys, **kwargs))
+
+        self._savecache(*masks)
+
+    def _savecache(self, left, right):
         self.nverts = left.shape[0] + right.shape[0]
         self.masks = [left, right]
         np.savez(self.cachefile, 
@@ -138,130 +151,117 @@ class Mapper(object):
             right_indptr=right.indptr,
             right_shape=right.shape)
 
+class ThickMapper(Mapper):
+    def _recache(self, subject, xfmname, **kwargs):
+        masks = []
+        coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
+        pia = surfs.getVTK(subject, "pia", merge=False, nudge=False)
+        wm = surfs.getVTK(subject, "wm", merge=False, nudge=False)
+        flat = surfs.getVTK(subject, "flat", merge=False, nudge=False)
+        
+        #iterate over hemispheres
+        for (wpts, _, _), (ppts, _, _), (_, polys, _) in zip(pia, wm, flat):
+            tpia = polyutils.transform(coord, ppts)
+            twm = polyutils.transform(coord, wpts)
+            masks.append(self._getmask(tpia, twm, polys, **kwargs))
+            
+        self._savecache(*masks)
+
 class Nearest(Mapper):
     '''Maps epi volume data to surface using nearest neighbor interpolation'''
-    def _recache(self, subject, xfmname):
-        masks = []
-        coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
-        flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
+    def _getmask(self, coords, polys):
+        valid = np.zeros((len(coords),), dtype=bool)
+        valid[np.unique(polys)] = True
 
-        for (pts, _, _), (_, polys, _) in zip(fid, flat):
-            valid = np.zeros((len(pts),), dtype=bool)
-            valid[np.unique(polys)] = True
-            #np.round is fucked
-            coords = polyutils.transform(coord, pts)
-            coords = np.where(np.mod(coords, 2) == 0.5, np.ceil(coords), np.around(coords)).astype(int)
-            d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < self.shape[2])
-            d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < self.shape[1])
-            d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < self.shape[0])
-            valid = np.logical_and(np.logical_and(valid, d1), np.logical_and(d2, d3))
+        coords = np.where(np.mod(coords, 2) == 0.5, np.ceil(coords), np.around(coords)).astype(int)
+        d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < self.shape[2])
+        d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < self.shape[1])
+        d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < self.shape[0])
+        valid = np.logical_and(np.logical_and(valid, d1), np.logical_and(d2, d3))
 
-            ravelidx = np.ravel_multi_index(coords.T[::-1], self.shape, mode='clip')
+        ravelidx = np.ravel_multi_index(coords.T[::-1], self.shape, mode='clip')
 
-            ij = np.array([np.nonzero(valid)[0], ravelidx[valid]])
-            data = np.ones((len(ij.T),), dtype=bool)
-            csrshape = len(pts), np.prod(self.shape)
-            masks.append(sparse.csr_matrix((data, ij), dtype=bool, shape=csrshape))
-            
-        super(Nearest, self)._recache(masks[0], masks[1])
+        ij = np.array([np.nonzero(valid)[0], ravelidx[valid]])
+        data = np.ones((len(ij.T),), dtype=bool)
+        csrshape = len(coords), np.prod(self.shape)
+        return sparse.csr_matrix((data, ij), dtype=bool, shape=csrshape)
 
 class Trilinear(Mapper):
-    def _recache(self, subject, xfmname):
+    def _getmask(self, coords, polys):
         #trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
-        masks = []
-        coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
-        flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
+        coords = coords[np.unique(polys)]
+        xyz, floor = np.modf(coords.T)
+        floor = floor.astype(int)
+        ceil = floor + 1
+        x, y, z = xyz
+        x[x < 0] = 0
+        y[y < 0] = 0
+        z[z < 0] = 0
 
-        for (pts, _, _), (_, polys, _) in zip(fid, flat):
-            valid = np.unique(polys)
-            coords = polyutils.transform(coord, pts[valid])
-            xyz, floor = np.modf(coords.T)
-            floor = floor.astype(int)
-            ceil = floor + 1
-            x, y, z = xyz
-            x[x < 0] = 0
-            y[y < 0] = 0
-            z[z < 0] = 0
+        i000 = np.ravel_multi_index((floor[2], floor[1], floor[0]), self.shape, mode='clip')
+        i100 = np.ravel_multi_index((floor[2], floor[1],  ceil[0]), self.shape, mode='clip')
+        i010 = np.ravel_multi_index((floor[2],  ceil[1], floor[0]), self.shape, mode='clip')
+        i001 = np.ravel_multi_index(( ceil[2], floor[1], floor[0]), self.shape, mode='clip')
+        i101 = np.ravel_multi_index(( ceil[2], floor[1],  ceil[0]), self.shape, mode='clip')
+        i011 = np.ravel_multi_index(( ceil[2],  ceil[1], floor[0]), self.shape, mode='clip')
+        i110 = np.ravel_multi_index((floor[2],  ceil[1],  ceil[0]), self.shape, mode='clip')
+        i111 = np.ravel_multi_index(( ceil[2],  ceil[1],  ceil[0]), self.shape, mode='clip')
 
-            i000 = np.ravel_multi_index((floor[2], floor[1], floor[0]), self.shape, mode='clip')
-            i100 = np.ravel_multi_index((floor[2], floor[1],  ceil[0]), self.shape, mode='clip')
-            i010 = np.ravel_multi_index((floor[2],  ceil[1], floor[0]), self.shape, mode='clip')
-            i001 = np.ravel_multi_index(( ceil[2], floor[1], floor[0]), self.shape, mode='clip')
-            i101 = np.ravel_multi_index(( ceil[2], floor[1],  ceil[0]), self.shape, mode='clip')
-            i011 = np.ravel_multi_index(( ceil[2],  ceil[1], floor[0]), self.shape, mode='clip')
-            i110 = np.ravel_multi_index((floor[2],  ceil[1],  ceil[0]), self.shape, mode='clip')
-            i111 = np.ravel_multi_index(( ceil[2],  ceil[1],  ceil[0]), self.shape, mode='clip')
+        v000 = (1-x)*(1-y)*(1-z)
+        v100 = x*(1-y)*(1-z)
+        v010 = (1-x)*y*(1-z)
+        v110 = x*y*(1-z)
+        v001 = (1-x)*(1-y)*z
+        v101 = x*(1-y)*z
+        v011 = (1-x)*y*z
+        v111 = x*y*z
 
-            v000 = (1-x)*(1-y)*(1-z)
-            v100 = x*(1-y)*(1-z)
-            v010 = (1-x)*y*(1-z)
-            v110 = x*y*(1-z)
-            v001 = (1-x)*(1-y)*z
-            v101 = x*(1-y)*z
-            v011 = (1-x)*y*z
-            v111 = x*y*z
-
-            i    = np.tile(valid, [8, 1]).T.ravel()
-            j    = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T.ravel()
-            data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T.ravel()
-            csrshape = len(pts), np.prod(self.shape)
-            masks.append(sparse.csr_matrix((data, (i, j)), shape=csrshape))
-
-        super(Trilinear, self)._recache(masks[0], masks[1])
+        i    = np.tile(valid, [8, 1]).T.ravel()
+        j    = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T.ravel()
+        data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T.ravel()
+        csrshape = len(pts), np.prod(self.shape)
+        return sparse.csr_matrix((data, (i, j)), shape=csrshape)
 
 class Lanczos(Mapper):
-    def _recache(self, subject, xfmname, window=3, renorm=True):
-        masks = []
-        coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
+    def _getmask(self, coords, polys, window=3, renorm=True):
         nZ, nY, nX = self.shape
+        dx = coords[:,0] - np.atleast_2d(np.arange(nX)).T
+        dy = coords[:,1] - np.atleast_2d(np.arange(nY)).T
+        dz = coords[:,2] - np.atleast_2d(np.arange(nZ)).T
 
-        fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
-        flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
-        
-        for (pts, _, _), (_, polys, _) in zip(fid, flat):
-            # valid = np.unique(polys)
-            # coords = polyutils.transform(coord, pts[valid])
-            coords = polyutils.transform(coord, pts)
+        def lanczos(x):
+            out = np.zeros_like(x)
+            sel = np.abs(x)<window
+            selx = x[sel]
+            out[sel] = np.sin(np.pi * selx) * np.sin(np.pi * selx / window) * (window / (np.pi**2 * selx**2))
+            return out
 
-            dx = coords[:,0] - np.atleast_2d(np.arange(nX)).T
-            dy = coords[:,1] - np.atleast_2d(np.arange(nY)).T
-            dz = coords[:,2] - np.atleast_2d(np.arange(nZ)).T
+        Lx = lanczos(dx)
+        Ly = lanczos(dy)
+        Lz = lanczos(dz)
 
-            def lanczos(x):
-                out = np.zeros_like(x)
-                sel = np.abs(x)<window
-                selx = x[sel]
-                out[sel] = np.sin(np.pi * selx) * np.sin(np.pi * selx / window) * (window / (np.pi**2 * selx**2))
-                return out
+        mask = sparse.lil_matrix((len(coords), np.prod(self.shape)))
+        for v in range(len(coords)):
+            ix = np.nonzero(Lx[:,v])[0]
+            iy = np.nonzero(Ly[:,v])[0]
+            iz = np.nonzero(Lz[:,v])[0]
 
-            Lx = lanczos(dx)
-            Ly = lanczos(dy)
-            Lz = lanczos(dz)
-
-            mask = sparse.lil_matrix((len(pts), np.prod(self.shape)))
-            for v in range(len(pts)):
-                ix = np.nonzero(Lx[:,v])[0]
-                iy = np.nonzero(Ly[:,v])[0]
-                iz = np.nonzero(Lz[:,v])[0]
-
-                vx = Lx[ix,v]
-                vy = Ly[iy,v]
-                vz = Lz[iz,v]
-
+            vx = Lx[ix,v]
+            vy = Ly[iy,v]
+            vz = Lz[iz,v]
+            try:
                 inds = np.ravel_multi_index(np.array(list(product(iz, iy, ix))).T, self.shape)
                 vals = np.prod(np.array(list(product(vz, vy, vx))), 1)
                 if renorm:
                     vals /= vals.sum()
                 mask[v,inds] = vals
+            except ValueError:
+                pass
 
-                if not v % 1000:
-                    print(v)
+            if not v % 1000:
+                print(v)
 
-            masks.append(mask.tocsr())
-
-        super(Lanczos, self)._recache(masks[0], masks[1])
+        return mask.tocsr()
 
 class Gaussian(Mapper):
     def _recache(self, subject, xfmname, std=2):
@@ -271,17 +271,13 @@ class GaussianThickness(Mapper):
     def _recache(self, subject, xfmname, std=2):
         raise NotImplementedError
 
-class Polyhedral(Mapper):
-    def _recache(self, subject, xfmname):
+class Polyhedral(ThickMapper):
+    '''Uses an actual (likely concave) polyhedra betwen the pial and white surfaces
+    to estimate the thickness'''
+    def _getmask(self, pia, wm, polys):
+        mask = sparse.csr_matrix((len(wpts), np.prod(self.shape)))
+
         from tvtk.api import tvtk
-
-        pia = surfs.getVTK(subject, "pia")
-        wm = surfs.getVTK(subject, "wm")
-        flat = surfs.getVTK(subject, "flat")
-
-        coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        
-        #All necessary tvtk objects for measuring intersections
         measure = tvtk.MassProperties()
         planes = tvtk.PlaneCollection()
         for norm in np.vstack([-np.eye(3), np.eye(3)]):
@@ -290,59 +286,65 @@ class Polyhedral(Mapper):
         feats = tvtk.FeatureEdges(boundary_edges=1, non_manifold_edges=0, manifold_edges=0, feature_edges=0)
         feats.set_input(ccs.output)
 
-        masks = []
-        #iterate over hemispheres
-        for (wpts, _, _), (ppts, _, _), (_, polys, _) in zip(pia, wm, flat):
-            mask = sparse.csr_matrix((len(wpts), np.prod(self.shape)))
+        surf = polyutils.Surface(pia, polys)
+        for i, (pts, faces) in enumerate(surf.polyhedra(wm)):
+            if len(pts) > 0:
+                poly = tvtk.PolyData(points=pts, polys=faces)
+                measure.set_input(poly)
+                measure.update()
+                totalvol = measure.volume
+                ccs.set_input(poly)
+                measure.set_input(ccs.output)
 
-            tpia = polyutils.transform(coord, ppts)
-            twm = polyutils.transform(coord, wpts)
-            surf = polyutils.Surface(tpia, polys)
-            for i, (pts, faces) in enumerate(surf.polyhedra(twm)):
-                if len(pts) > 0:
-                    poly = tvtk.PolyData(points=pts, polys=faces)
-                    measure.set_input(poly)
-                    measure.update()
-                    totalvol = measure.volume
-                    ccs.set_input(poly)
-                    measure.set_input(ccs.output)
+                bmin = pts.min(0).round().astype(int)
+                bmax = (pts.max(0).round() + 1).astype(int)
+                vidx = np.mgrid[bmin[0]:bmax[0], bmin[1]:bmax[1], bmin[2]:bmax[2]]
+                for vox in vidx.reshape(3, -1).T:
+                    try:
+                        idx = np.ravel_multi_index(vox[::-1], self.shape)
+                        for plane, m in zip(planes, [.5, .5, .5, -.5, -.5, -.5]):
+                            plane.origin = vox+m
 
-                    # polygons = []
-                    bmin = pts.min(0).round().astype(int)
-                    bmax = (pts.max(0).round() + 1).astype(int)
-                    vidx = np.mgrid[bmin[0]:bmax[0], bmin[1]:bmax[1], bmin[2]:bmax[2]]
-                    for vox in vidx.reshape(3, -1).T:
-                        try:
-                            idx = np.ravel_multi_index(vox[::-1], self.shape)
-                            for plane, m in zip(planes, [.5, .5, .5, -.5, -.5, -.5]):
-                                plane.origin = vox+m
+                        ccs.update()
+                        if ccs.output.number_of_cells > 2:
+                            measure.update()
+                            mask[i, idx] = measure.volume
+    
+                    except ValueError:
+                        print('Voxel not in volume: (%d, %d, %d)'%tuple(vox))
 
-                            ccs.update()
-                            feats.update()
-                            if feats.output.number_of_cells > 1:
-                                import ipdb
-                                ipdb.set_trace()
-                            # p1 = ccs.output.points.to_array()
-                            # p2 = ccs.output.polys.to_array().reshape(-1, 4)[:,1:]
-                            # polygons.append((p1, p2))
-                            if ccs.output.number_of_cells > 2:
-                                measure.update()
-                                mask[i, idx] = measure.volume
-        
-                        except ValueError:
-                            print('Voxel not in volume: (%d, %d, %d)'%tuple(vox))
+                mask.data[mask.indptr[i]:mask.indptr[i+1]] /= mask[i].sum()
 
-                    mask.data[mask.indptr[i]:mask.indptr[i+1]] /= mask[i].sum()
+        return mask
 
-                # if mask[i].sum() > 1.2*totalvol:
-                #     import cPickle
-                #     cPickle.dump(polygons, open("/tmp/test.pkl", "w"), 2)
-                #     import ipdb
-                #     ipdb.set_trace()
+class ConvexPolyhedra(Mapper):
+    def _getmask(self, pia, wm, polys, npts=10000):
+        rand = np.random.rand(npts, 3)
+        mask = sparse.csr_matrix((len(wpts), np.prod(self.shape)))
 
-                if i % 100 == 0:
-                    print(i)
+        surf = polyutils.Surface(pia, polys)
+        for i, (pts, polys) in enumerate(surf.polyhedra(wm)):
+            if len(pts) > 0:
+                #generate points within the bounding box
+                samples = rand * (pts.max(0) - pts.min(0)) + pts.min(0)
+                #check which points are inside the polyhedron
+                inside = polyutils.inside_convex_poly(pts)(samples)
 
-            masks.append(mask)
-        super(Polyhedral, self)._recache(masks[0], masks[1])
+                for idx, value in self._sample(samples[inside]):
+                    mask[i, idx] = value / float(sum(inside))
+
+            if i % 100 == 0:
+                print(i)
+
+        return mask
+
+class ConvexNN(ConvexPolyhedra):
+    def _sample(self, pts):
+        coords = pts.round().astype(int)[:,::-1].T
+        idx = np.ravel_multi_index(coords, self.shape, mode='clip')
+        return Counter(idx).items()
+
+class ConvexTrilin(ConvexPolyhedra):
+    def _sample(self, pts):
+        pass
 

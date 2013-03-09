@@ -90,6 +90,12 @@ class Surface(object):
 
             yield pts.points, np.array(list(polys.triangles))
 
+    def polypoints(self, wm):
+        for p, faces in enumerate(self.members):
+            pts = np.zeros((len(faces)*3, 3))
+            for face in faces:
+                poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == p)[0][0])
+
     def polyparts(self, wm, idx):
         #polypart = np.array([[0, 1, 2], [0, 3, 1], [3, 4, 1], [4, 5, 1], [5, 2, 1], [0, 2, 5], [0, 5, 3], [3, 5, 4]])
         faces = self.members[idx]
@@ -395,8 +401,54 @@ def boundary_edges(polys):
 
     return np.array(list(verts))
 
-def polysmooth(scalars, polys):
-    pass
+def curvature(pts, polys):
+    pd = tvtk.PolyData(points=hemi[0], polys=hemi[1])
+    curv = tvtk.Curvatures(input=pd, curvature_type="mean")
+    curv.update()
+    return curv.output.point_data.scalars.to_array()
+
+def polysmooth(scalars, polys, smooth=8, neighborhood=3):
+    faces = dict()
+    for poly in polys:
+        for pt in poly:
+            if pt not in faces:
+                faces[pt] = set()
+            faces[pt] |= set(poly)
+
+    def getpts(pt, n):
+        if pt in faces:
+            for p in faces[pt]:
+                if n == 0:
+                    yield p
+                else:
+                    for q in getpts(p, n-1):
+                        yield q
+    
+    curvature = np.zeros(len(scalars))
+    for i, val in enumerate(scalars):
+        neighbors = list(set(getpts(i, neighborhood)))
+        if len(neighbors) > 0:
+            g = np.exp(-(((curv[neighbors] - val)**2) / (2*smooth**2)).sum(1))
+            curvature[i] = (g * curv[neighbors]).mean()
+        
+    return curvature
+
+def inside_convex_poly(pts):
+    d = Delaunay(pts)
+    return lambda x: d.find_simplex(x) != -1
+    #delaunay triangulation + find_simplex is WAY faster than this method
+    # phull = pts[hull]
+    # faces = phull.mean(1)
+    # norms = np.cross(phull[:,1] - phull[:,0], phull[:,2] - phull[:,0])
+    # flipped = (norms * (faces - pts.mean(0))).sum(1) < 0
+    # norms[flipped] = -norms[flipped]
+
+    # def func(samples):
+    #     svec = faces[np.newaxis] - samples[:,np.newaxis]
+    #     #dot product
+    #     return ((svec * norms).sum(2) > 0).all(1)
+
+    # return func
 
 def edgefaces(polys, n=1):
     '''Get the edges which belong to n faces. Typically used for searching

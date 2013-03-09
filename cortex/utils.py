@@ -102,7 +102,8 @@ def get_mapper(subject, xfmname, type='nearest', **kwargs):
         trilinear=mapper.Trilinear,
         gaussian=mapper.Gaussian,
         polyhedral=mapper.Polyhedral,
-        lanczos=mapper.Lanczos)
+        lanczos=mapper.Lanczos,
+        convexnn=mapper.ConvexNN)
     return mapfunc[type](subject, xfmname, **kwargs)
 
 def get_roipack(subject, remove_medial=False):
@@ -194,7 +195,11 @@ def add_roi(data, subject, xfmname, name="new_roi", recache=False, open_inkscape
     from . import quickflat
     rois = get_roipack(subject)
     im = quickflat.make(data, subject, xfmname, height=1024, recache=recache, projection=projection, with_rois=False)
-    fp = io.StringIO()
+    try:
+        import cStringIO
+        fp = cStringIO.StringIO()
+    except:
+        fp = io.StringIO()
     imsave(fp, im, **kwargs)
     fp.seek(0)
     rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
@@ -313,43 +318,16 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         pass
     return mask,roiIdx
 
-def get_curvature(subject, smooth=8, neighborhood=3):
+def get_curvature(subject, **kwargs):
+    from . import polyutils
     from tvtk.api import tvtk
     curvs = []
-    for hemi in surfs.getVTK(subject, "fiducial"):
-        pd = tvtk.PolyData(points=hemi[0], polys=hemi[1])
-        curv = tvtk.Curvatures(input=pd, curvature_type="mean")
-        curv.update()
-        curv = curv.output.point_data.scalars.to_array()
-        if smooth == 0:
-            curvs.append(curv)
+    for pts, polys, _ in surfs.getVTK(subject, "fiducial"):
+        curv = polyutils.curvature(pts, polys)
+        if smooth > 0:
+            curvs.append(polyutils.polysmooth(curv, **kwargs))
         else:
-            faces = dict()
-            for poly in hemi[1]:
-                for pt in poly:
-                    if pt not in faces:
-                        faces[pt] = set()
-                    faces[pt] |= set(poly)
-
-            def getpts(pt, n):
-                if pt in faces:
-                    for p in faces[pt]:
-                        if n == 0:
-                            yield p
-                        else:
-                            for q in getpts(p, n-1):
-                                yield q
-
-            curvature = np.zeros(len(hemi[0]))
-            for i, pt in enumerate(hemi[0]):
-                neighbors = list(set(getpts(i, neighborhood)))
-                if len(neighbors) > 0:
-                    g = np.exp(-(((hemi[0][neighbors] - pt)**2) / (2*smooth**2)).sum(1))
-                    curvature[i] = (g * curv[neighbors]).mean()
-                
-            curvs.append(curvature)
-
-    return curvs
+            curvs.append(curv)
 
 def decimate_mesh(subject, proportion = 0.5):
     from scipy.spatial import Delaunay
