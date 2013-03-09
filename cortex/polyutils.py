@@ -398,6 +398,23 @@ def boundary_edges(polys):
 def polysmooth(scalars, polys):
     pass
 
+def edgefaces(polys, n=1):
+    '''Get the edges which belong to n faces. Typically used for searching
+    for non-manifold edges or boundary edges'''
+    edges = dict()
+    def add(x, y):
+        key = tuple(sorted([x, y]))
+        if key not in edges:
+            edges[key] = 0
+        edges[key] += 1
+
+    for i, (a, b, c) in enumerate(polys):
+        add(a, b)
+        add(b, c)
+        add(a, c)
+
+    return [k for k, v in edges.items() if v == n]
+
 if __name__ == "__main__":
     import pickle
     from . import db

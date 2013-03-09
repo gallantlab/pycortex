@@ -286,7 +286,9 @@ class Polyhedral(Mapper):
         planes = tvtk.PlaneCollection()
         for norm in np.vstack([-np.eye(3), np.eye(3)]):
             planes.append(tvtk.Plane(normal=norm))
-        ccs = tvtk.ClipClosedSurface(clipping_planes=planes, tolerance=1e-8)
+        ccs = tvtk.ClipClosedSurface(clipping_planes=planes)
+        feats = tvtk.FeatureEdges(boundary_edges=1, non_manifold_edges=0, manifold_edges=0, feature_edges=0)
+        feats.set_input(ccs.output)
 
         masks = []
         #iterate over hemispheres
@@ -316,6 +318,10 @@ class Polyhedral(Mapper):
                                 plane.origin = vox+m
 
                             ccs.update()
+                            feats.update()
+                            if feats.output.number_of_cells > 1:
+                                import ipdb
+                                ipdb.set_trace()
                             # p1 = ccs.output.points.to_array()
                             # p2 = ccs.output.polys.to_array().reshape(-1, 4)[:,1:]
                             # polygons.append((p1, p2))
