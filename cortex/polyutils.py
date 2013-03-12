@@ -402,7 +402,8 @@ def boundary_edges(polys):
     return np.array(list(verts))
 
 def curvature(pts, polys):
-    pd = tvtk.PolyData(points=hemi[0], polys=hemi[1])
+    from tvtk.api import tvtk
+    pd = tvtk.PolyData(points=pts, polys=polys)
     curv = tvtk.Curvatures(input=pd, curvature_type="mean")
     curv.update()
     return curv.output.point_data.scalars.to_array()
@@ -428,7 +429,7 @@ def polysmooth(scalars, polys, smooth=8, neighborhood=3):
     for i, val in enumerate(scalars):
         neighbors = list(set(getpts(i, neighborhood)))
         if len(neighbors) > 0:
-            g = np.exp(-(((scalars[neighbors] - val)**2) / (2*smooth**2)).sum(1))
+            g = np.exp(-((scalars[neighbors] - val)**2) / (2*smooth**2))
             output[i] = (g * scalars[neighbors]).mean()
         
     return output

@@ -293,7 +293,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     if 'cortex' in roiListL:
         cIdx = roiListL.index('cortex')
         # Left:
-        OtherROIs = tmpMask[:,np.arange(len(roiList))!=cIdx,0]
+        OtherROIs = tmpMask[:,np.arange(len(roiList))!=cIdx,0] 
         tmpMask[:,cIdx,0] = np.logical_and(np.logical_not(np.any(OtherROIs,axis=1)),tmpMask[:,cIdx,0])
         # Right:
         OtherROIs = tmpMask[:,np.arange(len(roiList))!=cIdx,1]
@@ -318,14 +318,14 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         pass
     return mask,roiIdx
 
-def get_curvature(subject, **kwargs):
+def get_curvature(subject, smooth=8, **kwargs):
     from . import polyutils
     from tvtk.api import tvtk
     curvs = []
     for pts, polys, _ in surfs.getVTK(subject, "fiducial"):
         curv = polyutils.curvature(pts, polys)
         if smooth > 0:
-            curvs.append(polyutils.polysmooth(curv, **kwargs))
+            curvs.append(polyutils.polysmooth(curv, polys, smooth=smooth, **kwargs))
         else:
             curvs.append(curv)
 

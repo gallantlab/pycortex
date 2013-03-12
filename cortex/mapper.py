@@ -341,8 +341,10 @@ class ConvexNN(ConvexPolyhedra):
         d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < self.shape[1])
         d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < self.shape[2])
         valid = np.logical_and(d1, np.logical_and(d2, d3))
-        idx = np.ravel_multi_index(coords[valid].T, self.shape)
-        return Counter(idx).items()
+        if valid.any():
+            idx = np.ravel_multi_index(coords[valid].T, self.shape)
+            return Counter(idx).items()
+        return []
 
 class ConvexTrilin(ConvexPolyhedra):
     def _sample(self, pts):
