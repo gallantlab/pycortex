@@ -275,7 +275,9 @@ class Polyhedral(ThickMapper):
         planes = tvtk.PlaneCollection()
         for norm in np.vstack([-np.eye(3), np.eye(3)]):
             planes.append(tvtk.Plane(normal=norm))
-        ccs = tvtk.ClipClosedSurface(clipping_planes=planes, tolerance=1e-8)
+        ccs = tvtk.ClipClosedSurface(clipping_planes=planes)
+        feats = tvtk.FeatureEdges(boundary_edges=1, non_manifold_edges=0, manifold_edges=0, feature_edges=0)
+        feats.set_input(ccs.output)
 
         surf = polyutils.Surface(pia, polys)
         for i, (pts, faces) in enumerate(surf.polyhedra(wm)):
