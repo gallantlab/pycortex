@@ -263,7 +263,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     class JSMixer(serve.JSProxy):
         def addData(self, projection='nearest', **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
-            mapper = utils.get_mapper(subject, xfmname, type=projection)
+            ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9)
             json, data = _make_bindat(_normalize_data(kwargs, mapper), fmt='data/%s/')
             queue.put(data)
             return Proxy(json)

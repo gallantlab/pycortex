@@ -328,6 +328,7 @@ def get_curvature(subject, smooth=8, **kwargs):
             curvs.append(polyutils.polysmooth(curv, polys, smooth=smooth, **kwargs))
         else:
             curvs.append(curv)
+    return curvs
 
 def decimate_mesh(subject, proportion = 0.5):
     from scipy.spatial import Delaunay
@@ -361,7 +362,7 @@ def decimate_mesh(subject, proportion = 0.5):
 
     return masks, newpolys
 
-def get_flatmap_distortion(sub, type="areal"):
+def get_flatmap_distortion(sub, type="areal", smooth=8, **kwargs):
     """Computes distortion of flatmap relative to fiducial surface. Several different
     types of distortion are available:
     
@@ -374,13 +375,15 @@ def get_flatmap_distortion(sub, type="areal"):
     the mean squared difference between distances in the fiducial map and distances in
     the flatmap, for each pair of neighboring vertices. See Fishl, Sereno, and Dale, 1999.
     """
-    from polyutils import Distortion
+    from polyutils import Distortion, polysmooth
     distortions = []
     for hem in ["lh", "rh"]:
         fidvert, fidtri, etc = surfs.getVTK(sub, "fiducial", hem)
         flatvert, flattri, etc = surfs.getVTK(sub, "flat", hem)
 
         dist = getattr(Distortion(flatvert, fidvert, flattri), type)
+        if smooth > 0:
+            dist = polysmooth(dist, fidtri, smooth=8, **kwargs)
         distortions.append(dist)
 
     return distortions
