@@ -236,6 +236,9 @@ class Lanczos(Mapper):
         Lx = lanczos(dx)
         Ly = lanczos(dy)
         Lz = lanczos(dz)
+
+        import ipdb
+        ipdb.set_trace()
         
         mask = sparse.lil_matrix((len(coords), np.prod(self.shape)))
         for v in range(len(coords)):
@@ -333,11 +336,46 @@ class ConvexPolyhedra(ThickMapper):
 
 class ConvexNN(ConvexPolyhedra):
     def _sample(self, pts):
-        coords = pts.round().astype(int)[:,::-1].T
-        idx = np.ravel_multi_index(coords, self.shape, mode='clip')
+        coords = pts.round().astype(int)[:,::-1]
+        d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < self.shape[0])
+        d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < self.shape[1])
+        d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < self.shape[2])
+        valid = np.logical_and(d1, np.logical_and(d2, d3))
+        idx = np.ravel_multi_index(coords[valid].T, self.shape)
         return Counter(idx).items()
 
 class ConvexTrilin(ConvexPolyhedra):
     def _sample(self, pts):
-        raise NotImplementedError
+        (x, y, z), floor = np.modf(pts.T)
+        floor = floor.astype(int)
+        ceil = floor + 1
+        x[x < 0] = 0
+        y[y < 0] = 0
+        z[z < 0] = 0
 
+        i000 = np.ravel_multi_index((floor[2], floor[1], floor[0]), self.shape, mode='clip')
+        i100 = np.ravel_multi_index((floor[2], floor[1],  ceil[0]), self.shape, mode='clip')
+        i010 = np.ravel_multi_index((floor[2],  ceil[1], floor[0]), self.shape, mode='clip')
+        i001 = np.ravel_multi_index(( ceil[2], floor[1], floor[0]), self.shape, mode='clip')
+        i101 = np.ravel_multi_index(( ceil[2], floor[1],  ceil[0]), self.shape, mode='clip')
+        i011 = np.ravel_multi_index(( ceil[2],  ceil[1], floor[0]), self.shape, mode='clip')
+        i110 = np.ravel_multi_index((floor[2],  ceil[1],  ceil[0]), self.shape, mode='clip')
+        i111 = np.ravel_multi_index(( ceil[2],  ceil[1],  ceil[0]), self.shape, mode='clip')
+
+        v000 = (1-x)*(1-y)*(1-z)
+        v100 = x*(1-y)*(1-z)
+        v010 = (1-x)*y*(1-z)
+        v110 = x*y*(1-z)
+        v001 = (1-x)*(1-y)*z
+        v101 = x*(1-y)*z
+        v011 = (1-x)*y*z
+        v111 = x*y*z
+
+        i    = np.tile(np.arange(len(coords)), [8, 1]).T.ravel()
+        j    = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T.ravel()
+        data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T.ravel()
+
+
+class ConvexLanczos(ConvexPolyhedra):
+    def _sample(self, pts):
+        raise NotImplementedError
