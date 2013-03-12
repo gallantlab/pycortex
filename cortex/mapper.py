@@ -130,11 +130,11 @@ class Mapper(object):
         masks = []
         coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
         fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
-        flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
+        #flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
 
-        for (pts, _, _), (_, polys, _) in zip(fid, flat):
+        for pts, polys, _ in fid:
             coords = polyutils.transform(coord, pts)
-            mask.append(self._getmask(coords, polys, **kwargs))
+            masks.append(self._getmask(coords, polys, **kwargs))
 
         self._savecache(*masks)
 
@@ -157,10 +157,10 @@ class ThickMapper(Mapper):
         coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
         pia = surfs.getVTK(subject, "pia", merge=False, nudge=False)
         wm = surfs.getVTK(subject, "wm", merge=False, nudge=False)
-        flat = surfs.getVTK(subject, "flat", merge=False, nudge=False)
+        #flat = surfs.getVTK(subject, "flat", merge=False, nudge=False)
         
         #iterate over hemispheres
-        for (wpts, _, _), (ppts, _, _), (_, polys, _) in zip(pia, wm, flat):
+        for (wpts, polys, _), (ppts, _, _) in zip(pia, wm):
             tpia = polyutils.transform(coord, ppts)
             twm = polyutils.transform(coord, wpts)
             masks.append(self._getmask(tpia, twm, polys, **kwargs))
@@ -170,8 +170,7 @@ class ThickMapper(Mapper):
 class Nearest(Mapper):
     '''Maps epi volume data to surface using nearest neighbor interpolation'''
     def _getmask(self, coords, polys):
-        valid = np.zeros((len(coords),), dtype=bool)
-        valid[np.unique(polys)] = True
+        valid = np.ones((len(coords),), dtype=bool)
 
         coords = np.where(np.mod(coords, 2) == 0.5, np.ceil(coords), np.around(coords)).astype(int)
         d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < self.shape[2])
@@ -189,11 +188,9 @@ class Nearest(Mapper):
 class Trilinear(Mapper):
     def _getmask(self, coords, polys):
         #trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
-        coords = coords[np.unique(polys)]
-        xyz, floor = np.modf(coords.T)
+        (x, y, z), floor = np.modf(coords.T)
         floor = floor.astype(int)
         ceil = floor + 1
-        x, y, z = xyz
         x[x < 0] = 0
         y[y < 0] = 0
         z[z < 0] = 0
@@ -216,10 +213,10 @@ class Trilinear(Mapper):
         v011 = (1-x)*y*z
         v111 = x*y*z
 
-        i    = np.tile(valid, [8, 1]).T.ravel()
+        i    = np.tile(np.arange(len(coords)), [8, 1]).T.ravel()
         j    = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T.ravel()
         data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T.ravel()
-        csrshape = len(pts), np.prod(self.shape)
+        csrshape = len(coords), np.prod(self.shape)
         return sparse.csr_matrix((data, (i, j)), shape=csrshape)
 
 class Lanczos(Mapper):
@@ -239,7 +236,7 @@ class Lanczos(Mapper):
         Lx = lanczos(dx)
         Ly = lanczos(dy)
         Lz = lanczos(dz)
-
+        
         mask = sparse.lil_matrix((len(coords), np.prod(self.shape)))
         for v in range(len(coords)):
             ix = np.nonzero(Lx[:,v])[0]
@@ -264,10 +261,6 @@ class Lanczos(Mapper):
         return mask.tocsr()
 
 class Gaussian(Mapper):
-    def _recache(self, subject, xfmname, std=2):
-        raise NotImplementedError
-
-class GaussianThickness(Mapper):
     def _recache(self, subject, xfmname, std=2):
         raise NotImplementedError
 
@@ -315,10 +308,10 @@ class Polyhedral(ThickMapper):
 
         return mask
 
-class ConvexPolyhedra(Mapper):
-    def _getmask(self, pia, wm, polys, npts=10000):
+class ConvexPolyhedra(ThickMapper):
+    def _getmask(self, pia, wm, polys, npts=1024):
         rand = np.random.rand(npts, 3)
-        mask = sparse.csr_matrix((len(wpts), np.prod(self.shape)))
+        mask = sparse.csr_matrix((len(wm), np.prod(self.shape)))
 
         surf = polyutils.Surface(pia, polys)
         for i, (pts, polys) in enumerate(surf.polyhedra(wm)):
@@ -344,5 +337,5 @@ class ConvexNN(ConvexPolyhedra):
 
 class ConvexTrilin(ConvexPolyhedra):
     def _sample(self, pts):
-        pass
+        raise NotImplementedError
 
