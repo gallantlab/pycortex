@@ -52,7 +52,7 @@ class BrainCTM(object):
             fidpolys = set(tuple(f) for f in np.sort(hemi.polys, axis=1))
             flatpolys = set(tuple(f) for f in np.sort(ptpoly[1], axis=1))
             mwall = np.zeros(len(hemi.ctm))
-            mwall[np.array(list(fidpolys - flatpolys))] = 1
+            mwall[np.array(list(fidpolys - flatpolys)).astype(int)] = 1
             hemi.aux[:,2] = mwall
 
     def addSurf(self, typename):
