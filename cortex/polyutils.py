@@ -213,9 +213,6 @@ def face_volume(pts1, pts2, polys):
             print(i)
     return vols
 
-def transform(xfm, pts):
-    return np.dot(xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
-
 def get_connected(polys):
     data = [set([]) for _ in range(polys.max()+1)]
     for i, poly in enumerate(polys):

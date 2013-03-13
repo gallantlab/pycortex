@@ -343,8 +343,3 @@ def stretch_mwall(pts, polys, mwall):
     pts[mwall, 1] = radius * np.cos(angles) + center[1]
     pts[mwall, 2] = radius * np.sin(angles) + center[2]
     return SpringLayout(pts, polys, inflated, pins=mwall)
-
-def test():
-    pts, polys, curvs = get_surf("JGfs2", "lh", "inflated", patch="inferiorout")
-    mwall = np.load("/tmp/lh_mwall_verts.npy")
-    return stretch_mwall(pts, polys, mwall)

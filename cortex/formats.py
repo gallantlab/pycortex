@@ -1,4 +1,9 @@
+import os
+import glob
 import numpy as np
+
+def read(globname):
+	preference = ['npz', 'vtk', 'off']
 
 def read_off(filename):
 	pts, polys = [], []
@@ -13,6 +18,10 @@ def read_off(filename):
 			polys.append([int(i) for i in fp.readline().split()][1:])
 
 	return np.array(pts), np.array(polys)
+
+def read_npz(filename):
+	npz = np.load(filename)
+	return npz['pts'], npz['polys']
 
 def read_vtk(filename):
 	with open(filename) as vtk:
@@ -36,7 +45,7 @@ def read_vtk(filename):
 				polys = np.array(data, dtype=np.uint32).reshape(int(n), 4)[:,1:]
 
 			line = vtk.readline()
-		return pts, polys, None
+		return pts, polys
 
 def write_vtk(outfile, pts, polys, norms=None):
 	with open(outfile, "w") as fp:

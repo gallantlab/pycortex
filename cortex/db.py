@@ -15,6 +15,7 @@ import shutil
 import numpy as np
 
 from . import options
+from . import xfm
 
 filestore = options.config.get('basic', 'filestore')
 
@@ -225,52 +226,13 @@ class Database(object):
         if not os.path.exists(fname):
             return None
         xfmdict = json.load(open(fname))
-        assert xfmdict['subject'] == subject, "Incorrect subject for the name"
-        return np.array(xfmdict[xfmtype]), os.path.join(filestore, "references", xfmdict['epifile'])
+        if xfmdict['subject'] != subject:
+            raise ValueError("Incorrect subject for the name")
+        epifile = os.path.join(filestore, "references", xfmdict['epifile'])
+        return xfm.Transform(xfmdict[xfmtype], epifile)
 
-    def getXfmFSL(self, subject, name):
-        """Retrieves and translates the transform from the filestore. Returned
-        transform is functional -> anatomical and is FSL compatible.
-
-        Parameters
-        ----------
-        subject : str
-            Name of the subject
-        name : str
-            Name of the transform
-        """
-        import nibabel
-        
-        xfm, epifile = self.getXfm(subject, name)
-        raw = self.getAnat(subject, type='raw')
-        
-        import numpy.linalg as npl
-        def _x_flipper(N_i):
-            #Copied from dipy
-            flipr = np.diag([-1, 1, 1, 1])
-            flipr[0,3] = N_i - 1
-            return flipr
-
-        in_hdr = nibabel.load(epifile).get_header()
-        ref_hdr = nibabel.load(raw).get_header()
-        
-        # get_zooms gets the positive voxel sizes as returned in the header
-        inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
-        refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        
-        if npl.det(in_hdr.get_best_affine())>=0:
-            inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
-        if npl.det(ref_hdr.get_best_affine())>=0:
-            refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
-
-        M = nibabel.load(raw).get_affine()
-        inv = np.linalg.inv
-
-        fslx = inv(np.dot(inspace, np.dot(xfm, np.dot(M, inv(refspace)))))
-        return fslx
-
-    def getVTK(self, subject, type, hemisphere="both", merge=False, nudge=False):
-        '''Return the VTK pair for the given subject, surface type, and hemisphere.
+    def getSurf(self, subject, type, hemisphere="both", merge=False, nudge=False):
+        '''Return the surface pair for the given subject, surface type, and hemisphere.
 
         Parameters
         ----------
@@ -295,11 +257,11 @@ class Database(object):
             For single hemisphere
         '''
 
-        from .vtkutils_new import read as vtkread
-        fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
+        import formats
+        fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.*")
 
         if hemisphere == "both":
-            left, right = [ self.getVTK(subject, type, hemisphere=h) for h in ["lh", "rh"]]
+            left, right = [ self.getSurf(subject, type, hemisphere=h) for h in ["lh", "rh"]]
             if type != "fiducial" and nudge:
                 left[0][:,0] -= left[0].max(0)[0]
                 right[0][:,0] -= right[0].min(0)[0]
@@ -321,17 +283,13 @@ class Database(object):
             
             if type == 'fiducial':
                 try:
-                    wpts, polys, _ = self.getVTK(subject, 'wm', hemi)
-                    ppts, _, norms = self.getVTK(subject, 'pia', hemi)
+                    wpts, polys, _ = self.getSurf(subject, 'wm', hemi)
+                    ppts, _, norms = self.getSurf(subject, 'pia', hemi)
                     return (wpts + ppts) / 2, polys, norms
                 except ValueError:
                     pass
 
-            vtkfile = fname.format(subj=subject, type=type, hemi=hemi)
-            if not os.path.exists(vtkfile):
-                raise ValueError("Cannot find given subject and type")
-
-            return vtkread(vtkfile)
+            return read(fname.format(subj=subject, type=type, hemi=hemi))
 
     def getCoords(self, subject, xfmname, hemisphere="both", magnet=None):
         """Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space
