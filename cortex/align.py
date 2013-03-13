@@ -66,29 +66,11 @@ def automatic(subject, name, epifile, noclean=False):
         assert sp.call(cmd, shell=True) == 0, 'Error calling BBR flirt'
 
         xfm = np.loadtxt(os.path.join(cache, "out.mat"))
-        
-        ## Adapted from dipy.external.fsl.flirt2aff#############################
-        import numpy.linalg as npl
-        
-        in_hdr = nibabel.load(epifile).get_header()
-        ref_hdr = nibabel.load(raw).get_header()
-        
-        # get_zooms gets the positive voxel sizes as returned in the header
-        inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
-        refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        
-        if npl.det(in_hdr.get_best_affine())>=0:
-            inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
-        if npl.det(ref_hdr.get_best_affine())>=0:
-            refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
-        ########################################################################
 
-        epi = nibabel.load(epifile).get_header().get_base_affine()
-        M = nibabel.load(raw).get_affine()
-        inv = np.linalg.inv
-
-        coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
+        coord = _fsl_to_coord(raw, epifile, xfm)
         db.surfs.loadXfm(subject, name, coord, xfmtype="coord", epifile=epifile)
+
+        print('Success')
 
     finally:
         if not noclean:
@@ -96,11 +78,36 @@ def automatic(subject, name, epifile, noclean=False):
         else:
             pass
 
-    return locals()
+def autotweak(subject, name):
+    from . import db
+    magnet, epifile = db.surfs.getXfm(subject, name, 'magnet')
+    raise NotImplementedError
+
+def _fsl_to_coord(rawfile, epifile, xfm):
+    def _x_flipper(N_i):
+        #Copied from dipy
+        flipr = np.diag([-1, 1, 1, 1])
+        flipr[0,3] = N_i - 1
+        return flipr
+
+    ## Adapted from dipy.external.fsl.flirt2aff#############################
+    import numpy.linalg as npl
+    
+    in_hdr = nibabel.load(epifile).get_header()
+    ref_hdr = nibabel.load(rawfile).get_header()
+    
+    # get_zooms gets the positive voxel sizes as returned in the header
+    inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
+    refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
+    
+    if npl.det(in_hdr.get_best_affine())>=0:
+        inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
+    if npl.det(ref_hdr.get_best_affine())>=0:
+        refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
 
-def _x_flipper(N_i):
-    #Copied from dipy
-    flipr = np.diag([-1, 1, 1, 1])
-    flipr[0,3] = N_i - 1
-    return flipr
+    epi = nibabel.load(epifile).get_header().get_base_affine()
+    M = nibabel.load(raw).get_affine()
+    inv = np.linalg.inv
+
+    return np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
