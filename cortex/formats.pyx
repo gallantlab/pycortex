@@ -12,11 +12,12 @@ np.import_array()
 
 def read(bytes globname):
     readers = OrderedDict([('npz', read_npz), ('vtk', read_vtk), ('off', read_off)])
-    rank = dict(('.%s'%v, i) for i, v in enumerate(readers.keys()))
-    files = glob.glob(globname)
-    forms = sorted([os.path.splitext(f) for f in files], key=lambda x:x[1])
-    ext, fname = forms[0]
-    return readers[ext[1:]](fname)[:2]
+    for ext, func in readers.items():
+        try:
+            return func(globname+"."+ext)
+        except IOError:
+            pass
+    raise IOError('No such surface file')
 
 def read_off(bytes filename):
     pts, polys = [], []
@@ -41,7 +42,8 @@ def read_vtk(bytes filename):
     cdef str vtk, line
     cdef bytes svtk
     cdef char *cstr = NULL, *cvtk = NULL
-    cdef object pts = None, polys = None
+    cdef np.ndarray[np.float_t, ndim=2] pts = None
+    cdef np.ndarray[np.uint32_t, ndim=2] polys = None
     cdef object _, sn, dtype, nel
     cdef int i, j, n
 

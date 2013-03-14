@@ -2,13 +2,33 @@ import numpy as np
 import nibabel
 
 class Transform(object):
+    '''A standard affine transform. Typically holds a transform from anatomical fiducial space to epi magnet space.
+    '''
     def __init__(self, xfm, epifile):
         self.xfm = xfm
-        self.epi = nibabel.load(epifile)
-        self.shape = self.epi.get_shape()
+        self.epi = epifile
+        if isinstance(epifile, (str, unicode)):
+            self.epi = nibabel.load(epifile)
+        self.shape = self.epi.get_shape()[:3][::-1]
 
     def __call__(self, pts):
-        return np.dot(xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
+        return np.dot(self.xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
+
+    def __mul__(self, other):
+        assert other.shape == (4,4)
+        return Transform(np.dot(self.xfm, other), self.epi)
+
+    def __rmul__(self, other):
+        assert other.shape == (4,4)
+        return Transform(np.dot(other, self.xfm), self.epi)
+
+    def save(self, subject, name, xfmtype="magnet"):
+        from .db import surfs
+        surfs.loadXfm(subject, name, self.xfm, xfmtype=xfmtype, epifile=self.epi.get_filename())
+
+    @property
+    def inv(self):
+        return Transform(np.linalg.inv(self.xfm), self.epi)
 
     @classmethod
     def from_fsl(cls, xfm, epifile, rawfile):
@@ -29,12 +49,11 @@ class Transform(object):
         if npl.det(ref_hdr.get_best_affine())>=0:
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
-        epi = nibabel.load(epifile).get_header().get_base_affine()
-        M = nibabel.load(raw).get_affine()
+        M = raw.get_affine()
         inv = np.linalg.inv
 
         coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
-        return cls(coord, epifile)
+        return cls(coord, epi)
 
     def to_fsl(self, rawfile):
         import numpy.linalg as npl
@@ -57,10 +76,6 @@ class Transform(object):
 
         fslx = inv(np.dot(inspace, np.dot(self.xfm, np.dot(M, inv(refspace)))))
         return fslx
-
-    def save(self, subject, name, type):
-        from . import db
-
 
 def _x_flipper(N_i):
     #Copied from dipy

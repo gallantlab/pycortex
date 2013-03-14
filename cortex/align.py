@@ -7,8 +7,8 @@ from . import utils
 def manual(subject, xfmname, epifile=None, **kwargs):
     from .mayavi_aligner import get_aligner
     def save_callback(aligner):
-        from . import db
-        db.surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epifile)
+        from .db import surfs
+        surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epifile)
         print("saved xfm")
 
     m = get_aligner(subject, xfmname, epifile=epifile, **kwargs)
@@ -67,8 +67,7 @@ def automatic(subject, name, epifile, noclean=False):
         assert sp.call(cmd, shell=True) == 0, 'Error calling BBR flirt'
 
         x = np.loadtxt(os.path.join(cache, "out.mat"))
-
-        xfm.from_fsl(x, epifile, raw).save(subject, name, 'coord')
+        xfm.Transform.from_fsl(x, epifile, raw).save(subject, name, 'coord')
         print('Success')
 
     finally:
@@ -80,6 +79,6 @@ def automatic(subject, name, epifile, noclean=False):
     return retval
 
 def autotweak(subject, name):
-    from . import db
-    magnet, epifile = db.surfs.getXfm(subject, name, 'magnet')
+    from .db import sursf
+    magnet = surfs.getXfm(subject, name, xfmtype='magnet')
     raise NotImplementedError

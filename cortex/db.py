@@ -183,7 +183,8 @@ class Database(object):
         if os.path.exists(fname):
             jsdict = json.load(open(fname))
         else:
-            assert epifile is not None, "Please specify a reference epi"
+            if epifile is None:
+                raise ValueError("Please specify a reference epi")
             import nibabel
             outname = "{subj}_{name}_refepi.nii.gz".format(subj=subject, name=name)
             fpath = os.path.join(filestore, "references", outname)
@@ -252,7 +253,7 @@ class Database(object):
         '''
 
         import formats
-        fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.*")
+        fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}")
 
         if hemisphere == "both":
             left, right = [ self.getSurf(subject, type, hemisphere=h) for h in ["lh", "rh"]]
@@ -263,8 +264,7 @@ class Database(object):
             if merge:
                 pts   = np.vstack([left[0], right[0]])
                 polys = np.vstack([left[1], right[1]+len(left[0])])
-                norms = np.vstack([left[2], right[2]])
-                return pts, polys, norms
+                return pts, polys
             else:
                 return left, right
         else:
@@ -280,10 +280,10 @@ class Database(object):
                     wpts, polys, _ = self.getSurf(subject, 'wm', hemi)
                     ppts, _, norms = self.getSurf(subject, 'pia', hemi)
                     return (wpts + ppts) / 2, polys, norms
-                except ValueError:
+                except IOError:
                     pass
 
-            return read(fname.format(subj=subject, type=type, hemi=hemi))
+            return formats.read(fname.format(subj=subject, type=type, hemi=hemi))
 
     def getCoords(self, subject, xfmname, hemisphere="both", magnet=None):
         """Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space
@@ -301,10 +301,10 @@ class Database(object):
         warnings.warn('Please use a Mapper object instead', DeprecationWarning)
 
         if magnet is None:
-            xfm, epifile = self.getXfm(subject, xfmname, xfmtype="coord")
+            xfm = self.getXfm(subject, xfmname, xfmtype="coord")
         else:
-            xfm, epifile = self.getXfm(subject, xfmname, xfmtype="magnet")
-            xfm = np.dot(np.linalg.inv(magnet), xfm)
+            xfm = self.getXfm(subject, xfmname, xfmtype="magnet")
+            xfm = np.linalg.inv(magnet) * xfm
 
         coords = []
         vtkTmp = self.getSurf(subject, "fiducial", hemisphere=hemisphere, nudge=False)

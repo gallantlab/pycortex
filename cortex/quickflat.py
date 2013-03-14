@@ -7,7 +7,7 @@ import io
 import binascii
 import numpy as np
 
-from .db import surf
+from .db import surfs
 from . import utils
 
 def _gen_flat_mask(subject, height=1024):

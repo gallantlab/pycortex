@@ -820,26 +820,24 @@ def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", deci
     from . import polyutils
     from .db import surfs
 
-    data = surfs.getXfm(subject, xfmname, xfmtype='magnet')
-    if data is None:
-        data = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        if data is not None:
-            dbxfm, epifile = data
-        else:
-            dbxfm = None
-        assert epifile is not None, "Unknown transform"
+    dbxfm = surfs.getXfm(subject, xfmname, xfmtype='magnet')
+    if dbxfm is None:
+        dbxfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
+        if dbxfm is None and epifile is None:
+            raise ValueError('Must provide an epi file to align')
     else:
-        dbxfm, epifile = data
+        epifile = dbxfm.epi.get_filename()
+        dbxfm = dbxfm.xfm
 
     try:
         wpts, wpolys = surfs.getSurf(subject, 'wm', merge=True, nudge=False)
         ppts, ppolys = surfs.getSurf(subject, 'pia', merge=True, nudge=False)
         pts = np.vstack([wpts, ppts])
         polys = np.vstack([wpolys, ppolys+len(wpts)])
-    except ValueError:
+    except IOError:
         pts, polys = surfs.getSurf(subject, 'fiducial', merge=True, nudge=False)
 
     if decimate:
         pts, polys = polyutils.decimate(pts, polys)
-        
+    
     return Align(pts, polys, epifile, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)

@@ -165,22 +165,18 @@ def get_vox_dist(subject, xfmname):
     """
     import nibabel
     from scipy.spatial import cKDTree
-    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
-    if len(shape) > 3:
-        shape = shape[1:]
 
     fiducial, polys = surfs.getSurf(subject, "fiducial", merge=True)
-    xfm, epi = surfs.getXfm(subject, xfmname)
+    xfm = surfs.getXfm(subject, xfmname)
+    shape = xfm.shape
     idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
-    widx = np.append(idx[:,::-1], np.ones((len(idx),1)), axis=-1).T
-    mm = np.dot(np.linalg.inv(xfm), widx)[:3].T
+    mm = xfm.inv(idx)
 
     tree = cKDTree(fiducial)
     dist, argdist = tree.query(mm)
     dist.shape = shape
     argdist.shape = shape
     return dist, argdist
-
 
 def get_hemi_masks(subject, xfmname, type='nearest'):
     '''Returns a binary mask of the left and right hemisphere
@@ -245,9 +241,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
 
     # Retrieve shape from the reference
     import nibabel
-    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
-    if len(shape) > 3:
-        shape = shape[1:]
+    shape = surfs.getXfm(subject, xfmname).shape
     
     # Get 3D coords
     coords = np.vstack(surfs.getCoords(subject, xfmname))
@@ -493,7 +487,7 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
 
     return tissots, allcenters
 
-def epi2anatspace(data, subject, xfm):
+def epi2anatspace(data, subject, xfmname):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
 
@@ -504,8 +498,8 @@ def epi2anatspace(data, subject, xfm):
     import subprocess
 
     ## Get transform, save out into ascii file
-    x, epifile = surfs.getXfm(subject, xfm)
-    fslxfm = surfs.getXfmFSL(subject, xfm)
+    xfm = surfs.getXfm(subject, xfmname)
+    fslxfm = xfm.to_fsl()
 
     xfmfilename = tempfile.mktemp(".mat")
     with open(xfmfilename, "w") as xfmh:
@@ -513,8 +507,7 @@ def epi2anatspace(data, subject, xfm):
             xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
 
     ## Save out data into nifti file
-    template = nibabel.load(epifile)
-    datafile = nibabel.Nifti1Image(data.T, template.get_affine(), template.get_header())
+    datafile = nibabel.Nifti1Image(data.T, xfm.epi.get_affine(), xfm.epi.get_header())
     datafilename = tempfile.mktemp(".nii")
     nibabel.save(datafile, datafilename)
 

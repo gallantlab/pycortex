@@ -30,12 +30,8 @@ class BrainCTM(object):
         self.files = surfs.getFiles(subject)
         self.types = []
 
-        xfm, epifile = surfs.getXfm(subject, xfmname)
-        import nibabel
-        nib = nibabel.load(epifile)
-        self.shape = nib.get_shape()[::-1]
-        if len(self.shape) > 3:
-            self.shape = self.shape[-3:]
+        xfm = surfs.getXfm(subject, xfmname)
+        self.shape = xfm.shape
 
         self.left, self.right = list(map(Hemi, surfs.getSurf(subject, base)))
 
@@ -63,9 +59,8 @@ class BrainCTM(object):
 
     def addDropout(self, projection='trilinear', power=20):
         import nibabel
-        xfm, ref = surfs.getXfm(self.subject, self.xfmname)
-        nib = nibabel.load(ref)
-        rawdata = nib.get_data().T
+        xfm = surfs.getXfm(self.subject, self.xfmname)
+        rawdata = xfm.epi.get_data().T
         if rawdata.ndim > 3:
             rawdata = rawdata.mean(0)
 
