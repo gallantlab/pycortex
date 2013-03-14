@@ -45,9 +45,14 @@ def add_shapekey(shape, name=None):
         key.data[i].co = shape[i]
     return key
 
-def show(data, subject, xfmname, types=('inflated',)):
+def show(data, subject, xfmname, types=('inflated',), cmap=cm.RdBu, vmin=None, vmax=None, **kwargs):
     from .db import surfs
-    surfs.getVTK(data, "fiducial")
+    from .utils import get_mapper
+    pts, polys = surfs.getSurf(data, "fiducial")
+    mapper = get_mapper(subject, xfmname, **kwargs)
+    obj, mesh = make_object(pts, polys)
+    vcolor = add_vcolor(mapper(data), mesh, cmap=cmap, vmin=vmin, vmax=vmax)
+    return obj, mesh, vcolor
 
 def fs_cut(subject, hemi):
     from .freesurfer import get_surf

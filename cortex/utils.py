@@ -108,7 +108,7 @@ def get_mapper(subject, xfmname, type='nearest', **kwargs):
 
 def get_roipack(subject, remove_medial=False):
     from . import svgroi
-    flat, polys, norms = surfs.getVTK(subject, "flat", merge=True, nudge=True)
+    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
     if remove_medial:
         valid = np.unique(polys)
         flat = flat[valid]
@@ -165,22 +165,18 @@ def get_vox_dist(subject, xfmname):
     """
     import nibabel
     from scipy.spatial import cKDTree
-    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
-    if len(shape) > 3:
-        shape = shape[1:]
 
-    fiducial, polys, norms = surfs.getVTK(subject, "fiducial", merge=True)
-    xfm, epi = surfs.getXfm(subject, xfmname)
+    fiducial, polys = surfs.getSurf(subject, "fiducial", merge=True)
+    xfm = surfs.getXfm(subject, xfmname)
+    shape = xfm.shape
     idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
-    widx = np.append(idx[:,::-1], np.ones((len(idx),1)), axis=-1).T
-    mm = np.dot(np.linalg.inv(xfm), widx)[:3].T
+    mm = xfm.inv(idx)
 
     tree = cKDTree(fiducial)
     dist, argdist = tree.query(mm)
     dist.shape = shape
     argdist.shape = shape
     return dist, argdist
-
 
 def get_hemi_masks(subject, xfmname, type='nearest'):
     '''Returns a binary mask of the left and right hemisphere
@@ -245,9 +241,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
 
     # Retrieve shape from the reference
     import nibabel
-    shape = nibabel.load(surfs.getXfm(subject, xfmname)[1]).shape[::-1]
-    if len(shape) > 3:
-        shape = shape[1:]
+    shape = surfs.getXfm(subject, xfmname).shape
     
     # Get 3D coords
     coords = np.vstack(surfs.getCoords(subject, xfmname))
@@ -258,7 +252,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     voxDst,voxIdx = get_vox_dist(subject,xfmname)
     voxIdxF = voxIdx.flatten()
     # Get L,R hem separately
-    L,R = surfs.getVTK(subject, "flat", merge=False, nudge=True)
+    L,R = surfs.getSurf(subject, "flat", merge=False, nudge=True)
     nL = len(np.unique(L[1]))
     #nVerts = len(idxL)+len(idxR)
     # mask for left hemisphere
@@ -322,7 +316,7 @@ def get_curvature(subject, smooth=8, **kwargs):
     from . import polyutils
     from tvtk.api import tvtk
     curvs = []
-    for pts, polys, _ in surfs.getVTK(subject, "fiducial"):
+    for pts, polys in surfs.getSurf(subject, "fiducial"):
         curv = polyutils.curvature(pts, polys)
         if smooth > 0:
             curvs.append(polyutils.polysmooth(curv, polys, smooth=smooth, **kwargs))
@@ -333,13 +327,13 @@ def get_curvature(subject, smooth=8, **kwargs):
 def decimate_mesh(subject, proportion = 0.5):
     from scipy.spatial import Delaunay
     from .polyutils import trace_both
-    flat = surfs.getVTK(subject, "flat")
-    fiducial = surfs.getVTK(subject, "fiducial")
-    edges = list(map(np.array, trace_both(*surfs.getVTK(subject, "flat", merge=True, nudge=True)[:2])))
+    flat = surfs.getSurf(subject, "flat")
+    fiducial = surfs.getSurf(subject, "fiducial")
+    edges = list(map(np.array, trace_both(*surfs.getSurf(subject, "flat", merge=True, nudge=True))))
     edges[1] -= len(flat[0][0])
 
     masks, newpolys = [], []
-    for (fpts, fpolys, _), (pts, polys, _), edge in zip(flat, fiducial, edges):
+    for (fpts, fpolys), (pts, polys), edge in zip(flat, fiducial, edges):
         valid = np.unique(polys)
 
         edge_set = set(edge)
@@ -378,8 +372,8 @@ def get_flatmap_distortion(sub, type="areal", smooth=8, **kwargs):
     from polyutils import Distortion, polysmooth
     distortions = []
     for hem in ["lh", "rh"]:
-        fidvert, fidtri, etc = surfs.getVTK(sub, "fiducial", hem)
-        flatvert, flattri, etc = surfs.getVTK(sub, "flat", hem)
+        fidvert, fidtri = surfs.getSurf(sub, "fiducial", hem)
+        flatvert, flattri = surfs.getSurf(sub, "flat", hem)
 
         dist = getattr(Distortion(flatvert, fidvert, flattri), type)
         if smooth > 0:
@@ -430,7 +424,7 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
     tissots = []
     allcenters = []
     for hem in ["lh", "rh"]:
-        fidvert, fidtri, etc = surfs.getVTK(sub, "fiducial", hem)
+        fidvert, fidtric = surfs.getSurf(sub, "fiducial", hem)
         G = make_surface_graph(fidtri)
         nvert = fidvert.shape[0]
         tissot_array = np.zeros((nvert,))
@@ -493,7 +487,7 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
 
     return tissots, allcenters
 
-def epi2anatspace(data, subject, xfm):
+def epi2anatspace(data, subject, xfmname):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
 
@@ -504,8 +498,8 @@ def epi2anatspace(data, subject, xfm):
     import subprocess
 
     ## Get transform, save out into ascii file
-    x, epifile = surfs.getXfm(subject, xfm)
-    fslxfm = surfs.getXfmFSL(subject, xfm)
+    xfm = surfs.getXfm(subject, xfmname)
+    fslxfm = xfm.to_fsl()
 
     xfmfilename = tempfile.mktemp(".mat")
     with open(xfmfilename, "w") as xfmh:
@@ -513,8 +507,7 @@ def epi2anatspace(data, subject, xfm):
             xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
 
     ## Save out data into nifti file
-    template = nibabel.load(epifile)
-    datafile = nibabel.Nifti1Image(data.T, template.get_affine(), template.get_header())
+    datafile = nibabel.Nifti1Image(data.T, xfm.epi.get_affine(), xfm.epi.get_header())
     datafilename = tempfile.mktemp(".nii")
     nibabel.save(datafile, datafilename)
 

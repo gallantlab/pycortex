@@ -30,17 +30,13 @@ class BrainCTM(object):
         self.files = surfs.getFiles(subject)
         self.types = []
 
-        xfm, epifile = surfs.getXfm(subject, xfmname)
-        import nibabel
-        nib = nibabel.load(epifile)
-        self.shape = nib.get_shape()[::-1]
-        if len(self.shape) > 3:
-            self.shape = self.shape[-3:]
+        xfm = surfs.getXfm(subject, xfmname)
+        self.shape = xfm.shape
 
-        self.left, self.right = list(map(Hemi, surfs.getVTK(subject, base)))
+        self.left, self.right = list(map(Hemi, surfs.getSurf(subject, base)))
 
         #Find the flatmap limits
-        left, right = surfs.getVTK(subject, "flat", nudge=True, merge=False)
+        left, right = surfs.getSurf(subject, "flat", nudge=True, merge=False)
         flatmerge = np.vstack([left[0][:,:2], right[0][:,:2]])
         fmin, fmax = flatmerge.min(0), flatmerge.max(0)
         self.flatlims = list(-fmin), list(fmax-fmin)
@@ -56,16 +52,15 @@ class BrainCTM(object):
             hemi.aux[:,2] = mwall
 
     def addSurf(self, typename):
-        left, right = surfs.getVTK(self.subject, typename, nudge=False, merge=False)
+        left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
         self.left.addSurf(left[0])
         self.right.addSurf(right[0])
         self.types.append(typename)
 
     def addDropout(self, projection='trilinear', power=20):
         import nibabel
-        xfm, ref = surfs.getXfm(self.subject, self.xfmname)
-        nib = nibabel.load(ref)
-        rawdata = nib.get_data().T
+        xfm = surfs.getXfm(self.subject, self.xfmname)
+        rawdata = xfm.epi.get_data().T
         if rawdata.ndim > 3:
             rawdata = rawdata.mean(0)
 
