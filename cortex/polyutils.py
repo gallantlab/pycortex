@@ -90,11 +90,20 @@ class Surface(object):
 
             yield pts.points, np.array(list(polys.triangles))
 
-    def polypoints(self, wm):
+    def polyconvex(self, wm):
         for p, faces in enumerate(self.members):
-            pts = np.zeros((len(faces)*3, 3))
-            for face in faces:
-                poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == p)[0][0])
+            polys = self.polys[faces]
+            x, y = np.nonzero(polys == p)
+            x = np.tile(x, [3, 1]).T
+            y = np.vstack([y, (y+1)%3, (y+2)%3]).T
+            polys = polys[x, y]
+            mid = self.pts[polys].mean(1)
+            left = self.pts[polys[:,[0,2]]].mean(1)
+            right = self.pts[polys[:,[0,1]]].mean(1)
+            wmid = wm[polys].mean(1)
+            wleft = wm[polys[:,[0,2]]].mean(1)
+            wright = wm[polys[:,[0,1]]].mean(1)
+            yield np.vstack([mid, left, right, wmid, wleft, wright, self.pts[p], wm[p]])
 
     def polyparts(self, wm, idx):
         #polypart = np.array([[0, 1, 2], [0, 3, 1], [3, 4, 1], [4, 5, 1], [5, 2, 1], [0, 2, 5], [0, 5, 3], [3, 5, 4]])

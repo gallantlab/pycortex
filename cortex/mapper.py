@@ -319,7 +319,7 @@ class ConvexPolyhedra(ThickMapper):
         mask = sparse.csr_matrix((len(wm), np.prod(self.shape)))
 
         surf = polyutils.Surface(pia, polys)
-        for i, (pts, polys) in enumerate(surf.polyhedra(wm)):
+        for i, (pts, polys) in enumerate(surf.polyconvex(wm)):
             if len(pts) > 0:
                 #generate points within the bounding box
                 samples = rand * (pts.max(0) - pts.min(0)) + pts.min(0)

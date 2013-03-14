@@ -41,3 +41,10 @@ def curvature(subject, **kwargs):
     curv = anatform.format(type='curvature')
     curv, ext = os.path.splitext(curv)
     np.savez_compressed('%s.npz'%curv, left=curvs[0], right=curvs[1])
+
+def distortion(subject, type='areal', **kwargs):
+    dists = utils.get_distortion(subject, type=type, **kwargs)
+    anatform = db.surfs.getFiles(subject)['anats']
+    dist = anatform.format(type='distortion_%d'%type)
+    dist, ext = os.path.splitext(dist)
+    np.savez_compressed('%s.npz'%dist, left=dists[0], right=dists[1])
