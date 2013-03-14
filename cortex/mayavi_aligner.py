@@ -270,8 +270,12 @@ class Axis(HasTraits):
         translate = origin * np.sign(spacing) - np.abs(spacing) / 2.
 
         mlab.figure(self.scene.mayavi_scene)
-        pts = self.slab.output.points.to_array()
-        polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
+        if self.slab.output.points is None:
+            pts = np.array([[0, 0, 0], [0, 0, 0], [0,0,0]])
+            polys = [[0, 1, 2]]
+        else:
+            pts = self.slab.output.points.to_array()
+            polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
         src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, 
             figure=self.scene.mayavi_scene)
         xfm = mlab.pipeline.transform_data(src, figure=self.scene.mayavi_scene)
@@ -287,8 +291,12 @@ class Axis(HasTraits):
         return src
 
     def _surf_default(self):
-        pts = self.slab.output.points.to_array()
-        polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
+        if self.slab.output.points is None:
+            pts = np.array([[0, 0, 0], [0, 0, 0], [0,0,0]])
+            polys = [[0, 1, 2]]
+        else:
+            pts = self.slab.output.points.to_array()
+            polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
         src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, 
             figure=self.scene_3d.mayavi_scene)
         surf = mlab.pipeline.surface(src, 

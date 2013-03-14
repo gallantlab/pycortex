@@ -236,9 +236,6 @@ class Lanczos(Mapper):
         Lx = lanczos(dx)
         Ly = lanczos(dy)
         Lz = lanczos(dz)
-
-        import ipdb
-        ipdb.set_trace()
         
         mask = sparse.lil_matrix((len(coords), np.prod(self.shape)))
         for v in range(len(coords)):
@@ -348,6 +345,7 @@ class ConvexNN(ConvexPolyhedra):
 
 class ConvexTrilin(ConvexPolyhedra):
     def _sample(self, pts):
+        raise NotImplementedError
         (x, y, z), floor = np.modf(pts.T)
         floor = floor.astype(int)
         ceil = floor + 1

@@ -190,7 +190,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
     return mapper
 
-def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, recache_mapper=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None):
+def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, recache_mapper=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None, **kwargs):
     """Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
     sub dictionary with keys [data, stim, delay].
 
@@ -206,7 +206,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     """
     html = sloader.load("mixer.html")
 
-    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache, recache_mapper=recache_mapper)
+    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache, recache_mapper=recache_mapper, **kwargs)
     jsondat, bindat = _make_bindat(_normalize_data(data, mapper), fmt='data/%s/')
 
     saveevt = mp.Event()
