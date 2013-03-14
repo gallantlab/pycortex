@@ -3,8 +3,12 @@ import glob
 import numpy as np
 from collections import OrderedDict
 
-from libc.stdio import fopen, fgets
-from libc.string import strtok
+cimport cython
+cimport numpy as np
+from libc.string cimport strtok
+from libc.stdlib cimport atoi, atof
+
+np.import_array()
 
 def read(bytes globname):
     readers = OrderedDict([('npz', read_npz), ('vtk', read_vtk), ('off', read_off)])
@@ -12,7 +16,7 @@ def read(bytes globname):
     files = glob.glob(globname)
     forms = sorted([os.path.splitext(f) for f in files], key=lambda x:x[1])
     ext, fname = forms[0]
-    return readers[ext[1:]](fname)
+    return readers[ext[1:]](fname)[:2]
 
 def read_off(bytes filename):
     pts, polys = [], []
@@ -32,51 +36,51 @@ def read_npz(bytes filename):
     npz = np.load(filename)
     return npz['pts'], npz['polys']
 
+@cython.boundscheck(False)
 def read_vtk(bytes filename):
-    cdef char[8192] buf
-    cdef char* line = malloc(8192*sizeof(char))
-    cdef size_t linemax = 8192
-    cdef size_t i = 0
+    cdef str vtk, line
+    cdef bytes svtk
+    cdef char *cstr = NULL, *cvtk = NULL
+    cdef object pts = None, polys = None
+    cdef object _, sn, dtype, nel
+    cdef int i, j, n
 
-    cdef FILE* fp = fopen(filename, 'r')
-    cdef object pts = None
-    cdef object polys = None
+    with open(filename) as fp:
+        vtk = fp.read()
+        svtk = vtk.encode('UTF-8')
+        cvtk = svtk
 
-    while pts is None and polys is None:
-        while fgets(buf, 8192, fp) == 8192:
-            strcpy(line+i, buf)
-            i += 8192
-            if i > linemax:
-                line = realloc(2 * linemax * sizeof(char))
-                linemax *= 2
+    cstr = strtok(cvtk, "\n")
+    while pts is None or polys is None and cstr is not NULL:
+        line = cstr
+        if line.startswith("POINTS"):
+            _, sn, dtype = line.split()
+            n = int(sn)
+            i = 0
+            pts = np.empty((n, 3), dtype=float)
+            while i < n:
+                for j in range(3):
+                    cstr = strtok(NULL, " \t\n")
+                    pts[i, j] = atof(cstr)
+                i += 1
 
-        if line[:6] == "POINTS":
-            buf = strtok(line, " \t")
-            while buf is not NULL:
-                pass
+        elif line.startswith("POLYGONS"):
+            _, sn, nel = line.split()
+            n = int(sn)
+            i = 0
+            polys = np.empty((n, 3), dtype=np.uint32)
+            while i < n:
+                cstr = strtok(NULL, " \t\n")
+                if atoi(cstr) != 3:
+                    raise ValueError('Only triangular VTKs are supported')
+                for j in range(3):
+                    cstr = strtok(NULL, " \t\n")
+                    polys[i, j] = atoi(cstr)
+                i += 1
 
-    with open(filename) as vtk:
-        pts, polys = None, None
-        line = vtk.readline()
-        while len(line) > 0 and (pts is None or polys is None):
-            if line.startswith("POINTS"):
-                _, n, dtype = line.split()
-                data = vtk.readline().split()
-                n = int(n)
-                nel = n*3
-                while len(data) < nel:
-                    data += vtk.readline().split()
-                pts = np.array(data, dtype=float).reshape(n, 3)
-            elif line.startswith("POLYGONS"):
-                _, n, nel = line.split()
-                nel = int(nel)
-                data = vtk.readline().split()
-                while len(data) < nel:
-                    data += vtk.readline().split()
-                polys = np.array(data, dtype=np.uint32).reshape(int(n), 4)[:,1:]
+        cstr = strtok(NULL, "\n")
 
-            line = vtk.readline()
-        return pts, polys
+    return pts, polys
 
 def write_vtk(bytes outfile, object pts, object polys, object norms=None):
     with open(outfile, "w") as fp:
