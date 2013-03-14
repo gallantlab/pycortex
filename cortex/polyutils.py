@@ -467,9 +467,9 @@ def edgefaces(polys, n=1):
 
 if __name__ == "__main__":
     import pickle
-    from . import db
-    pts, polys, norm = db.surfs.getVTK("JG", "flat", merge=True, nudge=True)
-    fpts, fpolys, norm = db.surfs.getVTK("JG", "fiducial", merge=True, nudge=False)
+    from .db import surfs
+    pts, polys = surfs.getSurf("JG", "flat", merge=True, nudge=True)
+    fpts, fpolys = surfs.getSurf("JG", "fiducial", merge=True, nudge=False)
     #pts, polys, fpts = cPickle.load(open("/tmp/ptspolys.pkl"))
     left, right = trace_both(pts, polys)
     dist = get_dist(fpts[left])

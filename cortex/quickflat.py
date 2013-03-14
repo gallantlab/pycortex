@@ -7,14 +7,14 @@ import io
 import binascii
 import numpy as np
 
-from . import db
+from .db import surf
 from . import utils
 
 def _gen_flat_mask(subject, height=1024):
     from . import polyutils
     import Image
     import ImageDraw
-    pts, polys, norm = db.surfs.getVTK(subject, "flat", merge=True, nudge=True)
+    pts, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
     left, right = polyutils.trace_both(pts, polys)
 
     pts -= pts.min(0)
@@ -29,7 +29,7 @@ def _gen_flat_mask(subject, height=1024):
 def _make_flat_cache(subject, xfmname, height=1024):
     from scipy.spatial import cKDTree
 
-    flat, polys, norm = db.surfs.getVTK(subject, "flat", merge=True, nudge=True)
+    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
     fmax, fmin = flat.max(0), flat.min(0)
     size = fmax - fmin
@@ -51,7 +51,7 @@ def get_cache(subject, xfmname, recache=False, height=1024):
     if not recache and key in cache:
         return cache[key]
 
-    cacheform = db.surfs.getFiles(subject)['flatcache']
+    cacheform = surfs.getFiles(subject)['flatcache']
     cachefile = cacheform.format(xfmname=xfmname, height=height, date="*")
     #pull a list of candidate cache files
     files = glob.glob(cachefile)

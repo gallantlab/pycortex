@@ -7,7 +7,6 @@ import subprocess as sp
 import numpy as np
 
 from . import db
-from . import vtkutils_new as vtk
 
 def get_paths(subject, hemi, type="patch"):
     base = os.path.join(os.environ['SUBJECTS_DIR'], subject)
@@ -20,7 +19,7 @@ def get_paths(subject, hemi, type="patch"):
 
 def import_subj(subject, sname=None):
     import nibabel
-    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.vtk")
+    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.npz")
     anats = os.path.join(db.filestore, "anatomicals", "{subj}_{name}.{type}")
     fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
 
@@ -44,14 +43,15 @@ def import_subj(subject, sname=None):
         for hemi in ("lh", "rh"):
             pts, polys, curv = get_surf(subject, hemi, fsname)
             fname = surfs.format(subj=sname, name=name, hemi=hemi)
-            vtk.write(fname, pts + surfmove, polys)
+            np.savez(fname, pts=pts + surfmove, polys=polys)
             if fsname == 'smoothwm':
                 curvs[hemi] = curv
 
     np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
+    #np.savez(anats.format(subj=sname, name="thickness", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
 
 def import_flat(subject, patch, sname=None):
-    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.vtk")
+    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.npz")
     if sname is None:
         sname = subject
     for hemi in ['lh', 'rh']:
@@ -59,7 +59,7 @@ def import_flat(subject, patch, sname=None):
         flat = pts[:,[1, 0, 2]]
         flat[:,1] = -flat[:,1]
         fname = surfs.format(subj=sname, name="flat", hemi=hemi)
-        vtk.write(fname, flat, polys)
+        np.savez(fname, pts=flat, polys=polys)
 
 def make_fiducial(subject):
     for hemi in ['lh', 'rh']:

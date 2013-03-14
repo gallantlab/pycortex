@@ -50,6 +50,7 @@ ctm = Extension('cortex.openctm',
                 ('OPENCTM_BUILD', None),
             ]
         )
+formats = Extension('cortex.formats', ['cortex/formats.pyx'])
 
 setup(name='pycortex',
       version='0.1.0',
@@ -57,7 +58,7 @@ setup(name='pycortex',
       author='James Gao',
       author_email='james@jamesgao.com',
       packages=['cortex', 'cortex.webgl'],
-      ext_modules=cythonize([ctm]),
+      ext_modules=cythonize([ctm, formats]),
       package_data={
             'cortex':[ 
                 'svgbase.xml',

@@ -1,0 +1,95 @@
+import os
+import glob
+import numpy as np
+from collections import OrderedDict
+
+from libc.stdio import fopen, fgets
+from libc.string import strtok
+
+def read(bytes globname):
+    readers = OrderedDict([('npz', read_npz), ('vtk', read_vtk), ('off', read_off)])
+    rank = dict(('.%s'%v, i) for i, v in enumerate(readers.keys()))
+    files = glob.glob(globname)
+    forms = sorted([os.path.splitext(f) for f in files], key=lambda x:x[1])
+    ext, fname = forms[0]
+    return readers[ext[1:]](fname)
+
+def read_off(bytes filename):
+    pts, polys = [], []
+    with open(filename) as fp:
+        assert fp.readline()[:3] == 'OFF', 'Not an OFF file'
+        npts, nface, nedge = map(int, fp.readline().split())
+        print(npts, nface)
+        for i in range(npts):
+            pts.append([float(p) for p in fp.readline().split()])
+
+        for i in range(nface):
+            polys.append([int(i) for i in fp.readline().split()][1:])
+
+    return np.array(pts), np.array(polys)
+
+def read_npz(bytes filename):
+    npz = np.load(filename)
+    return npz['pts'], npz['polys']
+
+def read_vtk(bytes filename):
+    cdef char[8192] buf
+    cdef char* line = malloc(8192*sizeof(char))
+    cdef size_t linemax = 8192
+    cdef size_t i = 0
+
+    cdef FILE* fp = fopen(filename, 'r')
+    cdef object pts = None
+    cdef object polys = None
+
+    while pts is None and polys is None:
+        while fgets(buf, 8192, fp) == 8192:
+            strcpy(line+i, buf)
+            i += 8192
+            if i > linemax:
+                line = realloc(2 * linemax * sizeof(char))
+                linemax *= 2
+
+        if line[:6] == "POINTS":
+            buf = strtok(line, " \t")
+            while buf is not NULL:
+                pass
+
+    with open(filename) as vtk:
+        pts, polys = None, None
+        line = vtk.readline()
+        while len(line) > 0 and (pts is None or polys is None):
+            if line.startswith("POINTS"):
+                _, n, dtype = line.split()
+                data = vtk.readline().split()
+                n = int(n)
+                nel = n*3
+                while len(data) < nel:
+                    data += vtk.readline().split()
+                pts = np.array(data, dtype=float).reshape(n, 3)
+            elif line.startswith("POLYGONS"):
+                _, n, nel = line.split()
+                nel = int(nel)
+                data = vtk.readline().split()
+                while len(data) < nel:
+                    data += vtk.readline().split()
+                polys = np.array(data, dtype=np.uint32).reshape(int(n), 4)[:,1:]
+
+            line = vtk.readline()
+        return pts, polys
+
+def write_vtk(bytes outfile, object pts, object polys, object norms=None):
+    with open(outfile, "w") as fp:
+        fp.write("# vtk DataFile Version 3.0\nWritten by pycortex\nASCII\nDATASET POLYDATA\n")
+        fp.write("POINTS %d float\n"%len(pts))
+        np.savetxt(fp, pts, fmt='%0.12g')
+        fp.write("\n")
+
+        fp.write("POLYGONS %d %d\n"%(len(polys), 4*len(polys)))
+        spolys = np.hstack((3*np.ones((len(polys),1), dtype=polys.dtype), polys))
+        np.savetxt(fp, spolys, fmt='%d')
+        fp.write("\n")
+
+        if norms is not None and len(norms) == len(pts):
+            fp.write("NORMALS Normals float")
+            np.savetxt(fp, norms, fmt='%0.12g')

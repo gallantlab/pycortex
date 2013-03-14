@@ -129,10 +129,9 @@ class Mapper(object):
     def _recache(self, subject, xfmname, **kwargs):
         masks = []
         coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        fid = surfs.getVTK(subject, 'fiducial', merge=False, nudge=False)
-        #flat = surfs.getVTK(subject, 'flat', merge=False, nudge=False)
+        fid = surfs.getSurf(subject, 'fiducial', merge=False, nudge=False)
 
-        for pts, polys, _ in fid:
+        for pts, polys in fid:
             coords = polyutils.transform(coord, pts)
             masks.append(self._getmask(coords, polys, **kwargs))
 
@@ -155,12 +154,11 @@ class ThickMapper(Mapper):
     def _recache(self, subject, xfmname, **kwargs):
         masks = []
         coord, epifile = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        pia = surfs.getVTK(subject, "pia", merge=False, nudge=False)
-        wm = surfs.getVTK(subject, "wm", merge=False, nudge=False)
-        #flat = surfs.getVTK(subject, "flat", merge=False, nudge=False)
+        pia = surfs.getSurf(subject, "pia", merge=False, nudge=False)
+        wm = surfs.getSurf(subject, "wm", merge=False, nudge=False)
         
         #iterate over hemispheres
-        for (wpts, polys, _), (ppts, _, _) in zip(pia, wm):
+        for (wpts, polys), (ppts, _) in zip(pia, wm):
             tpia = polyutils.transform(coord, ppts)
             twm = polyutils.transform(coord, wpts)
             masks.append(self._getmask(tpia, twm, polys, **kwargs))

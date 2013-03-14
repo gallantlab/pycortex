@@ -817,10 +817,12 @@ class Align(HasTraits):
             )
 
 def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", decimate=False):
-    from . import db, polyutils
-    data = db.surfs.getXfm(subject, xfmname, xfmtype='magnet')
+    from . import polyutils
+    from .db import surfs
+
+    data = surfs.getXfm(subject, xfmname, xfmtype='magnet')
     if data is None:
-        data = db.surfs.getXfm(subject, xfmname, xfmtype='coord')
+        data = surfs.getXfm(subject, xfmname, xfmtype='coord')
         if data is not None:
             dbxfm, epifile = data
         else:
@@ -830,12 +832,12 @@ def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", deci
         dbxfm, epifile = data
 
     try:
-        wpts, wpolys, norms = db.surfs.getVTK(subject, 'wm', merge=True, nudge=False)
-        ppts, ppolys, norms = db.surfs.getVTK(subject, 'pia', merge=True, nudge=False)
+        wpts, wpolys = surfs.getSurf(subject, 'wm', merge=True, nudge=False)
+        ppts, ppolys = surfs.getSurf(subject, 'pia', merge=True, nudge=False)
         pts = np.vstack([wpts, ppts])
         polys = np.vstack([wpolys, ppolys+len(wpts)])
     except ValueError:
-        pts, polys, norms = db.surfs.getVTK(subject, 'fiducial', merge=True, nudge=False)
+        pts, polys = surfs.getSurf(subject, 'fiducial', merge=True, nudge=False)
 
     if decimate:
         pts, polys = polyutils.decimate(pts, polys)

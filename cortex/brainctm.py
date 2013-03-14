@@ -37,10 +37,10 @@ class BrainCTM(object):
         if len(self.shape) > 3:
             self.shape = self.shape[-3:]
 
-        self.left, self.right = list(map(Hemi, surfs.getVTK(subject, base)))
+        self.left, self.right = list(map(Hemi, surfs.getSurf(subject, base)))
 
         #Find the flatmap limits
-        left, right = surfs.getVTK(subject, "flat", nudge=True, merge=False)
+        left, right = surfs.getSurf(subject, "flat", nudge=True, merge=False)
         flatmerge = np.vstack([left[0][:,:2], right[0][:,:2]])
         fmin, fmax = flatmerge.min(0), flatmerge.max(0)
         self.flatlims = list(-fmin), list(fmax-fmin)
@@ -56,7 +56,7 @@ class BrainCTM(object):
             hemi.aux[:,2] = mwall
 
     def addSurf(self, typename):
-        left, right = surfs.getVTK(self.subject, typename, nudge=False, merge=False)
+        left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
         self.left.addSurf(left[0])
         self.right.addSurf(right[0])
         self.types.append(typename)

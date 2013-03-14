@@ -1,8 +1,8 @@
 """
-VTK surface database functions
-==============================
+Surface database functions
+==========================
 
-This module creates a singleton object surfs_ which allows easy access to vtk files in the filestore.
+This module creates a singleton object surfs_ which allows easy access to surface files in the filestore.
 
 .. _surfs: :class:`Database`
 """
@@ -14,8 +14,8 @@ import json
 import shutil
 import numpy as np
 
-from . import options
 from . import xfm
+from . import options
 
 filestore = options.config.get('basic', 'filestore')
 
@@ -32,7 +32,7 @@ class SurfaceDB(object):
     def __init__(self, subj):
         self.subject = subj
         self.types = {}
-        pname = os.path.join(filestore, "surfaces", "{subj}_*.vtk").format(subj=subj)
+        pname = os.path.join(filestore, "surfaces", "{subj}_*.*").format(subj=subj)
         for fname in glob.glob(pname):
             fname = os.path.splitext(os.path.split(fname)[1])[0].split('_') 
             subj = fname.pop(0)
@@ -54,21 +54,15 @@ class SurfaceDB(object):
 class Surf(object):
     def __init__(self, subject, surftype):
         self.subject, self.surftype = subject, surftype
-        self.fname = os.path.join(filestore, "surfaces", "{subj}_{name}_{hemi}.vtk")
+        self.fname = os.path.join(filestore, "surfaces", "{subj}_{name}_{hemi}.*")
 
     def get(self, hemisphere="both"):
-        return surfs.getVTK(self.subject, self.surftype, hemisphere)
+        return surfs.getSurf(self.subject, self.surftype, hemisphere)
     
     def show(self, hemisphere="both"):
-        from . import vtkutils
-        lh = self.fname.format(subj=self.subject, name=self.surftype, hemi="lh")
-        rh = self.fname.format(subj=self.subject, name=self.surftype, hemi="rh")
-        if hemisphere == "both":
-            return vtkutils.show([lh, rh])
-        elif hemisphere.lower() in ["l", "lh", "left"]:
-            return vtkutils.show([lh])
-        elif hemisphere.lower() in ["r", "rh", "right"]:
-            return vtkutils.show([rh])
+        from mayavi import mlab
+        pts, polys = surfs.getSurf(self.subject, self.surftype, hemisphere, merge=True, nudge=True)
+        return mlab.triangular_mesh(pts[:,0], pts[:,1], pts[:,2], polys)
 
 class XfmDB(object):
     def __init__(self, subj):
@@ -111,15 +105,15 @@ class Database(object):
     """
     Database()
 
-    VTK surface database
+    Surface database
 
     Attributes
     ----------
     This database object dynamically generates handles to all subjects within the filestore.
     """
     def __init__(self):
-        vtks = glob.glob(os.path.join(filestore, "surfaces", "*.vtk"))
-        subjs = set([os.path.split(vtk)[1].split('_')[0] for vtk in vtks])
+        surfs = glob.glob(os.path.join(filestore, "surfaces", "*.*"))
+        subjs = set([os.path.split(surf)[1].split('_')[0] for surf in surfs])
         xfms = glob.glob(os.path.join(filestore, "transforms", "*.xfm"))
 
         self.subjects = dict([(sname, SubjectDB(sname)) for sname in subjs])
@@ -140,7 +134,7 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["loadXfm","getXfm", "getVTK"] + list(self.subjects.keys())
+        return ["loadXfm","getXfm", "getSurf"] + list(self.subjects.keys())
 
     def loadAnat(self, subject, anatfile, type='raw', process=True):
         fname = os.path.join(filestore, "anatomicals", "{subj}_{type}.nii.gz").format(subj=subject, type=type)
@@ -313,7 +307,7 @@ class Database(object):
             xfm = np.dot(np.linalg.inv(magnet), xfm)
 
         coords = []
-        vtkTmp = self.getVTK(subject, "fiducial", hemisphere=hemisphere, nudge=False)
+        vtkTmp = self.getSurf(subject, "fiducial", hemisphere=hemisphere, nudge=False)
         if not isinstance(vtkTmp,(tuple,list)):
             vtkTmp = [vtkTmp]
         for pts, polys, norms in vtkTmp:
@@ -325,8 +319,8 @@ class Database(object):
     def getFiles(self, subject):
         """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
         """
-        vtkparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).vtk')
-        vtks = os.path.join(filestore, "surfaces", "{subj}_*.vtk").format(subj=subject)
+        surfparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).*')
+        surffiles = os.path.join(filestore, "surfaces", "{subj}_*.*").format(subj=subject)
         anatfiles = '%s_{type}.nii.gz'%subject
         xfms = "%s_{xfmname}.xfm"%subject
         ctmcache = "%s_{xfmname}_[{types}]_{method}_{level}.json"%subject
@@ -334,11 +328,11 @@ class Database(object):
         projcache = "%s_{xfmname}_{projection}.npz"%subject
 
         surfs = dict()
-        for vtk in glob.glob(vtks):
-            path, subj, stype, hemi = vtkparse.match(vtk).groups()
+        for surf in glob.glob(surffiles):
+            path, subj, stype, hemi = surfparse.match(surf).groups()
             if stype not in surfs:
                 surfs[stype] = dict()
-            surfs[stype][hemi] = os.path.abspath(vtk)
+            surfs[stype][hemi] = os.path.abspath(surf)
 
         filenames = dict(
             surfs=surfs,
