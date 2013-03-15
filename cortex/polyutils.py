@@ -479,6 +479,15 @@ def edgefaces(polys, n=1):
 
     return [k for k, v in edges.items() if v == n]
 
+def make_cube(center=(.5, .5, .5), size=1):
+    pts = np.array([(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0),
+                    (0, 0, 1), (1, 0, 1), (0, 1, 1), (1, 1, 1)], dtype=float)
+    pts -= (.5, .5, .5)
+    polys = np.array([(0, 2, 3), (0, 3, 1), (0, 1, 4), (1, 5, 4),
+                      (1, 3, 5), (3, 7, 5), (2, 7, 3), (2, 6, 7),
+                      (0, 6, 2), (0, 4, 6), (4, 7, 6), (4, 5, 7)], dtype=np.uint32)
+    return pts * size + center, polys
+
 if __name__ == "__main__":
     import pickle
     from .db import surfs
