@@ -103,7 +103,12 @@ class Surface(object):
             wmid = wm[polys].mean(1)
             wleft = wm[polys[:,[0,2]]].mean(1)
             wright = wm[polys[:,[0,1]]].mean(1)
-            yield np.vstack([mid, left, right, wmid, wleft, wright, self.pts[p], wm[p]])
+            top = np.vstack([mid, left, right])
+            bot = np.vstack([wmid, wleft, wright])
+            #remove duplicates
+            top = top[(distance.cdist(top, top) == 0).sum(0) == 1]
+            bot = bot[(distance.cdist(bot, bot) == 0).sum(0) == 1]
+            yield np.vstack([top, bot, self.pts[p], wm[p]])
 
     def polyparts(self, wm, idx):
         #polypart = np.array([[0, 1, 2], [0, 3, 1], [3, 4, 1], [4, 5, 1], [5, 2, 1], [0, 2, 5], [0, 5, 3], [3, 5, 4]])
@@ -441,8 +446,8 @@ def polysmooth(scalars, polys, smooth=8, neighborhood=3):
     return output
 
 def inside_convex_poly(pts):
-    d = Delaunay(pts)
-    return lambda x: d.find_simplex(x) != -1
+    tri = Delaunay(pts)
+    return lambda x: tri.find_simplex(x) != -1
     #delaunay triangulation + find_simplex is WAY faster than this method
     # phull = pts[hull]
     # faces = phull.mean(1)

@@ -277,9 +277,9 @@ class Database(object):
             
             if type == 'fiducial':
                 try:
-                    wpts, polys, _ = self.getSurf(subject, 'wm', hemi)
-                    ppts, _, norms = self.getSurf(subject, 'pia', hemi)
-                    return (wpts + ppts) / 2, polys, norms
+                    wpts, polys = self.getSurf(subject, 'wm', hemi)
+                    ppts, _     = self.getSurf(subject, 'pia', hemi)
+                    return (wpts + ppts) / 2, polys
                 except IOError:
                     pass
 

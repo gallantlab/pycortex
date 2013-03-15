@@ -3,7 +3,10 @@ import sys
 import binascii
 import io
 import numpy as np
+
 from .db import surfs
+from .svgroi import get_roipack
+from .mapper import get_mapper
 
 def unmask(mask, data):
     """unmask(mask, data)
@@ -94,32 +97,6 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
         plt.yticks([])
 
     return output
-
-def get_mapper(subject, xfmname, type='nearest', **kwargs):
-    from . import mapper
-    mapfunc = dict(
-        nearest=mapper.Nearest,
-        trilinear=mapper.Trilinear,
-        gaussian=mapper.Gaussian,
-        polyhedral=mapper.Polyhedral,
-        lanczos=mapper.Lanczos,
-        convexnn=mapper.ConvexNN)
-    return mapfunc[type](subject, xfmname, **kwargs)
-
-def get_roipack(subject, remove_medial=False):
-    from . import svgroi
-    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    if remove_medial:
-        valid = np.unique(polys)
-        flat = flat[valid]
-    svgfile = surfs.getFiles(subject)['rois']
-    if not os.path.exists(svgfile):
-        with open(svgfile, "w") as fp:
-            fp.write(svgroi.make_svg(flat.copy(), polys))
-    rois = svgroi.ROIpack(flat[:,:2], svgfile)
-    if remove_medial:
-        return rois, valid
-    return rois
 
 def get_ctmpack(subject, xfmname, types=("inflated",), projection='nearest', method="raw", level=0, recache=False, recache_mapper=False, **kwargs):
     ctmform = surfs.getFiles(subject)['ctmcache']
