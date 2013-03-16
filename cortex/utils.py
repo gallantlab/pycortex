@@ -296,12 +296,14 @@ def get_curvature(subject, smooth=8, **kwargs):
     for pts, polys in surfs.getSurf(subject, "fiducial"):
         curv = polyutils.curvature(pts, polys)
         if smooth > 0:
-            curvs.append(polyutils.polysmooth(curv, polys, smooth=smooth, **kwargs))
+            surf = polyutils.Surface(pts, polys)
+            curvs.append(surf.smooth(curv, smooth=smooth, **kwargs))
         else:
             curvs.append(curv)
     return curvs
 
 def decimate_mesh(subject, proportion = 0.5):
+    raise NotImplementedError
     from scipy.spatial import Delaunay
     from .polyutils import trace_both
     flat = surfs.getSurf(subject, "flat")
@@ -346,7 +348,7 @@ def get_flatmap_distortion(sub, type="areal", smooth=8, **kwargs):
     the mean squared difference between distances in the fiducial map and distances in
     the flatmap, for each pair of neighboring vertices. See Fishl, Sereno, and Dale, 1999.
     """
-    from polyutils import Distortion, polysmooth
+    from polyutils import Distortion, Surface
     distortions = []
     for hem in ["lh", "rh"]:
         fidvert, fidtri = surfs.getSurf(sub, "fiducial", hem)
@@ -354,7 +356,8 @@ def get_flatmap_distortion(sub, type="areal", smooth=8, **kwargs):
 
         dist = getattr(Distortion(flatvert, fidvert, flattri), type)
         if smooth > 0:
-            dist = polysmooth(dist, fidtri, smooth=8, **kwargs)
+            surf = Surface(fidvert, flattri)
+            dist = surf.smooth(dist, smooth=8, **kwargs)
         distortions.append(dist)
 
     return distortions

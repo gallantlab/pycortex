@@ -88,7 +88,7 @@ class Surface(object):
                 else:
                     #both in edges, we've gone around!
                     break
-            yield poly
+            yield self.pts[poly]
 
     def smooth(self, values, neighborhood=3, smooth=8):
         if len(values) != len(self.pts):
@@ -111,7 +111,6 @@ class Surface(object):
                 output[i] = (g * scalars[neighbors]).mean()
             
         return output
-
 
     def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
@@ -161,26 +160,6 @@ class Surface(object):
             top = top[(distance.cdist(top, top) == 0).sum(0) == 1]
             bot = bot[(distance.cdist(bot, bot) == 0).sum(0) == 1]
             yield np.vstack([top, bot, self.pts[p], wm[p]])
-
-    def polyparts(self, wm, idx):
-        #polypart = np.array([[0, 1, 2], [0, 3, 1], [3, 4, 1], [4, 5, 1], [5, 2, 1], [0, 2, 5], [0, 5, 3], [3, 5, 4]])
-        faces = self.connected[idx]
-        if len(faces) > 0:
-            p0 = self.pts[idx]
-            w0 = wm[idx]
-            for face in faces:
-                poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == idx)[0][0])
-                p1 = self.pts[poly[[0,1]]].mean(0)
-                p2 = self.pts[poly].mean(0)
-                p3 = self.pts[poly[[0,2]]].mean(0)
-                w1 = wm[poly[[0,1]]].mean(0)
-                w2 = wm[poly].mean(0)
-                w3 = wm[poly[[0,2]]].mean(0)
-
-                tri1 = np.vstack([p0, p1, p2, w0, w1, w2])
-                tri2 = np.vstack([p0, p2, p3, w0, w2, w3])
-                yield tri1, Delaunay(tri1).convex_hull
-                yield tri2, Delaunay(tri2).convex_hull
 
 
 class _ptset(object):
@@ -293,10 +272,9 @@ def decimate(pts, polys):
 def boundary_pts(polys):
     '''Returns the points that are on the boundary of a mesh'''
     edges = dict()
-    for i, poly in enumerate(polys):
-        p = np.sort(poly)
+    for i, poly in enumerate(np.sort(polys)):
         for a, b in [(0,1), (1,2), (0, 2)]:
-            key = p[a], p[b]
+            key = poly[a], poly[b]
             if key not in edges:
                 edges[key] = []
             edges[key].append(i)
@@ -337,6 +315,23 @@ def make_cube(center=(.5, .5, .5), size=1):
 
 def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
     from tvtk.api import tvtk
-    pd = tvtk.PolyData(points=pts, polys=polys)
-    plane = tvtk.Planes(normal=(0,0,1))
-    tvtk.ClipPolyData()
+    import Image
+    import ImageDraw
+
+    pd = tvtk.PolyData(points=pts + center, polys=polys)
+    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
+    clip = tvtk.ClipPolyData(clip_function=plane, input=pd)
+    output = np.empty(shape, dtype=np.uint8)
+    for i in range(shape[2]):
+        plane.points = [(0,0,i+.5)]
+        clip.update()
+        im = Image.new('L', shape[:2])
+        draw = ImageDraw.Draw(im)
+        cpts = clip.output.points.to_array()
+        cpolys = clip.output.polys.to_array().reshape(-1, 4)
+        for p in Surface(cpts, cpolys[:,1:]).boundary_poly():
+            draw.polygon(p[:, :2].ravel().tolist(), fill=255)
+        print i
+        output[...,i] = np.array(im) > 0
+
+    return output
