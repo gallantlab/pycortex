@@ -15,8 +15,8 @@ def _gen_flat_mask(subject, height=1024):
     import Image
     import ImageDraw
     pts, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    left, right = polyutils.trace_both(pts, polys)
-
+    left, right = [p for p in polyutils.Surface(pts, polys).boundary_poly()]
+    
     pts -= pts.min(0)
     pts *= height / pts.max(0)[1]
 
