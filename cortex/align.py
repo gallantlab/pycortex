@@ -42,20 +42,21 @@ def automatic(subject, name, epifile, noclean=False):
     '''
     Attempts to create an automatic alignment. If [noclean], intermediate files will not be removed from /tmp.
     '''
-    import subprocess as sp
-    import tempfile
-    import shutil
     import shlex
+    import shutil
+    import tempfile
+    import subprocess as sp
 
-    from . import db, xfm
+    from .db import surfs
+    from .xfm import Transform
 
     retval = None
     try:
         cache = tempfile.mkdtemp()
         epifile = os.path.abspath(epifile)
-        raw = db.surfs.getAnat(subject, type='raw')
-        bet = db.surfs.getAnat(subject, type='brainmask')
-        wmseg = db.surfs.getAnat(subject, type='whitematter')
+        raw = surfs.getAnat(subject, type='raw')
+        bet = surfs.getAnat(subject, type='brainmask')
+        wmseg = surfs.getAnat(subject, type='whitematter')
 
         print('FLIRT pre-alignment')
         cmd = 'fsl5.0-flirt -ref {bet} -in {epi} -dof 6 -omat {cache}/init.mat'.format(cache=cache, epi=epifile, bet=bet)
@@ -67,7 +68,7 @@ def automatic(subject, name, epifile, noclean=False):
         assert sp.call(cmd, shell=True) == 0, 'Error calling BBR flirt'
 
         x = np.loadtxt(os.path.join(cache, "out.mat"))
-        xfm.Transform.from_fsl(x, epifile, raw).save(subject, name, 'coord')
+        Transform.from_fsl(x, epifile, raw).save(subject, name, 'coord')
         print('Success')
 
     finally:

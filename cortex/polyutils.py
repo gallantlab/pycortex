@@ -488,6 +488,12 @@ def make_cube(center=(.5, .5, .5), size=1):
                       (0, 6, 2), (0, 4, 6), (4, 7, 6), (4, 5, 7)], dtype=np.uint32)
     return pts * size + center, polys
 
+def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
+    from tvtk.api import tvtk
+    pd = tvtk.PolyData(points=pts, polys=polys)
+    plane = tvtk.Planes(normal=(0,0,1), ())
+    tvtk.ClipPolyData()
+
 if __name__ == "__main__":
     import pickle
     from .db import surfs

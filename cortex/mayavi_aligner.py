@@ -383,39 +383,8 @@ class Axis(HasTraits):
         center = self.shape * self.spacing / 2. + (self.shape + 1) % 2 * self.spacing / 2.
         width = (self.shape * self.spacing)[:2]
         width = np.min(width) * 0.5
-
         def handlemove(handle, pos, angle, radius):
-            inv = self.xfm.transform.homogeneous_inverse
-            wpos = handle.center.representation.world_position
-            wpos -= center
-            scale = [radius, radius]
-            if self.axis == 1:
-                trans = np.insert(pos[:2][::-1], self.axis, 0)
-                wpos = np.insert(wpos[:2][::-1], self.axis, self.ipw_3d.ipw.slice_position)
-                scale = np.insert(scale[::-1], self.axis, 1)
-                angle = -angle
-                trans[0] = -trans[0]
-            else:
-                trans = np.insert(pos[:2], self.axis, 0)
-                wpos = np.insert(wpos[:2], self.axis, self.ipw_3d.ipw.slice_position)
-                scale = np.insert(scale, self.axis, 1)
-
-            self.parent._undolist.append(self.xfm.transform.matrix.to_array())
-
-            self.xfm.transform.post_multiply()
-            self.xfm.transform.translate(-wpos)
-            self.xfm.transform.rotate_wxyz(np.degrees(angle), *self.ipw_3d.ipw.normal)
-            self.xfm.transform.scale(scale)
-            self.xfm.transform.translate(wpos)
-            self.xfm.transform.translate(trans)
-            self.xfm.transform.pre_multiply()
-
-            self.xfm.widget.set_transform(self.xfm.filter.transform)
-            self.xfm.update_pipeline()
-            self.parent.update_slabs()
-
-            np.save("/tmp/last_xfm.npy", self.parent.get_xfm())
-
+            self.transform(pos, angle, radius)
         return RotationWidget(self.scene.scene.mayavi_scene, handlemove, radius=width, pos=center)
 
     def _disable_render_changed(self):
@@ -450,6 +419,40 @@ class Axis(HasTraits):
         pos = list(self.position)
         pos[self.axis] -= np.abs(self.parent.spacing)[self.axis]
         self.position = pos
+
+    def transform(self, pos=(0,0), rot=0, scale=1):
+        center = self.shape * self.spacing / 2. + (self.shape + 1) % 2 * self.spacing / 2.
+        inv = self.xfm.transform.homogeneous_inverse
+        wpos = handle.center.representation.world_position
+        wpos -= center
+        if not isinstance(scale, (tuple, list, np.ndarray)):
+            scale = [scale, scale]
+
+        if self.axis == 1:
+            trans = np.insert(pos[:2][::-1], self.axis, 0)
+            wpos = np.insert(wpos[:2][::-1], self.axis, self.ipw_3d.ipw.slice_position)
+            scale = np.insert(scale[::-1], self.axis, 1)
+            angle = -angle
+        else:
+            trans = np.insert(pos[:2], self.axis, 0)
+            wpos = np.insert(wpos[:2], self.axis, self.ipw_3d.ipw.slice_position)
+            scale = np.insert(scale, self.axis, 1)
+
+        self.parent._undolist.append(self.xfm.transform.matrix.to_array())
+
+        self.xfm.transform.post_multiply()
+        self.xfm.transform.translate(-wpos)
+        self.xfm.transform.rotate_wxyz(np.degrees(angle), *self.ipw_3d.ipw.normal)
+        self.xfm.transform.scale(scale)
+        self.xfm.transform.translate(wpos)
+        self.xfm.transform.translate(trans)
+        self.xfm.transform.pre_multiply()
+
+        self.xfm.widget.set_transform(self.xfm.filter.transform)
+        self.xfm.update_pipeline()
+        self.parent.update_slabs()
+
+        np.save("/tmp/last_xfm.npy", self.parent.get_xfm())
 
     def update_position(self):
         """ Update the position of the cursors on each side view, as well

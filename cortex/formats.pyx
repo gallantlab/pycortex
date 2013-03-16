@@ -84,8 +84,8 @@ def read_vtk(bytes filename):
 
     return pts, polys
 
-def write_vtk(bytes outfile, object pts, object polys, object norms=None):
-    with open(outfile, "w") as fp:
+def write_vtk(bytes filename, object pts, object polys, object norms=None):
+    with open(filename, "w") as fp:
         fp.write("# vtk DataFile Version 3.0\nWritten by pycortex\nASCII\nDATASET POLYDATA\n")
         fp.write("POINTS %d float\n"%len(pts))
         np.savetxt(fp, pts, fmt='%0.12g')
@@ -99,3 +99,11 @@ def write_vtk(bytes outfile, object pts, object polys, object norms=None):
         if norms is not None and len(norms) == len(pts):
             fp.write("NORMALS Normals float")
             np.savetxt(fp, norms, fmt='%0.12g')
+
+def write_off(bytes filename, object pts, object polys):
+    spolys = np.hstack((3*np.ones((len(polys),1), dtype=polys.dtype), polys))
+    with open(filename, 'w') as fp:
+        fp.write('OFF\n')
+        fp.write('%d %d 0\n'%(len(pts), len(polys)))
+        np.savetxt(fp, pts, fmt='%f')
+        np.savetxt(fp, spolys, fmt='%d')
