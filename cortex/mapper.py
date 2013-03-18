@@ -201,6 +201,7 @@ class Trilinear(Mapper):
     @staticmethod
     def _getmask(coords, polys, shape):
         #trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
+        csrshape = len(coords), np.prod(shape)
         valid = np.unique(polys)
         coords = coords[valid]
         (x, y, z), floor = np.modf(coords.T)
@@ -232,7 +233,6 @@ class Trilinear(Mapper):
         i    = np.tile(valid, [8, 1]).T.ravel()
         j    = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T.ravel()
         data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T.ravel()
-        csrshape = len(coords), np.prod(shape)
         return sparse.csr_matrix((data, (i, j)), shape=csrshape)
 
 class Lanczos(Mapper):
