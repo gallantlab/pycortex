@@ -161,10 +161,7 @@ class Hemi(object):
         ctm = CTMfile(self.tf.name)
         return ctm.getMesh(), self.tf.read()
 
-def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0):
-    base = 'fiducial'
-    if method == 'mg2':
-        base = 'pia'
+def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0, base='fiducial'):
     ctm = BrainCTM(subj, xfm, base=base)
     ctm.addMap()
     ctm.addDropout()

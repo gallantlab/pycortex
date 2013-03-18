@@ -313,25 +313,60 @@ def make_cube(center=(.5, .5, .5), size=1):
                       (0, 6, 2), (0, 4, 6), (4, 7, 6), (4, 5, 7)], dtype=np.uint32)
     return pts * size + center, polys
 
+def trace_poly(edges):
+    '''Given a disjoint set of edges, yield complete linked polygons'''
+    eset = set(np.unique(edges))
+    idx = dict((i, set([])) for i in list(eset))
+    for i, (x, y) in enumerate(edges):
+        idx[x].add(i)
+        idx[y].add(i)
+        
+    while len(eset) > 0:
+        eidx = eset.pop()
+        poly = list(edges[eidx])
+        stack = set([eidx])
+        while poly[-1] != poly[0]:
+            next = list(idx[poly[-1]] - stack)[0]
+            eset.remove(next)
+            stack.add(next)
+            if edges[next][0] == poly[-1]:
+                poly.append(edges[next][1])
+            elif edges[next][1] == poly[-1]:
+                poly.append(edges[next][0])
+            else:
+                raise Exception
+
+        yield poly
+
 def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
     from tvtk.api import tvtk
     import Image
     import ImageDraw
-    
+
     pd = tvtk.PolyData(points=pts + center, polys=polys)
     plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0.5)])
     clip = tvtk.ClipPolyData(clip_function=plane, input=pd)
-    output = np.empty(shape, dtype=np.uint8)
+    feats = tvtk.FeatureEdges(
+        manifold_edges=False, 
+        non_manifold_edges=False, 
+        feature_edges=False,
+        boundary_edges=True,
+        input=clip.output)
+
+    vox = np.zeros(shape, dtype=np.uint8)
     for i in range(shape[2]):
         plane.points = [(0,0,i+.5)]
-        clip.update()
-        im = Image.new('L', shape[:2])
-        draw = ImageDraw.Draw(im)
-        cpts = clip.output.points.to_array()
-        cpolys = clip.output.polys.to_array().reshape(-1, 4)
-        for p in Surface(cpts, cpolys[:,1:]).boundary_poly():
-            draw.polygon(p[:, :2].ravel().tolist(), fill=255)
-        print i
-        output[...,i] = np.array(im) > 0
+        feats.update()
+        if feats.output.number_of_lines > 0:
+            epts = feats.output.points.to_array()
+            edges = feats.output.lines.to_array().reshape(-1, 3)[:,1:]
+            for poly in trace_poly(edges):
+                im = Image.new('L', shape[:2])
+                draw = ImageDraw.Draw(im)
+                draw.polygon(epts[poly][:, :2].ravel().tolist(), fill=255)
+                vox[...,i] += np.array(im) > 0
+            print i
+        else:
+            print('No edges on layer %d'%i)
 
-    return output
+    return vox
