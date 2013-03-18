@@ -144,7 +144,7 @@ class FlatScene(Scene):
         ckey = chr(key % 256)
         moves = {314:(-2,0,0), 315:(0,2,0), 316:(2,0,0), 317:(0,-2,0)}
         if self.invert:
-            moves = {314:(0,-2,0), 315:(2,0,0), 316:(0,2,0), 317:(-2,0,0)}
+            moves = {314:(0,2,0), 315:(2,0,0), 316:(0,-2,0), 317:(-2,0,0)}
         
         mult = (1,.25)[evt.ShiftDown()]
         if key in moves:
@@ -420,10 +420,11 @@ class Axis(HasTraits):
         pos[self.axis] -= np.abs(self.parent.spacing)[self.axis]
         self.position = pos
 
-    def transform(self, pos=(0,0), rot=0, scale=1):
+    def transform(self, pos=(0,0), angle=0, scale=1):
         center = self.shape * self.spacing / 2. + (self.shape + 1) % 2 * self.spacing / 2.
         inv = self.xfm.transform.homogeneous_inverse
-        wpos = handle.center.representation.world_position
+
+        wpos = self.handle.center.representation.world_position
         wpos -= center
         if not isinstance(scale, (tuple, list, np.ndarray)):
             scale = [scale, scale]

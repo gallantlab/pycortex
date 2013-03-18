@@ -317,9 +317,9 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
     from tvtk.api import tvtk
     import Image
     import ImageDraw
-
+    
     pd = tvtk.PolyData(points=pts + center, polys=polys)
-    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
+    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0.5)])
     clip = tvtk.ClipPolyData(clip_function=plane, input=pd)
     output = np.empty(shape, dtype=np.uint8)
     for i in range(shape[2]):
