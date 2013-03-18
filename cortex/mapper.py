@@ -154,8 +154,9 @@ class Mapper(object):
         masks = []
         xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
         fid = surfs.getSurf(subject, 'fiducial', merge=False, nudge=False)
+        flat = surfs.getSurf(subject, 'flat', merge=False, nudge=False)
 
-        for pts, polys in fid:
+        for (pts, _), (_, polys) in zip(fid, flat):
             masks.append(cls._getmask(xfm(pts), polys, xfm.shape, **kwargs))
 
         _savecache(filename, masks[0], masks[1], xfm.shape)
