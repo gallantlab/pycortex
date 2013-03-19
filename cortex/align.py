@@ -60,12 +60,14 @@ def automatic(subject, name, epifile, noclean=False):
 
         print('FLIRT pre-alignment')
         cmd = 'fsl5.0-flirt -ref {bet} -in {epi} -dof 6 -omat {cache}/init.mat'.format(cache=cache, epi=epifile, bet=bet)
-        assert sp.call(cmd, shell=True) == 0, 'Error calling initial FLIRT'
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError('Error calling initial FLIRT')
 
         print('Running BBR')
         cmd = 'fsl5.0-flirt -ref {raw} -in {epi} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
         cmd = cmd.format(cache=cache, raw=raw, wmseg=wmseg, epi=epifile)
-        assert sp.call(cmd, shell=True) == 0, 'Error calling BBR flirt'
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError('Error calling BBR flirt')
 
         x = np.loadtxt(os.path.join(cache, "out.mat"))
         Transform.from_fsl(x, epifile, raw).save(subject, name, 'coord')
@@ -75,11 +77,32 @@ def automatic(subject, name, epifile, noclean=False):
         if not noclean:
             shutil.rmtree(cache)
         else:
-            retval = cace
+            retval = cache
 
     return retval
 
 def autotweak(subject, name):
-    from .db import sursf
+    import shutil
+    import tempfile
+    from .db import surfs
     magnet = surfs.getXfm(subject, name, xfmtype='magnet')
+    try:
+        cache = tempfile.mkdtemp()
+        epifile = os.path.abspath(epifile)
+        raw = surfs.getAnat(subject, type='raw')
+        bet = surfs.getAnat(subject, type='brainmask')
+        wmseg = surfs.getAnat(subject, type='whitematter')
+        initmat = magnet.to_fsl(surfs.getAnat(subject, 'raw'))
+        with open(os.path.join(cache, 'init.mat'), 'w') as fp:
+            np.savetxt(fp, initmat, fmt='%f')
+        print('Running BBR')
+        cmd = 'fsl5.0-flirt -ref {raw} -in {epi} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
+        cmd = cmd.format(cache=cache, raw=raw, wmseg=wmseg, epi=epifile)
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError('Error calling BBR flirt')
+
+        x = np.load
+    finally:
+        shutil.rmtree(cache)
+
     raise NotImplementedError

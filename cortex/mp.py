@@ -1,27 +1,32 @@
 import sys
 import marshal
 import multiprocessing as mp
+try:
+    import progressbar as pb
+except ImportError:
+    pass
 
 def map(func, iterable, procs = mp.cpu_count()):
     input, output = mp.Queue(), mp.Queue()
     length = mp.Value('i',0)
     
     def _fill(iterable, procs, input, output):
+        print('Filling queue...')
         for data in enumerate(iterable):
             input.put(data)
             length.value += 1
         for _ in range(procs*2):
             input.put((-1,-1))
-        print "end fill"
+        print "%d elements in queue"%length.value
         
     def _func(proc, input, output):
         idx, data = input.get()
         while idx != -1:
-            print "Running %d..."%idx
-            sys.stdout.flush()
+            #print "Running %d..."%idx
+            #sys.stdout.flush()
             output.put((idx, func(data)))
             idx, data = input.get()
-        print "end proc %d"%proc
+        #print "end proc %d"%proc
     
     filler = mp.Process(target = _fill, args=(iterable, procs, input, output))
     filler.daemon = True
@@ -31,11 +36,25 @@ def map(func, iterable, procs = mp.cpu_count()):
         proc.daemon = True
         proc.start()
     
-    filler.join()
-    data = [[]]*length.value
-    for _ in range(length.value):
-        idx, result = output.get()
-        data[idx] = result
+    try:
+        iterlen = len(iterable)
+    except:
+        filler.join()
+        iterlen = length.value
+
+    data = [[]]*iterlen
+    try:
+        progress = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar()], maxval=iterlen)
+        progress.start()
+        for i in xrange(iterlen):
+            idx, result = output.get()
+            data[idx] = result
+            progress.update(i+1)
+        progress.finish()
+    except NameError:
+        for _ in xrange(iterlen):
+            idx, result = output.get()
+            data[idx] = result
         
     return data
 

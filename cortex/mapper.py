@@ -332,28 +332,33 @@ class Polyhedral(ThickMapper):
 class ConvexPolyhedra(ThickMapper):
     @classmethod
     def _getmask(cls, pia, wm, polys, shape, npts=1024):
+        from . import mp
         rand = np.random.rand(npts, 3)
-        mask = sparse.csr_matrix((len(wm), np.prod(shape)))
+        csrshape = len(wm), np.prod(shape)
 
-        surf = polyutils.Surface(pia, polys)
-        for i, pts in enumerate(surf.polyconvex(wm)):
+        def func(pts):
             if len(pts) > 0:
                 #generate points within the bounding box
                 samples = rand * (pts.max(0) - pts.min(0)) + pts.min(0)
                 #check which points are inside the polyhedron
                 inside = polyutils.inside_convex_poly(pts)(samples)
+                return cls._sample(samples[inside], shape, np.sum(inside))
 
-                for idx, value in cls._sample(samples[inside], shape):
-                    mask[i, idx] = value / float(sum(inside))
+        surf = polyutils.Surface(pia, polys)
+        samples = mp.map(func, surf.polyconvex(wm))
+        ij, data = [], []
+        for i, sample in enumerate(samples):
+            if sample is not None:
+                idx = np.zeros((2, len(sample[0])))
+                idx[0], idx[1] = i, sample[0]
+                ij.append(idx)
+                data.append(sample[1])
 
-            if i % 100 == 0:
-                print(i)
-
-        return mask
+        return sparse.csr_matrix((np.hstack(data), np.hstack(ij)), shape=csrshape)
 
 class ConvexNN(ConvexPolyhedra):
     @staticmethod
-    def _sample(pts, shape):
+    def _sample(pts, shape, norm):
         coords = pts.round().astype(int)[:,::-1]
         d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < shape[0])
         d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < shape[1])
@@ -361,8 +366,8 @@ class ConvexNN(ConvexPolyhedra):
         valid = np.logical_and(d1, np.logical_and(d2, d3))
         if valid.any():
             idx = np.ravel_multi_index(coords[valid].T, shape)
-            return Counter(idx).items()
-        return []
+            j, data = np.array(Counter(idx).items()).T
+            return j, data / float(norm)
 
 class ConvexTrilin(ConvexPolyhedra):
     @staticmethod

@@ -7,6 +7,7 @@ import subprocess as sp
 import numpy as np
 
 from . import db
+from . import anat
 
 def get_paths(subject, hemi, type="patch"):
     base = os.path.join(os.environ['SUBJECTS_DIR'], subject)
@@ -27,7 +28,7 @@ def import_subj(subject, sname=None):
         sname = subject
 
     #import anatomicals
-    for fsname, name in dict(T1="raw", wm="whitematter").items():
+    for fsname, name in dict(T1="raw").items():
         path = os.path.join(fspath, "{fsname}.mgz").format(fsname=fsname)
         out = anats.format(subj=sname, name=name, type='nii.gz')
         cmd = "mri_convert {path} {out}".format(path=path, out=out)
@@ -47,7 +48,10 @@ def import_subj(subject, sname=None):
             if fsname == 'smoothwm':
                 curvs[hemi] = curv
 
-    np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
+    #voxelize the surface for nicer BBR anatomical
+    anat.voxelizewm(sname)
+
+    np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=-curvs['lh'], right=-curvs['rh'])
     #np.savez(anats.format(subj=sname, name="thickness", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
 
 def import_flat(subject, patch, sname=None):

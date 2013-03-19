@@ -142,7 +142,14 @@ class Surface(object):
             yield pts.points, np.array(list(polys.triangles))
 
     def polyconvex(self, wm):
-        for p, faces in enumerate(self.connected):
+        try:
+            import progressbar as pb
+            progress = pb.ProgressBar(maxval=len(self.connected))
+            iterable = progress(enumerate(self.connected))
+        except ImportError:
+            iterable = enumerate(self.connected)
+
+        for p, faces in iterable:
             polys = self.polys[faces]
             x, y = np.nonzero(polys == p)
             x = np.tile(x, [3, 1]).T
