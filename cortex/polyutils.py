@@ -320,7 +320,7 @@ def trace_poly(edges):
     for i, (x, y) in enumerate(edges):
         idx[x].add(i)
         idx[y].add(i)
-        
+
     while len(eset) > 0:
         eidx = eset.pop()
         poly = list(edges[eidx])
@@ -344,7 +344,7 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
     import ImageDraw
 
     pd = tvtk.PolyData(points=pts + center, polys=polys)
-    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0.5)])
+    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
     clip = tvtk.ClipPolyData(clip_function=plane, input=pd)
     feats = tvtk.FeatureEdges(
         manifold_edges=False, 
@@ -353,10 +353,10 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
         boundary_edges=True,
         input=clip.output)
 
-    vox = np.zeros(shape, dtype=np.uint8)
-    for i in range(shape[2]):
-        plane.points = [(0,0,i+.5)]
+    def func(i):
+        plane.points = [(0,0,i)]
         feats.update()
+        vox = np.zeros(shape[:2], np.uint8)
         if feats.output.number_of_lines > 0:
             epts = feats.output.points.to_array()
             edges = feats.output.lines.to_array().reshape(-1, 3)[:,1:]
@@ -364,9 +364,10 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
                 im = Image.new('L', shape[:2])
                 draw = ImageDraw.Draw(im)
                 draw.polygon(epts[poly][:, :2].ravel().tolist(), fill=255)
-                vox[...,i] += np.array(im) > 0
-            print i
-        else:
-            print('No edges on layer %d'%i)
+                vox += np.array(im) > 0
+        print i
+        return vox
 
-    return vox
+#    import multiprocessing as mp
+#    pool = mp.Pool()
+    return np.array(map(func, range(shape[2]))).T

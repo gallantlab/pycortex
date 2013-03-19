@@ -9,6 +9,8 @@ import nibabel
 
 from . import db
 from . import utils
+from . import polyutils
+from .xfm import Transform
 
 def brainmask(subject):
     anatform = db.surfs.getFiles(subject)['anats']
@@ -48,3 +50,18 @@ def distortion(subject, type='areal', **kwargs):
     dist = anatform.format(type='distortion_%d'%type)
     dist, ext = os.path.splitext(dist)
     np.savez_compressed('%s.npz'%dist, left=dists[0], right=dists[1])
+
+def voxelizewm(subject):
+    '''Voxelize the whitematter surface to generate the white matter mask'''
+    anatform = db.surfs.getFiles(subject)['anats']
+    nib = nibabel.load(anatform.format(type='raw'))
+    shape = nib.get_shape()
+    vox = np.zeros(shape, dtype=bool)
+    for pts, polys in db.surfs.getSurf(subject, 'wm', nudge=False):
+        xfm = Transform(np.linalg.inv(nib.get_affine()), nib)
+        tpts = xfm(pts)#+(.5,.5,.5)
+        vox += polyutils.voxelize(tpts, polys, shape=shape, center=(0,0,0))
+
+    nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
+    nib.to_filename(anatform.format(type='whitematter'))
+    return vox

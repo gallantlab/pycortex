@@ -443,16 +443,19 @@ class Axis(HasTraits):
         self.outline.children[0].children[0].children[0].actor.property.point_size = self.point_size
 
     def next_slice(self):
+        '''View the next slice'''
         pos = list(self.position)
         pos[self.axis] += np.abs(self.parent.spacing)[self.axis]
         self.position = pos
 
     def prev_slice(self):
+        '''View the previous slice'''
         pos = list(self.position)
         pos[self.axis] -= np.abs(self.parent.spacing)[self.axis]
         self.position = pos
 
     def transform(self, pos=(0,0), angle=0, scale=1):
+        '''In-plane transformation function. Update the 3D transform based on the 2D changes'''
         center = self.shape * self.spacing / 2. + (self.shape + 1) % 2 * self.spacing / 2.
         inv = self.xfm.transform.homogeneous_inverse
 
