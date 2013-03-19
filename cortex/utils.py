@@ -11,7 +11,7 @@ from .mapper import get_mapper
 def unmask(mask, data):
     """unmask(mask, data)
 
-    "Unmasks" the data, assuming it's been masked.
+    `Unmasks` the data, assuming it's been masked.
 
     Parameters
     ----------

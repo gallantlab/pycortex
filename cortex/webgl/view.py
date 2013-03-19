@@ -261,7 +261,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
             saveevt.set()
 
     if pickerfun is None:
-        pickerfun = lambda (a,b): None
+        pickerfun = lambda a,b: None
     
     class PickerHandler(web.RequestHandler):
         def get(self):

@@ -82,13 +82,18 @@ def automatic(subject, name, epifile, noclean=False):
     return retval
 
 def autotweak(subject, name):
+    import shlex
     import shutil
     import tempfile
+    import subprocess as sp
+
     from .db import surfs
+    from .xfm import Transform
+
     magnet = surfs.getXfm(subject, name, xfmtype='magnet')
     try:
         cache = tempfile.mkdtemp()
-        epifile = os.path.abspath(epifile)
+        epifile = magnet.epi.get_filename()
         raw = surfs.getAnat(subject, type='raw')
         bet = surfs.getAnat(subject, type='brainmask')
         wmseg = surfs.getAnat(subject, type='whitematter')
@@ -101,8 +106,8 @@ def autotweak(subject, name):
         if sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling BBR flirt')
 
-        x = np.load
+        x = np.loadtxt(os.path.join(cache, "out.mat"))
+        Transform.from_fsl(x, epifile, raw).save(subject, name+"_auto", 'coord')
+        print('Saved transform as (%s, %s)'%(subject, name+'_auto'))
     finally:
         shutil.rmtree(cache)
-
-    raise NotImplementedError

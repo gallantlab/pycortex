@@ -15,15 +15,16 @@ def _gen_flat_mask(subject, height=1024):
     import Image
     import ImageDraw
     pts, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    left, right = [p for p in polyutils.Surface(pts, polys).boundary_poly()]
-    
-    pts -= pts.min(0)
-    pts *= height / pts.max(0)[1]
+    bounds = [p for p in polyutils.Surface(pts, polys).boundary_poly()]
+    left, right = bounds[0], bounds[1]
+    aspect = (height / (pts.max(0) - pts.min(0)))[1]
+    lpts = (left - pts.min(0)) * aspect
+    rpts = (right - pts.min(0)) * aspect
 
-    im = Image.new('L', (int(pts.max(0)[0]), height))
+    im = Image.new('L', (int(aspect * (pts.max(0) - pts.min(0))[0]), height))
     draw = ImageDraw.Draw(im)
-    draw.polygon(pts[left, :2].ravel().tolist(), fill=255)
-    draw.polygon(pts[right, :2].ravel().tolist(), fill=255)
+    draw.polygon(lpts[:,:2].ravel().tolist(), fill=255)
+    draw.polygon(rpts[:,:2].ravel().tolist(), fill=255)
     return np.array(im) > 0
 
 def _make_flat_cache(subject, xfmname, height=1024):

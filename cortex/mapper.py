@@ -58,7 +58,7 @@ class Mapper(object):
 
     @classmethod
     def from_cache(cls, cachefile):
-        npz = np.load(self.cachefile)
+        npz = np.load(cachefile)
         left = (npz['left_data'], npz['left_indices'], npz['left_indptr'])
         right = (npz['right_data'], npz['right_indices'], npz['right_indptr'])
         lsparse = sparse.csr_matrix(left, shape=npz['left_shape'])

@@ -145,11 +145,11 @@ class Surface(object):
         try:
             import progressbar as pb
             progress = pb.ProgressBar(maxval=len(self.connected))
-            iterable = progress(enumerate(self.connected))
+            progress.start()
         except ImportError:
-            iterable = enumerate(self.connected)
+            pass
 
-        for p, faces in iterable:
+        for p, faces in enumerate(self.connected):
             polys = self.polys[faces]
             x, y = np.nonzero(polys == p)
             x = np.tile(x, [3, 1]).T
@@ -166,7 +166,15 @@ class Surface(object):
             #remove duplicates
             top = top[(distance.cdist(top, top) == 0).sum(0) == 1]
             bot = bot[(distance.cdist(bot, bot) == 0).sum(0) == 1]
+            try:
+                progress.update(p+1)
+            except NameError:
+                pass
             yield np.vstack([top, bot, self.pts[p], wm[p]])
+        try:
+            progress.finish()
+        except NameError:
+            pass
 
 
 class _ptset(object):
