@@ -2,8 +2,8 @@ import types
 import nibabel
 import numpy as np
 
-from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, Int, on_trait_change, Button, DelegatesTo, Any
-from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
+from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, Int, Str, on_trait_change, Button, DelegatesTo, Any
+from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor, TextEditor
 
 from tvtk.api import tvtk
 from tvtk.pyface.scene import Scene
@@ -15,6 +15,23 @@ from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 
 from . import options
 from . import utils
+
+legend = '''[, ]:\t\tNext, Prev slice
+Ins:\t\tRotate view ccw
+PgUp:\tRotate view cw
+PgDn:\tScale view x up
+Del:\t\tScale view x down
+Home:\tScale view y up
+End:\t\tScale view y down
+arrows:\tMove view
+i:\t\tShow 3D interactor
+h:\t\tToggle outlines
+Ctrl-z:\tUndo last
+Shift:\tSmall increments
+Scroll:\tZoom
+Middle:\tPan
+Left:\t\tMove slice
+'''
 
 class RotationWidget(HasTraits):
     radius = Float(value=1)
@@ -142,17 +159,32 @@ class FlatScene(Scene):
         i = -1 if self.invert else 1
         key = evt.GetKeyCode()
         ckey = chr(key % 256)
-        moves = {314:(-2,0,0), 315:(0,2,0), 316:(2,0,0), 317:(0,-2,0)}
+        rotccw, rotcw = 322, 366
+        moves = {314:(-1,0,0), 315:(0,1,0), 316:(1,0,0), 317:(0,-1,0)}
         if self.invert:
-            moves = {314:(0,2,0), 315:(2,0,0), 316:(0,-2,0), 317:(-2,0,0)}
+            rotccw, rotcw = 366, 322
+            moves = {314:(0,1,0), 315:(1,0,0), 316:(0,-1,0), 317:(-1,0,0)}
         
-        mult = (1,.25)[evt.ShiftDown()]
+        mult = (2,.2)[evt.ShiftDown()]
+        smult = (1.1, 1.01)[evt.ShiftDown()]
         if key in moves:
             self.handle.move(np.array(moves[key])*mult)
-        elif key == 366:
+        elif key == rotccw : #ins
             self.handle.move(angle=np.pi / 120.*i*mult)
-        elif key == 367:
+        elif key == rotcw: #pgup
             self.handle.move(angle=-np.pi / 120.*i*mult)
+        elif key == 367: #pgdn
+            #x scale up
+            self.axis.transform(scale=(smult, 1))
+        elif key == 313: #home
+            #y scale up
+            self.axis.transform(scale=(1, smult))
+        elif key == 312: #end
+            #y scale down
+            self.axis.transform(scale=(1, 1/smult))
+        elif key == 127: #del
+            #x scale down
+            self.axis.transform(scale=(1/smult, 1))
         elif ckey == "h":
             self.aligner.outlines_visible = not self.aligner.outlines_visible
         elif ckey == ']':
@@ -432,12 +464,11 @@ class Axis(HasTraits):
         if self.axis == 1:
             trans = np.insert(pos[:2][::-1], self.axis, 0)
             wpos = np.insert(wpos[:2][::-1], self.axis, self.ipw_3d.ipw.slice_position)
-            scale = np.insert(scale[::-1], self.axis, 1)
-            angle = -angle
+            #angle = -angle
         else:
             trans = np.insert(pos[:2], self.axis, 0)
             wpos = np.insert(wpos[:2], self.axis, self.ipw_3d.ipw.slice_position)
-            scale = np.insert(scale, self.axis, 1)
+        scale = np.insert(scale, self.axis, 1)
 
         self.parent._undolist.append(self.xfm.transform.matrix.to_array())
 
@@ -559,6 +590,8 @@ class Align(HasTraits):
 
     save_callback = Instance(types.FunctionType)
     save_btn = Button(label="Save Transform")
+
+    legend = Str(legend)
 
     #---------------------------------------------------------------------------
     # Object interface
@@ -810,7 +843,8 @@ class Align(HasTraits):
                             editor=SceneEditor(scene_class=ThreeDScene)),
                        show_labels=False,
                   ),
-                  Group(Item("save_btn", show_label=False, visible_when="save_callback is not None"),
+                  Group(
+                    Group(Item("save_btn", show_label=False, visible_when="save_callback is not None"),
                         "brightness", "contrast", "epi_filter", 
                         Item('filter_strength', visible_when="epi_filter is not None"),
                         "_", "opacity", "_",
@@ -820,9 +854,15 @@ class Align(HasTraits):
                                               path=lut_manager.lut_image_dir)),
                         "fliplut",
                         "_", "flip_ud", "flip_lr", "flip_fb", 
-                        "_", Item('outline_color', editor=ColorEditor()), 'outline_rep', 'line_width', 'point_size'
-
-                  )
+                        "_", Item('outline_color', editor=ColorEditor()), 'outline_rep', 'line_width', 'point_size',
+                        '_',
+                    ),
+                    Group(
+                        Item('legend', editor=TextEditor(), style='readonly', show_label=False, emphasized=True, dock='vertical'),
+                        show_labels=False,
+                    ),
+                    orientation='vertical'
+                  ),
                 ), 
                 resizable=True,
                 title='Aligner'
