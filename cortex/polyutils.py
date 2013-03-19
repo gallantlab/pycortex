@@ -311,11 +311,11 @@ def curvature(pts, polys):
     return curv.output.point_data.scalars.to_array()
 
 def inside_convex_poly(pts):
-    '''Returns a function that checks if inputs are inside the convex hull of polyhedron defined by pts
+    """Returns a function that checks if inputs are inside the convex hull of polyhedron defined by pts
 
     Alternative method to check is to get faces of the convex hull, then check if each normal is pointed away from each point.
     As it turns out, this is vastly slower than using qhull's find_simplex, even though the simplex is not needed.
-    '''
+    """
     tri = Delaunay(pts)
     return lambda x: tri.find_simplex(x) != -1
 

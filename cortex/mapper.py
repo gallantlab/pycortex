@@ -19,7 +19,8 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
         gaussian=Gaussian,
         polyhedral=Polyhedral,
         lanczos=Lanczos,
-        convexnn=ConvexNN)
+        convexnn=ConvexNN,
+        convextrilin=ConvexTrilin)
     Map = mapcls[type]
     ptype = Map.__name__.lower()
     kwds ='_'.join(['%s%s'%(k,str(v)) for k, v in list(kwargs.items())])
@@ -346,6 +347,7 @@ class ConvexPolyhedra(ThickMapper):
 
         surf = polyutils.Surface(pia, polys)
         samples = mp.map(func, surf.polyconvex(wm))
+        #samples = map(func, surf.polyconvex(wm)) ## For debugging
         ij, data = [], []
         for i, sample in enumerate(samples):
             if sample is not None:
@@ -371,8 +373,7 @@ class ConvexNN(ConvexPolyhedra):
 
 class ConvexTrilin(ConvexPolyhedra):
     @staticmethod
-    def _sample(pts, shape):
-        raise NotImplementedError
+    def _sample(pts, shape, norm):
         (x, y, z), floor = np.modf(pts.T)
         floor = floor.astype(int)
         ceil = floor + 1
@@ -398,9 +399,13 @@ class ConvexTrilin(ConvexPolyhedra):
         v011 = (1-x)*y*z
         v111 = x*y*z
 
-        i    = np.tile(np.arange(len(coords)), [8, 1]).T.ravel()
-        j    = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T.ravel()
+        allj = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T.ravel()
         data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T.ravel()
+
+        uniquej = np.unique(allj)
+        uniquejdata = np.array([data[allj==j].sum() for j in uniquej])
+        
+        return uniquej, uniquejdata / float(norm)
 
 
 class ConvexLanczos(ConvexPolyhedra):
