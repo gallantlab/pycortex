@@ -342,8 +342,8 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
     from tvtk.api import tvtk
     import Image
     import ImageDraw
-
-    pd = tvtk.PolyData(points=pts + center, polys=polys)
+    #.5 adjustment is due to ImageDraw being imprecise
+    pd = tvtk.PolyData(points=pts + center + (0, 0.5, 0), polys=polys)
     plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
     clip = tvtk.ClipPolyData(clip_function=plane, input=pd)
     feats = tvtk.FeatureEdges(
@@ -363,11 +363,11 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
             for poly in trace_poly(edges):
                 im = Image.new('L', shape[:2])
                 draw = ImageDraw.Draw(im)
-                draw.polygon(epts[poly][:, :2].ravel().tolist(), fill=255)
+                draw.polygon(epts[poly][:, :2].round().ravel().tolist(), fill=255)
                 vox += np.array(im) > 0
-        print i
         return vox
 
 #    import multiprocessing as mp
 #    pool = mp.Pool()
-    return np.array(map(func, range(shape[2]))).T
+    from . import mp
+    return np.array(mp.map(func, range(shape[2]))).T
