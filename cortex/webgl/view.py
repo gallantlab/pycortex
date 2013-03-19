@@ -190,7 +190,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
     return mapper
 
-def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, recache_mapper=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None, **kwargs):
+def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, recache_mapper=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
     """Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
     sub dictionary with keys [data, stim, delay].
 
@@ -260,6 +260,13 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
                 svgfile.write(data)
             saveevt.set()
 
+    if pickerfun is None:
+        pickerfun = lambda (a,b): None
+    
+    class PickerHandler(web.RequestHandler):
+        def get(self):
+            pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
+
     class JSMixer(serve.JSProxy):
         def addData(self, projection='nearest', **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
@@ -323,6 +330,8 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
             (r'/ctm/(.*)', CTMHandler),
             (r'/data/(.*)', DataHandler),
             (r'/mixer.html', MixerHandler),
+            (r'/', MixerHandler),
+            (r'/picker', PickerHandler)
         ], port)
     server.start()
     print("Started server on port %d"%server.port)

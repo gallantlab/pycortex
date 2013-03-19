@@ -25,8 +25,9 @@ function FacePick(viewer, callback) {
     if (typeof(callback) == "function") {
         this.callback = callback;
     } else {
-        this.callback = function(voxidx) {
-            console.log(voxidx);
+	this.callback = function(voxidx, vertidx) {
+            console.log("Picked voxel: "+voxidx+", vertex: "+vertidx);
+	    $.ajax("/picker?voxel="+voxidx+"&vertex="+vertidx);
         }
     }
     
