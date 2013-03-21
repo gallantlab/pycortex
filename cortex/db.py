@@ -218,8 +218,6 @@ class Database(object):
             Type of transform to return. Defaults to coord.
         """
         fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
-        if not os.path.exists(fname):
-            return None
         xfmdict = json.load(open(fname))
         if xfmdict['subject'] != subject:
             raise ValueError("Incorrect subject for the name")

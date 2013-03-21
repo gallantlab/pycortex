@@ -105,7 +105,7 @@ class Mapper(object):
                 raise ValueError
 
             mapped.append(np.array(mask * norm).T.squeeze())
-
+            
         if self.idxmap is not None:
             mapped[0] = mapped[0][..., self.idxmap[0]]
             mapped[1] = mapped[1][..., self.idxmap[1]]

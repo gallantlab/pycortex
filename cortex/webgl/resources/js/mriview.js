@@ -625,15 +625,15 @@ MRIview.prototype = {
             } else if (data[name] instanceof NParray) {
                 this.datasets[name] = new Dataset(data[name]);
             }
-
-            $.when(this.loaded, this.datasets[name].loaded).then(function() {
+            
+            $.when(this.loaded, this.datasets[name].loaded).then(function(dataset) {
                 if (this.meshes.left.geometry.indexMap !== undefined) {
-                    this.datasets[name].rearrange(
+                    dataset.rearrange(
                         this.meshes.left.geometry.attributes.position.array.length / 3, 
                         this.meshes.left.geometry.indexMap, 
                         this.meshes.right.geometry.indexMap);
                 }
-            }.bind(this));
+            }.bind(this, this.datasets[name]));
 
             var found = false;
             $("#datasets li").each(function() {
