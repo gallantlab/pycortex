@@ -41,7 +41,7 @@ def _normalize_data(data, mapper):
             ds['delay'] = dat['delay'] if 'delay' in dat else 0
         else:
             data = _fixarray(dat, mapper)
-
+            
         ds['data'] = data
         ds['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
         ds['max'] = scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max']

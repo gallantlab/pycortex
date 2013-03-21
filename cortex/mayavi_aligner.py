@@ -555,6 +555,14 @@ class ZAxis(Axis):
     axis = 2
     scene = DelegatesTo('parent', 'scene_z')
 
+outline_reps = set(('wireframe', 'points', 'surface'))
+try:
+    default_rep = options.config.get("mayavi_aligner", "outline_rep")
+    outline_reps = outline_reps - set([default_rep])
+    outline_reps = (default_rep,) + tuple(outline_reps)
+except:
+    outline_reps = tuple(outline_reps)
+
 class Align(HasTraits):
     # The position of the view
     position = Array(shape=(3,))
@@ -565,11 +573,11 @@ class Align(HasTraits):
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
 
-    outline_color = Color()
     outlines_visible = Bool(default_value=True)
-    outline_rep = Enum('wireframe', 'points', 'surface')
-    line_width = Range(0., 10., value=1.)
-    point_size = Range(0., 10., value=5.)
+    outline_rep = Enum(outline_reps)
+    outline_color = Color(default=options.config.get("mayavi_aligner", "outline_color"))
+    line_width = Range(0.5, 10., value=float(options.config.get("mayavi_aligner", "line_width")))
+    point_size = Range(0.5, 10., value=float(options.config.get("mayavi_aligner", "point_size")))
 
     epi_filter = Enum(None, "median", "gradient")
     filter_strength = Range(1, 20, value=3)
