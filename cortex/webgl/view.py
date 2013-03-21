@@ -6,6 +6,7 @@ import shutil
 import random
 import binascii
 import mimetypes
+import functools
 import webbrowser
 import multiprocessing as mp
 import numpy as np
@@ -21,7 +22,10 @@ sloader = template.Loader(serve.cwd)
 lloader = template.Loader("./")
 
 name_parse = re.compile(r".*/(\w+).png")
-cmapdir = options.config.get('webgl', 'colormaps')
+try:
+    cmapdir = options.config.get('webgl', 'colormaps')
+except:
+    cmapdir = os.path.join(options.config.get("basic", "filestore"), "colormaps")
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
@@ -41,7 +45,7 @@ def _normalize_data(data, mapper):
             ds['delay'] = dat['delay'] if 'delay' in dat else 0
         else:
             data = _fixarray(dat, mapper)
-            
+
         ds['data'] = data
         ds['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
         ds['max'] = scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max']

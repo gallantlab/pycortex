@@ -159,19 +159,19 @@ class FlatScene(Scene):
         i = -1 if self.invert else 1
         key = evt.GetKeyCode()
         ckey = chr(key % 256)
-        rotccw, rotcw = 322, 366
+        rotccw, rotcw = [322, 57], [366, 48]
         moves = {314:(-1,0,0), 315:(0,1,0), 316:(1,0,0), 317:(0,-1,0)}
         if self.invert:
-            rotccw, rotcw = 366, 322
+            rotccw, rotcw = rotcw, rotccw
             moves = {314:(0,1,0), 315:(1,0,0), 316:(0,-1,0), 317:(-1,0,0)}
         
         mult = (2,.2)[evt.ShiftDown()]
         smult = (1.1, 1.01)[evt.ShiftDown()]
         if key in moves:
             self.handle.move(np.array(moves[key])*mult)
-        elif key == rotccw : #ins
+        elif key in rotccw : #ins
             self.handle.move(angle=np.pi / 120.*i*mult)
-        elif key == rotcw: #pgup
+        elif key in rotcw: #pgup
             self.handle.move(angle=-np.pi / 120.*i*mult)
         elif key == 367: #pgdn
             #x scale up
@@ -194,6 +194,7 @@ class FlatScene(Scene):
         elif ckey == '\x1a' and evt.CmdDown():
             self.aligner.undo()
         else:
+            print key
             super(FlatScene, self).OnKeyDown(evt)
 
     def OnButtonDown(self, evt):
@@ -569,7 +570,7 @@ class Align(HasTraits):
 
     brightness = Range(-1., 1., value=0.)
     contrast = Range(0., 3., value=1.)
-    opacity = Range(0., 1.)
+    opacity = Range(0., 1., value=float(options.config.get("mayavi_aligner", "opacity")))
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
 
