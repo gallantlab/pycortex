@@ -148,7 +148,7 @@ function MRIview() {
     // scene and camera
     this.scene = new THREE.Scene();
 
-    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 0.5, 1000 );
+    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 1.0, 1000 );
     this.camera.position.set(200, 200, 200);
     this.camera.up.set(0,0,1);
 

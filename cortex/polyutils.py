@@ -70,7 +70,7 @@ class Surface(object):
         return np.array(pts), np.array(polys)
 
     def boundary_poly(self):
-        '''Generator that yields a single boundary polygon each time it's called'''
+        """Generator that yields a single boundary polygon each time it's called"""
         boundpts = set(boundary_pts(self.polys))
 
         while len(boundpts) > 0:

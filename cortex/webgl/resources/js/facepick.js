@@ -164,8 +164,9 @@ FacePick.prototype = {
                     var count = geom.offsets[o].count;
 
                     if (start <= faceidx*3 && faceidx*3 < (start+count)) {
-                        //Pick only the first point of triangle
+                        //Pick the closest point in triangle to the click location
                         var ptidx = index + polys[faceidx*3];
+			var pts = [ptidx, ptidx+1, ptidx+2];
                         var dataidx = map[ptidx*4+3];
                         ptidx += hemi == "right" ? leftlen : 0;
 
@@ -264,10 +265,12 @@ FacePick.prototype = {
         var pos, ax;
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
-            pos = this.viewer.getVert(ax.idx).norm;
+            pos = this.viewer.getVert(ax.idx).pos;
             ax.obj.position.copy(pos);
             // Rescale axes for flat view
-            ax.obj.scale.x = 1.0001-mixevt.flat;
+            ax.obj.scale.x = 1.000-mixevt.flat;
+	    // Make sure axes are not in same plane as flatmap
+	    ax.obj.position.x -= 0.01 * mixevt.flat;
         }
     },
 
@@ -287,8 +290,9 @@ FacePick.prototype = {
             this.axes = [];
 
         var axes = makeAxes(50, 0xffffff);
-        axes.position.copy(vert.norm);
+        axes.position.copy(vert.pos);
         axes.scale.x = 1.0001-this.viewer.flatmix;
+	axes.position.x -= 0.01 * this.viewer.flatmix;
         this.axes.push({idx:ptidx, obj:axes});
         this.viewer.pivot[vert.name].back.add(axes);
         this.viewer.controls.dispatchEvent({type:"change"});
