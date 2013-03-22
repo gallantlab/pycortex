@@ -22,6 +22,10 @@ class Transform(object):
         assert other.shape == (4,4)
         return Transform(np.dot(other, self.xfm), self.epi)
 
+    def __repr__(self):
+        path, fname = os.path.split(self.epi.get_filename())
+        return "<Transform into %s space>"%fname
+
     def save(self, subject, name, xfmtype="magnet"):
         from .db import surfs
         surfs.loadXfm(subject, name, self.xfm, xfmtype=xfmtype, epifile=self.epi.get_filename())

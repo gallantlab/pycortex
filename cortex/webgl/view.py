@@ -6,6 +6,7 @@ import shutil
 import random
 import binascii
 import mimetypes
+import functools
 import webbrowser
 import multiprocessing as mp
 import numpy as np
@@ -21,11 +22,14 @@ sloader = template.Loader(serve.cwd)
 lloader = template.Loader("./")
 
 name_parse = re.compile(r".*/(\w+).png")
-cmapdir = options.config.get('webgl', 'colormaps')
+try:
+    cmapdir = options.config.get('webgl', 'colormaps')
+except:
+    cmapdir = os.path.join(options.config.get("basic", "filestore"), "colormaps")
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
-def _normalize_data(data, mapper):
+def _normalize_data(data, pfunc):
     if not isinstance(data, dict):
         data = dict(data0=data)
 
@@ -33,6 +37,9 @@ def _normalize_data(data, mapper):
     json['__order__'] = list(data.keys())
     for name, dat in list(data.items()):
         ds = dict(__class__="Dataset")
+        mapper = pfunc()[1]
+        if 'projection' in dat:
+            mapper = pfunc(projection=dat['projection'])[1]
 
         if isinstance(dat, dict):
             data = _fixarray(dat['data'], mapper)
@@ -121,7 +128,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     subject : string
         Subject identifier (e.g. "JG").
     xfmname : string
-        Name of functional -> anatomical transform.
+        Name of anatomical -> functional transform.
     types : tuple, optional
         Types of surfaces to include. Fiducial and flat surfaces are automatically
         included. Default ("inflated",)
@@ -205,9 +212,9 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     Raw vertex image:     [[3, 4], verts]
     """
     html = sloader.load("mixer.html")
-
-    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache, recache_mapper=recache_mapper, **kwargs)
-    jsondat, bindat = _make_bindat(_normalize_data(data, mapper), fmt='data/%s/')
+    pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9, **kwargs)
+    ctmfile, mapper = pfunc(recache=recache, recache_mapper=recache_mapper)
+    jsondat, bindat = _make_bindat(_normalize_data(data, pfunc), fmt='data/%s/')
 
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
@@ -268,10 +275,9 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
             pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
 
     class JSMixer(serve.JSProxy):
-        def addData(self, projection='nearest', **kwargs):
+        def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
-            ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9)
-            json, data = _make_bindat(_normalize_data(kwargs, mapper), fmt='data/%s/')
+            json, data = _make_bindat(_normalize_data(kwargs, pfunc), fmt='data/%s/')
             queue.put(data)
             return Proxy(json)
 

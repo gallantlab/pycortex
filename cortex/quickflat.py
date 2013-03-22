@@ -74,7 +74,7 @@ def get_cache(subject, xfmname, recache=False, height=1024):
     return verts, mask
 
 def make(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
-    mapper = utils.get_mapper(subject, xfmname, type=projection)
+    mapper = utils.get_mapper(subject, xfmname, type=projection, **kwargs)
     verts, mask = get_cache(subject, xfmname, recache=recache, height=height)
 
     mdata = np.hstack(mapper(data))
