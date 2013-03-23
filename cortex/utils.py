@@ -167,7 +167,7 @@ def add_roi(data, subject, xfmname, name="new_roi", recache=False, open_inkscape
     from .utils import get_roipack
     from . import quickflat
     rois = get_roipack(subject)
-    im = quickflat.make(data, subject, xfmname, height=1024, recache=recache, projection=projection, with_rois=False)
+    im = quickflat.make(data, subject, xfmname, height=1024, recache=recache, projection=projection)
     try:
         import cStringIO
         fp = cStringIO.StringIO()
