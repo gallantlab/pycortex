@@ -69,27 +69,6 @@ class Surface(object):
 
         return np.array(pts), np.array(polys)
 
-    def boundary_poly(self):
-        """Generator that yields a single boundary polygon each time it's called"""
-        boundpts = set(boundary_pts(self.polys))
-
-        while len(boundpts) > 0:
-            poly = [boundpts.pop()]
-            while True:
-                neighbors = self.polys[self.connected[poly[-1]]]
-                cycles = neighbors[np.nonzero(neighbors - poly[-1])]
-                cycle = [p for p in np.unique(cycles) if sum(p == cycles) != 2]
-                if cycle[0] not in poly:
-                    poly.append(cycle[0])
-                    boundpts.remove(cycle[0])
-                elif cycle[1] not in poly:
-                    poly.append(cycle[1])
-                    boundpts.remove(cycle[1])
-                else:
-                    #both in edges, we've gone around!
-                    break
-            yield self.pts[poly]
-
     def smooth(self, values, neighborhood=3, smooth=8):
         if len(values) != len(self.pts):
             raise ValueError('Each point must have a single value')
@@ -284,24 +263,6 @@ def decimate(pts, polys):
     dec.update()
     return dec.output.points.to_array(), dec.output.polys.to_array().reshape(-1, 4)[:,1:]
 
-def boundary_pts(polys):
-    '''Returns the points that are on the boundary of a mesh'''
-    edges = dict()
-    for i, poly in enumerate(np.sort(polys)):
-        for a, b in [(0,1), (1,2), (0, 2)]:
-            key = poly[a], poly[b]
-            if key not in edges:
-                edges[key] = []
-            edges[key].append(i)
-
-    verts = set()
-    for (v1, v2), faces in edges.items():
-        if len(faces) == 1:
-            verts.add(v1)
-            verts.add(v2)
-
-    return np.array(list(verts))
-
 def curvature(pts, polys):
     '''Computes mean curvature using VTK'''
     from tvtk.api import tvtk
@@ -328,19 +289,36 @@ def make_cube(center=(.5, .5, .5), size=1):
                       (0, 6, 2), (0, 4, 6), (4, 7, 6), (4, 5, 7)], dtype=np.uint32)
     return pts * size + center, polys
 
+def boundary_edges(polys):
+    '''Returns the edges that are on the boundary of a mesh, as defined by belonging to only 1 face'''
+    edges = dict()
+    for i, poly in enumerate(np.sort(polys)):
+        for a, b in [(0,1), (1,2), (0, 2)]:
+            key = poly[a], poly[b]
+            if key not in edges:
+                edges[key] = []
+            edges[key].append(i)
+
+    epts = []
+    for edge, faces in edges.items():
+        if len(faces) == 1:
+            epts.append(edge)
+
+    return np.array(epts)
+
 def trace_poly(edges):
     '''Given a disjoint set of edges, yield complete linked polygons'''
-    eset = set(np.unique(edges))
-    idx = dict((i, set([])) for i in list(eset))
+    idx = dict((i, set([])) for i in np.unique(edges))
     for i, (x, y) in enumerate(edges):
         idx[x].add(i)
         idx[y].add(i)
 
+    eset = set(range(len(edges)))
     while len(eset) > 0:
         eidx = eset.pop()
         poly = list(edges[eidx])
         stack = set([eidx])
-        while poly[-1] != poly[0]:
+        while poly[-1] != poly[0] or len(poly) == 1:
             next = list(idx[poly[-1]] - stack)[0]
             eset.remove(next)
             stack.add(next)
@@ -353,13 +331,27 @@ def trace_poly(edges):
 
         yield poly
 
-def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
+def rasterize(poly, shape=(256, 256)):
+    #ImageDraw sucks at its job, so we'll use imagemagick to do rasterization
+    import subprocess as sp
+    import cStringIO
+    import shlex
+    import Image
+
+    polygon = "polygon " + " ".join(["%0.3f,%0.3f"%tuple(p) for p in poly-(.5, .5)])
+    cmd = 'convert -size %dx%d xc:black -fill white -stroke none -draw "%s" PNG24:-'%(shape[0], shape[1], polygon)
+    proc = sp.Popen(shlex.split(cmd), stdout=sp.PIPE)
+    png = cStringIO.StringIO(proc.communicate()[0])
+    return Image.open(png)
+    #return im > im.max() / 2
+
+def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True):
     from tvtk.api import tvtk
     import Image
     import ImageDraw
-    #.5 adjustment is due to ImageDraw being imprecise
-    pd = tvtk.PolyData(points=pts + center + (0, 0.5, 0), polys=polys)
-    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
+    
+    pd = tvtk.PolyData(points=pts + center + (0, 0, 0), polys=polys)
+    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,.5)])
     clip = tvtk.ClipPolyData(clip_function=plane, input=pd)
     feats = tvtk.FeatureEdges(
         manifold_edges=False, 
@@ -369,7 +361,7 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
         input=clip.output)
 
     def func(i):
-        plane.points = [(0,0,i)]
+        plane.points = [(0,0,i+.5)]
         feats.update()
         vox = np.zeros(shape[:2], np.uint8)
         if feats.output.number_of_lines > 0:
@@ -378,11 +370,14 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128)):
             for poly in trace_poly(edges):
                 im = Image.new('L', shape[:2])
                 draw = ImageDraw.Draw(im)
-                draw.polygon(epts[poly][:, :2].round().ravel().tolist(), fill=255)
+                draw.polygon(epts[poly][:, :2].ravel().tolist(), fill=255)
+                import ipdb
+                ipdb.set_trace()
                 vox += np.array(im) > 0
         return vox
 
-#    import multiprocessing as mp
-#    pool = mp.Pool()
-    from . import mp
-    return np.array(mp.map(func, range(shape[2]))).T
+    if mp:
+        from . import mp
+        return np.array(mp.map(func, range(shape[2]))).T
+
+    return np.array(map(func, range(shape[2]))).T
