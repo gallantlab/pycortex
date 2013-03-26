@@ -11,13 +11,11 @@ def map(func, iterable, procs = mp.cpu_count()):
     length = mp.Value('i',0)
     
     def _fill(iterable, procs, input, output):
-        print('Filling queue...')
         for data in enumerate(iterable):
             input.put(data)
             length.value += 1
         for _ in range(procs*2):
             input.put((-1,-1))
-        print("%d elements in queue"%length.value)
         
     def _func(proc, input, output):
         idx, data = input.get()

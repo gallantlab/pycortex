@@ -338,12 +338,20 @@ def rasterize(poly, shape=(256, 256)):
     import shlex
     import Image
 
-    polygon = "polygon " + " ".join(["%0.3f,%0.3f"%tuple(p) for p in poly-(.5, .5)])
-    cmd = 'convert -size %dx%d xc:black -fill white -stroke none -draw "%s" PNG24:-'%(shape[0], shape[1], polygon)
+    polygon = " ".join(["%0.3f,%0.3f"%tuple(p) for p in np.array(poly)-(.5, .5)])
+    cmd = 'convert -size %dx%d xc:black -fill white -stroke none -draw "polygon %s" PNG32:-'%(shape[0], shape[1], polygon)
     proc = sp.Popen(shlex.split(cmd), stdout=sp.PIPE)
     png = cStringIO.StringIO(proc.communicate()[0])
-    return Image.open(png)
-    #return im > im.max() / 2
+    im = Image.open(png)
+
+    # For PNG8:
+    # mode, palette = im.palette.getdata()
+    # lut = np.fromstring(palette, dtype=np.uint8).reshape(-1, 3)
+    # if (lut == 255).any():
+    #     white = np.nonzero((lut == 255).all(1))[0][0]
+    #     return np.array(im) == white
+    # return np.zeros(shape, dtype=bool)
+    return np.array(im)[:,:,0] > 128
 
 def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True):
     from tvtk.api import tvtk
@@ -368,12 +376,7 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True)
             epts = feats.output.points.to_array()
             edges = feats.output.lines.to_array().reshape(-1, 3)[:,1:]
             for poly in trace_poly(edges):
-                im = Image.new('L', shape[:2])
-                draw = ImageDraw.Draw(im)
-                draw.polygon(epts[poly][:, :2].ravel().tolist(), fill=255)
-                import ipdb
-                ipdb.set_trace()
-                vox += np.array(im) > 0
+                vox += rasterize(epts[poly][:,:2], shape=shape[:2])
         return vox
 
     if mp:

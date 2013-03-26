@@ -303,7 +303,7 @@ class Axis(HasTraits):
         translate = origin * np.sign(spacing) - np.abs(spacing) / 2.
 
         mlab.figure(self.scene.mayavi_scene)
-        if self.slab.output.points is None:
+        if self.slab.output.points is None or len(self.slab.output.points) < 3:
             pts = np.array([[0, 0, 0], [0, 0, 0], [0,0,0]])
             polys = [[0, 1, 2]]
         else:
@@ -324,7 +324,7 @@ class Axis(HasTraits):
         return src
 
     def _surf_default(self):
-        if self.slab.output.points is None:
+        if self.slab.output.points is None or len(self.slab.output.points) < 3:
             pts = np.array([[0, 0, 0], [0, 0, 0], [0,0,0]])
             polys = [[0, 1, 2]]
         else:
@@ -884,14 +884,13 @@ def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", deci
     from . import polyutils
     from .db import surfs
 
-    dbxfm = surfs.getXfm(subject, xfmname, xfmtype='magnet')
-    if dbxfm is None:
-        dbxfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        if dbxfm is None and epifile is None:
-            raise ValueError('Must provide an epi file to align')
-    else:
-        epifile = dbxfm.epi.get_filename()
-        dbxfm = dbxfm.xfm
+    dbxfm = None
+    try:
+        db = surfs.getXfm(subject, xfmname, xfmtype='magnet')
+        epifile = db.epi.get_filename()
+        dbxfm = db.xfm
+    except IOError:
+        pass
 
     try:
         wpts, wpolys = surfs.getSurf(subject, 'wm', merge=True, nudge=False)
@@ -903,5 +902,5 @@ def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", deci
 
     if decimate:
         pts, polys = polyutils.decimate(pts, polys)
-    
+
     return Align(pts, polys, epifile, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)
