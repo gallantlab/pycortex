@@ -189,9 +189,14 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=True, bgcolor=None, dpi=100, with_borders=False, **kwargs):
+def make_figure(data, subject, xfmname, recache=False, height=1024, projection='nearest',
+                with_rois=True, labels=True, colorbar=True, dpi=100,
+                with_borders=False, with_dropout=False, **kwargs):
     from matplotlib import pyplot as plt
     from matplotlib.collections import LineCollection
+
+    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
+    
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
     cimg = ax.imshow(im[::-1], aspect='equal', origin="upper", **kwargs)
@@ -200,6 +205,17 @@ def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=Tr
     if colorbar:
         cbar = fig.add_axes((.4, .07, .2, .04))
         fig.colorbar(cimg, cax=cbar, orientation='horizontal')
+
+    if with_dropout:
+        dax = fig.add_axes((0,0,1,1))
+        dmap = make(np.hstack(utils.get_dropout(subject, xfmname)), subject, xfmname,
+                    height=height, projection=projection)
+        hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
+        hatchspace = 4
+        hatchpat = ((hx+hy)%(2*hatchspace) < 2).astype(np.float)
+        hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
+        hatchim[:,:,3] *= dmap
+        dax.imshow(hatchim[::-1], aspect="equal", interpolation="nearest", origin="upper")
     
     if with_borders:
         key = (subject, "borderlines")
@@ -223,15 +239,23 @@ def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=Tr
         oimg = oax.imshow(plt.imread(rois[key])[::-1],
                           aspect='equal', interpolation='bicubic', origin="upper", zorder=3)
 
-    if name is None:
-        return fig
-    
-    fig.set_size_inches(np.array(im.shape[:2])[::-1] / float(dpi))
+    return fig
+
+def make_png(name, data, subject, xfmname, recache=False, height=1024, projection='nearest',
+             bgcolor=None, dpi=100, **kwargs):
+    from matplotlib import pyplot as plt
+    fig = make_figure(data, subject, xfmname, recache, height, projection, **kwargs)
+    imsize = fig.get_axes()[0].get_images()[0].get_size()
+    fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
     if bgcolor is None:
         fig.savefig(name, transparent=True, dpi=dpi)
     else:
         fig.savefig(name, facecolor=bgcolor, transparent=False, dpi=dpi)
     plt.close()
+
+def show(*args, **kwargs):
+    raise DeprecationWarning("Use quickflat.make_figure instead")
+    return make_figure(*args, **kwargs)
 
 def make_svg(name, data, subject, xfmname, recache=False, height=1024, projection="nearest", **kwargs):
     ## Create quickflat image array
@@ -292,11 +316,3 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, project
         sp.call(shlex.split(cmd))
     finally:
         shutil.rmtree(path)
-
-def make_png(name, data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
-    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
-    return make_figure(im, subject, name=name, **kwargs)
-
-def show(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
-    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
-    return make_figure(im, subject, **kwargs)

@@ -510,3 +510,21 @@ def epi2anatspace(data, subject, xfmname):
 def fslview(*imfilenames):
     import subprocess
     subprocess.call(["fslview"] + list(imfilenames))
+
+def get_dropout(subject, xfmname, projection="trilinear", power=20):
+    """Returns a dropout map for each hemisphere showing where EPI signal
+    is very low."""
+    xfm = surfs.getXfm(subject, xfmname)
+    rawdata = xfm.epi.get_data().T
+    if rawdata.ndim > 3:
+        rawdata = rawdata.mean(0)
+        
+    mapper = get_mapper(subject, xfmname, projection)
+    left, right = mapper(rawdata)
+    lnorm = (left - left.min()) / (left.max() - left.min())
+    rnorm = (right - right.min()) / (right.max() - right.min())
+    left = (1-lnorm) ** power
+    right = (1-rnorm) ** power
+
+    return left, right
+
