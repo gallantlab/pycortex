@@ -8,7 +8,6 @@ from scipy.spatial import cKDTree
 
 from lxml import etree
 from lxml.builder import E
-import traits.api as traits
 
 from cortex.options import config
 
@@ -19,24 +18,24 @@ parser = etree.XMLParser(remove_blank_text=True)
 
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
-class ROIpack(traits.HasTraits):
-    svg = traits.Instance("lxml.etree._ElementTree")
-    svgfile = traits.Str
-
-    linewidth = traits.Float(float(config.get("rois", "line_width")))
-    linecolor = traits.Tuple(tuple(map(float, config.get("rois", "line_color").split(','))))
-    roifill = traits.Tuple(tuple(map(float, config.get("rois", "fill_color").split(','))))
-    shadow = traits.Float(float(config.get("rois", "shadow")))
-
-    def __init__(self, tcoords, svgfile, callback=None, **kwargs):
-        super(ROIpack, self).__init__(**kwargs)
+class ROIpack(object):
+    def __init__(self, tcoords, svgfile, callback=None, 
+            linewidth=float(config.get("rois", "line_width")),
+            linecolor=tuple(map(float, config.get("rois", "line_color").split(','))),
+            roifill=tuple(map(float, config.get("rois", "fill_color").split(','))),
+            shadow=float(config.get("rois", "shadow"))):
         if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
             tcoords -= tcoords.min(0)
             tcoords /= tcoords.max(0)
+
         self.tcoords = tcoords
         self.svgfile = svgfile
         self.callback = callback
         self.kdt = cKDTree(tcoords)
+        self.linewidth = linewidth
+        self.linecolor = linecolor
+        self.roifill = roifill
+        self.shadow = shadow
         self.reload()
 
     def reload(self):
@@ -51,7 +50,7 @@ class ROIpack(traits.HasTraits):
             roi = ROI(self, r)
             self.rois[roi.name] = roi
 
-        self.update_style()
+        self.set()
         self.labels = self.setup_labels()
 
     def add_roi(self, name, pngdata, add_path=True):
@@ -76,20 +75,25 @@ class ROIpack(traits.HasTraits):
         with open(self.svgfile, "w") as xml:
             xml.write(etree.tostring(svg, pretty_print=True))
 
-    @traits.on_trait_change("linewidth, linecolor, roifill")
-    def update_style(self):
+    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None):
+        if linewidth is not None:
+            self.linewidth = linewidth
+        if linecolor is not None:
+            self.linecolor = linecolor
+        if roifill is not None:
+            self.roifill = roifill
+        if shadow is not None:
+            self.shadow = shadow
+            self.svg.find("//{%s}feGaussianBlur"%svgns).attrib["stdDeviation"] = str(shadow)
+
         for roi in list(self.rois.values()):
             roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill)
+
         try:
             if self.callback is not None:
                 self.callback()
         except:
             print("cannot callback")
-
-    def _shadow_changed(self):
-        self.svg.find("//{%s}feGaussianBlur"%svgns).attrib["stdDeviation"] = str(self.shadow)
-        for roi in list(self.rois.values()):
-            roi.update_attribs()
 
     def get_texture(self, texres, name=None, background=None, labels=True, bits=32):
         '''Renders the current roimap as a png'''
@@ -137,7 +141,7 @@ class ROIpack(traits.HasTraits):
     def get_roi(self, roiname):
         import Image
         shadow = self.shadow
-        self.shadow = 0
+        self.set(shadow=0)
 
         state = dict()
         for name, roi in list(self.rois.items()):
@@ -146,7 +150,7 @@ class ROIpack(traits.HasTraits):
             if name == roiname:
                 roi.set(linewidth=0, roifill=(0,0,0,1), hide=False)
             else:
-                roi.hide = True
+                roi.set(hide=True)
         
         im = self.get_texture(self.svgshape[1], labels=False, bits=8)
         imdat = np.array(Image.open(im))[::-1]
@@ -157,7 +161,7 @@ class ROIpack(traits.HasTraits):
         for name, roi in list(self.rois.items()):
             roi.set(**state[name])
 
-        self.shadow = shadow
+        self.set(shadow=shadow)
         return roiidx
     
     @property
@@ -211,25 +215,15 @@ class ROIpack(traits.HasTraits):
         return etree.tostring(self.svg, pretty_print=pretty)
 
 
-class ROI(traits.HasTraits):
-    name = traits.Str
-
-    hide = traits.Bool(False)
-    linewidth = traits.Float(float(config.get("rois", "line_width")))
-    linecolor = traits.Tuple(tuple(map(float, config.get("rois", "line_color").split(','))))
-    roifill = traits.Tuple(tuple(map(float, config.get('rois', 'fill_color').split(','))))
-
-    def __init__(self, parent, xml, **kwargs):
-        super(ROI, self).__init__(**kwargs)
+class ROI(object):
+    def __init__(self, parent, xml):
         self.parent = parent
         self.name = xml.get("{%s}label"%inkns)
         self.paths = xml.findall(".//{%s}path"%svgns)
         pts = [ self._parse_svg_pts(path.get("d")) for path in self.paths]
         self.coords = [ self.parent.kdt.query(p)[1] for p in pts ]
         self.hide = "style" in xml.attrib and "display:none" in xml.get("style")
-
         self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
-        self.update_attribs()
     
     def _parse_svg_pts(self, data):
         data = data.split()
@@ -261,8 +255,16 @@ class ROI(traits.HasTraits):
         pts[:,1] = 1-pts[:,1]
         return pts
     
-    @traits.on_trait_change("linewidth, linecolor, roifill, hide")
-    def update_attribs(self):
+    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None, hide=None):
+        if linewidth is not None:
+            self.linewidth = linewidth
+        if linecolor is not None:
+            self.linecolor = linecolor
+        if roifill is not None:
+            self.roifill = roifill
+        if hide is not None:
+            self.hide = hide
+
         style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
                     "stroke-linecap:butt;stroke-linejoin:miter;"+\
                     "stroke:{lc};stroke-opacity:{lo};{hide}"
