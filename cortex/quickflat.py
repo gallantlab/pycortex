@@ -46,6 +46,61 @@ def _make_flat_cache(subject, xfmname, height=1024):
 
     return valid[idx], mask
 
+def _gen_flat_border_mask(subject, height=1024):
+    from . import polyutils
+    import Image
+    import ImageDraw
+    flatpts, flatpolys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
+    flatpolyset = set(map(tuple, flatpolys))
+    
+    fidpts, fidpolys = surfs.getSurf(subject, "fiducial", merge=True, nudge=True)
+    fidpolyset = set(map(tuple, fidpolys))
+    fidonlypolys = fidpolyset - flatpolyset
+    fidonlypolyverts = np.unique(np.array(list(fidonlypolys)).ravel())
+    
+    fidonlyverts = np.setdiff1d(fidpolys.ravel(), flatpolys.ravel())
+    import networkx as nx
+    def iter_surfedges(tris):
+        for a,b,c in tris:
+            yield a,b
+            yield b,c
+            yield a,c
+
+    def make_surface_graph(tris):
+        graph = nx.Graph()
+        graph.add_edges_from(iter_surfedges(tris))
+        return graph
+
+    bounds = [p for p in polyutils.trace_poly(polyutils.boundary_edges(flatpolys))]
+    allbounds = np.hstack(bounds)
+    
+    g = make_surface_graph(fidonlypolys)
+    fog = g.subgraph(fidonlyverts)
+    badverts = np.array([v for v,d in fog.degree().iteritems() if d<2])
+    g.remove_nodes_from(badverts)
+    fog.remove_nodes_from(badverts)
+    mwallset = set.union(*(set(g[v]) for v in fog.nodes())) & set(allbounds)
+    #cutset = (set(g.nodes()) - mwallset) & set(allbounds)
+
+    mwallbounds = [np.in1d(b, mwallset) for b in bounds]
+    changes = [np.nonzero(np.diff(b.astype(float))!=0)[0]+1 for b in mwallbounds]
+    splitbounds = [np.split(b, c) for b,c in zip(bounds, changes)]
+    ismwall = [[s.all() for s in np.split(mwb, c)] for mwb,c in zip(mwallbounds, changes)]
+    
+    aspect = (height / (flatpts.max(0) - flatpts.min(0))[1])
+    lpts = (flatpts - flatpts.min(0)) * aspect
+    rpts = (flatpts - flatpts.min(0)) * aspect
+    
+    im = Image.new('RGBA', (int(aspect * (flatpts.max(0) - flatpts.min(0))[0]), height))
+    draw = ImageDraw.Draw(im)
+
+    for bnds, mw, pts in zip(splitbounds, ismwall, [lpts, rpts]):
+        for pbnd, pmw in zip(bnds, mw):
+            color = {True:(0,0,255), False:(255,0,0)}[pmw]
+            draw.line(pts[pbnd,:2].ravel().tolist(), fill=color, width=2)
+    
+    return np.array(im)[::-1]/255.0
+
 cache = dict()
 def get_cache(subject, xfmname, recache=False, height=1024):
     key = (subject, xfmname, height)
@@ -91,7 +146,7 @@ def make(data, subject, xfmname, recache=False, height=1024, projection='nearest
     img[:, mask] = mdata[:,verts]
     return img.swapaxes(1, 2)[:,::-1].squeeze()
 
-rois = dict()
+rois = dict() ## lame
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
     import shlex
     import subprocess as sp
@@ -117,7 +172,7 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=True, bgcolor=None, dpi=100, **kwargs):
+def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=True, bgcolor=None, dpi=100, with_borders=False, **kwargs):
     from matplotlib import pyplot as plt
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
@@ -128,6 +183,15 @@ def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=Tr
         cbar = fig.add_axes((.4, .07, .2, .04))
         fig.colorbar(cimg, cax=cbar, orientation='horizontal')
 
+    if with_borders:
+        key = (subject, "borderlines")
+        if key not in rois:
+            border = _gen_flat_border_mask(subject, im.shape[0])
+            rois[key] = border
+
+        bax = fig.add_axes((0,0,1,1))
+        bimg = bax.imshow(rois[key], aspect='equal', interpolation='bicubic')
+    
     if with_rois:
         key = (subject, labels)
         if key not in rois:
