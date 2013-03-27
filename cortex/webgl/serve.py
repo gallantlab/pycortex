@@ -44,6 +44,12 @@ def make_binarray(data):
     header += struct.pack('I'*data.ndim, *data.shape)
     return header+data.tostring()
 
+def read_binarray(data):
+    didx, ndim = struct.unpack('II', data[:8])
+    dtype = [k for k, v in dtypeMap.items() if v == didx][0]
+    shape = struct.unpack('I'*ndim, data[8:ndim*4+8])
+    return np.fromstring(data[ndim*4+8:], dtype=dtype).reshape(*shape)
+
 class NPEncode(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
