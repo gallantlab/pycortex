@@ -14,7 +14,8 @@ from mayavi.core.api import PipelineBase, Source, Filter, Module
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 
 from . import options
-from . import utils
+from . import polyutils
+from . import volume
 
 legend = '''[, ]:\t\tNext, Prev slice
 Ins:\t\tRotate view ccw
@@ -792,9 +793,9 @@ class Align(HasTraits):
             self.epi = self.epi_orig.copy()
         elif self.epi_filter == "median":
             fstr = np.floor(self.filter_strength / 2)*2+1
-            self.epi = utils.detrend_volume_median(self.epi_orig.T, fstr).T
+            self.epi = volume.detrend_median(self.epi_orig.T, fstr).T
         elif self.epi_filter == "gradient":
-            self.epi = utils.detrend_volume_gradient(self.epi_orig.T, self.filter_strength).T
+            self.epi = volume.detrend_gradient(self.epi_orig.T, self.filter_strength).T
         
         self.update_brightness()
 
@@ -881,7 +882,6 @@ class Align(HasTraits):
             )
 
 def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", decimate=False):
-    from . import polyutils
     from .db import surfs
 
     dbxfm = None

@@ -49,7 +49,7 @@ def import_subj(subject, sname=None):
                 curvs[hemi] = curv
 
     #voxelize the surface for nicer BBR anatomical
-    anat.voxelizewm(sname)
+    anat.voxelize(sname)
 
     np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=-curvs['lh'], right=-curvs['rh'])
     #np.savez(anats.format(subj=sname, name="thickness", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])

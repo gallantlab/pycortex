@@ -51,16 +51,17 @@ def distortion(subject, type='areal', **kwargs):
     dist, ext = os.path.splitext(dist)
     np.savez_compressed('%s.npz'%dist, left=dists[0], right=dists[1])
 
-def voxelizewm(subject):
+def voxelize(subject, surf='wm', mp=True):
     '''Voxelize the whitematter surface to generate the white matter mask'''
     anatform = db.surfs.getFiles(subject)['anats']
     nib = nibabel.load(anatform.format(type='raw'))
     shape = nib.get_shape()
     vox = np.zeros(shape, dtype=bool)
-    for pts, polys in db.surfs.getSurf(subject, 'wm', nudge=False):
+    for pts, polys in db.surfs.getSurf(subject, surf, nudge=False):
         xfm = Transform(np.linalg.inv(nib.get_affine()), nib)
-        vox += polyutils.voxelize(xfm(pts), polys, shape=shape, center=(0,0,0))
+        vox += polyutils.voxelize(xfm(pts), polys, shape=shape, center=(0,0,0), mp=mp)
 
-    nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
-    nib.to_filename(anatform.format(type='whitematter'))
-    return vox
+    if surf == 'wm':
+        nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
+        nib.to_filename(anatform.format(type='whitematter'))
+    return vox.T
