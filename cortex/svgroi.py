@@ -1,4 +1,5 @@
 import os
+import copy
 import shlex
 import tempfile
 import subprocess as sp
@@ -95,6 +96,33 @@ class ROIpack(object):
         except:
             print("cannot callback")
 
+    def get_svg(self, filename=None, labels=True, with_ims=None):
+        """Returns an SVG with the included images."""
+        if labels:
+            self.labels.attrib['style'] = "display:inline;"
+        else:
+            self.labels.attrib['style'] = "display:none;"
+        
+        outsvg = copy.deepcopy(self.svg)
+        if with_ims is not None:
+            datalayer = _make_layer(outsvg.getroot(), "data")
+            for imnum,im in list(enumerate(with_ims))[::-1]:
+                imlayer = _make_layer(datalayer, "image_%d" % imnum)
+                img = E.image(
+                    {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%im},
+                    id="image_%d"%imnum, x="0", y="0",
+                    width=str(self.svgshape[0]),
+                    height=str(self.svgshape[1]),
+                    )
+                imlayer.append(img)
+                outsvg.getroot().insert(0, imlayer)
+        
+        if filename is None:
+            return etree.tostring(outsvg)
+        else:
+            with open(filename, "w") as outfile:
+                outfile.write(etree.tostring(outsvg))
+        
     def get_texture(self, texres, name=None, background=None, labels=True, bits=32):
         '''Renders the current roimap as a png'''
         #set the current size of the texture

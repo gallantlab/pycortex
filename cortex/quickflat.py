@@ -46,10 +46,10 @@ def _make_flat_cache(subject, xfmname, height=1024):
 
     return valid[idx], mask
 
-def _gen_flat_border_mask(subject, height=1024):
+def _gen_flat_border(subject, height=1024):
     from . import polyutils
-    import Image
-    import ImageDraw
+    #import Image
+    #import ImageDraw
     flatpts, flatpolys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
     flatpolyset = set(map(tuple, flatpolys))
     
@@ -59,6 +59,7 @@ def _gen_flat_border_mask(subject, height=1024):
     fidonlypolyverts = np.unique(np.array(list(fidonlypolys)).ravel())
     
     fidonlyverts = np.setdiff1d(fidpolys.ravel(), flatpolys.ravel())
+    
     import networkx as nx
     def iter_surfedges(tris):
         for a,b,c in tris:
@@ -84,22 +85,38 @@ def _gen_flat_border_mask(subject, height=1024):
 
     mwallbounds = [np.in1d(b, mwallset) for b in bounds]
     changes = [np.nonzero(np.diff(b.astype(float))!=0)[0]+1 for b in mwallbounds]
-    splitbounds = [np.split(b, c) for b,c in zip(bounds, changes)]
-    ismwall = [[s.all() for s in np.split(mwb, c)] for mwb,c in zip(mwallbounds, changes)]
+    
+    #splitbounds = [np.split(b, c) for b,c in zip(bounds, changes)]
+    splitbounds = []
+    for b,c in zip(bounds, changes):
+        sb = []
+        rb = [b[-1]] + b
+        rc = [1] + (c + 1).tolist() + [len(b)]
+        for ii in range(len(rc)-1):
+            sb.append(rb[rc[ii]-1 : rc[ii+1]])
+        splitbounds.append(sb)
+    
+    ismwall = [[s.mean()>0.5 for s in np.split(mwb, c)] for mwb,c in zip(mwallbounds, changes)]
     
     aspect = (height / (flatpts.max(0) - flatpts.min(0))[1])
     lpts = (flatpts - flatpts.min(0)) * aspect
     rpts = (flatpts - flatpts.min(0)) * aspect
     
-    im = Image.new('RGBA', (int(aspect * (flatpts.max(0) - flatpts.min(0))[0]), height))
-    draw = ImageDraw.Draw(im)
+    #im = Image.new('RGBA', (int(aspect * (flatpts.max(0) - flatpts.min(0))[0]), height))
+    #draw = ImageDraw.Draw(im)
 
+    ismwalls = []
+    lines = []
+    
     for bnds, mw, pts in zip(splitbounds, ismwall, [lpts, rpts]):
         for pbnd, pmw in zip(bnds, mw):
-            color = {True:(0,0,255), False:(255,0,0)}[pmw]
-            draw.line(pts[pbnd,:2].ravel().tolist(), fill=color, width=2)
+            #color = {True:(0,0,255,255), False:(255,0,0,255)}[pmw]
+            #draw.line(pts[pbnd,:2].ravel().tolist(), fill=color, width=2)
+            ismwalls.append(pmw)
+            lines.append(pts[pbnd,:2])
     
-    return np.array(im)[::-1]/255.0
+    #return np.array(im)[::-1]/255.0
+    return lines, ismwalls
 
 cache = dict()
 def get_cache(subject, xfmname, recache=False, height=1024):
@@ -172,25 +189,45 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=True, bgcolor=None, dpi=100, with_borders=False, **kwargs):
+def make_figure(data, subject, xfmname, recache=False, height=1024, projection='nearest',
+                with_rois=True, labels=True, colorbar=True, dpi=100,
+                with_borders=False, with_dropout=False, **kwargs):
     from matplotlib import pyplot as plt
+    from matplotlib.collections import LineCollection
+
+    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
+    
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
-    cimg = ax.imshow(im, aspect='equal', **kwargs)
+    cimg = ax.imshow(im[::-1], aspect='equal', origin="upper", **kwargs)
     ax.axis('off')
 
     if colorbar:
         cbar = fig.add_axes((.4, .07, .2, .04))
         fig.colorbar(cimg, cax=cbar, orientation='horizontal')
 
+    if with_dropout:
+        dax = fig.add_axes((0,0,1,1))
+        dmap = make(np.hstack(utils.get_dropout(subject, xfmname)), subject, xfmname,
+                    height=height, projection=projection)
+        hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
+        hatchspace = 4
+        hatchpat = ((hx+hy)%(2*hatchspace) < 2).astype(np.float)
+        hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
+        hatchim[:,:,3] *= dmap
+        dax.imshow(hatchim[::-1], aspect="equal", interpolation="nearest", origin="upper")
+    
     if with_borders:
         key = (subject, "borderlines")
         if key not in rois:
-            border = _gen_flat_border_mask(subject, im.shape[0])
+            border = _gen_flat_border(subject, im.shape[0])
             rois[key] = border
 
         bax = fig.add_axes((0,0,1,1))
-        bimg = bax.imshow(rois[key], aspect='equal', interpolation='bicubic')
+        blc = LineCollection(rois[key][0], linewidths=3.0,
+                             colors=[['r','b'][mw] for mw in rois[key][1]])
+        bax.add_collection(blc)
+        bax.invert_yaxis()
     
     if with_rois:
         key = (subject, labels)
@@ -199,17 +236,43 @@ def make_figure(im, subject, name=None, with_rois=True, labels=True, colorbar=Tr
             rois[key] = roi.get_texture(im.shape[0], labels=labels)
         rois[key].seek(0)
         oax = fig.add_axes((0,0,1,1))
-        oimg = oax.imshow(plt.imread(rois[key]), aspect='equal', interpolation='bicubic')
+        oimg = oax.imshow(plt.imread(rois[key])[::-1],
+                          aspect='equal', interpolation='bicubic', origin="upper", zorder=3)
 
-    if name is None:
-        return fig
-    
-    fig.set_size_inches(np.array(im.shape[:2])[::-1] / float(dpi))
+    return fig
+
+def make_png(name, data, subject, xfmname, recache=False, height=1024, projection='nearest',
+             bgcolor=None, dpi=100, **kwargs):
+    from matplotlib import pyplot as plt
+    fig = make_figure(data, subject, xfmname, recache, height, projection, **kwargs)
+    imsize = fig.get_axes()[0].get_images()[0].get_size()
+    fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
     if bgcolor is None:
         fig.savefig(name, transparent=True, dpi=dpi)
     else:
         fig.savefig(name, facecolor=bgcolor, transparent=False, dpi=dpi)
     plt.close()
+
+def show(*args, **kwargs):
+    raise DeprecationWarning("Use quickflat.make_figure instead")
+    return make_figure(*args, **kwargs)
+
+def make_svg(name, data, subject, xfmname, recache=False, height=1024, projection="nearest", **kwargs):
+    ## Create quickflat image array
+    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
+    ## Convert to PNG
+    try:
+        import cStringIO
+        fp = cStringIO.StringIO()
+    except:
+        fp = io.StringIO()
+    from matplotlib.pylab import imsave
+    imsave(fp, im, **kwargs)
+    fp.seek(0)
+    pngdata = binascii.b2a_base64(fp.read())
+    ## Create and save SVG file
+    roipack = utils.get_roipack(subject)
+    roipack.get_svg(name, labels=True, with_ims=[pngdata])
 
 def make_movie(name, data, subject, xfmname, recache=False, height=1024, projection='nearest', dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
     import sys
@@ -253,11 +316,3 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, project
         sp.call(shlex.split(cmd))
     finally:
         shutil.rmtree(path)
-
-def make_png(name, data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
-    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
-    return make_figure(im, subject, name=name, **kwargs)
-
-def show(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
-    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
-    return make_figure(im, subject, **kwargs)
