@@ -134,12 +134,29 @@ def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):
     return fig
 
 def show_mip(data, **kwargs):
+    '''Display a maximum intensity projection for the data, using three subplots'''
     import matplotlib.pyplot as plt
     fig = plt.figure()
     fig.add_subplot(221).imshow(data.max(0), **kwargs)
     fig.add_subplot(222).imshow(data.max(1), **kwargs)
     fig.add_subplot(223).imshow(data.max(2), **kwargs)
     return fig
+
+def show_glass(data, subject, xfmname, pad=10):
+    '''Create a classic "glass brain" view of the data, with the outline'''
+    nib = nibabel.load(surfs.getAnat(subject, 'fiducial'))
+
+    mask = nib.get_data()
+
+    left, right = np.nonzero(np.diff(mask.max(0).max(0)))[0][[0,-1]]
+    front, back = np.nonzero(np.diff(mask.max(0).max(1)))[0][[0,-1]]
+    top, bottom = np.nonzero(np.diff(mask.max(1).max(1)))[0][[0,-1]]
+
+    glass = np.zeros((mask.shape[1], mask.shape[2]*2), dtype=bool)
+    glass[:, :mask.shape[2]] = mask.max(0)
+    #this requires a lot of logic to put the image into a canonical orientation
+    #too much work for something we'll never use
+    raise NotImplementedError
 
 def epi2anatspace(data, subject, xfmname):
     """Resamples epi-space [data] into the anatomical space for the given [subject]

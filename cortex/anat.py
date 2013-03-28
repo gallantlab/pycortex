@@ -64,4 +64,12 @@ def voxelize(subject, surf='wm', mp=True):
     if surf == 'wm':
         nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
         nib.to_filename(anatform.format(type='whitematter'))
+
     return vox.T
+
+def fiducial(subject, mp=True):
+    anatform = db.surfs.getFiles(subject)['anats']
+    nib = nibabel.load(anatform.format(type='raw'))
+    vox = voxelize(subject, surf='fiducial').T.astype(np.uint8)
+    nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
+    nib.to_filename(anatform.format(type='fiducial'))
