@@ -338,7 +338,7 @@ def rasterize(poly, shape=(256, 256)):
     import shlex
     import Image
 
-    polygon = " ".join(["%0.3f,%0.3f"%tuple(p) for p in np.array(poly)-(.5, .5)])
+    polygon = " ".join(["%0.3f,%0.3f"%tuple(p[::-1]) for p in np.array(poly)-(.5, .5)])
     cmd = 'convert -size %dx%d xc:black -fill white -stroke none -draw "polygon %s" PNG32:-'%(shape[0], shape[1], polygon)
     proc = sp.Popen(shlex.split(cmd), stdout=sp.PIPE)
     png = cStringIO.StringIO(proc.communicate()[0])
@@ -351,7 +351,7 @@ def rasterize(poly, shape=(256, 256)):
     #     white = np.nonzero((lut == 255).all(1))[0][0]
     #     return np.array(im) == white
     # return np.zeros(shape, dtype=bool)
-    return np.array(im)[:,:,0] > 128
+    return (np.array(im)[:,:,0] > 128).T
 
 def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True):
     from tvtk.api import tvtk
@@ -371,16 +371,18 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True)
     def func(i):
         plane.points = [(0,0,i+.5)]
         feats.update()
-        vox = np.zeros(shape[:2], np.uint8)
+        vox = np.zeros(shape[:2][::-1], np.uint8)
         if feats.output.number_of_lines > 0:
             epts = feats.output.points.to_array()
             edges = feats.output.lines.to_array().reshape(-1, 3)[:,1:]
             for poly in trace_poly(edges):
-                vox += rasterize(epts[poly][:,:2], shape=shape[:2])
+                vox += rasterize(epts[poly][:,:2], shape=shape[:2][::-1])
         return vox
 
     if mp:
         from . import mp
-        return np.array(mp.map(func, range(shape[2]))).T
+        layers = mp.map(func, range(shape[2]))
+    else:
+        layers = map(func, range(shape[2]))
 
-    return np.array(map(func, range(shape[2]))).T
+    return np.array(layers).T

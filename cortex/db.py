@@ -146,7 +146,7 @@ class Database(object):
             anat.whitematter(subject)
 
     def getAnat(self, subject, type='raw', recache=False, **kwargs):
-        assert type in ('raw', 'brainmask', 'whitematter', 'curvature')
+        assert type in ('raw', 'brainmask', 'whitematter', 'curvature', 'fiducial')
         anatform = self.getFiles(subject)['anats']
         anatfile = anatform.format(type=type)
         if type == "curvature":
@@ -217,6 +217,11 @@ class Database(object):
         xfmtype : str, optional
             Type of transform to return. Defaults to coord.
         """
+        if name == "identity":
+            import nibabel
+            nib = nibabel.load(self.getAnat(subject, 'raw'))
+            return xfm.Transform(np.linalg.inv(nib.get_affine()), nib)
+
         fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
         xfmdict = json.load(open(fname))
         if xfmdict['subject'] != subject:

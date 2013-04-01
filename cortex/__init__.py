@@ -1,8 +1,5 @@
-from .db import surfs
 from .utils import *
 
-from . import quickflat
-from . import align
-from . import anat
-from . import polyutils
-from . import webgl
+from . import align, volume, webgl, quickflat, anat
+from .quickflat import make_figure as quickshow
+from .webgl import show as webshow
