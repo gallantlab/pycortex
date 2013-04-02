@@ -212,7 +212,8 @@ def make_figure(data, subject, xfmname, recache=False, height=1024, projection='
                     height=height, projection=projection)
         hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
         hatchspace = 4
-        hatchpat = ((hx+hy)%(2*hatchspace) < 2).astype(np.float)
+        hatchpat = (hx+hy)%(2*hatchspace) < 2
+        hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
         hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
         hatchim[:,:,3] *= dmap
         dax.imshow(hatchim[::-1], aspect="equal", interpolation="nearest", origin="upper")
