@@ -211,7 +211,7 @@ FacePick.prototype = {
                 faceidx -= lims[0];
                 var geom =  this.viewer.meshes[hemi].geometry;
                 var polys = geom.attributes.index.array;
-                var map = geom.attributes.datamap.array;
+                var map = geom.attributes.auxdat.array;
 
                 //Find which offset
                 for (var o = 0, ol = geom.offsets.length; o < ol; o++) {
