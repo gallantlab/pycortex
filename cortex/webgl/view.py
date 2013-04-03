@@ -151,7 +151,8 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
         os.makedirs(outpath)
 
     #Create a new mg2 compressed CTM and move it into the outpath
-    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache)
+    pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9)
+    ctmfile, mapper = pfunc(recache=recache)
     oldpath, fname = os.path.split(ctmfile)
     fname, ext = os.path.splitext(fname)
 
@@ -182,7 +183,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     ctmfile = newfname+".json"
 
     #Generate the data binary objects and save them into the outpath
-    json, sdat = _make_bindat(_normalize_data(data, mapper))
+    json, sdat = _make_bindat(_normalize_data(data, pfunc))
     for name, dat in list(sdat.items()):
         with open(os.path.join(outpath, "%s.bin"%name), "wb") as binfile:
             binfile.write(dat)
@@ -212,7 +213,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     Raw vertex image:     [[3, 4], verts]
     """
     html = sloader.load("mixer.html")
-    pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9, **kwargs)
+    pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9)
     ctmfile, mapper = pfunc(recache=recache, recache_mapper=recache_mapper)
     jsondat, bindat = _make_bindat(_normalize_data(data, pfunc), fmt='data/%s/')
 

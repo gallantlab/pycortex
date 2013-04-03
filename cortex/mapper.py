@@ -31,10 +31,11 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     xfmfile = fnames['xfms'].format(xfmname=xfmname)
     cachefile = fnames['projcache'].format(xfmname=xfmname, projection=ptype)
     try:
-        if not recache and os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
+        if not recache and xfmname == 'identity' or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
            return mapcls[type].from_cache(cachefile) 
-        return mapcls[type]._cache(cachefile, subject, xfmname, **kwargs)
-    except:
+        raise Exception
+    except Exception as e:
+        print e
         return mapcls[type]._cache(cachefile, subject, xfmname, **kwargs)
 
 def _savecache(filename, left, right, shape):
