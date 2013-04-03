@@ -215,7 +215,7 @@ def make_figure(data, subject, xfmname, recache=False, height=1024, projection='
         hatchpat = (hx+hy)%(2*hatchspace) < 2
         hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
         hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
-        hatchim[:,:,3] *= dmap
+        hatchim[:,:,3] *= (dmap>0.5).astype(float)
         dax.imshow(hatchim[::-1], aspect="equal", interpolation="nearest", origin="upper")
     
     if with_borders:
