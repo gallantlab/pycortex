@@ -164,11 +164,28 @@ FacePick.prototype = {
 
                     if (start <= faceidx*3 && faceidx*3 < (start+count)) {
                         //Pick the closest point in triangle to the click location
-                        var ptidx = index + polys[faceidx*3];
-			var pts = [ptidx, ptidx+1, ptidx+2];
-                        var dataidx = map[ptidx*4+3];
-                        ptidx += hemi == "right" ? leftlen : 0;
-			return {ptidx: ptidx, dataidx: dataidx, hemi: hemi};
+			var pts = [index + polys[faceidx*3], 
+				   index + polys[faceidx*3+1], 
+				   index + polys[faceidx*3+2]];
+			var mousepos = new THREE.Vector2(x, y);
+			var ptdists = pts.map(
+			    function(pt) {
+				var spt = this.viewer.getPos(pt);
+				return mousepos.distanceTo(new THREE.Vector2(spt.pos[0], spt.pos[1]));
+			    });
+			
+			var closest;
+			if (ptdists[0] < ptdists[1] && ptdists[0] < ptdists[2]) {
+			    closest = pts[0];
+			} else if (ptdists[1] < ptdists[0] && ptdists[1] < ptdists[2]) {
+			    closest = pts[1];
+			} else {
+			    closest = pts[2];
+			}
+			
+                        var dataidx = map[closest*4+3];
+                        closest += hemi == "right" ? leftlen : 0;
+			return {ptidx: closest, dataidx: dataidx, hemi: hemi};
                     }
                 }
             }
@@ -180,9 +197,12 @@ FacePick.prototype = {
         keep = false;
 	var p = this._pick(x, y);
 	//console.log("Picked voxel "+p.dataidx+", vertex "+p.ptidx);
-        this.addMarker(p.ptidx, keep);
-        this.callback(p.dataidx, p.ptidx);
-	return;
+	// if on medial wall this is undefined
+	var pos = this.viewer.getPos(p.ptidx);
+	if (pos !== undefined) {
+            this.addMarker(p.ptidx, keep);
+            this.callback(p.dataidx, p.ptidx);
+	}
     },
     
     dblpick: function(x, y, keep) {
@@ -197,20 +217,42 @@ FacePick.prototype = {
         var px = vpos[p.ptidx*3] - nx, py = vpos[p.ptidx*3+1] - ny, pz = vpos[p.ptidx*3+2] - nz;
         var newaz = (Math.atan2(-px, py)) * 180.0 / Math.PI;
         newaz = newaz > 0 ? newaz : 360 + newaz;
-        //console.log("New az.: " + newaz);
+        console.log("New az.: " + newaz);
 	var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / Math.PI;
-        //console.log("New el.: " + newel);
-        this._undblpickanim = [{idx:speed, state:"mix", value:viewer.getState("mix")},
-			       {idx:speed, state:"radius", value:viewer.getState("radius")},
-			       {idx:speed, state:"target", value:viewer.getState("target")},
-			       {idx:speed, state:"azimuth", value:viewer.getState("azimuth")},
-			       {idx:speed, state:"altitude", value:viewer.getState("altitude")}];
-	
+        console.log("New el.: " + newel);
+	var states = ["mix", "radius", "target", "azimuth", "altitude", "pivot"];
+	this._undblpickanim = states.map(function(s) { return {idx:speed, state:s, value:this.viewer.getState(s)} });
+	var front = newaz < 90 || newaz > 270;
+	var newpivot;
+	if (p.hemi == "left") {
+	    if (newaz > 180) {
+		if (front) {
+		    newpivot = 40;
+		} else {
+		    newpivot = -40;
+		}
+	    } else {
+		newpivot = 0;
+	    }
+	} else {
+	    if (newaz < 180) {
+		if (front) {
+		    newpivot = 40;
+		} else {
+		    newpivot = -40;
+		}
+	    } else {
+		newpivot = 0;
+	    }
+	}
+	    
         viewer.animate([{idx:speed, state:"mix", value:0}, 
 			{idx:speed, state:"radius", value:200}, 
 			{idx:speed, state:"target", value:[nx,ny,nz]}, 
 			{idx:speed, state:"azimuth", value:newaz}, 
-			{idx:speed, state:"altitude", value:newel}]);
+			{idx:speed, state:"altitude", value:newel},
+			{idx:speed, state:"pivot", value:newpivot}
+		       ]);
         return;
     },
 
