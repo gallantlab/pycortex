@@ -123,9 +123,10 @@ THREE.LandscapeControls = function ( camera ) {
         // Run picker if time since mousedown is short enough
         if ( _clicktime - _mousedowntime < this.clickTimeout && event.button == 0) {
             var mouse2D = this.getMouse(event).clone();
-            _picktimer = setTimeout(function(){
-                this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
-            }.bind(this), this.clickTimeout);
+            //_picktimer = setTimeout(function(){
+            //    this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
+            //}.bind(this), this.clickTimeout);
+	    this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
         }
 
         if ( event.button == 0 && _indblpick == 1 ) {
