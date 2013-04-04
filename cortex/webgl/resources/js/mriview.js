@@ -1231,27 +1231,6 @@ MRIview.prototype = {
                 this.meshes.left.material = this.cmapshader;
                 this.meshes.right.material = this.cmapshader;
             }
-
-            var val, len;
-            for (var i = 0; i < 2; i++) {
-                for (var j = 0; j < 4; j++) {
-                    var attributes = this.meshes[i ? 'left' : 'right'].geometry.attributes;
-                    var dattr = attributes['data' + j];
-
-                    len = attributes.position.numItems / 3;
-                    if (raw) {
-                        val = 4;
-                        dattr.array = new Uint8Array(val*len);
-                    } else {
-                        val = 1;
-                        dattr.array = new Float32Array(len);
-                    }
-
-                    dattr.itemSize = val;
-                    dattr.stride = val;
-                    dattr.numItems = val * len;
-                }
-            }
         }
     }, 
 }
