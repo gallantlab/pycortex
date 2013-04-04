@@ -244,6 +244,7 @@ function MRIview() {
     this.loaded = $.Deferred();
     this.cmapload = $.Deferred();
     this.labelshow = true;
+    this._pivot = 0;
 
     this.datasets = {}
     this.active = [];
@@ -418,7 +419,8 @@ MRIview.prototype = {
             case 'mix':
                 return $("#mix").slider("value");
             case 'pivot':
-                return $("#pivot").slider("value");
+                //return $("#pivot").slider("value");
+	        return this._pivot;
             case 'frame':
                 return this.frame;
             case 'azimuth':
@@ -605,6 +607,7 @@ MRIview.prototype = {
     }, 
     setPivot: function (val) {
         $("#pivot").slider("option", "value", val);
+	this._pivot = val;
         var names = {left:1, right:-1}
         if (val > 0) {
             for (var name in names) {
