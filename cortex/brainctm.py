@@ -124,22 +124,24 @@ class BrainCTM(object):
 
 class Hemi(object):
     def __init__(self, fiducial):
-        self.nsurfs = 0
         self.tf = tempfile.NamedTemporaryFile()
         self.ctm = CTMfile(self.tf.name, "w")
         self.ctm.setMesh(*fiducial)
         
         self.pts = fiducial[0]
         self.polys = fiducial[1]
+        self.surfs = {}
         self.aux = np.zeros((len(self.ctm), 4))
 
-    def addSurf(self, pts):
+    def addSurf(self, pts, name=None):
         '''Scales the in-between surfaces to be same scale as fiducial'''
+        if name is None:
+            name = 'morphTarget%d'%len(self.surfs)
         norm = (pts - pts.min(0)) / (pts.max(0) - pts.min(0))
         rnorm = norm * (self.pts.max(0) - self.pts.min(0)) + self.pts.min(0)
         attrib = np.hstack([rnorm, np.zeros((len(rnorm),1))])
-        self.ctm.addAttrib(attrib, 'morphTarget%d'%self.nsurfs)
-        self.nsurfs += 1
+        self.surfs[name] = attrib
+        self.ctm.addAttrib(attrib, name)
 
     def setFlat(self, pts):
         #assert np.all(pts[:,2] == 0)

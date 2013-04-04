@@ -107,7 +107,7 @@ Dataset.prototype = {
         if (dim === undefined)
             dim = 0;
 
-        $.when(this.loaded).then(function() {
+        this.loaded.done(function() {
             viewer._setShader(this.raw);
             if (this.textures.length > 1) {
                 viewer.setFrame(0);

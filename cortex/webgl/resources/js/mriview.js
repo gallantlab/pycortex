@@ -1233,13 +1233,20 @@ MRIview.prototype = {
         if (this.meshes && this.meshes.left) {
             var attributes = this.meshes.left.geometry.attributes;
             var length = attributes.position.array.length / 3;
-            if (array instanceof Uint8Array)
+            var data = attributes['data'+idx];
+            if (array instanceof Uint8Array) {
+                data.itemSize = data.stride = 4;
                 length *= 4;
-            attributes['data'+idx].array = array.subarray(0, length);
-            attributes['data'+idx].needsUpdate = true;
-            attributes = this.meshes.right.geometry.attributes;
-            attributes['data'+idx].array = array.subarray(length);
-            attributes['data'+idx].needsUpdate = true;
+            } else {
+                data.itemSize = data.stride = 1;
+            }
+            data.array = array.subarray(0, length);
+            data.needsUpdate = true;
+
+            data = this.meshes.right.geometry.attributes['data'+idx];
+            data.itemSize = data.stride = array instanceof Uint8Array ? 4 : 1;
+            data.array = array.subarray(length);
+            data.needsUpdate = true;
         }
     },
     _setShader: function(raw) {
