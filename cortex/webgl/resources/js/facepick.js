@@ -124,12 +124,10 @@ FacePick.prototype = {
         this.meshes[msg.name] = meshpiv.mesh;
         this.pivot[msg.name] = meshpiv.pivots;
         this.scene.add(meshpiv.pivots.front);
-    }, 
+    },
 
-    pick: function(x, y, keep) {
-        // DISABLE MULTI-CURSORS to make linking to voxels easy
-        keep = false;
-        if (!this._valid)
+    _pick: function(x, y) {
+	if (!this._valid)
             this.draw();
         var gl = this.viewer.renderer.context;
         var pix = new Uint8Array(4);
@@ -170,96 +168,54 @@ FacePick.prototype = {
 			var pts = [ptidx, ptidx+1, ptidx+2];
                         var dataidx = map[ptidx*4+3];
                         ptidx += hemi == "right" ? leftlen : 0;
-
-                        console.log("Picked voxel "+dataidx+", vertex "+ptidx);
-                        this.addMarker(ptidx, keep);
-                        this.callback(dataidx, ptidx);
-                        return;
+			return {ptidx: ptidx, dataidx: dataidx, hemi: hemi};
                     }
                 }
             }
         }
-
     },
 
+    pick: function(x, y, keep) {
+        // DISABLE MULTI-CURSORS to make linking to voxels easy
+        keep = false;
+	var p = this._pick(x, y);
+	//console.log("Picked voxel "+p.dataidx+", vertex "+p.ptidx);
+        this.addMarker(p.ptidx, keep);
+        this.callback(p.dataidx, p.ptidx);
+	return;
+    },
     
     dblpick: function(x, y, keep) {
         var speed = 0.6;
-
-        if (!this._valid)
-            this.draw();
-        var gl = this.viewer.renderer.context;
-        var pix = new Uint8Array(4);
-        var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderbuf.__webglFramebuffer);
-        gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        var faceidx = (pix[0] << 16) + (pix[1] << 8) + pix[2];
-        if (faceidx == 0) {
-            for (var i = 0; i < this.axes.length; i++)
-                this.axes[i].obj.parent.remove(this.axes[i].obj);
-            this.axes = [];
-            return;
-        }
-
-        //adjust for clicking on black area
-        faceidx -= 1;
-
-        //Find which hemisphere it's in
-        for (var hemi in this.idxrange) {
-            var lims = this.idxrange[hemi];
-            if (lims[0] <= faceidx && faceidx < lims[1]) {
-                faceidx -= lims[0];
-                var geom =  this.viewer.meshes[hemi].geometry;
-                var polys = geom.attributes.index.array;
-                var map = geom.attributes.auxdat.array;
-
-                //Find which offset
-                for (var o = 0, ol = geom.offsets.length; o < ol; o++) {
-                    var start = geom.offsets[o].start;
-                    var index = geom.offsets[o].index;
-                    var count = geom.offsets[o].count;
-
-                    if (start <= faceidx*3 && faceidx*3 < (start+count)) {
-                        //Pick only the first point of triangle
-                        var ptidx = index + polys[faceidx*3];
-                        var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
-                        //ptidx += hemi == "right" ? leftlen : 0;
-                        var vpos = geom.attributes.position.array;
-                        var mbb = viewer.meshes[hemi].geometry.boundingBox;
-			var nx = (mbb.max.x + mbb.min.x)/2, ny = (mbb.max.y + mbb.min.y)/2, nz = (mbb.max.z + mbb.min.z)/2;
-                        var px = vpos[ptidx*3] - nx, py = vpos[ptidx*3+1] - ny, pz = vpos[ptidx*3+2] - nz;
-                        var PI = 3.14159;
-                        var newaz = (Math.atan2(-px, py)) * 180.0 / PI;
-                        newaz = newaz > 0 ? newaz : 360+newaz;
-                        //console.log("New az.: " + newaz);
-			var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / PI;
-                        //console.log("New el.: " + newel);
-                        this._last_mix = viewer.getState("mix");
-                        this._last_radius = viewer.getState("radius");
-                        this._last_target = viewer.getState("target");
-                        this._last_azimuth = viewer.getState("azimuth");
-                        this._last_altitude = viewer.getState("altitude");
-                        viewer.animate([{idx:speed, state:"mix", value:0}, 
-					{idx:speed, state:"radius", value:200}, 
-					{idx:speed, state:"target", value:[nx,ny,nz]}, 
-					{idx:speed, state:"azimuth", value:newaz}, 
-					{idx:speed, state:"altitude", value:newel}]);
-                        return;
-                    }
-                }
-            }
-        }
-
+	var p = this._pick(x, y);
+	var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
+	p.ptidx -= p.hemi == "right" ? leftlen : 0;
+	var geom = this.viewer.meshes[p.hemi].geometry;
+        var vpos = geom.attributes.position.array;
+        var mbb = geom.boundingBox;
+	var nx = (mbb.max.x + mbb.min.x)/2, ny = (mbb.max.y + mbb.min.y)/2, nz = (mbb.max.z + mbb.min.z)/2;
+        var px = vpos[p.ptidx*3] - nx, py = vpos[p.ptidx*3+1] - ny, pz = vpos[p.ptidx*3+2] - nz;
+        var newaz = (Math.atan2(-px, py)) * 180.0 / Math.PI;
+        newaz = newaz > 0 ? newaz : 360 + newaz;
+        //console.log("New az.: " + newaz);
+	var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / Math.PI;
+        //console.log("New el.: " + newel);
+        this._undblpickanim = [{idx:speed, state:"mix", value:viewer.getState("mix")},
+			       {idx:speed, state:"radius", value:viewer.getState("radius")},
+			       {idx:speed, state:"target", value:viewer.getState("target")},
+			       {idx:speed, state:"azimuth", value:viewer.getState("azimuth")},
+			       {idx:speed, state:"altitude", value:viewer.getState("altitude")}];
+	
+        viewer.animate([{idx:speed, state:"mix", value:0}, 
+			{idx:speed, state:"radius", value:200}, 
+			{idx:speed, state:"target", value:[nx,ny,nz]}, 
+			{idx:speed, state:"azimuth", value:newaz}, 
+			{idx:speed, state:"altitude", value:newel}]);
+        return;
     },
 
     undblpick: function() {
-        var speed = 0.6;
-        viewer.animate([{idx:speed, state:"mix", value:this._last_mix}, 
-			{idx:speed, state:"radius", value:this._last_radius}, 
-			{idx:speed, state:"target", value:this._last_target}, 
-			{idx:speed, state:"azimuth", value:this._last_azimuth}, 
-			{idx:speed, state:"altitude", value:this._last_altitude}]);
+        viewer.animate(this._undblpickanim);
     },
 
     setMix: function(mixevt) {

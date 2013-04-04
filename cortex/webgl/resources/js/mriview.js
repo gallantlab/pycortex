@@ -493,10 +493,12 @@ MRIview.prototype = {
                     if (f.start.value instanceof Array) {
                         val = [];
                         for (j = 0; j < f.start.value.length; j++) {
-                            val.push(f.start.value[j]*(1-idx) + f.end.value[j]*idx);
+                            //val.push(f.start.value[j]*(1-idx) + f.end.value[j]*idx);
+			    val.push(this._animInterp(f.start.state, f.start.value[j], f.end.value[j], idx));
                         }
                     } else {
-                        val = f.start.value * (1-idx) + f.end.value * idx;
+                        //val = f.start.value * (1-idx) + f.end.value * idx;
+			val = this._animInterp(f.start.state, f.start.value, f.end.value, idx);
                     }
                     this.setState(f.start.state, val);
                     state = true;
@@ -507,6 +509,26 @@ MRIview.prototype = {
             }
         }
         return state;
+    },
+    _animInterp: function(state, startval, endval, idx) {
+	switch (state) {
+	case 'azimuth':
+	    // Azimuth is an angle, so we need to choose which direction to interpolate
+	    if (Math.abs(endval - startval) >= 180) { // wrap
+		if (startval > endval) {
+		    return (startval * (1-idx) + (endval+360) * idx + 360) % 360;
+		}
+		else {
+		    return (startval * (1-idx) + (endval-360) * idx + 360) % 360;
+		}
+	    } 
+	    else {
+		return (startval * (1-idx) + endval * idx);
+	    }
+	default:
+	    // Everything else can be linearly interpolated
+	    return startval * (1-idx) + endval * idx;
+	}
     },
     saveIMG: function(post) {
         var png = $("#brain")[0].toDataURL();
