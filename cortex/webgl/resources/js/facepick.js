@@ -265,12 +265,10 @@ FacePick.prototype = {
         var pos, ax;
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
-            pos = this.viewer.getVert(ax.idx).pos;
-            ax.obj.position.copy(pos);
+            vert = this.viewer.getVert(ax.idx);
+	    ax.obj.position = blendPosNorm(vert.pos, vert.norm, mixevt.flat);
             // Rescale axes for flat view
             ax.obj.scale.x = 1.000-mixevt.flat;
-	    // Make sure axes are not in same plane as flatmap
-	    ax.obj.position.x -= 0.01 * mixevt.flat;
         }
     },
 
@@ -290,13 +288,18 @@ FacePick.prototype = {
             this.axes = [];
 
         var axes = makeAxes(50, 0xffffff);
-        axes.position.copy(vert.pos);
+	axes.position = blendPosNorm(vert.pos, vert.norm, this.viewer.flatmix);
         axes.scale.x = 1.0001-this.viewer.flatmix;
-	axes.position.x -= 0.01 * this.viewer.flatmix;
         this.axes.push({idx:ptidx, obj:axes});
         this.viewer.pivot[vert.name].back.add(axes);
         this.viewer.controls.dispatchEvent({type:"change"});
     }
+}
+
+function blendPosNorm(pos, norm, flatmix) {
+    var posfrac = flatmix - 0.01;
+    var normfrac = 1 - posfrac;
+    return pos.clone().multiplyScalar(posfrac).addSelf(norm.clone().multiplyScalar(normfrac));
 }
 
 function makeAxes(length, color) {
