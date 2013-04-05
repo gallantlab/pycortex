@@ -4,12 +4,11 @@ import shutil
 import tempfile
 import subprocess as sp
 
-import numpy as np
 import nibabel
+import numpy as np
 
 from . import db
 from . import utils
-from . import polyutils
 from .xfm import Transform
 
 def brainmask(subject):
@@ -53,6 +52,7 @@ def distortion(subject, type='areal', **kwargs):
 
 def voxelize(subject, surf='wm', mp=True):
     '''Voxelize the whitematter surface to generate the white matter mask'''
+    from . import polyutils
     anatform = db.surfs.getFiles(subject)['anats']
     nib = nibabel.load(anatform.format(type='raw'))
     shape = nib.get_shape()

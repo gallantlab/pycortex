@@ -1,14 +1,14 @@
+import io
 import os
 import sys
 import time
 import glob
 import pickle
-import io
 import binascii
 import numpy as np
 
-from .db import surfs
 from . import utils
+from .db import surfs
 
 def _gen_flat_mask(subject, height=1024):
     from . import polyutils

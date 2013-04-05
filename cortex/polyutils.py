@@ -1,8 +1,6 @@
 from collections import OrderedDict
 import numpy as np
 from scipy.spatial import distance, Delaunay
-from matplotlib.path import Path
-from matplotlib import patches
 
 class Surface(object):
     def __init__(self, pts, polys):

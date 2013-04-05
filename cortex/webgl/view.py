@@ -10,7 +10,6 @@ import functools
 import webbrowser
 import multiprocessing as mp
 import numpy as np
-from scipy.stats import scoreatpercentile
 
 from tornado import web, template
 
@@ -30,6 +29,7 @@ colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
 def _normalize_data(data, pfunc):
+    from scipy.stats import scoreatpercentile
     if not isinstance(data, dict):
         data = dict(data0=data)
 

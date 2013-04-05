@@ -112,7 +112,7 @@ def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):
     functional = ax.imshow(data[state['pad'] + (state['slice'],)], vmin=vmin, vmax=vmax, aspect='equal', **kwargs)
 
     def update():
-        print "showing dim %d, slice %d"%(state['dim'] % 3, state['slice'])
+        print("showing dim %d, slice %d"%(state['dim'] % 3, state['slice']))
         functional.set_data(data[state['pad'] + (state['slice'],)])
         anatomical.set_data(anat[state['pad'] + (state['slice'],)])
         fig.canvas.draw()

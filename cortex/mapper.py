@@ -35,7 +35,6 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
            return mapcls[type].from_cache(cachefile) 
         raise Exception
     except Exception as e:
-        print e
         return mapcls[type]._cache(cachefile, subject, xfmname, **kwargs)
 
 def _savecache(filename, left, right, shape):

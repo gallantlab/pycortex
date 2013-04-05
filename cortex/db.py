@@ -14,8 +14,8 @@ import json
 import shutil
 import numpy as np
 
-from . import xfm
 from . import options
+from .xfm import Transform
 
 filestore = options.config.get('basic', 'filestore')
 
@@ -220,14 +220,14 @@ class Database(object):
         if name == "identity":
             import nibabel
             nib = nibabel.load(self.getAnat(subject, 'raw'))
-            return xfm.Transform(np.linalg.inv(nib.get_affine()), nib)
+            return Transform(np.linalg.inv(nib.get_affine()), nib)
 
         fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
         xfmdict = json.load(open(fname))
         if xfmdict['subject'] != subject:
             raise ValueError("Incorrect subject for the name")
         epifile = os.path.join(filestore, "references", xfmdict['epifile'])
-        return xfm.Transform(xfmdict[xfmtype], epifile)
+        return Transform(xfmdict[xfmtype], epifile)
 
     def getSurf(self, subject, type, hemisphere="both", merge=False, nudge=False):
         '''Return the surface pair for the given subject, surface type, and hemisphere.

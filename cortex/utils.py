@@ -5,9 +5,15 @@ import io
 import numpy as np
 
 from .db import surfs
-from .svgroi import get_roipack
-from .mapper import get_mapper
 from .volume import mosaic, unmask
+
+def get_roipack(*args, **kwargs):
+    from .svgroi import get_roipack
+    return get_roipack(*args, **kwargs)
+
+def get_mapper(*args, **kwargs):
+    from .mapper import get_mapper
+    return get_mapper(*args, **kwargs)
 
 def get_ctmpack(subject, xfmname, types=("inflated",), projection='nearest', method="raw", level=0, recache=False, recache_mapper=False, **kwargs):
     ctmform = surfs.getFiles(subject)['ctmcache']

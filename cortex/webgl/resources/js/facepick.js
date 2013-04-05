@@ -26,9 +26,8 @@ function FacePick(viewer, callback) {
     if (typeof(callback) == "function") {
         this.callback = callback;
     } else {
-	this.callback = function(voxidx, vertidx) {
-            console.log("Picked voxel: "+voxidx+", vertex: "+vertidx);
-	    $.ajax("/picker?voxel="+voxidx+"&vertex="+vertidx);
+        this.callback = function(voxidx, vertidx) {
+            $.ajax("/picker?voxel="+voxidx+"&vertex="+vertidx);
         }
     }
     
@@ -40,7 +39,7 @@ function FacePick(viewer, callback) {
         morphTargets:true
     });
 
-    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 0.1, 5000 )
+    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 1, 5000 )
     this.camera.position = this.viewer.camera.position;
     this.camera.up.set(0,0,1);
     this.scene.add(this.camera);
@@ -145,7 +144,7 @@ FacePick.prototype = {
             this.viewer.schedule();
             return;
         }
-
+        
         //adjust for clicking on black area
         faceidx -= 1;
 
@@ -167,7 +166,7 @@ FacePick.prototype = {
                     if (start <= faceidx*3 && faceidx*3 < (start+count)) {
                         //Pick the closest point in triangle to the click location
                         var ptidx = index + polys[faceidx*3];
-			var pts = [ptidx, ptidx+1, ptidx+2];
+                        var pts = [ptidx, ptidx+1, ptidx+2];
                         var dataidx = map[ptidx*4+3];
                         ptidx += hemi == "right" ? leftlen : 0;
 
@@ -227,13 +226,13 @@ FacePick.prototype = {
                         //ptidx += hemi == "right" ? leftlen : 0;
                         var vpos = geom.attributes.position.array;
                         var mbb = viewer.meshes[hemi].geometry.boundingBox;
-			var nx = (mbb.max.x + mbb.min.x)/2, ny = (mbb.max.y + mbb.min.y)/2, nz = (mbb.max.z + mbb.min.z)/2;
+            var nx = (mbb.max.x + mbb.min.x)/2, ny = (mbb.max.y + mbb.min.y)/2, nz = (mbb.max.z + mbb.min.z)/2;
                         var px = vpos[ptidx*3] - nx, py = vpos[ptidx*3+1] - ny, pz = vpos[ptidx*3+2] - nz;
                         var PI = 3.14159;
                         var newaz = (Math.atan2(-px, py)) * 180.0 / PI;
                         newaz = newaz > 0 ? newaz : 360+newaz;
                         //console.log("New az.: " + newaz);
-			var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / PI;
+            var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / PI;
                         //console.log("New el.: " + newel);
                         this._last_mix = viewer.getState("mix");
                         this._last_radius = viewer.getState("radius");
@@ -241,10 +240,10 @@ FacePick.prototype = {
                         this._last_azimuth = viewer.getState("azimuth");
                         this._last_altitude = viewer.getState("altitude");
                         viewer.animate([{idx:speed, state:"mix", value:0}, 
-					{idx:speed, state:"radius", value:200}, 
-					{idx:speed, state:"target", value:[nx,ny,nz]}, 
-					{idx:speed, state:"azimuth", value:newaz}, 
-					{idx:speed, state:"altitude", value:newel}]);
+                    {idx:speed, state:"radius", value:200}, 
+                    {idx:speed, state:"target", value:[nx,ny,nz]}, 
+                    {idx:speed, state:"azimuth", value:newaz}, 
+                    {idx:speed, state:"altitude", value:newel}]);
                         return;
                     }
                 }
@@ -256,10 +255,10 @@ FacePick.prototype = {
     undblpick: function() {
         var speed = 0.6;
         viewer.animate([{idx:speed, state:"mix", value:this._last_mix}, 
-			{idx:speed, state:"radius", value:this._last_radius}, 
-			{idx:speed, state:"target", value:this._last_target}, 
-			{idx:speed, state:"azimuth", value:this._last_azimuth}, 
-			{idx:speed, state:"altitude", value:this._last_altitude}]);
+            {idx:speed, state:"radius", value:this._last_radius}, 
+            {idx:speed, state:"target", value:this._last_target}, 
+            {idx:speed, state:"azimuth", value:this._last_azimuth}, 
+            {idx:speed, state:"altitude", value:this._last_altitude}]);
     },
 
     setMix: function(mixevt) {
@@ -267,7 +266,7 @@ FacePick.prototype = {
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
             vert = this.viewer.getVert(ax.idx);
-	    ax.obj.position = blendPosNorm(vert.pos, vert.norm, mixevt.flat);
+            ax.obj.position = blendPosNorm(vert.pos, vert.norm, mixevt.flat);
             // Rescale axes for flat view
             ax.obj.scale.x = 1.000-mixevt.flat;
         }
@@ -279,8 +278,6 @@ FacePick.prototype = {
         for (var i = 0; i < this.axes.length; i++) {
             if (keep === true) {
                 this.axes[i].obj.material.color.setRGB(180,180,180);
-
-                this.axes[i].obj.geometry.vertices
             } else {
                 this.axes[i].obj.parent.remove(this.axes[i].obj);
             }
@@ -289,11 +286,11 @@ FacePick.prototype = {
             this.axes = [];
 
         var axes = makeAxes(50, 0xffffff);
-	axes.position = blendPosNorm(vert.pos, vert.norm, this.viewer.flatmix);
+        axes.position = blendPosNorm(vert.pos, vert.norm, this.viewer.flatmix);
         axes.scale.x = 1.0001-this.viewer.flatmix;
         this.axes.push({idx:ptidx, obj:axes});
         this.viewer.pivot[vert.name].back.add(axes);
-        this.viewer.controls.dispatchEvent({type:"change"});
+        this.viewer.schedule();
     }
 }
 
