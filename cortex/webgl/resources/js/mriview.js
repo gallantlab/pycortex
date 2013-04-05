@@ -648,8 +648,9 @@ MRIview.prototype = {
                 this.datasets[name] = new Dataset(data[name]);
             }
             
-            $.when(this.loaded, this.datasets[name].loaded).then(function(dataset) {
-                if (this.meshes.left.geometry.indexMap !== undefined) {
+            $.when(this.loaded, this.datasets[name].loaded).done(function(dataset) {
+                if (this.meshes.left.geometry.indexMap !== undefined || 
+                    this.meshes.right.geometry.indexMap !== undefined) {
                     dataset.rearrange(
                         this.meshes.left.geometry.attributes.position.array.length / 3, 
                         this.meshes.left.geometry.indexMap, 

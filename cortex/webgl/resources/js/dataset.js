@@ -161,19 +161,23 @@ Dataset.prototype = {
                     var narr = new Uint8Array(oarr.length);
                     for (var i = 0, il = oarr.length / 4; i < il; i++) {
                         for (var j = 0; j < 4; j++) {
-                            if (i < lsize)
+                            if (i < lsize && left !== undefined)
                                 narr[left[i]*4+j] = oarr[4*i+j];
-                            else
+                            else if (i >= lsize && right !== undefined)
                                 narr[(right[i-lsize]+lsize)*4+j] = oarr[4*i+j];
+                            else
+                                narr[i*4+j] = oarr[4*i+j]
                         }
                     }
                 } else {
                     var narr = new Float32Array(oarr.length);
                     for (var i = 0, il = oarr.length; i < il; i++) {
-                        if (i < lsize) 
+                        if (i < lsize && left !== undefined) 
                             narr[left[i]] = oarr[i];
-                        else
+                        else if (i >= lsize && right !== undefined)
                             narr[right[i-lsize]+lsize] = oarr[i];
+                        else
+                            narr[i] = oarr[i]
                     }
                 }
                 newtex.push(narr);
