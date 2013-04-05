@@ -49,7 +49,7 @@ Graph.prototype.showvoxel = function(voxind, vertind) {
     // Shows the data for voxel [voxind] on the graph.
     // Automatically loads from a set directory..
     var gr = this;
-    var voxcorr = this.viewer.datasets.ModelPerformance.array.data[voxind].toFixed(3);
+    var voxcorr = this.viewer.datasets.ModelPerformance.textures[0][vertind].toFixed(3); //Get the reordered index value
     // console.log("Showing STRF for voxel "+voxind);
     $("#wngraph-title").html("Voxel "+this.subject+"-"+voxind+", <span title='Correlation between model prediction and actual responses. r over 0.1 is significant, r over 0.3 is good. Only trust voxels where r is over 0.1'><i>r</i>&nbsp;=&nbsp;"+voxcorr+"</span>");
     var data = NParray.fromURL(this.voxdir+this.subject+"-"+voxind+".bin", 
