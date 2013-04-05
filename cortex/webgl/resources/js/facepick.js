@@ -194,6 +194,7 @@ FacePick.prototype = {
         // DISABLE MULTI-CURSORS to make linking to voxels easy
         var p = this._pick(x, y);
         if (p) {
+            console.log("Picked vertex "+p.ptidx+", voxel "+p.dataidx);
             this.addMarker(p.ptidx, keep);
             this.callback(p.dataidx, p.ptidx);
         }
@@ -202,52 +203,53 @@ FacePick.prototype = {
     dblpick: function(x, y, keep) {
         var speed = 0.6;
         var p = this._pick(x, y);
-        var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
-        p.ptidx -= p.hemi == "right" ? leftlen : 0;
-        var geom = this.viewer.meshes[p.hemi].geometry;
-        var vpos = geom.attributes.position.array;
-        var mbb = geom.boundingBox;
-        var nx = (mbb.max.x + mbb.min.x)/2, ny = (mbb.max.y + mbb.min.y)/2, nz = (mbb.max.z + mbb.min.z)/2;
-        var px = vpos[p.ptidx*3] - nx, py = vpos[p.ptidx*3+1] - ny, pz = vpos[p.ptidx*3+2] - nz;
-        var newaz = (Math.atan2(-px, py)) * 180.0 / Math.PI;
-        newaz = newaz > 0 ? newaz : 360 + newaz;
-        //console.log("New az.: " + newaz);
-        var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / Math.PI;
-        //console.log("New el.: " + newel);
-        var states = ["mix", "radius", "target", "azimuth", "altitude", "pivot"];
-        this._undblpickanim = states.map(function(s) { return {idx:speed, state:s, value:this.viewer.getState(s)} });
-        var front = newaz < 90 || newaz > 270;
-        var newpivot;
-        if (p.hemi == "left") {
-            if (newaz > 180) {
-                if (front) {
-                    newpivot = 40;
+        if (p) {
+            var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
+            p.ptidx -= p.hemi == "right" ? leftlen : 0;
+            var geom = this.viewer.meshes[p.hemi].geometry;
+            var vpos = geom.attributes.position.array;
+            var mbb = geom.boundingBox;
+            var nx = (mbb.max.x + mbb.min.x)/2, ny = (mbb.max.y + mbb.min.y)/2, nz = (mbb.max.z + mbb.min.z)/2;
+            var px = vpos[p.ptidx*3] - nx, py = vpos[p.ptidx*3+1] - ny, pz = vpos[p.ptidx*3+2] - nz;
+            var newaz = (Math.atan2(-px, py)) * 180.0 / Math.PI;
+            newaz = newaz > 0 ? newaz : 360 + newaz;
+            //console.log("New az.: " + newaz);
+            var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / Math.PI;
+            //console.log("New el.: " + newel);
+            var states = ["mix", "radius", "target", "azimuth", "altitude", "pivot"];
+            this._undblpickanim = states.map(function(s) { return {idx:speed, state:s, value:this.viewer.getState(s)} });
+            var front = newaz < 90 || newaz > 270;
+            var newpivot;
+            if (p.hemi == "left") {
+                if (newaz > 180) {
+                    if (front) {
+                        newpivot = 40;
+                    } else {
+                        newpivot = -40;
+                    }
                 } else {
-                    newpivot = -40;
+                    newpivot = 0;
                 }
             } else {
-                newpivot = 0;
-            }
-        } else {
-            if (newaz < 180) {
-                if (front) {
-                    newpivot = 40;
+                if (newaz < 180) {
+                    if (front) {
+                        newpivot = 40;
+                    } else {
+                        newpivot = -40;
+                    }
                 } else {
-                    newpivot = -40;
+                    newpivot = 0;
                 }
-            } else {
-                newpivot = 0;
             }
+            
+            viewer.animate([{idx:speed, state:"mix", value:0}, 
+                {idx:speed, state:"radius", value:200}, 
+                {idx:speed, state:"target", value:[nx,ny,nz]}, 
+                {idx:speed, state:"azimuth", value:newaz}, 
+                {idx:speed, state:"altitude", value:newel},
+                {idx:speed, state:"pivot", value:newpivot}
+                   ]);
         }
-        
-        viewer.animate([{idx:speed, state:"mix", value:0}, 
-            {idx:speed, state:"radius", value:200}, 
-            {idx:speed, state:"target", value:[nx,ny,nz]}, 
-            {idx:speed, state:"azimuth", value:newaz}, 
-            {idx:speed, state:"altitude", value:newel},
-            {idx:speed, state:"pivot", value:newpivot}
-               ]);
-        return;
     },
 
     undblpick: function() {
