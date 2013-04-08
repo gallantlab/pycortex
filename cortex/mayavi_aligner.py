@@ -195,7 +195,6 @@ class FlatScene(Scene):
         elif ckey == '\x1a' and evt.CmdDown():
             self.aligner.undo()
         else:
-            print key
             super(FlatScene, self).OnKeyDown(evt)
 
     def OnButtonDown(self, evt):

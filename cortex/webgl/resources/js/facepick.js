@@ -26,9 +26,8 @@ function FacePick(viewer, callback) {
     if (typeof(callback) == "function") {
         this.callback = callback;
     } else {
-	this.callback = function(voxidx, vertidx) {
-            console.log("Picked voxel: "+voxidx+", vertex: "+vertidx);
-	    $.ajax("/picker?voxel="+voxidx+"&vertex="+vertidx);
+        this.callback = function(voxidx, vertidx) {
+            $.ajax("/picker?voxel="+voxidx+"&vertex="+vertidx);
         }
     }
     
@@ -40,7 +39,7 @@ function FacePick(viewer, callback) {
         morphTargets:true
     });
 
-    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 0.1, 5000 )
+    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 1, 5000 )
     this.camera.position = this.viewer.camera.position;
     this.camera.up.set(0,0,1);
     this.scene.add(this.camera);
@@ -127,7 +126,7 @@ FacePick.prototype = {
     },
 
     _pick: function(x, y) {
-	if (!this._valid)
+        if (!this._valid)
             this.draw();
         var gl = this.viewer.renderer.context;
         var pix = new Uint8Array(4);
@@ -143,7 +142,7 @@ FacePick.prototype = {
             this.viewer.schedule();
             return;
         }
-
+        
         //adjust for clicking on black area
         faceidx -= 1;
 
@@ -164,28 +163,27 @@ FacePick.prototype = {
 
                     if (start <= faceidx*3 && faceidx*3 < (start+count)) {
                         //Pick the closest point in triangle to the click location
-			var pts = [index + polys[faceidx*3], 
-				   index + polys[faceidx*3+1], 
-				   index + polys[faceidx*3+2]];
-			var mousepos = new THREE.Vector2(x, y);
-			var ptdists = pts.map(
-			    function(pt) {
-				var spt = this.viewer.getPos(pt);
-				return mousepos.distanceTo(new THREE.Vector2(spt.pos[0], spt.pos[1]));
-			    });
-			
-			var closest;
-			if (ptdists[0] < ptdists[1] && ptdists[0] < ptdists[2]) {
-			    closest = pts[0];
-			} else if (ptdists[1] < ptdists[0] && ptdists[1] < ptdists[2]) {
-			    closest = pts[1];
-			} else {
-			    closest = pts[2];
-			}
-			
+                        var pts = [index + polys[faceidx*3], 
+                               index + polys[faceidx*3+1], 
+                               index + polys[faceidx*3+2]];
+                        var mousepos = new THREE.Vector2(x, y);
+                        var ptdists = pts.map(function(pt) {
+                            var spt = this.viewer.getPos(pt);
+                            return mousepos.distanceTo(new THREE.Vector2(spt.pos[0], spt.pos[1]));
+                        }.bind(this));
+                        
+                        var closest;
+                        if (ptdists[0] < ptdists[1] && ptdists[0] < ptdists[2]) {
+                            closest = pts[0];
+                        } else if (ptdists[1] < ptdists[0] && ptdists[1] < ptdists[2]) {
+                            closest = pts[1];
+                        } else {
+                            closest = pts[2];
+                        }
+                        
                         var dataidx = map[closest*4+3];
                         closest += hemi == "right" ? leftlen : 0;
-			return {ptidx: closest, dataidx: dataidx, hemi: hemi};
+                        return {ptidx: closest, dataidx: dataidx, hemi: hemi};
                     }
                 }
             }
@@ -194,66 +192,64 @@ FacePick.prototype = {
 
     pick: function(x, y, keep) {
         // DISABLE MULTI-CURSORS to make linking to voxels easy
-        keep = false;
-	var p = this._pick(x, y);
-	//console.log("Picked voxel "+p.dataidx+", vertex "+p.ptidx);
-	// if on medial wall this is undefined
-	var pos = this.viewer.getPos(p.ptidx);
-	if (pos !== undefined) {
+        var p = this._pick(x, y);
+        if (p) {
+            console.log("Picked vertex "+p.ptidx+", voxel "+p.dataidx);
             this.addMarker(p.ptidx, keep);
             this.callback(p.dataidx, p.ptidx);
-	}
+        }
     },
     
     dblpick: function(x, y, keep) {
         var speed = 0.6;
-	var p = this._pick(x, y);
-	var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
-	p.ptidx -= p.hemi == "right" ? leftlen : 0;
-	var geom = this.viewer.meshes[p.hemi].geometry;
-        var vpos = geom.attributes.position.array;
-        var mbb = geom.boundingBox;
-	var nx = (mbb.max.x + mbb.min.x)/2, ny = (mbb.max.y + mbb.min.y)/2, nz = (mbb.max.z + mbb.min.z)/2;
-        var px = vpos[p.ptidx*3] - nx, py = vpos[p.ptidx*3+1] - ny, pz = vpos[p.ptidx*3+2] - nz;
-        var newaz = (Math.atan2(-px, py)) * 180.0 / Math.PI;
-        newaz = newaz > 0 ? newaz : 360 + newaz;
-        console.log("New az.: " + newaz);
-	var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / Math.PI;
-        console.log("New el.: " + newel);
-	var states = ["mix", "radius", "target", "azimuth", "altitude", "pivot"];
-	this._undblpickanim = states.map(function(s) { return {idx:speed, state:s, value:this.viewer.getState(s)} });
-	var front = newaz < 90 || newaz > 270;
-	var newpivot;
-	if (p.hemi == "left") {
-	    if (newaz > 180) {
-		if (front) {
-		    newpivot = 40;
-		} else {
-		    newpivot = -40;
-		}
-	    } else {
-		newpivot = 0;
-	    }
-	} else {
-	    if (newaz < 180) {
-		if (front) {
-		    newpivot = 40;
-		} else {
-		    newpivot = -40;
-		}
-	    } else {
-		newpivot = 0;
-	    }
-	}
-	    
-        viewer.animate([{idx:speed, state:"mix", value:0}, 
-			{idx:speed, state:"radius", value:200}, 
-			{idx:speed, state:"target", value:[nx,ny,nz]}, 
-			{idx:speed, state:"azimuth", value:newaz}, 
-			{idx:speed, state:"altitude", value:newel},
-			{idx:speed, state:"pivot", value:newpivot}
-		       ]);
-        return;
+        var p = this._pick(x, y);
+        if (p) {
+            var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
+            p.ptidx -= p.hemi == "right" ? leftlen : 0;
+            var geom = this.viewer.meshes[p.hemi].geometry;
+            var vpos = geom.attributes.position.array;
+            var mbb = geom.boundingBox;
+            var nx = (mbb.max.x + mbb.min.x)/2, ny = (mbb.max.y + mbb.min.y)/2, nz = (mbb.max.z + mbb.min.z)/2;
+            var px = vpos[p.ptidx*3] - nx, py = vpos[p.ptidx*3+1] - ny, pz = vpos[p.ptidx*3+2] - nz;
+            var newaz = (Math.atan2(-px, py)) * 180.0 / Math.PI;
+            newaz = newaz > 0 ? newaz : 360 + newaz;
+            //console.log("New az.: " + newaz);
+            var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / Math.PI;
+            //console.log("New el.: " + newel);
+            var states = ["mix", "radius", "target", "azimuth", "altitude", "pivot"];
+            this._undblpickanim = states.map(function(s) { return {idx:speed, state:s, value:this.viewer.getState(s)} });
+            var front = newaz < 90 || newaz > 270;
+            var newpivot;
+            if (p.hemi == "left") {
+                if (newaz > 180) {
+                    if (front) {
+                        newpivot = 40;
+                    } else {
+                        newpivot = -40;
+                    }
+                } else {
+                    newpivot = 0;
+                }
+            } else {
+                if (newaz < 180) {
+                    if (front) {
+                        newpivot = 40;
+                    } else {
+                        newpivot = -40;
+                    }
+                } else {
+                    newpivot = 0;
+                }
+            }
+            
+            viewer.animate([{idx:speed, state:"mix", value:0}, 
+                {idx:speed, state:"radius", value:200}, 
+                {idx:speed, state:"target", value:[nx,ny,nz]}, 
+                {idx:speed, state:"azimuth", value:newaz}, 
+                {idx:speed, state:"altitude", value:newel},
+                {idx:speed, state:"pivot", value:newpivot}
+                   ]);
+        }
     },
 
     undblpick: function() {
@@ -265,7 +261,7 @@ FacePick.prototype = {
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
             vert = this.viewer.getVert(ax.idx);
-	    ax.obj.position = blendPosNorm(vert.pos, vert.norm, mixevt.flat);
+            ax.obj.position = blendPosNorm(vert.pos, vert.norm, mixevt.flat);
             // Rescale axes for flat view
             ax.obj.scale.x = 1.000-mixevt.flat;
         }
@@ -277,8 +273,6 @@ FacePick.prototype = {
         for (var i = 0; i < this.axes.length; i++) {
             if (keep === true) {
                 this.axes[i].obj.material.color.setRGB(180,180,180);
-
-                this.axes[i].obj.geometry.vertices
             } else {
                 this.axes[i].obj.parent.remove(this.axes[i].obj);
             }
@@ -287,11 +281,11 @@ FacePick.prototype = {
             this.axes = [];
 
         var axes = makeAxes(50, 0xffffff);
-	axes.position = blendPosNorm(vert.pos, vert.norm, this.viewer.flatmix);
+        axes.position = blendPosNorm(vert.pos, vert.norm, this.viewer.flatmix);
         axes.scale.x = 1.0001-this.viewer.flatmix;
         this.axes.push({idx:ptidx, obj:axes});
         this.viewer.pivot[vert.name].back.add(axes);
-        this.viewer.controls.dispatchEvent({type:"change"});
+        this.viewer.schedule();
     }
 }
 
