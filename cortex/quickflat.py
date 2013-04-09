@@ -199,8 +199,9 @@ def make_figure(data, subject, xfmname, recache=False, height=1024, projection='
     
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
-    cimg = ax.imshow(im, aspect='equal', origin="upper", **kwargs)
+    cimg = ax.imshow(im[::-1], aspect='equal', origin="upper", **kwargs)
     ax.axis('off')
+    ax.invert_yaxis()
 
     if colorbar:
         cbar = fig.add_axes((.4, .07, .2, .04))
@@ -228,7 +229,7 @@ def make_figure(data, subject, xfmname, recache=False, height=1024, projection='
         blc = LineCollection(rois[key][0], linewidths=3.0,
                              colors=[['r','b'][mw] for mw in rois[key][1]])
         bax.add_collection(blc)
-        bax.invert_yaxis()
+        #bax.invert_yaxis()
     
     if with_rois:
         key = (subject, labels)
@@ -237,7 +238,7 @@ def make_figure(data, subject, xfmname, recache=False, height=1024, projection='
             rois[key] = roi.get_texture(im.shape[0], labels=labels)
         rois[key].seek(0)
         oax = fig.add_axes((0,0,1,1))
-        oimg = oax.imshow(plt.imread(rois[key]),
+        oimg = oax.imshow(plt.imread(rois[key])[::-1],
                           aspect='equal', interpolation='bicubic', origin="upper", zorder=3)
 
     return fig
