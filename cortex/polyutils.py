@@ -89,6 +89,13 @@ class Surface(object):
             
         return output
 
+    def polypatch(self):
+        for p, faces in enumerate(self.connected):
+            if len(faces) > 0:
+                poly = np.roll(self.polys[faces[0]], -np.nonzero(self.polys[faces[0]] == p)[0][0])``
+                for face in faces:
+                    pass
+
     def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
         for p, faces in enumerate(self.connected):

@@ -202,40 +202,13 @@ class Nearest(Mapper):
 class Trilinear(Mapper):
     @staticmethod
     def _getmask(coords, polys, shape):
-        #trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
+        from .utils import trilinear
         csrshape = len(coords), np.prod(shape)
         valid = np.unique(polys)
         coords = coords[valid]
-        (x, y, z), floor = np.modf(coords.T)
-        floor = floor.astype(int)
-        ceil = floor + 1
-        x[x < 0] = 0
-        y[y < 0] = 0
-        z[z < 0] = 0
+        idx, value = trilinear(coords)
 
-        i000 = np.ravel_multi_index((floor[2], floor[1], floor[0]), shape, mode='clip')
-        i100 = np.ravel_multi_index((floor[2], floor[1],  ceil[0]), shape, mode='clip')
-        i010 = np.ravel_multi_index((floor[2],  ceil[1], floor[0]), shape, mode='clip')
-        i001 = np.ravel_multi_index(( ceil[2], floor[1], floor[0]), shape, mode='clip')
-        i101 = np.ravel_multi_index(( ceil[2], floor[1],  ceil[0]), shape, mode='clip')
-        i011 = np.ravel_multi_index(( ceil[2],  ceil[1], floor[0]), shape, mode='clip')
-        i110 = np.ravel_multi_index((floor[2],  ceil[1],  ceil[0]), shape, mode='clip')
-        i111 = np.ravel_multi_index(( ceil[2],  ceil[1],  ceil[0]), shape, mode='clip')
-
-        v000 = (1-x)*(1-y)*(1-z)
-        v100 = x*(1-y)*(1-z)
-        v010 = (1-x)*y*(1-z)
-        v110 = x*y*(1-z)
-        v001 = (1-x)*(1-y)*z
-        v101 = x*(1-y)*z
-        v011 = (1-x)*y*z
-        v111 = x*y*z
-
-        #i    = np.tile(np.arange(len(coords)), [8, 1]).T.ravel()
-        i    = np.tile(valid, [8, 1]).T.ravel()
-        j    = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T.ravel()
-        data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T.ravel()
-        return sparse.csr_matrix((data, (i, j)), shape=csrshape)
+        return sparse.csr_matrix((data, ij), shape=csrshape)
 
 class Lanczos(Mapper):
     @staticmethod
@@ -282,6 +255,34 @@ class Lanczos(Mapper):
 class Gaussian(Mapper):
     def _recache(self, subject, xfmname, std=2):
         raise NotImplementedError
+
+class PatchMapper(Mapper):
+    @classmethod
+    def _getmask(cls, pts, polys, shape):
+        from . import mp
+        rand = np.random.rand(npts, 3)
+        csrshape = len(wm), np.prod(shape)
+
+        def func(pts):
+            if len(pts) > 0:
+                #generate points within the bounding box
+                samples = rand * (pts.max(0) - pts.min(0)) + pts.min(0)
+                #check which points are inside the polyhedron
+                inside = polyutils.inside_convex_poly(pts)(samples)
+                return cls._sample(samples[inside], shape, np.sum(inside))
+
+        surf = polyutils.Surface(pts, polys)
+        samples = mp.map(func, surf.polyconvex())
+        #samples = map(func, surf.polyconvex(wm)) ## For debugging
+        ij, data = [], []
+        for i, sample in enumerate(samples):
+            if sample is not None:
+                idx = np.zeros((2, len(sample[0])))
+                idx[0], idx[1] = i, sample[0]
+                ij.append(idx)
+                data.append(sample[1])
+
+        return sparse.csr_matrix((np.hstack(data), np.hstack(ij)), shape=csrshape)
 
 class Polyhedral(ThickMapper):
     '''Uses an actual (likely concave) polyhedra betwen the pial and white surfaces
