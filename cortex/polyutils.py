@@ -132,7 +132,12 @@ class Surface(object):
         if n not in (1, 0.5):
             raise ValueError
 
-        def half_edge
+        def half_edge(pts, polys):
+            mid   = pts[polys].mean(1)
+            left  = pts[polys[:,[0,2]]].mean(1)
+            right = pts[polys[:,[0,1]]].mean(1)
+            stack = np.vstack([mid, left, right])
+            return stack[(distance.cdist(stack, stack) == 0).sum(0) == 1]
 
         for p, faces in enumerate(self.connected):
             if len(faces) > 0:
