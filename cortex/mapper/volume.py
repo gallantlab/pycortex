@@ -1,7 +1,14 @@
 import numpy as np
 from . import Mapper
 
-class ThickMapper(Mapper):
+def sample_constant(pia, wm, polys, npts=10000):
+    samples = np.random.rand(npts, 3)
+    
+
+def sample_linear(pia, wm, polys, npts=10000):
+    samples = np.random.rand(npts, 3)
+
+class VolumeMapper(Mapper):
     @classmethod
     def _cache(cls, filename, subject, xfmname, **kwargs):
         from .db import surfs
@@ -17,7 +24,7 @@ class ThickMapper(Mapper):
         _savecache(filename, masks[0], masks[1], xfm.shape)
         return cls(masks[0], masks[1], xfm.shape)
 
-class Polyhedral(ThickMapper):
+class Polyhedral(VolumeMapper):
     '''Uses an actual (likely concave) polyhedra betwen the pial and white surfaces
     to estimate the thickness'''
     @staticmethod
@@ -64,7 +71,7 @@ class Polyhedral(ThickMapper):
 
         return mask
 
-class ConvexPolyhedra(ThickMapper):
+class ConvexPolyhedra(VolumeMapper):
     @classmethod
     def _getmask(cls, pia, wm, polys, shape, npts=1024):
         from . import mp
@@ -92,7 +99,7 @@ class ConvexPolyhedra(ThickMapper):
 
         return sparse.csr_matrix((np.hstack(data), np.hstack(ij)), shape=csrshape)
 
-class ConvexNN(ConvexPolyhedra):
+class ConvexNN(VolumeMapper):
     @staticmethod
     def _sample(pts, shape, norm):
         coords = pts.round().astype(int)[:,::-1]
@@ -105,7 +112,7 @@ class ConvexNN(ConvexPolyhedra):
             j, data = np.array(Counter(idx).items()).T
             return j, data / float(norm)
 
-class ConvexTrilin(ConvexPolyhedra):
+class ConvexTrilin(VolumeMapper):
     @staticmethod
     def _sample(pts, shape, norm):
         (x, y, z), floor = np.modf(pts.T)
@@ -142,6 +149,6 @@ class ConvexTrilin(ConvexPolyhedra):
         return uniquej, uniquejdata / float(norm)
 
 
-class ConvexLanczos(ConvexPolyhedra):
+class ConvexLanczos(VolumeMapper):
     def _sample(self, pts):
         raise NotImplementedError

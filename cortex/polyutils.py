@@ -89,13 +89,6 @@ class Surface(object):
             
         return output
 
-    def polypatch(self):
-        for p, faces in enumerate(self.connected):
-            if len(faces) > 0:
-                poly = np.roll(self.polys[faces[0]], -np.nonzero(self.polys[faces[0]] == p)[0][0])``
-                for face in faces:
-                    pass
-
     def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
         for p, faces in enumerate(self.connected):
@@ -125,41 +118,62 @@ class Surface(object):
 
             yield pts.points, np.array(list(polys.triangles))
 
-    def polyconvex(self, wm):
-        try:
-            import progressbar as pb
-            progress = pb.ProgressBar(maxval=len(self.connected))
-            progress.start()
-        except ImportError:
-            pass
+    def neighbors(self, n=1):
+        def neighbors(pt, n):
+            current = set(self.polys[self.connected[pt]])
+            if n - 1 > 0:
+                next = set()
+                for pt in current:
+                    next = next | neighbors(pt, n-1)
+
+            return current | next
+
+    def patches(self, n=1, auxpts=None):
+        if n not in (1, 0.5):
+            raise ValueError
+
+        def half_edge
 
         for p, faces in enumerate(self.connected):
-            polys = self.polys[faces]
-            x, y = np.nonzero(polys == p)
-            x = np.tile(x, [3, 1]).T
-            y = np.vstack([y, (y+1)%3, (y+2)%3]).T
-            polys = polys[x, y]
-            mid = self.pts[polys].mean(1)
-            left = self.pts[polys[:,[0,2]]].mean(1)
-            right = self.pts[polys[:,[0,1]]].mean(1)
-            wmid = wm[polys].mean(1)
-            wleft = wm[polys[:,[0,2]]].mean(1)
-            wright = wm[polys[:,[0,1]]].mean(1)
-            top = np.vstack([mid, left, right])
-            bot = np.vstack([wmid, wleft, wright])
-            #remove duplicates
-            top = top[(distance.cdist(top, top) == 0).sum(0) == 1]
-            bot = bot[(distance.cdist(bot, bot) == 0).sum(0) == 1]
-            try:
-                progress.update(p+1)
-            except NameError:
+            if len(faces) > 0:
                 pass
-            yield np.vstack([top, bot, self.pts[p], wm[p]])
-        try:
-            progress.finish()
-        except NameError:
-            pass
 
+
+    def polypatch_constant(self):
+        for p, faces in enumerate(self.connected):
+            if len(faces) > 0:
+                poly = np.roll(self.polys[faces[0]], -np.nonzero(self.polys[faces[0]] == p)[0][0])
+                for face in faces:
+                    pass
+
+    def polypatch_linear(self):
+        pass
+
+    def polyvol_constant(self, wm):
+        for p, faces in enumerate(self.connected):
+            if len(faces) > 0:
+                polys = self.polys[faces]
+                x, y = np.nonzero(polys == p)
+                x = np.tile(x, [3, 1]).T
+                y = np.vstack([y, (y+1)%3, (y+2)%3]).T
+                polys = polys[x, y]
+                mid = self.pts[polys].mean(1)
+                left = self.pts[polys[:,[0,2]]].mean(1)
+                right = self.pts[polys[:,[0,1]]].mean(1)
+                wmid = wm[polys].mean(1)
+                wleft = wm[polys[:,[0,2]]].mean(1)
+                wright = wm[polys[:,[0,1]]].mean(1)
+                top = np.vstack([mid, left, right])
+                bot = np.vstack([wmid, wleft, wright])
+                #remove duplicates
+                top = top[(distance.cdist(top, top) == 0).sum(0) == 1]
+                bot = bot[(distance.cdist(bot, bot) == 0).sum(0) == 1]
+                yield np.vstack([top, bot, self.pts[p], wm[p]])
+
+    def polyvol_linear(self, wm):
+        for p, faces in enumerate(self.connected):
+            idx = np.unique(self.polys[faces])
+            yield np.vstack([self.pts[idx], wm[idx]])
 
 class _ptset(object):
     def __init__(self):

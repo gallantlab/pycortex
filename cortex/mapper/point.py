@@ -38,41 +38,6 @@ class Gaussian(Mapper):
 class Lanczos(Mapper):
     @staticmethod
     def _getmask(coords, polys, shape, window=3, renorm=True):
-        nZ, nY, nX = shape
-        dx = coords[:,0] - np.atleast_2d(np.arange(nX)).T
-        dy = coords[:,1] - np.atleast_2d(np.arange(nY)).T
-        dz = coords[:,2] - np.atleast_2d(np.arange(nZ)).T
-
-        def lanczos(x):
-            out = np.zeros_like(x)
-            sel = np.abs(x)<window
-            selx = x[sel]
-            out[sel] = np.sin(np.pi * selx) * np.sin(np.pi * selx / window) * (window / (np.pi**2 * selx**2))
-            return out
-
-        Lx = lanczos(dx)
-        Ly = lanczos(dy)
-        Lz = lanczos(dz)
         
-        mask = sparse.lil_matrix((len(coords), np.prod(shape)))
-        for v in range(len(coords)):
-            ix = np.nonzero(Lx[:,v])[0]
-            iy = np.nonzero(Ly[:,v])[0]
-            iz = np.nonzero(Lz[:,v])[0]
-
-            vx = Lx[ix,v]
-            vy = Ly[iy,v]
-            vz = Lz[iz,v]
-            try:
-                inds = np.ravel_multi_index(np.array(list(product(iz, iy, ix))).T, shape)
-                vals = np.prod(np.array(list(product(vz, vy, vx))), 1)
-                if renorm:
-                    vals /= vals.sum()
-                mask[v,inds] = vals
-            except ValueError:
-                pass
-
-            if not v % 1000:
-                print(v)
 
         return mask.tocsr()
