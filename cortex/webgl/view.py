@@ -237,10 +237,12 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     class DataHandler(web.RequestHandler):
         def get(self, path):
             path = path.strip("/")
-            if not queue.empty():
-                d = queue.get()
+            try:
+                d = queue.get(True, 0.1)
                 print("Got new data: %r"%list(d.keys()))
                 bindat.update(d)
+            except:
+                pass
 
             if path in bindat:
                 self.write(bindat[path])
