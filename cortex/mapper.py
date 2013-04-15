@@ -31,9 +31,9 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     xfmfile = fnames['xfms'].format(xfmname=xfmname)
     cachefile = fnames['projcache'].format(xfmname=xfmname, projection=ptype)
     try:
-        if not recache and xfmname == 'identity' or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
+        if not recache and os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
            return mapcls[type].from_cache(cachefile) 
-        raise Exception
+        return mapcls[type]._cache(cachefile, subject, xfmname, **kwargs)
     except Exception as e:
         return mapcls[type]._cache(cachefile, subject, xfmname, **kwargs)
 
@@ -184,14 +184,14 @@ class Nearest(Mapper):
     '''Maps epi volume data to surface using nearest neighbor interpolation'''
     @staticmethod
     def _getmask(coords, polys, shape):
-        valid = np.ones((len(coords),), dtype=bool)
+        valid = np.zeros((len(coords),), dtype=bool)
+        valid[np.unique(polys)] = True
 
         coords = np.where(np.mod(coords, 2) == 0.5, np.ceil(coords), np.around(coords)).astype(int)
         d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < shape[2])
         d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < shape[1])
         d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < shape[0])
         valid = np.logical_and(np.logical_and(valid, d1), np.logical_and(d2, d3))
-
         ravelidx = np.ravel_multi_index(coords.T[::-1], shape, mode='clip')
 
         ij = np.array([np.nonzero(valid)[0], ravelidx[valid]])
