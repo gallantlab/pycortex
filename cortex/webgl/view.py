@@ -50,8 +50,8 @@ def _normalize_data(data, pfunc):
             data = _fixarray(dat, mapper)
 
         ds['data'] = data
-        ds['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
-        ds['max'] = scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max']
+        ds['min'] = float(scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min'])
+        ds['max'] = float(scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max'])
         if 'cmap' in dat:
             ds['cmap'] = dat['cmap']
         if 'rate' in dat:
