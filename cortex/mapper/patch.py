@@ -7,8 +7,7 @@ from .. import polyutils
 
 class PatchMapper(Mapper):
     @classmethod
-    def _getmask(cls, pts, polys, shape):
-        from . import mp
+    def _getmask(cls, pts, polys, shape, npts=1024, mp=True, **kwargs):
         rand = np.random.rand(npts, 3)
         csrshape = len(wm), np.prod(shape)
 
@@ -21,8 +20,13 @@ class PatchMapper(Mapper):
                 return cls._sample(samples[inside], shape, np.sum(inside))
 
         surf = polyutils.Surface(pts, polys)
-        samples = mp.map(func, surf.polyconvex())
-        #samples = map(func, surf.polyconvex(wm)) ## For debugging
+        patches = surf.patches(n=cls.patchsize)
+        if mp:
+            from . import mp
+            samples = mp.map(func, patches)
+        else:
+            samples = map(func, patches)
+            
         ij, data = [], []
         for i, sample in enumerate(samples):
             if sample is not None:
@@ -33,8 +37,14 @@ class PatchMapper(Mapper):
 
         return sparse.csr_matrix((np.hstack(data), np.hstack(ij)), shape=csrshape)
 
-class PatchNN(PatchMapper):
-    sampler = samplers.nearest
+class ConstPatch(PatchMapper):
+    patchsize = 1
 
-class PatchTrilin(PatchMapper):
-    sampler = samplers.trilinear
+class ConstPatchNN(ConstPatch):
+    sampler = staticmethod(samplers.nearest)
+
+class ConstPatchTrilin(ConstPatch):
+    sampler = staticmethod(samplers.trilinear)
+
+class ConstPatchLanczos(ConstPatch):
+    sampler = staticmethod(samplers.lanczos)

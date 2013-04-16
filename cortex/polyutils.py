@@ -130,22 +130,25 @@ class Surface(object):
 
     def patches(self, auxpts=None, n=1):
         def half_edge(p, pts, polys):
-            mid   = pts[polys].mean(1)
-            left  = pts[polys[:,[0,2]]].mean(1)
-            right = pts[polys[:,[0,1]]].mean(1)
+            x, y = np.nonzero(polys == p)
+            y = np.vstack([y, (y+1)%3, (y+2)%3]).T
+            poly  = polys[np.tile(x, [3, 1]).T, y]
+            mid   = pts[poly].mean(1)
+            left  = pts[poly[:,[0,2]]].mean(1)
+            right = pts[poly[:,[0,1]]].mean(1)
             stack = np.vstack([mid, left, right, pts[p]])
             return stack[(distance.cdist(stack, stack) == 0).sum(0) == 1]
 
         for p, faces in enumerate(self.connected):
             if len(faces) > 0:
                 if n == 1:
-                    pidx = np.unique(self.polys[faces])
                     if auxpts is not None:
+                        pidx = np.unique(self.polys[faces])
                         yield np.vstack([self.pts[pidx], auxpts[pidx]])
                     else:
                         yield self.pts[self.polys[faces]]
                 elif n == 0.5:
-                    pts = half_edge(p, self.pts, self.polys)
+                    pts = half_edge(p, self.pts, self.polys[faces])
                     if auxpts is not None:
                         yield np.vstack([pts, half_edge(p, auxpts, self.polys)])
                     else:

@@ -1,5 +1,9 @@
 import numpy as np
 
+def collapse(i, j, data):
+    """Collapses samples into a single row"""
+    
+
 def nearest(coords, shape):
     valid = ~(np.isnan(coords).all(1))
     rcoords = coords[valid].round().astype(int)
@@ -34,20 +38,50 @@ def trilinear(coords, shape):
     v011 = (1-x)*y*z
     v111 = x*y*z
     
-    i    = np.tile(np.nonzero(valid)[0], [8, 1]).T.ravel()
-    j    = np.hstack([i000, i100, i010, i001, i101, i011, i110, i111]).T
-    data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T.ravel()
+    i    = np.tile(np.nonzero(valid)[0], [1, 8]).ravel()
+    j    = np.hstack([i000, i100, i010, i001, i101, i011, i110, i111])
+    data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).ravel()
     return i, np.ravel_multi_index(j, shape, mode='clip'), data
 
-def gaussian(coords, window=3):
-    raise NotImplementedError
-
-def lanczos(coords, window=3, renorm=True):
+def distance_func(func, coords, shape, renorm=True, mp=True):
+    """Generates masks for seperable distance functions"""
     nZ, nY, nX = shape
     dx = coords[:,0] - np.atleast_2d(np.arange(nX)).T
     dy = coords[:,1] - np.atleast_2d(np.arange(nY)).T
     dz = coords[:,2] - np.atleast_2d(np.arange(nZ)).T
 
+    Lx, Ly, Lz = func(dx), func(dy), func(dz)
+    ix, jx = np.nonzero(Lx)
+    iy, jy = np.nonzero(Ly)
+    iz, jz = np.nonzero(Lz)
+
+    def func(v):
+        mx, my, mz = ix[jx == v], iy[jy == v], iz[jz == v]
+        idx, idy, idz = [i.ravel() for i in np.meshgrid(mx, my, mz)]
+        vx, vy, vz = [i.ravel() for i in np.meshgrid(Lx[mx, v], Ly[my, v], Lz[mz, v])]
+
+        i = v * np.ones((len(idx,)))
+        j = np.ravel_multi_index((idz, idy, idx), shape, mode='clip')
+        data = vx*vy*vz
+        if renorm:
+            data /= data.sum()
+        return i, j, data
+
+    if mp:
+        from .. import mp
+        ijdata = mp.map(func, range(len(coords)))
+    else:
+        ijdata = map(func, range(len(coords)))
+
+    return np.hstack(ijdata)
+
+def gaussian(coords, shape, sigma=1, window=3, **kwargs):
+    raise NotImplementedError
+    def gaussian(x):
+        pass
+    return distance_func(gaussian, coords, shape, **kwargs)
+
+def lanczos(coords, shape, window=3, **kwargs):
     def lanczos(x):
         out = np.zeros_like(x)
         sel = np.abs(x)<window
@@ -55,28 +89,4 @@ def lanczos(coords, window=3, renorm=True):
         out[sel] = np.sin(np.pi * selx) * np.sin(np.pi * selx / window) * (window / (np.pi**2 * selx**2))
         return out
 
-    Lx = lanczos(dx)
-    Ly = lanczos(dy)
-    Lz = lanczos(dz)
-
-    import ipdb
-    ipdb.set_trace()
-    
-    mask = sparse.lil_matrix((len(coords), np.prod(shape)))
-    for v in range(len(coords)):
-        ix = np.nonzero(Lx[:,v])[0]
-        iy = np.nonzero(Ly[:,v])[0]
-        iz = np.nonzero(Lz[:,v])[0]
-
-        vx = Lx[ix,v]
-        vy = Ly[iy,v]
-        vz = Lz[iz,v]
-        try:
-            inds = np.ravel_multi_index(np.array(list(product(iz, iy, ix))).T, shape)
-            vals = np.prod(np.array(list(product(vz, vy, vx))), 1)
-            if renorm:
-                vals /= vals.sum()
-            mask[v,inds] = vals
-        except ValueError:
-            pass
-    return i, j, data
+    return distance_func(lanczos, coords, shape, **kwargs)
