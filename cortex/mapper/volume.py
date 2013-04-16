@@ -1,12 +1,8 @@
 import numpy as np
+from scipy import sparse
+
 from . import Mapper
-
-def sample_constant(pia, wm, polys, npts=10000):
-    samples = np.random.rand(npts, 3)
-    
-
-def sample_linear(pia, wm, polys, npts=10000):
-    samples = np.random.rand(npts, 3)
+from . import samplers
 
 class VolumeMapper(Mapper):
     @classmethod
@@ -23,6 +19,12 @@ class VolumeMapper(Mapper):
             
         _savecache(filename, masks[0], masks[1], xfm.shape)
         return cls(masks[0], masks[1], xfm.shape)
+
+class PolyConstMapper(VolumeMapper):
+    pass
+
+class PolyLinMapper(VolumeMapper):
+    pass
 
 class Polyhedral(VolumeMapper):
     '''Uses an actual (likely concave) polyhedra betwen the pial and white surfaces

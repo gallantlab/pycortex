@@ -1,6 +1,19 @@
 import numpy as np
 
-def trilinear(coords):
+def nearest(coords, shape):
+    valid = ~(np.isnan(coords).all(1))
+    coords = np.where(np.mod(coords, 2) == 0.5, np.ceil(coords), np.around(coords)).astype(int)
+    valid = np.zeros_like(coords)
+    d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < shape[2])
+    d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < shape[1])
+    d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < shape[0])
+    valid = np.logical_and(np.logical_and(valid, d1), np.logical_and(d2, d3))
+
+    i = np.nonzero(valid)[0]
+    j = np.ravel_multi_index(coords.T[::-1], shape, mode='clip')[valid]
+    return i, j, data
+    
+def trilinear(coords, shape):
     #trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
     (x, y, z), floor = np.modf(coords.T)
     floor = floor.astype(int)
@@ -28,9 +41,9 @@ def trilinear(coords):
     v111 = x*y*z
     
     i    = np.tile(np.arange(len(coords)), [8, 1]).T.ravel()
-    j    = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T
-    data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T
-    return i, j, data
+    j    = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T.ravel()
+    data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T.ravel()
+    return i, np.ravel_multi_index(j, shape, mode='clip'), data
 
 def gaussian(coords, window=3):
     raise NotImplementedError

@@ -2,6 +2,7 @@ import numpy as np
 from scipy import sparse
 
 from . import Mapper
+from . import samplers
 from .. import polyutils
 
 class PatchMapper(Mapper):
@@ -31,3 +32,9 @@ class PatchMapper(Mapper):
                 data.append(sample[1])
 
         return sparse.csr_matrix((np.hstack(data), np.hstack(ij)), shape=csrshape)
+
+class PatchNN(PatchMapper):
+    sampler = samplers.nearest
+
+class PatchTrilin(PatchMapper):
+    sampler = samplers.trilinear

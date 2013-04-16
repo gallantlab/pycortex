@@ -128,57 +128,30 @@ class Surface(object):
 
             return current | next
 
-    def patches(self, n=1, auxpts=None):
-        if n not in (1, 0.5):
-            raise ValueError
-
-        def half_edge(pts, polys):
+    def patches(self, auxpts=None, n=1):
+        def half_edge(p, pts, polys):
             mid   = pts[polys].mean(1)
             left  = pts[polys[:,[0,2]]].mean(1)
             right = pts[polys[:,[0,1]]].mean(1)
-            stack = np.vstack([mid, left, right])
+            stack = np.vstack([mid, left, right, pts[p]])
             return stack[(distance.cdist(stack, stack) == 0).sum(0) == 1]
 
         for p, faces in enumerate(self.connected):
             if len(faces) > 0:
-                pass
-
-
-    def polypatch_constant(self):
-        for p, faces in enumerate(self.connected):
-            if len(faces) > 0:
-                poly = np.roll(self.polys[faces[0]], -np.nonzero(self.polys[faces[0]] == p)[0][0])
-                for face in faces:
-                    pass
-
-    def polypatch_linear(self):
-        pass
-
-    def polyvol_constant(self, wm):
-        for p, faces in enumerate(self.connected):
-            if len(faces) > 0:
-                polys = self.polys[faces]
-                x, y = np.nonzero(polys == p)
-                x = np.tile(x, [3, 1]).T
-                y = np.vstack([y, (y+1)%3, (y+2)%3]).T
-                polys = polys[x, y]
-                mid = self.pts[polys].mean(1)
-                left = self.pts[polys[:,[0,2]]].mean(1)
-                right = self.pts[polys[:,[0,1]]].mean(1)
-                wmid = wm[polys].mean(1)
-                wleft = wm[polys[:,[0,2]]].mean(1)
-                wright = wm[polys[:,[0,1]]].mean(1)
-                top = np.vstack([mid, left, right])
-                bot = np.vstack([wmid, wleft, wright])
-                #remove duplicates
-                top = top[(distance.cdist(top, top) == 0).sum(0) == 1]
-                bot = bot[(distance.cdist(bot, bot) == 0).sum(0) == 1]
-                yield np.vstack([top, bot, self.pts[p], wm[p]])
-
-    def polyvol_linear(self, wm):
-        for p, faces in enumerate(self.connected):
-            idx = np.unique(self.polys[faces])
-            yield np.vstack([self.pts[idx], wm[idx]])
+                if n == 1:
+                    pidx = np.unique(self.polys[faces])
+                    if auxpts is not None:
+                        return np.vstack([self.pts[pidx], auxpts[pidx]])
+                    else:
+                        yield self.pts[self.polys[faces]]
+                elif n == 0.5:
+                    pts = half_edge(p, self.pts, self.polys)
+                    if auxpts is not None:
+                        yield np.vstack([pts, half_edge(p, auxpts, self.polys)])
+                    else:
+                        yield pts
+                else:
+                    raise ValueError
 
 class _ptset(object):
     def __init__(self):
