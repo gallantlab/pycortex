@@ -2,34 +2,28 @@ import numpy as np
 
 def nearest(coords, shape):
     valid = ~(np.isnan(coords).all(1))
-    coords = np.where(np.mod(coords, 2) == 0.5, np.ceil(coords), np.around(coords)).astype(int)
-    valid = np.zeros_like(coords)
-    d1 = np.logical_and(0 <= coords[:,0], coords[:,0] < shape[2])
-    d2 = np.logical_and(0 <= coords[:,1], coords[:,1] < shape[1])
-    d3 = np.logical_and(0 <= coords[:,2], coords[:,2] < shape[0])
-    valid = np.logical_and(np.logical_and(valid, d1), np.logical_and(d2, d3))
-
-    i = np.nonzero(valid)[0]
-    j = np.ravel_multi_index(coords.T[::-1], shape, mode='clip')[valid]
-    return i, j, data
+    rcoords = coords[valid].round().astype(int)
+    j = np.ravel_multi_index(rcoords.T[::-1], shape, mode='clip')
+    return np.nonzero(valid)[0], j, np.ones((valid.sum(),))
     
 def trilinear(coords, shape):
     #trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
-    (x, y, z), floor = np.modf(coords.T)
+    valid = ~(np.isnan(coords).all(1))
+    (x, y, z), floor = np.modf(coords[valid].T)
     floor = floor.astype(int)
     ceil = floor + 1
     x[x < 0] = 0
     y[y < 0] = 0
     z[z < 0] = 0
 
-    i000 = (floor[2], floor[1], floor[0])
-    i100 = (floor[2], floor[1],  ceil[0])
-    i010 = (floor[2],  ceil[1], floor[0])
-    i001 = ( ceil[2], floor[1], floor[0])
-    i101 = ( ceil[2], floor[1],  ceil[0])
-    i011 = ( ceil[2],  ceil[1], floor[0])
-    i110 = (floor[2],  ceil[1],  ceil[0])
-    i111 = ( ceil[2],  ceil[1],  ceil[0])
+    i000 = np.array([floor[2], floor[1], floor[0]])
+    i100 = np.array([floor[2], floor[1],  ceil[0]])
+    i010 = np.array([floor[2],  ceil[1], floor[0]])
+    i001 = np.array([ ceil[2], floor[1], floor[0]])
+    i101 = np.array([ ceil[2], floor[1],  ceil[0]])
+    i011 = np.array([ ceil[2],  ceil[1], floor[0]])
+    i110 = np.array([floor[2],  ceil[1],  ceil[0]])
+    i111 = np.array([ ceil[2],  ceil[1],  ceil[0]])
 
     v000 = (1-x)*(1-y)*(1-z)
     v100 = x*(1-y)*(1-z)
@@ -40,15 +34,15 @@ def trilinear(coords, shape):
     v011 = (1-x)*y*z
     v111 = x*y*z
     
-    i    = np.tile(np.arange(len(coords)), [8, 1]).T.ravel()
-    j    = np.vstack([i000, i100, i010, i001, i101, i011, i110, i111]).T.ravel()
+    i    = np.tile(np.nonzero(valid)[0], [8, 1]).T.ravel()
+    j    = np.hstack([i000, i100, i010, i001, i101, i011, i110, i111]).T
     data = np.vstack([v000, v100, v010, v001, v101, v011, v110, v111]).T.ravel()
     return i, np.ravel_multi_index(j, shape, mode='clip'), data
 
 def gaussian(coords, window=3):
     raise NotImplementedError
 
-def lanczos(coords):
+def lanczos(coords, window=3, renorm=True):
     nZ, nY, nX = shape
     dx = coords[:,0] - np.atleast_2d(np.arange(nX)).T
     dy = coords[:,1] - np.atleast_2d(np.arange(nY)).T
@@ -64,6 +58,9 @@ def lanczos(coords):
     Lx = lanczos(dx)
     Ly = lanczos(dy)
     Lz = lanczos(dz)
+
+    import ipdb
+    ipdb.set_trace()
     
     mask = sparse.lil_matrix((len(coords), np.prod(shape)))
     for v in range(len(coords)):
@@ -82,6 +79,4 @@ def lanczos(coords):
             mask[v,inds] = vals
         except ValueError:
             pass
-
-        if not v % 1000:
-            print(v)
+    return i, j, data

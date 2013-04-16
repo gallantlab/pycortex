@@ -5,22 +5,18 @@ from collections import Counter
 
 import nibabel
 import numpy as np
-from scipy import sparse, spatial
-
+from scipy import sparse
 warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
-from . import polyutils
-
 def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
-    from .db import surfs
+    from ..db import surfs
+    from . import point, patch, volume
+
     mapcls = dict(
-        nearest=Nearest,
-        trilinear=Trilinear,
-        gaussian=Gaussian,
-        polyhedral=Polyhedral,
-        lanczos=Lanczos,
-        convexnn=ConvexNN,
-        convextrilin=ConvexTrilin)
+        nearest=point.PointNN,
+        trilinear=point.PointTrilin,
+        gaussian=point.PointGauss,
+        lanczos=point.PointLanczos)
     Map = mapcls[type]
     ptype = Map.__name__.lower()
     kwds ='_'.join(['%s%s'%(k,str(v)) for k, v in list(kwargs.items())])
@@ -31,7 +27,7 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     xfmfile = fnames['xfms'].format(xfmname=xfmname)
     cachefile = fnames['projcache'].format(xfmname=xfmname, projection=ptype)
     try:
-        if not recache and xfmname == 'identity' or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
+        if not recache and os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
            return mapcls[type].from_cache(cachefile) 
         raise Exception
     except Exception as e:
@@ -102,7 +98,7 @@ class Mapper(object):
             elif data.ndim == 4:
                 norm = data.reshape(len(data), -1).T
             else:
-                raise ValueError
+                raise ValueError('Data size invalid')
 
             mapped.append(np.array(mask * norm).T.squeeze())
             
@@ -151,7 +147,8 @@ class Mapper(object):
 
     @classmethod
     def _cache(cls, filename, subject, xfmname, **kwargs):
-        from .db import surfs
+        print('Caching mapper...')
+        from ..db import surfs
         masks = []
         xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
         fid = surfs.getSurf(subject, 'fiducial', merge=False, nudge=False)

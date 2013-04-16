@@ -141,7 +141,7 @@ class Surface(object):
                 if n == 1:
                     pidx = np.unique(self.polys[faces])
                     if auxpts is not None:
-                        return np.vstack([self.pts[pidx], auxpts[pidx]])
+                        yield np.vstack([self.pts[pidx], auxpts[pidx]])
                     else:
                         yield self.pts[self.polys[faces]]
                 elif n == 0.5:
