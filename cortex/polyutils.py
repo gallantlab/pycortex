@@ -129,10 +129,22 @@ class Surface(object):
             return current | next
 
     def patches(self, auxpts=None, n=1):
-        def half_edge(p, pts, polys):
+        def align_polys(p, polys):
             x, y = np.nonzero(polys == p)
             y = np.vstack([y, (y+1)%3, (y+2)%3]).T
-            poly  = polys[np.tile(x, [3, 1]).T, y]
+            return polys[np.tile(x, [3, 1]).T, y]
+
+        def half_edge_align(p, pts, polys):
+            poly = align_polys(p, polys)
+            mid   = pts[poly].mean(1)
+            left  = pts[poly[:,[0,2]]].mean(1)
+            right = pts[poly[:,[0,1]]].mean(1)
+            s1 = np.array(np.broadcast_arrays(pts[p], mid, left)).swapaxes(0,1)
+            s2 = np.array(np.broadcast_arrays(pts[p], mid, right)).swapaxes(0,1)
+            return np.vstack([s1, s2])
+
+        def half_edge(p, pts, polys):
+            poly = align_polys(p, polys)
             mid   = pts[poly].mean(1)
             left  = pts[poly[:,[0,2]]].mean(1)
             right = pts[poly[:,[0,1]]].mean(1)
@@ -148,13 +160,16 @@ class Surface(object):
                     else:
                         yield self.pts[self.polys[faces]]
                 elif n == 0.5:
-                    pts = half_edge(p, self.pts, self.polys[faces])
                     if auxpts is not None:
-                        yield np.vstack([pts, half_edge(p, auxpts, self.polys)])
+                        pts = half_edge(p, self.pts, self.polys[faces])
+                        aux = half_edge(p, auxpts, self.polys[faces])
+                        yield np.vstack([pts, aux])
                     else:
-                        yield pts
+                        yield half_edge_align(p, self.pts, self.polys[faces])
                 else:
                     raise ValueError
+            else:
+                yield None
 
 class _ptset(object):
     def __init__(self):
@@ -245,6 +260,16 @@ def tetra_vol(pts):
 def brick_vol(pts):
     '''Volume of a triangular prism'''
     return tetra_vol(pts[[0, 1, 2, 4]]) + tetra_vol(pts[[0, 2, 3, 4]]) + tetra_vol(pts[[2, 3, 4, 5]])
+
+def face_area(pts):
+    '''Area of triangles
+
+    Parameters
+    ----------
+    pts : array_like
+        n x 3 x 3 array with n triangles, 3 pts, and (x,y,z) coordinates
+    '''
+    return 0.5 * np.sqrt((np.cross(pts[:,1]-pts[:,0], pts[:,2]-pts[:,0])**2).sum(1))
 
 def face_volume(pts1, pts2, polys):
     '''Volume of each face in a polyhedron sheet'''

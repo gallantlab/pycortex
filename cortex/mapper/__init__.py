@@ -1,7 +1,5 @@
 import os
 import warnings
-from itertools import product
-from collections import Counter
 
 import nibabel
 import numpy as np
@@ -16,7 +14,10 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
         nearest=point.PointNN,
         trilinear=point.PointTrilin,
         gaussian=point.PointGauss,
-        lanczos=point.PointLanczos)
+        lanczos=point.PointLanczos,
+        const_patch_nn=patch.ConstPatchNN,
+        const_patch_trilin=patch.ConstPatchTrilin,
+        const_patch_lanczos=patch.ConstPatchLanczos)
     Map = mapcls[type]
     ptype = Map.__name__.lower()
     kwds ='_'.join(['%s%s'%(k,str(v)) for k, v in list(kwargs.items())])
@@ -27,7 +28,7 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     xfmfile = fnames['xfms'].format(xfmname=xfmname)
     cachefile = fnames['projcache'].format(xfmname=xfmname, projection=ptype)
     try:
-        if not recache and os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
+        if not recache and xfmname == "identity" or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
            return mapcls[type].from_cache(cachefile) 
         raise Exception
     except Exception as e:

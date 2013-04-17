@@ -1,16 +1,17 @@
 import numpy as np
 
-def collapse(i, j, data):
+def collapse(j, data):
     """Collapses samples into a single row"""
-    
+    uniques = np.unique(j)
+    return uniques, np.array([data[j == u].sum() for u in uniques])
 
-def nearest(coords, shape):
+def nearest(coords, shape, **kwargs):
     valid = ~(np.isnan(coords).all(1))
     rcoords = coords[valid].round().astype(int)
     j = np.ravel_multi_index(rcoords.T[::-1], shape, mode='clip')
     return np.nonzero(valid)[0], j, np.ones((valid.sum(),))
     
-def trilinear(coords, shape):
+def trilinear(coords, shape, **kwargs):
     #trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
     valid = ~(np.isnan(coords).all(1))
     (x, y, z), floor = np.modf(coords[valid].T)
@@ -54,11 +55,11 @@ def distance_func(func, coords, shape, renorm=True, mp=True):
     ix, jx = np.nonzero(Lx)
     iy, jy = np.nonzero(Ly)
     iz, jz = np.nonzero(Lz)
-
+    ba = np.broadcast_arrays
     def func(v):
         mx, my, mz = ix[jx == v], iy[jy == v], iz[jz == v]
-        idx, idy, idz = [i.ravel() for i in np.meshgrid(mx, my, mz)]
-        vx, vy, vz = [i.ravel() for i in np.meshgrid(Lx[mx, v], Ly[my, v], Lz[mz, v])]
+        idx, idy, idz = [i.ravel() for i in ba(*np.ix_(mx, my, mz))]
+        vx, vy, vz = [i.ravel() for i in ba(*np.ix_(Lx[mx, v], Ly[my, v], Lz[mz, v]))]
 
         i = v * np.ones((len(idx,)))
         j = np.ravel_multi_index((idz, idy, idx), shape, mode='clip')

@@ -20,11 +20,39 @@ class VolumeMapper(Mapper):
         _savecache(filename, masks[0], masks[1], xfm.shape)
         return cls(masks[0], masks[1], xfm.shape)
 
+    @classmethod
+    def _getmask(cls, pia, wm, polys, shape, **kwargs):
+        from .. import mp
+        rand = np.random.rand(npts, 3)
+        csrshape = len(wm), np.prod(shape)
+
+        def func(pts):
+            if len(pts) > 0:
+                #generate points within the bounding box
+                samples = rand * (pts.max(0) - pts.min(0)) + pts.min(0)
+                #check which points are inside the polyhedron
+                inside = polyutils.inside_convex_poly(pts)(samples)
+                return cls._sample(samples[inside], shape, np.sum(inside))
+
+        surf = polyutils.Surface(pia, polys)
+        samples = mp.map(func, surf.polyconvex(wm))
+        #samples = map(func, surf.polyconvex(wm)) ## For debugging
+        ij, data = [], []
+        for i, sample in enumerate(samples):
+            if sample is not None:
+                idx = np.zeros((2, len(sample[0])))
+                idx[0], idx[1] = i, sample[0]
+                ij.append(idx)
+                data.append(sample[1])
+
+        return sparse.csr_matrix((np.hstack(data), np.hstack(ij)), shape=csrshape)
+
 class PolyConstMapper(VolumeMapper):
-    pass
+    patchsize = 0.5
+    
 
 class PolyLinMapper(VolumeMapper):
-    pass
+    patchsize = 1
 
 class Polyhedral(VolumeMapper):
     '''Uses an actual (likely concave) polyhedra betwen the pial and white surfaces

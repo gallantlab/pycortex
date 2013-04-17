@@ -16,15 +16,13 @@ def map(func, iterable, procs = mp.cpu_count()):
             length.value += 1
         for _ in range(procs*2):
             input.put((-1,-1))
+        print 'fill finished'
         
     def _func(proc, input, output):
         idx, data = input.get()
         while idx != -1:
-            #print "Running %d..."%idx
-            #sys.stdout.flush()
             output.put((idx, func(data)))
             idx, data = input.get()
-        #print "end proc %d"%proc
     
     filler = mp.Process(target = _fill, args=(iterable, procs, input, output))
     filler.daemon = True
@@ -38,6 +36,7 @@ def map(func, iterable, procs = mp.cpu_count()):
         iterlen = len(iterable)
     except:
         filler.join()
+        print 'fill exit'
         iterlen = length.value
 
     data = [[]]*iterlen
