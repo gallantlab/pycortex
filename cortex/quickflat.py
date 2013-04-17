@@ -27,25 +27,6 @@ def _gen_flat_mask(subject, height=1024):
     draw.polygon(rpts[:,:2].ravel().tolist(), fill=255)
     return np.array(im) > 0
 
-def _make_flat_cache(subject, xfmname, height=1024):
-    from scipy.spatial import cKDTree
-
-    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    valid = np.unique(polys)
-    fmax, fmin = flat.max(0), flat.min(0)
-    size = fmax - fmin
-    aspect = size[0] / size[1]
-    width = int(aspect * height)
-
-    mask = _gen_flat_mask(subject, height=height).T
-    assert mask.shape[0] == width and mask.shape[1] == height
-
-    grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
-    kdt = cKDTree(flat[valid,:2])
-    dist, idx = kdt.query(grid.T[mask.ravel()])
-
-    return valid[idx], mask
-
 def _gen_flat_border(subject, height=1024):
     from . import polyutils
     #import Image
@@ -118,6 +99,65 @@ def _gen_flat_border(subject, height=1024):
     #return np.array(im)[::-1]/255.0
     return lines, ismwalls
 
+def _make_flat_cache(subject, xfmname, height=1024):
+    from scipy.spatial import cKDTree
+
+    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
+    valid = np.unique(polys)
+    fmax, fmin = flat.max(0), flat.min(0)
+    size = fmax - fmin
+    aspect = size[0] / size[1]
+    width = int(aspect * height)
+
+    mask = _gen_flat_mask(subject, height=height).T
+    assert mask.shape[0] == width and mask.shape[1] == height
+
+    grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
+    kdt = cKDTree(flat[valid,:2])
+    dist, idx = kdt.query(grid.T[mask.ravel()])
+
+    return valid[idx], mask
+
+def _make_pixelwise_flat_cache(subject, xfmname, height=1024, sampler="trilinear"):
+    from scipy.spatial import cKDTree
+
+    fid, polys = surfs.getSurf(subject, "fiducial", merge=True, nudge=True)
+    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
+    valid = np.unique(polys)
+    fmax, fmin = flat.max(0), flat.min(0)
+    size = fmax - fmin
+    aspect = size[0] / size[1]
+    width = int(aspect * height)
+    
+    mask = _gen_flat_mask(subject, height=height).T
+    assert mask.shape[0] == width and mask.shape[1] == height
+    
+    grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
+    ## Get barycentric coordinates
+    from scipy.spatial import Delaunay
+    dl = Delaunay(flat[:,:2])
+    simps = dl.find_simplex(grid.T[mask.ravel()])
+    missing = simps == -1
+    tfms = dl.transform[simps]
+    l1, l2 = (tfms[:,:2].transpose(1,2,0) * (grid.T[mask.ravel()] - tfms[:,2]).T).sum(1)
+    l3 = 1 - l1 - l2
+
+    ll = np.vstack([l1, l2, l3])
+    ll[:,missing] = 0
+
+    ## Transform fiducial vertex locations to pixel locations using barycentric xfm
+    fidcoords = (fid[dl.vertices][simps] * ll[np.newaxis].T).sum(1)
+
+    from cortex.mapper import samplers
+    from scipy import sparse
+    xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
+    sampclass = getattr(samplers, sampler)
+    i, j, data = sampclass(xfm(fidcoords), xfm.shape)
+    csrshape = len(fidcoords), np.prod(xfm.shape)
+    mapmat = sparse.csr_matrix((data, np.array([i, j])), shape=csrshape)
+    
+    return mapmat, mask
+
 cache = dict()
 def get_cache(subject, xfmname, recache=False, height=1024):
     key = (subject, xfmname, height)
@@ -163,6 +203,16 @@ def make(data, subject, xfmname, recache=False, height=1024, projection='nearest
     img[:, mask] = mdata[:,verts]
     return img.swapaxes(1, 2)[:,::-1].squeeze()
 
+def make_pixelwise(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
+    volmask = utils.get_cortical_mask(subject, xfmname, projection)
+    voldata = utils.unmask(volmask, data)
+    ## No cache for now
+    mapmat, mask = _make_pixelwise_flat_cache(subject, xfmname, height, projection)
+    ## No checking for different datatypes
+    img = (np.nan*np.ones_like(mask)).astype(data.dtype)
+    img[mask] = mapmat.dot(voldata.ravel())
+    return img.swapaxes(0, 1)[::-1].squeeze()
+
 rois = dict() ## lame
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
     import shlex
@@ -191,11 +241,14 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
 
 def make_figure(data, subject, xfmname, recache=False, height=1024, projection='nearest',
                 with_rois=True, labels=True, colorbar=True, dpi=100,
-                with_borders=False, with_dropout=False, **kwargs):
+                with_borders=False, with_dropout=False, pixelwise=False,**kwargs):
     from matplotlib import pyplot as plt
     from matplotlib.collections import LineCollection
 
-    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
+    if pixelwise:
+        im = make_pixelwise(data, subject, xfmname, recache=recache, height=height, projection=projection)
+    else:
+        im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
     
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
