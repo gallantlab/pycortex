@@ -115,7 +115,7 @@ Dataset.prototype = {
                 $("#bottombar").addClass("bbar_controls");
                 $("#movieprogress div").slider("option", {min:0, max:this.textures.length-1});
             } else {
-                viewer._setVerts(this.textures[0], dim);
+                //viewer._setVerts(this.textures[0], dim);
                 $("#moviecontrols").hide();
                 $("#bottombar").removeClass("bbar_controls");
             }

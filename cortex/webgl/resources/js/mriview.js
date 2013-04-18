@@ -1,19 +1,25 @@
 var flatscale = .2;
-var vShadeHead = [
+var vertexShader = [
+    THREE.ShaderChunk[ "map_pars_vertex" ], 
+    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+
     "attribute vec4 auxdat;",
-
-    "uniform sampler2D colormap;",
-    "uniform float vmin[2];",
-    "uniform float vmax[2];",
-
-    "uniform float framemix;",
+    "attribute vec3 bary;",
+    "attribute vec3 pos1;",
+    "attribute vec3 pos2;",
+    "attribute vec3 pos3;",
 
     "varying vec3 vViewPosition;",
     "varying vec3 vNormal;",
-    "varying vec4 vColor;",
     "varying float vCurv;",
     "varying float vDrop;",
     "varying float vMedial;",
+
+    "varying vec3 vBC;",
+    "varying vec3 v1;",
+    "varying vec3 v2;",
+    "varying vec3 v3;",
 
     "void main() {",
 
@@ -24,10 +30,12 @@ var vShadeHead = [
         "vDrop = auxdat.x;",
         "vCurv = auxdat.y;",
         "vMedial = auxdat.z;",
-        "",
-].join("\n");
 
-var vShadeTail = [ "",
+        "v1 = pos1;",
+        "v2 = pos2;",
+        "v3 = pos3;",
+
+        "vBC = bary;",
         "vViewPosition = -mvPosition.xyz;",
 
         THREE.ShaderChunk[ "morphnormal_vertex" ],
@@ -39,18 +47,15 @@ var vShadeTail = [ "",
         THREE.ShaderChunk[ "default_vertex" ],
 
     "}"
-
 ].join("\n");
 
-var cmapShader = ([
-    THREE.ShaderChunk[ "map_pars_vertex" ], 
-    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
-    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
-    "attribute float data0;",
-    "attribute float data1;",
-    "attribute float data2;",
-    "attribute float data3;",
-    ]).join("\n") + vShadeHead + ([
+var rawshade = [
+        "vColor  = (1. - framemix) * data0 * vec4(1. / 255.);",
+        "vColor +=       framemix  * data2 * vec4(1. / 255.);",
+        "vColor.rgb *= vColor.a;"
+]
+
+var cmapshade = [
         'if (!(data0 <= 0. || 0. <= data0)) {',
             'vColor = vec4(0.);',
         '} else {',
@@ -66,25 +71,24 @@ var cmapShader = ([
 
             "vColor  = texture2D(colormap, cuv);",
         '}',
-].join("\n")) + vShadeTail;
-
-var rawShader = ([
-    THREE.ShaderChunk[ "map_pars_vertex" ], 
-    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
-    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
-    "attribute vec4 data0;",
-    "attribute vec4 data2;",
-    ]).join("\n") + vShadeHead + ([
-        "vColor  = (1. - framemix) * data0 * vec4(1. / 255.);",
-        "vColor +=       framemix  * data2 * vec4(1. / 255.);",
-        "vColor.rgb *= vColor.a;",
-].join("\n")) + vShadeTail;
+]
 
 var fragmentShader = [
     THREE.ShaderChunk[ "map_pars_fragment" ],
     THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
     "uniform int hide_mwall;",
+
+    "uniform mat4 volxfm;",
+    "uniform sampler2D data0;",
+    "uniform sampler2D data1;",
+    "uniform sampler2D data2;",
+    "uniform sampler2D data3;",
+
+    "uniform sampler2D colormap;",
+    "uniform float vmin[2];",
+    "uniform float vmax[2];",
+    "uniform float framemix;",,
 
     "uniform sampler2D hatch;",
     "uniform vec2 hatchrep;",
@@ -102,27 +106,36 @@ var fragmentShader = [
     "uniform vec3 specular;",
     "uniform float shininess;",
 
-    "varying vec4 vColor;",
     "varying float vCurv;",
     "varying float vDrop;",
     "varying float vMedial;",
 
+    "varying vec3 vBC;",
+    "varying vec3 v1;",
+    "varying vec3 v2;",
+    "varying vec3 v3;",
+
     "void main() {",
+        //Finding fiducial location
+        "vec4 fid = vec4(vBC.x * v1 + vBC.y * v2 + vBC.z * v3, 1.);",
+        "fid = fid * volxfm;",
+
         //Curvature Underlay
         "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
         "gl_FragColor = vec4(vec3(curv)*curvAlpha, curvAlpha);",
 
         "if (vMedial < .999) {",
-            //Data overlay
-            "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
+            "gl_FragColor = vec4(mod(fid.xyz, 1.), 1.);",
+            // //Data overlay
+            // "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
 
             //Cross hatch / dropout layer
             "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
             "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
             "gl_FragColor = hcolor + gl_FragColor * (1. - hcolor.a);",
-            //roi layer
-            "vec4 roi = texture2D(map, vUv);",
-            "gl_FragColor = roi + gl_FragColor * (1. - roi.a);",
+            // //roi layer
+            // "vec4 roi = texture2D(map, vUv);",
+            // "gl_FragColor = roi + gl_FragColor * (1. - roi.a);",
         "} else if (hide_mwall == 1) {",
             "discard;",
         "}",
@@ -177,6 +190,7 @@ function MRIview() {
     this.pixbuf = new Uint8Array($("#brain").width() * $("#brain").height() * 4);
     this.state = "pause";
 
+    var attributes = { bary:true, pos1:true, pos2:true, pos3:true, auxdat:true };
     var uniforms = THREE.UniformsUtils.merge( [
         THREE.UniformsLib[ "lights" ],
         {
@@ -203,13 +217,15 @@ function MRIview() {
             hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
 
             hide_mwall: { type:'i', value:0},
+
+            volxfm:     { type:'m4', value:new THREE.Matrix4() },
         }
     ])
     this.shader =  this.cmapshader = new THREE.ShaderMaterial( { 
-        vertexShader:cmapShader,
+        vertexShader:vertexShader,
         fragmentShader:fragmentShader,
         uniforms: uniforms,
-        attributes: { data0:true, data1:true, data2:true, data3:true, auxdat:true },
+        attributes: attributes,
         morphTargets:true, 
         morphNormals:true, 
         lights:true, 
@@ -221,11 +237,12 @@ function MRIview() {
     this.shader.metal = true;
     this.shader.uniforms.hatch.texture.needsUpdate = true;
 
+    /*
     this.rawshader = new THREE.ShaderMaterial( {
         vertexShader:rawShader,
         fragmentShader:fragmentShader,
         uniforms: uniforms,
-        attributes: { data0:true, data1:true, data2:true, data3:true, auxdat:true },
+        attributes: { bary:true, pos2:true, pos3:true, auxdat:true },
         morphTargets:true,
         morphNormals:true,
         lights:true,
@@ -236,7 +253,7 @@ function MRIview() {
     this.rawshader.map = true;
     this.rawshader.metal = true;
     this.rawshader.uniforms.hatch.texture.needsUpdate = true;
-
+    */
     this.projector = new THREE.Projector();
     this._startplay = null;
     this._staticplugin = false;
@@ -308,14 +325,16 @@ MRIview.prototype = {
             var names = {left:0, right:1};
             for (var name in names) {
                 var right = names[name];
-                //this.datamap[name] = geometries[right].attributes.datamap.array;
-                this._makeFlat(geometries[right], right);
-                var meshpiv = this._makeMesh(geometries[right], this.shader);
+                var flatvars = makeFlat(geometries[right].attributes.uv.array, json.flatlims, this.flatoff, right);
+                geometries[right].morphTargets.push({itemSize:3, stride:3, array:flatvars[0]});
+                geometries[right].morphNormals.push(flatvars[1]);
+                var geom = splitverts(geometries[right]);
+                var meshpiv = this._makeMesh(geom, this.shader);
                 this.meshes[name] = meshpiv.mesh;
                 this.pivot[name] = meshpiv.pivots;
                 this.scene.add(meshpiv.pivots.front);
             }
-
+            /*
             $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
                 this.roipack = new ROIpack(svgdoc, function(tex) {
                     this.shader.uniforms.map.texture = tex;
@@ -329,10 +348,11 @@ MRIview.prototype = {
                     this.roipack.resize(event.width, event.height);
                 }.bind(this));
             }.bind(this));
-
+            */
             this.controls.flatsize = flatscale * this.flatlims[1][0];
             this.controls.flatoff = this.flatoff[1];
 
+            /*
             this.picker = new FacePick(this);
             this.addEventListener("mix", this.picker.setMix.bind(this.picker));
             this.addEventListener("resize", function(event) {
@@ -350,7 +370,7 @@ MRIview.prototype = {
             this.controls.addEventListener("undblpick", function(event) {
                 this.picker.undblpick();
             }.bind(this));
-
+            */
             //Create the surface inflat/unfold buttons
             var btnspeed = 0.5; // How long should folding/unfolding animations take?
             var td, btn, name;
@@ -1188,37 +1208,6 @@ MRIview.prototype = {
         });
     },
 
-    _makeFlat: function(geom, right) {
-        //Generates the UV and flatmap morphTarget using the unscaled UV found in the file
-        geom.computeBoundingSphere();
-        geom.dynamic = true;
-        
-        var uv = geom.attributes.uv.array;
-        var fmin = this.flatlims[0], fmax = this.flatlims[1];
-        var flat = new Float32Array(uv.length / 2 * 3);
-        var norms = new Float32Array(uv.length / 2 * 3);
-        for (var i = 0, il = uv.length / 2; i < il; i++) {
-            if (right) {
-                flat[i*3+1] = flatscale*uv[i*2] + this.flatoff[1];
-                norms[i*3] = 1;
-            } else {
-                flat[i*3+1] = flatscale * -uv[i*2] + this.flatoff[1];
-                norms[i*3] = -1;
-            }
-            flat[i*3+2] = flatscale*uv[i*2+1];
-            uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
-            uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
-        }
-        geom.morphTargets.push({ array:flat, stride:3 })
-        geom.morphNormals.push( norms );
-
-        var len = geom.attributes.position.array.length / 3;
-        var arr = this.active.length > 0 ? this.active[0].textures[0] : new Float32Array(len);
-        geom.attributes.data0 = {array:arr, itemSize:1, stride:1, numItems:len}
-        geom.attributes.data1 = {array:arr, itemSize:1, stride:1, numItems:len}
-        geom.attributes.data2 = {array:arr, itemSize:1, stride:1, numItems:len}
-        geom.attributes.data3 = {array:arr, itemSize:1, stride:1, numItems:len}
-    },
     _makeMesh: function(geom, shader) {
         //Creates the pivots and the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);
@@ -1298,4 +1287,4 @@ function makeHatch(size, linewidth, spacing) {
     tex.magFilter = THREE.LinearFilter;
     tex.minFilter = THREE.LinearMipMapLinearFilter;
     return tex;
-}
+};
