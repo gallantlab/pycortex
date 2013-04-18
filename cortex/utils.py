@@ -62,15 +62,15 @@ def get_vox_dist(subject, xfmname):
 
     fiducial, polys = surfs.getSurf(subject, "fiducial", merge=True)
     xfm = surfs.getXfm(subject, xfmname)
-    shape = xfm.shape
-    idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
+    z, y, x = xfm.shape
+    idx = np.mgrid[:x, :y, :z].reshape(3, -1).T
     mm = xfm.inv(idx)
 
     tree = cKDTree(fiducial)
     dist, argdist = tree.query(mm)
-    dist.shape = shape
-    argdist.shape = shape
-    return dist, argdist
+    dist.shape = (x,y,z)
+    argdist.shape = (x,y,z)
+    return dist.T, argdist.T
 
 def get_hemi_masks(subject, xfmname, type='nearest'):
     '''Returns a binary mask of the left and right hemisphere

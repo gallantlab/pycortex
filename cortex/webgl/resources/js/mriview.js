@@ -80,18 +80,14 @@ var fragmentShader = [
     "uniform int hide_mwall;",
 
     "uniform mat4 volxfm;",
-    "uniform sampler2D data0;",
-    "uniform sampler2D data1;",
-    "uniform sampler2D data2;",
-    "uniform sampler2D data3;",
+    "uniform sampler2D data[4];",
+    "uniform vec2 mosaic;",
+    "uniform vec2 shape;",
 
     "uniform sampler2D colormap;",
     "uniform float vmin[2];",
     "uniform float vmax[2];",
     "uniform float framemix;",,
-
-    "uniform sampler2D hatch;",
-    "uniform vec2 hatchrep;",
 
     "uniform float curvAlpha;",
     "uniform float curvScale;",
@@ -99,6 +95,9 @@ var fragmentShader = [
     "uniform float dataAlpha;",
     "uniform float hatchAlpha;",
     "uniform vec3 hatchColor;",
+
+    "uniform sampler2D hatch;",
+    "uniform vec2 hatchrep;",
 
     "uniform vec3 diffuse;",
     "uniform vec3 ambient;",
@@ -115,17 +114,36 @@ var fragmentShader = [
     "varying vec3 v2;",
     "varying vec3 v3;",
 
-    "void main() {",
-        //Finding fiducial location
-        "vec4 fid = vec4(vBC.x * v1 + vBC.y * v2 + vBC.z * v3, 1.);",
-        "fid = fid * volxfm;",
+    "vec2 make_uv(vec2 coord, float slice) {",
+        "vec2 pos = vec2(mod(slice, mosaic.x), floor(slice / mosaic.x));",
+        "return (2.*(pos*shape+coord)+1.) / (2.*mosaic*shape);",
+        // "return (2.*coord+1.) / (2.*shape);",
+    "}",
 
+    "vec4 trilinear(sampler2D data, vec3 coord) {",
+        "vec4 tex1 = texture2D(data, make_uv(coord.xy, floor(coord.z)));",
+        "vec4 tex2 = texture2D(data, make_uv(coord.xy, ceil(coord.z)));",
+        'return mix(tex1, tex2, fract(coord.z));',
+    "}",
+    "vec4 nearest(sampler2D data, vec3 coord) {",
+        "if (fract(coord.z) > 0.5)",
+            "return texture2D(data, make_uv(coord.xy, ceil(coord.z)));",
+            // "return vec4(make_uv(coord.xy, ceil(coord.z)), 0., 1.);",
+        "else",
+            "return texture2D(data, make_uv(coord.xy, floor(coord.z)));",
+            // "return vec4(make_uv(coord.xy, floor(coord.z)), 0., 1.);",
+    "}",
+
+    "void main() {",
         //Curvature Underlay
         "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
         "gl_FragColor = vec4(vec3(curv)*curvAlpha, curvAlpha);",
 
         "if (vMedial < .999) {",
-            "gl_FragColor = vec4(mod(fid.xyz, 1.), 1.);",
+            //Finding fiducial location
+            "vec4 fid = vec4(vBC.x * v1 + vBC.y * v2 + vBC.z * v3, 1.);",
+            "gl_FragColor = nearest(data[0], (fid*volxfm).xyz);",
+            //"gl_FragColor = fid*volxfm / vec4(100., 100., 32., 1.);",
             // //Data overlay
             // "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
 
@@ -155,6 +173,7 @@ Number.prototype.mod = function(n) {
     return ((this%n)+n)%n;
 }
 
+xfm = [-0.42912749366988884, 0.007490448264490086, 0.007491589269821763, 48.77215990065406, -0.006810245928876961, -0.4275710486929674, 0.03740662265405398, 47.364646648037784, 0.004577342573053696, 0.02102640285011981, 0.24117264017450582, 10.44101854760247, -1.3324807592622293e-16, 3.5390078628149955e-17, 2.4947337280115108e-17, 0.9999999999999941];
 function MRIview() { 
     //Allow objects to listen for mix updates
     THREE.EventTarget.call( this );
@@ -205,6 +224,10 @@ function MRIview() {
             map:        { type:'t',  value:0, texture: null },
             hatch:      { type:'t',  value:1, texture: makeHatch() },
             colormap:   { type:'t',  value:2, texture: null },
+
+            data:       { type:'tv', value:3, texture: [null, null, null, null]},
+            mosaic:     { type:'v2', value:new THREE.Vector2(6, 6)},
+            shape:      { type:'v2', value:new THREE.Vector2(100, 100)},
 
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
@@ -409,6 +432,16 @@ MRIview.prototype = {
             td.appendChild(btn);
             $("#mixbtns").append(td);
             $("#mix, #pivot, #shifthemis").parent().attr("colspan", json.names.length+2);
+
+            var data = THREE.ImageUtils.loadTexture("resources/rand.png", {}, function() {
+                data.minFilter = THREE.NearestFilter;
+                data.magFilter = THREE.NearestFilter;
+                data.flipY = false;
+                this.shader.uniforms.volxfm.value.set.apply(this.shader.uniforms.volxfm.value, xfm);
+                this.shader.uniforms.volxfm.value.transpose();
+                this.shader.uniforms.data.texture[0] = data;
+                this.schedule();
+            }.bind(this));
 
             this._loaded = true;
             this.schedule();

@@ -53,7 +53,7 @@ def detrend_poly(data, polyorder = 10, mask=None):
     else:
         return detrended.reshape(*s)
 
-def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
+def mosaic(data, dim=0, show=True, **kwargs):
     """mosaic(data, xy=(6, 5), trim=10, skip=1)
 
     Turns volume data into a mosaic, useful for quickly viewing volumetric data
@@ -63,34 +63,35 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     ----------
     data : array_like
         3D volumetric data to mosaic
-    xy : tuple, optional
-        tuple(x, y) for the grid of images. Default (6, 5)
-    trim : int, optional
-        How many pixels to trim from the edges of each image. Default 10
-    skip : int, optional
-        How many slices to skip in the beginning. Default 1
+    dim : int
+        Dimension across which to mosaic. Default 0.
+    show : bool
+        Display mosaic with matplotlib? Default True.
     """
-    assert len(data.shape) == 3, "Are you sure this is volumetric?"
-    dat = data.copy()
-    if trim>0:
-        dat = dat[:, trim:-trim, trim:-trim]
-    d = dat.shape[1:]
-    output = np.zeros(d*np.array(xy))
+    if len(data.shape) != 3:
+        raise ValueError("Invalid data shape")
+    plane = list(data.shape)
+    slices = plane.pop(dim)
+    height, width = plane
+    aspect = width / float(height)
+    square = np.sqrt(slices / aspect)
+    nwide = int(np.ceil(square))
+    ntall = int(np.ceil(square * aspect))
+    output = np.nan*np.ones((ntall * height, nwide * width), dtype=data.dtype)
+    sl = [slice(None), slice(None), slice(None)]
     
-    c = skip
-    for i in range(xy[0]):
-        for j in range(xy[1]):
-            if c < len(dat):
-                output[d[0]*i:d[0]*(i+1), d[1]*j:d[1]*(j+1)] = dat[c]
-            c+= 1
+    for h in range(ntall):
+        for w in range(nwide):
+            sl[dim] = h*nwide+w
+            if sl[dim] < slices:
+                output[h*height:(h+1)*height, w*width:(w+1)*width] = data[sl]
     
     if show:
         from matplotlib import pyplot as plt
         plt.imshow(output, **kwargs)
-        plt.xticks([])
-        plt.yticks([])
+        plt.axis('off')
 
-    return output
+    return output, (nwide, ntall)
 
 def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):
     from matplotlib import cm

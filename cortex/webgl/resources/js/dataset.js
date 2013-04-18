@@ -1,6 +1,5 @@
 function Dataset(nparray) {
     this.loaded = $.Deferred();
-    this.reordered = false;
     if (nparray instanceof NParray) {
         this.init(nparray);
     }
