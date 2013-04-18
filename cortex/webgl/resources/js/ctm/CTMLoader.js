@@ -203,8 +203,6 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 
 		var scope = this;
 
-		var reorderVertices = true;
-
 		scope.materials = [];
 
 		THREE.BufferGeometry.call( this );
@@ -256,21 +254,7 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 
 		scope.attributes = attributes;
 		scope.morphTargets = morphTargets.sort(function(a, b){ return a.num - b.num});
-
-		// reorder vertices
-		// (needed for buffer splitting, to keep together face vertices)
-
-		if ( reorderVertices && attributes.position.array.length / 3 > 65536 ) {
-
-			scope.reorderVertices();
-
-		} else {
-
-			// recast CTM 32-bit indices as 16-bit WebGL indices
-			scope.attributes.index.array = new Uint16Array( attributes.index.array );
-			scope.offsets = [{ start: 0, count: attributes.index.array.length, index: 0 }];
-
-		}
+		scope.offsets = [{ start: 0, count: attributes.index.array.length, index: 0 }];
 
 	}
 

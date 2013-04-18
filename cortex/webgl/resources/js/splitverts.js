@@ -92,3 +92,45 @@ function makeFlat(uv, flatlims, flatoff, right) {
 
     return [flat, norms];
 }
+
+function makePosTex(pos) {
+    var width = Math.ceil(Math.sqrt(pos.length));
+    var array = new Float32Array(width*width*3);
+    var tex = new THREE.DataTexture(array, width, width, THREE.RGBFormat, THREE.FloatType);
+    tex.minFilter = THREE.NearestFilter;
+    tex.magFilter = THREE.NearestFilter;
+    array.set(pos);
+    return {array:array, tex:tex, width:width}
+}
+
+function makeHatch(size, linewidth, spacing) {
+    //Creates a cross-hatching pattern in canvas for the dropout shading
+    if (spacing === undefined)
+        spacing = 32;
+    if (size === undefined)
+        size = 128;
+    var canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    var ctx = canvas.getContext("2d");
+    ctx.lineWidth = linewidth ? linewidth: 8;
+    ctx.strokeStyle = "white";
+    for (var i = 0, il = size*2; i < il; i+=spacing) {
+        ctx.beginPath();
+        ctx.moveTo(i-size, 0);
+        ctx.lineTo(i, size);
+        ctx.stroke();
+        ctx.moveTo(i, 0)
+        ctx.lineTo(i-size, size);
+        ctx.stroke();
+    }
+
+    var tex = new THREE.Texture(canvas);
+    tex.needsUpdate = true;
+    tex.premultiplyAlpha = true;
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.magFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearMipMapLinearFilter;
+    return tex;
+};

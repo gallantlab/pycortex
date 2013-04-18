@@ -117,7 +117,6 @@ var fragmentShader = [
     "vec2 make_uv(vec2 coord, float slice) {",
         "vec2 pos = vec2(mod(slice, mosaic.x), floor(slice / mosaic.x));",
         "return (2.*(pos*shape+coord)+1.) / (2.*mosaic*shape);",
-        // "return (2.*coord+1.) / (2.*shape);",
     "}",
 
     "vec4 trilinear(sampler2D data, vec3 coord) {",
@@ -128,10 +127,8 @@ var fragmentShader = [
     "vec4 nearest(sampler2D data, vec3 coord) {",
         "if (fract(coord.z) > 0.5)",
             "return texture2D(data, make_uv(coord.xy, ceil(coord.z)));",
-            // "return vec4(make_uv(coord.xy, ceil(coord.z)), 0., 1.);",
         "else",
             "return texture2D(data, make_uv(coord.xy, floor(coord.z)));",
-            // "return vec4(make_uv(coord.xy, floor(coord.z)), 0., 1.);",
     "}",
 
     "void main() {",
@@ -142,8 +139,14 @@ var fragmentShader = [
         "if (vMedial < .999) {",
             //Finding fiducial location
             "vec4 fid = vec4(vBC.x * v1 + vBC.y * v2 + vBC.z * v3, 1.);",
-            "gl_FragColor = nearest(data[0], (fid*volxfm).xyz);",
-            //"gl_FragColor = fid*volxfm / vec4(100., 100., 32., 1.);",
+            "vec3 coord = (fid*volxfm).xyz;",
+            "gl_FragColor = nearest(data[0], coord);",
+            // "bvec3 edges = lessThan(abs(fract(coord) - vec3(0.5)), vec3(.02));",
+            // "if (edges.x) gl_FragColor = vec4(1.,0.,0.,1.);",
+            // "else if (edges.y) gl_FragColor = vec4(0.,.8,0.,1.);",
+            // "else if (edges.z) gl_FragColor = vec4(0.,0.,1.,1.);",
+            // "else gl_FragColor = nearest(data[0], coord);",
+
             // //Data overlay
             // "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
 
@@ -151,9 +154,11 @@ var fragmentShader = [
             "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
             "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
             "gl_FragColor = hcolor + gl_FragColor * (1. - hcolor.a);",
-            // //roi layer
-            // "vec4 roi = texture2D(map, vUv);",
-            // "gl_FragColor = roi + gl_FragColor * (1. - roi.a);",
+
+            //roi layer
+            "vec4 roi = texture2D(map, vUv);",
+            "gl_FragColor = roi + gl_FragColor * (1. - roi.a);",
+
         "} else if (hide_mwall == 1) {",
             "discard;",
         "}",
@@ -244,6 +249,8 @@ function MRIview() {
             volxfm:     { type:'m4', value:new THREE.Matrix4() },
         }
     ])
+    uniforms.hatch.texture.needsUpdate = true;
+
     this.shader =  this.cmapshader = new THREE.ShaderMaterial( { 
         vertexShader:vertexShader,
         fragmentShader:fragmentShader,
@@ -258,7 +265,6 @@ function MRIview() {
     });
     this.shader.map = true;
     this.shader.metal = true;
-    this.shader.uniforms.hatch.texture.needsUpdate = true;
 
     /*
     this.rawshader = new THREE.ShaderMaterial( {
@@ -335,6 +341,7 @@ MRIview.prototype = {
             this.meshes = {};
             this.pivot = {};
             this.datamap = {};
+            this.postex = {left:{}, right:{}};
             this.flatlims = json.flatlims;
             this.flatoff = [
                 Math.max(
@@ -348,6 +355,8 @@ MRIview.prototype = {
             var names = {left:0, right:1};
             for (var name in names) {
                 var right = names[name];
+
+                var postex = makePosTex(geometries[right].attributes.position.array);
                 var flatvars = makeFlat(geometries[right].attributes.uv.array, json.flatlims, this.flatoff, right);
                 geometries[right].morphTargets.push({itemSize:3, stride:3, array:flatvars[0]});
                 geometries[right].morphNormals.push(flatvars[1]);
@@ -1290,34 +1299,3 @@ MRIview.prototype = {
     }, 
 }
 
-function makeHatch(size, linewidth, spacing) {
-    //Creates a cross-hatching pattern in canvas for the dropout shading
-    if (spacing === undefined)
-        spacing = 32;
-    if (size === undefined)
-        size = 128;
-    var canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    var ctx = canvas.getContext("2d");
-    ctx.lineWidth = linewidth ? linewidth: 8;
-    ctx.strokeStyle = "white";
-    for (var i = 0, il = size*2; i < il; i+=spacing) {
-        ctx.beginPath();
-        ctx.moveTo(i-size, 0);
-        ctx.lineTo(i, size);
-        ctx.stroke();
-        ctx.moveTo(i, 0)
-        ctx.lineTo(i-size, size);
-        ctx.stroke();
-    }
-
-    var tex = new THREE.Texture(canvas);
-    tex.needsUpdate = true;
-    tex.premultiplyAlpha = true;
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    tex.magFilter = THREE.LinearFilter;
-    tex.minFilter = THREE.LinearMipMapLinearFilter;
-    return tex;
-};
