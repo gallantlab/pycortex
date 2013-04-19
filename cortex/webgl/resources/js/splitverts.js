@@ -254,6 +254,7 @@ function makeShader(sampler, raw, voxline, volume) {
     samplers,
 
     "void main() {",
+        "vec4 vColor;",
         //Curvature Underlay
         "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
         "gl_FragColor = vec4(vec3(curv)*curvAlpha, curvAlpha);",
@@ -279,39 +280,43 @@ function makeShader(sampler, raw, voxline, volume) {
         fragMid += [
             "vec4 color1 = "+sampler+"_x(data[0], fid);",
             "vec4 color2 = "+sampler+"_x(data[2], fid);",
-            "vec4 vColor = mix(color1, color2, framemix);",
+            "vColor = mix(color1, color2, framemix);",
             "",
         ].join("\n");
     } else {
         fragMid += [
-            'if (!(data0 <= 0. || 0. <= data0)) {',
-                'vec4 vColor = vec4(0.);',
+            "float color0 = "+sampler+"_x(data[0], fid).r;",
+            "float color1 = "+sampler+"_x(data[1], fid).r;",
+            "float color2 = "+sampler+"_x(data[2], fid).r;",
+            "float color3 = "+sampler+"_x(data[3], fid).r;",
+            'if (!(color0 <= 0. || 0. <= color0)) {',
+                'vColor = vec4(0.);',
             '} else {',
                 "float vrange0 = vmax[0] - vmin[0];",
                 "float vrange1 = vmax[1] - vmin[1];",
-                "float vnorm0 = ("+sampler+"_x(data[0], fid) - vmin[0]) / vrange0;",
-                "float vnorm1 = ("+sampler+"_y(data[1], fid) - vmin[1]) / vrange1;",
-                "float vnorm2 = ("+sampler+"_x(data[2], fid) - vmin[0]) / vrange0;",
-                "float vnorm3 = ("+sampler+"_y(data[3], fid) - vmin[1]) / vrange1;",
+                "float vnorm0 = (color0 - vmin[0]) / vrange0;",
+                "float vnorm1 = (color1 - vmin[1]) / vrange1;",
+                "float vnorm2 = (color2 - vmin[0]) / vrange0;",
+                "float vnorm3 = (color3 - vmin[1]) / vrange1;",
 
                 "float fnorm0 = mix(vnorm0, vnorm2, framemix);",
                 "float fnorm1 = mix(vnorm0, vnorm3, framemix);",
 
                 "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
 
-                "vec4 vColor = texture2D(colormap, cuv);",
+                "vColor = texture2D(colormap, cuv);",
             "}",
         ].join("\n");
     }
     if (voxline) {
         fragMid += [
             "vec3 coord = (volxfm[0]*fid).xyz;",
-            "vec3 edge = abs(fract(coord) - vec3(0.5));",
-            "gl_FragColor = mix(vec4(1.), vColor, edgeFactor(edge));",
+            "vec3 edge = mod(coord - vec3(0.5), 1.);",
+            "gl_FragColor = mix(vec4(vec3(0.), 1.), vColor, edgeFactor(edge));",
         ].join("\n");
-        // fragMid += [
-        //     "gl_FragColor = vColor;",
         // "}\n",
+    } else {
+        fragMid += "gl_FragColor = vColor;";
     }
 
     var fragTail = [

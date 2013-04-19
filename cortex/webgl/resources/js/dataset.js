@@ -1,14 +1,19 @@
 var filtertypes = { nearest: THREE.NearestFilter, trilinear: THREE.LinearFilter };
 function Dataset(json) {
     this.loaded = $.Deferred();
+
     this.data = json.data;
+    this.mosaic = json.mosaic;
+    this.frames = json.data.length;
+    this.xfm = json.xfm;
     this.min = json.min;
     this.max = json.max;
+    this.lmin = json.lmin;
+    this.lmax = json.lmax;
     this.cmap = json.cmap;
     this.stim = json.stim;
     this.rate = json.rate === undefined ? 1 : json.rate;
     this.raw = json.raw === undefined ? false : json.raw;
-    this.frames = json.frames === undefined ? 1 : json.frames;
     this.delay = json.delay === undefined ? 0 : json.delay;
     this.filter = json.filter == undefined ? "nearest" : json.filter;
     this.textures = [];
@@ -16,11 +21,12 @@ function Dataset(json) {
     var loadtex = function(idx) {
         var img = new Image();
         img.addEventListener("load", function() {
+            this.shape = [img.width / this.mosaic[0], img.height / this.mosaic[1]];
             var tex = new THREE.Texture(img);
             tex.minFilter = filtertypes[this.filter];
             tex.magFilter = filtertypes[this.filter];
-            tex.premultiplyAlpha = false;
-            tex.flipY = true;
+            tex.premultiplyAlpha = true;
+            tex.flipY = false;
             tex.needsUpdate = true;
             if (!this.raw) {
                 tex.type = THREE.FloatType;
@@ -35,11 +41,10 @@ function Dataset(json) {
                 this.loaded.resolve();
             }
         }.bind(this));
-        var fname = this.frames > 1 ? "_"+idx : "";
-        img.src = this.data + fname + ".png";
+        img.src = this.data[this.textures.length];
     }.bind(this);
 
-    loadtex();
+    loadtex(0);
 }
 Dataset.fromJSON = function(json) {
     return new Dataset(json);
@@ -101,52 +106,43 @@ Dataset.prototype = {
             }
         });
     },
-    set: function(viewer, dim) {
+    set: function(uniforms, dim, frame, init) {
         if (dim === undefined)
             dim = 0;
 
-        this.loaded.done(function() {
-            viewer._setShader(this.raw);
-            if (this.textures.length > 1) {
-                viewer.setFrame(0);
-                $("#moviecontrols").show();
-                $("#bottombar").addClass("bbar_controls");
-                $("#movieprogress div").slider("option", {min:0, max:this.textures.length-1});
-            } else {
-                //viewer._setVerts(this.textures[0], dim);
-                $("#moviecontrols").hide();
-                $("#bottombar").removeClass("bbar_controls");
+        if (init) {
+            uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
+            uniforms.shape.value[dim].set(this.shape[0], this.shape[1]);
+            uniforms.volxfm.value[dim].set.apply(uniforms.volxfm.value[dim], this.xfm);
+        }
+
+        if (uniforms.data.texture[dim] !== this.textures[frame]) {
+            uniforms.data.texture[dim] = this.textures[frame];
+            uniforms.data.texture[dim].needsUpdate = true;
+            if (this.frames > 1) {
+                uniforms.data.texture[dim+2] = this.textures[frame+1];
+                uniforms.data.texture[dim+2].needsUpdate = true;
             }
-
-            if (this.cmap !== undefined) {
-                viewer.setColormap(this.cmap);
-            }
-
-            $(dim == 0 ? "#vrange" : "#vrange2").slider("option", {min: this.lmin, max:this.lmax});
-            viewer.setVminmax(this.min, this.max, dim);
-
-            if (dim > 0)
-                return;
-
-            if (this.stim === undefined) {
-                viewer.rmPlugin();
-            } else {
-                for (var i = 0; i < allStims.length; i++)
-                    $(allStims[i]).unbind("timeupdate");
-                
-                var delay = this.delay;
-                viewer.addPlugin(this.stim);
-                if (delay >= 0)
-                    this.stim.seekTo(viewer.frame - delay);
-                else
-                    viewer.setFrame(-delay);
-                $(this.stim).bind("timeupdate", function() {
-                    var now = new Date().getTime() / 1000;
-                    var sec = now - viewer._startplay / 1000;
-                    console.log("Time diff: "+(this.currentTime + delay - sec));
-                    viewer._startplay = (now - this.currentTime - delay)*1000;
-                })
-            }
-        }.bind(this));
+        }
     },
 }
+
+// if (this.stim === undefined) {
+//     viewer.rmPlugin();
+// } else {
+//     for (var i = 0; i < allStims.length; i++)
+//         $(allStims[i]).unbind("timeupdate");
+    
+//     var delay = this.delay;
+//     viewer.addPlugin(this.stim);
+//     if (delay >= 0)
+//         this.stim.seekTo(viewer.frame - delay);
+//     else
+//         viewer.setFrame(-delay);
+//     $(this.stim).bind("timeupdate", function() {
+//         var now = new Date().getTime() / 1000;
+//         var sec = now - viewer._startplay / 1000;
+//         console.log("Time diff: "+(this.currentTime + delay - sec));
+//         viewer._startplay = (now - this.currentTime - delay)*1000;
+//     })
+// }

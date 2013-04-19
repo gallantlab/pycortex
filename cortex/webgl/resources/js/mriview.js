@@ -11,7 +11,8 @@ Number.prototype.mod = function(n) {
     return ((this%n)+n)%n;
 }
 
-xfm = [-0.45506490072302974, 0.02004975616309192, 0.0022977291546597699, 49.445470436048311, -0.019390573901769792, -0.44876832803664829, 0.075608516805043269, 45.412207228733749, 0.0029832487229623397, 0.040351386060814037, 0.23872961503246148, 11.913846229710684, 0.0, 0.0, 0.0, 1.0];
+//xfm = [-0.45506490072302974, 0.02004975616309192, 0.0022977291546597699, 49.445470436048311, -0.019390573901769792, -0.44876832803664829, 0.075608516805043269, 45.412207228733749, 0.0029832487229623397, 0.040351386060814037, 0.23872961503246148, 11.913846229710684, 0.0, 0.0, 0.0, 1.0];
+xfm = [-0.42912749366988884, 0.0074904482644900863, 0.0074915892698217629, 48.77215990065406, -0.006810245928876961, -0.42757104869296741, 0.037406622654053978, 47.364646648037784, 0.0045773425730536964, 0.021026402850119811, 0.24117264017450582, 10.44101854760247, -1.3324807592622293e-16, 3.5390078628149955e-17, 2.4947337280115108e-17, 0.99999999999999412];
 function MRIview() { 
     //Allow objects to listen for mix updates
     THREE.EventTarget.call( this );
@@ -43,13 +44,12 @@ function MRIview() {
     });
     this.renderer.sortObjects = false;
     this.renderer.setClearColorHex( 0x0, 1 );
+    this.renderer.context.getExtension("OES_standard_derivatives");
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
     this.pixbuf = new Uint8Array($("#brain").width() * $("#brain").height() * 4);
     this.state = "pause";
-    this.renderer.context.getExtension("OES_standard_derivatives");
 
-    var attributes = { bary:true, pos1:true, pos2:true, pos3:true, auxdat:true };
-    var uniforms = THREE.UniformsUtils.merge( [
+    this.uniforms = THREE.UniformsUtils.merge( [
         THREE.UniformsLib[ "lights" ],
         {
             diffuse:    { type:'v3', value:new THREE.Vector3( 1,1,1 )},
@@ -82,47 +82,17 @@ function MRIview() {
             hide_mwall: { type:'i', value:0},
         }
     ])
-    uniforms.hatch.texture.needsUpdate = true;
-
-    var shaders = makeShader("nearest", true, true, false);
-
-    this.shader =  this.cmapshader = new THREE.ShaderMaterial( { 
-        vertexShader:shaders.vertex,
-        fragmentShader:shaders.fragment,
-        uniforms: uniforms,
-        attributes: attributes,
-        morphTargets:true, 
-        morphNormals:true, 
-        lights:true, 
-        vertexColors:true,
-        blending:THREE.CustomBlending,
-        transparent:true,
-    });
-    this.shader.map = true;
-    this.shader.metal = true;
-
-    /*
-    this.rawshader = new THREE.ShaderMaterial( {
-        vertexShader:rawShader,
-        fragmentShader:fragmentShader,
-        uniforms: uniforms,
-        attributes: { bary:true, pos2:true, pos3:true, auxdat:true },
-        morphTargets:true,
-        morphNormals:true,
-        lights:true,
-        vertexColors:true,
-        blending:THREE.CustomBlending,
-        transparent:true,
-    });
-    this.rawshader.map = true;
-    this.rawshader.metal = true;
-    */
+    this.uniforms.hatch.texture.needsUpdate = true;
 
     this.projector = new THREE.Projector();
     this._startplay = null;
     this._staticplugin = false;
     this._loaded = false;
-    this.loaded = $.Deferred();
+    this.loaded = $.Deferred().done(function() {
+        this.schedule();
+        $("#ctmload").hide();
+        $("#brain").css("opacity", 1);
+    }.bind(this));
     this.cmapload = $.Deferred();
     this.labelshow = true;
     this._pivot = 0;
@@ -133,8 +103,29 @@ function MRIview() {
     this._bindUI();
 }
 MRIview.prototype = { 
+    setShader: function(sampler, raw, voxline, volume) {
+        var shaders = makeShader(sampler, raw, voxline, volume);
+        this.shader = new THREE.ShaderMaterial( { 
+            vertexShader:shaders.vertex,
+            fragmentShader:shaders.fragment,
+            uniforms: this.uniforms,
+            attributes: { bary:true, pos1:true, pos2:true, pos3:true, auxdat:true },
+            morphTargets:true, 
+            morphNormals:true, 
+            lights:true, 
+            vertexColors:true,
+            blending:THREE.CustomBlending,
+            transparent:true,
+        });
+        this.shader.map = true;
+        this.shader.metal = true;
+        if (this.meshes && this.meshes.left) {
+            this.meshes.left.material = this.shader;
+            this.meshes.right.material = this.shader;
+        }
+    }, 
     schedule: function() {
-        if (this._loaded && !this._scheduled && this.state == "pause") {
+        if (!this._scheduled && this.state == "pause") {
             this._scheduled = true;
             requestAnimationFrame( this.draw.bind(this) );
         }
@@ -186,7 +177,11 @@ MRIview.prototype = {
                     geometries[0].boundingBox.min.y, 
                     geometries[1].boundingBox.min.y
                 )];
+            this._makeBtns(json.names);
+            this.controls.flatsize = flatscale * this.flatlims[1][0];
+            this.controls.flatoff = this.flatoff[1];
 
+            //Generate the pivot empties
             var names = {left:0, right:1};
             for (var name in names) {
                 var right = names[name];
@@ -199,6 +194,8 @@ MRIview.prototype = {
                 this.pivot[name] = meshpiv.pivots;
                 this.scene.add(meshpiv.pivots.front);
             }
+            this.setShader("nearest", false, false, false);
+
             /*
             $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
                 this.roipack = new ROIpack(svgdoc, function(tex) {
@@ -214,8 +211,6 @@ MRIview.prototype = {
                 }.bind(this));
             }.bind(this));
             */
-            this.controls.flatsize = flatscale * this.flatlims[1][0];
-            this.controls.flatoff = this.flatoff[1];
 
             /*
             this.picker = new FacePick(this);
@@ -236,59 +231,6 @@ MRIview.prototype = {
                 this.picker.undblpick();
             }.bind(this));
             */
-            //Create the surface inflat/unfold buttons
-            var btnspeed = 0.5; // How long should folding/unfolding animations take?
-            var td, btn, name;
-            td = document.createElement("td");
-            btn = document.createElement("button");
-            btn.setAttribute("title", "Return to the folded, fiducial view of the brain");
-            btn.innerHTML = "Fiducial";
-            td.setAttribute("style", "text-align:left;");
-            btn.addEventListener("click", function() {
-                this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
-                              {idx:btnspeed, state:"mix", value:0.0}]);
-            }.bind(this));
-            td.appendChild(btn);
-            $("#mixbtns").append(td);
-            for (var i = 0; i < json.names.length; i++) {
-                name = json.names[i][0].toUpperCase() + json.names[i].slice(1);
-                td = document.createElement("td");
-                btn = document.createElement("button");
-                btn.innerHTML = name;
-                btn.setAttribute("title", "Switch to the "+name+" view of the brain");
-
-                btn.addEventListener("click", function(j) {
-                    this.animate([{idx:btnspeed, state:"mix", value: (j+1) / (json.names.length+1)}]);
-                }.bind(this, i));
-                td.appendChild(btn);
-                $("#mixbtns").append(td);
-            }
-            td = document.createElement("td");
-            btn = document.createElement("button");
-            btn.innerHTML = "Flat";
-            btn.setAttribute("title", "Switch to the flattened view of the brain");
-            td.setAttribute("style", "text-align:right;");
-            btn.addEventListener("click", function() {
-                this.animate([{idx:btnspeed, state:"mix", value:1.0}]);
-            }.bind(this));
-            td.appendChild(btn);
-            $("#mixbtns").append(td);
-            $("#mix, #pivot, #shifthemis").parent().attr("colspan", json.names.length+2);
-
-            var data = THREE.ImageUtils.loadTexture("resources/test.png", {}, function() {
-                data.minFilter = THREE.NearestFilter;
-                data.magFilter = THREE.NearestFilter;
-                data.flipY = false;
-                var mat = this.shader.uniforms.volxfm.value[0];
-                mat.set.apply(mat, xfm);
-                this.shader.uniforms.data.texture[0] = data;
-                this.schedule();
-            }.bind(this));
-
-            this._loaded = true;
-            this.schedule();
-            $("#ctmload").hide();
-            $("#brain").css("opacity", 1);
             
             if (typeof(callback) == "function")
                 this.loaded.done(callback);
@@ -540,21 +482,7 @@ MRIview.prototype = {
         var handle = "<div class='handle'><span class='ui-icon ui-icon-carat-2-n-s'></span></div>";
         for (var i = 0; i < names.length; i++) {
             name = names[i];
-            if (data[name] instanceof Dataset) {
-                this.datasets[name] = data[name];
-            } else if (data[name] instanceof NParray) {
-                this.datasets[name] = new Dataset(data[name]);
-            }
-            
-            $.when(this.loaded, this.datasets[name].loaded).done(function(dataset) {
-                if (this.meshes.left.geometry.indexMap !== undefined || 
-                    this.meshes.right.geometry.indexMap !== undefined) {
-                    dataset.rearrange(
-                        this.meshes.left.geometry.attributes.position.array.length / 3, 
-                        this.meshes.left.geometry.indexMap, 
-                        this.meshes.right.geometry.indexMap);
-                }
-            }.bind(this, this.datasets[name]));
+            this.datasets[name] = data[name];
 
             var found = false;
             $("#datasets li").each(function() {
@@ -563,18 +491,44 @@ MRIview.prototype = {
             if (!found)
                 $("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
         }
-
-        $.when(this.cmapload, this.loaded).then(function() {
-            this.setData(names.slice(0,this.colormap.image.height > 10 ? 2 : 1));
-        }.bind(this));
+        
+        this.setData(names);
     },
     setData: function(names) {
-        if (names instanceof Array) {
+        if (!(names instanceof Array))
+            names = [names];
+
+        var ds2, ds = this.datasets[names[0]];
+        if (names.length > 1) {
+            ds2 = this.datasets[names[1]];
+            if (ds.frames != ds.frames)
+                throw 'Invalid selection';
+            if (ds.raw ^ ds2.raw)
+                throw 'Invalid selection';
+
+        }
+
+        if (ds.cmap !== undefined)
+            this.setColormap(this.dataset);
+
+        $.when(this.cmapload, ds.loaded).done(function() {
             if (names.length > (this.colormap.image.height > 10 ? 2 : 1))
                 return false;
 
-            this.active = [this.datasets[names[0]]];
-            this.datasets[names[0]].set(this, 0);
+            this.setShader(ds.filter, ds.raw, false, false);
+            ds.set(this.uniforms, 0, 0, true);
+            this.active = [ds];
+            $("#vrange").slider("option", {min: ds.lmin, max:ds.lmax});
+            this.setVminmax(ds.min, ds.max, 0);
+
+            if (ds.frames > 1) {
+                $("#moviecontrols").show();
+                $("#bottombar").addClass("bbar_controls");
+                $("#movieprogress div").slider("option", {min:0, max:ds.frames-1});
+            } else {
+                $("#moviecontrols").hide();
+                $("#bottombar").removeClass("bbar_controls");
+            }
             $("#datasets li").each(function() {
                 if ($(this).text() == names[0])
                     $(this).addClass("ui-selected");
@@ -582,21 +536,20 @@ MRIview.prototype = {
                     $(this).removeClass("ui-selected");
             })
             if (names.length > 1) {
-                this.active.push(this.datasets[names[1]]);
-                this.datasets[names[1]].set(this, 1);
+                ds2.set(this.uniforms, 1, 0, true);
+                this.active.push(ds2);
+                $("#vrange2").slider("option", {min: ds2.lmin, max:ds2.lmax});
+                this.setVminmax(ds2.min, ds2.max, 1);
                 $("#datasets li").each(function() {
                     if ($(this).text() == names[1])
                         $(this).addClass("ui-selected");
                 });
             }
-        } else {
-            return false;
-        }
-        
-        this.schedule();
-        $("#datasets").val(names);
-        $("#dataname").text(names.join(" / ")).show();
-        return true;
+
+            $("#datasets").val(names);
+            $("#dataname").text(names.join(" / ")).show();
+            this.schedule();
+        }.bind(this));
     },
     nextData: function(dir) {
         var i = 0, found = false;
@@ -703,7 +656,7 @@ MRIview.prototype = {
             this.colormap.flipY = true;
             this.colormap.minFilter = THREE.LinearFilter;
             this.colormap.magFilter = THREE.LinearFilter;
-            this.shader.uniforms.colormap.texture = this.colormap;
+            this.uniforms.colormap.texture = this.colormap;
             this.schedule();
             
             if (this.colormap.image.height > 10) {
@@ -752,15 +705,10 @@ MRIview.prototype = {
     setFrame: function(frame) {
         this.frame = frame;
         var fframe = Math.floor(frame);
-        if (this.active[0].array !== undefined) {
-            this._setVerts(this.active[0].textures[fframe], 0);
-            this._setVerts(this.active[0].textures[fframe + 1], 2);
-        }
-        if (this.active.length > 1 && this.active[1].array !== undefined) {
-            this._setVerts(this.active[1].textures[fframe], 1);
-            this._setVerts(this.active[1].textures[fframe + 1], 3);
-        }
-        this.shader.uniforms.framemix.value = frame - fframe;
+        this.active[0].set(this.uniforms.data.texture, 0, fframe);
+        if (this.active.length > 1)
+            this.active[1].set(this.uniforms.data.texture, 1, fframe);
+        this.uniforms.framemix.value = frame - fframe;
         $("#movieprogress div").slider("value", frame);
         $("#movieframe").attr("value", frame);
         this.schedule();
@@ -1083,6 +1031,47 @@ MRIview.prototype = {
         });
     },
 
+    _makeBtns: function(names) {
+        var btnspeed = 0.5; // How long should folding/unfolding animations take?
+        var td, btn, name;
+        td = document.createElement("td");
+        btn = document.createElement("button");
+        btn.setAttribute("title", "Reset to fiducial view of the brain");
+        btn.innerHTML = "Fiducial";
+        td.setAttribute("style", "text-align:left;");
+        btn.addEventListener("click", function() {
+            this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
+                          {idx:btnspeed, state:"mix", value:0.0}]);
+        }.bind(this));
+        td.appendChild(btn);
+        $("#mixbtns").append(td);
+
+        for (var i = 0; i < names.length; i++) {
+            name = names[i][0].toUpperCase() + names[i].slice(1);
+            td = document.createElement("td");
+            btn = document.createElement("button");
+            btn.innerHTML = name;
+            btn.setAttribute("title", "Switch to the "+name+" view of the brain");
+
+            btn.addEventListener("click", function(j) {
+                this.animate([{idx:btnspeed, state:"mix", value: (j+1) / (names.length+1)}]);
+            }.bind(this, i));
+            td.appendChild(btn);
+            $("#mixbtns").append(td);
+        }
+        td = document.createElement("td");
+        btn = document.createElement("button");
+        btn.innerHTML = "Flat";
+        btn.setAttribute("title", "Switch to the flattened view of the brain");
+        td.setAttribute("style", "text-align:right;");
+        btn.addEventListener("click", function() {
+            this.animate([{idx:btnspeed, state:"mix", value:1.0}]);
+        }.bind(this));
+        td.appendChild(btn);
+        $("#mixbtns").append(td);
+        $("#mix, #pivot, #shifthemis").parent().attr("colspan", names.length+2);
+    },
+
     _makeMesh: function(geom, shader) {
         //Creates the pivots and the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);
@@ -1097,38 +1086,5 @@ MRIview.prototype = {
 
         return {mesh:mesh, pivots:pivots};
     },
-    _setVerts: function(array, idx) {
-        if (this.meshes && this.meshes.left) {
-            var attributes = this.meshes.left.geometry.attributes;
-            var length = attributes.position.array.length / 3;
-            var data = attributes['data'+idx];
-            if (array instanceof Uint8Array) {
-                data.itemSize = data.stride = 4;
-                length *= 4;
-            } else {
-                data.itemSize = data.stride = 1;
-            }
-            data.array = array.subarray(0, length);
-            data.needsUpdate = true;
-
-            data = this.meshes.right.geometry.attributes['data'+idx];
-            data.itemSize = data.stride = array instanceof Uint8Array ? 4 : 1;
-            data.array = array.subarray(length);
-            data.needsUpdate = true;
-        }
-    },
-    _setShader: function(raw) {
-        if (this.meshes && this.meshes.left) {
-            if (raw) {
-                this.shader = this.rawshader;
-                this.meshes.left.material = this.rawshader;
-                this.meshes.right.material = this.rawshader;
-            } else {
-                this.shader = this.cmapshader;
-                this.meshes.left.material = this.cmapshader;
-                this.meshes.right.material = this.cmapshader;
-            }
-        }
-    }, 
 }
 

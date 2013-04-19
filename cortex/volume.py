@@ -68,7 +68,7 @@ def mosaic(data, dim=0, show=True, **kwargs):
     show : bool
         Display mosaic with matplotlib? Default True.
     """
-    if len(data.shape) != 3:
+    if data.ndim not in (3, 4):
         raise ValueError("Invalid data shape")
     plane = list(data.shape)
     slices = plane.pop(dim)
@@ -77,7 +77,9 @@ def mosaic(data, dim=0, show=True, **kwargs):
     square = np.sqrt(slices / aspect)
     nwide = int(np.ceil(square))
     ntall = int(np.ceil(square * aspect))
-    output = np.nan*np.ones((ntall * height, nwide * width), dtype=data.dtype)
+
+    shape = (ntall * height, nwide * width) + data.shape[3:]
+    output = np.nan*np.ones(shape, dtype=data.dtype)
     sl = [slice(None), slice(None), slice(None)]
     
     for h in range(ntall):
@@ -90,7 +92,7 @@ def mosaic(data, dim=0, show=True, **kwargs):
         from matplotlib import pyplot as plt
         plt.imshow(output, **kwargs)
         plt.axis('off')
-
+        
     return output, (nwide, ntall)
 
 def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):

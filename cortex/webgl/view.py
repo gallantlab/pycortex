@@ -4,16 +4,16 @@ import glob
 import json
 import shutil
 import random
+import functools
 import binascii
 import mimetypes
-import functools
 import webbrowser
 import multiprocessing as mp
 import numpy as np
 
 from tornado import web, template
 
-from .. import utils, options
+from .. import utils, options, volume
 
 from . import serve
 
@@ -28,7 +28,7 @@ except:
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
-def _normalize_data(data, pfunc):
+def _normalize_data(data):
     from scipy.stats import scoreatpercentile
     if not isinstance(data, dict):
         data = dict(data0=data)
@@ -37,21 +37,20 @@ def _normalize_data(data, pfunc):
     json['__order__'] = list(data.keys())
     for name, dat in list(data.items()):
         ds = dict(__class__="Dataset")
-        mapper = pfunc()[1]
-        if 'projection' in dat:
-            mapper = pfunc(projection=dat['projection'])[1]
-
         if isinstance(dat, dict):
-            data = _fixarray(dat['data'], mapper)
+            ds.update(_fixarray(dat['data']))
             if 'stim' in dat:
                 ds['stim'] = dat['stim']
             ds['delay'] = dat['delay'] if 'delay' in dat else 0
         else:
-            data = _fixarray(dat, mapper)
+            ds.update(_fixarray(dat))
 
-        ds['data'] = data
-        ds['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
-        ds['max'] = scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max']
+        dstack = np.array(ds['data'])
+        stats = dstack[~np.isnan(dstack)]
+        ds['min'] = scoreatpercentile(stats.ravel(), 1) if 'min' not in dat else dat['min']
+        ds['max'] = scoreatpercentile(stats.ravel(), 99) if 'max' not in dat else dat['max']
+        ds['lmin'] = stats.min()
+        ds['lmax'] = stats.max()
         if 'cmap' in dat:
             ds['cmap'] = dat['cmap']
         if 'rate' in dat:
@@ -61,19 +60,7 @@ def _normalize_data(data, pfunc):
 
     return json
 
-def _make_bindat(json, fmt="%s.bin"):
-    newjs, bindat = dict(), dict()
-    for name, data in list(json.items()):
-        if "data" in data:
-            newjs[name] = dict(data)
-            newjs[name]['data'] = fmt%name
-            bindat[name] = serve.make_binarray(data['data'])
-        else:
-            newjs[name] = data
-
-    return newjs, bindat
-
-def _fixarray(data, mapper):
+def _fixarray(data):
     if isinstance(data, str):
         if os.path.splitext(data)[1] in ('.hdf', '.mat'):
             try:
@@ -85,26 +72,44 @@ def _fixarray(data, mapper):
         elif '.nii' in data:
             import nibabel
             data = nibabel.load(data).get_data().T
+
     if data.dtype != np.uint8:
         data = data.astype(np.float32)
 
     raw = data.dtype.type == np.uint8
-    mapped = mapper.nverts in data.shape
+    movie = data.ndim == 5 if raw else data.ndim == 4
+    if not movie:
+        data = data[np.newaxis]
+    output = []
+    for frame in data:
+        mframe, mosaic = volume.mosaic(frame, show=False)
+        output.append(mframe)
 
-    if raw:
-        assert mapped and data.shape[-2] in (3, 4)
-        if data.shape[-2] == 3:
-            if data.ndim == 2:
-                data = np.vstack([data, 255*np.ones((1, mapper.nverts), dtype=np.uint8)])
-            else:
-                data = np.hstack([data, 255*np.ones((len(data), 1, mapper.nverts), dtype=np.uint8)])
+    return dict(data=output, mosaic=mosaic, raw=raw)
 
-        data = np.hstack(mapper(data.reshape(-1, mapper.nverts)))
-        if data.shape[-2] != 4:
-            data = data.reshape(-1, 4, mapper.nverts)
-        return data.swapaxes(-1, -2)
-    else: #regular
-        return np.hstack(mapper(data)).astype(np.float32)
+def _make_bindat(json, path="", fmt='%s_%d.png'):
+    import Image
+    import cStringIO
+    buf = cStringIO.StringIO()
+    def _make_img(mosaic):
+        buf.seek(0)
+        im = Image.frombytes('RGBA', mosaic.shape, mosaic.tostring())
+        im.save(buf, format='PNG')
+        buf.seek(0)
+        return buf.read()
+
+    newjs, bindat = dict(), dict()
+    for name, data in list(json.items()):
+        if isinstance(data, dict):
+            newjs[name] = dict(data)
+            frames = range(len(data['data']))
+            newjs[name]['data'] = [os.path.join(path, fmt)%(name, i) for i in frames]
+            for i, mosaic in enumerate(data['data']):
+                bindat[fmt%(name, i)] = _make_img(mosaic)
+        else:
+            newjs[name] = data
+
+    return newjs, bindat
 
 def make_movie(stim, outfile, fps=15, size="640x480"):
     import shlex
@@ -215,7 +220,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     html = sloader.load("mixer.html")
     pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9)
     ctmfile, mapper = pfunc(recache=recache, recache_mapper=recache_mapper)
-    jsondat, bindat = _make_bindat(_normalize_data(data, pfunc), fmt='data/%s/')
+    jsondat, bindat = _make_bindat(_normalize_data(data), path='/data/', fmt='%s_%d.png')
 
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
@@ -251,7 +256,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     class MixerHandler(web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
-            self.write(html.generate(data=jsondat, colormaps=colormaps, default_cmap=cmap, python_interface=True))
+            self.write(html.generate(data=json.dumps(jsondat), colormaps=colormaps, default_cmap=cmap, python_interface=True))
 
         def post(self):
             print("saving file to %s"%saveimg.value)
