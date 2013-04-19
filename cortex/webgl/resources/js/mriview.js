@@ -1,18 +1,5 @@
 var flatscale = .2;
 
-
-var cmapshade = [
-
-            "float fnorm0 = (1. - framemix) * vnorm0 + framemix * vnorm2;",
-            "float fnorm1 = (1. - framemix) * vnorm1 + framemix * vnorm3;",
-
-            "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
-
-            "vColor  = texture2D(colormap, cuv);",
-        '}',
-]
-
-
 var buf = {
     pos: new Float32Array(3),
     norm: new Float32Array(3),
@@ -24,7 +11,7 @@ Number.prototype.mod = function(n) {
     return ((this%n)+n)%n;
 }
 
-xfm = [-0.42912749366988884, 0.007490448264490086, 0.007491589269821763, 48.77215990065406, -0.006810245928876961, -0.4275710486929674, 0.03740662265405398, 47.364646648037784, 0.004577342573053696, 0.02102640285011981, 0.24117264017450582, 10.44101854760247, -1.3324807592622293e-16, 3.5390078628149955e-17, 2.4947337280115108e-17, 0.9999999999999941];
+xfm = [-0.45506490072302974, 0.02004975616309192, 0.0022977291546597699, 49.445470436048311, -0.019390573901769792, -0.44876832803664829, 0.075608516805043269, 45.412207228733749, 0.0029832487229623397, 0.040351386060814037, 0.23872961503246148, 11.913846229710684, 0.0, 0.0, 0.0, 1.0];
 function MRIview() { 
     //Allow objects to listen for mix updates
     THREE.EventTarget.call( this );
@@ -59,6 +46,7 @@ function MRIview() {
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
     this.pixbuf = new Uint8Array($("#brain").width() * $("#brain").height() * 4);
     this.state = "pause";
+    this.renderer.context.getExtension("OES_standard_derivatives");
 
     var attributes = { bary:true, pos1:true, pos2:true, pos3:true, auxdat:true };
     var uniforms = THREE.UniformsUtils.merge( [
@@ -76,12 +64,13 @@ function MRIview() {
             hatch:      { type:'t',  value:1, texture: makeHatch() },
             colormap:   { type:'t',  value:2, texture: null },
 
-            data:       { type:'tv', value:3, texture: [null, null, null, null]},
-            mosaic:     { type:'v2', value:new THREE.Vector2(6, 6)},
-            shape:      { type:'v2', value:new THREE.Vector2(100, 100)},
-
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
+
+            data:       { type:'tv', value:3, texture: [null, null, null, null]},
+            mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
+            shape:      { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
+            volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
 
             curvAlpha:  { type:'f', value:1.},
             curvScale:  { type:'f', value:.5},
@@ -91,15 +80,15 @@ function MRIview() {
             hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
 
             hide_mwall: { type:'i', value:0},
-
-            volxfm:     { type:'m4', value:new THREE.Matrix4() },
         }
     ])
     uniforms.hatch.texture.needsUpdate = true;
 
+    var shaders = makeShader("nearest", true, true, false);
+
     this.shader =  this.cmapshader = new THREE.ShaderMaterial( { 
-        vertexShader:vertexShader,
-        fragmentShader:fragmentShader,
+        vertexShader:shaders.vertex,
+        fragmentShader:shaders.fragment,
         uniforms: uniforms,
         attributes: attributes,
         morphTargets:true, 
@@ -127,8 +116,8 @@ function MRIview() {
     });
     this.rawshader.map = true;
     this.rawshader.metal = true;
-    this.rawshader.uniforms.hatch.texture.needsUpdate = true;
     */
+
     this.projector = new THREE.Projector();
     this._startplay = null;
     this._staticplugin = false;
@@ -286,12 +275,12 @@ MRIview.prototype = {
             $("#mixbtns").append(td);
             $("#mix, #pivot, #shifthemis").parent().attr("colspan", json.names.length+2);
 
-            var data = THREE.ImageUtils.loadTexture("resources/rand.png", {}, function() {
+            var data = THREE.ImageUtils.loadTexture("resources/test.png", {}, function() {
                 data.minFilter = THREE.NearestFilter;
                 data.magFilter = THREE.NearestFilter;
                 data.flipY = false;
-                this.shader.uniforms.volxfm.value.set.apply(this.shader.uniforms.volxfm.value, xfm);
-                //this.shader.uniforms.volxfm.value.transpose();
+                var mat = this.shader.uniforms.volxfm.value[0];
+                mat.set.apply(mat, xfm);
                 this.shader.uniforms.data.texture[0] = data;
                 this.schedule();
             }.bind(this));

@@ -176,7 +176,34 @@ function makeShader(sampler, raw, voxline, volume) {
     "}"
     ].join("\n");
 
+    var samplers = "";
+    var dims = ["x", "y"];
+    for (var val = 0; val < 2; val++) {
+        var dim = dims[val];
+        samplers += [
+        "vec2 make_uv_"+dim+"(vec2 coord, float slice) {",
+            "vec2 pos = vec2(mod(slice, mosaic["+val+"].x), floor(slice / mosaic["+val+"].x));",
+            "return (2.*(pos*shape["+val+"]+coord)+1.) / (2.*mosaic["+val+"]*shape["+val+"]);",
+        "}",
+
+        "vec4 trilinear_"+dim+"(sampler2D data, vec4 fid) {",
+            "vec3 coord = (volxfm["+val+"] * fid).xyz;",
+            "vec4 tex1 = texture2D(data, make_uv_"+dim+"(coord.xy, floor(coord.z)));",
+            "vec4 tex2 = texture2D(data, make_uv_"+dim+"(coord.xy, ceil(coord.z)));",
+            'return mix(tex1, tex2, fract(coord.z));',
+        "}",
+
+        "vec4 nearest_"+dim+"(sampler2D data, vec4 fid) {",
+            "vec3 coord = (volxfm["+val+"]*fid).xyz;",
+            "if (fract(coord.z) > 0.5)",
+                "return texture2D(data, make_uv_"+dim+"(coord.xy, ceil(coord.z)));",
+            "else",
+                "return texture2D(data, make_uv_"+dim+"(coord.xy, floor(coord.z)));",
+        "}\n",].join("\n");
+    }
+
     var fragHead = [
+    "#extension GL_OES_standard_derivatives: enable",
     THREE.ShaderChunk[ "map_pars_fragment" ],
     THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
@@ -217,25 +244,14 @@ function makeShader(sampler, raw, voxline, volume) {
     "varying vec3 v2;",
     "varying vec3 v3;",
 
-    "vec2 make_uv(vec2 coord, float slice) {",
-        "vec2 pos = vec2(mod(slice, mosaic.x), floor(slice / mosaic.x));",
-        "return (2.*(pos*shape+coord)+1.) / (2.*mosaic*shape);",
+    // from http://codeflow.org/entries/2012/aug/02/easy-wireframe-display-with-barycentric-coordinates/
+    "float edgeFactor(vec3 edge) {",
+        "vec3 d = fwidth(edge);",
+        "vec3 a3 = smoothstep(vec3(0.), d*1.5, edge);",
+        "return min(min(a3.x, a3.y), a3.z);",
     "}",
 
-    "vec4 trilinear(sampler2D data, vec3 coord) {",
-        "vec3 coord = (volxfm[idx] * fid).xyz;",
-        "vec4 tex1 = texture2D(data, make_uv(coord.xy, floor(coord.z)));",
-        "vec4 tex2 = texture2D(data, make_uv(coord.xy, ceil(coord.z)));",
-        'return mix(tex1, tex2, fract(coord.z));',
-    "}",
-
-    "vec4 nearest(sampler2D data, int dim, vec3 fid) {",
-        "vec3 coord = (volxfm[idx] * fid).xyz;",
-        "if (fract(coord.z) > 0.5)",
-            "return texture2D(data, make_uv(coord.xy, ceil(coord.z)));",
-        "else",
-            "return texture2D(data, make_uv(coord.xy, floor(coord.z)));",
-    "}",
+    samplers,
 
     "void main() {",
         //Curvature Underlay
@@ -243,46 +259,60 @@ function makeShader(sampler, raw, voxline, volume) {
         "gl_FragColor = vec4(vec3(curv)*curvAlpha, curvAlpha);",
 
         "if (vMedial < .999) {",
-            //Finding fiducial location
-            "vec3 fid = vBC.x * v1 + vBC.y * v2 + vBC.z * v3;",
-            "vec3 coord0 = (volxfm[0]*fid).xyz;",
-            "vec3 coord1 = (volxfm[1]*fid).xyz;",
+            //fiducial position
+            "vec4 fid = vec4(vBC.x * v1 + vBC.y * v2 + vBC.z * v3, 1.);",
         "",
     ].join("\n");
 
     var fragMid = "";
-    if (voxline) {
-        fragMid = [
-            "bvec3 edges = lessThan(abs(fract(coord) - vec3(0.5)), vec3(.02));",
-            "if (edges.x) gl_FragColor = vec4(1.,0.,0.,1.);",
-            "else if (edges.y) gl_FragColor = vec4(0.,.8,0.,1.);",
-            "else if (edges.z) gl_FragColor = vec4(0.,0.,1.,1.);",
-            "else {\n",
-        ].join("\n");
-    }
+    // if (voxline) {
+    //     fragMid = [
+    //         "vec3 coord = (volxfm[0]*fid).xyz;",
+    //         "bvec3 edges = lessThan(abs(fract(coord) - vec3(0.5)), vec3(.02));",
+    //         "if (edges.x) gl_FragColor = vec4(1.,1.,1.,1.);",
+    //         "else if (edges.y) gl_FragColor = vec4(1.,1.,1.,1.);",
+    //         "else if (edges.z) gl_FragColor = vec4(1.,1.,1.,1.);",
+    //         "else {\n",
+    //     ].join("\n");
+    // }
     if (raw) {
-        fragMid += "gl_FragColor = mix("+sampler+"(data[0], coord), "+sampler+"(data[2], coord), framemix);"
+        fragMid += [
+            "vec4 color1 = "+sampler+"_x(data[0], fid);",
+            "vec4 color2 = "+sampler+"_x(data[2], fid);",
+            "vec4 vColor = mix(color1, color2, framemix);",
+            "",
+        ].join("\n");
     } else {
         fragMid += [
             'if (!(data0 <= 0. || 0. <= data0)) {',
-                'vColor = vec4(0.);',
+                'vec4 vColor = vec4(0.);',
             '} else {',
                 "float vrange0 = vmax[0] - vmin[0];",
                 "float vrange1 = vmax[1] - vmin[1];",
-                "float vnorm0 = ("+sampler+"(data[0], coord0) - vmin[0]) / vrange0;",
-                "float vnorm1 = ("+sampler+"(data[1], coord1) - vmin[1]) / vrange1;",
-                "float vnorm2 = ("+sampler+"(data[2], coord0) - vmin[0]) / vrange0;",
-                "float vnorm3 = ("+sampler+"(data[3], coord1) - vmin[1]) / vrange1;",
+                "float vnorm0 = ("+sampler+"_x(data[0], fid) - vmin[0]) / vrange0;",
+                "float vnorm1 = ("+sampler+"_y(data[1], fid) - vmin[1]) / vrange1;",
+                "float vnorm2 = ("+sampler+"_x(data[2], fid) - vmin[0]) / vrange0;",
+                "float vnorm3 = ("+sampler+"_y(data[3], fid) - vmin[1]) / vrange1;",
 
                 "float fnorm0 = mix(vnorm0, vnorm2, framemix);",
                 "float fnorm1 = mix(vnorm0, vnorm3, framemix);",
 
                 "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
 
-                "vColor  = texture2D(colormap, cuv);",
+                "vec4 vColor = texture2D(colormap, cuv);",
+            "}",
         ].join("\n");
     }
-    fragMid += "};\n";
+    if (voxline) {
+        fragMid += [
+            "vec3 coord = (volxfm[0]*fid).xyz;",
+            "vec3 edge = abs(fract(coord) - vec3(0.5));",
+            "gl_FragColor = mix(vec4(1.), vColor, edgeFactor(edge));",
+        ].join("\n");
+        // fragMid += [
+        //     "gl_FragColor = vColor;",
+        // "}\n",
+    }
 
     var fragTail = [
             "",
@@ -304,5 +334,5 @@ function makeShader(sampler, raw, voxline, volume) {
     ].join("\n");
 
 
-    return vertShade, fragHead+fragRaw+fragTail;
+    return {vertex:vertShade, fragment:fragHead+fragMid+fragTail};
 }

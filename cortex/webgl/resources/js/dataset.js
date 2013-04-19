@@ -1,52 +1,51 @@
-function Dataset(nparray) {
+var filtertypes = { nearest: THREE.NearestFilter, trilinear: THREE.LinearFilter };
+function Dataset(json) {
     this.loaded = $.Deferred();
-    if (nparray instanceof NParray) {
-        this.init(nparray);
-    }
+    this.data = json.data;
+    this.min = json.min;
+    this.max = json.max;
+    this.cmap = json.cmap;
+    this.stim = json.stim;
+    this.rate = json.rate === undefined ? 1 : json.rate;
+    this.raw = json.raw === undefined ? false : json.raw;
+    this.frames = json.frames === undefined ? 1 : json.frames;
+    this.delay = json.delay === undefined ? 0 : json.delay;
+    this.filter = json.filter == undefined ? "nearest" : json.filter;
+    this.textures = [];
+
+    var loadtex = function(idx) {
+        var img = new Image();
+        img.addEventListener("load", function() {
+            var tex = new THREE.Texture(img);
+            tex.minFilter = filtertypes[this.filter];
+            tex.magFilter = filtertypes[this.filter];
+            tex.premultiplyAlpha = false;
+            tex.flipY = true;
+            tex.needsUpdate = true;
+            if (!this.raw) {
+                tex.type = THREE.FloatType;
+                tex.format = THREE.LuminanceFormat;
+            }
+            this.textures.push(tex);
+
+            if (this.textures.length < this.frames) {
+                this.loaded.progress(textures.length);
+                loadtex(textures.length);
+            } else {
+                this.loaded.resolve();
+            }
+        }.bind(this));
+        var fname = this.frames > 1 ? "_"+idx : "";
+        img.src = this.data + fname + ".png";
+    }.bind(this);
+
+    loadtex();
 }
 Dataset.fromJSON = function(json) {
-    var ds;
-    if (json.data instanceof NParray) {
-        ds = new Dataset(json.data);
-    } else if (typeof(json.data) == "string") {
-        ds = new Dataset(null);
-        NParray.fromURL(json.data, function(array) {
-            ds.init(array);
-        });
-    }
-    if (json.stim !== undefined)
-        ds.addStim(json.stim, json.delay);
-    ds.min = json.min;
-    ds.max = json.max;
-    ds.cmap = json.cmap;
-    ds.rate = json.rate === undefined ? 1 : json.rate;
-    return ds;
+    return new Dataset(json);
 }
+
 Dataset.prototype = { 
-    init: function(nparray) {
-        this.array = nparray;
-        this.raw = nparray.data instanceof Uint8Array && nparray.shape.length > 1;
-        this.textures = [];
-
-        if ((this.raw && nparray.shape.length > 2) || (!this.raw && nparray.shape.length > 1)) {
-            //Movie
-            for (var i = 0; i < nparray.shape[0]; i++) {
-                this.textures.push(nparray.view(i).data);
-            }
-        } else {
-            //Single frame
-            this.textures.push(nparray.data);
-        }
-        var minmax = nparray.minmax();
-        this.lmin = minmax[0];
-        this.lmax = minmax[1];
-        if (this.min === undefined)
-            this.min = this.lmin;
-        if (this.max === undefined)
-            this.max = this.lmax;
-
-        this.loaded.resolve();
-    },
     addStim: function(url, delay) {
         this.delay = delay;
         this.stim = document.createElement("video");
@@ -149,39 +148,5 @@ Dataset.prototype = {
                 })
             }
         }.bind(this));
-    },
-    rearrange: function(lsize, left, right) {
-        if (!this.reordered) {
-            this.reordered = true;
-            var newtex = [];
-            for (var t = 0; t < this.textures.length; t++) {
-                var oarr = this.textures[t];
-                if (this.raw) {
-                    var narr = new Uint8Array(oarr.length);
-                    for (var i = 0, il = oarr.length / 4; i < il; i++) {
-                        for (var j = 0; j < 4; j++) {
-                            if (i < lsize && left !== undefined)
-                                narr[left[i]*4+j] = oarr[4*i+j];
-                            else if (i >= lsize && right !== undefined)
-                                narr[(right[i-lsize]+lsize)*4+j] = oarr[4*i+j];
-                            else
-                                narr[i*4+j] = oarr[4*i+j]
-                        }
-                    }
-                } else {
-                    var narr = new Float32Array(oarr.length);
-                    for (var i = 0, il = oarr.length; i < il; i++) {
-                        if (i < lsize && left !== undefined) 
-                            narr[left[i]] = oarr[i];
-                        else if (i >= lsize && right !== undefined)
-                            narr[right[i-lsize]+lsize] = oarr[i];
-                        else
-                            narr[i] = oarr[i]
-                    }
-                }
-                newtex.push(narr);
-            }
-            this.textures = newtex;
-        }
     },
 }
