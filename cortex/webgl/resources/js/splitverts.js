@@ -289,6 +289,7 @@ function makeShader(sampler, raw, voxline, volume) {
             "float color1 = "+sampler+"_x(data[1], fid).r;",
             "float color2 = "+sampler+"_x(data[2], fid).r;",
             "float color3 = "+sampler+"_x(data[3], fid).r;",
+            //check if nan
             'if (!(color0 <= 0. || 0. <= color0)) {',
                 'vColor = vec4(0.);',
             '} else {',

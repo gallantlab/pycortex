@@ -14,6 +14,7 @@ import numpy as np
 from tornado import web, template
 
 from .. import utils, options, volume
+from ..db import surfs
 
 from . import serve
 
@@ -28,10 +29,10 @@ except:
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
-def _normalize_data(data):
+def _normalize_data(data, xfm):
     from scipy.stats import scoreatpercentile
     if not isinstance(data, dict):
-        data = dict(data0=data)
+        data = dict(data=data)
 
     json = dict()
     json['__order__'] = list(data.keys())
@@ -39,22 +40,19 @@ def _normalize_data(data):
         ds = dict(__class__="Dataset")
         if isinstance(dat, dict):
             ds.update(_fixarray(dat['data']))
-            if 'stim' in dat:
-                ds['stim'] = dat['stim']
-            ds['delay'] = dat['delay'] if 'delay' in dat else 0
+            del dat['data']
         else:
             ds.update(_fixarray(dat))
 
+        ds['xfm'] = list(np.array(xfm).ravel())
         dstack = np.array(ds['data'])
         stats = dstack[~np.isnan(dstack)]
-        ds['min'] = scoreatpercentile(stats.ravel(), 1) if 'min' not in dat else dat['min']
-        ds['max'] = scoreatpercentile(stats.ravel(), 99) if 'max' not in dat else dat['max']
-        ds['lmin'] = stats.min()
-        ds['lmax'] = stats.max()
-        if 'cmap' in dat:
-            ds['cmap'] = dat['cmap']
-        if 'rate' in dat:
-            ds['rate'] = dat['rate']
+        ds['lmin'] = float(stats.min())
+        ds['lmax'] = float(stats.max())
+        ds['min'] = float(scoreatpercentile(stats.ravel(), 1))
+        ds['max'] = float(scoreatpercentile(stats.ravel(), 99))
+        if isinstance(dat, dict):
+            ds.update(dat)
 
         json[name] = ds
 
@@ -93,6 +91,7 @@ def _make_bindat(json, path="", fmt='%s_%d.png'):
     buf = cStringIO.StringIO()
     def _make_img(mosaic):
         buf.seek(0)
+        assert mosaic.dtype == np.float32
         im = Image.frombytes('RGBA', mosaic.shape, mosaic.tostring())
         im.save(buf, format='PNG')
         buf.seek(0)
@@ -214,13 +213,13 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     Regular masked image: [vox]
     Regular vertex movie: [t, verts]
     Regular vertex image: [verts]
-    Raw vertex movie:     [[3, 4], t, verts]
-    Raw vertex image:     [[3, 4], verts]
+    Raw vertex movie:     [t, verts, [3, 4]]
+    Raw vertex image:     [verts, [3, 4]]
     """
     html = sloader.load("mixer.html")
-    pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9)
-    ctmfile, mapper = pfunc(recache=recache, recache_mapper=recache_mapper)
-    jsondat, bindat = _make_bindat(_normalize_data(data), path='/data/', fmt='%s_%d.png')
+    xfm = surfs.getXfm(subject, xfmname, 'coord')
+    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9)
+    jsondat, bindat = _make_bindat(_normalize_data(data, xfm.xfm), path='/data/', fmt='%s_%d.png')
 
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
@@ -248,6 +247,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
                 bindat.update(d)
 
             if path in bindat:
+                self.set_header("Content-Type", "image/png")
                 self.write(bindat[path])
             else:
                 self.set_status(404)

@@ -79,9 +79,8 @@ def mosaic(data, dim=0, show=True, **kwargs):
     ntall = int(np.ceil(square * aspect))
 
     shape = (ntall * height, nwide * width) + data.shape[3:]
-    output = np.nan*np.ones(shape, dtype=data.dtype)
+    output = (np.nan*np.ones(shape)).astype(data.dtype)
     sl = [slice(None), slice(None), slice(None)]
-    
     for h in range(ntall):
         for w in range(nwide):
             sl[dim] = h*nwide+w
@@ -92,7 +91,7 @@ def mosaic(data, dim=0, show=True, **kwargs):
         from matplotlib import pyplot as plt
         plt.imshow(output, **kwargs)
         plt.axis('off')
-        
+
     return output, (nwide, ntall)
 
 def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):
