@@ -92,7 +92,7 @@ def _make_bindat(json, path="", fmt='%s_%d.png'):
     def _make_img(mosaic):
         buf.seek(0)
         assert mosaic.dtype == np.float32
-        im = Image.frombytes('RGBA', mosaic.shape, mosaic.tostring())
+        im = Image.frombuffer('RGBA', mosaic.shape, mosaic.data, 'raw')
         im.save(buf, format='PNG')
         buf.seek(0)
         return buf.read()
