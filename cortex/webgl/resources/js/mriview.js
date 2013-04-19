@@ -1,68 +1,7 @@
 var flatscale = .2;
-var vertexShader = [
-    THREE.ShaderChunk[ "map_pars_vertex" ], 
-    THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
-    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
 
-    "attribute vec4 auxdat;",
-    "attribute vec3 bary;",
-    "attribute vec3 pos1;",
-    "attribute vec3 pos2;",
-    "attribute vec3 pos3;",
-
-    "varying vec3 vViewPosition;",
-    "varying vec3 vNormal;",
-    "varying float vCurv;",
-    "varying float vDrop;",
-    "varying float vMedial;",
-
-    "varying vec3 vBC;",
-    "varying vec3 v1;",
-    "varying vec3 v2;",
-    "varying vec3 v3;",
-
-    "void main() {",
-
-        "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
-
-        THREE.ShaderChunk[ "map_vertex" ],
-
-        "vDrop = auxdat.x;",
-        "vCurv = auxdat.y;",
-        "vMedial = auxdat.z;",
-
-        "v1 = pos1;",
-        "v2 = pos2;",
-        "v3 = pos3;",
-
-        "vBC = bary;",
-        "vViewPosition = -mvPosition.xyz;",
-
-        THREE.ShaderChunk[ "morphnormal_vertex" ],
-
-        "vNormal = transformedNormal;",
-
-        THREE.ShaderChunk[ "lights_phong_vertex" ],
-        THREE.ShaderChunk[ "morphtarget_vertex" ],
-        THREE.ShaderChunk[ "default_vertex" ],
-
-    "}"
-].join("\n");
-
-var rawshade = [
-        "vColor  = (1. - framemix) * data0 * vec4(1. / 255.);",
-        "vColor +=       framemix  * data2 * vec4(1. / 255.);",
-        "vColor.rgb *= vColor.a;"
-]
 
 var cmapshade = [
-        'if (!(data0 <= 0. || 0. <= data0)) {',
-            'vColor = vec4(0.);',
-        '} else {',
-            "float vnorm0 = (data0 - vmin[0]) / (vmax[0] - vmin[0]);",
-            "float vnorm1 = (data1 - vmin[1]) / (vmax[1] - vmin[1]);",
-            "float vnorm2 = (data2 - vmin[0]) / (vmax[0] - vmin[0]);",
-            "float vnorm3 = (data3 - vmin[1]) / (vmax[1] - vmin[1]);",
 
             "float fnorm0 = (1. - framemix) * vnorm0 + framemix * vnorm2;",
             "float fnorm1 = (1. - framemix) * vnorm1 + framemix * vnorm3;",
@@ -73,99 +12,6 @@ var cmapshade = [
         '}',
 ]
 
-var fragmentShader = [
-    THREE.ShaderChunk[ "map_pars_fragment" ],
-    THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
-
-    "uniform int hide_mwall;",
-
-    "uniform mat4 volxfm;",
-    "uniform sampler2D data[4];",
-    "uniform vec2 mosaic;",
-    "uniform vec2 shape;",
-
-    "uniform sampler2D colormap;",
-    "uniform float vmin[2];",
-    "uniform float vmax[2];",
-    "uniform float framemix;",,
-
-    "uniform float curvAlpha;",
-    "uniform float curvScale;",
-    "uniform float curvLim;",
-    "uniform float dataAlpha;",
-    "uniform float hatchAlpha;",
-    "uniform vec3 hatchColor;",
-
-    "uniform sampler2D hatch;",
-    "uniform vec2 hatchrep;",
-
-    "uniform vec3 diffuse;",
-    "uniform vec3 ambient;",
-    "uniform vec3 emissive;",
-    "uniform vec3 specular;",
-    "uniform float shininess;",
-
-    "varying float vCurv;",
-    "varying float vDrop;",
-    "varying float vMedial;",
-
-    "varying vec3 vBC;",
-    "varying vec3 v1;",
-    "varying vec3 v2;",
-    "varying vec3 v3;",
-
-    "vec2 make_uv(vec2 coord, float slice) {",
-        "vec2 pos = vec2(mod(slice, mosaic.x), floor(slice / mosaic.x));",
-        "return (2.*(pos*shape+coord)+1.) / (2.*mosaic*shape);",
-    "}",
-
-    "vec4 trilinear(sampler2D data, vec3 coord) {",
-        "vec4 tex1 = texture2D(data, make_uv(coord.xy, floor(coord.z)));",
-        "vec4 tex2 = texture2D(data, make_uv(coord.xy, ceil(coord.z)));",
-        'return mix(tex1, tex2, fract(coord.z));',
-    "}",
-    "vec4 nearest(sampler2D data, vec3 coord) {",
-        "if (fract(coord.z) > 0.5)",
-            "return texture2D(data, make_uv(coord.xy, ceil(coord.z)));",
-        "else",
-            "return texture2D(data, make_uv(coord.xy, floor(coord.z)));",
-    "}",
-
-    "void main() {",
-        //Curvature Underlay
-        "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
-        "gl_FragColor = vec4(vec3(curv)*curvAlpha, curvAlpha);",
-
-        "if (vMedial < .999) {",
-            //Finding fiducial location
-            "vec4 fid = vec4(vBC.x * v1 + vBC.y * v2 + vBC.z * v3, 1.);",
-            "vec3 coord = (fid*volxfm).xyz;",
-            "gl_FragColor = nearest(data[0], coord);",
-            // "bvec3 edges = lessThan(abs(fract(coord) - vec3(0.5)), vec3(.02));",
-            // "if (edges.x) gl_FragColor = vec4(1.,0.,0.,1.);",
-            // "else if (edges.y) gl_FragColor = vec4(0.,.8,0.,1.);",
-            // "else if (edges.z) gl_FragColor = vec4(0.,0.,1.,1.);",
-            // "else gl_FragColor = nearest(data[0], coord);",
-
-            // //Data overlay
-            // "gl_FragColor = vColor*dataAlpha + gl_FragColor * (1. - vColor.a * dataAlpha);",
-
-            //Cross hatch / dropout layer
-            "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
-            "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
-            "gl_FragColor = hcolor + gl_FragColor * (1. - hcolor.a);",
-
-            //roi layer
-            "vec4 roi = texture2D(map, vUv);",
-            "gl_FragColor = roi + gl_FragColor * (1. - roi.a);",
-
-        "} else if (hide_mwall == 1) {",
-            "discard;",
-        "}",
-
-        THREE.ShaderChunk[ "lights_phong_fragment" ],
-    "}"
-].join("\n");
 
 var buf = {
     pos: new Float32Array(3),
@@ -355,8 +201,6 @@ MRIview.prototype = {
             var names = {left:0, right:1};
             for (var name in names) {
                 var right = names[name];
-
-                var postex = makePosTex(geometries[right].attributes.position.array);
                 var flatvars = makeFlat(geometries[right].attributes.uv.array, json.flatlims, this.flatoff, right);
                 geometries[right].morphTargets.push({itemSize:3, stride:3, array:flatvars[0]});
                 geometries[right].morphNormals.push(flatvars[1]);
@@ -447,7 +291,7 @@ MRIview.prototype = {
                 data.magFilter = THREE.NearestFilter;
                 data.flipY = false;
                 this.shader.uniforms.volxfm.value.set.apply(this.shader.uniforms.volxfm.value, xfm);
-                this.shader.uniforms.volxfm.value.transpose();
+                //this.shader.uniforms.volxfm.value.transpose();
                 this.shader.uniforms.data.texture[0] = data;
                 this.schedule();
             }.bind(this));
