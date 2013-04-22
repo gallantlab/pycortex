@@ -184,7 +184,7 @@ class Nearest(Mapper):
         ij = np.array([np.nonzero(valid)[0], ravelidx[valid]])
         data = np.ones((len(ij.T),), dtype=bool)
         csrshape = len(coords), np.prod(self.shape)
-        return sparse.csr_matrix((data, ij), dtype=bool, shape=csrshape))
+        return sparse.csr_matrix((data, ij), dtype=bool, shape=csrshape)
 
 class Trilinear(Mapper):
     def _getmask(self, coords, polys):
