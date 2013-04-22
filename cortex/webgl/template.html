@@ -200,22 +200,57 @@
 				</div>
 			</fieldset>
 			</div>
-			<fieldset id="viewopt_fieldset" class='opt_category'>
-				<legend>View</legend>
-				<div class='display_opt'>
-					<p id='zlocklabel'>Zoom lock:</p>
-					<div id='zlockopts'>
-						<input id='zlocknone' type='radio' name='zoomlock' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='None' checked>
-					    <label for='zlocknone'>​​​​​​​​​​​​​​​​​​​​​None</label><br>
-					    <input id='zlockleft' type='radio' name='zoomlock' value='left'>
-					    <label for='zlockleft'>left</label><br>
-					    <input id='zlockright' type='radio' name='zoomlock' value='right'>
-					    <label for='zlockright'>right</label><br>
-					    <input id='zlockwhole' type='radio' name='zoomlock' value='whole'>
-					    <label for='zlockwhole'>whole</label><br>
+			<div class='opt_category'>
+				<fieldset id="viewopt_fieldset" class='subtable'>
+					<legend>View</legend>
+					<div class='display_opt'>
+						<p id='zlocklabel'>Zoom lock:</p>
+						<div id='zlockopts'>
+							<input id='zlocknone' type='radio' name='zoomlock' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='None' checked>
+						    <label for='zlocknone'>​​​​​​​​​​​​​​​​​​​​​None</label><br>
+						    <input id='zlockleft' type='radio' name='zoomlock' value='left'>
+						    <label for='zlockleft'>left</label><br>
+						    <input id='zlockright' type='radio' name='zoomlock' value='right'>
+						    <label for='zlockright'>right</label><br>
+						    <input id='zlockwhole' type='radio' name='zoomlock' value='whole'>
+						    <label for='zlockwhole'>whole</label><br>
+						</div>
 					</div>
-				</div>
-			</fieldset>
+				</fieldset>
+				<fieldset id='voxopt_fieldset' class='subtable'>
+					<legend>Voxels</legend>
+					<div class='display_opt'>
+						<table id='voxline'>
+							<tr>
+								<td><label for='voxline_show'>Voxel lines</label></td>
+								<td><input id='voxline_show' type='checkbox' /></td>
+							</tr>
+							<tr>
+								<td><label for='voxline_color'>Color</label></td>
+								<td><input type='hidden' id='voxline_color' value='{{voxline_color}}' /></td>
+							</tr>
+							<tr>
+								<td><label for='voxline_color'>Width</label></td>
+								<td><div id='voxline_width'></div></td>
+							</tr>
+						</table>
+					</div>
+					<div class='display_opt'>
+						<table>
+							<tr>
+								<td><label for='datainterp'>Interpolation</label></td>
+								<td>
+									<select id='datainterp'>
+										<option value='nearest'>Nearest</option>
+										<option value='trilinear'>Trilinear</option>
+										<option value='nearlin'>Bilinear/nearest</option>
+									</select>
+								</td>
+							</tr>
+						</table>
+					</div>
+				</fieldset>
+			</div>
 			<fieldset id="dataset_fieldset" class='opt_category'>
 				<legend>Datasets</legend>
 				<ul id='datasets'>

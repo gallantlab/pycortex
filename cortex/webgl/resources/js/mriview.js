@@ -1,5 +1,11 @@
 var flatscale = .2;
 
+var samplers = {
+    trilinear: "trilinear",
+    nearest: "nearest",
+    nearlin: "nearest",
+}
+
 var buf = {
     pos: new Float32Array(3),
     norm: new Float32Array(3),
@@ -76,6 +82,8 @@ function MRIview() {
             dataAlpha:  { type:'f', value:1.0},
             hatchAlpha: { type:'f', value:1.},
             hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+            voxlineColor:{type:'v3', value:new THREE.Vector3( 0,0,0 )},
+            voxlineWidth:{type:'f', value:viewopts.voxline_width},
 
             hide_mwall: { type:'i', value:0},
         }
@@ -710,6 +718,17 @@ MRIview.prototype = {
         $("#movieframe").attr("value", frame);
         this.schedule();
     },
+
+    setVoxView: function(interp, lines) {
+        for (var i = 0, il = this.active[0].textures.length; i < il; i++) {
+            this.active[0].textures[i].minFilter = filtertypes[interp];
+            this.active[0].textures[i].magFilter = filtertypes[interp];
+            this.active[0].textures[i].needsUpdate = true;
+        }
+        this.setShader(samplers[interp], this.active[0].raw, lines);
+        $("#datainterp option[value="+interp+"]").attr("selected", "selected");
+    },
+
     playpause: function() {
         var dataset = this.active[0];
         if (this.state == "pause") {
@@ -939,7 +958,7 @@ MRIview.prototype = {
             if (this.checked) 
                 updateROIs();
             else {
-                _this.shader.uniforms.map.texture = blanktex;
+                _this.uniforms.map.texture = blanktex;
                 _this.schedule();
             }
         });
@@ -950,29 +969,47 @@ MRIview.prototype = {
         }.bind(this));
 
         $("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
-            this.shader.uniforms.curvAlpha.value = ui.value;
+            this.uniforms.curvAlpha.value = ui.value;
             this.schedule();
         }.bind(this)})
         $("#layer_curvmult").slider({ min:.001, max:2, step:.001, value:1, slide:function(event, ui) {
-            this.shader.uniforms.curvScale.value = ui.value;
+            this.uniforms.curvScale.value = ui.value;
             this.schedule();
         }.bind(this)})
         $("#layer_curvlim").slider({ min:0, max:.5, step:.001, value:.2, slide:function(event, ui) {
-            this.shader.uniforms.curvLim.value = ui.value;
+            this.uniforms.curvLim.value = ui.value;
             this.schedule();
         }.bind(this)})
         $("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:1.0, slide:function(event, ui) {
-            this.shader.uniforms.dataAlpha.value = ui.value;
+            this.uniforms.dataAlpha.value = ui.value;
             this.schedule();
         }.bind(this)})
         $("#layer_hatchalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
-            this.shader.uniforms.hatchAlpha.value = ui.value;
+            this.uniforms.hatchAlpha.value = ui.value;
             this.schedule();
         }.bind(this)})
         $("#layer_hatchcolor").miniColors({close: function(hex, rgb) {
-            this.shader.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
+            this.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
             this.schedule();
         }.bind(this)});
+
+        $("#voxline_show").change(function() {
+            viewopts.voxlines = $("#voxline_show")[0].checked;
+            this.setVoxView(this.active[0].filter, viewopts.voxlines);
+            this.schedule();
+        }.bind(this));
+        $("#voxline_color").miniColors({ close: function(hex, rgb) {
+            this.uniforms.voxlineColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b/255);
+            this.schedule();
+        }.bind(this)});
+        $("#voxline_width").slider({ min:1, max:10, step:.001, value:viewopts.voxline_width, slide:function(event, ui) {
+            this.uniforms.voxlineWidth.value = ui.value;
+            this.schedule();
+        }.bind(this)});
+        $("#datainterp").change(function() {
+            this.setVoxView($("#datainterp").val(), viewopts.voxlines);
+            this.schedule();
+        }.bind(this));
 
         $("#resetflat").click(function() {
             this.reset_view();

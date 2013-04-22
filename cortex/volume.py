@@ -16,10 +16,10 @@ def unmask(mask, data):
         Actual MRI data to unmask
     """
     if data.ndim > 1:
-        output = np.zeros((len(data),)+mask.shape, dtype=data.dtype)
+        output = (np.nan*np.ones((len(data),)+mask.shape)).astype(data.dtype)
         output[:, mask > 0] = data
     else:
-        output = np.zeros(mask.shape, dtype=data.dtype)
+        output = (np.nan*np.ones(mask.shape)).astype(data.dtype)
         output[mask > 0] = data
     return output
 

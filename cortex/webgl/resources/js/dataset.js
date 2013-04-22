@@ -1,6 +1,6 @@
-var filtertypes = { nearest: THREE.NearestFilter, trilinear: THREE.LinearFilter };
+var filtertypes = { nearest: THREE.NearestFilter, trilinear: THREE.LinearFilter, nearlin: THREE.LinearFilter };
 function Dataset(json) {
-    this.loaded = $.Deferred();
+    this.loaded = $.Deferred().done(function() { $("#dataload").hide(); });
 
     this.data = json.data;
     this.mosaic = json.mosaic;
@@ -18,20 +18,30 @@ function Dataset(json) {
     this.filter = json.filter == undefined ? "nearest" : json.filter;
     this.textures = [];
 
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext('2d');
+
     var loadtex = function(idx) {
         var img = new Image();
         img.addEventListener("load", function() {
-            this.shape = [img.width / this.mosaic[0], img.height / this.mosaic[1]];
-            var tex = new THREE.Texture(img);
+            var tex;
+            if (this.raw) {
+                tex = new THREE.Texture(img);
+                tex.premultiplyAlpha = true;
+            } else {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                var im = ctx.getImageData(0, 0, img.width, img.height).data;
+                var arr = new Float32Array(im.buffer);
+                tex = new THREE.DataTexture(arr, img.width, img.height, THREE.LuminanceFormat, THREE.FloatType);
+                tex.premultiplyAlpha = false;
+            }
             tex.minFilter = filtertypes[this.filter];
             tex.magFilter = filtertypes[this.filter];
-            tex.premultiplyAlpha = true;
-            tex.flipY = false;
             tex.needsUpdate = true;
-            if (!this.raw) {
-                tex.type = THREE.FloatType;
-                tex.format = THREE.LuminanceFormat;
-            }
+            tex.flipY = false;
+            this.shape = [img.width / this.mosaic[0], img.height / this.mosaic[1]];
             this.textures.push(tex);
 
             if (this.textures.length < this.frames) {
@@ -45,67 +55,13 @@ function Dataset(json) {
     }.bind(this);
 
     loadtex(0);
+    $("#dataload").show();
 }
 Dataset.fromJSON = function(json) {
     return new Dataset(json);
 }
 
 Dataset.prototype = { 
-    addStim: function(url, delay) {
-        this.delay = delay;
-        this.stim = document.createElement("video");
-        this.stim.id = "stim_movie";
-        this.stim.setAttribute("preload", "");
-        this.stim.setAttribute("loop", "loop");
-        var src = document.createElement("source");
-        var ext = url.match(/^(.*)\.(\w{3,4})$/);
-        if (ext.length == 3) {
-            if (ext[2] == 'ogv') {
-                src.setAttribute('type', 'video/ogg; codecs="theora, vorbis"');
-            } else if (ext[2] == 'webm') {
-                src.setAttribute('type', 'video/webm; codecs="vp8, vorbis"');
-            } else if (ext[2] == 'mp4') {
-                src.setAttribute('type', 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
-            }
-        }
-        src.setAttribute("src", url);
-        this.stim.appendChild(src);
-
-        allStims.push(this.stim);
-
-        this.stim.seekTo = function(time) {
-            if (this.seekable.length > 0 && 
-                this.seekable.end(0) >= time) {
-                this.currentTime = time;
-                $("#pluginload").hide()
-                if (typeof(this.callback) == "function")
-                    this.callback();
-            } else {
-                this.seekTarget = time;
-                $("#pluginload").show()
-            }
-        }
-        $(this.stim).bind("progress", function() {
-            if (this.seekTarget != null && 
-                this.seekable.length > 0 && 
-                this.seekable.end(0) >= this.seekTarget &&
-                this.parentNode != null) {
-                var func = function() {
-                    try {
-                        this.currentTime = this.seekTarget;
-                        this.seekTarget = null;
-                        $("#pluginload").hide()
-                        if (typeof(this.callback) == "function")
-                            this.callback();
-                    } catch (e) {
-                        console.log(e);
-                        setTimeout(func, 5);
-                    }
-                }.bind(this);
-                func();
-            }
-        });
-    },
     set: function(uniforms, dim, frame, init) {
         if (dim === undefined)
             dim = 0;
@@ -146,3 +102,59 @@ Dataset.prototype = {
 //         viewer._startplay = (now - this.currentTime - delay)*1000;
 //     })
 // }
+
+    // addStim: function(url, delay) {
+    //     this.delay = delay;
+    //     this.stim = document.createElement("video");
+    //     this.stim.id = "stim_movie";
+    //     this.stim.setAttribute("preload", "");
+    //     this.stim.setAttribute("loop", "loop");
+    //     var src = document.createElement("source");
+    //     var ext = url.match(/^(.*)\.(\w{3,4})$/);
+    //     if (ext.length == 3) {
+    //         if (ext[2] == 'ogv') {
+    //             src.setAttribute('type', 'video/ogg; codecs="theora, vorbis"');
+    //         } else if (ext[2] == 'webm') {
+    //             src.setAttribute('type', 'video/webm; codecs="vp8, vorbis"');
+    //         } else if (ext[2] == 'mp4') {
+    //             src.setAttribute('type', 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+    //         }
+    //     }
+    //     src.setAttribute("src", url);
+    //     this.stim.appendChild(src);
+
+    //     allStims.push(this.stim);
+
+    //     this.stim.seekTo = function(time) {
+    //         if (this.seekable.length > 0 && 
+    //             this.seekable.end(0) >= time) {
+    //             this.currentTime = time;
+    //             $("#pluginload").hide()
+    //             if (typeof(this.callback) == "function")
+    //                 this.callback();
+    //         } else {
+    //             this.seekTarget = time;
+    //             $("#pluginload").show()
+    //         }
+    //     }
+    //     $(this.stim).bind("progress", function() {
+    //         if (this.seekTarget != null && 
+    //             this.seekable.length > 0 && 
+    //             this.seekable.end(0) >= this.seekTarget &&
+    //             this.parentNode != null) {
+    //             var func = function() {
+    //                 try {
+    //                     this.currentTime = this.seekTarget;
+    //                     this.seekTarget = null;
+    //                     $("#pluginload").hide()
+    //                     if (typeof(this.callback) == "function")
+    //                         this.callback();
+    //                 } catch (e) {
+    //                     console.log(e);
+    //                     setTimeout(func, 5);
+    //                 }
+    //             }.bind(this);
+    //             func();
+    //         }
+    //     });
+    // },

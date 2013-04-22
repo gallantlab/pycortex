@@ -199,7 +199,22 @@ function makeShader(sampler, raw, voxline, volume) {
                 "return texture2D(data, make_uv_"+dim+"(coord.xy, ceil(coord.z)));",
             "else",
                 "return texture2D(data, make_uv_"+dim+"(coord.xy, floor(coord.z)));",
-        "}\n",].join("\n");
+        "}\n",
+
+        "vec4 debug1_"+dim+"(sampler2D data, vec4 fid) {",
+            "vec3 coord = (volxfm["+val+"] * fid).xyz;",
+            "return vec4(coord / vec3(100., 100., 32.), 1.);",
+        "}",
+
+        "vec4 debug2_"+dim+"(sampler2D data, vec4 fid) {",
+            "vec3 coord = (volxfm["+val+"]*fid).xyz;",
+            "if (fract(coord.z) > 0.5)",
+                "return vec4(make_uv_"+dim+"(coord.xy, ceil(coord.z)), 0., 1.);",
+            "else",
+                "return vec4(make_uv_"+dim+"(coord.xy, floor(coord.z)), 0., 1.);",
+        "}\n",
+
+        ].join("\n");
     }
 
     var fragHead = [
@@ -217,7 +232,7 @@ function makeShader(sampler, raw, voxline, volume) {
     "uniform sampler2D colormap;",
     "uniform float vmin[2];",
     "uniform float vmax[2];",
-    "uniform float framemix;",,
+    "uniform float framemix;",
 
     "uniform float curvAlpha;",
     "uniform float curvScale;",
@@ -225,6 +240,8 @@ function makeShader(sampler, raw, voxline, volume) {
     "uniform float dataAlpha;",
     "uniform float hatchAlpha;",
     "uniform vec3 hatchColor;",
+    "uniform vec3 voxlineColor;",
+    "uniform float voxlineWidth;",
 
     "uniform sampler2D hatch;",
     "uniform vec2 hatchrep;",
@@ -247,7 +264,7 @@ function makeShader(sampler, raw, voxline, volume) {
     // from http://codeflow.org/entries/2012/aug/02/easy-wireframe-display-with-barycentric-coordinates/
     "float edgeFactor(vec3 edge) {",
         "vec3 d = fwidth(edge);",
-        "vec3 a3 = smoothstep(vec3(0.), d*1.5, edge);",
+        "vec3 a3 = smoothstep(vec3(0.), d*voxlineWidth, edge);",
         "return min(min(a3.x, a3.y), a3.z);",
     "}",
 
@@ -266,16 +283,6 @@ function makeShader(sampler, raw, voxline, volume) {
     ].join("\n");
 
     var fragMid = "";
-    // if (voxline) {
-    //     fragMid = [
-    //         "vec3 coord = (volxfm[0]*fid).xyz;",
-    //         "bvec3 edges = lessThan(abs(fract(coord) - vec3(0.5)), vec3(.02));",
-    //         "if (edges.x) gl_FragColor = vec4(1.,1.,1.,1.);",
-    //         "else if (edges.y) gl_FragColor = vec4(1.,1.,1.,1.);",
-    //         "else if (edges.z) gl_FragColor = vec4(1.,1.,1.,1.);",
-    //         "else {\n",
-    //     ].join("\n");
-    // }
     if (raw) {
         fragMid += [
             "vec4 color1 = "+sampler+"_x(data[0], fid);",
@@ -286,9 +293,9 @@ function makeShader(sampler, raw, voxline, volume) {
     } else {
         fragMid += [
             "float color0 = "+sampler+"_x(data[0], fid).r;",
-            "float color1 = "+sampler+"_x(data[1], fid).r;",
+            "float color1 = "+sampler+"_y(data[1], fid).r;",
             "float color2 = "+sampler+"_x(data[2], fid).r;",
-            "float color3 = "+sampler+"_x(data[3], fid).r;",
+            "float color3 = "+sampler+"_y(data[3], fid).r;",
             //check if nan
             'if (!(color0 <= 0. || 0. <= color0)) {',
                 'vColor = vec4(0.);',
@@ -301,10 +308,9 @@ function makeShader(sampler, raw, voxline, volume) {
                 "float vnorm3 = (color3 - vmin[1]) / vrange1;",
 
                 "float fnorm0 = mix(vnorm0, vnorm2, framemix);",
-                "float fnorm1 = mix(vnorm0, vnorm3, framemix);",
+                "float fnorm1 = mix(vnorm1, vnorm3, framemix);",
 
                 "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
-
                 "vColor = texture2D(colormap, cuv);",
             "}",
         ].join("\n");
@@ -312,8 +318,8 @@ function makeShader(sampler, raw, voxline, volume) {
     if (voxline) {
         fragMid += [
             "vec3 coord = (volxfm[0]*fid).xyz;",
-            "vec3 edge = mod(coord - vec3(0.5), 1.);",
-            "gl_FragColor = mix(vec4(vec3(0.), 1.), vColor, edgeFactor(edge));",
+            "vec3 edge = abs(mod(coord, 1.) - vec3(0.5));",
+            "gl_FragColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge));",
         ].join("\n");
         // "}\n",
     } else {

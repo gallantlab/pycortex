@@ -92,7 +92,7 @@ def _make_bindat(json, path="", fmt='%s_%d.png'):
     def _make_img(mosaic):
         buf.seek(0)
         assert mosaic.dtype == np.float32
-        im = Image.frombuffer('RGBA', mosaic.shape, mosaic.data, 'raw')
+        im = Image.frombuffer('RGBA', mosaic.shape, mosaic.data, 'raw', 'RGBA', 0, 1)
         im.save(buf, format='PNG')
         buf.seek(0)
         return buf.read()
@@ -224,7 +224,9 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
     queue = mp.Queue()
-    
+
+    viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='1.5' )
+
     class CTMHandler(web.RequestHandler):
         def get(self, path):
             fpath = os.path.split(ctmfile)[0]
@@ -256,7 +258,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     class MixerHandler(web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
-            self.write(html.generate(data=json.dumps(jsondat), colormaps=colormaps, default_cmap=cmap, python_interface=True))
+            self.write(html.generate(data=json.dumps(jsondat), colormaps=colormaps, default_cmap=cmap, python_interface=True, **viewopts))
 
         def post(self):
             print("saving file to %s"%saveimg.value)
