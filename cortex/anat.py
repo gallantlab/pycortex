@@ -4,11 +4,12 @@ import shutil
 import tempfile
 import subprocess as sp
 
-import numpy as np
 import nibabel
+import numpy as np
 
 from . import db
 from . import utils
+from .xfm import Transform
 
 def brainmask(subject):
     anatform = db.surfs.getFiles(subject)['anats']
@@ -41,3 +42,34 @@ def curvature(subject, **kwargs):
     curv = anatform.format(type='curvature')
     curv, ext = os.path.splitext(curv)
     np.savez_compressed('%s.npz'%curv, left=curvs[0], right=curvs[1])
+
+def distortion(subject, type='areal', **kwargs):
+    dists = utils.get_distortion(subject, type=type, **kwargs)
+    anatform = db.surfs.getFiles(subject)['anats']
+    dist = anatform.format(type='distortion_%d'%type)
+    dist, ext = os.path.splitext(dist)
+    np.savez_compressed('%s.npz'%dist, left=dists[0], right=dists[1])
+
+def voxelize(subject, surf='wm', mp=True):
+    '''Voxelize the whitematter surface to generate the white matter mask'''
+    from . import polyutils
+    anatform = db.surfs.getFiles(subject)['anats']
+    nib = nibabel.load(anatform.format(type='raw'))
+    shape = nib.get_shape()
+    vox = np.zeros(shape, dtype=bool)
+    for pts, polys in db.surfs.getSurf(subject, surf, nudge=False):
+        xfm = Transform(np.linalg.inv(nib.get_affine()), nib)
+        vox += polyutils.voxelize(xfm(pts), polys, shape=shape, center=(0,0,0), mp=mp)
+
+    if surf == 'wm':
+        nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
+        nib.to_filename(anatform.format(type='whitematter'))
+
+    return vox.T
+
+def fiducial(subject, mp=True):
+    anatform = db.surfs.getFiles(subject)['anats']
+    nib = nibabel.load(anatform.format(type='raw'))
+    vox = voxelize(subject, surf='fiducial').T.astype(np.uint8)
+    nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
+    nib.to_filename(anatform.format(type='fiducial'))

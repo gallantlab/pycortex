@@ -7,7 +7,7 @@ import subprocess as sp
 import numpy as np
 
 from . import db
-from . import vtkutils_new as vtk
+from . import anat
 
 def get_paths(subject, hemi, type="patch"):
     base = os.path.join(os.environ['SUBJECTS_DIR'], subject)
@@ -20,7 +20,7 @@ def get_paths(subject, hemi, type="patch"):
 
 def import_subj(subject, sname=None):
     import nibabel
-    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.vtk")
+    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.npz")
     anats = os.path.join(db.filestore, "anatomicals", "{subj}_{name}.{type}")
     fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
 
@@ -28,7 +28,7 @@ def import_subj(subject, sname=None):
         sname = subject
 
     #import anatomicals
-    for fsname, name in dict(T1="raw", wm="whitematter").items():
+    for fsname, name in dict(T1="raw").items():
         path = os.path.join(fspath, "{fsname}.mgz").format(fsname=fsname)
         out = anats.format(subj=sname, name=name, type='nii.gz')
         cmd = "mri_convert {path} {out}".format(path=path, out=out)
@@ -44,14 +44,18 @@ def import_subj(subject, sname=None):
         for hemi in ("lh", "rh"):
             pts, polys, curv = get_surf(subject, hemi, fsname)
             fname = surfs.format(subj=sname, name=name, hemi=hemi)
-            vtk.write(fname, pts + surfmove, polys)
+            np.savez(fname, pts=pts + surfmove, polys=polys)
             if fsname == 'smoothwm':
                 curvs[hemi] = curv
 
-    np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
+    #voxelize the surface for nicer BBR anatomical
+    anat.voxelize(sname)
+
+    np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=-curvs['lh'], right=-curvs['rh'])
+    #np.savez(anats.format(subj=sname, name="thickness", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
 
 def import_flat(subject, patch, sname=None):
-    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.vtk")
+    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.npz")
     if sname is None:
         sname = subject
     for hemi in ['lh', 'rh']:
@@ -59,7 +63,7 @@ def import_flat(subject, patch, sname=None):
         flat = pts[:,[1, 0, 2]]
         flat[:,1] = -flat[:,1]
         fname = surfs.format(subj=sname, name="flat", hemi=hemi)
-        vtk.write(fname, flat, polys)
+        np.savez(fname, pts=flat, polys=polys)
 
 def make_fiducial(subject):
     for hemi in ['lh', 'rh']:
@@ -343,8 +347,3 @@ def stretch_mwall(pts, polys, mwall):
     pts[mwall, 1] = radius * np.cos(angles) + center[1]
     pts[mwall, 2] = radius * np.sin(angles) + center[2]
     return SpringLayout(pts, polys, inflated, pins=mwall)
-
-def test():
-    pts, polys, curvs = get_surf("JGfs2", "lh", "inflated", patch="inferiorout")
-    mwall = np.load("/tmp/lh_mwall_verts.npy")
-    return stretch_mwall(pts, polys, mwall)

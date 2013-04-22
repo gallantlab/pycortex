@@ -1,17 +1,23 @@
 from collections import OrderedDict
 import numpy as np
 from scipy.spatial import distance, Delaunay
-from matplotlib.path import Path
-from matplotlib import patches
 
 class Surface(object):
     def __init__(self, pts, polys):
         self.pts = pts
         self.polys = polys
-        self.members = [[] for _ in range(len(pts))]
-        for i, poly in enumerate(polys):
-            for p in poly:
-                self.members[p].append(i)
+        self._connected = None
+
+    @property
+    def connected(self):
+        if self._connected is None:
+            self._connected = [set([]) for _ in range(len(self.pts))]
+            for i, poly in enumerate(self.polys):
+                for p in poly:
+                    self._connected[p].add(i)
+
+            self._connected = [list(i) for i in self._connected]
+        return self._connected
 
     @property
     def normals(self):
@@ -22,7 +28,7 @@ class Surface(object):
 
         vnorms = np.zeros((len(self.pts),3))
         for i in range(len(self.pts)):
-            vnorms[i] = fnorms[self.members[i]].mean(0)
+            vnorms[i] = fnorms[self.connected[i]].mean(0)
 
         return vnorms
 
@@ -38,7 +44,7 @@ class Surface(object):
         visited = set([node])
         while len(faces) < nfaces and len(queue) > 0:
             node = queue.pop(0)
-            for face in self.members[node]:
+            for face in self.connected[node]:
                 if face not in faces:
                     faces.add(face)
                     for pt in self.polys[face]:
@@ -61,9 +67,31 @@ class Surface(object):
 
         return np.array(pts), np.array(polys)
 
+    def smooth(self, values, neighborhood=3, smooth=8):
+        if len(values) != len(self.pts):
+            raise ValueError('Each point must have a single value')
+            
+        def getpts(pt, n):
+            if pt in self.connected:
+                for p in self.connected[pt]:
+                    if n == 0:
+                        yield p
+                    else:
+                        for q in getpts(p, n-1):
+                            yield q
+    
+        output = np.zeros(len(scalars))
+        for i, val in enumerate(scalars):
+            neighbors = list(set(getpts(i, neighborhood)))
+            if len(neighbors) > 0:
+                g = np.exp(-((scalars[neighbors] - val)**2) / (2*smooth**2))
+                output[i] = (g * scalars[neighbors]).mean()
+            
+        return output
+
     def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
-        for p, faces in enumerate(self.members):
+        for p, faces in enumerate(self.connected):
             pts, polys = _ptset(), _quadset()
             if len(faces) > 0:
                 poly = np.roll(self.polys[faces[0]], -np.nonzero(self.polys[faces[0]] == p)[0][0])
@@ -90,25 +118,40 @@ class Surface(object):
 
             yield pts.points, np.array(list(polys.triangles))
 
-    def polyparts(self, wm, idx):
-        #polypart = np.array([[0, 1, 2], [0, 3, 1], [3, 4, 1], [4, 5, 1], [5, 2, 1], [0, 2, 5], [0, 5, 3], [3, 5, 4]])
-        faces = self.members[idx]
-        if len(faces) > 0:
-            p0 = self.pts[idx]
-            w0 = wm[idx]
-            for face in faces:
-                poly = np.roll(self.polys[face], -np.nonzero(self.polys[face] == idx)[0][0])
-                p1 = self.pts[poly[[0,1]]].mean(0)
-                p2 = self.pts[poly].mean(0)
-                p3 = self.pts[poly[[0,2]]].mean(0)
-                w1 = wm[poly[[0,1]]].mean(0)
-                w2 = wm[poly].mean(0)
-                w3 = wm[poly[[0,2]]].mean(0)
+    def polyconvex(self, wm):
+        try:
+            import progressbar as pb
+            progress = pb.ProgressBar(maxval=len(self.connected))
+            progress.start()
+        except ImportError:
+            pass
 
-                tri1 = np.vstack([p0, p1, p2, w0, w1, w2])
-                tri2 = np.vstack([p0, p2, p3, w0, w2, w3])
-                yield tri1, Delaunay(tri1).convex_hull
-                yield tri2, Delaunay(tri2).convex_hull
+        for p, faces in enumerate(self.connected):
+            polys = self.polys[faces]
+            x, y = np.nonzero(polys == p)
+            x = np.tile(x, [3, 1]).T
+            y = np.vstack([y, (y+1)%3, (y+2)%3]).T
+            polys = polys[x, y]
+            mid = self.pts[polys].mean(1)
+            left = self.pts[polys[:,[0,2]]].mean(1)
+            right = self.pts[polys[:,[0,1]]].mean(1)
+            wmid = wm[polys].mean(1)
+            wleft = wm[polys[:,[0,2]]].mean(1)
+            wright = wm[polys[:,[0,1]]].mean(1)
+            top = np.vstack([mid, left, right])
+            bot = np.vstack([wmid, wleft, wright])
+            #remove duplicates
+            top = top[(distance.cdist(top, top) == 0).sum(0) == 1]
+            bot = bot[(distance.cdist(bot, bot) == 0).sum(0) == 1]
+            try:
+                progress.update(p+1)
+            except NameError:
+                pass
+            yield np.vstack([top, bot, self.pts[p], wm[p]])
+        try:
+            progress.finish()
+        except NameError:
+            pass
 
 
 class _ptset(object):
@@ -140,13 +183,6 @@ class _quadset(object):
         for quad in list(self.polys.values()):
             yield quad[:3]
             yield [quad[0], quad[2], quad[3]]
-
-def _tetra_vol(pts):
-    tetra = pts[1:] - pts[0]
-    return np.abs(np.dot(tetra[0], np.cross(tetra[1], tetra[2]))) / 6
-
-def _brick_vol(pts):
-    return _tetra_vol(pts[[0, 1, 2, 4]]) + _tetra_vol(pts[[0, 2, 3, 4]]) + _tetra_vol(pts[[2, 3, 4, 5]])
 
 class Distortion(object):
     def __init__(self, flat, ref, polys):
@@ -199,175 +235,23 @@ class Distortion(object):
         alldists[selverts] = msdists
         return alldists
 
+def tetra_vol(pts):
+    '''Volume of a tetrahedron'''
+    tetra = pts[1:] - pts[0]
+    return np.abs(np.dot(tetra[0], np.cross(tetra[1], tetra[2]))) / 6
+
+def brick_vol(pts):
+    '''Volume of a triangular prism'''
+    return tetra_vol(pts[[0, 1, 2, 4]]) + tetra_vol(pts[[0, 2, 3, 4]]) + tetra_vol(pts[[2, 3, 4, 5]])
+
 def face_volume(pts1, pts2, polys):
+    '''Volume of each face in a polyhedron sheet'''
     vols = np.zeros((len(polys),))
     for i, face in enumerate(polys):
-        vols[i] = _brick_vol(np.append(pts1[face], pts2[face], axis=0))
+        vols[i] = brick_vol(np.append(pts1[face], pts2[face], axis=0))
         if i % 1000 == 0:
             print(i)
     return vols
-
-def transform(xfm, pts):
-    return np.dot(xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
-
-def get_connected(polys):
-    data = [set([]) for _ in range(polys.max()+1)]
-    for i, poly in enumerate(polys):
-        for p in poly:
-            data[p].add(i)
-
-    return data
-
-def check_cycle(i, polys, ptpoly):
-    pts = polys[list(ptpoly[i])]
-    cycles = pts[np.nonzero(pts-i)]
-    return cycles
-
-def remove_pairs(arr):
-    return [p for p in np.unique(arr) if sum(p == arr) != 2]
-
-def trace_edge(seed, pts, polys, ptpoly, flip=False):
-    edge = [seed]
-    while True:
-        cycle = remove_pairs(check_cycle(edge[-1], polys, ptpoly))
-        if cycle[0 if not flip else 1] not in edge:
-            edge.append(cycle[0 if not flip else 1])
-        elif cycle[1 if not flip else 0] not in edge:
-            edge.append(cycle[1 if not flip else 0])
-        else:
-            #both in edges, we've gone around!
-            break;
-    return edge
-
-def trace_both(pts, polys):
-    ptpoly = get_connected(polys)
-    left = trace_edge(pts.argmin(0)[0], pts, polys, ptpoly)
-    right = trace_edge(pts.argmax(0)[0], pts, polys, ptpoly, flip=True)
-    return left, right
-
-def get_dist(pts):
-    return distance.squareform(distance.pdist(pts))
-
-def get_closest_nonadj(dist, adjthres=10):
-    closest = []
-    for i, d in enumerate(dist):
-        sort = d.argsort()[:adjthres] - i
-        sort = np.array([sort, abs(sort - len(dist))]).min(0)
-        find = sort[sort > adjthres]
-        if len(find) > 0:
-            closest.append((i, find[0]+i))
-
-    return np.array([x for x in closest if (x[1], x[0]) not in closest])
-
-def make_rot(close, pts):
-    pair = pts[close, :2]
-    refpt = pair[0] - pair[1]
-    d1 = close[1] - close[0]
-    d2 = len(pts) - close[1] + close[0]
-    if d2 < d1:
-        refpt = pair[1] - pair[0]
-    a = np.arctan2(refpt[1], refpt[0])
-    m = np.array([[np.cos(-a), -np.sin(-a)],
-                  [np.sin(-a),  np.cos(-a)]])
-    return m, d2 < d1
-
-def get_height(closest, pts):
-    data = []
-    for close in closest:
-        m, flip = make_rot(close, pts)
-        npt = (pts-pts[close[1]])
-        tpt = np.dot(m, npt.T[:2]).T
-        if flip:
-            data.append(np.vstack([tpt[max(close):], tpt[:min(close)]]).max(0)[1])
-        else:
-            data.append(tpt[min(close):max(close)].max(0)[1])
-    return np.array(data)
-    #return np.array([np.dot(make_rot(pts[close]), (pts-pts[close[1]]).T[:2]).max(1)[1] for close in closest])
-
-def _edge_perp(pts, i, close, width=11):
-    idx = (np.arange(-(width/2), width/2+1)+i) % len(pts)
-    x = np.vstack([pts[idx,0], np.ones((width,))]).T
-    m, b = np.linalg.lstsq(x, pts[idx, 1])[0]
-    return m
-
-def _line_perp(pts, i, close):
-    x, y = np.diff(pts[close,:2], axis=0)[0]
-    return y / x
-
-def get_edge_perp(pts, i, close, perp_func=_line_perp):
-    m = perp_func(pts, i, close)
-    a = np.arctan2(-1./m, 1)
-    
-    func = lambda h: (np.cos(a)*h + pts[i,0], np.sin(a)*h + pts[i,1])
-    p1 = pts[(i+1)%len(pts)] - pts[i]
-    p2 = func(1) - pts[i, :2]
-    if np.cross(p1[:2], p2) < 0:
-        return func
-    else:
-        return lambda h: func(-h)
-
-def make_path(closest, pts, factor=1, offset_func=_line_perp):
-    height = get_height(closest, pts)
-    #height /= height.max()
-    pm = pts.mean(0)[:2]
-    cpts = pts[:,:2] - pm
-    verts, codes = [], []
-    #return [cpts[close]*h*factor + pm for h, close in zip(height, closest)]
-    ccode = [Path.MOVETO, Path.CURVE4, Path.CURVE4, Path.CURVE4]
-    fcode = [Path.MOVETO, Path.LINETO]
-    for h, close in zip(height, closest):
-        if h > 0.05:
-            verts.append(pts[close[0],:2])
-            verts.append(get_edge_perp(pts, close[0], close)(h*factor))
-            verts.append(get_edge_perp(pts, close[1], close)(h*factor))
-            verts.append(pts[close[1],:2])
-            codes += ccode
-        else:
-            verts.append(pts[close[0], :2])
-            verts.append(pts[close[1], :2])
-            codes += fcode
-
-    return verts, codes
-
-def _test_inside(close, pts):
-    ref = pts[close[0]]
-    return np.cross(pts[close[0]-1] - ref, pts[close[1]] - ref) > 0
-
-def draw_curves(closest, pts, factor=1):
-    import matplotlib.pyplot as plt
-    path = Path(*make_path(closest, pts, factor=factor))
-    patch = patches.PathPatch(path, lw=1, facecolor='none')
-    ax = plt.gca()
-    ax.add_patch(patch)
-    ax.plot(pts.T[0], pts.T[1], 'x-')
-
-def draw_lines(closest, pts):
-    import matplotlib.pyplot as plt
-    inside, outside = [], []
-    for close in closest:
-        if _test_inside(close, pts[...,:2]):
-            inside.append(pts[close, :2])
-        else:
-            outside.append(pts[close, :2])
-    
-    codepair = [Path.MOVETO, Path.LINETO]
-    inside = Path(np.vstack(inside), codepair*len(inside))
-    outside = Path(np.vstack(outside), codepair*len(outside))
-    ipatch = patches.PathPatch(inside, lw=1, color='red', facecolor='none')
-    opatch = patches.PathPatch(outside, lw=1, color='blue', facecolor='none')
-
-    ax = plt.gca()
-    ax.add_patch(ipatch)
-    #ax.add_patch(opatch)
-    ax.plot(pts.T[0], pts.T[1], 'x-')
-    '''
-    pts = np.vstack(pairs[...,:2])
-    codes = [Path.MOVETO, Path.LINETO]*(len(pts)/2)
-    path = Path(pts, codes)
-    patch = patches.PathPatch(path, lw=2, facecolor='none')
-    ax = plt.gca()
-    ax.add_patch(patch)
-    '''
 
 def decimate(pts, polys):
     from tvtk.api import tvtk
@@ -377,37 +261,126 @@ def decimate(pts, polys):
     dec.update()
     return dec.output.points.to_array(), dec.output.polys.to_array().reshape(-1, 4)[:,1:]
 
+def curvature(pts, polys):
+    '''Computes mean curvature using VTK'''
+    from tvtk.api import tvtk
+    pd = tvtk.PolyData(points=pts, polys=polys)
+    curv = tvtk.Curvatures(input=pd, curvature_type="mean")
+    curv.update()
+    return curv.output.point_data.scalars.to_array()
+
+def inside_convex_poly(pts):
+    """Returns a function that checks if inputs are inside the convex hull of polyhedron defined by pts
+
+    Alternative method to check is to get faces of the convex hull, then check if each normal is pointed away from each point.
+    As it turns out, this is vastly slower than using qhull's find_simplex, even though the simplex is not needed.
+    """
+    tri = Delaunay(pts)
+    return lambda x: tri.find_simplex(x) != -1
+
+def make_cube(center=(.5, .5, .5), size=1):
+    pts = np.array([(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0),
+                    (0, 0, 1), (1, 0, 1), (0, 1, 1), (1, 1, 1)], dtype=float)
+    pts -= (.5, .5, .5)
+    polys = np.array([(0, 2, 3), (0, 3, 1), (0, 1, 4), (1, 5, 4),
+                      (1, 3, 5), (3, 7, 5), (2, 7, 3), (2, 6, 7),
+                      (0, 6, 2), (0, 4, 6), (4, 7, 6), (4, 5, 7)], dtype=np.uint32)
+    return pts * size + center, polys
+
 def boundary_edges(polys):
+    '''Returns the edges that are on the boundary of a mesh, as defined by belonging to only 1 face'''
     edges = dict()
-    for i, poly in enumerate(polys):
-        p = np.sort(poly)
+    for i, poly in enumerate(np.sort(polys)):
         for a, b in [(0,1), (1,2), (0, 2)]:
-            key = p[a], p[b]
+            key = poly[a], poly[b]
             if key not in edges:
                 edges[key] = []
             edges[key].append(i)
 
-    verts = set()
-    for (v1, v2), faces in edges.items():
+    epts = []
+    for edge, faces in edges.items():
         if len(faces) == 1:
-            verts.add(v1)
-            verts.add(v2)
+            epts.append(edge)
 
-    return np.array(list(verts))
+    return np.array(epts)
 
-def polysmooth(scalars, polys):
-    pass
+def trace_poly(edges):
+    '''Given a disjoint set of edges, yield complete linked polygons'''
+    idx = dict((i, set([])) for i in np.unique(edges))
+    for i, (x, y) in enumerate(edges):
+        idx[x].add(i)
+        idx[y].add(i)
 
-if __name__ == "__main__":
-    import pickle
-    from . import db
-    pts, polys, norm = db.surfs.getVTK("JG", "flat", merge=True, nudge=True)
-    fpts, fpolys, norm = db.surfs.getVTK("JG", "fiducial", merge=True, nudge=False)
-    #pts, polys, fpts = cPickle.load(open("/tmp/ptspolys.pkl"))
-    left, right = trace_both(pts, polys)
-    dist = get_dist(fpts[left])
-    rdist = get_dist(fpts[right])
-    closest = get_closest_nonadj(dist)
-    rclosest = get_closest_nonadj(dist)
+    eset = set(range(len(edges)))
+    while len(eset) > 0:
+        eidx = eset.pop()
+        poly = list(edges[eidx])
+        stack = set([eidx])
+        while poly[-1] != poly[0] or len(poly) == 1:
+            next = list(idx[poly[-1]] - stack)[0]
+            eset.remove(next)
+            stack.add(next)
+            if edges[next][0] == poly[-1]:
+                poly.append(edges[next][1])
+            elif edges[next][1] == poly[-1]:
+                poly.append(edges[next][0])
+            else:
+                raise Exception
 
-    pairs = pts[left][closest]
+        yield poly
+
+def rasterize(poly, shape=(256, 256)):
+    #ImageDraw sucks at its job, so we'll use imagemagick to do rasterization
+    import subprocess as sp
+    import cStringIO
+    import shlex
+    import Image
+    
+    polygon = " ".join(["%0.3f,%0.3f"%tuple(p[::-1]) for p in np.array(poly)-(.5, .5)])
+    cmd = 'convert -size %dx%d xc:black -fill white -stroke none -draw "polygon %s" PNG32:-'%(shape[0], shape[1], polygon)
+    proc = sp.Popen(shlex.split(cmd), stdout=sp.PIPE)
+    png = cStringIO.StringIO(proc.communicate()[0])
+    im = Image.open(png)
+
+    # For PNG8:
+    # mode, palette = im.palette.getdata()
+    # lut = np.fromstring(palette, dtype=np.uint8).reshape(-1, 3)
+    # if (lut == 255).any():
+    #     white = np.nonzero((lut == 255).all(1))[0][0]
+    #     return np.array(im) == white
+    # return np.zeros(shape, dtype=bool)
+    return (np.array(im)[:,:,0] > 128).T
+
+def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True):
+    from tvtk.api import tvtk
+    import Image
+    import ImageDraw
+    
+    pd = tvtk.PolyData(points=pts + center + (0, 0, 0), polys=polys)
+    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,.5)])
+    clip = tvtk.ClipPolyData(clip_function=plane, input=pd)
+    feats = tvtk.FeatureEdges(
+        manifold_edges=False, 
+        non_manifold_edges=False, 
+        feature_edges=False,
+        boundary_edges=True,
+        input=clip.output)
+
+    def func(i):
+        plane.points = [(0,0,i+.5)]
+        feats.update()
+        vox = np.zeros(shape[:2][::-1], np.uint8)
+        if feats.output.number_of_lines > 0:
+            epts = feats.output.points.to_array()
+            edges = feats.output.lines.to_array().reshape(-1, 3)[:,1:]
+            for poly in trace_poly(edges):
+                vox += rasterize(epts[poly][:,:2], shape=shape[:2][::-1])
+        return vox
+
+    if mp:
+        from . import mp
+        layers = mp.map(func, range(shape[2]))
+    else:
+        layers = map(func, range(shape[2]))
+
+    return np.array(layers).T

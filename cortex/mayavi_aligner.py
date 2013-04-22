@@ -2,8 +2,8 @@ import types
 import nibabel
 import numpy as np
 
-from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, Int, on_trait_change, Button, DelegatesTo, Any
-from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
+from traits.api import HasTraits, List, Instance, Array, Bool, Dict, Range, Float, Enum, Color, Int, Str, on_trait_change, Button, DelegatesTo, Any
+from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor, TextEditor
 
 from tvtk.api import tvtk
 from tvtk.pyface.scene import Scene
@@ -14,7 +14,25 @@ from mayavi.core.api import PipelineBase, Source, Filter, Module
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel, MayaviScene
 
 from . import options
-from . import utils
+from . import polyutils
+from . import volume
+
+legend = '''[, ]:\t\tNext, Prev slice
+Ins:\t\tRotate view ccw
+PgUp:\tRotate view cw
+PgDn:\tScale view x up
+Del:\t\tScale view x down
+Home:\tScale view y up
+End:\t\tScale view y down
+arrows:\tMove view
+i:\t\tShow 3D interactor
+h:\t\tToggle outlines
+Ctrl-z:\tUndo last
+Shift:\tSmall increments
+Scroll:\tZoom
+Middle:\tPan
+Left:\t\tMove slice
+'''
 
 class RotationWidget(HasTraits):
     radius = Float(value=1)
@@ -142,17 +160,32 @@ class FlatScene(Scene):
         i = -1 if self.invert else 1
         key = evt.GetKeyCode()
         ckey = chr(key % 256)
-        moves = {314:(-2,0,0), 315:(0,2,0), 316:(2,0,0), 317:(0,-2,0)}
+        rotccw, rotcw = [322, 57], [366, 48]
+        moves = {314:(-1,0,0), 315:(0,1,0), 316:(1,0,0), 317:(0,-1,0)}
         if self.invert:
-            moves = {314:(0,-2,0), 315:(2,0,0), 316:(0,2,0), 317:(-2,0,0)}
+            rotccw, rotcw = rotcw, rotccw
+            moves = {314:(0,1,0), 315:(1,0,0), 316:(0,-1,0), 317:(-1,0,0)}
         
-        mult = (1,.25)[evt.ShiftDown()]
+        mult = (2,.2)[evt.ShiftDown()]
+        smult = (1.1, 1.01)[evt.ShiftDown()]
         if key in moves:
             self.handle.move(np.array(moves[key])*mult)
-        elif key == 366:
+        elif key in rotccw : #ins
             self.handle.move(angle=np.pi / 120.*i*mult)
-        elif key == 367:
+        elif key in rotcw: #pgup
             self.handle.move(angle=-np.pi / 120.*i*mult)
+        elif key == 367: #pgdn
+            #x scale up
+            self.axis.transform(scale=(smult, 1))
+        elif key == 313: #home
+            #y scale up
+            self.axis.transform(scale=(1, smult))
+        elif key == 312: #end
+            #y scale down
+            self.axis.transform(scale=(1, 1/smult))
+        elif key == 127: #del
+            #x scale down
+            self.axis.transform(scale=(1/smult, 1))
         elif ckey == "h":
             self.aligner.outlines_visible = not self.aligner.outlines_visible
         elif ckey == ']':
@@ -270,8 +303,12 @@ class Axis(HasTraits):
         translate = origin * np.sign(spacing) - np.abs(spacing) / 2.
 
         mlab.figure(self.scene.mayavi_scene)
-        pts = self.slab.output.points.to_array()
-        polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
+        if self.slab.output.points is None or len(self.slab.output.points) < 3:
+            pts = np.array([[0, 0, 0], [0, 0, 0], [0,0,0]])
+            polys = [[0, 1, 2]]
+        else:
+            pts = self.slab.output.points.to_array()
+            polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
         src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, 
             figure=self.scene.mayavi_scene)
         xfm = mlab.pipeline.transform_data(src, figure=self.scene.mayavi_scene)
@@ -287,8 +324,12 @@ class Axis(HasTraits):
         return src
 
     def _surf_default(self):
-        pts = self.slab.output.points.to_array()
-        polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
+        if self.slab.output.points is None or len(self.slab.output.points) < 3:
+            pts = np.array([[0, 0, 0], [0, 0, 0], [0,0,0]])
+            polys = [[0, 1, 2]]
+        else:
+            pts = self.slab.output.points.to_array()
+            polys = self.slab.output.polys.to_array().reshape(-1, 4)[:,1:]
         src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, 
             figure=self.scene_3d.mayavi_scene)
         surf = mlab.pipeline.surface(src, 
@@ -375,39 +416,8 @@ class Axis(HasTraits):
         center = self.shape * self.spacing / 2. + (self.shape + 1) % 2 * self.spacing / 2.
         width = (self.shape * self.spacing)[:2]
         width = np.min(width) * 0.5
-
         def handlemove(handle, pos, angle, radius):
-            inv = self.xfm.transform.homogeneous_inverse
-            wpos = handle.center.representation.world_position
-            wpos -= center
-            scale = [radius, radius]
-            if self.axis == 1:
-                trans = np.insert(pos[:2][::-1], self.axis, 0)
-                wpos = np.insert(wpos[:2][::-1], self.axis, self.ipw_3d.ipw.slice_position)
-                scale = np.insert(scale[::-1], self.axis, 1)
-                angle = -angle
-                trans[0] = -trans[0]
-            else:
-                trans = np.insert(pos[:2], self.axis, 0)
-                wpos = np.insert(wpos[:2], self.axis, self.ipw_3d.ipw.slice_position)
-                scale = np.insert(scale, self.axis, 1)
-
-            self.parent._undolist.append(self.xfm.transform.matrix.to_array())
-
-            self.xfm.transform.post_multiply()
-            self.xfm.transform.translate(-wpos)
-            self.xfm.transform.rotate_wxyz(np.degrees(angle), *self.ipw_3d.ipw.normal)
-            self.xfm.transform.scale(scale)
-            self.xfm.transform.translate(wpos)
-            self.xfm.transform.translate(trans)
-            self.xfm.transform.pre_multiply()
-
-            self.xfm.widget.set_transform(self.xfm.filter.transform)
-            self.xfm.update_pipeline()
-            self.parent.update_slabs()
-
-            np.save("/tmp/last_xfm.npy", self.parent.get_xfm())
-
+            self.transform(pos, angle, radius)
         return RotationWidget(self.scene.scene.mayavi_scene, handlemove, radius=width, pos=center)
 
     def _disable_render_changed(self):
@@ -434,14 +444,51 @@ class Axis(HasTraits):
         self.outline.children[0].children[0].children[0].actor.property.point_size = self.point_size
 
     def next_slice(self):
+        '''View the next slice'''
         pos = list(self.position)
         pos[self.axis] += np.abs(self.parent.spacing)[self.axis]
         self.position = pos
 
     def prev_slice(self):
+        '''View the previous slice'''
         pos = list(self.position)
         pos[self.axis] -= np.abs(self.parent.spacing)[self.axis]
         self.position = pos
+
+    def transform(self, pos=(0,0), angle=0, scale=1):
+        '''In-plane transformation function. Update the 3D transform based on the 2D changes'''
+        center = self.shape * self.spacing / 2. + (self.shape + 1) % 2 * self.spacing / 2.
+        inv = self.xfm.transform.homogeneous_inverse
+
+        wpos = self.handle.center.representation.world_position
+        wpos -= center
+        if not isinstance(scale, (tuple, list, np.ndarray)):
+            scale = [scale, scale]
+
+        if self.axis == 1:
+            trans = np.insert(pos[:2][::-1], self.axis, 0)
+            wpos = np.insert(wpos[:2][::-1], self.axis, self.ipw_3d.ipw.slice_position)
+            #angle = -angle
+        else:
+            trans = np.insert(pos[:2], self.axis, 0)
+            wpos = np.insert(wpos[:2], self.axis, self.ipw_3d.ipw.slice_position)
+        scale = np.insert(scale, self.axis, 1)
+
+        self.parent._undolist.append(self.xfm.transform.matrix.to_array())
+
+        self.xfm.transform.post_multiply()
+        self.xfm.transform.translate(-wpos)
+        self.xfm.transform.rotate_wxyz(np.degrees(angle), *self.ipw_3d.ipw.normal)
+        self.xfm.transform.scale(scale)
+        self.xfm.transform.translate(wpos)
+        self.xfm.transform.translate(trans)
+        self.xfm.transform.pre_multiply()
+
+        self.xfm.widget.set_transform(self.xfm.filter.transform)
+        self.xfm.update_pipeline()
+        self.parent.update_slabs()
+
+        np.save("/tmp/last_xfm.npy", self.parent.get_xfm())
 
     def update_position(self):
         """ Update the position of the cursors on each side view, as well
@@ -509,21 +556,29 @@ class ZAxis(Axis):
     axis = 2
     scene = DelegatesTo('parent', 'scene_z')
 
+outline_reps = set(('wireframe', 'points', 'surface'))
+try:
+    default_rep = options.config.get("mayavi_aligner", "outline_rep")
+    outline_reps = outline_reps - set([default_rep])
+    outline_reps = (default_rep,) + tuple(outline_reps)
+except:
+    outline_reps = tuple(outline_reps)
+
 class Align(HasTraits):
     # The position of the view
     position = Array(shape=(3,))
 
     brightness = Range(-1., 1., value=0.)
     contrast = Range(0., 3., value=1.)
-    opacity = Range(0., 1.)
+    opacity = Range(0., 1., value=float(options.config.get("mayavi_aligner", "opacity")))
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
 
-    outline_color = Color()
     outlines_visible = Bool(default_value=True)
-    outline_rep = Enum('wireframe', 'points', 'surface')
-    line_width = Range(0., 10., value=1.)
-    point_size = Range(0., 10., value=5.)
+    outline_rep = Enum(outline_reps)
+    outline_color = Color(default=options.config.get("mayavi_aligner", "outline_color"))
+    line_width = Range(0.5, 10., value=float(options.config.get("mayavi_aligner", "line_width")))
+    point_size = Range(0.5, 10., value=float(options.config.get("mayavi_aligner", "point_size")))
 
     epi_filter = Enum(None, "median", "gradient")
     filter_strength = Range(1, 20, value=3)
@@ -547,6 +602,8 @@ class Align(HasTraits):
 
     save_callback = Instance(types.FunctionType)
     save_btn = Button(label="Save Transform")
+
+    legend = Str(legend)
 
     #---------------------------------------------------------------------------
     # Object interface
@@ -735,9 +792,9 @@ class Align(HasTraits):
             self.epi = self.epi_orig.copy()
         elif self.epi_filter == "median":
             fstr = np.floor(self.filter_strength / 2)*2+1
-            self.epi = utils.detrend_volume_median(self.epi_orig.T, fstr).T
+            self.epi = volume.detrend_median(self.epi_orig.T, fstr).T
         elif self.epi_filter == "gradient":
-            self.epi = utils.detrend_volume_gradient(self.epi_orig.T, self.filter_strength).T
+            self.epi = volume.detrend_gradient(self.epi_orig.T, self.filter_strength).T
         
         self.update_brightness()
 
@@ -798,7 +855,8 @@ class Align(HasTraits):
                             editor=SceneEditor(scene_class=ThreeDScene)),
                        show_labels=False,
                   ),
-                  Group(Item("save_btn", show_label=False, visible_when="save_callback is not None"),
+                  Group(
+                    Group(Item("save_btn", show_label=False, visible_when="save_callback is not None"),
                         "brightness", "contrast", "epi_filter", 
                         Item('filter_strength', visible_when="epi_filter is not None"),
                         "_", "opacity", "_",
@@ -808,36 +866,40 @@ class Align(HasTraits):
                                               path=lut_manager.lut_image_dir)),
                         "fliplut",
                         "_", "flip_ud", "flip_lr", "flip_fb", 
-                        "_", Item('outline_color', editor=ColorEditor()), 'outline_rep', 'line_width', 'point_size'
-
-                  )
+                        "_", Item('outline_color', editor=ColorEditor()), 'outline_rep', 'line_width', 'point_size',
+                        '_',
+                    ),
+                    Group(
+                        Item('legend', editor=TextEditor(), style='readonly', show_label=False, emphasized=True, dock='vertical'),
+                        show_labels=False,
+                    ),
+                    orientation='vertical'
+                  ),
                 ), 
                 resizable=True,
                 title='Aligner'
             )
 
 def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", decimate=False):
-    from . import db, polyutils
-    data = db.surfs.getXfm(subject, xfmname, xfmtype='magnet')
-    if data is None:
-        data = db.surfs.getXfm(subject, xfmname, xfmtype='coord')
-        if data is not None:
-            dbxfm, epifile = data
-        else:
-            dbxfm = None
-        assert epifile is not None, "Unknown transform"
-    else:
-        dbxfm, epifile = data
+    from .db import surfs
+
+    dbxfm = None
+    try:
+        db = surfs.getXfm(subject, xfmname, xfmtype='magnet')
+        epifile = db.epi.get_filename()
+        dbxfm = db.xfm
+    except IOError:
+        pass
 
     try:
-        wpts, wpolys, norms = db.surfs.getVTK(subject, 'wm', merge=True, nudge=False)
-        ppts, ppolys, norms = db.surfs.getVTK(subject, 'pia', merge=True, nudge=False)
+        wpts, wpolys = surfs.getSurf(subject, 'wm', merge=True, nudge=False)
+        ppts, ppolys = surfs.getSurf(subject, 'pia', merge=True, nudge=False)
         pts = np.vstack([wpts, ppts])
         polys = np.vstack([wpolys, ppolys+len(wpts)])
-    except ValueError:
-        pts, polys, norms = db.surfs.getVTK(subject, 'fiducial', merge=True, nudge=False)
+    except IOError:
+        pts, polys = surfs.getSurf(subject, 'fiducial', merge=True, nudge=False)
 
     if decimate:
         pts, polys = polyutils.decimate(pts, polys)
-        
+
     return Align(pts, polys, epifile, xfm=dbxfm if xfm is None else xfm, xfmtype=xfmtype)

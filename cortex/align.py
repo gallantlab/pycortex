@@ -7,8 +7,8 @@ from . import utils
 def manual(subject, xfmname, epifile=None, **kwargs):
     from .mayavi_aligner import get_aligner
     def save_callback(aligner):
-        from . import db
-        db.surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epifile)
+        from .db import surfs
+        surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epifile)
         print("saved xfm")
 
     m = get_aligner(subject, xfmname, epifile=epifile, **kwargs)
@@ -42,65 +42,72 @@ def automatic(subject, name, epifile, noclean=False):
     '''
     Attempts to create an automatic alignment. If [noclean], intermediate files will not be removed from /tmp.
     '''
-    import subprocess as sp
-    import tempfile
-    import shutil
     import shlex
+    import shutil
+    import tempfile
+    import subprocess as sp
 
-    from . import db
+    from .db import surfs
+    from .xfm import Transform
 
+    retval = None
     try:
         cache = tempfile.mkdtemp()
         epifile = os.path.abspath(epifile)
-        raw = db.surfs.getAnat(subject, type='raw')
-        bet = db.surfs.getAnat(subject, type='brainmask')
-        wmseg = db.surfs.getAnat(subject, type='whitematter')
+        raw = surfs.getAnat(subject, type='raw')
+        bet = surfs.getAnat(subject, type='brainmask')
+        wmseg = surfs.getAnat(subject, type='whitematter')
 
         print('FLIRT pre-alignment')
         cmd = 'fsl5.0-flirt -ref {bet} -in {epi} -dof 6 -omat {cache}/init.mat'.format(cache=cache, epi=epifile, bet=bet)
-        assert sp.call(cmd, shell=True) == 0, 'Error calling initial FLIRT'
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError('Error calling initial FLIRT')
 
         print('Running BBR')
         cmd = 'fsl5.0-flirt -ref {raw} -in {epi} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
         cmd = cmd.format(cache=cache, raw=raw, wmseg=wmseg, epi=epifile)
-        assert sp.call(cmd, shell=True) == 0, 'Error calling BBR flirt'
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError('Error calling BBR flirt')
 
-        xfm = np.loadtxt(os.path.join(cache, "out.mat"))
-        
-        ## Adapted from dipy.external.fsl.flirt2aff#############################
-        import numpy.linalg as npl
-        
-        in_hdr = nibabel.load(epifile).get_header()
-        ref_hdr = nibabel.load(raw).get_header()
-        
-        # get_zooms gets the positive voxel sizes as returned in the header
-        inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
-        refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        
-        if npl.det(in_hdr.get_best_affine())>=0:
-            inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
-        if npl.det(ref_hdr.get_best_affine())>=0:
-            refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
-        ########################################################################
-
-        epi = nibabel.load(epifile).get_header().get_base_affine()
-        M = nibabel.load(raw).get_affine()
-        inv = np.linalg.inv
-
-        coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
-        db.surfs.loadXfm(subject, name, coord, xfmtype="coord", epifile=epifile)
+        x = np.loadtxt(os.path.join(cache, "out.mat"))
+        Transform.from_fsl(x, epifile, raw).save(subject, name, 'coord')
+        print('Success')
 
     finally:
         if not noclean:
             shutil.rmtree(cache)
         else:
-            pass
+            retval = cache
 
-    return locals()
+    return retval
 
+def autotweak(subject, name):
+    import shlex
+    import shutil
+    import tempfile
+    import subprocess as sp
 
-def _x_flipper(N_i):
-    #Copied from dipy
-    flipr = np.diag([-1, 1, 1, 1])
-    flipr[0,3] = N_i - 1
-    return flipr
+    from .db import surfs
+    from .xfm import Transform
+
+    magnet = surfs.getXfm(subject, name, xfmtype='magnet')
+    try:
+        cache = tempfile.mkdtemp()
+        epifile = magnet.epi.get_filename()
+        raw = surfs.getAnat(subject, type='raw')
+        bet = surfs.getAnat(subject, type='brainmask')
+        wmseg = surfs.getAnat(subject, type='whitematter')
+        initmat = magnet.to_fsl(surfs.getAnat(subject, 'raw'))
+        with open(os.path.join(cache, 'init.mat'), 'w') as fp:
+            np.savetxt(fp, initmat, fmt='%f')
+        print('Running BBR')
+        cmd = 'fsl5.0-flirt -ref {raw} -in {epi} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
+        cmd = cmd.format(cache=cache, raw=raw, wmseg=wmseg, epi=epifile)
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError('Error calling BBR flirt')
+
+        x = np.loadtxt(os.path.join(cache, "out.mat"))
+        Transform.from_fsl(x, epifile, raw).save(subject, name+"_auto", 'coord')
+        print('Saved transform as (%s, %s)'%(subject, name+'_auto'))
+    finally:
+        shutil.rmtree(cache)

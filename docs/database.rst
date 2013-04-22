@@ -5,14 +5,13 @@ The surface database for pycortex holds all the VTK files and transforms require
 "Database" is technically a misnomer, since all the files are simply stored in the filestore by a coded filename. To access surface reconstructions::
 
     from cortex import surfs
-    pts, polys, norms = surfs.getVTK("AH", "fiducial", merge=True)
+    pts, poly = surfs.getSurf("AH", "fiducial", merge=True)
     #pts is a (p, 3) array, p = number of vertices
     #polys is a (f, 3) array, f = number of faces
-    #norms is a (p, 3) array, or None if no normals are defined in the vtk
 
 To retrieve a transform::
 
-    xfm, epifile = surfs.getXfm("AH", "AH_huth", xfmtype='coord')
+    xfm = surfs.getXfm("AH", "AH_huth", xfmtype='coord')
 
 For a slightly flashier way to view the database immediately::
 
@@ -20,17 +19,17 @@ For a slightly flashier way to view the database immediately::
 
 Surfaces
 --------
-pycortex fundamentally operates on triangular mesh geometry computed from a subject's anatomy. Surface geometries are usually created from a `marching cubes`_ reconstruction of the segmented cortical sheet. This first reconstruction is known as the fiducial surface. The fiducial surface is inflated and cut along anatomical and functional boundaries, and is morphed by an energy metric to be on a flattened 2D surface.
+pycortex fundamentally operates on triangular mesh geometry computed from a subject's anatomy. Surface geometries are usually created from a `marching cubes`_ reconstruction of the segmented cortical sheet. This undistorted reconstruction in the original anatomical space is known as the fiducial surface. The fiducial surface is inflated and cut along anatomical and functional boundaries, and is morphed by an energy metric to be on a flattened 2D surface.
 
-Unfortunately, pycortex currently has no way of generating or editing these geometries. The recommended software for doing segmentation and flattening is Caret_. Another package which is generally more automated, but tends to fail for some subjects is Freesurfer_. Feel free to explore both options for generating cortical reconstructions.
+Unfortunately, pycortex currently has no way of generating or editing these geometries directly. The recommended software for doing segmentation and flattening is Freesurfer_. Another package which is generally more user friendly is Caret_. pycortex includes some utility functions to interact with Freesurfer_, documented '''HERE'''.
 
-A surface in pycortex is any VTK file specifying the triangular mesh geometry of a subject. Surfaces generally have three variables associated:
+A surface in pycortex is any file specifying the triangular mesh geometry of a subject. Surfaces generally have three variables associated:
 
     * **Subject** : a unique identifier for the subject whom this surface belongs,
     * **Type** : the identifier for the type of geometry. These generally fall in three categories: Fiducial, inflated, and flat.
     * **Hemisphere** : which hemisphere the surface belongs to.
 
-The VTK files for a specific subject and hemisphere must have the same number of vertices across all the different types. Without this information, the mapping from fiducial to flatmap is not preserved, and there is no way to display data on the flatmap. Caret_ automatically returns VTK files of this format. pycortex does not check the validity of surfaces, and will break in unexpected ways if the number of vertices do not match! It is your job to make sure that all surfaces are valid.
+The surface files for a specific subject and hemisphere must have the same number of vertices across all the different types. Without this information, the mapping from fiducial to flatmap is not preserved, and there is no way to display data on the flatmap. Freesurfer_ surfaces preserve this relationship, and can be automatically imported into the database. pycortex does not check the validity of surfaces, and will break in unexpected ways if the number of vertices do not match! It is your job to make sure that all surfaces are valid.
 
 In order to plot cortical data for a subject, at least the fiducial and flat geometries must be available for that subject. Surfaces must be stored in VTK v. 1 format (also known as the ASCII format).
 
@@ -47,15 +46,15 @@ Command access
 For the direct command access, there are two call signatures::
 
     from cortex import surfs
-    pts, polys, norms = surfs.getVTK('AH', 'fiducial', merge=True)
+    pts, polys = surfs.getSurf('AH', 'fiducial', merge=True)
 
-This returns the positions, polygons, and normals (if found in the vtk file) of the given subject and surface type. Hemisphere defaults to "both", and since merge is true, they are vertically stacked **left, then right**. The polygon indices are shifted up for the right hemisphere to make a single unified geometry.
+This returns the points and polygons of the given subject and surface type. Hemisphere defaults to "both", and since merge is true, they are vertically stacked **left, then right**. The polygon indices are shifted up for the right hemisphere to make a single unified geometry.
 
 With merge=False, the return looks different::
 
-    left, right = surfs.getVTK('AH', 'fiducial', merge=False)
-    lpts, lpolys, lnorms = left
-    rpts, rpolys, rnorms = right
+    left, right = surfs.getSurf('AH', 'fiducial', merge=False)
+    lpts, lpolys = left
+    rpts, rpolys = right
 
 If you only specify hemisphere="left" or "right", only one hemisphere will be returned, and the return will again be only points, polygons, and normals.
 
@@ -69,7 +68,7 @@ An alternate way to browse the database is using ipython_ and its tab completion
 Then press tab, a list of subjects will appear. For example::
 
     In [2]: surfs.
-    surfs.AH         surfs.getFiles   surfs.JG1        surfs.MO         surfs.TC
+    surfs.AH         surfs.getFiles   surfs.JG         surfs.MO         surfs.TC
     surfs.AV         surfs.getVTK     surfs.loadVTK    surfs.NB         surfs.TN
     surfs.DS         surfs.getXfm     surfs.loadXfm    surfs.NB1        surfs.WH
     surfs.getCoords  surfs.JG         surfs.ML         surfs.SN         surfs.WH1
@@ -95,24 +94,13 @@ Finally, selecting one surface type will give you two new functions: get, and sh
 
 Adding new surfaces
 ^^^^^^^^^^^^^^^^^^^
-Adding new surfaces is easy. Simply copy your VTK file into the directory ``{$FILESTORE}/surfaces/`` with a filename format of ``{subject}_{type}_{hemi}.vtk`` where hemi is lh or rh. If you have an anatomical file associated with a subject, also copy it into that directory with format ``{subject}_anatomical_both.{suffix}``. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.
+Adding new surfaces is easy. Simply copy your surface file into the directory ``{$FILESTORE}/surfaces/`` with a filename format of ``{subject}_{type}_{hemi}.{format}`` where hemi is lh or rh, and format is one of **OFF**, **VTK**, or an **npz** file with keys 'pts' and 'polys'. If you have an anatomical file associated with a subject, also copy it into that directory with format ``{subject}_anatomical_both.{suffix}``. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.
 
 In order to adequately utilize all the functions in pycortex, please add the fiducial, inflated, and flat geometries for both hemispheres. Again, make sure that all the surface types for a given subject and hemisphere have the same number of vertices, otherwise unexpected things may happen!
 
 Transforms
 ----------
-Functional data, usually collected by an epi sequence, typically does not have the same scan parameters as the anatomical MPRAGE scan used to generate the surfaces. Additionally, fMRI sequences which are usually optimized for T2* have drastically different and larger distortions than a typical T1 anatomical sequence. While automatic algorithms exist to align these two scan types, they will sometimes fail spectacularly, especially if a partial volume slice prescription is necessary.
-
-pycortex includes a tool based on mayavi_ to do manual **affine** alignments. Please see the :module:`align` module for more information. Alternatively, if an automatic algorithm works well enough, you can also commit your own transform to the database. Transforms in pycortex always go from **fiducial to functional** space. They have four variables associated:
-
-    * **Subject** : name of the subject, must match the surfaces used to create the transform
-    * **Name** : A unique identifier for this transform
-    * **type** : The type of transform -- from fiducial to functional **magnet** space, or fiducial to **coord** inate space
-    * **epifile** : the filename of the functional data that the fiducial is aligned to
-
-Transforms always store the epifile in order to allow visual validation of alignment using the :module:`align` module.
-
-.. _mayavi: http://docs.enthought.com/mayavi/mayavi/
+Transformations in pycortex are stored as **affine** matrices encoded in 
 
 Accessing transforms
 ^^^^^^^^^^^^^^^^^^^^
@@ -121,7 +109,7 @@ Similar to the surfaces, transforms can be access through two methods: direct co
 Command access looks like this::
 
     from cortex import surfs
-    xfm, epifile = surfs.getXfm("AH", "AH_huth")
+    xfm = surfs.getXfm("AH", "AH_huth")
 
 Tab complete looks like this::
 
@@ -163,7 +151,7 @@ Overlays are stored as SVG_'s. This is where surface ROIs are defined. Since the
 
 References contain the functional scans that are paired with a transform. They are typically in Nifti_ format (*.nii), but can be any format that is understood by nibabel_. These are stored to ensure that we know what the reference for any transform was. This makes it possible to visually verify and tweak alignments, as well as keep a static store of images for future coregistrations.
 
-Surfaces are stored in the format previously discussed.
+Surfaces may be stored in any one of OFF, VTK, or npz formats. The highest performance is achieved with NPZ since it is binary and compressed. VTK is also efficient, having a cython module to read files.
 
 Transforms are saved as json-encoded text files. They have the format ``{subject}_{transform}.xfm``. There are four fields in this JSON structure: ``subject``, ``epifile``, ``coord``, ``magnet``. ``epifile`` gives the name of the epi file that served as the reference for this transform. ``coord`` stores the transform from fiducial to coordinate space (for fast index lookups). ``magnet`` stores the transform from the fiducial to the magnet space, as defined in the return of ``nibabel.get_affine()``.
 

@@ -148,7 +148,7 @@ function MRIview() {
     // scene and camera
     this.scene = new THREE.Scene();
 
-    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 0.5, 1000 );
+    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 1.0, 1000 );
     this.camera.position.set(200, 200, 200);
     this.camera.up.set(0,0,1);
 
@@ -244,6 +244,7 @@ function MRIview() {
     this.loaded = $.Deferred();
     this.cmapload = $.Deferred();
     this.labelshow = true;
+    this._pivot = 0;
 
     this.datasets = {}
     this.active = [];
@@ -418,7 +419,8 @@ MRIview.prototype = {
             case 'mix':
                 return $("#mix").slider("value");
             case 'pivot':
-                return $("#pivot").slider("value");
+                //return $("#pivot").slider("value");
+	        return this._pivot;
             case 'frame':
                 return this.frame;
             case 'azimuth':
@@ -493,10 +495,12 @@ MRIview.prototype = {
                     if (f.start.value instanceof Array) {
                         val = [];
                         for (j = 0; j < f.start.value.length; j++) {
-                            val.push(f.start.value[j]*(1-idx) + f.end.value[j]*idx);
+                            //val.push(f.start.value[j]*(1-idx) + f.end.value[j]*idx);
+			    val.push(this._animInterp(f.start.state, f.start.value[j], f.end.value[j], idx));
                         }
                     } else {
-                        val = f.start.value * (1-idx) + f.end.value * idx;
+                        //val = f.start.value * (1-idx) + f.end.value * idx;
+			val = this._animInterp(f.start.state, f.start.value, f.end.value, idx);
                     }
                     this.setState(f.start.state, val);
                     state = true;
@@ -507,6 +511,26 @@ MRIview.prototype = {
             }
         }
         return state;
+    },
+    _animInterp: function(state, startval, endval, idx) {
+	switch (state) {
+	case 'azimuth':
+	    // Azimuth is an angle, so we need to choose which direction to interpolate
+	    if (Math.abs(endval - startval) >= 180) { // wrap
+		if (startval > endval) {
+		    return (startval * (1-idx) + (endval+360) * idx + 360) % 360;
+		}
+		else {
+		    return (startval * (1-idx) + (endval-360) * idx + 360) % 360;
+		}
+	    } 
+	    else {
+		return (startval * (1-idx) + endval * idx);
+	    }
+	default:
+	    // Everything else can be linearly interpolated
+	    return startval * (1-idx) + endval * idx;
+	}
     },
     saveIMG: function(post) {
         var png = $("#brain")[0].toDataURL();
@@ -583,6 +607,7 @@ MRIview.prototype = {
     }, 
     setPivot: function (val) {
         $("#pivot").slider("option", "value", val);
+	this._pivot = val;
         var names = {left:1, right:-1}
         if (val > 0) {
             for (var name in names) {
@@ -625,15 +650,16 @@ MRIview.prototype = {
             } else if (data[name] instanceof NParray) {
                 this.datasets[name] = new Dataset(data[name]);
             }
-
-            $.when(this.loaded, this.datasets[name].loaded).then(function() {
-                if (this.meshes.left.geometry.indexMap !== undefined) {
-                    this.datasets[name].rearrange(
+            
+            $.when(this.loaded, this.datasets[name].loaded).done(function(dataset) {
+                if (this.meshes.left.geometry.indexMap !== undefined || 
+                    this.meshes.right.geometry.indexMap !== undefined) {
+                    dataset.rearrange(
                         this.meshes.left.geometry.attributes.position.array.length / 3, 
                         this.meshes.left.geometry.indexMap, 
                         this.meshes.right.geometry.indexMap);
                 }
-            }.bind(this));
+            }.bind(this, this.datasets[name]));
 
             var found = false;
             $("#datasets li").each(function() {
@@ -1211,13 +1237,20 @@ MRIview.prototype = {
         if (this.meshes && this.meshes.left) {
             var attributes = this.meshes.left.geometry.attributes;
             var length = attributes.position.array.length / 3;
-            if (array instanceof Uint8Array)
+            var data = attributes['data'+idx];
+            if (array instanceof Uint8Array) {
+                data.itemSize = data.stride = 4;
                 length *= 4;
-            attributes['data'+idx].array = array.subarray(0, length);
-            attributes['data'+idx].needsUpdate = true;
-            attributes = this.meshes.right.geometry.attributes;
-            attributes['data'+idx].array = array.subarray(length);
-            attributes['data'+idx].needsUpdate = true;
+            } else {
+                data.itemSize = data.stride = 1;
+            }
+            data.array = array.subarray(0, length);
+            data.needsUpdate = true;
+
+            data = this.meshes.right.geometry.attributes['data'+idx];
+            data.itemSize = data.stride = array instanceof Uint8Array ? 4 : 1;
+            data.array = array.subarray(length);
+            data.needsUpdate = true;
         }
     },
     _setShader: function(raw) {
@@ -1230,27 +1263,6 @@ MRIview.prototype = {
                 this.shader = this.cmapshader;
                 this.meshes.left.material = this.cmapshader;
                 this.meshes.right.material = this.cmapshader;
-            }
-
-            var val, len;
-            for (var i = 0; i < 2; i++) {
-                for (var j = 0; j < 4; j++) {
-                    var attributes = this.meshes[i ? 'left' : 'right'].geometry.attributes;
-                    var dattr = attributes['data' + j];
-
-                    len = attributes.position.numItems / 3;
-                    if (raw) {
-                        val = 4;
-                        dattr.array = new Uint8Array(val*len);
-                    } else {
-                        val = 1;
-                        dattr.array = new Float32Array(len);
-                    }
-
-                    dattr.itemSize = val;
-                    dattr.stride = val;
-                    dattr.numItems = val * len;
-                }
             }
         }
     }, 

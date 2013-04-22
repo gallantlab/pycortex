@@ -14,53 +14,59 @@ def make_object(pts, polys, name="mesh"):
     C.scene.objects.link(obj)
     return obj, mesh
 
-class Hemi(object):
-    def __init__(self, pts, polys, curv=None, name='hemi'):
-        self.obj, self.mesh = make_object(pts, polys, name=name)
-        self.obj.scale = .1, .1, .1
-        C.scene.objects.active = self.obj
-        self._loopidx = np.zeros((len(self.mesh.loops),), dtype=np.uint32)
-        self.mesh.loops.foreach_get('vertex_index', self._loopidx)
-        self.addVColor(curv, name='curvature', vmin=-.6, vmax=.6)
-        #Add basis shape
-        bpy.ops.object.shape_key_add()
-    
-    def addVColor(self, color, name='color', cmap=cm.RdBu, vmin=None, vmax=None):
-        if color.ndim == 1:
-            if vmin is None:
-                vmin = color.min()
-            if vmax is None:
-                vmax = color.max()
-            color = cmap((color - vmin) / (vmax - vmin))[:,:3]
+def add_vcolor(color, mesh=None, name='color', cmap=cm.RdBu, vmin=None, vmax=None):
+    if mesh is None:
+        mesh = C.scene.objects.active.data
+    elif isinstance(mesh, str):
+        mesh = D.meshes[mesh]
 
-        vcolor = self.mesh.vertex_colors.new(name)
-        for i, j in enumerate(self._loopidx):
-            vcolor.data[i].color = list(color[j])
+    if color.ndim == 1:
+        if vmin is None:
+            vmin = color.min()
+        if vmax is None:
+            vmax = color.max()
+        color = cmap((color - vmin) / (vmax - vmin))[:,:3]
 
-    def addShape(self, shape, name=None):
-        C.scene.objects.active = self.obj
-        self.obj.select = True
-        bpy.ops.object.shape_key_add()
-        key = D.shape_keys[-1].key_blocks[-1]
-        if name is not None:
-            key.name = name
+    loopidx = np.zeros((len(mesh.loops),), dtype=np.uint32)
+    mesh.loops.foreach_get('vertex_index', loopidx)
 
-        for i in range(len(key.data)):
-            key.data[i].co = shape[i]
-        return key
+    vcolor = mesh.vertex_colors.new(name)
+    for i, j in enumerate(loopidx):
+        vcolor.data[i].color = list(color[j])
+    return vcolor
 
-def show(data, subject, xfmname, types=('inflated',)):
+def add_shapekey(shape, name=None):
+    bpy.ops.object.shape_key_add()
+    key = D.shape_keys[-1].key_blocks[-1]
+    if name is not None:
+        key.name = name
+
+    for i in range(len(key.data)):
+        key.data[i].co = shape[i]
+    return key
+
+def show(data, subject, xfmname, types=('inflated',), cmap=cm.RdBu, vmin=None, vmax=None, **kwargs):
     from .db import surfs
-    surfs.getVTK(data, "fiducial")
+    from .utils import get_mapper
+    pts, polys = surfs.getSurf(data, "fiducial")
+    mapper = get_mapper(subject, xfmname, **kwargs)
+    obj, mesh = make_object(pts, polys)
+    vcolor = add_vcolor(mapper(data), mesh, cmap=cmap, vmin=vmin, vmax=vmax)
+    return obj, mesh, vcolor
 
 def fs_cut(subject, hemi):
     from .freesurfer import get_surf
     wpts, polys, curv = get_surf(subject, hemi, 'smoothwm')
     ipts, _, _ = get_surf(subject, hemi, 'inflated')
-    
-    hemi = Hemi(wpts, polys, curv=curv)
-    hemi.addShape(ipts, name='inflated')
-    return hemi
+
+    obj, mesh = make_object(wpts, polys, name='hemi')
+    obj.scale = .1, .1, .1
+    C.scene.objects.active = obj
+    bpy.ops.object.shape_key_add()
+    add_vcolor(curv, mesh, vmin=-.6, vmax=.6, name='curvature')
+    add_shapekey(ipts, name='inflated')
+    obj.use_shape_key_edit_mode = True
+    return mesh
 
 def write_patch(subject, hemi, name, mesh='hemi'):
     from .freesurfer import get_paths, write_patch

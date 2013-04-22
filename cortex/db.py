@@ -1,8 +1,8 @@
 """
-VTK surface database functions
-==============================
+Surface database functions
+==========================
 
-This module creates a singleton object surfs_ which allows easy access to vtk files in the filestore.
+This module creates a singleton object surfs_ which allows easy access to surface files in the filestore.
 
 .. _surfs: :class:`Database`
 """
@@ -15,6 +15,7 @@ import shutil
 import numpy as np
 
 from . import options
+from .xfm import Transform
 
 filestore = options.config.get('basic', 'filestore')
 
@@ -31,7 +32,7 @@ class SurfaceDB(object):
     def __init__(self, subj):
         self.subject = subj
         self.types = {}
-        pname = os.path.join(filestore, "surfaces", "{subj}_*.vtk").format(subj=subj)
+        pname = os.path.join(filestore, "surfaces", "{subj}_*.*").format(subj=subj)
         for fname in glob.glob(pname):
             fname = os.path.splitext(os.path.split(fname)[1])[0].split('_') 
             subj = fname.pop(0)
@@ -53,21 +54,15 @@ class SurfaceDB(object):
 class Surf(object):
     def __init__(self, subject, surftype):
         self.subject, self.surftype = subject, surftype
-        self.fname = os.path.join(filestore, "surfaces", "{subj}_{name}_{hemi}.vtk")
+        self.fname = os.path.join(filestore, "surfaces", "{subj}_{name}_{hemi}.*")
 
     def get(self, hemisphere="both"):
-        return surfs.getVTK(self.subject, self.surftype, hemisphere)
+        return surfs.getSurf(self.subject, self.surftype, hemisphere)
     
     def show(self, hemisphere="both"):
-        from . import vtkutils
-        lh = self.fname.format(subj=self.subject, name=self.surftype, hemi="lh")
-        rh = self.fname.format(subj=self.subject, name=self.surftype, hemi="rh")
-        if hemisphere == "both":
-            return vtkutils.show([lh, rh])
-        elif hemisphere.lower() in ["l", "lh", "left"]:
-            return vtkutils.show([lh])
-        elif hemisphere.lower() in ["r", "rh", "right"]:
-            return vtkutils.show([rh])
+        from mayavi import mlab
+        pts, polys = surfs.getSurf(self.subject, self.surftype, hemisphere, merge=True, nudge=True)
+        return mlab.triangular_mesh(pts[:,0], pts[:,1], pts[:,2], polys)
 
 class XfmDB(object):
     def __init__(self, subj):
@@ -110,15 +105,15 @@ class Database(object):
     """
     Database()
 
-    VTK surface database
+    Surface database
 
     Attributes
     ----------
     This database object dynamically generates handles to all subjects within the filestore.
     """
     def __init__(self):
-        vtks = glob.glob(os.path.join(filestore, "surfaces", "*.vtk"))
-        subjs = set([os.path.split(vtk)[1].split('_')[0] for vtk in vtks])
+        surfs = glob.glob(os.path.join(filestore, "surfaces", "*.*"))
+        subjs = set([os.path.split(surf)[1].split('_')[0] for surf in surfs])
         xfms = glob.glob(os.path.join(filestore, "transforms", "*.xfm"))
 
         self.subjects = dict([(sname, SubjectDB(sname)) for sname in subjs])
@@ -139,7 +134,7 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["loadXfm","getXfm", "getVTK"] + list(self.subjects.keys())
+        return ["loadXfm","getXfm", "getSurf"] + list(self.subjects.keys())
 
     def loadAnat(self, subject, anatfile, type='raw', process=True):
         fname = os.path.join(filestore, "anatomicals", "{subj}_{type}.nii.gz").format(subj=subject, type=type)
@@ -151,7 +146,7 @@ class Database(object):
             anat.whitematter(subject)
 
     def getAnat(self, subject, type='raw', recache=False, **kwargs):
-        assert type in ('raw', 'brainmask', 'whitematter', 'curvature')
+        assert type in ('raw', 'brainmask', 'whitematter', 'curvature', 'fiducial')
         anatform = self.getFiles(subject)['anats']
         anatfile = anatform.format(type=type)
         if type == "curvature":
@@ -188,7 +183,8 @@ class Database(object):
         if os.path.exists(fname):
             jsdict = json.load(open(fname))
         else:
-            assert epifile is not None, "Please specify a reference epi"
+            if epifile is None:
+                raise ValueError("Please specify a reference epi")
             import nibabel
             outname = "{subj}_{name}_refepi.nii.gz".format(subj=subject, name=name)
             fpath = os.path.join(filestore, "references", outname)
@@ -221,56 +217,20 @@ class Database(object):
         xfmtype : str, optional
             Type of transform to return. Defaults to coord.
         """
+        if name == "identity":
+            import nibabel
+            nib = nibabel.load(self.getAnat(subject, 'raw'))
+            return Transform(np.linalg.inv(nib.get_affine()), nib)
+
         fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
-        if not os.path.exists(fname):
-            return None
         xfmdict = json.load(open(fname))
-        assert xfmdict['subject'] == subject, "Incorrect subject for the name"
-        return np.array(xfmdict[xfmtype]), os.path.join(filestore, "references", xfmdict['epifile'])
+        if xfmdict['subject'] != subject:
+            raise ValueError("Incorrect subject for the name")
+        epifile = os.path.join(filestore, "references", xfmdict['epifile'])
+        return Transform(xfmdict[xfmtype], epifile)
 
-    def getXfmFSL(self, subject, name):
-        """Retrieves and translates the transform from the filestore. Returned
-        transform is functional -> anatomical and is FSL compatible.
-
-        Parameters
-        ----------
-        subject : str
-            Name of the subject
-        name : str
-            Name of the transform
-        """
-        import nibabel
-        
-        xfm, epifile = self.getXfm(subject, name)
-        raw = self.getAnat(subject, type='raw')
-        
-        import numpy.linalg as npl
-        def _x_flipper(N_i):
-            #Copied from dipy
-            flipr = np.diag([-1, 1, 1, 1])
-            flipr[0,3] = N_i - 1
-            return flipr
-
-        in_hdr = nibabel.load(epifile).get_header()
-        ref_hdr = nibabel.load(raw).get_header()
-        
-        # get_zooms gets the positive voxel sizes as returned in the header
-        inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
-        refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        
-        if npl.det(in_hdr.get_best_affine())>=0:
-            inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
-        if npl.det(ref_hdr.get_best_affine())>=0:
-            refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
-
-        M = nibabel.load(raw).get_affine()
-        inv = np.linalg.inv
-
-        fslx = inv(np.dot(inspace, np.dot(xfm, np.dot(M, inv(refspace)))))
-        return fslx
-
-    def getVTK(self, subject, type, hemisphere="both", merge=False, nudge=False):
-        '''Return the VTK pair for the given subject, surface type, and hemisphere.
+    def getSurf(self, subject, type, hemisphere="both", merge=False, nudge=False):
+        '''Return the surface pair for the given subject, surface type, and hemisphere.
 
         Parameters
         ----------
@@ -295,11 +255,11 @@ class Database(object):
             For single hemisphere
         '''
 
-        from .vtkutils_new import read as vtkread
-        fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}.vtk")
+        import formats
+        fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}")
 
         if hemisphere == "both":
-            left, right = [ self.getVTK(subject, type, hemisphere=h) for h in ["lh", "rh"]]
+            left, right = [ self.getSurf(subject, type, hemisphere=h) for h in ["lh", "rh"]]
             if type != "fiducial" and nudge:
                 left[0][:,0] -= left[0].max(0)[0]
                 right[0][:,0] -= right[0].min(0)[0]
@@ -307,8 +267,7 @@ class Database(object):
             if merge:
                 pts   = np.vstack([left[0], right[0]])
                 polys = np.vstack([left[1], right[1]+len(left[0])])
-                norms = np.vstack([left[2], right[2]])
-                return pts, polys, norms
+                return pts, polys
             else:
                 return left, right
         else:
@@ -321,17 +280,13 @@ class Database(object):
             
             if type == 'fiducial':
                 try:
-                    wpts, polys, _ = self.getVTK(subject, 'wm', hemi)
-                    ppts, _, norms = self.getVTK(subject, 'pia', hemi)
-                    return (wpts + ppts) / 2, polys, norms
-                except ValueError:
+                    wpts, polys = self.getSurf(subject, 'wm', hemi)
+                    ppts, _     = self.getSurf(subject, 'pia', hemi)
+                    return (wpts + ppts) / 2, polys
+                except IOError:
                     pass
 
-            vtkfile = fname.format(subj=subject, type=type, hemi=hemi)
-            if not os.path.exists(vtkfile):
-                raise ValueError("Cannot find given subject and type")
-
-            return vtkread(vtkfile)
+            return formats.read(fname.format(subj=subject, type=type, hemi=hemi))
 
     def getCoords(self, subject, xfmname, hemisphere="both", magnet=None):
         """Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space
@@ -349,13 +304,13 @@ class Database(object):
         warnings.warn('Please use a Mapper object instead', DeprecationWarning)
 
         if magnet is None:
-            xfm, epifile = self.getXfm(subject, xfmname, xfmtype="coord")
+            xfm = self.getXfm(subject, xfmname, xfmtype="coord")
         else:
-            xfm, epifile = self.getXfm(subject, xfmname, xfmtype="magnet")
-            xfm = np.dot(np.linalg.inv(magnet), xfm)
+            xfm = self.getXfm(subject, xfmname, xfmtype="magnet")
+            xfm = np.linalg.inv(magnet) * xfm
 
         coords = []
-        vtkTmp = self.getVTK(subject, "fiducial", hemisphere=hemisphere, nudge=False)
+        vtkTmp = self.getSurf(subject, "fiducial", hemisphere=hemisphere, nudge=False)
         if not isinstance(vtkTmp,(tuple,list)):
             vtkTmp = [vtkTmp]
         for pts, polys, norms in vtkTmp:
@@ -367,8 +322,8 @@ class Database(object):
     def getFiles(self, subject):
         """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
         """
-        vtkparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).vtk')
-        vtks = os.path.join(filestore, "surfaces", "{subj}_*.vtk").format(subj=subject)
+        surfparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).*')
+        surffiles = os.path.join(filestore, "surfaces", "{subj}_*.*").format(subj=subject)
         anatfiles = '%s_{type}.nii.gz'%subject
         xfms = "%s_{xfmname}.xfm"%subject
         ctmcache = "%s_{xfmname}_[{types}]_{method}_{level}.json"%subject
@@ -376,11 +331,11 @@ class Database(object):
         projcache = "%s_{xfmname}_{projection}.npz"%subject
 
         surfs = dict()
-        for vtk in glob.glob(vtks):
-            path, subj, stype, hemi = vtkparse.match(vtk).groups()
+        for surf in glob.glob(surffiles):
+            path, subj, stype, hemi = surfparse.match(surf).groups()
             if stype not in surfs:
                 surfs[stype] = dict()
-            surfs[stype][hemi] = os.path.abspath(vtk)
+            surfs[stype][hemi] = os.path.abspath(surf)
 
         filenames = dict(
             surfs=surfs,

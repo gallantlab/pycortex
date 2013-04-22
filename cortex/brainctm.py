@@ -20,7 +20,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 from .db import surfs
-from .utils import get_cortical_mask, get_mapper, get_roipack
+from .utils import get_cortical_mask, get_mapper, get_roipack, get_dropout
 from openctm import CTMfile
 
 class BrainCTM(object):
@@ -30,17 +30,13 @@ class BrainCTM(object):
         self.files = surfs.getFiles(subject)
         self.types = []
 
-        xfm, epifile = surfs.getXfm(subject, xfmname)
-        import nibabel
-        nib = nibabel.load(epifile)
-        self.shape = nib.get_shape()[::-1]
-        if len(self.shape) > 3:
-            self.shape = self.shape[-3:]
+        xfm = surfs.getXfm(subject, xfmname)
+        self.shape = xfm.shape
 
-        self.left, self.right = list(map(Hemi, surfs.getVTK(subject, base)))
+        self.left, self.right = list(map(Hemi, surfs.getSurf(subject, base)))
 
         #Find the flatmap limits
-        left, right = surfs.getVTK(subject, "flat", nudge=True, merge=False)
+        left, right = surfs.getSurf(subject, "flat", nudge=True, merge=False)
         flatmerge = np.vstack([left[0][:,:2], right[0][:,:2]])
         fmin, fmax = flatmerge.min(0), flatmerge.max(0)
         self.flatlims = list(-fmin), list(fmax-fmin)
@@ -52,29 +48,19 @@ class BrainCTM(object):
             fidpolys = set(tuple(f) for f in np.sort(hemi.polys, axis=1))
             flatpolys = set(tuple(f) for f in np.sort(ptpoly[1], axis=1))
             mwall = np.zeros(len(hemi.ctm))
-            mwall[np.array(list(fidpolys - flatpolys))] = 1
+            mwall[np.array(list(fidpolys - flatpolys)).astype(int)] = 1
             hemi.aux[:,2] = mwall
 
     def addSurf(self, typename):
-        left, right = surfs.getVTK(self.subject, typename, nudge=False, merge=False)
+        left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
         self.left.addSurf(left[0])
         self.right.addSurf(right[0])
         self.types.append(typename)
 
     def addDropout(self, projection='trilinear', power=20):
-        import nibabel
-        xfm, ref = surfs.getXfm(self.subject, self.xfmname)
-        nib = nibabel.load(ref)
-        rawdata = nib.get_data().T
-        if rawdata.ndim > 3:
-            rawdata = rawdata.mean(0)
-
-        mapper = get_mapper(self.subject, self.xfmname, projection)
-        left, right = mapper(rawdata)
-        lnorm = (left - left.min()) / (left.max() - left.min())
-        rnorm = (right - right.min()) / (right.max() - right.min())
-        self.left.aux[:,0] = (1-lnorm) ** power
-        self.right.aux[:,0] = (1-rnorm) ** power
+        left, right = get_dropout(self.subject, self.xfmname, projection, power)
+        self.left.aux[:,0] = left
+        self.right.aux[:,0] = right
 
     def addCurvature(self, **kwargs):
         npz = np.load(surfs.getAnat(self.subject, type='curvature', **kwargs))
@@ -138,22 +124,24 @@ class BrainCTM(object):
 
 class Hemi(object):
     def __init__(self, fiducial):
-        self.nsurfs = 0
         self.tf = tempfile.NamedTemporaryFile()
         self.ctm = CTMfile(self.tf.name, "w")
         self.ctm.setMesh(*fiducial)
         
         self.pts = fiducial[0]
         self.polys = fiducial[1]
+        self.surfs = {}
         self.aux = np.zeros((len(self.ctm), 4))
 
-    def addSurf(self, pts):
+    def addSurf(self, pts, name=None):
         '''Scales the in-between surfaces to be same scale as fiducial'''
+        if name is None:
+            name = 'morphTarget%d'%len(self.surfs)
         norm = (pts - pts.min(0)) / (pts.max(0) - pts.min(0))
         rnorm = norm * (self.pts.max(0) - self.pts.min(0)) + self.pts.min(0)
         attrib = np.hstack([rnorm, np.zeros((len(rnorm),1))])
-        self.ctm.addAttrib(attrib, 'morphTarget%d'%self.nsurfs)
-        self.nsurfs += 1
+        self.surfs[name] = attrib
+        self.ctm.addAttrib(attrib, name)
 
     def setFlat(self, pts):
         #assert np.all(pts[:,2] == 0)
@@ -166,10 +154,7 @@ class Hemi(object):
         ctm = CTMfile(self.tf.name)
         return ctm.getMesh(), self.tf.read()
 
-def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0):
-    base = 'fiducial'
-    if method == 'mg2':
-        base = 'pia'
+def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0, base='fiducial'):
     ctm = BrainCTM(subj, xfm, base=base)
     ctm.addMap()
     ctm.addDropout()

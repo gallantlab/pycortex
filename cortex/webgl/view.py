@@ -6,10 +6,10 @@ import shutil
 import random
 import binascii
 import mimetypes
+import functools
 import webbrowser
 import multiprocessing as mp
 import numpy as np
-from scipy.stats import scoreatpercentile
 
 from tornado import web, template
 
@@ -21,11 +21,15 @@ sloader = template.Loader(serve.cwd)
 lloader = template.Loader("./")
 
 name_parse = re.compile(r".*/(\w+).png")
-cmapdir = options.config.get('webgl', 'colormaps')
+try:
+    cmapdir = options.config.get('webgl', 'colormaps')
+except:
+    cmapdir = os.path.join(options.config.get("basic", "filestore"), "colormaps")
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
-def _normalize_data(data, mapper):
+def _normalize_data(data, pfunc):
+    from scipy.stats import scoreatpercentile
     if not isinstance(data, dict):
         data = dict(data0=data)
 
@@ -33,6 +37,9 @@ def _normalize_data(data, mapper):
     json['__order__'] = list(data.keys())
     for name, dat in list(data.items()):
         ds = dict(__class__="Dataset")
+        mapper = pfunc()[1]
+        if 'projection' in dat:
+            mapper = pfunc(projection=dat['projection'])[1]
 
         if isinstance(dat, dict):
             data = _fixarray(dat['data'], mapper)
@@ -43,8 +50,8 @@ def _normalize_data(data, mapper):
             data = _fixarray(dat, mapper)
 
         ds['data'] = data
-        ds['min'] = scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min']
-        ds['max'] = scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max']
+        ds['min'] = float(scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min'])
+        ds['max'] = float(scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max'])
         if 'cmap' in dat:
             ds['cmap'] = dat['cmap']
         if 'rate' in dat:
@@ -121,7 +128,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     subject : string
         Subject identifier (e.g. "JG").
     xfmname : string
-        Name of functional -> anatomical transform.
+        Name of anatomical -> functional transform.
     types : tuple, optional
         Types of surfaces to include. Fiducial and flat surfaces are automatically
         included. Default ("inflated",)
@@ -144,7 +151,8 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
         os.makedirs(outpath)
 
     #Create a new mg2 compressed CTM and move it into the outpath
-    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache)
+    pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9)
+    ctmfile, mapper = pfunc(recache=recache)
     oldpath, fname = os.path.split(ctmfile)
     fname, ext = os.path.splitext(fname)
 
@@ -175,7 +183,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     ctmfile = newfname+".json"
 
     #Generate the data binary objects and save them into the outpath
-    json, sdat = _make_bindat(_normalize_data(data, mapper))
+    json, sdat = _make_bindat(_normalize_data(data, pfunc))
     for name, dat in list(sdat.items()):
         with open(os.path.join(outpath, "%s.bin"%name), "wb") as binfile:
             binfile.write(dat)
@@ -190,7 +198,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     htmlembed.embed(html, os.path.join(outpath, "index.html"))
     return mapper
 
-def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, recache_mapper=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None):
+def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, recache_mapper=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
     """Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
     sub dictionary with keys [data, stim, delay].
 
@@ -205,9 +213,9 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     Raw vertex image:     [[3, 4], verts]
     """
     html = sloader.load("mixer.html")
-
-    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache, recache_mapper=recache_mapper)
-    jsondat, bindat = _make_bindat(_normalize_data(data, mapper), fmt='data/%s/')
+    pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9)
+    ctmfile, mapper = pfunc(recache=recache, recache_mapper=recache_mapper)
+    jsondat, bindat = _make_bindat(_normalize_data(data, pfunc), fmt='data/%s/')
 
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
@@ -229,10 +237,12 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     class DataHandler(web.RequestHandler):
         def get(self, path):
             path = path.strip("/")
-            if not queue.empty():
-                d = queue.get()
+            try:
+                d = queue.get(True, 0.1)
                 print("Got new data: %r"%list(d.keys()))
                 bindat.update(d)
+            except:
+                pass
 
             if path in bindat:
                 self.write(bindat[path])
@@ -260,11 +270,17 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
                 svgfile.write(data)
             saveevt.set()
 
+    if pickerfun is None:
+        pickerfun = lambda a,b: None
+    
+    class PickerHandler(web.RequestHandler):
+        def get(self):
+            pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
+
     class JSMixer(serve.JSProxy):
-        def addData(self, projection='nearest', **kwargs):
+        def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
-            mapper = utils.get_mapper(subject, xfmname, type=projection)
-            json, data = _make_bindat(_normalize_data(kwargs, mapper), fmt='data/%s/')
+            json, data = _make_bindat(_normalize_data(kwargs, pfunc), fmt='data/%s/')
             queue.put(data)
             return Proxy(json)
 
@@ -323,6 +339,8 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
             (r'/ctm/(.*)', CTMHandler),
             (r'/data/(.*)', DataHandler),
             (r'/mixer.html', MixerHandler),
+            (r'/', MixerHandler),
+            (r'/picker', PickerHandler)
         ], port)
     server.start()
     print("Started server on port %d"%server.port)

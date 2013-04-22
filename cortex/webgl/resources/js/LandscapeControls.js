@@ -24,8 +24,11 @@ THREE.LandscapeControls = function ( camera ) {
     // Constants
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
+    this.maxRadius = 300; // makes sure axes & flatmat don't merge in depth buffer
+    this.minRadius = function(mix){return 101*mix}; // limits zoom for flatmap, which disappears at r=100
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
+    
 
     // internals
     this.target = new THREE.Vector3();
@@ -120,9 +123,10 @@ THREE.LandscapeControls = function ( camera ) {
         // Run picker if time since mousedown is short enough
         if ( _clicktime - _mousedowntime < this.clickTimeout && event.button == 0) {
             var mouse2D = this.getMouse(event).clone();
-            _picktimer = setTimeout(function(){
-                this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
-            }.bind(this), this.clickTimeout);
+            //_picktimer = setTimeout(function(){
+            //    this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
+            //}.bind(this), this.clickTimeout);
+	    this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
         }
 
         if ( event.button == 0 && _indblpick == 1 ) {
@@ -297,6 +301,8 @@ THREE.LandscapeControls.prototype = {
     zoom: function( mouseChange ) {
         var factor = 1.0 + mouseChange.y*this.zoomSpeed;
         this.radius *= factor;
+	if (this.radius>this.maxRadius) { this.radius = this.maxRadius; }
+	if (this.radius<this.minRadius(this.flatmix)) { this.radius = this.minRadius(this.flatmix); }
     },
     
     wheelzoom: function( wheelEvent ) {

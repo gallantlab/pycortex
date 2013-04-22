@@ -1,4 +1,5 @@
 import os
+import copy
 import shlex
 import tempfile
 import subprocess as sp
@@ -8,7 +9,6 @@ from scipy.spatial import cKDTree
 
 from lxml import etree
 from lxml.builder import E
-import traits.api as traits
 
 from cortex.options import config
 
@@ -19,121 +19,24 @@ parser = etree.XMLParser(remove_blank_text=True)
 
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
-class ROI(traits.HasTraits):
-    name = traits.Str
-
-    hide = traits.Bool(False)
-    linewidth = traits.Float(float(config.get("rois", "line_width")))
-    linecolor = traits.Tuple(tuple(map(float, config.get("rois", "line_color").split(','))))
-    roifill = traits.Tuple(tuple(map(float, config.get('rois', 'fill_color').split(','))))
-
-    def __init__(self, parent, xml, **kwargs):
-        super(ROI, self).__init__(**kwargs)
-        self.parent = parent
-        self.name = xml.get("{%s}label"%inkns)
-        self.paths = xml.findall(".//{%s}path"%svgns)
-        pts = [ self._parse_svg_pts(path.get("d")) for path in self.paths]
-        self.coords = [ self.parent.kdt.query(p)[1] for p in pts ]
-        self.hide = "style" in xml.attrib and "display:none" in xml.get("style")
-
-        self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
-        self.update_attribs()
-    
-    def _parse_svg_pts(self, data):
-        data = data.split()
-        if data[0].lower() != "m":
-            raise ValueError("Unknown path format")
-        offset = np.array([float(x) for x in data[1].split(',')])
-        data = data[2:]
-        mode = "l"
-        pts = [[offset[0], offset[1]]]
-        while len(data) > 0:
-            d = data.pop(0)
-            if isinstance(d, str) and len(d) == 1:
-                mode = d
-                continue
-            if mode == "l":
-                offset += list(map(float, d.split(',')))
-            elif mode == "L":
-                offset = np.array(list(map(float, d.split(','))))
-            elif mode == "c":
-                data.pop(0)
-                offset += list(map(float, data.pop(0).split(',')))
-            elif mode == "C":
-                data.pop(0)
-                offset = np.array(list(map(float, data.pop(0).split(','))))
-            pts.append([offset[0],offset[1]])
-
-        pts = np.array(pts)
-        pts /= self.parent.svgshape
-        pts[:,1] = 1-pts[:,1]
-        return pts
-    
-    @traits.on_trait_change("linewidth, linecolor, roifill, hide")
-    def update_attribs(self):
-        style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
-                    "stroke-linecap:butt;stroke-linejoin:miter;"+\
-                    "stroke:{lc};stroke-opacity:{lo};{hide}"
-        roifill = np.array(self.roifill)*255
-        linecolor = np.array(self.linecolor)*255
-        hide = "display:none;" if self.hide else ""
-        style = style.format(
-            fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=roifill[-1],
-            lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1], 
-            lw=self.linewidth, hide=hide)
-
-        for path in self.paths:
-            path.attrib["style"] = style
-            if self.parent.shadow > 0:
-                path.attrib["filter"] = "url(#dropshadow)"
-            elif "filter" in path.attrib:
-                del path.attrib['filter']
-    
-    def get_labelpos(self, pts=None, norms=None, fancy=True):
-        if pts is None:
-            pts = self.parent.tcoords
-
-        if fancy:
-            labels = []
-            for coord in self.coords:
-                try:
-                    if norms is None:
-                        labels.append(_labelpos(pts[coord]))
-                    else:
-                        labels.append((_labelpos(pts[coord]), norms[coord].mean(0)))
-                except:
-                    if norms is None:
-                        labels.append(pts[coord].mean(0))
-                    else:
-                        labels.append((pts[coord].mean(0), norms[coord].mean(0)))
-            return labels
-
-        if norms is None:
-            return [pts[coord].mean(0) for coord in self.coords]
-
-        return [(pts[coord].mean(0), norms[coord].mean(0)) for coord in self.coords]
-
-    def get_ptidx(self):
-        return self.coords
-
-class ROIpack(traits.HasTraits):
-    svg = traits.Instance("lxml.etree._ElementTree")
-    svgfile = traits.Str
-
-    linewidth = traits.Float(float(config.get("rois", "line_width")))
-    linecolor = traits.Tuple(tuple(map(float, config.get("rois", "line_color").split(','))))
-    roifill = traits.Tuple(tuple(map(float, config.get("rois", "fill_color").split(','))))
-    shadow = traits.Float(float(config.get("rois", "shadow")))
-
-    def __init__(self, tcoords, svgfile, callback=None):
-        super(ROIpack, self).__init__()
+class ROIpack(object):
+    def __init__(self, tcoords, svgfile, callback=None, 
+            linewidth=float(config.get("rois", "line_width")),
+            linecolor=tuple(map(float, config.get("rois", "line_color").split(','))),
+            roifill=tuple(map(float, config.get("rois", "fill_color").split(','))),
+            shadow=float(config.get("rois", "shadow"))):
         if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
             tcoords -= tcoords.min(0)
             tcoords /= tcoords.max(0)
+
         self.tcoords = tcoords
         self.svgfile = svgfile
         self.callback = callback
         self.kdt = cKDTree(tcoords)
+        self.linewidth = linewidth
+        self.linecolor = linecolor
+        self.roifill = roifill
+        self.shadow = shadow
         self.reload()
 
     def reload(self):
@@ -148,7 +51,7 @@ class ROIpack(traits.HasTraits):
             roi = ROI(self, r)
             self.rois[roi.name] = roi
 
-        self.update_style()
+        self.set()
         self.labels = self.setup_labels()
 
     def add_roi(self, name, pngdata, add_path=True):
@@ -173,21 +76,53 @@ class ROIpack(traits.HasTraits):
         with open(self.svgfile, "w") as xml:
             xml.write(etree.tostring(svg, pretty_print=True))
 
-    @traits.on_trait_change("linewidth, linecolor, roifill")
-    def update_style(self):
+    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None):
+        if linewidth is not None:
+            self.linewidth = linewidth
+        if linecolor is not None:
+            self.linecolor = linecolor
+        if roifill is not None:
+            self.roifill = roifill
+        if shadow is not None:
+            self.shadow = shadow
+            self.svg.find("//{%s}feGaussianBlur"%svgns).attrib["stdDeviation"] = str(shadow)
+
         for roi in list(self.rois.values()):
             roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill)
+
         try:
             if self.callback is not None:
                 self.callback()
         except:
             print("cannot callback")
 
-    def _shadow_changed(self):
-        self.svg.find("//{%s}feGaussianBlur"%svgns).attrib["stdDeviation"] = str(self.shadow)
-        for roi in list(self.rois.values()):
-            roi.update_attribs()
-
+    def get_svg(self, filename=None, labels=True, with_ims=None):
+        """Returns an SVG with the included images."""
+        if labels:
+            self.labels.attrib['style'] = "display:inline;"
+        else:
+            self.labels.attrib['style'] = "display:none;"
+        
+        outsvg = copy.deepcopy(self.svg)
+        if with_ims is not None:
+            datalayer = _make_layer(outsvg.getroot(), "data")
+            for imnum,im in list(enumerate(with_ims))[::-1]:
+                imlayer = _make_layer(datalayer, "image_%d" % imnum)
+                img = E.image(
+                    {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%im},
+                    id="image_%d"%imnum, x="0", y="0",
+                    width=str(self.svgshape[0]),
+                    height=str(self.svgshape[1]),
+                    )
+                imlayer.append(img)
+                outsvg.getroot().insert(0, imlayer)
+        
+        if filename is None:
+            return etree.tostring(outsvg)
+        else:
+            with open(filename, "w") as outfile:
+                outfile.write(etree.tostring(outsvg))
+        
     def get_texture(self, texres, name=None, background=None, labels=True, bits=32):
         '''Renders the current roimap as a png'''
         #set the current size of the texture
@@ -234,7 +169,7 @@ class ROIpack(traits.HasTraits):
     def get_roi(self, roiname):
         import Image
         shadow = self.shadow
-        self.shadow = 0
+        self.set(shadow=0)
 
         state = dict()
         for name, roi in list(self.rois.items()):
@@ -243,7 +178,7 @@ class ROIpack(traits.HasTraits):
             if name == roiname:
                 roi.set(linewidth=0, roifill=(0,0,0,1), hide=False)
             else:
-                roi.hide = True
+                roi.set(hide=True)
         
         im = self.get_texture(self.svgshape[1], labels=False, bits=8)
         imdat = np.array(Image.open(im))[::-1]
@@ -254,7 +189,7 @@ class ROIpack(traits.HasTraits):
         for name, roi in list(self.rois.items()):
             roi.set(**state[name])
 
-        self.shadow = shadow
+        self.set(shadow=shadow)
         return roiidx
     
     @property
@@ -307,6 +242,101 @@ class ROIpack(traits.HasTraits):
     def toxml(self, pretty=True):
         return etree.tostring(self.svg, pretty_print=pretty)
 
+
+class ROI(object):
+    def __init__(self, parent, xml):
+        self.parent = parent
+        self.name = xml.get("{%s}label"%inkns)
+        self.paths = xml.findall(".//{%s}path"%svgns)
+        pts = [ self._parse_svg_pts(path.get("d")) for path in self.paths]
+        self.coords = [ self.parent.kdt.query(p)[1] for p in pts ]
+        self.hide = "style" in xml.attrib and "display:none" in xml.get("style")
+        self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
+    
+    def _parse_svg_pts(self, data):
+        data = data.split()
+        if data[0].lower() != "m":
+            raise ValueError("Unknown path format")
+        offset = np.array([float(x) for x in data[1].split(',')])
+        data = data[2:]
+        mode = "l"
+        pts = [[offset[0], offset[1]]]
+        while len(data) > 0:
+            d = data.pop(0)
+            if isinstance(d, str) and len(d) == 1:
+                mode = d
+                continue
+            if mode == "l":
+                offset += list(map(float, d.split(',')))
+            elif mode == "L":
+                offset = np.array(list(map(float, d.split(','))))
+            elif mode == "c":
+                data.pop(0)
+                offset += list(map(float, data.pop(0).split(',')))
+            elif mode == "C":
+                data.pop(0)
+                offset = np.array(list(map(float, data.pop(0).split(','))))
+            pts.append([offset[0],offset[1]])
+
+        pts = np.array(pts)
+        pts /= self.parent.svgshape
+        pts[:,1] = 1-pts[:,1]
+        return pts
+    
+    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None, hide=None):
+        if linewidth is not None:
+            self.linewidth = linewidth
+        if linecolor is not None:
+            self.linecolor = linecolor
+        if roifill is not None:
+            self.roifill = roifill
+        if hide is not None:
+            self.hide = hide
+
+        style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
+                    "stroke-linecap:butt;stroke-linejoin:miter;"+\
+                    "stroke:{lc};stroke-opacity:{lo};{hide}"
+        roifill = np.array(self.roifill)*255
+        linecolor = np.array(self.linecolor)*255
+        hide = "display:none;" if self.hide else ""
+        style = style.format(
+            fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=roifill[-1],
+            lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1], 
+            lw=self.linewidth, hide=hide)
+
+        for path in self.paths:
+            path.attrib["style"] = style
+            if self.parent.shadow > 0:
+                path.attrib["filter"] = "url(#dropshadow)"
+            elif "filter" in path.attrib:
+                del path.attrib['filter']
+    
+    def get_labelpos(self, pts=None, norms=None, fancy=True):
+        if pts is None:
+            pts = self.parent.tcoords
+
+        if fancy:
+            labels = []
+            for coord in self.coords:
+                try:
+                    if norms is None:
+                        labels.append(_labelpos(pts[coord]))
+                    else:
+                        labels.append((_labelpos(pts[coord]), norms[coord].mean(0)))
+                except:
+                    if norms is None:
+                        labels.append(pts[coord].mean(0))
+                    else:
+                        labels.append((pts[coord].mean(0), norms[coord].mean(0)))
+            return labels
+
+        if norms is None:
+            return [pts[coord].mean(0) for coord in self.coords]
+
+        return [(pts[coord].mean(0), norms[coord].mean(0)) for coord in self.coords]
+
+    def get_ptidx(self):
+        return self.coords
 
 ###################################################################################
 # SVG Helper functions
@@ -400,3 +430,19 @@ def make_svg(pts, polys):
         svg = fp.read().format(width=w, height=h, clip=path)
 
     return svg
+
+def get_roipack(subject, remove_medial=False):
+    from .db import surfs
+    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
+    if remove_medial:
+        valid = np.unique(polys)
+        flat = flat[valid]
+    svgfile = surfs.getFiles(subject)['rois']
+    if not os.path.exists(svgfile):
+        with open(svgfile, "w") as fp:
+            fp.write(svgroi.make_svg(flat.copy(), polys))
+    rois = ROIpack(flat[:,:2], svgfile)
+    if remove_medial:
+        return rois, valid
+        
+    return rois

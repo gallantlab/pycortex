@@ -4,7 +4,8 @@ var flatVertShade = [
     "varying vec3 vColor;",
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
     "void main() {",
-        "vColor = (2.*idx+1.) / 512.;",
+        //"vColor = (2.*idx+1.) / 512.;",
+        "vColor = idx / 255.;",
         THREE.ShaderChunk[ "morphtarget_vertex" ],
         THREE.ShaderChunk[ "default_vertex" ],
     "}",
@@ -25,8 +26,8 @@ function FacePick(viewer, callback) {
     if (typeof(callback) == "function") {
         this.callback = callback;
     } else {
-        this.callback = function(voxidx) {
-            console.log(voxidx);
+        this.callback = function(voxidx, vertidx) {
+            $.ajax("/picker?voxel="+voxidx+"&vertex="+vertidx);
         }
     }
     
@@ -38,7 +39,7 @@ function FacePick(viewer, callback) {
         morphTargets:true
     });
 
-    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 0.1, 5000 )
+    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 1, 5000 )
     this.camera.position = this.viewer.camera.position;
     this.camera.up.set(0,0,1);
     this.scene.add(this.camera);
@@ -122,11 +123,9 @@ FacePick.prototype = {
         this.meshes[msg.name] = meshpiv.mesh;
         this.pivot[msg.name] = meshpiv.pivots;
         this.scene.add(meshpiv.pivots.front);
-    }, 
+    },
 
-    pick: function(x, y, keep) {
-        // DISABLE MULTI-CURSORS to make linking to voxels easy
-        keep = false;
+    _pick: function(x, y) {
         if (!this._valid)
             this.draw();
         var gl = this.viewer.renderer.context;
@@ -143,7 +142,7 @@ FacePick.prototype = {
             this.viewer.schedule();
             return;
         }
-
+        
         //adjust for clicking on black area
         faceidx -= 1;
 
@@ -163,110 +162,108 @@ FacePick.prototype = {
                     var count = geom.offsets[o].count;
 
                     if (start <= faceidx*3 && faceidx*3 < (start+count)) {
-                        //Pick only the first point of triangle
-                        var ptidx = index + polys[faceidx*3];
-                        var dataidx = map[ptidx*4+3];
-                        ptidx += hemi == "right" ? leftlen : 0;
-
-                        console.log("Picked voxel "+dataidx+", vertex "+ptidx);
-                        this.addMarker(ptidx, keep);
-                        this.callback(dataidx, ptidx);
-                        return;
+                        //Pick the closest point in triangle to the click location
+                        var pts = [index + polys[faceidx*3], 
+                               index + polys[faceidx*3+1], 
+                               index + polys[faceidx*3+2]];
+                        var mousepos = new THREE.Vector2(x, y);
+                        var ptdists = pts.map(function(pt) {
+                            var spt = this.viewer.getPos(pt);
+                            return mousepos.distanceTo(new THREE.Vector2(spt.pos[0], spt.pos[1]));
+                        }.bind(this));
+                        
+                        var closest;
+                        if (ptdists[0] < ptdists[1] && ptdists[0] < ptdists[2]) {
+                            closest = pts[0];
+                        } else if (ptdists[1] < ptdists[0] && ptdists[1] < ptdists[2]) {
+                            closest = pts[1];
+                        } else {
+                            closest = pts[2];
+                        }
+                        
+                        var dataidx = map[closest*4+3];
+                        closest += hemi == "right" ? leftlen : 0;
+                        return {ptidx: closest, dataidx: dataidx, hemi: hemi};
                     }
                 }
             }
         }
-
     },
 
+    pick: function(x, y, keep) {
+        // DISABLE MULTI-CURSORS to make linking to voxels easy
+        var p = this._pick(x, y);
+        if (p) {
+            console.log("Picked vertex "+p.ptidx+", voxel "+p.dataidx);
+            this.addMarker(p.ptidx, keep);
+            this.callback(p.dataidx, p.ptidx);
+        }
+    },
     
     dblpick: function(x, y, keep) {
         var speed = 0.6;
-
-        if (!this._valid)
-            this.draw();
-        var gl = this.viewer.renderer.context;
-        var pix = new Uint8Array(4);
-        var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderbuf.__webglFramebuffer);
-        gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        var faceidx = (pix[0] << 16) + (pix[1] << 8) + pix[2];
-        if (faceidx == 0) {
-            for (var i = 0; i < this.axes.length; i++)
-                this.axes[i].obj.parent.remove(this.axes[i].obj);
-            this.axes = [];
-            return;
-        }
-
-        //adjust for clicking on black area
-        faceidx -= 1;
-
-        //Find which hemisphere it's in
-        for (var hemi in this.idxrange) {
-            var lims = this.idxrange[hemi];
-            if (lims[0] <= faceidx && faceidx < lims[1]) {
-                faceidx -= lims[0];
-                var geom =  this.viewer.meshes[hemi].geometry;
-                var polys = geom.attributes.index.array;
-                var map = geom.attributes.datamap.array;
-
-                //Find which offset
-                for (var o = 0, ol = geom.offsets.length; o < ol; o++) {
-                    var start = geom.offsets[o].start;
-                    var index = geom.offsets[o].index;
-                    var count = geom.offsets[o].count;
-
-                    if (start <= faceidx*3 && faceidx*3 < (start+count)) {
-                        //Pick only the first point of triangle
-                        var ptidx = index + polys[faceidx*3];
-                        var dataidx = map[ptidx*2] + (map[ptidx*2+1] << 8);
-                        //ptidx += hemi == "right" ? leftlen : 0;
-                        var vpos = geom.attributes.position.array;
-                        var mbb = viewer.meshes[hemi].geometry.boundingBox;
-			var nx = (mbb.max.x + mbb.min.x)/2, ny = (mbb.max.y + mbb.min.y)/2, nz = (mbb.max.z + mbb.min.z)/2;
-                        var px = vpos[ptidx*3] - nx, py = vpos[ptidx*3+1] - ny, pz = vpos[ptidx*3+2] - nz;
-                        var PI = 3.14159;
-                        var newaz = (Math.atan2(-px, py)) * 180.0 / PI;
-                        newaz = newaz > 0 ? newaz : 360+newaz;
-                        //console.log("New az.: " + newaz);
-			var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / PI;
-                        //console.log("New el.: " + newel);
-                        this._last_mix = viewer.getState("mix");
-                        this._last_radius = viewer.getState("radius");
-                        this._last_target = viewer.getState("target");
-                        this._last_azimuth = viewer.getState("azimuth");
-                        this._last_altitude = viewer.getState("altitude");
-                        viewer.animate([{idx:speed, state:"mix", value:0}, 
-					{idx:speed, state:"radius", value:200}, 
-					{idx:speed, state:"target", value:[nx,ny,nz]}, 
-					{idx:speed, state:"azimuth", value:newaz}, 
-					{idx:speed, state:"altitude", value:newel}]);
-                        return;
+        var p = this._pick(x, y);
+        if (p) {
+            var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
+            p.ptidx -= p.hemi == "right" ? leftlen : 0;
+            var geom = this.viewer.meshes[p.hemi].geometry;
+            var vpos = geom.attributes.position.array;
+            var mbb = geom.boundingBox;
+            var nx = (mbb.max.x + mbb.min.x)/2, ny = (mbb.max.y + mbb.min.y)/2, nz = (mbb.max.z + mbb.min.z)/2;
+            var px = vpos[p.ptidx*3] - nx, py = vpos[p.ptidx*3+1] - ny, pz = vpos[p.ptidx*3+2] - nz;
+            var newaz = (Math.atan2(-px, py)) * 180.0 / Math.PI;
+            newaz = newaz > 0 ? newaz : 360 + newaz;
+            //console.log("New az.: " + newaz);
+            var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / Math.PI;
+            //console.log("New el.: " + newel);
+            var states = ["mix", "radius", "target", "azimuth", "altitude", "pivot"];
+            this._undblpickanim = states.map(function(s) { return {idx:speed, state:s, value:this.viewer.getState(s)} });
+            var front = newaz < 90 || newaz > 270;
+            var newpivot;
+            if (p.hemi == "left") {
+                if (newaz > 180) {
+                    if (front) {
+                        newpivot = 40;
+                    } else {
+                        newpivot = -40;
                     }
+                } else {
+                    newpivot = 0;
+                }
+            } else {
+                if (newaz < 180) {
+                    if (front) {
+                        newpivot = 40;
+                    } else {
+                        newpivot = -40;
+                    }
+                } else {
+                    newpivot = 0;
                 }
             }
+            
+            viewer.animate([{idx:speed, state:"mix", value:0}, 
+                {idx:speed, state:"radius", value:200}, 
+                {idx:speed, state:"target", value:[nx,ny,nz]}, 
+                {idx:speed, state:"azimuth", value:newaz}, 
+                {idx:speed, state:"altitude", value:newel},
+                {idx:speed, state:"pivot", value:newpivot}
+                   ]);
         }
-
     },
 
     undblpick: function() {
-        var speed = 0.6;
-        viewer.animate([{idx:speed, state:"mix", value:this._last_mix}, 
-			{idx:speed, state:"radius", value:this._last_radius}, 
-			{idx:speed, state:"target", value:this._last_target}, 
-			{idx:speed, state:"azimuth", value:this._last_azimuth}, 
-			{idx:speed, state:"altitude", value:this._last_altitude}]);
+        viewer.animate(this._undblpickanim);
     },
 
     setMix: function(mixevt) {
         var pos, ax;
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
-            pos = this.viewer.getVert(ax.idx).norm;
-            ax.obj.position.copy(pos);
+            vert = this.viewer.getVert(ax.idx);
+            ax.obj.position = blendPosNorm(vert.pos, vert.norm, mixevt.flat);
             // Rescale axes for flat view
-            ax.obj.scale.x = 1.0001-mixevt.flat;
+            ax.obj.scale.x = 1.000-mixevt.flat;
         }
     },
 
@@ -276,8 +273,6 @@ FacePick.prototype = {
         for (var i = 0; i < this.axes.length; i++) {
             if (keep === true) {
                 this.axes[i].obj.material.color.setRGB(180,180,180);
-
-                this.axes[i].obj.geometry.vertices
             } else {
                 this.axes[i].obj.parent.remove(this.axes[i].obj);
             }
@@ -286,12 +281,18 @@ FacePick.prototype = {
             this.axes = [];
 
         var axes = makeAxes(50, 0xffffff);
-        axes.position.copy(vert.norm);
+        axes.position = blendPosNorm(vert.pos, vert.norm, this.viewer.flatmix);
         axes.scale.x = 1.0001-this.viewer.flatmix;
         this.axes.push({idx:ptidx, obj:axes});
         this.viewer.pivot[vert.name].back.add(axes);
-        this.viewer.controls.dispatchEvent({type:"change"});
+        this.viewer.schedule();
     }
+}
+
+function blendPosNorm(pos, norm, flatmix) {
+    var posfrac = flatmix - 0.01;
+    var normfrac = 1 - posfrac;
+    return pos.clone().multiplyScalar(posfrac).addSelf(norm.clone().multiplyScalar(normfrac));
 }
 
 function makeAxes(length, color) {
