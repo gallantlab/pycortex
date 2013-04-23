@@ -67,7 +67,7 @@ var roilabel_fshader = [
         "vec2 p = gl_PointCoord;",
         "p.y = 1. - p.y;",
         "float d = min_depth(p, gl_FragCoord.xy);",
-        "if ( gl_FragCoord.z >= d && d > 0. ) {",
+        "if ( gl_FragCoord.z >= d*1.0001 && d > 0. ) {",
             "discard;",
         "} else {",
             "vec2 c = gl_PointCoord;",
@@ -82,8 +82,7 @@ var roilabel_fshader = [
     "}",
 ].join("\n");
 
-function ROIpack(svgdoc, callback, viewer) {
-    this.callback = callback;
+function ROIpack(svgdoc, renderer, positions) {
     this.svgroi = svgdoc.getElementsByTagName("svg")[0];
     this.svgroi.id = "svgroi";
     this.rois = $(this.svgroi).find("path");
@@ -94,20 +93,20 @@ function ROIpack(svgdoc, callback, viewer) {
         var name = $(this).text();
         if (names[name] === undefined)
             names[name] = [];
-        names[name].push(viewer.remap($(this).data("ptidx")));
+        names[name].push($(this).data("ptidx"));
     });
     $(this.svgroi).find("#roilabels").remove();
     $(this.svgroi).find("defs").remove();
 
-    this.labels = new ROIlabels(names);
-    this.labels.update(viewer, 22);
+    this.labels = new ROIlabels(names, positions);
+    this.labels.update(renderer, 22);
 
     var w = this.svgroi.getAttribute("width");
     var h = this.svgroi.getAttribute("height");
     this.aspect = w / h;
     this.svgroi.setAttribute("viewBox", "0 0 "+w+" "+h);
 
-    var gl = viewer.renderer.context;
+    var gl = renderer.context;
     var height = Math.min(4096, gl.getParameter(gl.MAX_TEXTURE_SIZE)) / this.aspect;
     this.setHeight(height);
     
@@ -125,6 +124,7 @@ ROIpack.prototype = {
         this._shadowtex = new ShadowTex(Math.ceil(this.width), Math.ceil(this.height), 4);
     }, 
     update: function(renderer) {
+        var loaded = $.Deferred();
         var fo = $("#roi_fillalpha").length > 0 ? $("#roi_fillalpha").slider("option", "value") : 0;
         var lo = $("#roi_linealpha").length > 0 ? $("#roi_linealpha").slider("option", "value") : 1;
         var fc = $("#roi_fillcolor").length > 0 ? $("#roi_fillcolor").attr("value") : "#000";
@@ -159,7 +159,7 @@ ROIpack.prototype = {
                         ignoreAnimation:true,
                         renderCallback: function() {
                             var tex = this._shadowtex.overlay(renderer, new THREE.Texture(this.canvas));
-                            this.callback(tex);
+                            loaded.resolve(tex);
                         }.bind(this)
                     });
                 }.bind(this)
@@ -173,10 +173,11 @@ ROIpack.prototype = {
                     var tex = new THREE.Texture(this.canvas);
                     tex.needsUpdate = true;
                     tex.premultiplyAlpha = true;
-                    this.callback(tex);
+                    loaded.resolve(tex);
                 }.bind(this),
             });
         }
+        return loaded.promise();
     }, 
 
     saveSVG: function(png, posturl) {
@@ -241,8 +242,7 @@ ROIpack.prototype = {
     }
 }
 
-function ROIlabels(names) {
-    this.names = names;
+function ROIlabels(names, positions) {
     this.canvas = document.createElement("canvas");
     this.geometry =  {left:new THREE.Geometry(), right:new THREE.Geometry()};
     var uniforms = {
@@ -300,6 +300,29 @@ function ROIlabels(names) {
     this.particles.right.dynamic = true;
     this.particles.left.sortParticles = true;
     this.particles.right.sortParticles = true;
+
+    this.positions = {};
+    var leftlen = positions.left[0].array.length / 3;
+    for (var name in names) {
+        var labels = names[name];
+        if (this.positions[name] === undefined)
+            this.positions[name] = [];
+
+        for (var i = 0, il = labels.length; i < il; i++) {
+            var pos = [labels[i] < leftlen ? this.geometry.left : this.geometry.right];
+            var hemi = labels[i] < leftlen ? positions.left : positions.right;
+            var idx = labels[i] < leftlen ? labels[i] : labels[i] - leftlen;
+            for (var j = 0, jl = positions.left.length; j < jl; j++) {
+                var pt = new THREE.Vector3();
+                var arr = hemi[j].array;
+                var k = idx * hemi[j].stride;
+                pt.set(arr[k], arr[k+1], arr[k+2]);
+                pos.push(pt);
+            }
+            this.positions[name].push(pos);
+        }
+    }
+    this.mixlen = positions.left.length;
 }
 
 ROIlabels.prototype = {
@@ -315,12 +338,12 @@ ROIlabels.prototype = {
         this.shader.left.uniforms.scale.value.set( width, height);
         this.shader.right.uniforms.scale.value.set( width, height);
     },
-    update: function(viewer, height) {
+    update: function(renderer, height) {
         height *= 2;
-        var w, width = 0, allnames = [], names = this.names;
+        var w, width = 0, allnames = [];
         var ctx = this.canvas.getContext('2d');
         ctx.font = 'italic bold '+(height*0.5)+'px helvetica';
-        for (var name in names) {
+        for (var name in this.positions) {
             w = ctx.measureText(name).width;
             if (width < w)
                 width = w;
@@ -354,7 +377,7 @@ ROIlabels.prototype = {
         var shadow = new ShadowTex(this.canvas.width, this.canvas.height, 1.);
         var tex = new THREE.Texture(this.canvas);
         tex.flipY = false;
-        tex = shadow.blur(viewer.renderer, tex);
+        tex = shadow.blur(renderer, tex);
 
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         ctx.fillStyle = 'white';
@@ -369,7 +392,7 @@ ROIlabels.prototype = {
 
         tex = new THREE.Texture(this.canvas);
         tex.flipY = false;
-        tex = shadow.overlay(viewer.renderer, tex);
+        tex = shadow.overlay(renderer, tex);
 
         this.shader.left.uniforms.aspect.value = aspect;
         this.shader.right.uniforms.aspect.value = aspect;
@@ -377,15 +400,16 @@ ROIlabels.prototype = {
         this.shader.right.uniforms.texsize.value.set(1/nwide, 1/ntall);
         this.shader.left.attributes.idx.value = [];
         this.shader.right.attributes.idx.value = [];
-        var hemi, ptdat;
-        for (var name in names) {
-            for (var i = 0; i < names[name].length; i++) {
-                ptdat = viewer.getVert(names[name][i]);
-                hemi = this.shader[ptdat.name];
-                hemi.attributes.idx.value.push(this.texPos[name]);
+
+        var hemilut = {};
+        hemilut[this.geometry.left.id] = this.shader.left.attributes.idx.value;
+        hemilut[this.geometry.right.id]= this.shader.right.attributes.idx.value;
+        for (var name in this.positions) {
+            for (var i = 0, il = this.positions[name].length; i < il; i++) {
+                hemilut[this.positions[name][i][0].id].push(this.texPos[name]);
             }
         }
-        this.setMix(viewer);
+        this.setMix(0);
 
         this.shader.left.uniforms.size.value = width;
         this.shader.left.uniforms.text.texture = tex;
@@ -394,18 +418,25 @@ ROIlabels.prototype = {
         this.resize($("#brain").width(), $("#brain").height());
     },
 
-    setMix: function(viewer) {
+    setMix: function(val) {
         //Adjust the indicator particle to match the current mix state
         //Indicator particles are set off from the surface by the normal
         this.geometry.left.vertices = [];
         this.geometry.right.vertices = [];
+        var mixlen = val * (this.mixlen - 1);
+        var low = Math.floor(mixlen);
+        var mix = mixlen % 1;
+        console.log(low, mix);
 
-        var hemi, ptdat;
-        for (var name in this.names) {
-            for (var i = 0; i < this.names[name].length; i++) {
-                ptdat = viewer.getVert(this.names[name][i]);
-                hemi = this.geometry[ptdat.name];
-                hemi.vertices.push(ptdat.norm);
+        var hemi, label, vec;
+        for (var name in this.positions) {
+            for (var i = 0; i < this.positions[name].length; i++) {
+                label = this.positions[name][i];
+                hemi = label[0];
+                vec = label[low+1].clone().multiplyScalar(1 - mix);
+                if (low+2 < label.length)
+                    vec.addSelf(label[low+2].clone().multiplyScalar(mix));
+                hemi.vertices.push(vec);
             }
         }
 
@@ -422,10 +453,10 @@ ROIlabels.prototype = {
         renderer.setClearColor(clearColor, clearAlpha);
 
         viewer.scene.overrideMaterial = null;
-        viewer.pivot.left.back.add(this.particles.left);
-        viewer.pivot.right.back.add(this.particles.right);
+        viewer.meshes.left.add(this.particles.left);
+        viewer.meshes.right.add(this.particles.right);
         renderer.render(viewer.scene, viewer.camera);
-        viewer.pivot.left.back.remove(this.particles.left);
-        viewer.pivot.right.back.remove(this.particles.right);
+        viewer.meshes.left.remove(this.particles.left);
+        viewer.meshes.right.remove(this.particles.right);
     }
 };

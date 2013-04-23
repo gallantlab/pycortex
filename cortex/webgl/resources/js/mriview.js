@@ -187,12 +187,17 @@ MRIview.prototype = {
             this.controls.flatoff = this.flatoff[1];
 
             //Generate the pivot empties
+            var posdata = {left:[], right:[]};
             var names = {left:0, right:1};
             for (var name in names) {
                 var right = names[name];
                 var flatvars = makeFlat(geometries[right].attributes.uv.array, json.flatlims, this.flatoff, right);
                 geometries[right].morphTargets.push({itemSize:3, stride:3, array:flatvars[0]});
                 geometries[right].morphNormals.push(flatvars[1]);
+                posdata[name].push(geometries[right].attributes.position);
+                for (var i = 0, il = geometries[right].morphTargets.length; i < il; i++) {
+                    posdata[name].push(geometries[right].morphTargets[i]);
+                }
                 var geom = splitverts(geometries[right]);
                 var meshpiv = this._makeMesh(geom, this.shader);
                 this.meshes[name] = meshpiv.mesh;
@@ -201,21 +206,19 @@ MRIview.prototype = {
             }
             this.setShader("nearest", false, false, false);
 
-            /*
             $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
-                this.roipack = new ROIpack(svgdoc, function(tex) {
-                    this.shader.uniforms.map.texture = tex;
-                    this.schedule();
-                }.bind(this), this);
-                this.roipack.update(this.renderer);
-                this.addEventListener("mix", function() {
-                    this.roipack.labels.setMix(this);
+                this.roipack = new ROIpack(svgdoc, this.renderer, posdata);
+                this.addEventListener("mix", function(evt) {
+                     this.roipack.labels.setMix(evt.mix);
                 }.bind(this));
                 this.addEventListener("resize", function(event) {
                     this.roipack.resize(event.width, event.height);
                 }.bind(this));
+                this.roipack.update(this.renderer).done(function(tex) {
+                    this.uniforms.map.texture = tex;
+                    this.schedule();
+                }.bind(this));
             }.bind(this));
-            */
 
             /*
             this.picker = new FacePick(this);
@@ -928,7 +931,10 @@ MRIview.prototype = {
             $("#vmax2").change(function() { this.setVminmax(parseFloat($("#vmin2").val()), parseFloat($("#vmax2").val()), 1); }.bind(this));            
         }
         var updateROIs = function() {
-            this.roipack.update(this.renderer);
+            this.roipack.update(this.renderer).done(function(tex){
+                this.uniforms.map.texture = tex;
+                this.schedule();
+            }.bind(this));
         }.bind(this);
         $("#roi_linewidth").slider({
             min:.5, max:10, step:.1, value:3,
