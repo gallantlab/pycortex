@@ -376,6 +376,7 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
             ].join("\n");
         }
         sampling.tail += "vColor = texture2D(colormap, cuv);\n";
+        // sampling.tail += "vColor = vec4(cuv, 0., 1.);";
         //check if nan
         // 'if (!(color0 <= 0. || 0. <= color0)) {',
         //     'vColor = vec4(0.);',
@@ -424,6 +425,7 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
         ].join("\n");
         // "}\n",
     } else {
+        // fragMid += "gl_FragColor = vec4(vec3(fnorm[0]), 1.);\n";
         fragMid += "gl_FragColor = vColor;\n";
     }
 

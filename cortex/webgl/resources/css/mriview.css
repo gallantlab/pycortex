@@ -308,6 +308,10 @@ ul#datasets li .handle {
 .ui-selected { background: #def !important; }
 .ui-selected .handle { background: #cde; }
 
+#thickmapping {
+    display:none;
+}
+
 /*************************************************
  * Bottom Bar
  *************************************************/

@@ -218,7 +218,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     """
     html = sloader.load("mixer.html")
     xfm = surfs.getXfm(subject, xfmname, 'coord')
-    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9)
+    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache)
     jsondat, bindat = _make_bindat(_normalize_data(data, xfm.xfm), path='/data/', fmt='%s_%d.png')
 
     saveevt = mp.Event()

@@ -65,9 +65,9 @@ function MRIview() {
             framemix:   { type:'f',  value:0},
             hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
             offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
-            map:        { type:'t',  value:0, texture: null },
+            map:        { type:'t',  value:2, texture: null },
             hatch:      { type:'t',  value:1, texture: makeHatch() },
-            colormap:   { type:'t',  value:2, texture: null },
+            colormap:   { type:'t',  value:0, texture: null },
 
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
@@ -115,8 +115,12 @@ function MRIview() {
     this._bindUI();
 }
 MRIview.prototype = { 
-    setShader: function(sampler, raw, voxline) {
-        var shaders = makeShader(sampler, raw, voxline, this.colormap.image.height > 10, this.thick);
+    setShader: function(ds) {
+        if (ds === undefined)
+            ds = this.active[0];
+        var sampler = samplers[ds.filter];
+        var twoD = this.colormap.image.height > 10;
+        var shaders = makeShader(sampler, ds.raw, viewopts.voxlines, twoD, this.thick);
         this.shader = new THREE.ShaderMaterial( { 
             vertexShader:shaders.vertex,
             fragmentShader:shaders.fragment,
@@ -201,6 +205,7 @@ MRIview.prototype = {
                 if (posTex.size != this.uniforms.posWidth.value)
                     throw "Invalid wm texture size!";
                 this.thick = 1;
+                $("#thickmapping").show();
             }
 
             var leftlen = geometries[0].attributes.position.array.length / 3;
@@ -540,7 +545,7 @@ MRIview.prototype = {
             if (names.length > (this.colormap.image.height > 10 ? 2 : 1))
                 return false;
 
-            this.setShader(ds.filter, ds.raw, false, false);
+            this.setShader(ds);
             ds.set(this.uniforms, 0, 0, true);
             this.active = [ds];
             $("#vrange").slider("option", {min: ds.lmin, max:ds.lmax});
@@ -746,7 +751,7 @@ MRIview.prototype = {
             this.active[0].textures[i].magFilter = filtertypes[interp];
             this.active[0].textures[i].needsUpdate = true;
         }
-        this.setShader(samplers[interp], this.active[0].raw, lines);
+        this.setShader();
         $("#datainterp option").attr("selected", null);
         $("#datainterp option[value="+interp+"]").attr("selected", "selected");
     },
@@ -951,6 +956,19 @@ MRIview.prototype = {
             this.setVoxView($("#datainterp").val(), viewopts.voxlines);
             this.schedule();
         }.bind(this));
+        $("#thicklayers").slider({ min:1, max:32, step:1, value:1, slide:function(event, ui)  {
+            if (ui.value == 1)
+                $("#thickmix_row").show();
+            else 
+                $("#thickmix_row").hide();
+            this.thick = ui.value;
+            this.setShader();
+            this.schedule();
+        }.bind(this)});
+        $("#thickmix").slider({ min:0, max:1, step:.001, value:0.5, slide:function(event, ui) {
+            this.uniforms.thickmix.value = ui.value;
+            this.schedule();
+        }.bind(this)})
 
         $("#resetflat").click(function() {
             this.reset_view();
