@@ -72,20 +72,30 @@ def mosaic(data, dim=0, show=True, **kwargs):
         raise ValueError("Invalid data shape")
     plane = list(data.shape)
     slices = plane.pop(dim)
-    height, width = plane
+    height, width = plane[:2]
     aspect = width / float(height)
     square = np.sqrt(slices / aspect)
     nwide = int(np.ceil(square))
     ntall = int(np.ceil(square * aspect))
 
-    shape = (ntall * height, nwide * width) + data.shape[3:]
-    output = (np.nan*np.ones(shape)).astype(data.dtype)
+    shape = (ntall * height, nwide * width)
+    if data.ndim == 4:
+        output = np.zeros(shape+(4,), dtype=np.uint8)
+    else:
+        output = (np.nan*np.ones(shape)).astype(data.dtype)
     sl = [slice(None), slice(None), slice(None)]
     for h in range(ntall):
         for w in range(nwide):
             sl[dim] = h*nwide+w
             if sl[dim] < slices:
-                output[h*height:(h+1)*height, w*width:(w+1)*width] = data[sl]
+                hsl = slice(h*height, (h+1)*height)
+                wsl = slice(w*width, (w+1)*width)
+                if data.ndim == 4:
+                    output[hsl, wsl, :data.shape[3]] = data[sl]
+                    if data.shape[3] == 3:
+                        output[hsl, wsl, 3] = 255
+                else:    
+                    output[hsl, wsl] = data[sl]
     
     if show:
         from matplotlib import pyplot as plt
@@ -199,6 +209,21 @@ def epi2anatspace(data, subject, xfmname):
 
     return outdata, outfilename
 
-def fslview(*imfilenames):
+def fslview(*ims):
+    import tempfile
     import subprocess
-    subprocess.call(["fslview"] + list(imfilenames))
+
+    fnames = []
+    tempfiles = []
+    for im in ims:
+        if not (isinstance(im, str) and os.path.exists(im)):
+            import nibabel
+            tf = tempfile.NamedTemporaryFile(suffix=".nii.gz")
+            tempfiles.append(tf)
+            nib = nibabel.Nifti1Image(im.T, np.eye(4))
+            nib.to_filename(tf.name)
+            fnames.append(tf.name)
+        else:
+            fnames.append(im)
+
+    subprocess.call(["fslview"] + fnames)

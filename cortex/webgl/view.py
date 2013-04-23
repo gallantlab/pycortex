@@ -91,8 +91,8 @@ def _make_bindat(json, path="", fmt='%s_%d.png'):
     buf = cStringIO.StringIO()
     def _make_img(mosaic):
         buf.seek(0)
-        assert mosaic.dtype == np.float32
-        im = Image.frombuffer('RGBA', mosaic.shape, mosaic.data, 'raw', 'RGBA', 0, 1)
+        assert mosaic.dtype in (np.float32, np.uint8)
+        im = Image.frombuffer('RGBA', mosaic.shape[:2], mosaic.data, 'raw', 'RGBA', 0, 1)
         im.save(buf, format='PNG')
         buf.seek(0)
         return buf.read()

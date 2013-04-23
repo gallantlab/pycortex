@@ -74,6 +74,7 @@ function MRIview() {
 
             posTex:     { type:'tv', value:3, texture: [null, null]},
             posWidth:   { type:'f',  value:0},
+            thickmix:   { type:'f',  value:0.5},
 
             data:       { type:'tv', value:5, texture: [null, null, null, null]},
             mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
@@ -109,12 +110,13 @@ function MRIview() {
 
     this.datasets = {}
     this.active = [];
-    
+
+    this.thick = 0;
     this._bindUI();
 }
 MRIview.prototype = { 
-    setShader: function(sampler, raw, voxline, volume) {
-        var shaders = makeShader(sampler, raw, voxline, volume);
+    setShader: function(sampler, raw, voxline) {
+        var shaders = makeShader(sampler, raw, voxline, this.colormap.image.height > 10, this.thick);
         this.shader = new THREE.ShaderMaterial( { 
             vertexShader:shaders.vertex,
             fragmentShader:shaders.fragment,
@@ -192,8 +194,16 @@ MRIview.prototype = {
             var posTex = makePosTex(geometries[0].attributes.position, geometries[1].attributes.position);
             this.uniforms.posTex.texture[0] = posTex.tex;
             this.uniforms.posWidth.value = posTex.size;
-            var leftlen = geometries[0].attributes.position.array.length / 3;
+            if (geometries[0].attributes.wm !== undefined) {
+                //We have a thickness volume!
+                posTex = makePosTex(geometries[0].attributes.wm, geometries[1].attributes.wm);
+                this.uniforms.posTex.texture[1] = posTex.tex;
+                if (posTex.size != this.uniforms.posWidth.value)
+                    throw "Invalid wm texture size!";
+                this.thick = 1;
+            }
 
+            var leftlen = geometries[0].attributes.position.array.length / 3;
             var posdata = {left:[], right:[]};
             var names = {left:0, right:1};
             for (var name in names) {
@@ -211,7 +221,7 @@ MRIview.prototype = {
                 this.pivot[name] = meshpiv.pivots;
                 this.scene.add(meshpiv.pivots.front);
             }
-            this.setShader("nearest", false, false, false);
+            //this.setShader("nearest", false, false, false);
 
             $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
                 this.roipack = new ROIpack(svgdoc, this.renderer, posdata);
@@ -526,7 +536,7 @@ MRIview.prototype = {
         if (ds.cmap !== undefined)
             this.setColormap(this.dataset);
 
-        $.when(this.cmapload, ds.loaded).done(function() {
+        $.when(this.cmapload, this.loaded).done(function() {
             if (names.length > (this.colormap.image.height > 10 ? 2 : 1))
                 return false;
 
@@ -720,9 +730,9 @@ MRIview.prototype = {
     setFrame: function(frame) {
         this.frame = frame;
         var fframe = Math.floor(frame);
-        this.active[0].set(this.uniforms.data.texture, 0, fframe);
+        this.active[0].set(this.uniforms, 0, fframe);
         if (this.active.length > 1)
-            this.active[1].set(this.uniforms.data.texture, 1, fframe);
+            this.active[1].set(this.uniforms, 1, fframe);
         this.uniforms.framemix.value = frame - fframe;
         $("#movieprogress div").slider("value", frame);
         $("#movieframe").attr("value", frame);
@@ -730,12 +740,14 @@ MRIview.prototype = {
     },
 
     setVoxView: function(interp, lines) {
+        this.active[0].filter = interp;
         for (var i = 0, il = this.active[0].textures.length; i < il; i++) {
             this.active[0].textures[i].minFilter = filtertypes[interp];
             this.active[0].textures[i].magFilter = filtertypes[interp];
             this.active[0].textures[i].needsUpdate = true;
         }
         this.setShader(samplers[interp], this.active[0].raw, lines);
+        $("#datainterp option").attr("selected", null);
         $("#datainterp option[value="+interp+"]").attr("selected", "selected");
     },
 
@@ -769,75 +781,6 @@ MRIview.prototype = {
             }
         }
     },
-    getPos: function(idx) {
-        //Returns the 2D screen coordinate of the given point index
-        var vert = this.getVert(idx);
-        var name = vert.name;
-
-        vert.pos = this.pivot[name].back.matrix.multiplyVector3(vert.pos);
-        vert.pos = this.pivot[name].front.matrix.multiplyVector3(vert.pos);
-        vert.norm = this.pivot[name].back.matrix.multiplyVector3(vert.norm);
-        vert.norm = this.pivot[name].front.matrix.multiplyVector3(vert.norm);
-
-        var cpos = this.camera.position.clone().subSelf(vert.pos).normalize();
-        var dot = -vert.norm.clone().subSelf(vert.pos).normalize().dot(cpos);
-
-        var spos = this.projector.projectVector(vert.pos, this.camera);
-        var snorm = this.projector.projectVector(vert.norm, this.camera);
-        var w = this.renderer.domElement.width;
-        var h = this.renderer.domElement.height;
-        var x = (spos.x + 1) / 2 * w;
-        var y = h - (spos.y + 1) / 2 * h;
-        var xn = (snorm.x + 1) / 2 * w;
-        var yn = h - (snorm.y + 1) / 2 * h;
-
-        return {pos:[x, y], norm:[xn, yn], dot:dot, vert:vert};
-    },
-    getVert: function(idx) {
-        //Returns a structure with the hemisphere name, position, and (normal+position) as norm
-        var leftlen = this.meshes.left.geometry.attributes.position.array.length / 3;
-        var name = idx < leftlen ? "left" : "right";
-        var hemi = this.meshes[name].geometry;
-        if (idx >= leftlen)
-            idx -= leftlen;
-
-        var influ = this.meshes[name].morphTargetInfluences;
-        var pos = hemi.attributes.position.array;
-        var norm = hemi.attributes.normal.array;
-        buf.pos[0] = pos[idx*3+0]; buf.pos[1] = pos[idx*3+1]; buf.pos[2] = pos[idx*3+2];
-        buf.norm[0] = norm[idx*3+0]; buf.norm[1] = norm[idx*3+1]; buf.norm[2] = norm[idx*3+2];
-        
-        var isum = 0, mt, mn, s;
-        buf.p[0] = 0; buf.p[1] = 0; buf.p[2] = 0;
-        buf.n[0] = 0; buf.n[1] = 0; buf.n[2] = 0;
-        for (var i = 0, il = hemi.morphTargets.length; i < il; i++) {
-            s = influ[i];
-            mt = hemi.morphTargets[i];
-            mn = hemi.morphNormals[i];
-            isum += s;
-            buf.p[0] += s * mt.array[mt.stride*idx+0];
-            buf.p[1] += s * mt.array[mt.stride*idx+1];
-            buf.p[2] += s * mt.array[mt.stride*idx+2];
-            buf.n[0] += s * mn[3*idx+0];
-            buf.n[1] += s * mn[3*idx+1];
-            buf.n[2] += s * mn[3*idx+2];
-        }
-
-        influ = 1 - isum;
-        buf.pos[0] = influ*buf.pos[0] + buf.p[0];
-        buf.pos[1] = influ*buf.pos[1] + buf.p[1];
-        buf.pos[2] = influ*buf.pos[2] + buf.p[2];
-        influ *= .5;
-        buf.norm[0] = influ*buf.norm[0] + buf.n[0] + buf.pos[0];
-        buf.norm[1] = influ*buf.norm[1] + buf.n[1] + buf.pos[1];
-        buf.norm[2] = influ*buf.norm[2] + buf.n[2] + buf.pos[2];
-        
-        var pos = new THREE.Vector3(buf.pos[0], buf.pos[1], buf.pos[2]);
-        var norm = new THREE.Vector3(buf.norm[0], buf.norm[1], buf.norm[2]);        
-        pos = this.meshes[name].matrix.multiplyVector3(pos);
-        norm = this.meshes[name].matrix.multiplyVector3(norm);
-        return {hemi:hemi, name:name, pos:pos, norm:norm}
-    },
 
     getImage: function(width, height) {
         if (width === undefined)
@@ -856,21 +799,6 @@ MRIview.prototype = {
         this.renderer.render(this.scene, this.camera, renderbuf);
         this.renderer.setClearColorHex(clearColor, clearAlpha);
         return getTexture(this.renderer.context, renderbuf);
-    },
-
-    remap: function(idx) {
-        var leftlen = this.meshes.left.geometry.attributes.position.array.length / 3;
-        var offset = idx < leftlen ? 0 : leftlen;
-        var name = idx < leftlen ? "left" : "right";
-        var hemi = this.meshes[name].geometry;
-
-        if (hemi.indexMap === undefined)
-            return idx;
-
-        if (idx >= leftlen)
-            idx -= leftlen;
-
-        return hemi.indexMap[idx] + offset;
     },
 
     _bindUI: function() {

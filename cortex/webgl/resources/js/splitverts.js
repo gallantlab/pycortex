@@ -68,7 +68,7 @@ function splitverts(geom, left_off) {
     return newgeom;
 }
 
-function makePosTex(left, right, wleft, wright) {
+function makePosTex(left, right) {
     var llen = left.array.length / left.stride;
     var rlen = right.array.length / right.stride;
     var size = Math.ceil(Math.sqrt(llen+rlen));
@@ -144,8 +144,20 @@ function makeHatch(size, linewidth, spacing) {
     return tex;
 };
 
-function makeShader(sampler, raw, voxline, volume) {
-    var vertShade =  [
+function makeShader(sampler, raw, voxline, twoD, volume) {
+    //Creates shader code with all the parameters
+    //sampler: which sampler to use, IE nearest or trilinear
+    //raw: whether the dataset is raw or not
+    //voxline: whether to show the voxel lines
+    //twoD: whether the colormap is two dimensional
+    //volume: the number of volume samples to take
+
+    if (volume === undefined)
+        volume = 0;
+    if (twoD === undefined)
+        twoD = false;
+
+    var vertHead =  [
     THREE.ShaderChunk[ "map_pars_vertex" ], 
     THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
@@ -185,7 +197,17 @@ function makeShader(sampler, raw, voxline, volume) {
         "vVert[0] = texture2D(posTex[0], posUV(vert.x)).xyz;",
         "vVert[1] = texture2D(posTex[0], posUV(vert.y)).xyz;",
         "vVert[2] = texture2D(posTex[0], posUV(vert.z)).xyz;",
-
+        "",
+    ].join("\n");
+    if (volume > 0) {
+        vertHead += [
+        "vVert[3] = texture2D(posTex[1], posUV(vert.x)).xyz;",
+        "vVert[4] = texture2D(posTex[1], posUV(vert.y)).xyz;",
+        "vVert[5] = texture2D(posTex[1], posUV(vert.z)).xyz;",
+        "",
+        ].join("\n");
+    }
+    var vertTail = [
         "vViewPosition = -mvPosition.xyz;",
 
         THREE.ShaderChunk[ "morphnormal_vertex" ],
@@ -201,7 +223,7 @@ function makeShader(sampler, raw, voxline, volume) {
 
     var samplers = "";
     var dims = ["x", "y"];
-    for (var val = 0; val < 2; val++) {
+    for (var val = 0; val < (twoD ? 2 : 1); val++) {
         var dim = dims[val];
         samplers += [
         "vec2 make_uv_"+dim+"(vec2 coord, float slice) {",
@@ -247,6 +269,7 @@ function makeShader(sampler, raw, voxline, volume) {
     THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
     "uniform int hide_mwall;",
+    "uniform float thickmix;",
 
     "uniform mat4 volxfm[2];",
     "uniform vec2 mosaic[2];",
@@ -293,50 +316,106 @@ function makeShader(sampler, raw, voxline, volume) {
     samplers,
 
     "void main() {",
-        "vec4 vColor;",
+        "vec4 fid;",
+        "vec2 cuv;",
+        "vec4 color[2];",
+        "vec4 vColor = vec4(0.);",
+        "float val[4], norm[4], range[2], fnorm[2];",
+        "val[0] = 0.; val[1] = 0.; val[2] = 0.; val[3] = 0.;",
         //Curvature Underlay
         "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
         "gl_FragColor = vec4(vec3(curv)*curvAlpha, curvAlpha);",
 
         "if (vMedial < .999) {",
-            //fiducial position
-            "vec4 fid = vec4(vBC.x * vVert[0] + vBC.y * vVert[1] + vBC.z * vVert[2], 1.);",
-        "",
+            "",
     ].join("\n");
 
-    var fragMid = "";
+    var factor = volume > 1 ? (1/volume).toFixed(6) : "1.";
+    var sampling = {head:"", tail:""};
     if (raw) {
+        sampling.head += [
+            "color[0] = "+sampler+"_x(data[0], fid);",
+            "color[1] = "+sampler+"_x(data[2], fid);",
+            "vColor += "+factor+"*mix(color[0], color[1], framemix);",
+            "",
+        ].join("\n");
+    } else {
+        sampling.head = [
+            "val[0] += "+factor+"*"+sampler+"_x(data[0], fid).r;",
+            "val[2] += "+factor+"*"+sampler+"_x(data[2], fid).r;",
+            ""
+        ].join("\n");
+
+        sampling.tail = [
+            "range[0] = vmax[0] - vmin[0];",
+            "norm[0] = (val[0] - vmin[0]) / range[0];",
+            "norm[2] = (val[2] - vmin[0]) / range[0];",
+            "fnorm[0] = mix(norm[0], norm[2], framemix);",
+            ""
+        ].join("\n");
+
+        if (twoD) {
+            sampling.head += [
+            "val[1] += "+factor+"*"+sampler+"_y(data[1], fid).r;",
+            "val[3] += "+factor+"*"+sampler+"_y(data[3], fid).r;",
+            ""
+            ].join("\n");
+
+            sampling.tail += [
+            "range[1] = vmax[1] - vmin[1];",
+            "norm[1] = (val[1] - vmin[1]) / range[1];",
+            "norm[3] = (val[3] - vmin[1]) / range[1];",
+            "fnorm[1] = mix(norm[1], norm[3], framemix);",
+            "cuv = vec2(clamp(fnorm[0], 0., .999), clamp(fnorm[1], 0., .999) );",
+            ""
+            ].join("\n");
+        } else {
+            sampling.tail += [
+            "cuv = vec2(clamp(fnorm[0], 0., .999), 0. );",
+            "",
+            ].join("\n");
+        }
+        sampling.tail += "vColor = texture2D(colormap, cuv);\n";
+        //check if nan
+        // 'if (!(color0 <= 0. || 0. <= color0)) {',
+        //     'vColor = vec4(0.);',
+        // '} else {',
+        // "}",
+    }
+
+    var fragMid = "";
+    if (volume == 0) {
         fragMid += [
-            "vec4 color1 = "+sampler+"_x(data[0], fid);",
-            "vec4 color2 = "+sampler+"_x(data[2], fid);",
-            "vColor = mix(color1, color2, framemix);",
+            "fid = vec4(vBC.x * vVert[0] + vBC.y * vVert[1] + vBC.z * vVert[2], 1.);",
+            sampling.head,
+            sampling.tail,
+            ""
+        ].join("\n");
+    } else if (volume == 1) {
+        fragMid += [
+            "vec4 fid1 = vec4(vBC.x * vVert[0] + vBC.y * vVert[1] + vBC.z * vVert[2], 1.);",
+            "vec4 fid2 = vec4(vBC.x * vVert[3] + vBC.y * vVert[4] + vBC.z * vVert[5], 1.);",
+            "fid = mix(fid1, fid2, thickmix);",
+            sampling.head,
+            sampling.tail,
             "",
         ].join("\n");
     } else {
         fragMid += [
-            "float color0 = "+sampler+"_x(data[0], fid).r;",
-            "float color1 = "+sampler+"_y(data[1], fid).r;",
-            "float color2 = "+sampler+"_x(data[2], fid).r;",
-            "float color3 = "+sampler+"_y(data[3], fid).r;",
-            //check if nan
-            'if (!(color0 <= 0. || 0. <= color0)) {',
-                'vColor = vec4(0.);',
-            '} else {',
-                "float vrange0 = vmax[0] - vmin[0];",
-                "float vrange1 = vmax[1] - vmin[1];",
-                "float vnorm0 = (color0 - vmin[0]) / vrange0;",
-                "float vnorm1 = (color1 - vmin[1]) / vrange1;",
-                "float vnorm2 = (color2 - vmin[0]) / vrange0;",
-                "float vnorm3 = (color3 - vmin[1]) / vrange1;",
-
-                "float fnorm0 = mix(vnorm0, vnorm2, framemix);",
-                "float fnorm1 = mix(vnorm1, vnorm3, framemix);",
-
-                "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
-                "vColor = texture2D(colormap, cuv);",
-            "}",
+            "vec4 fid1 = vec4(vBC.x * vVert[0] + vBC.y * vVert[1] + vBC.z * vVert[2], 1.);",
+            "vec4 fid2 = vec4(vBC.x * vVert[3] + vBC.y * vVert[4] + vBC.z * vVert[5], 1.);",
+            ""
         ].join("\n");
+        for (var i = 0; i < volume; i++) {
+            fragMid += [
+                "fid = mix(fid1, fid2, "+i+". / "+(volume-1)+".);",
+                sampling.head,
+                "", 
+            ].join("\n");
+        }
+        fragMid += sampling.tail;
     }
+
     if (voxline) {
         fragMid += [
             "vec3 coord = (volxfm[0]*fid).xyz;",
@@ -345,7 +424,7 @@ function makeShader(sampler, raw, voxline, volume) {
         ].join("\n");
         // "}\n",
     } else {
-        fragMid += "gl_FragColor = vColor;";
+        fragMid += "gl_FragColor = vColor;\n";
     }
 
     var fragTail = [
@@ -368,5 +447,5 @@ function makeShader(sampler, raw, voxline, volume) {
     ].join("\n");
 
 
-    return {vertex:vertShade, fragment:fragHead+fragMid+fragTail};
+    return {vertex:vertHead+vertTail, fragment:fragHead+fragMid+fragTail};
 }

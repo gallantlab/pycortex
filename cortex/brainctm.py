@@ -24,7 +24,7 @@ from .utils import get_cortical_mask, get_mapper, get_roipack, get_dropout
 from openctm import CTMfile
 
 class BrainCTM(object):
-    def __init__(self, subject, xfmname, base='fiducial'):
+    def __init__(self, subject, xfmname):
         self.subject = subject
         self.xfmname = xfmname
         self.files = surfs.getFiles(subject)
@@ -33,7 +33,13 @@ class BrainCTM(object):
         xfm = surfs.getXfm(subject, xfmname)
         self.shape = xfm.shape
 
-        self.left, self.right = list(map(Hemi, surfs.getSurf(subject, base)))
+        try:
+            self.left, self.right = list(map(Hemi, surfs.getSurf(subject, "pia")))
+            left, right = surfs.getSurf(subject, "wm", nudge=False, merge=False)
+            self.left.addSurf(left[0], name="wm")
+            self.right.addSurf(right[0], name="wm")
+        except IOError:
+            self.left, self.right = list(map(Hemi, surfs.getSurf(subject, "fiducial")))
 
         #Find the flatmap limits
         left, right = surfs.getSurf(subject, "flat", nudge=True, merge=False)
@@ -154,8 +160,8 @@ class Hemi(object):
         ctm = CTMfile(self.tf.name)
         return ctm.getMesh(), self.tf.read()
 
-def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0, base='fiducial'):
-    ctm = BrainCTM(subj, xfm, base=base)
+def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0):
+    ctm = BrainCTM(subj, xfm)
     ctm.addMap()
     ctm.addDropout()
     ctm.addCurvature()

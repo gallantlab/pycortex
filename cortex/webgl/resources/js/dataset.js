@@ -45,8 +45,8 @@ function Dataset(json) {
             this.textures.push(tex);
 
             if (this.textures.length < this.frames) {
-                this.loaded.progress(textures.length);
-                loadtex(textures.length);
+                this.loaded.progress(this.textures.length);
+                loadtex(this.textures.length);
             } else {
                 this.loaded.resolve();
             }
