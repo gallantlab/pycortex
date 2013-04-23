@@ -1,4 +1,5 @@
 var filtertypes = { nearest: THREE.NearestFilter, trilinear: THREE.LinearFilter, nearlin: THREE.LinearFilter };
+
 function Dataset(json) {
     this.loaded = $.Deferred().done(function() { $("#dataload").hide(); });
 
@@ -18,9 +19,6 @@ function Dataset(json) {
     this.filter = json.filter == undefined ? "nearest" : json.filter;
     this.textures = [];
 
-    var canvas = document.createElement("canvas");
-    var ctx = canvas.getContext('2d');
-
     var loadtex = function(idx) {
         var img = new Image();
         img.addEventListener("load", function() {
@@ -29,6 +27,8 @@ function Dataset(json) {
                 tex = new THREE.Texture(img);
                 tex.premultiplyAlpha = true;
             } else {
+                var canvas = document.createElement("canvas");
+                var ctx = canvas.getContext('2d');
                 canvas.width = img.width;
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
