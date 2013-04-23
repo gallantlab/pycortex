@@ -426,7 +426,6 @@ ROIlabels.prototype = {
         var mixlen = val * (this.mixlen - 1);
         var low = Math.floor(mixlen);
         var mix = mixlen % 1;
-        console.log(low, mix);
 
         var hemi, label, vec;
         for (var name in this.positions) {

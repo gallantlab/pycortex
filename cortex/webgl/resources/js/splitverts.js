@@ -1,4 +1,4 @@
-function splitverts(geom) {
+function splitverts(geom, left_off) {
     var o, ol, i, il, j, jl, k, n = 0, stride, mpts, faceidx, attr, idx, pos;
     var npolys = geom.attributes.index.array.length;
     var newgeom = new THREE.BufferGeometry();
@@ -12,9 +12,7 @@ function splitverts(geom) {
     newgeom.attributes.index = {itemSize:1, array:new Uint16Array(npolys), stride:1};
     newgeom.attributes.face = {itemSize:1, array:new Float32Array(npolys), stride:1};
     newgeom.attributes.bary = {itemSize:3, array:new Float32Array(npolys*3), stride:3};
-    newgeom.attributes.pos1 = {itemSize:3, array:new Float32Array(npolys*3), stride:3};
-    newgeom.attributes.pos2 = {itemSize:3, array:new Float32Array(npolys*3), stride:3};
-    newgeom.attributes.pos3 = {itemSize:3, array:new Float32Array(npolys*3), stride:3};
+    newgeom.attributes.vert = {itemSize:3, array:new Float32Array(npolys*3), stride:3};
     newgeom.morphTargets = [];
     newgeom.morphNormals = [];
     for (i = 0, il = geom.morphTargets.length; i < il; i++) {
@@ -55,13 +53,10 @@ function splitverts(geom) {
                     newgeom.morphNormals[i][n*3+2] = geom.morphNormals[i][idx*3+2];
                 }
 
-                for (i = 0; i < 3; i++) {
-                    pos = newgeom.attributes["pos"+(i+1)].array;
-                    idx = index + geom.attributes.index.array[j+i];
-                    pos[n*3+0] = geom.attributes.position.array[idx*3+0];
-                    pos[n*3+1] = geom.attributes.position.array[idx*3+1];
-                    pos[n*3+2] = geom.attributes.position.array[idx*3+2];
-                }
+                newgeom.attributes.vert.array[n*3+0] = left_off + index + geom.attributes.index.array[j+0];
+                newgeom.attributes.vert.array[n*3+1] = left_off + index + geom.attributes.index.array[j+1];
+                newgeom.attributes.vert.array[n*3+2] = left_off + index + geom.attributes.index.array[j+2];
+
                 newgeom.attributes.face.array[n] = j / 3;
                 newgeom.attributes.bary.array[n*3+k] = 1;
                 newgeom.attributes.index.array[n] = n % 65535;
@@ -71,6 +66,30 @@ function splitverts(geom) {
     }
     newgeom.computeBoundingBox();
     return newgeom;
+}
+
+function makePosTex(left, right, wleft, wright) {
+    var llen = left.array.length / left.stride;
+    var rlen = right.array.length / right.stride;
+    var size = Math.ceil(Math.sqrt(llen+rlen));
+    var arr = new Float32Array(size*size*3);
+    for (var i = 0; i < llen; i++) {
+        arr[i*3+0] = left.array[i*left.stride+0];
+        arr[i*3+1] = left.array[i*left.stride+1];
+        arr[i*3+2] = left.array[i*left.stride+2];
+    }
+    for (var i = 0; i < rlen; i++) {
+        arr[(llen+i)*3+0] = right.array[i*right.stride+0];
+        arr[(llen+i)*3+1] = right.array[i*right.stride+1];
+        arr[(llen+i)*3+2] = right.array[i*right.stride+2];
+    }
+    var tex = new THREE.DataTexture(arr, size, size, THREE.RGBFormat, THREE.FloatType);
+    tex.minFilter = THREE.NearestFilter;
+    tex.magFilter = THREE.NearestFilter;
+    tex.premultiplyAlpha = false;
+    tex.needsUpdate = true;
+    tex.flipY = false;
+    return {tex:tex, size:size};
 }
 
 function makeFlat(uv, flatlims, flatoff, right) {
@@ -131,11 +150,12 @@ function makeShader(sampler, raw, voxline, volume) {
     THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
 
+    "uniform sampler2D posTex[2];",
+    "uniform float posWidth;",
+
     "attribute vec4 auxdat;",
     "attribute vec3 bary;",
-    "attribute vec3 pos1;",
-    "attribute vec3 pos2;",
-    "attribute vec3 pos3;",
+    "attribute vec3 vert;",
 
     "varying vec3 vViewPosition;",
     "varying vec3 vNormal;",
@@ -144,9 +164,12 @@ function makeShader(sampler, raw, voxline, volume) {
     "varying float vMedial;",
 
     "varying vec3 vBC;",
-    "varying vec3 v1;",
-    "varying vec3 v2;",
-    "varying vec3 v3;",
+    "varying vec3 vVert[6];",
+
+    "vec2 posUV(float idx) {",
+        "vec2 xy = vec2(mod(idx, posWidth), floor(idx / posWidth));",
+        "return (2.*xy + 1.) / vec2(2.*posWidth) ;",
+    "}",
 
     "void main() {",
 
@@ -159,9 +182,9 @@ function makeShader(sampler, raw, voxline, volume) {
         "vMedial = auxdat.z;",
 
         "vBC = bary;",
-        "v1 = pos1;",
-        "v2 = pos2;",
-        "v3 = pos3;",
+        "vVert[0] = texture2D(posTex[0], posUV(vert.x)).xyz;",
+        "vVert[1] = texture2D(posTex[0], posUV(vert.y)).xyz;",
+        "vVert[2] = texture2D(posTex[0], posUV(vert.z)).xyz;",
 
         "vViewPosition = -mvPosition.xyz;",
 
@@ -219,6 +242,7 @@ function makeShader(sampler, raw, voxline, volume) {
 
     var fragHead = [
     "#extension GL_OES_standard_derivatives: enable",
+    "#extension GL_OES_texture_float: enable",
     THREE.ShaderChunk[ "map_pars_fragment" ],
     THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
@@ -257,9 +281,7 @@ function makeShader(sampler, raw, voxline, volume) {
     "varying float vMedial;",
 
     "varying vec3 vBC;",
-    "varying vec3 v1;",
-    "varying vec3 v2;",
-    "varying vec3 v3;",
+    "varying vec3 vVert[6];",
 
     // from http://codeflow.org/entries/2012/aug/02/easy-wireframe-display-with-barycentric-coordinates/
     "float edgeFactor(vec3 edge) {",
@@ -278,7 +300,7 @@ function makeShader(sampler, raw, voxline, volume) {
 
         "if (vMedial < .999) {",
             //fiducial position
-            "vec4 fid = vec4(vBC.x * v1 + vBC.y * v2 + vBC.z * v3, 1.);",
+            "vec4 fid = vec4(vBC.x * vVert[0] + vBC.y * vVert[1] + vBC.z * vVert[2], 1.);",
         "",
     ].join("\n");
 

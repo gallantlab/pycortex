@@ -49,6 +49,7 @@ function MRIview() {
     this.renderer.sortObjects = false;
     this.renderer.setClearColorHex( 0x0, 1 );
     this.renderer.context.getExtension("OES_standard_derivatives");
+    this.renderer.context.getExtension("OES_texture_float");
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
     this.pixbuf = new Uint8Array($("#brain").width() * $("#brain").height() * 4);
     this.state = "pause";
@@ -71,7 +72,10 @@ function MRIview() {
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
 
-            data:       { type:'tv', value:3, texture: [null, null, null, null]},
+            posTex:     { type:'tv', value:3, texture: [null, null]},
+            posWidth:   { type:'f',  value:0},
+
+            data:       { type:'tv', value:5, texture: [null, null, null, null]},
             mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
             shape:      { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
             volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
@@ -115,7 +119,7 @@ MRIview.prototype = {
             vertexShader:shaders.vertex,
             fragmentShader:shaders.fragment,
             uniforms: this.uniforms,
-            attributes: { bary:true, pos1:true, pos2:true, pos3:true, auxdat:true },
+            attributes: { bary:true, vert:true, auxdat:true },
             morphTargets:true, 
             morphNormals:true, 
             lights:true, 
@@ -172,7 +176,6 @@ MRIview.prototype = {
 
             this.meshes = {};
             this.pivot = {};
-            this.datamap = {};
             this.flatlims = json.flatlims;
             this.flatoff = [
                 Math.max(
@@ -186,7 +189,11 @@ MRIview.prototype = {
             this.controls.flatsize = flatscale * this.flatlims[1][0];
             this.controls.flatoff = this.flatoff[1];
 
-            //Generate the pivot empties
+            var posTex = makePosTex(geometries[0].attributes.position, geometries[1].attributes.position);
+            this.uniforms.posTex.texture[0] = posTex.tex;
+            this.uniforms.posWidth.value = posTex.size;
+            var leftlen = geometries[0].attributes.position.array.length / 3;
+
             var posdata = {left:[], right:[]};
             var names = {left:0, right:1};
             for (var name in names) {
@@ -198,7 +205,7 @@ MRIview.prototype = {
                 for (var i = 0, il = geometries[right].morphTargets.length; i < il; i++) {
                     posdata[name].push(geometries[right].morphTargets[i]);
                 }
-                var geom = splitverts(geometries[right]);
+                var geom = splitverts(geometries[right], name == "right" ? leftlen : 0);
                 var meshpiv = this._makeMesh(geom, this.shader);
                 this.meshes[name] = meshpiv.mesh;
                 this.pivot[name] = meshpiv.pivots;
