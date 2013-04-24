@@ -68,30 +68,6 @@ function splitverts(geom, left_off) {
     return newgeom;
 }
 
-function makePosTex(left, right) {
-    var llen = left.array.length / left.stride;
-    var rlen = right.array.length / right.stride;
-    var size = Math.ceil(Math.sqrt(llen+rlen));
-    var arr = new Float32Array(size*size*3);
-    for (var i = 0; i < llen; i++) {
-        arr[i*3+0] = left.array[i*left.stride+0];
-        arr[i*3+1] = left.array[i*left.stride+1];
-        arr[i*3+2] = left.array[i*left.stride+2];
-    }
-    for (var i = 0; i < rlen; i++) {
-        arr[(llen+i)*3+0] = right.array[i*right.stride+0];
-        arr[(llen+i)*3+1] = right.array[i*right.stride+1];
-        arr[(llen+i)*3+2] = right.array[i*right.stride+2];
-    }
-    var tex = new THREE.DataTexture(arr, size, size, THREE.RGBFormat, THREE.FloatType);
-    tex.minFilter = THREE.NearestFilter;
-    tex.magFilter = THREE.NearestFilter;
-    tex.premultiplyAlpha = false;
-    tex.needsUpdate = true;
-    tex.flipY = false;
-    return {tex:tex, size:size};
-}
-
 function makeFlat(uv, flatlims, flatoff, right) {
     var fmin = flatlims[0], fmax = flatlims[1];
     var flat = new Float32Array(uv.length / 2 * 3);
@@ -109,7 +85,7 @@ function makeFlat(uv, flatlims, flatoff, right) {
         uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
     }
 
-    return [flat, norms];
+    return {pos:flat, norms:norms};
 }
 
 function makeHatch(size, linewidth, spacing) {
@@ -157,31 +133,32 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
     if (twoD === undefined)
         twoD = false;
 
-    var vertHead =  [
+    var header = "";
+    if (voxline)
+        header += "#define VOXLINE\n";
+    if (twoD)
+        header += "#define TWOD\n";
+    if (raw)
+        header += "#define RAWCOLORS\n";
+    if (volume > 0)
+        header += "#define CORTSHEET\n";
+
+    var vertShade =  [
     THREE.ShaderChunk[ "map_pars_vertex" ], 
     THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
     THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
 
-    "uniform sampler2D posTex[2];",
-    "uniform float posWidth;",
+    "uniform float thickmix;",
 
     "attribute vec4 auxdat;",
-    "attribute vec3 bary;",
-    "attribute vec3 vert;",
+    "attribute vec3 wm;",
 
     "varying vec3 vViewPosition;",
     "varying vec3 vNormal;",
     "varying float vCurv;",
     "varying float vDrop;",
     "varying float vMedial;",
-
-    "varying vec3 vBC;",
-    "varying vec3 vVert[6];",
-
-    "vec2 posUV(float idx) {",
-        "vec2 xy = vec2(mod(idx, posWidth), floor(idx / posWidth));",
-        "return (2.*xy + 1.) / vec2(2.*posWidth) ;",
-    "}",
+    "varying vec3 vPos[2];",
 
     "void main() {",
 
@@ -193,30 +170,28 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
         "vCurv = auxdat.y;",
         "vMedial = auxdat.z;",
 
-        "vBC = bary;",
-        "vVert[0] = texture2D(posTex[0], posUV(vert.x)).xyz;",
-        "vVert[1] = texture2D(posTex[0], posUV(vert.y)).xyz;",
-        "vVert[2] = texture2D(posTex[0], posUV(vert.z)).xyz;",
-        "",
-    ].join("\n");
-    if (volume > 0) {
-        vertHead += [
-        "vVert[3] = texture2D(posTex[1], posUV(vert.x)).xyz;",
-        "vVert[4] = texture2D(posTex[1], posUV(vert.y)).xyz;",
-        "vVert[5] = texture2D(posTex[1], posUV(vert.z)).xyz;",
-        "",
-        ].join("\n");
-    }
-    var vertTail = [
+        "vPos[0] = position;",
         "vViewPosition = -mvPosition.xyz;",
 
-        THREE.ShaderChunk[ "morphnormal_vertex" ],
+        "#ifdef CORTSHEET",
+        "vPos[1] = wm;",
+        "vec3 npos = mix(position, wm, thickmix);",
+        "#else",
+        "vec3 npos = position;",
+        "#endif",
 
+        THREE.ShaderChunk[ "morphnormal_vertex" ],
         "vNormal = transformedNormal;",
 
         THREE.ShaderChunk[ "lights_phong_vertex" ],
-        THREE.ShaderChunk[ "morphtarget_vertex" ],
-        THREE.ShaderChunk[ "default_vertex" ],
+
+        "vec3 morphed = vec3( 0.0 );",
+        "morphed += ( morphTarget0 - npos ) * morphTargetInfluences[ 0 ];",
+        "morphed += ( morphTarget1 - npos ) * morphTargetInfluences[ 1 ];",
+        "morphed += ( morphTarget2 - npos ) * morphTargetInfluences[ 2 ];",
+        "morphed += ( morphTarget3 - npos ) * morphTargetInfluences[ 3 ];",
+        "morphed += npos;",
+        "gl_Position = projectionMatrix * modelViewMatrix * vec4( morphed, 1.0 );",
 
     "}"
     ].join("\n");
@@ -262,6 +237,8 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
         ].join("\n");
     }
 
+    var factor = volume > 1 ? (1/volume).toFixed(6) : "1.";
+
     var fragHead = [
     "#extension GL_OES_standard_derivatives: enable",
     "#extension GL_OES_texture_float: enable",
@@ -302,9 +279,7 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
     "varying float vCurv;",
     "varying float vDrop;",
     "varying float vMedial;",
-
-    "varying vec3 vBC;",
-    "varying vec3 vVert[6];",
+    "varying vec3 vPos[2];",
 
     // from http://codeflow.org/entries/2012/aug/02/easy-wireframe-display-with-barycentric-coordinates/
     "float edgeFactor(vec3 edge) {",
@@ -327,110 +302,70 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
         "gl_FragColor = vec4(vec3(curv)*curvAlpha, curvAlpha);",
 
         "if (vMedial < .999) {",
-            "",
+        "",
     ].join("\n");
 
-    var factor = volume > 1 ? (1/volume).toFixed(6) : "1.";
-    var sampling = {head:"", tail:""};
-    if (raw) {
-        sampling.head += [
+    
+    var sampling = [
+            "#ifdef RAWCOLORS",
             "color[0] = "+sampler+"_x(data[0], fid);",
             "color[1] = "+sampler+"_x(data[2], fid);",
             "vColor += "+factor+"*mix(color[0], color[1], framemix);",
-            "",
-        ].join("\n");
-    } else {
-        sampling.head = [
+            "#else",
             "val[0] += "+factor+"*"+sampler+"_x(data[0], fid).r;",
             "val[2] += "+factor+"*"+sampler+"_x(data[2], fid).r;",
-            ""
-        ].join("\n");
-
-        sampling.tail = [
             "range[0] = vmax[0] - vmin[0];",
             "norm[0] = (val[0] - vmin[0]) / range[0];",
             "norm[2] = (val[2] - vmin[0]) / range[0];",
             "fnorm[0] = mix(norm[0], norm[2], framemix);",
-            ""
-        ].join("\n");
 
-        if (twoD) {
-            sampling.head += [
+            "#ifdef TWOD",
             "val[1] += "+factor+"*"+sampler+"_y(data[1], fid).r;",
             "val[3] += "+factor+"*"+sampler+"_y(data[3], fid).r;",
-            ""
-            ].join("\n");
-
-            sampling.tail += [
             "range[1] = vmax[1] - vmin[1];",
             "norm[1] = (val[1] - vmin[1]) / range[1];",
             "norm[3] = (val[3] - vmin[1]) / range[1];",
             "fnorm[1] = mix(norm[1], norm[3], framemix);",
             "cuv = vec2(clamp(fnorm[0], 0., .999), clamp(fnorm[1], 0., .999) );",
-            ""
-            ].join("\n");
-        } else {
-            sampling.tail += [
+            "#else",
             "cuv = vec2(clamp(fnorm[0], 0., .999), 0. );",
+            "#endif",
+            "vColor = texture2D(colormap, cuv);",
+            "#endif",
             "",
-            ].join("\n");
-        }
-        sampling.tail += "vColor = texture2D(colormap, cuv);\n";
-        // sampling.tail += "vColor = vec4(cuv, 0., 1.);";
-        //check if nan
-        // 'if (!(color0 <= 0. || 0. <= color0)) {',
-        //     'vColor = vec4(0.);',
-        // '} else {',
-        // "}",
-    }
+    ].join("\n");
 
     var fragMid = "";
     if (volume == 0) {
         fragMid += [
-            "fid = vec4(vBC.x * vVert[0] + vBC.y * vVert[1] + vBC.z * vVert[2], 1.);",
-            sampling.head,
-            sampling.tail,
+            "fid = vec4(vPos[0], 1.);",
+            sampling,
             ""
         ].join("\n");
     } else if (volume == 1) {
         fragMid += [
-            "vec4 fid1 = vec4(vBC.x * vVert[0] + vBC.y * vVert[1] + vBC.z * vVert[2], 1.);",
-            "vec4 fid2 = vec4(vBC.x * vVert[3] + vBC.y * vVert[4] + vBC.z * vVert[5], 1.);",
-            "fid = mix(fid1, fid2, thickmix);",
-            sampling.head,
-            sampling.tail,
+            "fid = vec4(mix(vPos[0], vPos[1], thickmix), 1.);",
+            sampling,
             "",
         ].join("\n");
     } else {
-        fragMid += [
-            "vec4 fid1 = vec4(vBC.x * vVert[0] + vBC.y * vVert[1] + vBC.z * vVert[2], 1.);",
-            "vec4 fid2 = vec4(vBC.x * vVert[3] + vBC.y * vVert[4] + vBC.z * vVert[5], 1.);",
-            ""
-        ].join("\n");
         for (var i = 0; i < volume; i++) {
             fragMid += [
-                "fid = mix(fid1, fid2, "+i+". / "+(volume-1)+".);",
-                sampling.head,
+                "fid = vec4(mix(vPos[0], vPos[1], "+i+". / "+(volume-1)+".), 1.);",
+                sampling,
                 "", 
             ].join("\n");
         }
-        fragMid += sampling.tail;
-    }
-
-    if (voxline) {
-        fragMid += [
-            "vec3 coord = (volxfm[0]*fid).xyz;",
-            "vec3 edge = abs(mod(coord, 1.) - vec3(0.5));",
-            "gl_FragColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge));",
-        ].join("\n");
-        // "}\n",
-    } else {
-        // fragMid += "gl_FragColor = vec4(vec3(fnorm[0]), 1.);\n";
-        fragMid += "gl_FragColor = vColor;\n";
     }
 
     var fragTail = [
-            "",
+            "#ifdef VOXLINE",
+            "vec3 coord = (volxfm[0]*fid).xyz;",
+            "vec3 edge = abs(mod(coord, 1.) - vec3(0.5));",
+            "gl_FragColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge));",
+            "#else",
+            "gl_FragColor = vColor;",
+            "#endif",
             //Cross hatch / dropout layer
             "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
             "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
@@ -449,5 +384,5 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
     ].join("\n");
 
 
-    return {vertex:vertHead+vertTail, fragment:fragHead+fragMid+fragTail};
+    return {vertex:header+vertShade, fragment:header+fragHead+fragMid+fragTail};
 }

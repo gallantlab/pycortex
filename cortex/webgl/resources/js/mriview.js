@@ -125,7 +125,7 @@ MRIview.prototype = {
             vertexShader:shaders.vertex,
             fragmentShader:shaders.fragment,
             uniforms: this.uniforms,
-            attributes: { bary:true, vert:true, auxdat:true },
+            attributes: { wm:true, auxdat:true },
             morphTargets:true, 
             morphNormals:true, 
             lights:true, 
@@ -195,33 +195,28 @@ MRIview.prototype = {
             this.controls.flatsize = flatscale * this.flatlims[1][0];
             this.controls.flatoff = this.flatoff[1];
 
-            var posTex = makePosTex(geometries[0].attributes.position, geometries[1].attributes.position);
-            this.uniforms.posTex.texture[0] = posTex.tex;
-            this.uniforms.posWidth.value = posTex.size;
             if (geometries[0].attributes.wm !== undefined) {
                 //We have a thickness volume!
-                posTex = makePosTex(geometries[0].attributes.wm, geometries[1].attributes.wm);
-                this.uniforms.posTex.texture[1] = posTex.tex;
-                if (posTex.size != this.uniforms.posWidth.value)
-                    throw "Invalid wm texture size!";
                 this.thick = 1;
                 $("#thickmapping").show();
             }
 
-            var leftlen = geometries[0].attributes.position.array.length / 3;
             var posdata = {left:[], right:[]};
             var names = {left:0, right:1};
             for (var name in names) {
                 var right = names[name];
-                var flatvars = makeFlat(geometries[right].attributes.uv.array, json.flatlims, this.flatoff, right);
-                geometries[right].morphTargets.push({itemSize:3, stride:3, array:flatvars[0]});
-                geometries[right].morphNormals.push(flatvars[1]);
+                var flats = makeFlat(geometries[right].attributes.uv.array, json.flatlims, this.flatoff, right);
+                geometries[right].morphTargets.push({itemSize:3, stride:3, array:flats.pos});
+                geometries[right].morphNormals.push(flats.norms);
                 posdata[name].push(geometries[right].attributes.position);
                 for (var i = 0, il = geometries[right].morphTargets.length; i < il; i++) {
                     posdata[name].push(geometries[right].morphTargets[i]);
                 }
-                var geom = splitverts(geometries[right], name == "right" ? leftlen : 0);
-                var meshpiv = this._makeMesh(geom, this.shader);
+                geometries[right].reorderVertices();
+                geometries[right].dynamic = true;
+
+                //var geom = splitverts(geometries[right], name == "right" ? leftlen : 0);
+                var meshpiv = this._makeMesh(geometries[right], this.shader);
                 this.meshes[name] = meshpiv.mesh;
                 this.pivot[name] = meshpiv.pivots;
                 this.scene.add(meshpiv.pivots.front);
