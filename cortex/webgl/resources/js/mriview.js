@@ -4,6 +4,7 @@ var samplers = {
     trilinear: "trilinear",
     nearest: "nearest",
     nearlin: "nearest",
+    debug: "debug",
 }
 
 var buf = {
@@ -45,6 +46,7 @@ function MRIview() {
         antialias: true, 
         preserveDrawingBuffer:true, 
         canvas:$("#brain")[0] 
+
     });
     this.renderer.sortObjects = false;
     this.renderer.setClearColorHex( 0x0, 1 );
@@ -62,24 +64,21 @@ function MRIview() {
             emissive:   { type:'v3', value:new THREE.Vector3( 0,0,0 )},
             shininess:  { type:'f',  value:200},
 
+            thickmix:   { type:'f',  value:0.5},
             framemix:   { type:'f',  value:0},
             hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
             offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
+            
+            hatch:      { type:'t',  value:0, texture: makeHatch() },
+            colormap:   { type:'t',  value:1, texture: null },
             map:        { type:'t',  value:2, texture: null },
-            hatch:      { type:'t',  value:1, texture: makeHatch() },
-            colormap:   { type:'t',  value:0, texture: null },
-
-            vmin:       { type:'fv1',value:[0,0]},
-            vmax:       { type:'fv1',value:[1,1]},
-
-            posTex:     { type:'tv', value:3, texture: [null, null]},
-            posWidth:   { type:'f',  value:0},
-            thickmix:   { type:'f',  value:0.5},
-
-            data:       { type:'tv', value:5, texture: [null, null, null, null]},
+            data:       { type:'tv', value:3, texture: [null, null, null, null]},
             mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
             shape:      { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
             volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
+
+            vmin:       { type:'fv1',value:[0,0]},
+            vmax:       { type:'fv1',value:[1,1]},
 
             curvAlpha:  { type:'f', value:1.},
             curvScale:  { type:'f', value:.5},
@@ -92,9 +91,8 @@ function MRIview() {
 
             hide_mwall: { type:'i', value:0},
         }
-    ])
-    this.uniforms.hatch.texture.needsUpdate = true;
-
+    ]);
+    
     this.projector = new THREE.Projector();
     this._startplay = null;
     this._staticplugin = false;
@@ -119,8 +117,7 @@ MRIview.prototype = {
         if (ds === undefined)
             ds = this.active[0];
         var sampler = samplers[ds.filter];
-        var twoD = this.colormap.image.height > 10;
-        var shaders = makeShader(sampler, ds.raw, viewopts.voxlines, twoD, this.thick);
+        var shaders = makeShader(sampler, ds.raw, viewopts.voxlines, this.thick);
         this.shader = new THREE.ShaderMaterial( { 
             vertexShader:shaders.vertex,
             fragmentShader:shaders.fragment,
@@ -129,12 +126,14 @@ MRIview.prototype = {
             morphTargets:true, 
             morphNormals:true, 
             lights:true, 
-            vertexColors:true,
-            blending:THREE.CustomBlending,
-            transparent:true,
+            // vertexColors:true,
+            // blending:THREE.CustomBlending,
+            // transparent:true,
         });
         this.shader.map = true;
         this.shader.metal = true;
+        this.uniforms.colormap.texture.needsUpdate = true;
+        this.uniforms.hatch.texture.needsUpdate = true;
         if (this.meshes && this.meshes.left) {
             this.meshes.left.material = this.shader;
             this.meshes.right.material = this.shader;
@@ -221,7 +220,6 @@ MRIview.prototype = {
                 this.pivot[name] = meshpiv.pivots;
                 this.scene.add(meshpiv.pivots.front);
             }
-            //this.setShader("nearest", false, false, false);
 
             $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
                 this.roipack = new ROIpack(svgdoc, this.renderer, posdata);
@@ -943,7 +941,7 @@ MRIview.prototype = {
             this.uniforms.voxlineColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b/255);
             this.schedule();
         }.bind(this)});
-        $("#voxline_width").slider({ min:1, max:10, step:.001, value:viewopts.voxline_width, slide:function(event, ui) {
+        $("#voxline_width").slider({ min:.001, max:.1, step:.001, value:viewopts.voxline_width, slide:function(event, ui) {
             this.uniforms.voxlineWidth.value = ui.value;
             this.schedule();
         }.bind(this)});

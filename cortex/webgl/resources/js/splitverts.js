@@ -120,24 +120,19 @@ function makeHatch(size, linewidth, spacing) {
     return tex;
 };
 
-function makeShader(sampler, raw, voxline, twoD, volume) {
+function makeShader(sampler, raw, voxline, volume) {
     //Creates shader code with all the parameters
     //sampler: which sampler to use, IE nearest or trilinear
     //raw: whether the dataset is raw or not
     //voxline: whether to show the voxel lines
-    //twoD: whether the colormap is two dimensional
     //volume: the number of volume samples to take
 
     if (volume === undefined)
         volume = 0;
-    if (twoD === undefined)
-        twoD = false;
 
     var header = "";
     if (voxline)
         header += "#define VOXLINE\n";
-    if (twoD)
-        header += "#define TWOD\n";
     if (raw)
         header += "#define RAWCOLORS\n";
     if (volume > 0)
@@ -163,6 +158,7 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
     "void main() {",
 
         "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
+        "vViewPosition = -mvPosition.xyz;",
 
         THREE.ShaderChunk[ "map_vertex" ],
 
@@ -171,8 +167,6 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
         "vMedial = auxdat.z;",
 
         "vPos[0] = position;",
-        "vViewPosition = -mvPosition.xyz;",
-
         "#ifdef CORTSHEET",
         "vPos[1] = wm;",
         "vec3 npos = mix(position, wm, thickmix);",
@@ -182,8 +176,6 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
 
         THREE.ShaderChunk[ "morphnormal_vertex" ],
         "vNormal = transformedNormal;",
-
-        THREE.ShaderChunk[ "lights_phong_vertex" ],
 
         "vec3 morphed = vec3( 0.0 );",
         "morphed += ( morphTarget0 - npos ) * morphTargetInfluences[ 0 ];",
@@ -198,7 +190,7 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
 
     var samplers = "";
     var dims = ["x", "y"];
-    for (var val = 0; val < (twoD ? 2 : 1); val++) {
+    for (var val = 0; val < 2; val++) {
         var dim = dims[val];
         samplers += [
         "vec2 make_uv_"+dim+"(vec2 coord, float slice) {",
@@ -215,24 +207,17 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
 
         "vec4 nearest_"+dim+"(sampler2D data, vec4 fid) {",
             "vec3 coord = (volxfm["+val+"]*fid).xyz;",
-            "if (fract(coord.z) > 0.5)",
-                "return texture2D(data, make_uv_"+dim+"(coord.xy, ceil(coord.z)));",
-            "else",
-                "return texture2D(data, make_uv_"+dim+"(coord.xy, floor(coord.z)));",
+            "float s = step(0.5, fract(coord.z));",
+            "vec4 c = texture2D(data, make_uv_"+dim+"(coord.xy, ceil(coord.z)));",
+            "vec4 f = texture2D(data, make_uv_"+dim+"(coord.xy, floor(coord.z)));",
+            "return s*c + (1.-s)*f;",
         "}\n",
 
-        "vec4 debug1_"+dim+"(sampler2D data, vec4 fid) {",
+        "vec4 debug_"+dim+"(sampler2D data, vec4 fid) {",
             "vec3 coord = (volxfm["+val+"] * fid).xyz;",
             "return vec4(coord / vec3(100., 100., 32.), 1.);",
         "}",
 
-        "vec4 debug2_"+dim+"(sampler2D data, vec4 fid) {",
-            "vec3 coord = (volxfm["+val+"]*fid).xyz;",
-            "if (fract(coord.z) > 0.5)",
-                "return vec4(make_uv_"+dim+"(coord.xy, ceil(coord.z)), 0., 1.);",
-            "else",
-                "return vec4(make_uv_"+dim+"(coord.xy, floor(coord.z)), 0., 1.);",
-        "}\n",
 
         ].join("\n");
     }
@@ -246,12 +231,12 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
     THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
     "uniform int hide_mwall;",
-    "uniform float thickmix;",
 
-    "uniform mat4 volxfm[2];",
-    "uniform vec2 mosaic[2];",
-    "uniform vec2 shape[2];",
-    "uniform sampler2D data[4];",
+    "uniform vec3 diffuse;",
+    "uniform vec3 ambient;",
+    "uniform vec3 emissive;",
+    "uniform vec3 specular;",
+    "uniform float shininess;",
 
     "uniform sampler2D colormap;",
     "uniform float vmin[2];",
@@ -270,11 +255,11 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
     "uniform sampler2D hatch;",
     "uniform vec2 hatchrep;",
 
-    "uniform vec3 diffuse;",
-    "uniform vec3 ambient;",
-    "uniform vec3 emissive;",
-    "uniform vec3 specular;",
-    "uniform float shininess;",
+    "uniform mat4 volxfm[2];",
+    "uniform vec2 mosaic[2];",
+    "uniform vec2 shape[2];",
+    "uniform sampler2D data[4];",
+    "uniform float thickmix;",
 
     "varying float vCurv;",
     "varying float vDrop;",
@@ -283,56 +268,38 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
 
     // from http://codeflow.org/entries/2012/aug/02/easy-wireframe-display-with-barycentric-coordinates/
     "float edgeFactor(vec3 edge) {",
-        "vec3 d = fwidth(edge);",
-        "vec3 a3 = smoothstep(vec3(0.), d*voxlineWidth, edge);",
+        "vec3 d = fwidth(edge)+voxlineWidth;",
+        "vec3 a3 = smoothstep(vec3(0.), d, edge);",
         "return min(min(a3.x, a3.y), a3.z);",
     "}",
 
     samplers,
 
     "void main() {",
-        "vec4 fid;",
-        "vec2 cuv;",
-        "vec4 color[2];",
-        "vec4 vColor = vec4(0.);",
-        "float val[4], norm[4], range[2], fnorm[2];",
-        "val[0] = 0.; val[1] = 0.; val[2] = 0.; val[3] = 0.;",
         //Curvature Underlay
         "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
-        "gl_FragColor = vec4(vec3(curv)*curvAlpha, curvAlpha);",
+        "vec4 cColor = vec4(vec3(curv) * curvAlpha, curvAlpha);",
 
-        "if (vMedial < .999) {",
+        "vec4 fid;",
+        "#ifdef RAWCOLORS",
+        "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
+        "#else",
+        "float val[4]; val[0] = 0.; val[1] = 0.; val[2] = 0.; val[3] = 0.;",
+        "#endif",
         "",
     ].join("\n");
 
     
     var sampling = [
-            "#ifdef RAWCOLORS",
-            "color[0] = "+sampler+"_x(data[0], fid);",
-            "color[1] = "+sampler+"_x(data[2], fid);",
-            "vColor += "+factor+"*mix(color[0], color[1], framemix);",
-            "#else",
-            "val[0] += "+factor+"*"+sampler+"_x(data[0], fid).r;",
-            "val[2] += "+factor+"*"+sampler+"_x(data[2], fid).r;",
-            "range[0] = vmax[0] - vmin[0];",
-            "norm[0] = (val[0] - vmin[0]) / range[0];",
-            "norm[2] = (val[2] - vmin[0]) / range[0];",
-            "fnorm[0] = mix(norm[0], norm[2], framemix);",
-
-            "#ifdef TWOD",
-            "val[1] += "+factor+"*"+sampler+"_y(data[1], fid).r;",
-            "val[3] += "+factor+"*"+sampler+"_y(data[3], fid).r;",
-            "range[1] = vmax[1] - vmin[1];",
-            "norm[1] = (val[1] - vmin[1]) / range[1];",
-            "norm[3] = (val[3] - vmin[1]) / range[1];",
-            "fnorm[1] = mix(norm[1], norm[3], framemix);",
-            "cuv = vec2(clamp(fnorm[0], 0., .999), clamp(fnorm[1], 0., .999) );",
-            "#else",
-            "cuv = vec2(clamp(fnorm[0], 0., .999), 0. );",
-            "#endif",
-            "vColor = texture2D(colormap, cuv);",
-            "#endif",
-            "",
+"#ifdef RAWCOLORS",
+        "color[0] += "+factor+"*"+sampler+"_x(data[0], fid);",
+        "color[1] += "+factor+"*"+sampler+"_x(data[2], fid);",
+"#else",
+        "val[0] += "+factor+"*"+sampler+"_x(data[0], fid).r;",
+        "val[2] += "+factor+"*"+sampler+"_x(data[2], fid).r;",
+        "val[1] += "+factor+"*"+sampler+"_y(data[1], fid).r;",
+        "val[3] += "+factor+"*"+sampler+"_y(data[3], fid).r;",
+"#endif",
     ].join("\n");
 
     var fragMid = "";
@@ -359,24 +326,44 @@ function makeShader(sampler, raw, voxline, twoD, volume) {
     }
 
     var fragTail = [
-            "#ifdef VOXLINE",
-            "vec3 coord = (volxfm[0]*fid).xyz;",
-            "vec3 edge = abs(mod(coord, 1.) - vec3(0.5));",
-            "gl_FragColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge));",
-            "#else",
-            "gl_FragColor = vColor;",
-            "#endif",
-            //Cross hatch / dropout layer
-            "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
-            "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
-            "gl_FragColor = hcolor + gl_FragColor * (1. - hcolor.a);",
+    "#ifdef RAWCOLORS",
+        "vec4 vColor = mix(color[0], color[1], framemix);",
+    "#else",
+        "float range = vmax[0] - vmin[0];",
+        "float norm0 = (val[0] - vmin[0]) / range;",
+        "float norm1 = (val[2] - vmin[0]) / range;",
+        "float fnorm0 = mix(norm0, norm1, framemix);",
 
-            //roi layer
-            "vec4 roi = texture2D(map, vUv);",
-            "gl_FragColor = roi + gl_FragColor * (1. - roi.a);",
+        "range = vmax[1] - vmin[1];",
+        "norm0 = (val[1] - vmin[1]) / range;",
+        "norm1 = (val[3] - vmin[1]) / range;",
+        "float fnorm1 = mix(norm0, norm1, framemix);",
+        "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
 
+        "vec4 vColor = texture2D(colormap, cuv);",
+    "#endif",
+
+    "#ifdef VOXLINE",
+        "vec3 coord = (volxfm[0]*fid).xyz;",
+        "vec3 edge = abs(mod(coord, 1.) - vec3(0.5));",
+        "vColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge));",
+    "#endif",
+
+        //Cross hatch / dropout layer
+        "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
+        "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
+
+        //roi layer
+        "vec4 rColor = texture2D(map, vUv);",
+
+        "if (vMedial < .999) {",
+            "gl_FragColor = mix(cColor, vColor, dataAlpha);",
+            "gl_FragColor = hcolor + (1.-hcolor.a)*gl_FragColor;",
+            "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
         "} else if (hide_mwall == 1) {",
             "discard;",
+        "} else {",
+            "gl_FragColor = cColor;",
         "}",
 
         THREE.ShaderChunk[ "lights_phong_fragment" ],

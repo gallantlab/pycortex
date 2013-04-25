@@ -225,7 +225,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     saveimg = mp.Array('c', 8192)
     queue = mp.Queue()
 
-    viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='1.5' )
+    viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
 
     class CTMHandler(web.RequestHandler):
         def get(self, path):

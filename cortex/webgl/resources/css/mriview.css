@@ -239,7 +239,7 @@ a:visited { color:white; }
 /* Colorbar */
 .dd-selected-text, .dd-option-text { display:none; }
 .dd-option-image, .dd-selected-image { 
-    min-height:10px; 
+    min-height:8px; 
     width:256px; 
     max-width:256px; 
     max-height:256px; 

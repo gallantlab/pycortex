@@ -36,8 +36,8 @@ class BrainCTM(object):
         try:
             self.left, self.right = list(map(Hemi, surfs.getSurf(subject, "pia")))
             left, right = surfs.getSurf(subject, "wm", nudge=False, merge=False)
-            self.left.addSurf(left[0], name="wm")
-            self.right.addSurf(right[0], name="wm")
+            self.left.addSurf(left[0], name="wm", renorm=False)
+            self.right.addSurf(right[0], name="wm", renorm=False)
         except IOError:
             self.left, self.right = list(map(Hemi, surfs.getSurf(subject, "fiducial")))
 
@@ -139,12 +139,17 @@ class Hemi(object):
         self.surfs = {}
         self.aux = np.zeros((len(self.ctm), 4))
 
-    def addSurf(self, pts, name=None):
+    def addSurf(self, pts, name=None, renorm=True):
         '''Scales the in-between surfaces to be same scale as fiducial'''
         if name is None:
             name = 'morphTarget%d'%len(self.surfs)
-        norm = (pts - pts.min(0)) / (pts.max(0) - pts.min(0))
-        rnorm = norm * (self.pts.max(0) - self.pts.min(0)) + self.pts.min(0)
+
+        if renorm:
+            norm = (pts - pts.min(0)) / (pts.max(0) - pts.min(0))
+            rnorm = norm * (self.pts.max(0) - self.pts.min(0)) + self.pts.min(0)
+        else:
+            rnorm = pts
+
         attrib = np.hstack([rnorm, np.zeros((len(rnorm),1))])
         self.surfs[name] = attrib
         self.ctm.addAttrib(attrib, name)

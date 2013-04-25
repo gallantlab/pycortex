@@ -1,4 +1,4 @@
-var filtertypes = { nearest: THREE.NearestFilter, trilinear: THREE.LinearFilter, nearlin: THREE.LinearFilter };
+var filtertypes = { nearest: THREE.NearestFilter, trilinear: THREE.LinearFilter, nearlin: THREE.LinearFilter, debug: THREE.NearestFilter };
 
 function Dataset(json) {
     this.loaded = $.Deferred().done(function() { $("#dataload").hide(); });
