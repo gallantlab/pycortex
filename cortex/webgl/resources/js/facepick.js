@@ -1,193 +1,151 @@
-var flatVertShade = [
-    "attribute vec3 idx;",
-    "attribute vec4 auxdat;",
-    "varying vec3 vColor;",
-    THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
-    "void main() {",
-        //"vColor = (2.*idx+1.) / 512.;",
-        "vColor = idx / 255.;",
-        THREE.ShaderChunk[ "morphtarget_vertex" ],
-        THREE.ShaderChunk[ "default_vertex" ],
-    "}",
-].join("\n");
+function makePickShaders() {
+    var vertShade = [
+        "attribute vec3 idx;",
+        "attribute vec4 auxdat;",
+        "varying vec3 vPos;",
+        THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+        "void main() {",
+            "vPos = position;",
+            THREE.ShaderChunk[ "morphtarget_vertex" ],
+        "}",
+    ].join("\n");
 
-var flatFragShade = [
-    "varying vec3 vColor;",
-    "void main() {",
-        "gl_FragColor = vec4(vColor, 1.);",
-    "}"
-].join("\n");
+    var fragShades = [];
+    var dims = ['x', 'y', 'z'];
+    for (var i = 0; i < 3; i++){
+        var dim = dims[i];
+        var shade = [
+        "vec4 pack_float( const in float depth ) {",
+            "const vec4 bit_shift = vec4( 256.0 * 256.0 * 256.0, 256.0 * 256.0, 256.0, 1.0 );",
+            "const vec4 bit_mask  = vec4( 0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0 );",
+            "vec4 res = fract( depth * bit_shift );",
+            "res -= res.xxyz * bit_mask;",
+            "return res;",
+        "}",
+        "varying vec3 vPos;",
+        "void main() {",
+            "gl_FragColor = pack_float(vPos."+dim+");",
+        "}"
+        ].join("\n");
+        fragShades.push(shade);
+    }
+
+    return {vertex:vertShade, fragment:fragShades};
+}
+
 
 function FacePick(viewer, callback) {
     this.viewer = viewer;
-    this.pivot = {};
-    this.meshes = {};
-    this.idxrange = {};
-    if (typeof(callback) == "function") {
-        this.callback = callback;
-    } else {
-        this.callback = function(voxidx, vertidx) {
-            $.ajax("/picker?voxel="+voxidx+"&vertex="+vertidx);
-        }
-    }
-    
-    this.scene = new THREE.Scene();
-    this.shader = new THREE.ShaderMaterial({
-        vertexShader: flatVertShade,
-        fragmentShader: flatFragShade,
+
+    var shaders = makePickShaders();
+    this.shade_x = new THREE.ShaderMaterial({
+        vertexShader: shaders.vertex,
+        fragmentShader: shaders.fragment[0],
         attributes: { idx: true, auxdat:true, },
         morphTargets:true
     });
-
-    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 1, 5000 )
-    this.camera.position = this.viewer.camera.position;
-    this.camera.up.set(0,0,1);
-    this.scene.add(this.camera);
-    this.renderbuf = new THREE.WebGLRenderTarget($("#brain").width(), $("#brain").height(), {
-        minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter
-    })
-    this.height = $("#brain").height();
-    this.axes = [];
-
-    var nface, nfaces = 0;
-    for (var name in {left:"", right:""}) {
-        var hemi = this.viewer.meshes[name];
-        var morphs = [];
-        for (var i = 0, il = hemi.geometry.morphTargets.length; i < il; i++) {
-            morphs.push(hemi.geometry.morphTargets[i].array);
-        }
-        nface = hemi.geometry.attributes.index.array.length / 3;
-        this.idxrange[name] = [nfaces, nfaces + nface];
-
-        var worker = new Worker("resources/js/facepick_worker.js");
-        worker.onmessage = this.handleworker.bind(this);
-        worker.postMessage({
-            func:    "genFlatGeom",
-            name:    name,
-            ppts:    hemi.geometry.attributes.position.array,
-            ppolys:  hemi.geometry.attributes.index.array,
-            aux:     hemi.geometry.attributes.auxdat.array,
-            morphs:  morphs,
-            offsets: hemi.geometry.offsets,
-            reordered: hemi.geometry.indexMap !== undefined,
-            faceoff: nfaces,
-        });
-        nfaces += nface;
-    }
-    
-    this._valid = false;
+    this.shade_x = new THREE.ShaderMaterial({
+        vertexShader: shaders.vertex,
+        fragmentShader: shaders.fragment[1],
+        attributes: { idx: true, auxdat:true, },
+        morphTargets:true
+    });
+    this.shade_x = new THREE.ShaderMaterial({
+        vertexShader: shaders.vertex,
+        fragmentShader: shaders.fragment[2],
+        attributes: { idx: true, auxdat:true, },
+        morphTargets:true
+    });
+    this.resize($("#brain").width(), $("#brain").height());
 }
 FacePick.prototype = {
     resize: function(w, h) {
         this._valid = false;
-        this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
         this.height = h;
-        delete this.renderbuf;
-        this.renderbuf = new THREE.WebGLRenderTarget(w, h, {
+        this.x = new THREE.WebGLRenderTarget(w, h, {
             minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter
-        })
+        });
+        this.y = new THREE.WebGLRenderTarget(w, h, {
+            minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter
+        });
+        this.z = new THREE.WebGLRenderTarget(w, h, {
+            minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter
+        });
     },
 
     draw: function(debug) {
-        this.camera.lookAt(this.viewer.controls.target);
-        for (var name in this.meshes) {
-            this.pivot[name].front.rotation.z = this.viewer.pivot[name].front.rotation.z;
-            this.pivot[name].back.rotation.z = this.viewer.pivot[name].back.rotation.z;
-            this.meshes[name].morphTargetInfluences = this.viewer.meshes[name].morphTargetInfluences;
-        }
-        if (debug === true)
-            this.viewer.renderer.render(this.scene, this.camera);
-        
-        this.viewer.renderer.render(this.scene, this.camera, this.renderbuf);
+        this.viewer.scene.overrideMaterial = this.shade_x;
+        this.viewer.renderer.render(this.viewer.scene, this.viewer.camera, this.x);
+        this.viewer.scene.overrideMaterial = this.shade_y;
+        this.viewer.renderer.render(this.viewer.scene, this.viewer.camera, this.y);
+        this.viewer.scene.overrideMaterial = this.shade_z;
+        this.viewer.renderer.render(this.viewer.scene, this.viewer.camera, this.z);
+        this.viewer.scene.overrideMaterial = null;
         this._valid = true;
-    },
-
-    handleworker: function(event) {
-        var msg = event.data;
-        var i, il, geom = new THREE.BufferGeometry();
-        geom.attributes.position = {itemSize:3, array:msg.pts, stride:3};
-        geom.attributes.index = {itemSize:1, array:msg.polys, stride:1};
-        geom.attributes.idx = {itemSize:3, array:msg.color, stride:3};
-        geom.morphTargets = [];
-        for (i = 0, il = msg.morphs.length; i < il; i++) {
-            geom.morphTargets.push({itemSize:3, array:msg.morphs[i], stride:3});
-        }
-        geom.offsets = []
-        for (i = 0, il = msg.polys.length; i < il; i += 65535) {
-            geom.offsets.push({start:i, index:i, count:Math.min(65535, il - i)});
-        }
-        geom.computeBoundingBox();
-        var meshpiv = this.viewer._makeMesh(geom, this.shader);
-        meshpiv.mesh.doubleSided = false;
-        this.meshes[msg.name] = meshpiv.mesh;
-        this.pivot[msg.name] = meshpiv.pivots;
-        this.scene.add(meshpiv.pivots.front);
     },
 
     _pick: function(x, y) {
         if (!this._valid)
             this.draw();
         var gl = this.viewer.renderer.context;
-        var pix = new Uint8Array(4);
-        var leftlen = this.viewer.meshes.left.geometry.attributes.position.array.length / 3;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderbuf.__webglFramebuffer);
-        gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
+
+        var xbuf = new Uint8Array(4);
+        var ybuf = new Uint8Array(4);
+        var zbuf = new Uint8Array(4);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.x.__webglFramebuffer);
+        gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, xbuf);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.y.__webglFramebuffer);
+        gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, ybuf);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.z.__webglFramebuffer);
+        gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, zbuf);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        var faceidx = (pix[0] << 16) + (pix[1] << 8) + pix[2];
-        if (faceidx == 0) {
-            for (var i = 0; i < this.axes.length; i++)
-                this.axes[i].obj.parent.remove(this.axes[i].obj);
-            this.axes = [];
-            this.viewer.schedule();
-            return;
-        }
+        console.log(xbuf[0] / (256*256*256) + xbuf[1] / (256*256) + xbuf[2] / (256));
         
-        //adjust for clicking on black area
-        faceidx -= 1;
+        // //adjust for clicking on black area
+        // faceidx -= 1;
 
-        //Find which hemisphere it's in
-        for (var hemi in this.idxrange) {
-            var lims = this.idxrange[hemi];
-            if (lims[0] <= faceidx && faceidx < lims[1]) {
-                faceidx -= lims[0];
-                var geom =  this.viewer.meshes[hemi].geometry;
-                var polys = geom.attributes.index.array;
-                var map = geom.attributes.auxdat.array;
+        // //Find which hemisphere it's in
+        // for (var hemi in this.idxrange) {
+        //     var lims = this.idxrange[hemi];
+        //     if (lims[0] <= faceidx && faceidx < lims[1]) {
+        //         faceidx -= lims[0];
+        //         var geom =  this.viewer.meshes[hemi].geometry;
+        //         var polys = geom.attributes.index.array;
+        //         var map = geom.attributes.auxdat.array;
 
-                //Find which offset
-                for (var o = 0, ol = geom.offsets.length; o < ol; o++) {
-                    var start = geom.offsets[o].start;
-                    var index = geom.offsets[o].index;
-                    var count = geom.offsets[o].count;
+        //         //Find which offset
+        //         for (var o = 0, ol = geom.offsets.length; o < ol; o++) {
+        //             var start = geom.offsets[o].start;
+        //             var index = geom.offsets[o].index;
+        //             var count = geom.offsets[o].count;
 
-                    if (start <= faceidx*3 && faceidx*3 < (start+count)) {
-                        //Pick the closest point in triangle to the click location
-                        var pts = [index + polys[faceidx*3], 
-                               index + polys[faceidx*3+1], 
-                               index + polys[faceidx*3+2]];
-                        var mousepos = new THREE.Vector2(x, y);
-                        var ptdists = pts.map(function(pt) {
-                            var spt = this.viewer.getPos(pt);
-                            return mousepos.distanceTo(new THREE.Vector2(spt.pos[0], spt.pos[1]));
-                        }.bind(this));
+        //             if (start <= faceidx*3 && faceidx*3 < (start+count)) {
+        //                 //Pick the closest point in triangle to the click location
+        //                 var pts = [index + polys[faceidx*3], 
+        //                        index + polys[faceidx*3+1], 
+        //                        index + polys[faceidx*3+2]];
+        //                 var mousepos = new THREE.Vector2(x, y);
+        //                 var ptdists = pts.map(function(pt) {
+        //                     var spt = this.viewer.getPos(pt);
+        //                     return mousepos.distanceTo(new THREE.Vector2(spt.pos[0], spt.pos[1]));
+        //                 }.bind(this));
                         
-                        var closest;
-                        if (ptdists[0] < ptdists[1] && ptdists[0] < ptdists[2]) {
-                            closest = pts[0];
-                        } else if (ptdists[1] < ptdists[0] && ptdists[1] < ptdists[2]) {
-                            closest = pts[1];
-                        } else {
-                            closest = pts[2];
-                        }
+        //                 var closest;
+        //                 if (ptdists[0] < ptdists[1] && ptdists[0] < ptdists[2]) {
+        //                     closest = pts[0];
+        //                 } else if (ptdists[1] < ptdists[0] && ptdists[1] < ptdists[2]) {
+        //                     closest = pts[1];
+        //                 } else {
+        //                     closest = pts[2];
+        //                 }
                         
-                        var dataidx = map[closest*4+3];
-                        closest += hemi == "right" ? leftlen : 0;
-                        return {ptidx: closest, dataidx: dataidx, hemi: hemi};
-                    }
-                }
-            }
-        }
+        //                 var dataidx = map[closest*4+3];
+        //                 closest += hemi == "right" ? leftlen : 0;
+        //                 return {ptidx: closest, dataidx: dataidx, hemi: hemi};
+        //             }
+        //         }
+        //     }
+        // }
     },
 
     pick: function(x, y, keep) {

@@ -318,7 +318,7 @@ function makeShader(sampler, raw, voxline, volume) {
     } else {
         for (var i = 0; i < volume; i++) {
             fragMid += [
-                "fid = vec4(mix(vPos[0], vPos[1], "+i+". / "+(volume-1)+".), 1.);",
+                "fid = vec4(mix(vPos[0], vPos[1], "+(i+1)+". / "+(volume+1)+".), 1.);",
                 sampling,
                 "", 
             ].join("\n");

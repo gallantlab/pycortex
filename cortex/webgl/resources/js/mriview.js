@@ -50,8 +50,8 @@ function MRIview() {
     });
     this.renderer.sortObjects = false;
     this.renderer.setClearColorHex( 0x0, 1 );
-    this.renderer.context.getExtension("OES_standard_derivatives");
     this.renderer.context.getExtension("OES_texture_float");
+    this.renderer.context.getExtension("OES_standard_derivatives");
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
     this.pixbuf = new Uint8Array($("#brain").width() * $("#brain").height() * 4);
     this.state = "pause";
@@ -235,9 +235,8 @@ MRIview.prototype = {
                 }.bind(this));
             }.bind(this));
 
-            /*
             this.picker = new FacePick(this);
-            this.addEventListener("mix", this.picker.setMix.bind(this.picker));
+            // this.addEventListener("mix", this.picker.setMix.bind(this.picker));
             this.addEventListener("resize", function(event) {
                 this.picker.resize(event.width, event.height);
             }.bind(this));
@@ -247,13 +246,12 @@ MRIview.prototype = {
             this.controls.addEventListener("pick", function(event) {
                 this.picker.pick(event.x, event.y, event.keep);
             }.bind(this));
-            this.controls.addEventListener("dblpick", function(event) {
-                this.picker.dblpick(event.x, event.y, event.keep);
-            }.bind(this));
-            this.controls.addEventListener("undblpick", function(event) {
-                this.picker.undblpick();
-            }.bind(this));
-            */
+            // this.controls.addEventListener("dblpick", function(event) {
+            //     this.picker.dblpick(event.x, event.y, event.keep);
+            // }.bind(this));
+            // this.controls.addEventListener("undblpick", function(event) {
+            //     this.picker.undblpick();
+            // }.bind(this));
             
             if (typeof(callback) == "function")
                 this.loaded.done(callback);
@@ -280,7 +278,7 @@ MRIview.prototype = {
                 return $("#mix").slider("value");
             case 'pivot':
                 //return $("#pivot").slider("value");
-	        return this._pivot;
+            return this._pivot;
             case 'frame':
                 return this.frame;
             case 'azimuth':
@@ -356,11 +354,11 @@ MRIview.prototype = {
                         val = [];
                         for (j = 0; j < f.start.value.length; j++) {
                             //val.push(f.start.value[j]*(1-idx) + f.end.value[j]*idx);
-			    val.push(this._animInterp(f.start.state, f.start.value[j], f.end.value[j], idx));
+                val.push(this._animInterp(f.start.state, f.start.value[j], f.end.value[j], idx));
                         }
                     } else {
                         //val = f.start.value * (1-idx) + f.end.value * idx;
-			val = this._animInterp(f.start.state, f.start.value, f.end.value, idx);
+            val = this._animInterp(f.start.state, f.start.value, f.end.value, idx);
                     }
                     this.setState(f.start.state, val);
                     state = true;
@@ -373,24 +371,24 @@ MRIview.prototype = {
         return state;
     },
     _animInterp: function(state, startval, endval, idx) {
-	switch (state) {
-	case 'azimuth':
-	    // Azimuth is an angle, so we need to choose which direction to interpolate
-	    if (Math.abs(endval - startval) >= 180) { // wrap
-		if (startval > endval) {
-		    return (startval * (1-idx) + (endval+360) * idx + 360) % 360;
-		}
-		else {
-		    return (startval * (1-idx) + (endval-360) * idx + 360) % 360;
-		}
-	    } 
-	    else {
-		return (startval * (1-idx) + endval * idx);
-	    }
-	default:
-	    // Everything else can be linearly interpolated
-	    return startval * (1-idx) + endval * idx;
-	}
+    switch (state) {
+    case 'azimuth':
+        // Azimuth is an angle, so we need to choose which direction to interpolate
+        if (Math.abs(endval - startval) >= 180) { // wrap
+        if (startval > endval) {
+            return (startval * (1-idx) + (endval+360) * idx + 360) % 360;
+        }
+        else {
+            return (startval * (1-idx) + (endval-360) * idx + 360) % 360;
+        }
+        } 
+        else {
+        return (startval * (1-idx) + endval * idx);
+        }
+    default:
+        // Everything else can be linearly interpolated
+        return startval * (1-idx) + endval * idx;
+    }
     },
     saveIMG: function(post) {
         var png = $("#brain")[0].toDataURL();
@@ -467,7 +465,7 @@ MRIview.prototype = {
     }, 
     setPivot: function (val) {
         $("#pivot").slider("option", "value", val);
-	this._pivot = val;
+        this._pivot = val;
         var names = {left:1, right:-1}
         if (val > 0) {
             for (var name in names) {
