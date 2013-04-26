@@ -18,6 +18,19 @@ Number.prototype.mod = function(n) {
     return ((this%n)+n)%n;
 }
 
+function Slice(viewer) {
+    var shader = makeShader("nearest", false, false, 0);
+    this.slice = new THREE.PlaneGeometry(300, 300);
+    this.shader = new THREE.ShaderMaterial({
+        vertexShader: shader.vertex,
+        fragmentShader: shader.fragment,
+        uniforms: viewer.uniforms,
+        attributes: attributes,
+    });
+    this.mesh = new THREE.Mesh(this.slice, viewer.shader);
+
+}
+
 function MRIview() { 
     //Allow objects to listen for mix updates
     THREE.EventTarget.call( this );
@@ -98,7 +111,6 @@ function MRIview() {
     this._staticplugin = false;
     this._loaded = false;
     this.loaded = $.Deferred().done(function() {
-        this.schedule();
         $("#ctmload").hide();
         $("#brain").css("opacity", 1);
     }.bind(this));
@@ -176,6 +188,7 @@ MRIview.prototype = {
     load: function(ctminfo, callback) {
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
+            var tick = new Date();
             geometries[0].computeBoundingBox();
             geometries[1].computeBoundingBox();
 

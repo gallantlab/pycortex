@@ -46,20 +46,17 @@ function makePickShaders() {
 function FacePick(viewer, left, right) {
     this.viewer = viewer;
 
-    var tick = new Date();
-    var lpts = [];
-    for (var i = 0, il = left.length; i < il; i+= 3)
-        lpts.push([left[i], left[i+1], left[i+2], i/3]);
-    var rpts = [];
-    for (var i = 0, il = right.length; i < il; i+= 3)
-        rpts.push([right[i], right[i+1], right[i+2], i/3]);
-    var dist = function (a, b) {
-        return (a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]);
-    }
-    console.log(((new Date()) - tick) / 1000.);
-    this.lkdt = new kdTree(lpts, dist, [0, 1, 2]);
-    this.rkdt = new kdTree(rpts, dist, [0, 1, 2]);
-    console.log(((new Date()) - tick) / 1000.);
+    var worker = new Worker("resources/js/facepick_worker.js");
+    worker.addEventListener("message", function(e) {
+        var dist = function (a, b) {
+            return Math.sqrt((a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]));
+        }
+        kdt = new kdTree([], dist, [0, 1, 2]);
+        kdt.root = e.data.kdt;
+        this[e.data.name] = kdt;
+    }.bind(this));
+    worker.postMessage({pos:left, name:"lkdt"});
+    worker.postMessage({pos:right, name:"rkdt"});
 
     this.axes = [];
 
