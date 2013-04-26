@@ -68,6 +68,22 @@ function splitverts(geom, left_off) {
     return newgeom;
 }
 
+function getTexture(gl, renderbuf) {
+    var canvas = document.createElement("canvas");
+    canvas.width = renderbuf.width;
+    canvas.height = renderbuf.height;
+    var ctx = canvas.getContext("2d");
+    var img = ctx.createImageData(renderbuf.width, renderbuf.height);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
+    gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data));
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    ctx.putImageData(img, 0,0);
+    ctx.scale(1, -1);
+    img = new Image();
+    img.src = canvas.toDataURL();
+    return img;
+}
+
 function makeFlat(uv, flatlims, flatoff, right) {
     var fmin = flatlims[0], fmax = flatlims[1];
     var flat = new Float32Array(uv.length / 2 * 3);

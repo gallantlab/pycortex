@@ -126,9 +126,9 @@ MRIview.prototype = {
             morphTargets:true, 
             morphNormals:true, 
             lights:true, 
-            // vertexColors:true,
-            // blending:THREE.CustomBlending,
-            // transparent:true,
+            depthTest: true,
+            transparent:false,
+            blending:THREE.CustomBlending,
         });
         this.shader.map = true;
         this.shader.metal = true;
@@ -235,8 +235,10 @@ MRIview.prototype = {
                 }.bind(this));
             }.bind(this));
 
-            this.picker = new FacePick(this);
-            // this.addEventListener("mix", this.picker.setMix.bind(this.picker));
+            this.picker = new FacePick(this, 
+                this.meshes.left.geometry.attributes.position.array, 
+                this.meshes.right.geometry.attributes.position.array);
+            this.addEventListener("mix", this.picker.setMix.bind(this.picker));
             this.addEventListener("resize", function(event) {
                 this.picker.resize(event.width, event.height);
             }.bind(this));
@@ -246,12 +248,12 @@ MRIview.prototype = {
             this.controls.addEventListener("pick", function(event) {
                 this.picker.pick(event.x, event.y, event.keep);
             }.bind(this));
-            // this.controls.addEventListener("dblpick", function(event) {
-            //     this.picker.dblpick(event.x, event.y, event.keep);
-            // }.bind(this));
-            // this.controls.addEventListener("undblpick", function(event) {
-            //     this.picker.undblpick();
-            // }.bind(this));
+            this.controls.addEventListener("dblpick", function(event) {
+                this.picker.dblpick(event.x, event.y, event.keep);
+            }.bind(this));
+            this.controls.addEventListener("undblpick", function(event) {
+                this.picker.undblpick();
+            }.bind(this));
             
             if (typeof(callback) == "function")
                 this.loaded.done(callback);
