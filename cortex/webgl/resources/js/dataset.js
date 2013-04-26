@@ -1,4 +1,9 @@
-var filtertypes = { nearest: THREE.NearestFilter, trilinear: THREE.LinearFilter, nearlin: THREE.LinearFilter, debug: THREE.NearestFilter };
+var filtertypes = { 
+    nearest: THREE.NearestFilter, 
+    trilinear: THREE.LinearFilter, 
+    nearlin: THREE.LinearFilter, 
+    debug: THREE.NearestFilter 
+};
 
 function Dataset(json) {
     this.loaded = $.Deferred().done(function() { $("#dataload").hide(); });
@@ -41,7 +46,7 @@ function Dataset(json) {
             tex.magFilter = filtertypes[this.filter];
             tex.needsUpdate = true;
             tex.flipY = false;
-            this.shape = [img.width / this.mosaic[0], img.height / this.mosaic[1]];
+            this.shape = [((img.width-1) / this.mosaic[0])-1, ((img.height-1) / this.mosaic[1])-1];
             this.textures.push(tex);
 
             if (this.textures.length < this.frames) {

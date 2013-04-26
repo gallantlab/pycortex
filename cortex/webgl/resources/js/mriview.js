@@ -7,40 +7,15 @@ var samplers = {
     debug: "debug",
 }
 
-var buf = {
-    pos: new Float32Array(3),
-    norm: new Float32Array(3),
-    p: new Float32Array(3),
-    n: new Float32Array(3),
-}
-
-Number.prototype.mod = function(n) {
-    return ((this%n)+n)%n;
-}
-
-function Slice(viewer) {
-    var shader = makeShader("nearest", false, false, 0);
-    this.slice = new THREE.PlaneGeometry(300, 300);
-    this.shader = new THREE.ShaderMaterial({
-        vertexShader: shader.vertex,
-        fragmentShader: shader.fragment,
-        uniforms: viewer.uniforms,
-        attributes: attributes,
-    });
-    this.mesh = new THREE.Mesh(this.slice, viewer.shader);
-
-}
-
 function MRIview() { 
     //Allow objects to listen for mix updates
     THREE.EventTarget.call( this );
     // scene and camera
-    this.scene = new THREE.Scene();
-
-    this.camera = new THREE.PerspectiveCamera( 60, $("#brain").width() / $("#brain").height(), 1.0, 1000 );
+    this.camera = new THREE.CombinedCamera( $("#brain").width(), $("#brain").height(), 60, 1.0, 1000, 1., 1000. );
     this.camera.position.set(200, 200, 200);
     this.camera.up.set(0,0,1);
 
+    this.scene = new THREE.Scene();
     this.scene.add( this.camera );
     this.controls = new THREE.LandscapeControls( this.camera );
     this.controls.addEventListener("change", this.schedule.bind(this));
@@ -59,14 +34,13 @@ function MRIview() {
         antialias: true, 
         preserveDrawingBuffer:true, 
         canvas:$("#brain")[0] 
-
     });
     this.renderer.sortObjects = false;
     this.renderer.setClearColorHex( 0x0, 1 );
+    this.renderer.setFaceCulling("back");
     this.renderer.context.getExtension("OES_texture_float");
     this.renderer.context.getExtension("OES_standard_derivatives");
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
-    this.pixbuf = new Uint8Array($("#brain").width() * $("#brain").height() * 4);
     this.state = "pause";
 
     this.uniforms = THREE.UniformsUtils.merge( [
@@ -111,6 +85,7 @@ function MRIview() {
     this._staticplugin = false;
     this._loaded = false;
     this.loaded = $.Deferred().done(function() {
+        this.schedule();
         $("#ctmload").hide();
         $("#brain").css("opacity", 1);
     }.bind(this));
@@ -188,7 +163,6 @@ MRIview.prototype = {
     load: function(ctminfo, callback) {
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
-            var tick = new Date();
             geometries[0].computeBoundingBox();
             geometries[1].computeBoundingBox();
 
@@ -280,10 +254,10 @@ MRIview.prototype = {
         }
         var w = width === undefined ? $("#brain").width()  : width;
         var h = height === undefined ? $("#brain").height()  : height;
+        var aspect = w / h;
         this.renderer.setSize(w, h);
-        this.camera.aspect = w / h;
+        this.camera.setSize(aspect * 100, 100);
         this.camera.updateProjectionMatrix();
-        this.pixbuf = new Uint8Array(w*h*4);
         this.dispatchEvent({ type:"resize", width:w, height:h});
         this.schedule();
     },

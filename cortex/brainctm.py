@@ -63,10 +63,10 @@ class BrainCTM(object):
         self.right.addSurf(right[0])
         self.types.append(typename)
 
-    def addDropout(self, projection='trilinear', power=20):
-        left, right = get_dropout(self.subject, self.xfmname, projection, power)
-        self.left.aux[:,0] = left
-        self.right.aux[:,0] = right
+    # def addDropout(self, projection='trilinear', power=20):
+    #     left, right = get_dropout(self.subject, self.xfmname, projection, power)
+    #     self.left.aux[:,0] = left
+    #     self.right.aux[:,0] = right
 
     def addCurvature(self, **kwargs):
         npz = np.load(surfs.getAnat(self.subject, type='curvature', **kwargs))

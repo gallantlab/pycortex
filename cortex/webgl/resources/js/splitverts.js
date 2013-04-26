@@ -75,7 +75,7 @@ function getTexture(gl, renderbuf) {
     var ctx = canvas.getContext("2d");
     var img = ctx.createImageData(renderbuf.width, renderbuf.height);
     gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
-    gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data));
+    gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     ctx.putImageData(img, 0,0);
     ctx.scale(1, -1);
@@ -163,6 +163,8 @@ function makeShader(sampler, raw, voxline, volume) {
 
     "attribute vec4 auxdat;",
     "attribute vec3 wm;",
+    "attribute vec3 wmnorm;",
+    "attribute float dropout;",
 
     "varying vec3 vViewPosition;",
     "varying vec3 vNormal;",
@@ -178,7 +180,7 @@ function makeShader(sampler, raw, voxline, volume) {
 
         THREE.ShaderChunk[ "map_vertex" ],
 
-        "vDrop = auxdat.x;",
+        "vDrop = dropout;",
         "vCurv = auxdat.y;",
         "vMedial = auxdat.z;",
 
@@ -211,7 +213,9 @@ function makeShader(sampler, raw, voxline, volume) {
         samplers += [
         "vec2 make_uv_"+dim+"(vec2 coord, float slice) {",
             "vec2 pos = vec2(mod(slice, mosaic["+val+"].x), floor(slice / mosaic["+val+"].x));",
-            "return (2.*(pos*shape["+val+"]+coord)+1.) / (2.*mosaic["+val+"]*shape["+val+"]);",
+            "vec2 offset = (pos * (shape["+val+"]+1.)) + 1.;",
+            "vec2 imsize = (mosaic["+val+"] * (shape["+val+"]+1.)) + 1.;",
+            "return (2.*(offset+coord)+1.) / (2.*imsize);",
         "}",
 
         "vec4 trilinear_"+dim+"(sampler2D data, vec4 fid) {",
@@ -226,7 +230,8 @@ function makeShader(sampler, raw, voxline, volume) {
             "float s = step(0.5, fract(coord.z));",
             "vec4 c = texture2D(data, make_uv_"+dim+"(coord.xy, ceil(coord.z)));",
             "vec4 f = texture2D(data, make_uv_"+dim+"(coord.xy, floor(coord.z)));",
-            "return s*c + (1.-s)*f;",
+            "return fract(coord.z) < .5 ? f : c;",
+            // "return s*c + (1.-s)*f;",
         "}\n",
 
         "vec4 debug_"+dim+"(sampler2D data, vec4 fid) {",
@@ -300,7 +305,7 @@ function makeShader(sampler, raw, voxline, volume) {
         "#ifdef RAWCOLORS",
         "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
         "#else",
-        "float val[4]; val[0] = 0.; val[1] = 0.; val[2] = 0.; val[3] = 0.;",
+        "vec4 values = vec4(0.);",
         "#endif",
         "",
     ].join("\n");
@@ -311,10 +316,10 @@ function makeShader(sampler, raw, voxline, volume) {
         "color[0] += "+factor+"*"+sampler+"_x(data[0], fid);",
         "color[1] += "+factor+"*"+sampler+"_x(data[2], fid);",
 "#else",
-        "val[0] += "+factor+"*"+sampler+"_x(data[0], fid).r;",
-        "val[2] += "+factor+"*"+sampler+"_x(data[2], fid).r;",
-        "val[1] += "+factor+"*"+sampler+"_y(data[1], fid).r;",
-        "val[3] += "+factor+"*"+sampler+"_y(data[3], fid).r;",
+        "values.x += "+factor+"*"+sampler+"_x(data[0], fid).r;",
+        "values.z += "+factor+"*"+sampler+"_x(data[2], fid).r;",
+        "values.y += "+factor+"*"+sampler+"_y(data[1], fid).r;",
+        "values.w += "+factor+"*"+sampler+"_y(data[3], fid).r;",
 "#endif",
     ].join("\n");
 
@@ -346,18 +351,21 @@ function makeShader(sampler, raw, voxline, volume) {
         "vec4 vColor = mix(color[0], color[1], framemix);",
     "#else",
         "float range = vmax[0] - vmin[0];",
-        "float norm0 = (val[0] - vmin[0]) / range;",
-        "float norm1 = (val[2] - vmin[0]) / range;",
+        "float norm0 = (values.x - vmin[0]) / range;",
+        "float norm1 = (values.z - vmin[0]) / range;",
         "float fnorm0 = mix(norm0, norm1, framemix);",
 
         "range = vmax[1] - vmin[1];",
-        "norm0 = (val[1] - vmin[1]) / range;",
-        "norm1 = (val[3] - vmin[1]) / range;",
+        "norm0 = (values.y - vmin[1]) / range;",
+        "norm1 = (values.w - vmin[1]) / range;",
         "float fnorm1 = mix(norm0, norm1, framemix);",
         "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
 
         "vec4 vColor = texture2D(colormap, cuv);",
+        "bvec4 valid = notEqual(lessThanEqual(values, vec4(0.)), lessThan(vec4(0.), values));",
+        "vColor = all(valid) ? vColor : vec4(0.);",
     "#endif",
+        "vColor *= dataAlpha;",
 
     "#ifdef VOXLINE",
         "vec3 coord = (volxfm[0]*fid).xyz;",
@@ -367,14 +375,15 @@ function makeShader(sampler, raw, voxline, volume) {
 
         //Cross hatch / dropout layer
         "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
-        "vec4 hcolor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
+        "vec4 hColor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
 
         //roi layer
         "vec4 rColor = texture2D(map, vUv);",
 
         "if (vMedial < .999) {",
-            "gl_FragColor = mix(cColor, vColor, dataAlpha);",
-            "gl_FragColor = hcolor + (1.-hcolor.a)*gl_FragColor;",
+            "gl_FragColor = cColor;",
+            "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+            "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
         "} else if (hide_mwall == 1) {",
             "discard;",
@@ -388,4 +397,8 @@ function makeShader(sampler, raw, voxline, volume) {
 
 
     return {vertex:header+vertShade, fragment:header+fragHead+fragMid+fragTail};
+}
+
+Number.prototype.mod = function(n) {
+    return ((this%n)+n)%n;
 }

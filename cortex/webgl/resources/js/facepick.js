@@ -62,7 +62,6 @@ function FacePick(viewer, left, right) {
 
     var lbound = this.viewer.meshes.left.geometry.boundingBox;
     var rbound = this.viewer.meshes.right.geometry.boundingBox;
-
     var min = new THREE.Vector3(
         Math.min(lbound.min.x, rbound.min.x), 
         Math.min(lbound.min.y, rbound.min.y),
@@ -138,6 +137,11 @@ FacePick.prototype = {
         var clearAlpha = renderer.getClearAlpha();
         var clearColor = renderer.getClearColor();
         renderer.setClearColorHex(0x0, 0);
+
+        for (var i = 0; i < this.axes.length; i++) {
+            this.axes[i].obj.visible = false;
+        }
+
         this.viewer.scene.overrideMaterial = this.shade_x;
         if (debug)
             renderer.render(this.viewer.scene, this.viewer.camera);
@@ -147,6 +151,11 @@ FacePick.prototype = {
         this.viewer.scene.overrideMaterial = this.shade_z;
         renderer.render(this.viewer.scene, this.viewer.camera, this.z);
         this.viewer.scene.overrideMaterial = null;
+
+        for (var i = 0; i < this.axes.length; i++) {
+            this.axes[i].obj.visible = true;
+        }
+
         renderer.setClearColor(clearColor, clearAlpha);
         this._valid = true;
     },
@@ -177,7 +186,7 @@ FacePick.prototype = {
         gl.readPixels(x, this.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, zbuf);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         var pos = world(xbuf, ybuf, zbuf);
-        if (pos) {
+        if (pos && this.lkdt && this.rkdt) {
             var left = this.lkdt.nearest([pos.x, pos.y, pos.z], 1)[0];
             var right = this.rkdt.nearest([pos.x, pos.y, pos.z], 1)[0];
             if (left[1] < right[1])
@@ -277,7 +286,8 @@ FacePick.prototype = {
     },
 
     undblpick: function() {
-        viewer.animate(this._undblpickanim);
+        if (this._undblpickanim)
+            viewer.animate(this._undblpickanim);
     },
 
     setMix: function(mixevt) {
