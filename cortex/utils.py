@@ -17,13 +17,13 @@ def get_mapper(*args, **kwargs):
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, **kwargs):
     ctmform = surfs.getFiles(subject)['ctmcache']
-    ctmfile = ctmform.format(xfmname=xfmname, types=','.join(types), method=method, level=level)
+    ctmfile = ctmform.format(types=','.join(types), method=method, level=level)
     if os.path.exists(ctmfile) and not recache:
         return ctmfile
 
     print("Generating new ctm file...")
     from . import brainctm
-    ptmap = brainctm.make_pack(ctmfile, subject, xfmname, types, method, level)
+    ptmap = brainctm.make_pack(ctmfile, subject, types, method, level)
     return ctmfile
 
 def get_cortical_mask(subject, xfmname, type='nearest'):

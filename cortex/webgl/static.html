@@ -1,8 +1,13 @@
+{% autoescape None %}
 {% extends template.html %}
 {% block jsinit %}
-    var viewer, sock;
+    var viewer, sock, viewopts;
 {% end %}
 {% block onload %}
+        viewopts = {
+            voxlines: {{voxlines}},
+            voxline_width: {{voxline_width}},
+        };
         viewer = new MRIview();
         viewer.load("{{ctmfile}}");
         viewer.addData(classify({{data}}));

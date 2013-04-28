@@ -24,14 +24,10 @@ from .utils import get_cortical_mask, get_mapper, get_roipack, get_dropout
 from openctm import CTMfile
 
 class BrainCTM(object):
-    def __init__(self, subject, xfmname):
+    def __init__(self, subject):
         self.subject = subject
-        self.xfmname = xfmname
         self.files = surfs.getFiles(subject)
         self.types = []
-
-        xfm = surfs.getXfm(subject, xfmname)
-        self.shape = xfm.shape
 
         try:
             self.left, self.right = list(map(Hemi, surfs.getSurf(subject, "pia")))
@@ -73,17 +69,17 @@ class BrainCTM(object):
         self.left.aux[:,1] = npz['left']
         self.right.aux[:,1] = npz['right']
 
-    def addMap(self):
-        mapper = get_mapper(self.subject, self.xfmname, 'nearest')
-        mask = mapper.mask.astype(np.uint32)
-        mask[mask > 0] = np.arange(mask.sum())
-        self.left.aux[:, 3], self.right.aux[:,3] = mapper(mask)
+    # def addMap(self):
+    #     mapper = get_mapper(self.subject, self.xfmname, 'nearest')
+    #     mask = mapper.mask.astype(np.uint32)
+    #     mask[mask > 0] = np.arange(mask.sum())
+    #     self.left.aux[:, 3], self.right.aux[:,3] = mapper(mask)
 
     def save(self, path, method='mg2', **kwargs):
         ctmname = path+".ctm"
         svgname = path+".svg"
         jsname = path+".json"
-        ptmapname = path+".npz"
+        #ptmapname = path+".npz"
 
         ##### Save CTM concatenation
         (lpts, _, _), lbin = self.left.save(method=method, **kwargs)
@@ -97,7 +93,7 @@ class BrainCTM(object):
 
         ##### Save the JSON descriptor
         json.dump(dict(rois=os.path.split(svgname)[1], data=os.path.split(ctmname)[1], names=self.types, 
-            materials=[], offsets=offsets, flatlims=self.flatlims, shape=self.shape), open(jsname, 'w'))
+            materials=[], offsets=offsets, flatlims=self.flatlims), open(jsname, 'w'))
 
         ##### Compute and save the index map
         if method != 'raw':
@@ -108,7 +104,7 @@ class BrainCTM(object):
                 ptmap.append(idx)
                 inverse.append(idx.argsort())
 
-            np.savez(ptmapname, left=ptmap[0], right=ptmap[1])
+            # np.savez(ptmapname, left=ptmap[0], right=ptmap[1])
         else:
             ptmap = inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
@@ -165,10 +161,8 @@ class Hemi(object):
         ctm = CTMfile(self.tf.name)
         return ctm.getMesh(), self.tf.read()
 
-def make_pack(outfile, subj, xfm, types=("inflated",), method='raw', level=0):
-    ctm = BrainCTM(subj, xfm)
-    ctm.addMap()
-    ctm.addDropout()
+def make_pack(outfile, subj, types=("inflated",), method='raw', level=0):
+    ctm = BrainCTM(subj)
     ctm.addCurvature()
     for name in types:
         ctm.addSurf(name)
