@@ -15,23 +15,16 @@ def get_mapper(*args, **kwargs):
     from .mapper import get_mapper
     return get_mapper(*args, **kwargs)
 
-def get_ctmpack(subject, xfmname, types=("inflated",), projection='nearest', method="raw", level=0, recache=False, recache_mapper=False, **kwargs):
+def get_ctmpack(subject, types=("inflated",), projection='nearest', method="raw", level=0, recache=False, recache_mapper=False, **kwargs):
     ctmform = surfs.getFiles(subject)['ctmcache']
-    ctmfile = ctmform.format(xfmname=xfmname, types=','.join(types), method=method, level=level)
-    mapper = get_mapper(subject, xfmname, projection, recache=recache_mapper, **kwargs)
+    ctmfile = ctmform.format(types=','.join(types), method=method, level=level)
     if os.path.exists(ctmfile) and not recache:
-        mapfile = os.path.splitext(ctmfile)[0]+'.npz'
-        if os.path.exists(mapfile):
-            ptmap = np.load(mapfile)
-            mapper.idxmap = ptmap['left'], ptmap['right']
-        return ctmfile, mapper
+        return ctmfile
 
     print("Generating new ctm file...")
     from . import brainctm
-    ptmap = brainctm.make_pack(ctmfile, subject, xfmname, types, method, level)
-    if ptmap is not None:
-        mapper.idxmap = ptmap
-    return ctmfile, mapper
+    ptmap = brainctm.make_pack(ctmfile, subject, types, method, level)
+    return ctmfile
 
 def get_cortical_mask(subject, xfmname, type='nearest'):
     return get_mapper(subject, xfmname, type=type).mask

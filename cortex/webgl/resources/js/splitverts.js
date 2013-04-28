@@ -163,13 +163,13 @@ function makeShader(sampler, raw, voxline, volume) {
 
     "attribute vec4 auxdat;",
     "attribute vec3 wm;",
-    "attribute vec3 wmnorm;",
-    "attribute float dropout;",
+    // "attribute vec3 wmnorm;",
+    // "attribute float dropout;",
 
     "varying vec3 vViewPosition;",
     "varying vec3 vNormal;",
     "varying float vCurv;",
-    "varying float vDrop;",
+    // "varying float vDrop;",
     "varying float vMedial;",
     "varying vec3 vPos[2];",
 
@@ -180,7 +180,7 @@ function makeShader(sampler, raw, voxline, volume) {
 
         THREE.ShaderChunk[ "map_vertex" ],
 
-        "vDrop = dropout;",
+        // "vDrop = dropout;",
         "vCurv = auxdat.y;",
         "vMedial = auxdat.z;",
 
@@ -283,7 +283,7 @@ function makeShader(sampler, raw, voxline, volume) {
     "uniform float thickmix;",
 
     "varying float vCurv;",
-    "varying float vDrop;",
+    // "varying float vDrop;",
     "varying float vMedial;",
     "varying vec3 vPos[2];",
 
@@ -374,8 +374,8 @@ function makeShader(sampler, raw, voxline, volume) {
     "#endif",
 
         //Cross hatch / dropout layer
-        "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
-        "vec4 hColor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
+        // "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
+        // "vec4 hColor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
 
         //roi layer
         "vec4 rColor = texture2D(map, vUv);",
@@ -383,7 +383,7 @@ function makeShader(sampler, raw, voxline, volume) {
         "if (vMedial < .999) {",
             "gl_FragColor = cColor;",
             "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
-            "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
+            // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
         "} else if (hide_mwall == 1) {",
             "discard;",

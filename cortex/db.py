@@ -326,7 +326,7 @@ class Database(object):
         surffiles = os.path.join(filestore, "surfaces", "{subj}_*.*").format(subj=subject)
         anatfiles = '%s_{type}.nii.gz'%subject
         xfms = "%s_{xfmname}.xfm"%subject
-        ctmcache = "%s_{xfmname}_[{types}]_{method}_{level}.json"%subject
+        ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
         flatcache = "%s_{xfmname}_{height}_{date}_v2.pkl"%subject
         projcache = "%s_{xfmname}_{projection}.npz"%subject
 
