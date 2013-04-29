@@ -230,6 +230,13 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     saveimg = mp.Array('c', 8192)
     queue = mp.Queue()
 
+    linear = lambda x, y, m: (1.-m)*x + m*y
+    mixes = dict(
+        linear=linear,
+        smoothstep=(lambda x, y, m: linear(x,y,3*m**2 - 2*m**3)), 
+        smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
+    )
+
     class CTMHandler(web.RequestHandler):
         def get(self, path):
             fpath = os.path.split(ctmfile)[0]
@@ -302,7 +309,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
             saveimg.value = filename
             return Proxy("mixer.html")
 
-        def makeMovie(self, animation, filename="brainmovie%07d.png", fps=30, shape=(1920, 1080)):
+        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, shape=(1920, 1080), mix="linear"):
             state = dict()
             anim = []
             for f in sorted(animation, key=lambda x:x['idx']):
@@ -325,13 +332,13 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
                 for start, end in anim:
                     if start['idx'] < sec < end['idx']:
                         idx = (sec - start['idx']) / (end['idx'] - start['idx'])
-                        val = np.array(start['value']) * (1-idx) + np.array(end['value']) * idx
+                        val = mixes[mix](np.array(start['value']), np.array(end['value']), idx)
                         if isinstance(val, np.ndarray):
                             self.setState(start['state'], list(val))
                         else:
                             self.setState(start['state'], val)
                 saveevt.clear()
-                self.saveIMG(filename%i)
+                self.saveIMG(filename%(i+offset))
                 saveevt.wait()
 
     class WebApp(serve.WebApp):

@@ -202,12 +202,12 @@ THREE.LandscapeControls.prototype = {
         var rad = this.radius, target = this.target.clone();
         if ($("#zlockwhole").length > 0) {
             if ($("#zlockwhole")[0].checked) {
-                rad  = this.flatsize / 2 / this.camera.aspect;
+                rad  = this.flatsize / 2 / this.camera.cameraP.aspect;
                 rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
                 rad -= this.flatoff;
                 rad = flatmix * rad + (1 - flatmix) * this.radius;
             } else if (!$("#zlocknone")[0].checked) {
-                rad  = this.flatsize / 4 / this.camera.aspect;
+                rad  = this.flatsize / 4 / this.camera.cameraP.aspect;
                 rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
                 rad -= this.flatoff;
                 rad = flatmix * rad + (1 - flatmix) * this.radius;
