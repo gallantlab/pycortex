@@ -132,7 +132,7 @@ MRIview.prototype = {
         this.shader.metal = true;
 
         if (this.thick > 1 && this.shadeAdapt) {
-            shaders = makeShader(sampler, ds.raw, viewopts.voxlines, 1);
+            shaders = Shaders.main(sampler, ds.raw, viewopts.voxlines, 1);
             this.fastshader = new THREE.ShaderMaterial({
                 vertexShader:shaders.vertex,
                 fragmentShader:shaders.fragment,
