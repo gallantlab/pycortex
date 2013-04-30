@@ -13,7 +13,15 @@ def _open(fname):
     except IOError:
         return open(os.path.join(serve.cwd, fname))
 
-def _embed_css(cssfile):
+def _resolve_path(filename, roots):
+    for root in roots:
+        p = os.path.join(root, filename)
+        if os.path.exists(p):
+            return p
+    else:
+        raise Exception("Path %s doesn't exist under any root dir (%s)" % (filename, roots))
+
+def _embed_css(cssfile, rootdirs):
     csspath, fname = os.path.split(cssfile)
     with _open(cssfile) as fp:
         css = fp.read()
@@ -27,19 +35,17 @@ def _embed_css(cssfile):
                     attr, val = line.strip().split(':')
                     url = urlparse.search(val)
                     if url is not None:
-                        imgfile = os.path.join(csspath, url.group(1))
-                        if not os.path.exists(imgfile):
-                            imgfile = os.path.join(serve.cwd, csspath, url.group(1))
-                        imgdat = "url(%s)"%serve.make_base64(imgfile)
+                        imgpath = _resolve_path(os.path.join(csspath, url.group(1)), rootdirs)
+                        imgdat = "url(%s)"%serve.make_base64(imgpath)
                         val = urlparse.sub(imgdat, val)
                     lines.append("%s:%s"%(attr, val))
             cssout.append("%s {\n%s;\n}"%(selector, ';\n'.join(lines)))
         return '\n'.join(cssout)
 
-def _embed_js(dom, script):
+def _embed_js(dom, script, rootdirs):
     wparse = re.compile(r"new Worker\(\s*(['\"].*?['\"])\s*\)", re.S)
     aparse = re.compile(r"attr\(\s*['\"]src['\"]\s*,\s*(.*?)\)")
-    with _open(script.getAttribute("src")) as jsfile:
+    with open(_resolve_path(script.getAttribute("src"), rootdirs)) as jsfile:
         jssrc = jsfile.read()
         for worker in wparse.findall(jssrc):
             wid = os.path.splitext(os.path.split(worker.strip('"\''))[1])[0]
@@ -53,12 +59,8 @@ def _embed_js(dom, script):
             jssrc = jssrc.replace(worker, rplc)
 
         for src in aparse.findall(jssrc):
-            if os.path.exists(src.strip('\'"')):
-                imgpath = src.strip('\'"')
-            else:
-                imgpath = os.path.join(serve.cwd, src.strip('\'"'))
-
-            jssrc = jssrc.replace(src, "'%s'"%serve.make_base64(imgpath))
+            jspath = _resolve_path(src.strip('\'"'), rootdirs)
+            jssrc = jssrc.replace(src, "'%s'"%serve.make_base64(jspath))
 
         script.removeAttribute("src")
         script.appendChild(dom.createTextNode(jssrc.decode('utf-8')))
@@ -77,7 +79,7 @@ def _embed_worker(worker):
             wdata = wdata.replace("importScripts(%s)"%simport, '\n'.join(imports))
         return wdata
 
-def embed(rawhtml, outfile):
+def embed(rawhtml, outfile, rootdirs=(serve.cwd,)):
     parser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))
     dom = parser.parse(rawhtml)
     head = dom.getElementsByTagName("head")[0]
@@ -92,14 +94,15 @@ if (window.webkitURL)
     for script in dom.getElementsByTagName("script"):
         src = script.getAttribute("src")
         if len(src) > 0:
-            try:
-                _embed_js(dom, script)
-            except:
-                print("Unable to embed script %s" %src)
+            _embed_js(dom, script, rootdirs)
+            #try:
+            #    _embed_js(dom, script, rootdirs)
+            #except:
+            #    print("Unable to embed script %s" %src)
     
     for css in dom.getElementsByTagName("link"):
         if (css.getAttribute("type") == "text/css"):
-            csstext = _embed_css(css.getAttribute("href"))
+            csstext = _embed_css(css.getAttribute("href"), rootdirs)
             ncss = dom.createElement("style")
             ncss.setAttribute("type", "text/css")
             ncss.appendChild(dom.createTextNode(csstext))
@@ -107,11 +110,7 @@ if (window.webkitURL)
             css.parentNode.removeChild(css)
 
     for img in dom.getElementsByTagName("img"):
-        if os.path.exists(img.getAttribute("src")):
-            imgfile = img.getAttribute("src")
-        else:
-            imgfile = os.path.join(serve.cwd, img.getAttribute("src"))
-
+        imgfile = _resolve_path(img.getAttribute("src"), rootdirs)
         img.setAttribute("src", serve.make_base64(imgfile))
 
     #Save out the new html file

@@ -12,6 +12,7 @@ import multiprocessing as mp
 import numpy as np
 
 from tornado import web, template
+from FallbackLoader import FallbackLoader
 
 from .. import utils, options, volume
 from ..db import surfs
@@ -19,7 +20,7 @@ from ..db import surfs
 from . import serve
 
 sloader = template.Loader(serve.cwd)
-lloader = template.Loader("./")
+#lloader = template.Loader("./")
 
 name_parse = re.compile(r".*/(\w+).png")
 try:
@@ -198,14 +199,20 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     
     #Parse the html file and paste all the js and css files directly into the html
     from . import htmlembed
-    if os.path.exists(os.path.join("./", template)):
-        template = lloader.load(template)
+    if os.path.exists(template):
+        ## Load locally
+        templatedir, templatefile = os.path.split(os.path.abspath(template))
+        rootdirs = [templatedir, serve.cwd]
+        lloader = FallbackLoader(rootdirs)
+        template = lloader.load(templatefile)
     else:
+        ## Load system templates
         template = sloader.load(template)
+        rootdirs = [serve.cwd]
 
     kwargs.update(viewopts)
     html = template.generate(ctmfile=ctmfile, data=jsobj, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
-    htmlembed.embed(html, os.path.join(outpath, "index.html"))
+    htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
 
 def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
     """Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
