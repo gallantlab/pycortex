@@ -133,6 +133,7 @@ def _make_pixelwise_flat_cache(subject, xfmname, height=1024, sampler="trilinear
     assert mask.shape[0] == width and mask.shape[1] == height
     
     grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
+    
     ## Get barycentric coordinates
     from scipy.spatial import Delaunay
     dl = Delaunay(flat[:,:2])
@@ -203,15 +204,29 @@ def make(data, subject, xfmname, recache=False, height=1024, projection='nearest
     img[:, mask] = mdata[:,verts]
     return img.swapaxes(1, 2)[:,::-1].squeeze()
 
-def make_pixelwise(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
-    volmask = utils.get_cortical_mask(subject, xfmname, projection)
-    voldata = utils.unmask(volmask, data)
+def make_pixelwise(voldata, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
+    #volmask = utils.get_cortical_mask(subject, xfmname, projection)
+    #voldata = utils.unmask(volmask, data)
     ## No cache for now
     mapmat, mask = _make_pixelwise_flat_cache(subject, xfmname, height, projection)
     ## No checking for different datatypes
-    img = (np.nan*np.ones_like(mask)).astype(data.dtype)
-    img[mask] = mapmat.dot(voldata.ravel())
-    return img.swapaxes(0, 1)[::-1].squeeze()
+    img = (np.nan*np.ones_like(mask)).astype(voldata.dtype)
+    if voldata.ndim == 4 and voldata.dtype == np.uint8:
+        ## RGB image
+        nvols = voldata.shape[3]
+        assert nvols==3
+        outims = []
+        for n in range(nvols):
+            im = img.copy()
+            im[mask] = mapmat.dot(voldata[:,:,:,n].ravel())
+            outims.append(im.swapaxes(0,1)[::-1].squeeze())
+        out = np.dstack(outims)
+    else:
+        ## Normal image
+        img[mask] = mapmat.dot(voldata.ravel())
+        out = img.swapaxes(0, 1)[::-1].squeeze()
+    
+    return out
 
 rois = dict() ## lame
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
