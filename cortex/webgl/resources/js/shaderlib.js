@@ -344,29 +344,40 @@ var Shaderlib = (function() {
 
             return {vertex:vertShade, fragment:fragShades};
         },
-        data: function() {
+        data: function(thick) {
             var vertex = [
-                "attribute vec3 position;",
+                "uniform mat4 volxfm;",
+
                 "attribute vec3 wm;",
-                "attribute vec3 uv;",
-                "varying vPos[2];",
+                "attribute vec3 flatpos;",
+                "attribute vec4 auxdat;",
+
+                "varying vec3 vPos[2];",
+                "varying float vMedial;",
 
                 "void main() {",
-                    "vPos[0] = position;",
+                    "vMedial = auxdat.z;",
+                    "vPos[0] = (volxfm*vec4(position, 1.)).xyz;",
                     "#ifdef CORTSHEET",
-                    "vPos[1] = wm;",
+                    "vPos[1] = (volxfm*vec4(wm, 1.)).xyz;",
                     "#endif",
-                    "gl_Position = projectionMatrix * modelViewMatrix * vec4( uv, 1.0 );",
+                    "gl_Position = projectionMatrix * modelViewMatrix * vec4( flatpos, 1.0 );",
                 "}",
             ].join("\n");
             var fragment = [
-                "uniform mat4 volxfm[2];",
+                "varying vec3 vPos[2];",
+                "varying float vMedial;",
+
                 "uniform vec2 mosaic[2];",
-                "uniform vec2 shape[2];",
-                "uniform sampler2D data[4];",
+                "uniform vec2 dshape[2];",
+                "uniform sampler2D data;",
+
                 samplers,
+
                 "void main() {",
-                    "gl_FragColor = vec4(vec3(.5), 1.);",
+                    "gl_FragColor = vec4(vPos[0] / vec3(100., 100., 32.), 1.);",
+                    "if (vMedial > .999) discard;",
+                    // "gl_FragColor = vec4(vec3(.5), 1.);",
                 "}",
             ].join("\n");
             return {vertex:vertex, fragment:fragment};

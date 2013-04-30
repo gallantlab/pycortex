@@ -254,6 +254,7 @@ FacePick.prototype = {
             // Rescale axes for flat view
             ax.obj.scale.x = 1.000-mixevt.flat;
         }
+        this._valid = false;
     },
 
     addMarker: function(hemi, ptidx, keep) {
