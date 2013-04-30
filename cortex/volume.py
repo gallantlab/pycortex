@@ -1,4 +1,5 @@
 import nibabel
+import os
 import numpy as np
 
 from .db import surfs
