@@ -74,7 +74,7 @@ Dataset.prototype = {
 
         if (init) {
             uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
-            uniforms.shape.value[dim].set(this.shape[0], this.shape[1]);
+            uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
             uniforms.volxfm.value[dim].set.apply(uniforms.volxfm.value[dim], this.xfm);
         }
 
@@ -87,31 +87,41 @@ Dataset.prototype = {
             }
         }
     },
-    render: function(viewer) {
+    render: function(viewer, res) {
         var scene = new THREE.Scene(), 
-            camera = new THREE.OrthographicCamera(0, 1, 0, 1, 0, 100),
+            camera = new THREE.OrthographicCamera(0, 1, 0, 1, -100, 100),
+            shaders = Shaders.data(),
             shader = new THREE.ShaderMaterial( {
-                vertexShader: 
+                vertexShader: shaders.vertex,
+                fragmentShader: shaders.fragment,
+                uniforms:viewer.uniforms,
             });
-        var names = ["left", "right"], 
-            hemi, geom;
-        for (var i = 0; i < 2; i++) {
-            hemi = names[i];
+            targets = {
+                left: new THREE.WebGLRenderTarget(res, res, {
+                    minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
+                    stencilBuffer:false,
+                    generateMipmaps:true,
+                }),
+                right: new THREE.WebGLRenderTarget(res, res, {
+                    minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
+                    stencilBuffer:false,
+                    generateMipmaps:true,
+                }),
+            }
+        var hemi, geom, target, mesh;
+
+        scene.add(camera);
+        camera.up.set(0, 0, 1);
+
+        for (hemi in targets) {
+            target = targets[hemi];
             geom = new THREE.BufferGeometry();
             geom.attributes = viewer.meshes[hemi].geometry.attributes;
-            geom.attributes.flat = {itemSize:3, stride:3, array:new Float32Array()
-        }
-    },
-}
+            mesh = new THREE.Mesh(geom, shader);
+            scene.add(mesh);
 
-function makeDataShader() {
-    var vertex = [
-        "attribute position;",
-        "attribute wm;",
-        "attribute flat;",
-        "varying vPos[2];",
-        "varying vPos;",
-    ].join("\n");
+        }
+    }
 }
 
 // if (this.stim === undefined) {
