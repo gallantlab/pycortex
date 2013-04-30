@@ -89,13 +89,17 @@ Dataset.prototype = {
     },
     render: function(viewer, res) {
         var scene = new THREE.Scene(), 
-            camera = new THREE.OrthographicCamera(0, 1, 0, 1, -100, 100),
+            camera = new THREE.OrthographicCamera(-100, 100, -100, 100, -100, 100),
             shaders = Shaders.data(),
             shader = new THREE.ShaderMaterial( {
                 vertexShader: shaders.vertex,
                 fragmentShader: shaders.fragment,
-                uniforms:viewer.uniforms,
-            });
+                uniforms: {
+                    volxfm: { type:'m4', value: new THREE.Matrix4() },
+                    data:   { type: 't', value: 0, texture: null },
+                },
+                attributes: { flatpos: true, wm:true, auxdat:true, },
+            }),
             targets = {
                 left: new THREE.WebGLRenderTarget(res, res, {
                     minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
@@ -108,19 +112,46 @@ Dataset.prototype = {
                     generateMipmaps:true,
                 }),
             }
-        var hemi, geom, target, mesh;
-
+        var hemi, geom, target, mesh, name, attr;
+        var names = ["position", "wm", "auxdat", "index"];
+        shader.uniforms.volxfm.value.set.apply(shader.uniforms.volxfm.value, this.xfm);
         scene.add(camera);
         camera.up.set(0, 0, 1);
+        camera.position.set(0,-100,0);
+        camera.updateProjectionMatrix();
 
         for (hemi in targets) {
             target = targets[hemi];
             geom = new THREE.BufferGeometry();
-            geom.attributes = viewer.meshes[hemi].geometry.attributes;
-            mesh = new THREE.Mesh(geom, shader);
-            scene.add(mesh);
+            for (var i = 0; i < names.length; i++) {
+                name = names[i];
+                attr = viewer.meshes[hemi].geometry.attributes[name];
+                if (attr !== undefined)
+                    geom.attributes[name] = attr;
+            }
+            geom.offsets = viewer.meshes[hemi].geometry.offsets;
+            var mt = viewer.meshes[hemi].geometry.morphTargets;
+            geom.attributes.flatpos = mt[mt.length-1];
 
+            var min = [1000, 1000, 1000], max=[0,0,0];
+            for (var i = 0, il = geom.attributes.flatpos.array.length; i < il; i+=3) {
+                for (var j = 0; j < 3; j++) {
+                    min[j] = Math.min(min[j], geom.attributes.flatpos.array[i+j]);
+                    max[j] = Math.max(max[j], geom.attributes.flatpos.array[i+j]);
+                }
+            }
+            mesh = new THREE.Mesh(geom, shader);
+            mesh.position.y = -min[1];
+            mesh.doubleSided = true;
+            mesh.updateMatrix();
+            obj = new THREE.Object3D();
+            obj.add(mesh);
+            obj.rotation.z = hemi == "left" ? Math.PI / 2. : -Math.PI / 2.;
+            scene.add(obj);
         }
+        camera.lookAt(scene.position);
+        viewer.renderer.render(scene, camera);
+        return {scene:scene, camera:camera}
     }
 }
 
