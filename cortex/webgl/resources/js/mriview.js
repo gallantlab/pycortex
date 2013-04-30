@@ -1,4 +1,4 @@
-var flatscale = .2;
+var flatscale = .25;
 
 var samplers = {
     trilinear: "trilinear",
@@ -11,8 +11,8 @@ function MRIview() {
     //Allow objects to listen for mix updates
     THREE.EventTarget.call( this );
     // scene and camera
-    this.camera = new THREE.CombinedCamera( $("#brain").width(), $("#brain").height(), 60, 1.0, 1000, 1., 1000. );
-    this.camera.position.set(200, 200, 200);
+    this.camera = new THREE.CombinedCamera( $("#brain").width(), $("#brain").height(), 45, 1.0, 1000, 1., 1000. );
+    this.camera.position.set(300, 300, 300);
     this.camera.up.set(0,0,1);
 
     this.scene = new THREE.Scene();
@@ -21,6 +21,19 @@ function MRIview() {
     this.controls.addEventListener("change", this.schedule.bind(this));
     this.addEventListener("resize", function(event) {
         this.controls.resize(event.width, event.height);
+    }.bind(this));
+    this.controls.addEventListener("mousedown", function(event) {
+        if (this.fastshader) {
+            this.meshes.left.material = this.fastshader;
+            this.meshes.right.material = this.fastshader;
+        }
+    }.bind(this));
+    this.controls.addEventListener("mouseup", function(event) {
+        if (this.fastshader) {
+            this.meshes.left.material = this.shader;
+            this.meshes.right.material = this.shader;
+            this.schedule();
+        }
     }.bind(this));
     
     this.light = new THREE.DirectionalLight( 0xffffff );
@@ -41,14 +54,13 @@ function MRIview() {
     this.renderer.context.getExtension("OES_texture_float");
     this.renderer.context.getExtension("OES_standard_derivatives");
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
-    this.state = "pause";
 
     this.uniforms = THREE.UniformsUtils.merge( [
         THREE.UniformsLib[ "lights" ],
         {
-            diffuse:    { type:'v3', value:new THREE.Vector3( 1,1,1 )},
+            diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
             specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
-            emissive:   { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+            emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
             shininess:  { type:'f',  value:200},
 
             thickmix:   { type:'f',  value:0.5},
@@ -80,10 +92,11 @@ function MRIview() {
         }
     ]);
     
-    this.projector = new THREE.Projector();
+    this.state = "pause";
+    this.thick = 0;
+    this.shadeAdapt = true;
     this._startplay = null;
-    this._staticplugin = false;
-    this._loaded = false;
+    this._animation = null;
     this.loaded = $.Deferred().done(function() {
         this.schedule();
         $("#ctmload").hide();
@@ -96,7 +109,6 @@ function MRIview() {
     this.datasets = {}
     this.active = [];
 
-    this.thick = 0;
     this._bindUI();
 }
 MRIview.prototype = { 
@@ -119,6 +131,27 @@ MRIview.prototype = {
         });
         this.shader.map = true;
         this.shader.metal = true;
+
+        if (this.thick > 1 && this.shadeAdapt) {
+            shaders = makeShader(sampler, ds.raw, viewopts.voxlines, 1);
+            this.fastshader = new THREE.ShaderMaterial({
+                vertexShader:shaders.vertex,
+                fragmentShader:shaders.fragment,
+                uniforms: this.uniforms,
+                attributes: { wm:true, auxdat:true },
+                morphTargets:true, 
+                morphNormals:true, 
+                lights:true, 
+                depthTest: true,
+                transparent:false,
+                blending:THREE.CustomBlending,                
+            });
+            this.fastshader.map = true;
+            this.fastshader.metal = true;
+        } else {
+            this.fastshader = null;
+        }
+
         this.uniforms.colormap.texture.needsUpdate = true;
         this.uniforms.hatch.texture.needsUpdate = true;
         if (this.meshes && this.meshes.left) {
@@ -127,9 +160,14 @@ MRIview.prototype = {
         }
     }, 
     schedule: function() {
-        if (!this._scheduled && this.state == "pause") {
+        if (!this._scheduled) {
             this._scheduled = true;
-            requestAnimationFrame( this.draw.bind(this) );
+            requestAnimationFrame( function() {
+                this.draw();
+                if (this.state == "play" || this._animation != null) {
+                    this.schedule();
+                }
+            }.bind(this));
         }
     },
     draw: function () {
@@ -141,14 +179,13 @@ MRIview.prototype = {
                 sec -= this.active[0].textures.length;
             }
             this.setFrame(sec);
-            requestAnimationFrame(this.draw.bind(this));
-        } else if (this.state == "animate") {
-            var sec = ((new Date()) - this._startplay) / 1000;
-            if (this._animate(sec))
-                requestAnimationFrame(this.draw.bind(this));
-            else {
-                this.state = "pause";
-                delete this._anim;
+        } 
+        if (this._animation) {
+            var sec = ((new Date()) - this._animation.start) / 1000;
+            if (!this._animate(sec)) {
+                this.meshes.left.material = this.shader;
+                this.meshes.right.material = this.shader;
+                delete this._animation;
             }
         }
         this.controls.update(this.flatmix);
@@ -326,16 +363,18 @@ MRIview.prototype = {
                     anim.push({start:start, end:end, ended:false});
             }
         }
-        this._anim = anim;
-        this._startplay = new Date();
+        if (this.fastshader) {
+            this.meshes.left.material = this.fastshader;
+            this.meshes.right.material = this.fastshader;
+        }
+        this._animation = {anim:anim, start:new Date()};
         this.schedule();
-        this.state = "animate";
     },
     _animate: function(sec) {
         var state = false;
         var idx, val, f, i, j;
-        for (i = 0, il = this._anim.length; i < il; i++) {
-            f = this._anim[i];
+        for (i = 0, il = this._animation.anim.length; i < il; i++) {
+            f = this._animation.anim[i];
             if (!f.ended) {
                 if (f.start.idx <= sec && sec < f.end.idx) {
                     idx = (sec - f.start.idx) / (f.end.idx - f.start.idx);
@@ -343,11 +382,11 @@ MRIview.prototype = {
                         val = [];
                         for (j = 0; j < f.start.value.length; j++) {
                             //val.push(f.start.value[j]*(1-idx) + f.end.value[j]*idx);
-                val.push(this._animInterp(f.start.state, f.start.value[j], f.end.value[j], idx));
+                            val.push(this._animInterp(f.start.state, f.start.value[j], f.end.value[j], idx));
                         }
                     } else {
                         //val = f.start.value * (1-idx) + f.end.value * idx;
-            val = this._animInterp(f.start.state, f.start.value, f.end.value, idx);
+                        val = this._animInterp(f.start.state, f.start.value, f.end.value, idx);
                     }
                     this.setState(f.start.state, val);
                     state = true;
@@ -360,24 +399,24 @@ MRIview.prototype = {
         return state;
     },
     _animInterp: function(state, startval, endval, idx) {
-    switch (state) {
-    case 'azimuth':
-        // Azimuth is an angle, so we need to choose which direction to interpolate
-        if (Math.abs(endval - startval) >= 180) { // wrap
-        if (startval > endval) {
-            return (startval * (1-idx) + (endval+360) * idx + 360) % 360;
+        switch (state) {
+            case 'azimuth':
+                // Azimuth is an angle, so we need to choose which direction to interpolate
+                if (Math.abs(endval - startval) >= 180) { // wrap
+                    if (startval > endval) {
+                        return (startval * (1-idx) + (endval+360) * idx + 360) % 360;
+                    }
+                    else {
+                        return (startval * (1-idx) + (endval-360) * idx + 360) % 360;
+                    }
+                } 
+                else {
+                    return (startval * (1-idx) + endval * idx);
+                }
+            default:
+                // Everything else can be linearly interpolated
+                return startval * (1-idx) + endval * idx;
         }
-        else {
-            return (startval * (1-idx) + (endval-360) * idx + 360) % 360;
-        }
-        } 
-        else {
-        return (startval * (1-idx) + endval * idx);
-        }
-    default:
-        // Everything else can be linearly interpolated
-        return startval * (1-idx) + endval * idx;
-    }
     },
     saveIMG: function(post) {
         var png = $("#brain")[0].toDataURL();
@@ -517,7 +556,7 @@ MRIview.prototype = {
                 throw 'Invalid selection';
 
         }
-
+        
         if (ds.cmap !== undefined)
             this.setColormap(this.dataset);
 
