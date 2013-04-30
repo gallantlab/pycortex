@@ -79,19 +79,20 @@ def mosaic(data, dim=0, show=True, **kwargs):
     nwide = int(np.ceil(square))
     ntall = int(np.ceil(square * aspect))
 
-    shape = (ntall * height, nwide * width)
-    if data.ndim == 4:
+    shape = (ntall * (height+1) + 1, nwide * (width+1) + 1)
+    if data.dtype == np.uint8:
         output = np.zeros(shape+(4,), dtype=np.uint8)
     else:
         output = (np.nan*np.ones(shape)).astype(data.dtype)
+
     sl = [slice(None), slice(None), slice(None)]
     for h in range(ntall):
         for w in range(nwide):
             sl[dim] = h*nwide+w
             if sl[dim] < slices:
-                hsl = slice(h*height, (h+1)*height)
-                wsl = slice(w*width, (w+1)*width)
-                if data.ndim == 4:
+                hsl = slice(h*(height+1)+1, (h+1)*(height+1))
+                wsl = slice(w*(width+1)+1, (w+1)*(width+1))
+                if data.dtype == np.uint8:
                     output[hsl, wsl, :data.shape[3]] = data[sl]
                     if data.shape[3] == 3:
                         output[hsl, wsl, 3] = 255

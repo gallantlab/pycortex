@@ -24,7 +24,7 @@ THREE.LandscapeControls = function ( camera ) {
     // Constants
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
-    this.maxRadius = 300; // makes sure axes & flatmat don't merge in depth buffer
+    this.maxRadius = 400; // makes sure axes & flatmat don't merge in depth buffer
     this.minRadius = function(mix){return 101*mix}; // limits zoom for flatmap, which disappears at r=100
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
@@ -33,8 +33,8 @@ THREE.LandscapeControls = function ( camera ) {
     // internals
     this.target = new THREE.Vector3();
     this.azimuth = 45;
-    this.altitude = 45;
-    this.radius = 200;
+    this.altitude = 75;
+    this.radius = 250;
 
     var _state = STATE.NONE,
         _start = new THREE.Vector3(),
@@ -105,6 +105,8 @@ THREE.LandscapeControls = function ( camera ) {
                 var mouse2D = this.getMouse(event).clone();
                 this.dispatchEvent({ type:"dblpick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM });
                 _indblpick = 1;
+            } else {
+                this.dispatchEvent({ type:"mousedown" });
             }
         }
     };
@@ -126,12 +128,13 @@ THREE.LandscapeControls = function ( camera ) {
             //_picktimer = setTimeout(function(){
             //    this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
             //}.bind(this), this.clickTimeout);
-	    this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
-        }
-
-        if ( event.button == 0 && _indblpick == 1 ) {
+            this.dispatchEvent({ type: "mouseup" });
+            this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
+        } else if ( event.button == 0 && _indblpick == 1 ) {
             this.dispatchEvent({ type:"undblpick" });
             _indblpick = 0;
+        } else {
+            this.dispatchEvent({ type: "mouseup" });
         }
     };
 
@@ -202,12 +205,12 @@ THREE.LandscapeControls.prototype = {
         var rad = this.radius, target = this.target.clone();
         if ($("#zlockwhole").length > 0) {
             if ($("#zlockwhole")[0].checked) {
-                rad  = this.flatsize / 2 / this.camera.aspect;
+                rad  = this.flatsize / 2 / this.camera.cameraP.aspect;
                 rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
                 rad -= this.flatoff;
                 rad = flatmix * rad + (1 - flatmix) * this.radius;
             } else if (!$("#zlocknone")[0].checked) {
-                rad  = this.flatsize / 4 / this.camera.aspect;
+                rad  = this.flatsize / 4 / this.camera.cameraP.aspect;
                 rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
                 rad -= this.flatoff;
                 rad = flatmix * rad + (1 - flatmix) * this.radius;
@@ -301,8 +304,8 @@ THREE.LandscapeControls.prototype = {
     zoom: function( mouseChange ) {
         var factor = 1.0 + mouseChange.y*this.zoomSpeed;
         this.radius *= factor;
-	if (this.radius>this.maxRadius) { this.radius = this.maxRadius; }
-	if (this.radius<this.minRadius(this.flatmix)) { this.radius = this.minRadius(this.flatmix); }
+    if (this.radius>this.maxRadius) { this.radius = this.maxRadius; }
+    if (this.radius<this.minRadius(this.flatmix)) { this.radius = this.minRadius(this.flatmix); }
     },
     
     wheelzoom: function( wheelEvent ) {

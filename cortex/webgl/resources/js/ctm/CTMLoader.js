@@ -91,6 +91,8 @@ THREE.CTMLoader.prototype.load = function( url, callback, useWorker, useBuffers,
 	var xhr = new XMLHttpRequest(),
 		callbackProgress = null;
 
+	xhr.responseType = "arraybuffer";
+
 	var length = 0;
 
 	xhr.onreadystatechange = function() {
@@ -99,8 +101,8 @@ THREE.CTMLoader.prototype.load = function( url, callback, useWorker, useBuffers,
 
 			if ( xhr.status === 200 || xhr.status === 0 ) {
 
-				var binaryData = xhr.responseText;
-				var header = offsets[0] > 0 ? binaryData.slice(0, offsets[0]) : "";
+				var binaryData = xhr.response;
+				var header = offsets[0] > 0 ? new Uint8Array(xhr.response, 0, offsets[0]) : "";
 
 				var s = Date.now();
 
@@ -140,8 +142,7 @@ THREE.CTMLoader.prototype.load = function( url, callback, useWorker, useBuffers,
 
 					for ( var i = 0; i < offsets.length; i ++ ) {
 
-						var stream = new CTM.Stream( binaryData );
-						stream.offset = offsets[ i ];
+						var stream = new CTM.Stream( binaryData, offsets[ i ] );
 
 						var ctmFile = new CTM.File( stream );
 

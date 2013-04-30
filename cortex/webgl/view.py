@@ -29,6 +29,8 @@ except:
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
+viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
+
 def _normalize_data(data, xfm):
     from scipy.stats import scoreatpercentile
     if not isinstance(data, dict):
@@ -117,7 +119,7 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
 
-def make_static(outpath, data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, cmap="RdBu_r", template="static.html", anonymize=False, **kwargs):
+def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", anonymize=False, **kwargs):
     """
     Creates a static instance of the webGL MRI viewer that can easily be posted 
     or shared. 
@@ -155,8 +157,9 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
         os.makedirs(outpath)
 
     #Create a new mg2 compressed CTM and move it into the outpath
-    pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9)
-    ctmfile, mapper = pfunc(recache=recache)
+    xfm = surfs.getXfm(subject, xfmname, 'coord')
+    ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache)
+
     oldpath, fname = os.path.split(ctmfile)
     fname, ext = os.path.splitext(fname)
 
@@ -187,10 +190,11 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     ctmfile = newfname+".json"
 
     #Generate the data binary objects and save them into the outpath
-    json, sdat = _make_bindat(_normalize_data(data, pfunc))
+    jsondat, sdat = _make_bindat(_normalize_data(data, xfm.xfm))
     for name, dat in list(sdat.items()):
-        with open(os.path.join(outpath, "%s.bin"%name), "wb") as binfile:
+        with open(os.path.join(outpath, name), "wb") as binfile:
             binfile.write(dat)
+    jsobj = json.dumps(jsondat)
     
     #Parse the html file and paste all the js and css files directly into the html
     from . import htmlembed
@@ -198,11 +202,12 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
         template = lloader.load(template)
     else:
         template = sloader.load(template)
-    html = template.generate(ctmfile=ctmfile, data=json, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
-    htmlembed.embed(html, os.path.join(outpath, "index.html"))
-    return mapper
 
-def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, recache_mapper=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
+    kwargs.update(viewopts)
+    html = template.generate(ctmfile=ctmfile, data=jsobj, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
+    htmlembed.embed(html, os.path.join(outpath, "index.html"))
+
+def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
     """Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
     sub dictionary with keys [data, stim, delay].
 
@@ -218,14 +223,19 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
     """
     html = sloader.load("mixer.html")
     xfm = surfs.getXfm(subject, xfmname, 'coord')
-    ctmfile, mapper = utils.get_ctmpack(subject, xfmname, types, projection=projection, method='mg2', level=9, recache=recache)
+    ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache)
     jsondat, bindat = _make_bindat(_normalize_data(data, xfm.xfm), path='/data/', fmt='%s_%d.png')
 
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
     queue = mp.Queue()
 
-    viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
+    linear = lambda x, y, m: (1.-m)*x + m*y
+    mixes = dict(
+        linear=linear,
+        smoothstep=(lambda x, y, m: linear(x,y,3*m**2 - 2*m**3)), 
+        smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
+    )
 
     class CTMHandler(web.RequestHandler):
         def get(self, path):
@@ -299,7 +309,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
             saveimg.value = filename
             return Proxy("mixer.html")
 
-        def makeMovie(self, animation, filename="brainmovie%07d.png", fps=30, shape=(1920, 1080)):
+        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, shape=(1920, 1080), mix="linear"):
             state = dict()
             anim = []
             for f in sorted(animation, key=lambda x:x['idx']):
@@ -322,13 +332,13 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
                 for start, end in anim:
                     if start['idx'] < sec < end['idx']:
                         idx = (sec - start['idx']) / (end['idx'] - start['idx'])
-                        val = np.array(start['value']) * (1-idx) + np.array(end['value']) * idx
+                        val = mixes[mix](np.array(start['value']), np.array(end['value']), idx)
                         if isinstance(val, np.ndarray):
                             self.setState(start['state'], list(val))
                         else:
                             self.setState(start['state'], val)
                 saveevt.clear()
-                self.saveIMG(filename%i)
+                self.saveIMG(filename%(i+offset))
                 saveevt.wait()
 
     class WebApp(serve.WebApp):
