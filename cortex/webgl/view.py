@@ -332,7 +332,12 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
                 for start, end in anim:
                     if start['idx'] < sec < end['idx']:
                         idx = (sec - start['idx']) / (end['idx'] - start['idx'])
-                        val = mixes[mix](np.array(start['value']), np.array(end['value']), idx)
+                        if start['state'] == 'frame':
+                            func = mixes['linear']
+                        else:
+                            func = mixes[mix]
+                            
+                        val = func(np.array(start['value']), np.array(end['value']), idx)
                         if isinstance(val, np.ndarray):
                             self.setState(start['state'], list(val))
                         else:
