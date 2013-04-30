@@ -48,9 +48,8 @@ function MRIview() {
         preserveDrawingBuffer:true, 
         canvas:$("#brain")[0] 
     });
-    this.renderer.sortObjects = false;
+    this.renderer.sortObjects = true;
     this.renderer.setClearColorHex( 0x0, 1 );
-    this.renderer.setFaceCulling("back");
     this.renderer.context.getExtension("OES_texture_float");
     this.renderer.context.getExtension("OES_standard_derivatives");
     this.renderer.setSize( $("#brain").width(), $("#brain").height() );
@@ -73,7 +72,7 @@ function MRIview() {
             map:        { type:'t',  value:2, texture: null },
             data:       { type:'tv', value:3, texture: [null, null, null, null]},
             mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
-            shape:      { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
+            dshape:     { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
             volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
 
             vmin:       { type:'fv1',value:[0,0]},
@@ -116,7 +115,7 @@ MRIview.prototype = {
         if (ds === undefined)
             ds = this.active[0];
         var sampler = samplers[ds.filter];
-        var shaders = makeShader(sampler, ds.raw, viewopts.voxlines, this.thick);
+        var shaders = Shaders.main(sampler, ds.raw, viewopts.voxlines, this.thick);
         this.shader = new THREE.ShaderMaterial( { 
             vertexShader:shaders.vertex,
             fragmentShader:shaders.fragment,

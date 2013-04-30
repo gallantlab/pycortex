@@ -1,48 +1,3 @@
-function makePickShaders() {
-    var vertShade = [
-        "attribute vec4 auxdat;",
-        "varying vec3 vPos;",
-        "varying float vMedial;",
-        THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
-        "void main() {",
-            "vPos = position;",
-            "vMedial = auxdat.z;",
-            THREE.ShaderChunk[ "morphtarget_vertex" ],
-        "}",
-    ].join("\n");
-
-    var fragShades = [];
-    var dims = ['x', 'y', 'z'];
-    for (var i = 0; i < 3; i++){
-        var dim = dims[i];
-        var shade = [
-        "uniform vec3 min;",
-        "uniform vec3 max;",
-        "uniform int hide_mwall;",
-        "varying vec3 vPos;",
-        "varying float vMedial;",
-        "vec4 pack_float( const in float depth ) {",
-            "const vec4 bit_shift = vec4( 256.0 * 256.0 * 256.0, 256.0 * 256.0, 256.0, 1.0 );",
-            "const vec4 bit_mask  = vec4( 0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0 );",
-            "vec4 res = fract( depth * bit_shift );",
-            "res -= res.xxyz * bit_mask;",
-            "return res;",
-        "}",
-        "void main() {",
-            "float norm = (vPos."+dim+" - min."+dim+") / (max."+dim+" - min."+dim+");", 
-            "if (vMedial > .999 && hide_mwall == 1)",
-                "discard;",
-            "else",
-                "gl_FragColor = pack_float(norm);",
-        "}"
-        ].join("\n");
-        fragShades.push(shade);
-    }
-
-    return {vertex:vertShade, fragment:fragShades};
-}
-
-
 function FacePick(viewer, left, right) {
     this.viewer = viewer;
 
@@ -78,7 +33,7 @@ function FacePick(viewer, left, right) {
         hide_mwall: this.viewer.uniforms.hide_mwall,
     };
 
-    var shaders = makePickShaders();
+    var shaders = Shaders.pick();
     this.shade_x = new THREE.ShaderMaterial({
         vertexShader: shaders.vertex,
         fragmentShader: shaders.fragment[0],
