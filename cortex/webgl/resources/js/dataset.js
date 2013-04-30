@@ -23,6 +23,7 @@ function Dataset(json) {
     this.delay = json.delay === undefined ? 0 : json.delay;
     this.filter = json.filter == undefined ? "nearest" : json.filter;
     this.textures = [];
+    this.datatex = [];
 
     var loadtex = function(idx) {
         var img = new Image();
@@ -86,6 +87,31 @@ Dataset.prototype = {
             }
         }
     },
+    render: function(viewer) {
+        var scene = new THREE.Scene(), 
+            camera = new THREE.OrthographicCamera(0, 1, 0, 1, 0, 100),
+            shader = new THREE.ShaderMaterial( {
+                vertexShader: 
+            });
+        var names = ["left", "right"], 
+            hemi, geom;
+        for (var i = 0; i < 2; i++) {
+            hemi = names[i];
+            geom = new THREE.BufferGeometry();
+            geom.attributes = viewer.meshes[hemi].geometry.attributes;
+            geom.attributes.flat = {itemSize:3, stride:3, array:new Float32Array()
+        }
+    },
+}
+
+function makeDataShader() {
+    var vertex = [
+        "attribute position;",
+        "attribute wm;",
+        "attribute flat;",
+        "varying vPos[2];",
+        "varying vPos;",
+    ].join("\n");
 }
 
 // if (this.stim === undefined) {
