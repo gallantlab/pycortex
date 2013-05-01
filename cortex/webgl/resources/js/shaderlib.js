@@ -1,40 +1,4 @@
 var Shaderlib = (function() {
-    var samplers = (function() {
-        var shader = "";
-        var dims = ["x", "y"];
-        for (var val = 0; val < 2; val++) {
-            var dim = dims[val];
-            shader += [
-            "vec2 make_uv_"+dim+"(vec2 coord, float slice) {",
-                "vec2 pos = vec2(mod(slice, mosaic["+val+"].x), floor(slice / mosaic["+val+"].x));",
-                "vec2 offset = (pos * (dshape["+val+"]+1.)) + 1.;",
-                "vec2 imsize = (mosaic["+val+"] * (dshape["+val+"]+1.)) + 1.;",
-                "return (2.*(offset+coord)+1.) / (2.*imsize);",
-            "}",
-
-            "vec4 trilinear_"+dim+"(sampler2D data, vec3 coord) {",
-                "vec4 tex1 = texture2D(data, make_uv_"+dim+"(coord.xy, floor(coord.z)));",
-                "vec4 tex2 = texture2D(data, make_uv_"+dim+"(coord.xy, ceil(coord.z)));",
-                'return mix(tex1, tex2, fract(coord.z));',
-            "}",
-
-            "vec4 nearest_"+dim+"(sampler2D data, vec3 coord) {",
-                "vec4 c = texture2D(data, make_uv_"+dim+"(coord.xy, ceil(coord.z)));",
-                "vec4 f = texture2D(data, make_uv_"+dim+"(coord.xy, floor(coord.z)));",
-                // "return fract(coord.z) < .5 ? f : c;",
-                "return mix(f, c, step(0.5, fract(coord.z)));",
-            "}\n",
-
-            "vec4 debug_"+dim+"(sampler2D data, vec3 coord) {",
-                "return vec4(coord / vec3(100., 100., 32.), 1.);",
-                // "return vec4(coord ,1.);",
-            "}",
-
-
-            ].join("\n");
-        }
-        return shader;
-    })();
 
     var utils = {
         rand: [
@@ -66,8 +30,8 @@ var Shaderlib = (function() {
 
                 "vec4 vColor = texture2D(colormap, cuv);",
                 "bvec4 valid = notEqual(lessThanEqual(values, vec4(0.)), lessThan(vec4(0.), values));",
-                "vColor = all(valid) ? vColor : vec4(0.);",
-                "return vColor;",
+                "return all(valid) ? vColor : vec4(0.);",
+                // "return vColor;",
             "}"
         ].join("\n"),
 
@@ -78,6 +42,29 @@ var Shaderlib = (function() {
                 "vec4 res = fract( depth * bit_shift );",
                 "res -= res.xxyz * bit_mask;",
                 "return floor(res * 256.) / 256. + 1./512.;",
+            "}",
+        ].join("\n"),
+
+        samplers: [
+            "vec2 make_uv(vec2 coord, float slice, const int dim) {",
+                "vec2 pos = vec2(mod(slice, mosaic[dim].x), floor(slice / mosaic[dim].x));",
+                "vec2 offset = (pos * (dshape[dim]+1.)) + 1.;",
+                "vec2 imsize = (mosaic[dim] * (dshape[dim]+1.)) + 1.;",
+                "return (2.*(offset+coord)+1.) / (2.*imsize);",
+            "}",
+
+            "vec4 trilinear(sampler2D data, vec3 coord, const int dim) {",
+                "vec4 tex1 = texture2D(data, make_uv(coord.xy, floor(coord.z), dim));",
+                "vec4 tex2 = texture2D(data, make_uv(coord.xy, ceil(coord.z), dim));",
+                'return mix(tex1, tex2, fract(coord.z));',
+            "}",
+
+            "vec4 nearest(sampler2D data, vec3 coord, const int dim) {",
+                "return texture2D(data, make_uv(coord.xy, floor(coord.z+.5), dim));",
+            "}",
+
+            "vec4 debug(sampler2D data, vec3 coord, const int dim) {",
+                "return vec4(coord / vec3(100., 100., 32.), 1.);",
             "}",
         ].join("\n"),
     }
@@ -209,7 +196,7 @@ var Shaderlib = (function() {
             utils.rand,
             utils.edge,
             utils.colormap,
-            samplers,
+            utils.samplers,
 
             "void main() {",
                 //Curvature Underlay
@@ -228,13 +215,13 @@ var Shaderlib = (function() {
             
             var sampling = [
         "#ifdef RAWCOLORS",
-                "color[0] += "+factor+"*"+sampler+"_x(data[0], coord_x);",
-                "color[1] += "+factor+"*"+sampler+"_x(data[1], coord_x);",
+                "color[0] += "+factor+"*"+sampler+"(data[0], coord_x, 0);",
+                "color[1] += "+factor+"*"+sampler+"(data[1], coord_x, 0);",
         "#else",
-                "values.x += "+factor+"*"+sampler+"_x(data[0], coord_x).r;",
-                "values.z += "+factor+"*"+sampler+"_x(data[1], coord_x).r;",
-                "values.y += "+factor+"*"+sampler+"_y(data[2], coord_y).r;",
-                "values.w += "+factor+"*"+sampler+"_y(data[3], coord_y).r;",
+                "values.x += "+factor+"*"+sampler+"(data[0], coord_x, 0).r;",
+                "values.z += "+factor+"*"+sampler+"(data[1], coord_x, 0).r;",
+                "values.y += "+factor+"*"+sampler+"(data[2], coord_y, 1).r;",
+                "values.w += "+factor+"*"+sampler+"(data[3], coord_y, 1).r;",
         "#endif",
             ].join("\n");
 
@@ -375,7 +362,7 @@ var Shaderlib = (function() {
                 "uniform vec2 dshape[2];",
                 "uniform sampler2D data;",
 
-                samplers,
+                utils.samplers,
 
                 "void main() {",
                     "gl_FragColor = vec4(vPos[0] / vec3(100., 100., 32.), 1.);",
