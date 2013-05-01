@@ -7,23 +7,17 @@ import html5lib
 
 from . import serve
 
-def _open(fname):
-    try:
-        return open(fname)
-    except IOError:
-        return open(os.path.join(serve.cwd, fname))
-
 def _resolve_path(filename, roots):
     for root in roots:
         p = os.path.join(root, filename)
         if os.path.exists(p):
             return p
     else:
-        raise Exception("Path %s doesn't exist under any root dir (%s)" % (filename, roots))
+        raise IOError("Path %s doesn't exist under any root dir (%s)" % (filename, roots))
 
 def _embed_css(cssfile, rootdirs):
     csspath, fname = os.path.split(cssfile)
-    with _open(cssfile) as fp:
+    with open(cssfile) as fp:
         css = fp.read()
         cssparse = re.compile(r'(.*?){(.*?)}', re.S)
         urlparse = re.compile(r'url\((.*?)\)')
@@ -49,7 +43,7 @@ def _embed_js(dom, script, rootdirs):
         jssrc = jsfile.read()
         for worker in wparse.findall(jssrc):
             wid = os.path.splitext(os.path.split(worker.strip('"\''))[1])[0]
-            wtext = _embed_worker(worker.strip('"\''))
+            wtext = _embed_worker(_resolve_path(worker.strip('"\''), rootdirs))
             wscript = dom.createElement("script")
             wscript.setAttribute("type", "text/js-worker")
             wscript.setAttribute("id", wid)
@@ -68,13 +62,13 @@ def _embed_js(dom, script, rootdirs):
 def _embed_worker(worker):
     wparse = re.compile(r"importScripts\((.*)\)")
     wpath = os.path.split(worker)[0]
-    with _open(worker) as wfile:
+    with open(worker) as wfile:
         wdata = wfile.read()
         for simport in wparse.findall(wdata):
             imports = []
             for fname in simport.split(','):
                 iname = os.path.join(wpath, fname.strip('\'" '))
-                with _open(iname) as fp:
+                with open(iname) as fp:
                     imports.append(fp.read())
             wdata = wdata.replace("importScripts(%s)"%simport, '\n'.join(imports))
         return wdata
@@ -94,15 +88,14 @@ if (window.webkitURL)
     for script in dom.getElementsByTagName("script"):
         src = script.getAttribute("src")
         if len(src) > 0:
-            _embed_js(dom, script, rootdirs)
-            #try:
-            #    _embed_js(dom, script, rootdirs)
-            #except:
-            #    print("Unable to embed script %s" %src)
+            try:
+                _embed_js(dom, script, rootdirs)
+            except:
+                print("Unable to embed script %s" %src)
     
     for css in dom.getElementsByTagName("link"):
         if (css.getAttribute("type") == "text/css"):
-            csstext = _embed_css(css.getAttribute("href"), rootdirs)
+            csstext = _embed_css(_resolve_path(css.getAttribute("href"), rootdirs), rootdirs)
             ncss = dom.createElement("style")
             ncss.setAttribute("type", "text/css")
             ncss.appendChild(dom.createTextNode(csstext))
