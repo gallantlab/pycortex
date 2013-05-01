@@ -114,11 +114,13 @@ Dataset.prototype = {
             }
         var hemi, geom, target, mesh, name, attr;
         var names = ["position", "wm", "auxdat", "index"];
-        shader.uniforms.volxfm.value.set.apply(shader.uniforms.volxfm.value, this.xfm);
+        var limits = {top:-1000, bottom:1000};
+        var xfm = shader.uniforms.volxfm.value;
+        xfm.set.apply(xfm, this.xfm);
         scene.add(camera);
         camera.up.set(0, 0, 1);
         camera.position.set(0,-100,0);
-        camera.updateProjectionMatrix();
+        camera.lookAt(scene.position);
 
         for (hemi in targets) {
             target = targets[hemi];
@@ -140,18 +142,35 @@ Dataset.prototype = {
                     max[j] = Math.max(max[j], geom.attributes.flatpos.array[i+j]);
                 }
             }
+            limits[hemi] = max[1] - min[1];
+            limits.top = Math.max(max[2], limits.top);
+            limits.bottom = Math.min(min[2], limits.bottom);
+
             mesh = new THREE.Mesh(geom, shader);
             mesh.position.y = -min[1];
             mesh.doubleSided = true;
             mesh.updateMatrix();
             obj = new THREE.Object3D();
-            obj.add(mesh);
             obj.rotation.z = hemi == "left" ? Math.PI / 2. : -Math.PI / 2.;
+            obj.add(mesh);
             scene.add(obj);
         }
-        camera.lookAt(scene.position);
+
+        var aspect = (limits.right - limits.left) / (limits.top - limits.bottom);
+        
+        
+        camera.left = -limits.left;
+        camera.right = limits.right;
+        camera.top = limits.top;
+        camera.bottom = limits.bottom;
+
+        for (var frame = 0; frame < this.textures.length; frame++) {
+
+        }
+
+        camera.updateProjectionMatrix();
         viewer.renderer.render(scene, camera);
-        return {scene:scene, camera:camera}
+        return {scene:scene, camera:camera};
     }
 }
 

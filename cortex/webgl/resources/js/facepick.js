@@ -145,9 +145,9 @@ FacePick.prototype = {
             var left = this.lkdt.nearest([pos.x, pos.y, pos.z], 1)[0];
             var right = this.rkdt.nearest([pos.x, pos.y, pos.z], 1)[0];
             if (left[1] < right[1])
-                return {hemi:"left", ptidx:left[0][3], dist:left[1]};
+                return {hemi:"left", ptidx:left[0][3], dist:left[1], pos:pos};
             else
-                return {hemi:"right", ptidx:right[0][3], dist:right[1]};
+                return {hemi:"right", ptidx:right[0][3], dist:right[1], pos:pos};
         }
     },
 
@@ -155,9 +155,11 @@ FacePick.prototype = {
         // DISABLE MULTI-CURSORS to make linking to voxels easy
         var p = this._pick(x, y);
         if (p) {
-            console.log("Picked vertex "+p.ptidx+" in "+p.hemi+" hemisphere, distance="+p.dist);
+            var vec = this.viewer.uniforms.volxfm.value[0].multiplyVector3(p.pos.clone());
+            console.log("Picked vertex "+p.ptidx+" in "+p.hemi+" hemisphere, distance="+p.dist+", voxel=["+vec.x+","+vec.y+","+vec.z+"]");
             this.addMarker(p.hemi, p.ptidx, keep);
-            // this.callback(p.dataidx, p.ptidx);
+            if (this.callback !== undefined)
+                this.callback(vec, p.hemi, p.ptidx);
         }
     },
     

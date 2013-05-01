@@ -71,6 +71,15 @@ var Shaderlib = (function() {
             "}"
         ].join("\n"),
 
+        pack: [
+            "vec4 pack_float( const in float depth ) {",
+                "const vec4 bit_shift = vec4( 256.0 * 256.0 * 256.0, 256.0 * 256.0, 256.0, 1.0 );",
+                "const vec4 bit_mask  = vec4( 0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0 );",
+                "vec4 res = fract( depth * bit_shift );",
+                "res -= res.xxyz * bit_mask;",
+                "return res;",
+            "}",
+        ].join("\n"),
     }
 
     var module = function() {
@@ -324,13 +333,7 @@ var Shaderlib = (function() {
                 "uniform int hide_mwall;",
                 "varying vec3 vPos;",
                 "varying float vMedial;",
-                "vec4 pack_float( const in float depth ) {",
-                    "const vec4 bit_shift = vec4( 256.0 * 256.0 * 256.0, 256.0 * 256.0, 256.0, 1.0 );",
-                    "const vec4 bit_mask  = vec4( 0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0 );",
-                    "vec4 res = fract( depth * bit_shift );",
-                    "res -= res.xxyz * bit_mask;",
-                    "return res;",
-                "}",
+                utils.pack,
                 "void main() {",
                     "float norm = (vPos."+dim+" - min."+dim+") / (max."+dim+" - min."+dim+");", 
                     "if (vMedial > .999 && hide_mwall == 1)",
