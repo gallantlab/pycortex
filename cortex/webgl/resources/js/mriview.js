@@ -560,7 +560,7 @@ MRIview.prototype = {
             this.setColormap(this.dataset);
 
         $.when(this.cmapload, this.loaded).done(function() {
-            if (names.length > (this.colormap.image.height > 10 ? 2 : 1))
+            if (names.length > (this.colormap.image.height > 8 ? 2 : 1))
                 return false;
 
             this.setShader(ds);
@@ -613,7 +613,7 @@ MRIview.prototype = {
         });
         if (dir === undefined)
             dir = 1
-        if (this.colormap.image.height > 10) {
+        if (this.colormap.image.height > 8) {
             var idx = (i + dir * 2).mod(datasets.length);
             this.setData(datasets.slice(idx, idx+2));
         } else {
@@ -707,7 +707,7 @@ MRIview.prototype = {
             this.uniforms.colormap.texture = this.colormap;
             this.schedule();
             
-            if (this.colormap.image.height > 10) {
+            if (this.colormap.image.height > 8) {
                 $(".vcolorbar").show();
             } else {
                 $(".vcolorbar").hide();
@@ -1005,7 +1005,7 @@ MRIview.prototype = {
              })
             .selectable({
                 selecting: function(event, ui) {
-                    var max = this.colormap.image.height > 10 ? 2 : 1;
+                    var max = this.colormap.image.height > 8 ? 2 : 1;
                     var selected = $("#datasets").find("li.ui-selected, li.ui-selecting");
                     if (selected.length > max) {
                         $(ui.selecting).removeClass("ui-selecting");

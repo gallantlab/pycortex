@@ -229,11 +229,11 @@ var Shaderlib = (function() {
             var sampling = [
         "#ifdef RAWCOLORS",
                 "color[0] += "+factor+"*"+sampler+"_x(data[0], coord_x);",
-                "color[1] += "+factor+"*"+sampler+"_x(data[2], coord_x);",
+                "color[1] += "+factor+"*"+sampler+"_x(data[1], coord_x);",
         "#else",
                 "values.x += "+factor+"*"+sampler+"_x(data[0], coord_x).r;",
-                "values.z += "+factor+"*"+sampler+"_x(data[2], coord_x).r;",
-                "values.y += "+factor+"*"+sampler+"_y(data[1], coord_y).r;",
+                "values.z += "+factor+"*"+sampler+"_x(data[1], coord_x).r;",
+                "values.y += "+factor+"*"+sampler+"_y(data[2], coord_y).r;",
                 "values.w += "+factor+"*"+sampler+"_y(data[3], coord_y).r;",
         "#endif",
             ].join("\n");
@@ -302,7 +302,7 @@ var Shaderlib = (function() {
                 "} else {",
                     "gl_FragColor = cColor;",
                 "}",
-
+                
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
             "}"
             ].join("\n");

@@ -78,12 +78,12 @@ Dataset.prototype = {
             uniforms.volxfm.value[dim].set.apply(uniforms.volxfm.value[dim], this.xfm);
         }
 
-        if (uniforms.data.texture[dim] !== this.textures[frame]) {
-            uniforms.data.texture[dim] = this.textures[frame];
-            uniforms.data.texture[dim].needsUpdate = true;
+        if (uniforms.data.texture[dim*2] !== this.textures[frame]) {
+            uniforms.data.texture[dim*2] = this.textures[frame];
+            uniforms.data.texture[dim*2].needsUpdate = true;
             if (this.frames > 1) {
-                uniforms.data.texture[dim+2] = this.textures[frame+1];
-                uniforms.data.texture[dim+2].needsUpdate = true;
+                uniforms.data.texture[dim*2+1] = this.textures[frame+1];
+                uniforms.data.texture[dim*2+1].needsUpdate = true;
             }
         }
     },
@@ -157,7 +157,7 @@ Dataset.prototype = {
         }
 
         var aspect = (limits.right - limits.left) / (limits.top - limits.bottom);
-        
+
         
         camera.left = -limits.left;
         camera.right = limits.right;
