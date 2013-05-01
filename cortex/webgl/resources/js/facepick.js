@@ -120,7 +120,7 @@ FacePick.prototype = {
             this.draw();
         var gl = this.viewer.renderer.context;
         var unpack = function(buf) {
-            return (buf[0]+.5)/(256*256*256*255) + (buf[1]+.5)/(256*256*255) + (buf[2]+.5)/(256*255) + (buf[3]+.5)/255;
+            return buf[0]/(256*256*256*256) + buf[1]/(256*256*256) + buf[2]/(256*256) + buf[3]/256;
         }
         var world = function(x, y, z) {
             var coord = new THREE.Vector3(unpack(x), unpack(y), unpack(z));
