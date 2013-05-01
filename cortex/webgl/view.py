@@ -11,16 +11,13 @@ import webbrowser
 import multiprocessing as mp
 import numpy as np
 
-from tornado import web, template
+from tornado import web
 from FallbackLoader import FallbackLoader
 
 from .. import utils, options, volume
 from ..db import surfs
 
 from . import serve
-
-sloader = template.Loader(serve.cwd)
-#lloader = template.Loader("./")
 
 name_parse = re.compile(r".*/(\w+).png")
 try:
@@ -203,15 +200,15 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
         ## Load locally
         templatedir, templatefile = os.path.split(os.path.abspath(template))
         rootdirs = [templatedir, serve.cwd]
-        lloader = FallbackLoader(rootdirs)
-        template = lloader.load(templatefile)
     else:
         ## Load system templates
-        template = sloader.load(template)
+        templatefile = template
         rootdirs = [serve.cwd]
 
+    loader = FallbackLoader(rootdirs)
+    tpl = loader.load(templatefile)
     kwargs.update(viewopts)
-    html = template.generate(ctmfile=ctmfile, data=jsobj, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
+    html = tpl.generate(ctmfile=ctmfile, data=jsobj, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
 
 def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
@@ -228,7 +225,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     Raw vertex movie:     [t, verts, [3, 4]]
     Raw vertex image:     [verts, [3, 4]]
     """
-    html = sloader.load("mixer.html")
+    html = FallbackLoader([serve.cwd]).load("mixer.html")
     xfm = surfs.getXfm(subject, xfmname, 'coord')
     ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache)
     jsondat, bindat = _make_bindat(_normalize_data(data, xfm.xfm), path='/data/', fmt='%s_%d.png')
