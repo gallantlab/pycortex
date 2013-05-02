@@ -21,7 +21,7 @@ from scipy.spatial import cKDTree
 
 from .db import surfs
 from .utils import get_cortical_mask, get_mapper, get_roipack, get_dropout
-from .polyutils import decimate
+from . import polyutils
 from openctm import CTMfile
 
 class BrainCTM(object):
@@ -31,34 +31,37 @@ class BrainCTM(object):
         self.types = []
 
         left, right = surfs.getSurf(subject, "fiducial")
-        self.left = Hemi(left, decimate=decimate)
-        self.right = Hemi(right, decimate=decimate)
+        fleft, fright = surfs.getSurf(subject, "flat", nudge=True, merge=False)
+        if decimate:
+            try:
+                pleft, pright = surfs.getSurf(subject, "pia")
+                self.left = DecimatedHemi(left[0], left[1], fleft[1], pia=pleft[0])
+                self.right = DecimatedHemi(right[0], right[1], fright[1], pia=pright[0])
+            except IOError:
+                self.left = DecimatedHemi(left[0], left[1], fleft[1])
+                self.right = DecimatedHemi(right[0], right[1], fright[1])
+        else:
+            try:
+                pleft, pright = surfs.getSurf(subject, "pia")
+                self.left = Hemi(pleft[0], left[1])
+                self.right = Hemi(pright[0], right[1])
+            except IOError:
+                self.left = Hemi(left[0], left[1])
+                self.right = Hemi(right[0], right[1])
+
+            #set medial wall
+            for hemi, ptpoly in ([self.left, fleft], [self.right, fright]):
+                fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
+                flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
+                hemi.aux[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
 
         #Find the flatmap limits
-        left, right = surfs.getSurf(subject, "flat", nudge=True, merge=False)
-        flatmerge = np.vstack([left[0][:,:2], right[0][:,:2]])
+        flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
         fmin, fmax = flatmerge.min(0), flatmerge.max(0)
         self.flatlims = list(-fmin), list(fmax-fmin)
-        self.left.setFlat(left[0])
-        self.right.setFlat(right[0])
 
-        #set medial wall
-        for hemi, ptpoly in ([self.left, left], [self.right, right]):
-            fidpolys = set(tuple(f) for f in np.sort(hemi.polys, axis=1))
-            flatpolys = set(tuple(f) for f in np.sort(ptpoly[1], axis=1))
-            mwall = np.zeros(len(hemi.ctm))
-            mwall[np.array(list(fidpolys - flatpolys)).astype(int)] = 1
-            hemi.aux[:,2] = mwall
-
-        try:
-            left, right = surfs.getSurf(subject, "pia")
-            self.left.setMesh(left[0])
-            self.right.setMesh(right[0])
-            left, right = surfs.getSurf(subject, "wm")
-            self.left.addSurf(left[0], name="wm", renorm=False)
-            self.right.addSurf(right[0], name="wm", renorm=False)
-        except IOError:
-            pass
+        self.left.setFlat(fleft[0])
+        self.right.setFlat(fright[0])
 
     def addSurf(self, typename):
         left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
@@ -73,8 +76,12 @@ class BrainCTM(object):
 
     def addCurvature(self, **kwargs):
         npz = np.load(surfs.getAnat(self.subject, type='curvature', **kwargs))
-        self.left.aux[:,1] = npz['left']
-        self.right.aux[:,1] = npz['right']
+        if self.left.mask is not None:
+            self.left.aux[:,1] = npz['left'][self.left.mask]
+            self.right.aux[:,1] = npz['right'][self.right.mask]
+        else:
+            self.left.aux[:,1] = npz['left']
+            self.right.aux[:,1] = npz['right']
 
     # def addMap(self):
     #     mapper = get_mapper(self.subject, self.xfmname, 'nearest')
@@ -116,28 +123,32 @@ class BrainCTM(object):
             ptmap = inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
         ##### Save the SVG with remapped indices
-        roipack = get_roipack(self.subject)
-        layer = roipack.setup_labels()
-        with open(svgname, "w") as fp:
-            for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
-                idx = int(element.attrib["data-ptidx"])
-                if idx < len(inverse[0]):
-                    idx = inverse[0][idx]
-                else:
-                    idx -= len(inverse[0])
-                    idx = inverse[1][idx] + len(inverse[0])
-                element.attrib["data-ptidx"] = str(idx)
-            fp.write(roipack.toxml())
+        if self.left.flat is not None:
+            flatpts = np.vstack([self.left.flat, self.right.flat])
+            roipack = get_roipack(self.subject, pts=flatpts)
+            layer = roipack.setup_labels()
+            with open(svgname, "w") as fp:
+                for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
+                    idx = int(element.attrib["data-ptidx"])
+                    if idx < len(inverse[0]):
+                        idx = inverse[0][idx]
+                    else:
+                        idx -= len(inverse[0])
+                        idx = inverse[1][idx] + len(inverse[0])
+                    element.attrib["data-ptidx"] = str(idx)
+                fp.write(roipack.toxml())
 
         return ptmap
 
 class Hemi(object):
-    def __init__(self, fiducial, decimate=False):
+    def __init__(self, pts, polys, norms=None):
         self.tf = tempfile.NamedTemporaryFile()
         self.ctm = CTMfile(self.tf.name, "w")
+        self.ctm.setMesh(pts, polys, norms=norms)
         
-        self.pts = fiducial[0]
-        self.polys = fiducial[1]
+        self.pts = pts
+        self.polys = polys
+        self.flat = None
         self.surfs = {}
         self.aux = np.zeros((len(self.ctm), 4))
 
@@ -158,7 +169,7 @@ class Hemi(object):
 
     def setFlat(self, pts):
         self.ctm.addUV(pts[:,:2], 'uv')
-
+        self.flat = pts[:,:2]
 
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')
@@ -167,8 +178,43 @@ class Hemi(object):
         ctm = CTMfile(self.tf.name)
         return ctm.getMesh(), self.tf.read()
 
-def make_pack(outfile, subj, types=("inflated",), method='raw', level=0):
-    ctm = BrainCTM(subj)
+class DecimatedHemi(Hemi):
+    def __init__(self, pts, polys, fpolys, pia=None):
+        print("Decimating...")
+        kdt = cKDTree(pts)
+        mask = np.zeros((len(pts),), dtype=bool)
+
+        fidset = set([tuple(p) for p in polyutils.sort_polys(polys)])
+        flatset = set([tuple(p) for p in polyutils.sort_polys(fpolys)])
+        mwall = np.array(list(fidset - flatset))
+
+        dpts, dpolys = polyutils.decimate(pts, fpolys)
+        dist, didx = kdt.query(dpts)
+        mask[didx] = True
+
+        mwpts, mwpolys = polyutils.decimate(pts, mwall)
+        dist, mwidx = kdt.query(mwpts)
+        mask[mwidx] = True
+
+        allpolys = np.vstack([didx[dpolys], mwidx[mwpolys]])
+        idxmap = np.zeros((len(pts),), dtype=np.uint32)
+        idxmap[mask] = np.arange(mask.sum())
+        norms = polyutils.Surface(pts, polys).normals[mask]
+        basepts = pts[mask] if pia is None else pia[mask]
+        print("Finished decimate...")
+        super(DecimatedHemi, self).__init__(basepts, idxmap[allpolys], norms=norms)
+        self.aux[idxmap[mwidx], 0] = 1
+        self.mask = mask
+        self.idxmap = idxmap
+
+    def setFlat(self, pts):
+        super(DecimatedHemi, self).setFlat(pts[self.mask])
+
+    def addSurf(self, pts, **kwargs):
+        super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
+
+def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimate=False):
+    ctm = BrainCTM(subj, decimate=decimate)
     ctm.addCurvature()
     for name in types:
         ctm.addSurf(name)

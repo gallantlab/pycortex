@@ -122,7 +122,7 @@ var Shaderlib = (function() {
 
                 // "vDrop = dropout;",
                 "vCurv = auxdat.y;",
-                "vMedial = auxdat.z;",
+                "vMedial = auxdat.x;",
 
                 //Find voxel positions with both transforms (2D colormap x and y datasets)
                 "vPos_x[0] = (volxfm[0]*vec4(position,1.)).xyz;",
@@ -305,7 +305,7 @@ var Shaderlib = (function() {
                 THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
                 "void main() {",
                     "vPos = position;",
-                    "vMedial = auxdat.z;",
+                    "vMedial = auxdat.x;",
                     THREE.ShaderChunk[ "morphtarget_vertex" ],
                 "}",
             ].join("\n");
@@ -346,7 +346,7 @@ var Shaderlib = (function() {
                 "varying float vMedial;",
 
                 "void main() {",
-                    "vMedial = auxdat.z;",
+                    "vMedial = auxdat.x;",
                     "vPos[0] = (volxfm*vec4(position, 1.)).xyz;",
                     "#ifdef CORTSHEET",
                     "vPos[1] = (volxfm*vec4(wm, 1.)).xyz;",

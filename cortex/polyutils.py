@@ -268,6 +268,11 @@ def brick_vol(pts):
     '''Volume of a triangular prism'''
     return tetra_vol(pts[[0, 1, 2, 4]]) + tetra_vol(pts[[0, 2, 3, 4]]) + tetra_vol(pts[[2, 3, 4, 5]])
 
+def sort_polys(polys):
+    amin = polys.argmin(1)
+    xind = np.arange(len(polys))
+    return np.array([polys[xind, amin], polys[xind, (amin+1)%3], polys[xind, (amin+2)%3]]).T
+
 def face_area(pts):
     '''Area of triangles
 
@@ -295,10 +300,7 @@ def decimate(pts, polys):
     dec.update()
     dpts = dec.output.points.to_array()
     dpolys = dec.output.polys.to_array().reshape(-1, 4)[:,1:]
-    dist, idx = cKDTree(pts).query(dpts)
-    mask = np.zeros((len(pts),), dtype=bool)
-    mask[idx[dpolys]] = True
-    return mask, dpolys
+    return dpts, dpolys
 
 def curvature(pts, polys):
     '''Computes mean curvature using VTK'''

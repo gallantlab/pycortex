@@ -431,17 +431,20 @@ def make_svg(pts, polys):
 
     return svg
 
-def get_roipack(subject, remove_medial=False):
+def get_roipack(subject, pts=None, remove_medial=False):
     from .db import surfs
-    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    if remove_medial:
-        valid = np.unique(polys)
-        flat = flat[valid]
+    if pts is None:
+        flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
+        if remove_medial:
+            valid = np.unique(polys)
+            flat = flat[valid]
+        pts = flat[:,:2]
+
     svgfile = surfs.getFiles(subject)['rois']
     if not os.path.exists(svgfile):
         with open(svgfile, "w") as fp:
             fp.write(svgroi.make_svg(flat.copy(), polys))
-    rois = ROIpack(flat[:,:2], svgfile)
+    rois = ROIpack(pts, svgfile)
     if remove_medial:
         return rois, valid
         

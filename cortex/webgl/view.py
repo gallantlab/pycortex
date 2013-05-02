@@ -227,7 +227,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     """
     html = FallbackLoader([serve.cwd]).load("mixer.html")
     xfm = surfs.getXfm(subject, xfmname, 'coord')
-    ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache)
+    ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache, **kwargs)
     jsondat, bindat = _make_bindat(_normalize_data(data, xfm.xfm), path='/data/', fmt='%s_%d.png')
 
     saveevt = mp.Event()
