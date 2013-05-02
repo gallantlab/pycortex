@@ -67,27 +67,30 @@ class Surface(object):
 
         return np.array(pts), np.array(polys)
 
-    def smooth(self, values, neighborhood=3, smooth=8):
-        if len(values) != len(self.pts):
+    def smooth(self, scalars, neighborhood=2, smooth=8):
+        if len(scalars) != len(self.pts):
             raise ValueError('Each point must have a single value')
             
         def getpts(pt, n):
-            if pt in self.connected:
-                for p in self.connected[pt]:
+            for face in self.connected[pt]:
+                for pt in self.polys[face]:
                     if n == 0:
-                        yield p
+                        yield pt
                     else:
-                        for q in getpts(p, n-1):
+                        for q in getpts(pt, n-1):
                             yield q
-    
-        output = np.zeros(len(scalars))
-        for i, val in enumerate(scalars):
+        
+        from . import mp
+        def func(i):
+            val = scalars[i]
             neighbors = list(set(getpts(i, neighborhood)))
             if len(neighbors) > 0:
                 g = np.exp(-((scalars[neighbors] - val)**2) / (2*smooth**2))
-                output[i] = (g * scalars[neighbors]).mean()
-            
-        return output
+                return (g * scalars[neighbors]).mean()
+            else:
+                return 0
+
+        return np.array(mp.map(func, range(len(scalars))))
 
     def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
