@@ -69,25 +69,14 @@ class BrainCTM(object):
         self.right.addSurf(right[0])
         self.types.append(typename)
 
-    # def addDropout(self, projection='trilinear', power=20):
-    #     left, right = get_dropout(self.subject, self.xfmname, projection, power)
-    #     self.left.aux[:,0] = left
-    #     self.right.aux[:,0] = right
-
     def addCurvature(self, **kwargs):
         npz = np.load(surfs.getAnat(self.subject, type='curvature', **kwargs))
-        if self.left.mask is not None:
+        try:
             self.left.aux[:,1] = npz['left'][self.left.mask]
             self.right.aux[:,1] = npz['right'][self.right.mask]
-        else:
+        except AttributeError:
             self.left.aux[:,1] = npz['left']
             self.right.aux[:,1] = npz['right']
-
-    # def addMap(self):
-    #     mapper = get_mapper(self.subject, self.xfmname, 'nearest')
-    #     mask = mapper.mask.astype(np.uint32)
-    #     mask[mask > 0] = np.arange(mask.sum())
-    #     self.left.aux[:, 3], self.right.aux[:,3] = mapper(mask)
 
     def save(self, path, method='mg2', **kwargs):
         ctmname = path+".ctm"
@@ -144,8 +133,9 @@ class Hemi(object):
     def __init__(self, pts, polys, norms=None):
         self.tf = tempfile.NamedTemporaryFile()
         self.ctm = CTMfile(self.tf.name, "w")
+
         self.ctm.setMesh(pts, polys, norms=norms)
-        
+
         self.pts = pts
         self.polys = polys
         self.flat = None
