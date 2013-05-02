@@ -21,21 +21,18 @@ from scipy.spatial import cKDTree
 
 from .db import surfs
 from .utils import get_cortical_mask, get_mapper, get_roipack, get_dropout
+from .polyutils import decimate
 from openctm import CTMfile
 
 class BrainCTM(object):
-    def __init__(self, subject):
+    def __init__(self, subject, decimate=False):
         self.subject = subject
         self.files = surfs.getFiles(subject)
         self.types = []
 
-        try:
-            self.left, self.right = list(map(Hemi, surfs.getSurf(subject, "pia")))
-            left, right = surfs.getSurf(subject, "wm", nudge=False, merge=False)
-            self.left.addSurf(left[0], name="wm", renorm=False)
-            self.right.addSurf(right[0], name="wm", renorm=False)
-        except IOError:
-            self.left, self.right = list(map(Hemi, surfs.getSurf(subject, "fiducial")))
+        left, right = surfs.getSurf(subject, "fiducial")
+        self.left = Hemi(left, decimate=decimate)
+        self.right = Hemi(right, decimate=decimate)
 
         #Find the flatmap limits
         left, right = surfs.getSurf(subject, "flat", nudge=True, merge=False)
@@ -46,12 +43,22 @@ class BrainCTM(object):
         self.right.setFlat(right[0])
 
         #set medial wall
-        for hemi, ptpoly in zip([self.left, self.right], [left, right]):
+        for hemi, ptpoly in ([self.left, left], [self.right, right]):
             fidpolys = set(tuple(f) for f in np.sort(hemi.polys, axis=1))
             flatpolys = set(tuple(f) for f in np.sort(ptpoly[1], axis=1))
             mwall = np.zeros(len(hemi.ctm))
             mwall[np.array(list(fidpolys - flatpolys)).astype(int)] = 1
             hemi.aux[:,2] = mwall
+
+        try:
+            left, right = surfs.getSurf(subject, "pia")
+            self.left.setMesh(left[0])
+            self.right.setMesh(right[0])
+            left, right = surfs.getSurf(subject, "wm")
+            self.left.addSurf(left[0], name="wm", renorm=False)
+            self.right.addSurf(right[0], name="wm", renorm=False)
+        except IOError:
+            pass
 
     def addSurf(self, typename):
         left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
@@ -125,10 +132,9 @@ class BrainCTM(object):
         return ptmap
 
 class Hemi(object):
-    def __init__(self, fiducial):
+    def __init__(self, fiducial, decimate=False):
         self.tf = tempfile.NamedTemporaryFile()
         self.ctm = CTMfile(self.tf.name, "w")
-        self.ctm.setMesh(*fiducial)
         
         self.pts = fiducial[0]
         self.polys = fiducial[1]
@@ -151,8 +157,8 @@ class Hemi(object):
         self.ctm.addAttrib(attrib, name)
 
     def setFlat(self, pts):
-        #assert np.all(pts[:,2] == 0)
         self.ctm.addUV(pts[:,:2], 'uv')
+
 
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')

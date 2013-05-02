@@ -1,11 +1,13 @@
 from collections import OrderedDict
 import numpy as np
-from scipy.spatial import distance, Delaunay
+from scipy.spatial import distance, Delaunay, cKDTree
 
 class Surface(object):
     def __init__(self, pts, polys):
         self.pts = pts
         self.polys = polys
+
+        #connected holds map of ptidx -> face
         self._connected = None
 
     @property
@@ -171,6 +173,11 @@ class Surface(object):
             else:
                 yield None
 
+    def edge_collapse(self, p1, p2, target):
+        face1 = self.connected[p1]
+        face2 = self.connected[p2]
+        raise NotImplementedError
+
 class _ptset(object):
     def __init__(self):
         self.idx = OrderedDict()
@@ -286,7 +293,12 @@ def decimate(pts, polys):
     dec = tvtk.DecimatePro(input=pd)
     dec.set(preserve_topology=True, splitting=False, boundary_vertex_deletion=False, target_reduction=1.0)
     dec.update()
-    return dec.output.points.to_array(), dec.output.polys.to_array().reshape(-1, 4)[:,1:]
+    dpts = dec.output.points.to_array()
+    dpolys = dec.output.polys.to_array().reshape(-1, 4)[:,1:]
+    dist, idx = cKDTree(pts).query(dpts)
+    mask = np.zeros((len(pts),), dtype=bool)
+    mask[idx[dpolys]] = True
+    return mask, dpolys
 
 def curvature(pts, polys):
     '''Computes mean curvature using VTK'''
