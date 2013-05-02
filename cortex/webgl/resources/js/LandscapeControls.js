@@ -168,8 +168,11 @@ THREE.LandscapeControls = function ( camera ) {
 
     };
 
-    this.domElement.addEventListener( 'touchmove', touchmove.bind(this));
-    this.domElement.addEventListener( 'touchend', function() { _touch = false; }, false);
+    //code from http://vetruvet.blogspot.com/2010/12/converting-single-touch-events-to-mouse.html
+    var touchToMouse=function(b){if(!(b.touches.length>1)){var a=b.changedTouches[0],c="";switch(b.type){case "touchstart":c="mousedown";break;case "touchmove":c="mousemove";break;case "touchend":c="mouseup";break;default:return}var d=document.createEvent("MouseEvent");d.initMouseEvent(c,true,true,window,1,a.screenX,a.screenY,a.clientX,a.clientY,false,false,false,false,0,null);a.target.dispatchEvent(d);b.preventDefault()}};
+    this.domElement.addEventListener( 'touchstart', touchToMouse );
+    this.domElement.addEventListener( 'touchmove', touchToMouse );
+    this.domElement.addEventListener( 'touchend', touchToMouse );
 
     this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
 

@@ -1,11 +1,13 @@
 from collections import OrderedDict
 import numpy as np
-from scipy.spatial import distance, Delaunay
+from scipy.spatial import distance, Delaunay, cKDTree
 
 class Surface(object):
     def __init__(self, pts, polys):
         self.pts = pts
         self.polys = polys
+
+        #connected holds map of ptidx -> face
         self._connected = None
 
     @property
@@ -174,6 +176,11 @@ class Surface(object):
             else:
                 yield None
 
+    def edge_collapse(self, p1, p2, target):
+        face1 = self.connected[p1]
+        face2 = self.connected[p2]
+        raise NotImplementedError
+
 class _ptset(object):
     def __init__(self):
         self.idx = OrderedDict()
@@ -264,6 +271,11 @@ def brick_vol(pts):
     '''Volume of a triangular prism'''
     return tetra_vol(pts[[0, 1, 2, 4]]) + tetra_vol(pts[[0, 2, 3, 4]]) + tetra_vol(pts[[2, 3, 4, 5]])
 
+def sort_polys(polys):
+    amin = polys.argmin(1)
+    xind = np.arange(len(polys))
+    return np.array([polys[xind, amin], polys[xind, (amin+1)%3], polys[xind, (amin+2)%3]]).T
+
 def face_area(pts):
     '''Area of triangles
 
@@ -289,7 +301,9 @@ def decimate(pts, polys):
     dec = tvtk.DecimatePro(input=pd)
     dec.set(preserve_topology=True, splitting=False, boundary_vertex_deletion=False, target_reduction=1.0)
     dec.update()
-    return dec.output.points.to_array(), dec.output.polys.to_array().reshape(-1, 4)[:,1:]
+    dpts = dec.output.points.to_array()
+    dpolys = dec.output.polys.to_array().reshape(-1, 4)[:,1:]
+    return dpts, dpolys
 
 def curvature(pts, polys):
     '''Computes mean curvature using VTK'''
