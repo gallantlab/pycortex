@@ -42,12 +42,15 @@ class BrainData(object):
         self.data = data
         self.subject = subject
         self.xfmname = xfmname
-        self.mask = mask
+        self.masktype = mask
         self.cmap = cmap
         self.min = vmin
         self.max = vmax
 
-        self.raw = data.dtype == np.uint8
+        self._check_size()
+
+    def _check_size(self):
+        self.raw = self.data.dtype == np.uint8
         if data.ndim == 5:
             if not self.raw:
                 raise ValueError("Invalid data shape")
@@ -68,7 +71,14 @@ class BrainData(object):
             raise ValueError("Invalid data shape")
 
         if self.linear:
-            self.masktype = mask
+            #try to guess mask type
+            if self.masktype is None:
+                self.mask, self.masktype = _find_mask(self.data.shape[-1])
+            elif isinstance(self.masktype, str):
+                self.mask = surfs.getMask(self.subject, self.xfmname, self.masktype)
+            elif isinstance(self.masktype, np.ndarray):
+                self.mask = self.masktype
+                self.masktype = None
 
     @classmethod
     def fromfile(cls, filename, dataname="data"):
@@ -78,6 +88,7 @@ class BrainData(object):
     def volume(self):
         if not self.linear:
             return self.data
+        if isinstance(self.mask, )
         return volume.unmask(self.mask, data)
 
     def save(self, filename, name="data", savemask=True):
@@ -94,3 +105,14 @@ class Masker(object):
 
     def __getitem__(self, masktype):
         pass
+
+
+def _find_mask(nvox):
+    import glob
+    import nibabel
+    files = surfs.getFiles(self.subject)['masks'].format(xfmname=self.xfmname, type="*")
+    for fname in glob.glob(files):
+        nib = nibabel.load(fname)
+        mask = nib.get_data() != 0
+        if nvox == np.sum(mask):
+            return name, mask

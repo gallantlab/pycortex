@@ -24,7 +24,7 @@ function Dataset(json) {
     this.filter = json.filter == undefined ? "nearest" : json.filter;
     this.textures = [];
     this.datatex = [];
-
+    
     var loadtex = function(idx) {
         var img = new Image();
         img.addEventListener("load", function() {

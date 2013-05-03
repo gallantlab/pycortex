@@ -298,8 +298,8 @@ class Database(object):
         fname = self.getFiles(subject)['masks'].format(xfmname=xfmname, type=type)
         if os.path.exists(fname):
             raise IOError('Refusing to overwrite existing mask')
-        import nibabel
 
+        import nibabel
         xfm = self.getXfm(subject, xfmname)
         affine = xfm.epi.get_affine()
         nib = nibabel.Nifti1Image(mask.astype(np.uint8), affine)
