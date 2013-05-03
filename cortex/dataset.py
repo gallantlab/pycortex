@@ -1,5 +1,8 @@
 """Module for maintaining brain data and their masks"""
+import time
+
 import numpy as np
+import tables
 
 from .db import surfs
 from . import volume
@@ -7,18 +10,24 @@ from . import utils
 
 class Dataset(object):
     def __init__(self, **kwargs):
-        self.datasets = kwargs
+        self.datasets = {}
+        for name, ds in kwargs.items():
+            if isinstance(ds, BrainData):
+                self.datasets[name] = ds
+            else:
+                self.datasets[name] = BrainData(*ds)
 
     @classmethod
     def from_file(cls, filename):
-        pass
+        self.h5 = tables.openFile(filename)
+
 
     def __getattr__(self, attr):
         if attr in self.datasets:
             return self.datasets[attr]
         raise AttributeError
 
-    def save(self, filename):
+    def save(self, filename=None):
         pass
 
     def import_packed(self):
@@ -47,6 +56,7 @@ class BrainData(object):
         self.min = vmin
         self.max = vmax
 
+        self._mtime = None
         self._check_size()
 
     def _check_size(self):
@@ -81,23 +91,22 @@ class BrainData(object):
                 self.masktype = None
 
     @classmethod
-    def fromfile(cls, filename, dataname="data"):
+    def from_file(cls, filename, dataname="data"):
         pass
 
     @property
     def volume(self):
         if not self.linear:
             return self.data
-        if isinstance(self.mask, )
         return volume.unmask(self.mask, data)
 
-    def save(self, filename, name="data", savemask=True):
-        _, ext = os.path.splitext(filename)
-        if ext == ".hdf":
-            import tables
-            h5 = tables.openFile(filename, "a")
-            atom = tables.Atom.from_dtype(np.dtype())
-            ds = h5.createCArray("/", name, )
+    def save(self, filename, name="data"):
+        if isinstance(filename, str):
+            fname, ext = os.path.splitext(filename)
+            if ext in (".hdf", ".h5"):
+                import tables
+                h5 = tables.openFile(filename, "a")
+
 
 class Masker(object):
     def __init__(self, data):
@@ -108,6 +117,7 @@ class Masker(object):
 
 
 def _find_mask(nvox):
+    import re
     import glob
     import nibabel
     files = surfs.getFiles(self.subject)['masks'].format(xfmname=self.xfmname, type="*")
@@ -115,4 +125,33 @@ def _find_mask(nvox):
         nib = nibabel.load(fname)
         mask = nib.get_data() != 0
         if nvox == np.sum(mask):
-            return name, mask
+            name = re.compile(r'([^_]+)_([\w]+)_([\w]+).nii.gz').search(fname)
+            return name.group(3), mask
+
+    raise ValueError('Cannot find a valid mask')
+
+def _hdf_init(h5):
+    try:
+        h5.getNode("/dataset")
+    except tables.NoSuchNodeError:
+        h5.createGroup("/","datasets")
+    try:
+        h5.getNode("/subjects")
+    except tables.NoSuchNodeError:
+        h5.createGroup("/", "subjects")
+
+def _hdf_write(h5, data, name="data"):
+    atom = tables.Atom.from_dtype(data.dtype)
+    filt = tables.filters.Filter(complevel=9, complib='blosc', shuffle=True)
+    try:
+        ds = h5.getNode("/dataset/%s"%name)
+        ds[:] = data
+    except tables.NoSuchNodeError:
+        ds = h5.createCArray("/dataset", name, atom, data.shape, filters=filt)
+        ds[:] = data
+    except ValueError:
+        h5.removeNode("/dataset/%s"%name)
+        ds = h5.createCArray("/dataset", name, atom, data.shape, filters=filt)
+        ds[:] = data
+        
+    return ds
