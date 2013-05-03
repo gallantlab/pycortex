@@ -27,29 +27,6 @@ def make_base64(imgfile):
         data = binascii.b2a_base64(img.read()).strip()
         return "data:{mtype};base64,{data}".format(mtype=mtype, data=data)
 
-dtypeMap = [np.uint32, np.uint16, np.uint8, np.int32, np.int16, np.int8, np.float32]
-dtypeMap = dict([(dt, i) for i, dt in enumerate(dtypeMap)])
-dtypeNames = {
-    np.int: "int32",
-    np.int32: "int32",
-    np.float32: "float32",
-    np.uint8: "uint8",
-    np.uint16: "uint16",
-    np.int16: "int16",
-    np.int8:"int8",
-}
-
-def make_binarray(data):
-    header  = struct.pack('II', dtypeMap[data.dtype.type], data.ndim)
-    header += struct.pack('I'*data.ndim, *data.shape)
-    return header+data.tostring()
-
-def read_binarray(data):
-    didx, ndim = struct.unpack('II', data[:8])
-    dtype = [k for k, v in dtypeMap.items() if v == didx][0]
-    shape = struct.unpack('I'*ndim, data[8:ndim*4+8])
-    return np.fromstring(data[ndim*4+8:], dtype=dtype).reshape(*shape)
-
 class NPEncode(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -60,7 +37,7 @@ class NPEncode(json.JSONEncoder):
 
             return dict(
                 __class__="NParray",
-                dtype=dtypeNames[obj.dtype.type], 
+                dtype=obj.dtype.descr[0][1], 
                 shape=obj.shape, 
                 data=binascii.b2a_base64(obj.tostring()))
         else:

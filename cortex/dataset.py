@@ -1,12 +1,34 @@
-"""Module for tracking and maintaining a set of cortical and whole brain masks"""
+"""Module for maintaining brain data and their masks"""
 import numpy as np
 
 from .db import surfs
 from . import volume
 from . import utils
 
+class Dataset(object):
+    def __init__(self, **kwargs):
+        self.datasets = kwargs
+
+    @classmethod
+    def from_file(cls, filename):
+        pass
+
+    def __getattr__(self, attr):
+        if attr in self.datasets:
+            return self.datasets[attr]
+        raise AttributeError
+
+    def save(self, filename):
+        pass
+
+    def import_packed(self):
+        pass
+
+    def pack_data(self):
+        pass
+
 class BrainData(object):
-    def __init__(self, data, subject, xfmname, mask='thin'):
+    def __init__(self, data, subject, xfmname, mask=None, cmap=None, vmin=None, vmax=None):
         """Three possible variables: raw, volume, movie. Enumerated with size:
         raw volume movie: (t, z, y, x, c)
         raw volume image: (z, y, x, c)
@@ -20,7 +42,10 @@ class BrainData(object):
         self.data = data
         self.subject = subject
         self.xfmname = xfmname
-        self.masktype = None
+        self.mask = mask
+        self.cmap = cmap
+        self.min = vmin
+        self.max = vmax
 
         self.raw = data.dtype == np.uint8
         if data.ndim == 5:
@@ -45,22 +70,9 @@ class BrainData(object):
         if self.linear:
             self.masktype = mask
 
-    def get_masked(self, mask='thin'):
-        pass
-
     @classmethod
     def fromfile(cls, filename, dataname="data"):
         pass
-
-    @property
-    def mask(self):
-        pass
-
-    @property
-    def masked(self):
-        if self.linear:
-            return self.data
-        return self.data[self.mask]
 
     @property
     def volume(self):
@@ -76,6 +88,9 @@ class BrainData(object):
             atom = tables.Atom.from_dtype(np.dtype())
             ds = h5.createCArray("/", name, )
 
-def _gen_mask(subject, xfmname, type):
-    dist, idx = utils.get_vox_dist(subject, xfmname)
-    
+class Masker(object):
+    def __init__(self, data):
+        self.data = data
+
+    def __getitem__(self, masktype):
+        pass

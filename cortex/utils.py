@@ -28,7 +28,27 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     return ctmfile
 
 def get_cortical_mask(subject, xfmname, type='nearest'):
-    return get_mapper(subject, xfmname, type=type).mask
+    from .db import surfs
+    if type == 'cortical':
+        ppts, polys = surfs.getSurf(subject, "pia", merge=True, nudge=False)
+        wpts, polys = surfs.getSurf(subject, "wm", merge=True, nudge=False)
+        thickness = np.sqrt(((ppts - wpts)**2).sum(1))
+
+        dist, idx = get_vox_dist(subject, xfmname)
+        cortex = np.zeros(dist.shape, dtype=bool)
+        verts = np.unique(idx)
+        for i, vert in enumerate(verts):
+            mask = idx == vert
+            cortex[mask] = dist[mask] <= thickness[vert]
+            if i % 100 == 0:
+                print("%0.3f%%"%(i/float(len(verts)) * 100))
+        return cortex
+    elif type in ('thick', 'thin'):
+        dist, idx = get_vox_dist(subject, xfmname)
+        return dist < dict(thick=8, thin=2)[type]
+    else:
+        return get_mapper(subject, xfmname, type=type).mask
+
 
 def get_vox_dist(subject, xfmname, surface="fiducial"):
     """Get the distance (in mm) from each functional voxel to the closest
@@ -213,38 +233,6 @@ def get_curvature(subject, smooth=8, **kwargs):
             curvs.append(curv)
     return curvs
 
-def decimate_mesh(subject, proportion = 0.5):
-    raise NotImplementedError
-    from scipy.spatial import Delaunay
-    from .polyutils import trace_both
-    flat = surfs.getSurf(subject, "flat")
-    fiducial = surfs.getSurf(subject, "fiducial")
-    edges = list(map(np.array, trace_both(*surfs.getSurf(subject, "flat", merge=True, nudge=True))))
-    edges[1] -= len(flat[0][0])
-
-    masks, newpolys = [], []
-    for (fpts, fpolys), (pts, polys), edge in zip(flat, fiducial, edges):
-        valid = np.unique(polys)
-
-        edge_set = set(edge)
-
-        mask = np.zeros((len(pts),), dtype=bool)
-        mask[valid] = True
-        mask[np.random.permutation(len(pts))[:len(pts)*(1-proportion)]] = False
-        mask[edge] = True
-        midx = np.nonzero(mask)[0]
-
-        tri = Delaunay(fpts[mask, :2])
-        #cull all the triangles from concave surfaces
-        pmask = np.array([midx[p] in edge_set for p in tri.vertices.ravel()]).reshape(-1, 3).all(1)
-
-        cutfaces = np.array([p in edge_set for p in polys.ravel()]).reshape(-1, 3).all(1)
-
-        newpolys.append(tri.vertices[~pmask])
-        fullpolys.append()
-        masks.append(mask)
-
-    return masks, newpolys
 
 def get_flatmap_distortion(sub, type="areal", smooth=8, **kwargs):
     """Computes distortion of flatmap relative to fiducial surface. Several different

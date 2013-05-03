@@ -137,7 +137,7 @@ class Database(object):
         return ["loadXfm","getXfm", "getSurf"] + list(self.subjects.keys())
 
     def loadAnat(self, subject, anatfile, type='raw', process=True):
-        fname = os.path.join(filestore, "anatomicals", "{subj}_{type}.nii.gz").format(subj=subject, type=type)
+        fname = self.getFiles(subject)['anats'].format(type=type)
         import nibabel
         data = nibabel.load(anatfile)
         nibabel.save(data, fname)
@@ -179,7 +179,8 @@ class Database(object):
             The nibabel-compatible reference image associated with this transform. Required if name not in database
         """
         assert xfmtype in ["magnet", "coord"], "Unknown transform type"
-        fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
+        files = self.getFiles(subject)
+        fname = files['xfms'].format(xfmname=name)
         if os.path.exists(fname):
             jsdict = json.load(open(fname))
         else:
@@ -203,6 +204,9 @@ class Database(object):
             jsdict['coord'] = xfm.tolist()
             jsdict['magnet'] = np.dot(nib.get_affine(), xfm).tolist()
         
+        if len(glob.glob(files['masks'].format(xfmname=name, type="*"))) > 0:
+            raise ValueError('Refusing to change a transfrom with masks')
+            
         json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
     
     def getXfm(self, subject, name, xfmtype="coord"):
@@ -222,7 +226,7 @@ class Database(object):
             nib = nibabel.load(self.getAnat(subject, 'raw'))
             return Transform(np.linalg.inv(nib.get_affine()), nib)
 
-        fname = os.path.join(filestore, "transforms", "{subj}_{name}.xfm".format(subj=subject, name=name))
+        fname = self.getFiles(subject)['xfms'].format(xfmname=name)
         xfmdict = json.load(open(fname))
         if xfmdict['subject'] != subject:
             raise ValueError("Incorrect subject for the name")
@@ -254,9 +258,7 @@ class Database(object):
         pts, polys, norms : ((p,3) array, (f,3) array, (p,3) array or None)
             For single hemisphere
         '''
-
-        import formats
-        fname = os.path.join(filestore, "surfaces", "{subj}_{type}_{hemi}")
+        files = self.getFiles(subject)['surfs']
 
         if hemisphere == "both":
             left, right = [ self.getSurf(subject, type, hemisphere=h) for h in ["lh", "rh"]]
@@ -286,7 +288,35 @@ class Database(object):
                 except IOError:
                     pass
 
-            return formats.read(fname.format(subj=subject, type=type, hemi=hemi))
+            if type not in files:
+                raise IOError('No such surface file')
+
+            import formats
+            return formats.read(os.path.splitext(files[type][hemi])[0])
+
+    def loadMask(self, subject, xfmname, type, mask):
+        fname = self.getFiles(subject)['masks'].format(xfmname=xfmname, type=type)
+        if os.path.exists(fname):
+            raise IOError('Refusing to overwrite existing mask')
+        import nibabel
+
+        xfm = self.getXfm(subject, xfmname)
+        affine = xfm.epi.get_affine()
+        nib = nibabel.Nifti1Image(mask.astype(np.uint8), affine)
+        nib.to_filename(fname)
+
+    def getMask(self, subject, xfmname, type='thick'):
+        fname = self.getFiles(subject)['masks'].format(xfmname=xfmname, type=type)
+        try:
+            import nibabel
+            nib = nibabel.load(fname)
+            return nib.get_data() != 0
+        except IOError:
+            print('Mask not found, generating...')
+            from .utils import get_cortical_mask
+            mask = get_cortical_mask(subject, xfmname, type)
+            self.loadMask(subject, xfmname, type, mask)
+            return mask
 
     def getCoords(self, subject, xfmname, hemisphere="both", magnet=None):
         """Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space
@@ -326,6 +356,7 @@ class Database(object):
         surffiles = os.path.join(filestore, "surfaces", "{subj}_*.*").format(subj=subject)
         anatfiles = '%s_{type}.nii.gz'%subject
         xfms = "%s_{xfmname}.xfm"%subject
+        maskpath = "%s_{xfmname}_{type}.nii.gz"%subject
         ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
         flatcache = "%s_{xfmname}_{height}_{date}_v2.pkl"%subject
         projcache = "%s_{xfmname}_{projection}.npz"%subject
@@ -341,6 +372,7 @@ class Database(object):
             surfs=surfs,
             anats=os.path.join(filestore, "anatomicals", anatfiles), 
             xfms=os.path.join(filestore, "transforms", xfms),
+            masks=os.path.join(filestore, "masks", maskpath),
             ctmcache=os.path.join(filestore, "ctmcache", ctmcache),
             flatcache=os.path.join(filestore, "flatcache", flatcache),
             projcache=os.path.join(filestore, "projcache", projcache),
