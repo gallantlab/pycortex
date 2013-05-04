@@ -37,14 +37,17 @@ class BrainCTM(object):
                 pleft, pright = surfs.getSurf(subject, "pia")
                 self.left = DecimatedHemi(left[0], left[1], fleft[1], pia=pleft[0])
                 self.right = DecimatedHemi(right[0], right[1], fright[1], pia=pright[0])
+                self.addSurf("wm", name="wm", addtype=False, renorm=False)
             except IOError:
                 self.left = DecimatedHemi(left[0], left[1], fleft[1])
                 self.right = DecimatedHemi(right[0], right[1], fright[1])
         else:
             try:
                 pleft, pright = surfs.getSurf(subject, "pia")
+                wleft, wright = surfs.getSurf(subject, "wm")
                 self.left = Hemi(pleft[0], left[1])
                 self.right = Hemi(pright[0], right[1])
+                self.addSurf("wm", name="wm", addtype=False, renorm=False)
             except IOError:
                 self.left = Hemi(left[0], left[1])
                 self.right = Hemi(right[0], right[1])
@@ -63,11 +66,12 @@ class BrainCTM(object):
         self.left.setFlat(fleft[0])
         self.right.setFlat(fright[0])
 
-    def addSurf(self, typename):
+    def addSurf(self, typename, addtype=True, **kwargs):
         left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
-        self.left.addSurf(left[0])
-        self.right.addSurf(right[0])
-        self.types.append(typename)
+        self.left.addSurf(left[0], **kwargs)
+        self.right.addSurf(right[0], **kwargs)
+        if addtype:
+            self.types.append(typename)
 
     def addCurvature(self, **kwargs):
         npz = np.load(surfs.getAnat(self.subject, type='curvature', **kwargs))
@@ -188,11 +192,10 @@ class DecimatedHemi(Hemi):
 
         allpolys = np.vstack([didx[dpolys], mwidx[mwpolys]])
         idxmap = np.zeros((len(pts),), dtype=np.uint32)
-        idxmap[mask] = np.arange(mask.sum())
-        norms = polyutils.Surface(pts, polys).normals[mask]
+        idxmap[mask] = np.arange(mask.sum()).astype(np.uint32)
+        #norms = polyutils.Surface(pts, polys).normals[mask]
         basepts = pts[mask] if pia is None else pia[mask]
-        print("Finished decimate...")
-        super(DecimatedHemi, self).__init__(basepts, idxmap[allpolys], norms=norms)
+        super(DecimatedHemi, self).__init__(basepts, idxmap[allpolys])
         self.aux[idxmap[mwidx], 0] = 1
         self.mask = mask
         self.idxmap = idxmap

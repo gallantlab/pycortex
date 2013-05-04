@@ -1,4 +1,30 @@
-"""Module for maintaining brain data and their masks"""
+"""Module for maintaining brain data and their masks
+
+HDF5 format:
+
+/subjects/
+    s1/
+        transforms/
+            xfm1/
+                mat[4,4]
+                masks/
+                    thin[z,y,x]
+                    thick[z,y,x]
+            xfm2/
+                mat[4,4]
+                masks/
+                    thin[z,y,x]
+        surfaces
+            fiducial
+                lh[n,3]
+                rh[n,3]
+            inflated
+                lh[n,3]
+                rh[n,3]
+/datasets/
+    ds1
+    ds2
+"""
 import time
 
 import numpy as np
@@ -19,26 +45,51 @@ class Dataset(object):
 
     @classmethod
     def from_file(cls, filename):
-        self.h5 = tables.openFile(filename)
+        datasets = dict()
+        h5 = tables.openFile(filename)
+        for node in h5.walkNodes("/datasets/"):
+            if not isinstance(node, tables.Group):
+                datasets[node.name] = BrainData.from_file(h5, name=node.name)
+        h5.close()
+        return cls(**datasets)
 
+    def append(self, **kwargs):
+        for name, data in kwargs.items():
+            if isinstance(data, BrainData):
+                self.datasets[name] = data
+            else:
+                self.datasets[name] = BrainData(*data)
 
     def __getattr__(self, attr):
-        if attr in self.datasets:
+        if attr in self.__dict__:
+            return self.__dict__[attr]
+        elif attr in self.datasets:
             return self.datasets[attr]
+
         raise AttributeError
 
-    def save(self, filename=None):
-        pass
+    def __getitem__(self, item):
+        return self.datasets[item]
 
-    def import_packed(self):
-        pass
+    def __repr__(self):
+        return "<Dataset with names [%s]>"%(', '.join(self.datasets.keys()))
 
-    def pack_data(self):
-        pass
+    def __dir__(self):
+        return self.__dict__.keys() + self.datasets.keys()
+
+    def save(self, filename, pack=False):
+        h5 = tables.openFile(filename, "w")
+        _hdf_init(h5)
+        for name, ds in self.datasets.items():
+            ds.save(h5, name=name)
+        if pack:
+            raise NotImplementedError
+
+        h5.close()
 
 class BrainData(object):
-    def __init__(self, data, subject, xfmname, mask=None, cmap=None, vmin=None, vmax=None):
-        """Three possible variables: raw, volume, movie. Enumerated with size:
+    def __init__(self, data, subject, xfmname, mask=None, **kwargs):
+        """Three possible variables: raw, volume, movie, vertex. Enumerated with size:
         raw volume movie: (t, z, y, x, c)
         raw volume image: (z, y, x, c)
         reg volume movie: (t, z, y, x)
@@ -51,30 +102,28 @@ class BrainData(object):
         self.data = data
         self.subject = subject
         self.xfmname = xfmname
-        self.masktype = mask
-        self.cmap = cmap
-        self.min = vmin
-        self.max = vmax
+        
+        self._check_size(mask)
+        self.attrs = kwargs
 
-        self._mtime = None
-        self._check_size()
+        self.masked = Masker(self)
 
-    def _check_size(self):
+    def _check_size(self, mask):
         self.raw = self.data.dtype == np.uint8
-        if data.ndim == 5:
+        if self.data.ndim == 5:
             if not self.raw:
                 raise ValueError("Invalid data shape")
             self.linear = False
             self.movie = True
-        elif data.ndim == 4:
+        elif self.data.ndim == 4:
             self.linear = False
             self.movie = not self.raw
-        elif data.ndim == 3:
+        elif self.data.ndim == 3:
             self.linear = self.movie = self.raw
-        elif data.ndim == 2:
+        elif self.data.ndim == 2:
             self.linear = True
             self.movie = not self.raw
-        elif data.ndim == 1:
+        elif self.data.ndim == 1:
             self.linear = True
             self.movie = False
         else:
@@ -82,39 +131,75 @@ class BrainData(object):
 
         if self.linear:
             #try to guess mask type
-            if self.masktype is None:
+            if mask is None and not self.vertex:
                 self.mask, self.masktype = _find_mask(self.data.shape[-1])
-            elif isinstance(self.masktype, str):
-                self.mask = surfs.getMask(self.subject, self.xfmname, self.masktype)
-            elif isinstance(self.masktype, np.ndarray):
-                self.mask = self.masktype
-                self.masktype = None
+            elif isinstance(mask, str):
+                self.mask = surfs.getMask(self.subject, self.xfmname, mask)
+                self.masktype = mask
+
+        self.vertex = self.xfmname is None
+        if self.vertex and not self.linear:
+            raise ValueError('Vertex data must be linear!')
+
+    def __repr__(self):
+        maskstr = ""
+        if self.linear:
+            maskstr = ", %s mask"%self.masktype
+        return "<Data for (%s,%s)%s>"%(self.subject, self.xfmname, maskstr)
 
     @classmethod
-    def from_file(cls, filename, dataname="data"):
-        pass
+    def from_file(cls, filename, name="data"):
+        if isinstance(filename, str):
+            fname, ext = os.path.splitext(filename)
+            if ext in (".hdf", ".h5"):
+                h5 = tables.openFile(filename)
+                node = h5.getNode("/datasets", name)
+                data, attrs = _hdf_read(node)
+                h5.close()
+                return cls(data, **attrs)
+        elif isinstance(filename, tables.File):
+            node = filename.getNode("/datasets", name)
+            data, attrs = _hdf_read(node)
+            return cls(data, **attrs)
 
     @property
     def volume(self):
         if not self.linear:
             return self.data
-        return volume.unmask(self.mask, data)
+        return volume.unmask(self.mask, self.data)
 
     def save(self, filename, name="data"):
         if isinstance(filename, str):
             fname, ext = os.path.splitext(filename)
             if ext in (".hdf", ".h5"):
-                import tables
                 h5 = tables.openFile(filename, "a")
+                _hdf_init(h5)
+                self._write_hdf(h5, name=name)
+                h5.close()
+        elif isinstance(filename, tables.File):
+            self._write_hdf(filename, name=name)
 
+    def _write_hdf(self, h5, name="data"):
+        node = _hdf_write(h5, self.data, name=name)
+        node.attrs.subject = self.subject
+        node.attrs.xfmname = self.xfmname
+        if self.linear:
+            node.attrs.mask = self.masktype
+        for name, value in self.attrs.items():
+            node.attrs[name] = value
 
 class Masker(object):
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, ds):
+        self.ds = ds
+
+        self.data = None
+        if ds.linear:
+            self.data = ds.data
 
     def __getitem__(self, masktype):
-        pass
-
+        s, x = self.ds.subject, self.ds.xfmname
+        mask = surfs.getMask(s, x, masktype)
+        return BrainData(self.ds.volume[mask], s, x, mask=masktype)
 
 def _find_mask(nvox):
     import re
@@ -132,7 +217,7 @@ def _find_mask(nvox):
 
 def _hdf_init(h5):
     try:
-        h5.getNode("/dataset")
+        h5.getNode("/datasets")
     except tables.NoSuchNodeError:
         h5.createGroup("/","datasets")
     try:
@@ -140,18 +225,24 @@ def _hdf_init(h5):
     except tables.NoSuchNodeError:
         h5.createGroup("/", "subjects")
 
-def _hdf_write(h5, data, name="data"):
+def _hdf_write(h5, data, name="data", group="/datasets"):
     atom = tables.Atom.from_dtype(data.dtype)
-    filt = tables.filters.Filter(complevel=9, complib='blosc', shuffle=True)
+    filt = tables.filters.Filters(complevel=9, complib='blosc', shuffle=True)
     try:
-        ds = h5.getNode("/dataset/%s"%name)
+        ds = h5.getNode("%s/%s"%(group, name))
         ds[:] = data
     except tables.NoSuchNodeError:
-        ds = h5.createCArray("/dataset", name, atom, data.shape, filters=filt)
+        ds = h5.createCArray("%s"%group, name, atom, data.shape, filters=filt)
         ds[:] = data
     except ValueError:
-        h5.removeNode("/dataset/%s"%name)
-        ds = h5.createCArray("/dataset", name, atom, data.shape, filters=filt)
+        h5.removeNode("%s/%s"%(group, name))
+        ds = h5.createCArray("%s"%group, name, atom, data.shape, filters=filt)
         ds[:] = data
         
     return ds
+
+def _hdf_read(node):
+    names = set(node.attrs._v_attrnames)
+    names -= set(['CLASS', 'TITLE', 'VERSION'])
+    attrs = dict((name, node.attrs[name]) for name in names)
+    return node[:], attrs
