@@ -6,21 +6,22 @@ HDF5 format:
     s1/
         transforms/
             xfm1/
-                mat[4,4]
+                xfm[4,4]
                 masks/
                     thin[z,y,x]
                     thick[z,y,x]
             xfm2/
-                mat[4,4]
+                xfm[4,4]
                 masks/
                     thin[z,y,x]
         surfaces
             fiducial
-                lh[n,3]
-                rh[n,3]
-            inflated
-                lh[n,3]
-                rh[n,3]
+                lh
+                    pts[n,3]
+                    polys[m,3]
+                rh
+                    pts[n,3]
+                    polys[m,3]
 /datasets/
     ds1
     ds2
@@ -36,12 +37,13 @@ from . import utils
 
 class Dataset(object):
     def __init__(self, **kwargs):
+        self.subjects = {}
         self.datasets = {}
-        for name, ds in kwargs.items():
-            if isinstance(ds, BrainData):
-                self.datasets[name] = ds
+        for name, data in kwargs.items():
+            if isinstance(data, BrainData):
+                self.datasets[name] = data
             else:
-                self.datasets[name] = BrainData(*ds)
+                self.datasets[name] = BrainData(*data)
 
     @classmethod
     def from_file(cls, filename):
@@ -50,8 +52,13 @@ class Dataset(object):
         for node in h5.walkNodes("/datasets/"):
             if not isinstance(node, tables.Group):
                 datasets[node.name] = BrainData.from_file(h5, name=node.name)
-        h5.close()
-        return cls(**datasets)
+
+        ds = cls(**datasets)
+        if len(h5.root.subjects._v_children.keys()):
+            ds.subjects = h5.root.subjects
+        else:
+            h5.close()
+        return ds
 
     def append(self, **kwargs):
         for name, data in kwargs.items():
@@ -78,14 +85,50 @@ class Dataset(object):
         return self.__dict__.keys() + self.datasets.keys()
 
     def save(self, filename, pack=False):
-        h5 = tables.openFile(filename, "w")
+        h5 = tables.openFile(filename, "a")
         _hdf_init(h5)
-        for name, ds in self.datasets.items():
-            ds.save(h5, name=name)
+        for name, data in self.datasets.items():
+            data.save(h5, name=name)
+
         if pack:
-            raise NotImplementedError
+            subjs = set()
+            xfms = set()
+            masks = set()
+            for name, data in self.datasets.items():
+                subjs.add(data.subject)
+                xfms.add((data.subject, data.xfmname))
+                if data.linear:
+                    masks.add((data.subject, data.xfmname, data.masktype))
+
+            _pack_subjs(h5, subjs)
+            _pack_xfms(h5, xfms)
+            _pack_masks(h5, masks)
 
         h5.close()
+
+    def getSurf(self, subject, type, hemi='both'):
+        if hemi == 'both':
+            return self.getSurf(subject, type, "lh"), self.getSurf(subject, type, "rh")
+
+        try:
+            node = getattr(getattr(getattr(self.subjects, subject).surfaces, type), hemi)
+            return node.pts[:], node.polys[:]
+        except tables.NoSuchNodeError:
+            raise IOError('Subject not found in package')
+
+    def getXfm(self, subject, xfmname):
+        try:
+            node = getattr(getattr(self.subjects, subject).transforms, xfmname)
+            return node.xfm[:]
+        except tables.NoSuchNodeError:
+            raise IOError('Transform not found in package')
+
+    def getMask(self, subject, xfmname, maskname):
+        try:
+            node = getattr(getattr(self.subjects, subject).transforms, xfmname).masks
+            return getattr(node, maskname)[:]
+        except tables.NoSuchNodeError:
+            raise IOError('Mask not found in package')
 
 class BrainData(object):
     def __init__(self, data, subject, xfmname, mask=None, **kwargs):
@@ -130,8 +173,6 @@ class BrainData(object):
             raise ValueError("Invalid data shape")
 
         self.vertex = self.xfmname is None
-        if self.vertex and not self.linear:
-            raise ValueError('Vertex data must be linear!')
 
         if self.linear:
             #try to guess mask type
@@ -143,12 +184,21 @@ class BrainData(object):
             elif isinstance(mask, str):
                 self.mask = surfs.getMask(self.subject, self.xfmname, mask)
                 self.masktype = mask
+        else:
+            xfm = surfs.getXfm(self.subject, self.xfmname)
+            if xfm.shape != self.data.shape:
+                raise ValueError("Volumetric data must be same shape as reference for transform")
 
     def __repr__(self):
-        maskstr = ""
+        maskstr = "volumetric"
         if self.linear:
-            maskstr = ", %s mask"%self.masktype
-        return "<Data for (%s,%s)%s>"%(self.subject, self.xfmname, maskstr)
+            maskstr = "%s masked"%self.masktype
+        if self.raw:
+            maskstr += " raw"
+        if self.movie:
+            maskstr += " movie"
+        maskstr = maskstr[0].upper()+maskstr[1:]
+        return "<%s data for (%s, %s)>"%(maskstr, self.subject, self.xfmname)
 
     @classmethod
     def from_file(cls, filename, name="data"):
@@ -179,6 +229,8 @@ class BrainData(object):
                 _hdf_init(h5)
                 self._write_hdf(h5, name=name)
                 h5.close()
+            else:
+                raise TypeError('Unknown file type')
         elif isinstance(filename, tables.File):
             self._write_hdf(filename, name=name)
 
@@ -230,18 +282,22 @@ def _hdf_init(h5):
     except tables.NoSuchNodeError:
         h5.createGroup("/", "subjects")
 
+
 def _hdf_write(h5, data, name="data", group="/datasets"):
     atom = tables.Atom.from_dtype(data.dtype)
     filt = tables.filters.Filters(complevel=9, complib='blosc', shuffle=True)
+    create = False
     try:
         ds = h5.getNode("%s/%s"%(group, name))
         ds[:] = data
     except tables.NoSuchNodeError:
-        ds = h5.createCArray("%s"%group, name, atom, data.shape, filters=filt)
-        ds[:] = data
+        create = True
     except ValueError:
         h5.removeNode("%s/%s"%(group, name))
-        ds = h5.createCArray("%s"%group, name, atom, data.shape, filters=filt)
+        create = True
+
+    if create:
+        ds = h5.createCArray(group, name, atom, data.shape, filters=filt, createparents=True)
         ds[:] = data
         
     return ds
@@ -251,3 +307,26 @@ def _hdf_read(node):
     names -= set(['CLASS', 'TITLE', 'VERSION'])
     attrs = dict((name, node.attrs[name]) for name in names)
     return node[:], attrs
+
+def _pack_subjs(h5, subjects):
+    for subject in subjects:
+        surfaces = surfs.getFiles(subject)['surfs']
+        for surf in surfaces.keys():
+            for hemi in ("lh", "rh"):
+                pts, polys = surfs.getSurf(subject, surf, hemi)
+                group = "/subjects/%s/surfaces/%s/%s"%(subject, surf, hemi)
+                _hdf_write(h5, pts, "pts", group)
+                _hdf_write(h5, polys, "polys", group)
+
+def _pack_xfms(h5, xfms):
+    for subj, xfmname in xfms:
+        xfm = surfs.getXfm(subj, xfmname, 'coord')
+        group = "/subjects/%s/transforms/%s"%(subj, xfmname)
+        node = _hdf_write(h5, np.array(xfm.xfm), "xfm", group)
+        node.attrs.shape = xfm.shape
+
+def _pack_masks(h5, masks):
+    for subj, xfm, maskname in masks:
+        mask = surfs.getMask(subj, xfm, maskname)
+        group = "/subjects/%s/transforms/%s/masks"%(subj, xfm)
+        _hdf_write(h5, mask, maskname, group)
