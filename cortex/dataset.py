@@ -129,17 +129,20 @@ class BrainData(object):
         else:
             raise ValueError("Invalid data shape")
 
-        if self.linear:
-            #try to guess mask type
-            if mask is None and not self.vertex:
-                self.mask, self.masktype = _find_mask(self.data.shape[-1])
-            elif isinstance(mask, str):
-                self.mask = surfs.getMask(self.subject, self.xfmname, mask)
-                self.masktype = mask
-
         self.vertex = self.xfmname is None
         if self.vertex and not self.linear:
             raise ValueError('Vertex data must be linear!')
+
+        if self.linear:
+            #try to guess mask type
+            if mask is None and not self.vertex:
+                nvox = self.data.shape[-1]
+                if self.raw:
+                    nvox = self.data.shape[-2]
+                self.masktype, self.mask = _find_mask(nvox, self.subject, self.xfmname)
+            elif isinstance(mask, str):
+                self.mask = surfs.getMask(self.subject, self.xfmname, mask)
+                self.masktype = mask
 
     def __repr__(self):
         maskstr = ""
@@ -199,13 +202,15 @@ class Masker(object):
     def __getitem__(self, masktype):
         s, x = self.ds.subject, self.ds.xfmname
         mask = surfs.getMask(s, x, masktype)
+        if self.ds.movie:
+            return BrainData(self.ds.volume[:,mask], s, x, mask=masktype)
         return BrainData(self.ds.volume[mask], s, x, mask=masktype)
 
-def _find_mask(nvox):
+def _find_mask(nvox, subject, xfmname):
     import re
     import glob
     import nibabel
-    files = surfs.getFiles(self.subject)['masks'].format(xfmname=self.xfmname, type="*")
+    files = surfs.getFiles(subject)['masks'].format(xfmname=xfmname, type="*")
     for fname in glob.glob(files):
         nib = nibabel.load(fname)
         mask = nib.get_data() != 0

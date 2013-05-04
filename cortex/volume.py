@@ -16,13 +16,25 @@ def unmask(mask, data):
     data : array_like
         Actual MRI data to unmask
     """
-    if data.ndim > 1:
+    nvox = mask.sum()
+    if data.shape[0] == nvox:
+        data = data[np.newaxis]
+    elif nvox not in data.shape:
+        raise ValueError('Invalid mask for the data')
+
+    if data.shape[-1] in (3, 4):
+        if data.dtype != np.uint8:
+            raise TypeError('Invalid dtype for raw dataset')
+        #raw dataset, unmask with an alpha channel
+        output = np.zeros((len(data),)+mask.shape+(4,), dtype=np.uint8)
+        output[:, mask > 0, :data.shape[-1]] = data
+        if data.shape[-1] == 3:
+            output[:, mask > 0, 3] = 255
+    else:
         output = (np.nan*np.ones((len(data),)+mask.shape)).astype(data.dtype)
         output[:, mask > 0] = data
-    else:
-        output = (np.nan*np.ones(mask.shape)).astype(data.dtype)
-        output[mask > 0] = data
-    return output
+
+    return output.squeeze()
 
 def detrend_median(data, kernel=15):
     from scipy.signal import medfilt
