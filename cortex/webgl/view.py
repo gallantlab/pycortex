@@ -63,8 +63,9 @@ def _package_data(braindata):
     return package
 
 def _convert_dataset(dataset, path="", fmt="%s_%d.png"):
-    metadata, images = dict(), dict()
+    metadata, images = dict(__order__=[]), dict()
     for name, braindata in dataset:
+        metadata['__order__'].append(name)
         package = _package_data(braindata)
         for i, data in enumerate(package['data']):
             images[fmt%(name, i)] = _pack_png(data)

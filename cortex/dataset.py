@@ -32,6 +32,7 @@ import numpy as np
 import tables
 
 from .db import surfs
+from .xfm import Transform
 from . import volume
 from . import utils
 
@@ -81,7 +82,7 @@ class Dataset(object):
         return self.datasets[item]
 
     def __iter__(self):
-        for name, ds in self.datasets.items():
+        for name, ds in sorted(self.datasets.items(), key=lambda x: x[1].priority):
             yield name, ds
 
     def __repr__(self):
@@ -127,9 +128,9 @@ class Dataset(object):
             pts, polys = node.pts[:], node.polys[:]
             if nudge:
                 if hemi == 'lh':
-                    pts[:,0] -= pts[:,0].max()
-                else:
                     pts[:,0] -= pts[:,0].min()
+                else:
+                    pts[:,0] -= pts[:,0].max()
             return pts, polys
         except tables.NoSuchNodeError:
             raise IOError('Subject not found in package')
@@ -137,7 +138,7 @@ class Dataset(object):
     def getXfm(self, subject, xfmname):
         try:
             node = getattr(getattr(self.subjects, subject).transforms, xfmname)
-            return node.xfm[:]
+            return Transform(node.xfm[:], node.attrs.shape)
         except tables.NoSuchNodeError:
             raise IOError('Transform not found in package')
 
@@ -202,10 +203,18 @@ class BrainData(object):
             elif isinstance(mask, str):
                 self.mask = surfs.getMask(self.subject, self.xfmname, mask)
                 self.masktype = mask
+
+            self.shape = self.mask.shape
         else:
+            shape = self.data.shape
+            if self.movie:
+                shape = shape[1:]
+            if self.raw:
+                shape = shape[:-1]
             xfm = surfs.getXfm(self.subject, self.xfmname)
-            if xfm.shape != self.data.shape:
+            if xfm.shape != shape:
                 raise ValueError("Volumetric data must be same shape as reference for transform")
+            self.shape = shape
 
     def __repr__(self):
         maskstr = "volumetric"
@@ -238,6 +247,16 @@ class BrainData(object):
         if not self.linear:
             return self.data
         return volume.unmask(self.mask, self.data)
+
+    @property
+    def priority(self):
+        if 'priority' in self.attrs:
+            return self.attrs['priority']
+        return 1000
+
+    @priority.setter
+    def priority(self, val):
+        self.attrs['priority'] = val
 
     def save(self, filename, name="data"):
         if isinstance(filename, str):
