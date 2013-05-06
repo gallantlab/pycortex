@@ -76,7 +76,13 @@ class Dataset(object):
         raise AttributeError
 
     def __getitem__(self, item):
+        if isinstance(item, int):
+            return self.datasets[self.datasets.keys()[item]]
         return self.datasets[item]
+
+    def __iter__(self):
+        for name, ds in self.datasets.items():
+            yield name, ds
 
     def __repr__(self):
         return "<Dataset with names [%s]>"%(', '.join(self.datasets.keys()))
@@ -106,13 +112,25 @@ class Dataset(object):
 
         h5.close()
 
-    def getSurf(self, subject, type, hemi='both'):
+    def getSurf(self, subject, type, hemi='both', merge=False, nudge=False):
         if hemi == 'both':
-            return self.getSurf(subject, type, "lh"), self.getSurf(subject, type, "rh")
+            left = self.getSurf(subject, type, "lh")
+            right = self.getSurf(subject, type, "rh")
+            if merge:
+                pts = np.vstack([left[0], right[0]])
+                polys = np.vstack([left[1], right[1]+len(left[0])])
+                return pts, polys
 
+            return left, right
         try:
             node = getattr(getattr(getattr(self.subjects, subject).surfaces, type), hemi)
-            return node.pts[:], node.polys[:]
+            pts, polys = node.pts[:], node.polys[:]
+            if nudge:
+                if hemi == 'lh':
+                    pts[:,0] -= pts[:,0].max()
+                else:
+                    pts[:,0] -= pts[:,0].min()
+            return pts, polys
         except tables.NoSuchNodeError:
             raise IOError('Subject not found in package')
 

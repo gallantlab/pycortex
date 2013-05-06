@@ -212,4 +212,7 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimat
     for name in types:
         ctm.addSurf(name)
 
+    if not os.path.exists(os.path.split(outfile)[0]):
+        os.makedirs(os.path.split(outfile)[0])
+
     return ctm.save(os.path.splitext(outfile)[0], method=method, level=level)

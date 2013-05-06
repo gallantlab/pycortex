@@ -382,3 +382,10 @@ def get_dropout(subject, xfmname, projection="trilinear", power=20):
     right = (1-rnorm) ** power
 
     return left, right
+
+def make_movie(stim, outfile, fps=15, size="640x480"):
+    import shlex
+    import subprocess as sp
+    cmd = "ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv"
+    fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
+    sp.call(shlex.split(fcmd))

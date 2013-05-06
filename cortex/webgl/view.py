@@ -16,6 +16,7 @@ from FallbackLoader import FallbackLoader
 
 from .. import utils, options, volume
 from ..db import surfs
+from ..dataset import Dataset
 
 from . import serve
 
@@ -29,93 +30,62 @@ colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in so
 
 viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
 
-def _normalize_data(data, xfm):
+def _package_data(braindata):
     from scipy.stats import scoreatpercentile
-    if not isinstance(data, dict):
-        data = dict(data=data)
+    package = dict(__class__="Dataset")
 
-    json = dict()
-    json['__order__'] = list(data.keys())
-    for name, dat in list(data.items()):
-        ds = dict(__class__="Dataset")
-        if isinstance(dat, dict):
-            ds.update(_fixarray(dat['data']))
-            del dat['data']
-        else:
-            ds.update(_fixarray(dat))
+    #Fill in extra metadata
+    xfm = surfs.getXfm(braindata.subject, braindata.xfmname, 'coord')
+    package['subject'] = braindata.subject
+    package['raw'] = braindata.raw
+    package['xfm'] = list(np.array(xfm.xfm).ravel())
+    package['lmin'] = float(braindata.data.min())
+    package['lmax'] = float(braindata.data.max())
+    package['min'] = float(scoreatpercentile(braindata.data.ravel(), 1))
+    package['max'] = float(scoreatpercentile(braindata.data.ravel(), 99))
 
-        ds['xfm'] = list(np.array(xfm).ravel())
-        dstack = np.array(ds['data'])
-        stats = dstack[~np.isnan(dstack)]
-        ds['lmin'] = float(stats.min())
-        ds['lmax'] = float(stats.max())
-        ds['min'] = float(scoreatpercentile(stats.ravel(), 1))
-        ds['max'] = float(scoreatpercentile(stats.ravel(), 99))
-        if isinstance(dat, dict):
-            ds.update(dat)
+    if not braindata.movie:
+        voldat = braindata.volume[np.newaxis]
+    else:
+        voldat = braindata.volume
+    if braindata.raw:
+        voldat = voldat.astype(np.uint8)
+    else:
+        voldat = voldat.astype(np.float32)
 
-        json[name] = ds
+    package['data'] = []
+    for vol in voldat:
+        im, package['mosaic'] = volume.mosaic(vol, show=False)
+        package['data'].append(im)
 
-    return json
+    #Overwrite generated metadata
+    package.update(braindata.attrs)
+    return package
 
-def _fixarray(data):
-    if isinstance(data, str):
-        if os.path.splitext(data)[1] in ('.hdf', '.mat'):
-            try:
-                import tables
-                data = tables.openFile(data).root.data[:]
-            except IOError:
-                import scipy.io as sio
-                data = sio.loadmat(data)['data'].T
-        elif '.nii' in data:
-            import nibabel
-            data = nibabel.load(data).get_data().T
+def _convert_dataset(dataset, path="", fmt="%s_%d.png"):
+    metadata, images = dict(), dict()
+    for name, braindata in dataset:
+        package = _package_data(braindata)
+        for i, data in enumerate(package['data']):
+            images[fmt%(name, i)] = _pack_png(data)
 
-    if data.dtype != np.uint8:
-        data = data.astype(np.float32)
+        frames = range(len(package['data']))
+        package['data'] = [os.path.join(path, fmt)%(name, i) for i in frames]
+        metadata[name] = package
 
-    raw = data.dtype.type == np.uint8
-    movie = data.ndim == 5 if raw else data.ndim == 4
-    if not movie:
-        data = data[np.newaxis]
-    output = []
-    for frame in data:
-        mframe, mosaic = volume.mosaic(frame, show=False)
-        output.append(mframe)
+    return metadata, images
 
-    return dict(data=output, mosaic=mosaic, raw=raw)
-
-def _make_bindat(json, path="", fmt='%s_%d.png'):
+def _pack_png(mosaic):
     import Image
     import cStringIO
     buf = cStringIO.StringIO()
-    def _make_img(mosaic):
-        buf.seek(0)
-        assert mosaic.dtype in (np.float32, np.uint8)
-        im = Image.frombuffer('RGBA', mosaic.shape[:2], mosaic.data, 'raw', 'RGBA', 0, 1)
-        im.save(buf, format='PNG')
-        buf.seek(0)
-        return buf.read()
+    if mosaic.dtype not in (np.float32, np.uint8):
+        raise TypeError
 
-    newjs, bindat = dict(), dict()
-    for name, data in list(json.items()):
-        if isinstance(data, dict):
-            newjs[name] = dict(data)
-            frames = range(len(data['data']))
-            newjs[name]['data'] = [os.path.join(path, fmt)%(name, i) for i in frames]
-            for i, mosaic in enumerate(data['data']):
-                bindat[fmt%(name, i)] = _make_img(mosaic)
-        else:
-            newjs[name] = data
-
-    return newjs, bindat
-
-def make_movie(stim, outfile, fps=15, size="640x480"):
-    import shlex
-    import subprocess as sp
-    cmd = "ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv"
-    fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
-    sp.call(shlex.split(fcmd))
+    im = Image.frombuffer('RGBA', mosaic.shape[:2], mosaic.data, 'raw', 'RGBA', 0, 1)
+    im.save(buf, format='PNG')
+    buf.seek(0)
+    return buf.read()
 
 def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", anonymize=False, **kwargs):
     """
@@ -211,24 +181,21 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     html = tpl.generate(ctmfile=ctmfile, data=jsobj, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
 
-def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
-    """Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
-    sub dictionary with keys [data, stim, delay].
-
-    Data array can be a variety of shapes:
-    Regular volume movie: [t, z, y, x]
-    Regular volume image: [z, y, x]
-    Regular masked movie: [t, vox]
-    Regular masked image: [vox]
-    Regular vertex movie: [t, verts]
-    Regular vertex image: [verts]
-    Raw vertex movie:     [t, verts, [3, 4]]
-    Raw vertex image:     [verts, [3, 4]]
+def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
+    """Display a dynamic viewer using the given dataset
     """
+    if isinstance(dataset, tuple):
+        dataset = Dataset(data=dataset)
+    elif isinstance(dataset, dict):
+        dataset = Dataset(**dataset)
+
     html = FallbackLoader([serve.cwd]).load("mixer.html")
+    subject, xfmname = dataset[0].subject, dataset[0].xfmname
+    surfs.auxfile = dataset
     xfm = surfs.getXfm(subject, xfmname, 'coord')
     ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache, **kwargs)
-    jsondat, bindat = _make_bindat(_normalize_data(data, xfm.xfm), path='/data/', fmt='%s_%d.png')
+
+    metadata, images = _convert_dataset(dataset, path='/data/', fmt='%s_%d.png')
 
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
@@ -260,11 +227,11 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
             if not queue.empty():
                 d = queue.get()
                 print("Got new data: %r"%list(d.keys()))
-                bindat.update(d)
+                images.update(d)
 
-            if path in bindat:
+            if path in images:
                 self.set_header("Content-Type", "image/png")
-                self.write(bindat[path])
+                self.write(images[path])
             else:
                 self.set_status(404)
                 self.write_error(404)
@@ -272,7 +239,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     class MixerHandler(web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
-            self.write(html.generate(data=json.dumps(jsondat), colormaps=colormaps, default_cmap=cmap, python_interface=True, **viewopts))
+            self.write(html.generate(data=json.dumps(metadata), colormaps=colormaps, default_cmap=cmap, python_interface=True, **viewopts))
 
         def post(self):
             print("saving file to %s"%saveimg.value)
@@ -299,8 +266,8 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
     class JSMixer(serve.JSProxy):
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
-            json, data = _make_bindat(_normalize_data(kwargs, pfunc), fmt='data/%s/')
-            queue.put(data)
+            metadat, images = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
+            queue.put(images)
             return Proxy(json)
 
         def saveflat(self, filename, height=1024):
@@ -356,6 +323,7 @@ def show(data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_
             self.c_evt.wait()
             self.c_evt.clear()
             return JSMixer(self.send, "window.viewer")
+
     if port is None:
         port = random.randint(1024, 65536)
         
