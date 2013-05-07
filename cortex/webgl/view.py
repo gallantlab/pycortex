@@ -41,8 +41,8 @@ def _package_data(braindata):
     package['xfm'] = list(np.array(xfm.xfm).ravel())
     package['lmin'] = float(braindata.data.min())
     package['lmax'] = float(braindata.data.max())
-    package['min'] = float(scoreatpercentile(braindata.data.ravel(), 1))
-    package['max'] = float(scoreatpercentile(braindata.data.ravel(), 99))
+    package['vmin'] = float(scoreatpercentile(braindata.data.ravel(), 1))
+    package['vmax'] = float(scoreatpercentile(braindata.data.ravel(), 99))
 
     if not braindata.movie:
         voldat = braindata.volume[np.newaxis]
@@ -162,7 +162,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     for name, img in list(images.items()):
         with open(os.path.join(outpath, name), "wb") as binfile:
             binfile.write(img)
-    jsobj = json.dumps(metadata)
+    jsobj = json.dumps(metadata, cls=serve.NPEncode)
     
     #Parse the html file and paste all the js and css files directly into the html
     from . import htmlembed
@@ -196,6 +196,7 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=T
     xfm = surfs.getXfm(subject, xfmname, 'coord')
     ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache, **kwargs)
     metadata, images = _convert_dataset(dataset, path='/data/', fmt='%s_%d.png')
+    jsmeta = json.dumps(metadata, cls=serve.NPEncode)
 
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
@@ -239,7 +240,7 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=T
     class MixerHandler(web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
-            self.write(html.generate(data=json.dumps(metadata), colormaps=colormaps, default_cmap=cmap, python_interface=True, **viewopts))
+            self.write(html.generate(data=jsmeta, colormaps=colormaps, default_cmap=cmap, python_interface=True, **viewopts))
 
         def post(self):
             print("saving file to %s"%saveimg.value)

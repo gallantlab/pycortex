@@ -1,12 +1,5 @@
 var flatscale = .25;
 
-var samplers = {
-    trilinear: "trilinear",
-    nearest: "nearest",
-    nearlin: "nearest",
-    debug: "debug",
-}
-
 function MRIview() { 
     //Allow objects to listen for mix updates
     THREE.EventTarget.call( this );
@@ -23,15 +16,15 @@ function MRIview() {
         this.controls.resize(event.width, event.height);
     }.bind(this));
     this.controls.addEventListener("mousedown", function(event) {
-        if (this.fastshader) {
-            this.meshes.left.material = this.fastshader;
-            this.meshes.right.material = this.fastshader;
+        if (this.active[0] && this.active[0].fastshader) {
+            this.meshes.left.material = this.active[0].fastshader;
+            this.meshes.right.material = this.active[0].fastshader;
         }
     }.bind(this));
     this.controls.addEventListener("mouseup", function(event) {
-        if (this.fastshader) {
-            this.meshes.left.material = this.shader;
-            this.meshes.right.material = this.shader;
+        if (this.active[0] && this.active[0].fastshader) {
+            this.meshes.left.material = this.active[0].shader;
+            this.meshes.right.material = this.active[0].shader;
             this.schedule();
         }
     }.bind(this));
@@ -74,6 +67,7 @@ function MRIview() {
             mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
             dshape:     { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
             volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
+            nsamples:   { type:'i', value:0},
 
             vmin:       { type:'fv1',value:[0,0]},
             vmax:       { type:'fv1',value:[1,1]},
@@ -92,8 +86,6 @@ function MRIview() {
     ]);
     
     this.state = "pause";
-    this.thick = 0;
-    this.shadeAdapt = true;
     this._startplay = null;
     this._animation = null;
     this.loaded = $.Deferred().done(function() {
@@ -111,53 +103,6 @@ function MRIview() {
     this._bindUI();
 }
 MRIview.prototype = { 
-    setShader: function(ds) {
-        if (ds === undefined)
-            ds = this.active[0];
-        var sampler = samplers[ds.filter];
-        var shaders = Shaders.main(sampler, ds.raw, viewopts.voxlines, this.thick);
-        this.shader = new THREE.ShaderMaterial( { 
-            vertexShader:shaders.vertex,
-            fragmentShader:shaders.fragment,
-            uniforms: this.uniforms,
-            attributes: { wm:true, auxdat:true },
-            morphTargets:true, 
-            morphNormals:true, 
-            lights:true, 
-            depthTest: true,
-            transparent:false,
-            blending:THREE.CustomBlending,
-        });
-        this.shader.map = true;
-        this.shader.metal = true;
-
-        if (this.thick > 1 && this.shadeAdapt) {
-            shaders = Shaders.main(sampler, ds.raw, viewopts.voxlines, 1);
-            this.fastshader = new THREE.ShaderMaterial({
-                vertexShader:shaders.vertex,
-                fragmentShader:shaders.fragment,
-                uniforms: this.uniforms,
-                attributes: { wm:true, auxdat:true },
-                morphTargets:true, 
-                morphNormals:true, 
-                lights:true, 
-                depthTest: true,
-                transparent:false,
-                blending:THREE.CustomBlending,                
-            });
-            this.fastshader.map = true;
-            this.fastshader.metal = true;
-        } else {
-            this.fastshader = null;
-        }
-
-        this.uniforms.colormap.texture.needsUpdate = true;
-        this.uniforms.hatch.texture.needsUpdate = true;
-        if (this.meshes && this.meshes.left) {
-            this.meshes.left.material = this.shader;
-            this.meshes.right.material = this.shader;
-        }
-    }, 
     schedule: function() {
         if (!this._scheduled) {
             this._scheduled = true;
@@ -219,7 +164,7 @@ MRIview.prototype = {
 
             if (geometries[0].attributes.wm !== undefined) {
                 //We have a thickness volume!
-                this.thick = 1;
+                this.uniforms.nsamples.value = 1;
                 $("#thickmapping").show();
             }
 
@@ -476,7 +421,7 @@ MRIview.prototype = {
                     hemi.morphTargetInfluences[i] = 0;
                 }
 
-                this.shader.uniforms.hide_mwall.value = (n2 == flat);
+                this.uniforms.hide_mwall.value = (n2 == flat);
 
                 hemi.morphTargetInfluences[n2] = (val * num)%1;
                 if (n1 >= 0)
@@ -485,7 +430,7 @@ MRIview.prototype = {
         }
         this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
         this.setPivot(this.flatmix*180);
-        this.shader.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
+        this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
         $("#mix").slider("value", val);
         
         this.dispatchEvent({type:"mix", flat:this.flatmix, mix:val});
@@ -541,7 +486,7 @@ MRIview.prototype = {
                 $("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
         }
         
-        this.setData(names);
+        this.setData(names.slice(0, 2));
     },
     setData: function(names) {
         if (!(names instanceof Array))
@@ -556,17 +501,19 @@ MRIview.prototype = {
                 throw 'Invalid selection';
 
         }
-        
+         
+        this.active = [ds];       
         if (ds.cmap !== undefined)
-            this.setColormap(this.dataset);
+            this.setColormap(ds.cmap);
 
         $.when(this.cmapload, this.loaded).done(function() {
             if (names.length > (this.colormap.image.height > 8 ? 2 : 1))
                 return false;
 
-            this.setShader(ds);
+            $("#datainterp option").each(function() { $(this).attr("selected", null); });
+            $("#datainterp option[value='"+ds.filter+"']").attr("selected", "selected");
+            ds.init(this.uniforms, this.meshes, 0);
             ds.set(this.uniforms, 0, 0, true);
-            this.active = [ds];
             $("#vrange").slider("option", {min: ds.lmin, max:ds.lmax});
             this.setVminmax(ds.min, ds.max, 0);
 
@@ -725,8 +672,8 @@ MRIview.prototype = {
     setVminmax: function(vmin, vmax, dim) {
         if (dim === undefined)
             dim = 0;
-        this.shader.uniforms.vmin.value[dim] = vmin;
-        this.shader.uniforms.vmax.value[dim] = vmax;
+        this.uniforms.vmin.value[dim] = vmin;
+        this.uniforms.vmax.value[dim] = vmax;
 
         var range, min, max;
         if (dim == 0) {
@@ -764,13 +711,14 @@ MRIview.prototype = {
     },
 
     setVoxView: function(interp, lines) {
-        this.active[0].filter = interp;
-        for (var i = 0, il = this.active[0].textures.length; i < il; i++) {
-            this.active[0].textures[i].minFilter = filtertypes[interp];
-            this.active[0].textures[i].magFilter = filtertypes[interp];
-            this.active[0].textures[i].needsUpdate = true;
+        var ds = this.active[0];
+        ds.filter = interp;
+        for (var i = 0, il = ds.textures.length; i < il; i++) {
+            ds.textures[i].minFilter = filtertypes[interp];
+            ds.textures[i].magFilter = filtertypes[interp];
+            ds.textures[i].needsUpdate = true;
         }
-        this.setShader();
+        ds.init(this.uniforms, this.meshes, 0);
         $("#datainterp option").attr("selected", null);
         $("#datainterp option[value="+interp+"]").attr("selected", "selected");
     },
@@ -980,8 +928,10 @@ MRIview.prototype = {
                 $("#thickmix_row").show();
             else 
                 $("#thickmix_row").hide();
-            this.thick = ui.value;
-            this.setShader();
+            this.uniforms.nsamples.value = ui.value;
+            this.active[0].init(this.uniforms, this.meshes, 0);
+            if (this.active.length > 1)
+                this.active[1].set(this.uniforms, 1, this.frame);
             this.schedule();
         }.bind(this)});
         $("#thickmix").slider({ min:0, max:1, step:.001, value:0.5, slide:function(event, ui) {

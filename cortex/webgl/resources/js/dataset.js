@@ -5,6 +5,13 @@ var filtertypes = {
     debug: THREE.NearestFilter 
 };
 
+var samplers = {
+    trilinear: "trilinear",
+    nearest: "nearest",
+    nearlin: "nearest",
+    debug: "debug",
+}
+
 function Dataset(json) {
     this.loaded = $.Deferred().done(function() { $("#dataload").hide(); });
 
@@ -12,8 +19,8 @@ function Dataset(json) {
     this.mosaic = json.mosaic;
     this.frames = json.data.length;
     this.xfm = json.xfm;
-    this.min = json.min;
-    this.max = json.max;
+    this.min = json.vmin;
+    this.max = json.vmax;
     this.lmin = json.lmin;
     this.lmax = json.lmax;
     this.cmap = json.cmap;
@@ -67,17 +74,51 @@ Dataset.fromJSON = function(json) {
     return new Dataset(json);
 }
 
-Dataset.prototype = { 
-    set: function(uniforms, dim, frame, init) {
-        if (dim === undefined)
-            dim = 0;
+Dataset.prototype = {
+    init: function(uniforms, meshes, dim) {
+        var sampler = samplers[this.filter];
+        var shaders = Shaders.main(sampler, this.raw, viewopts.voxlines, uniforms.nsamples.value);
+        this.shader = new THREE.ShaderMaterial({ 
+            vertexShader:shaders.vertex,
+            fragmentShader:shaders.fragment,
+            uniforms: uniforms,
+            attributes: { wm:true, auxdat:true },
+            morphTargets:true, 
+            morphNormals:true, 
+            lights:true, 
+            blending:THREE.CustomBlending,
+        });
+        this.shader.map = true;
+        this.shader.metal = true;
 
-        if (init) {
-            uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
-            uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
-            uniforms.volxfm.value[dim].set.apply(uniforms.volxfm.value[dim], this.xfm);
+        if (uniforms.nsamples.value > 1) {
+            shaders = Shaders.main(sampler, this.raw, viewopts.voxlines, 1);
+            this.fastshader = new THREE.ShaderMaterial({
+                vertexShader:shaders.vertex,
+                fragmentShader:shaders.fragment,
+                uniforms: uniforms,
+                attributes: { wm:true, auxdat:true },
+                morphTargets:true, 
+                morphNormals:true, 
+                lights:true, 
+                blending:THREE.CustomBlending,
+            });
+            this.fastshader.map = true;
+            this.fastshader.metal = true;
+        } else {
+            this.fastshader = null;
         }
 
+        meshes.left.material = this.shader;
+        meshes.right.material = this.shader;
+        uniforms.colormap.texture.needsUpdate = true;
+        uniforms.hatch.texture.needsUpdate = true;
+        uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
+        uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
+        uniforms.volxfm.value[dim].set.apply(uniforms.volxfm.value[dim], this.xfm);
+        this.set(uniforms, dim, 0);
+    },
+    set: function(uniforms, dim, frame) {
         if (uniforms.data.texture[dim*2] !== this.textures[frame]) {
             uniforms.data.texture[dim*2] = this.textures[frame];
             uniforms.data.texture[dim*2].needsUpdate = true;

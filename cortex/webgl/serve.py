@@ -40,6 +40,10 @@ class NPEncode(json.JSONEncoder):
                 dtype=obj.dtype.descr[0][1], 
                 shape=obj.shape, 
                 data=binascii.b2a_base64(obj.tostring()))
+        elif isinstance(obj, (np.int64, np.int32, np.int16, np.int8, np.uint64, np.uint32, np.uint16, np.uint8)):
+            return int(obj)
+        elif isinstance(obj, (np.float64, np.float32)):
+            return float(obj)
         else:
             return super(NPEncode, self).default(obj)
 
