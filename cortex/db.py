@@ -15,7 +15,6 @@ import shutil
 import numpy as np
 
 from . import options
-from .xfm import Transform
 
 filestore = options.config.get('basic', 'filestore')
 
@@ -124,7 +123,6 @@ class Database(object):
     """
     def __init__(self):
         subjs = os.listdir(os.path.join(filestore))
-
         self.subjects = dict([(sname, SubjectDB(sname)) for sname in subjs])
         self.auxfile = None
     
@@ -141,29 +139,42 @@ class Database(object):
     def __dir__(self):
         return ["loadXfm","getXfm", "getSurf"] + list(self.subjects.keys())
 
-    def loadAnat(self, subject, anatfile, type='raw', process=True):
-        fname = self.getFiles(subject)['anats'].format(type=type)
-        import nibabel
-        data = nibabel.load(anatfile)
-        nibabel.save(data, fname)
-        if type == "raw" and process:
-            from . import anat
-            anat.whitematter(subject)
-
     def getAnat(self, subject, type='raw', recache=False, **kwargs):
-        assert type in ('raw', 'brainmask', 'whitematter', 'curvature', 'fiducial')
+        types = dict(
+            raw='nii.gz',
+            brainmask='nii.gz',
+            whitematter='nii.gz',
+            curvature='npz',
+            flatmask='npz',
+            thickness='npz',
+            distortion='npz',
+        )
+        
+        opts = ""
+        if len(kwargs) > 0:
+            opts = "[%s]"%','.join(["%s=%s"%i for i in kwargs.items()])
         anatform = self.getFiles(subject)['anats']
-        anatfile = anatform.format(type=type)
-        if type == "curvature":
-            path, ext = os.path.splitext(anatform.format(type=type))
-            anatfile = "%s.npz"%path
-            
+        anatfile = anatform.format(type=type, opts=opts, ext=types[type])
+
         if not os.path.exists(anatfile) or recache:
             print("%s anatomical not found, generating..."%type)
             from . import anat
-            getattr(anat, type)(subject, **kwargs)
-            
+            getattr(anat, type)(anatfile, subject, **kwargs)
+
+        if types[type] == 'nii.gz':
+            import nibabel
+            return nibabel.load(anatfile)
+        elif types[type] == 'npz':
+            return np.load(anatfile)
         return anatfile
+
+    def getOverlay(self, subject, type='rois', **kwargs):
+        if type == "rois":
+            from . import svgroi
+            pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
+            svgform = self.getFiles(subject)['rois']
+            return svgroi.get_roipack(svgform, pts, polys, **kwargs)
+        raise TypeError('Invalid overlay type')
     
     def loadXfm(self, subject, name, xfm, xfmtype="magnet", reference=None):
         """
@@ -180,11 +191,14 @@ class Database(object):
             The affine transformation matrix
         xfmtype : str, optional
             Type of the provided transform, either magnet space or coord space. Defaults to magnet.
-        epifile : str, optional
+        reference : str, optional
             The nibabel-compatible reference image associated with this transform. Required if name not in database
         """
-        assert xfmtype in ["magnet", "coord"], "Unknown transform type"
-        files = self.getFiles(subject)
+        if xfmtype not in ["magnet", "coord"]:
+            raise TypeError("Unknown transform type")
+
+        import nibabel
+
         fname = os.path.join(filestore, subject, "transforms", name)
         if os.path.exists(fname):
             jsdict = json.load(open(fname))
@@ -193,13 +207,17 @@ class Database(object):
             if reference is None:
                 raise ValueError("Please specify a reference")
             fpath = os.path.join(filestore, subject, "transforms", name, "reference.nii.gz")
-            import nibabel
             nib = nibabel.load(reference)
-            nibabel.save(nib, fpath)
+            data = nib.get_data()
+            if len(data.shape) > 3:
+                import warnings
+                warnings.warn('You are importing a 4D dataset, automatically selecting the first volume as reference')
+                data = data[...,0]
+            out = nibabel.Nifti1Image(data, nib.get_affine(), header=nib.get_header())
+            nibabel.save(out, fpath)
 
             jsdict = dict()
 
-        import nibabel
         nib = nibabel.load(os.path.join(filestore, subject, "transforms", name, "reference.nii.gz"))
         if xfmtype == "magnet":
             jsdict['magnet'] = xfm.tolist()
@@ -208,6 +226,7 @@ class Database(object):
             jsdict['coord'] = xfm.tolist()
             jsdict['magnet'] = np.dot(nib.get_affine(), xfm).tolist()
         
+        files = self.getFiles(subject)
         if len(glob.glob(files['masks'].format(xfmname=name, type="*"))) > 0:
             raise ValueError('Refusing to change a transfrom with masks')
             
@@ -225,6 +244,7 @@ class Database(object):
         xfmtype : str, optional
             Type of transform to return. Defaults to coord.
         """
+        from .xfm import Transform
         if xfmtype == 'coord':
             try:
                 return self.auxfile.getXfm(subject, name)
@@ -267,13 +287,13 @@ class Database(object):
             For single hemisphere
         '''
         try:
-            return self.auxfile.getSurf(subject, type, hemisphere, merge, nudge)
+            return self.auxfile.getSurf(subject, type, hemisphere, merge=merge, nudge=nudge)
         except (AttributeError, IOError):
             pass
 
         files = self.getFiles(subject)['surfs']
 
-        if hemisphere == "both":
+        if hemisphere.lower() == "both":
             left, right = [ self.getSurf(subject, type, hemisphere=h) for h in ["lh", "rh"]]
             if type != "fiducial" and nudge:
                 left[0][:,0] -= left[0].max(0)[0]
@@ -283,26 +303,25 @@ class Database(object):
                 pts   = np.vstack([left[0], right[0]])
                 polys = np.vstack([left[1], right[1]+len(left[0])])
                 return pts, polys
-            else:
-                return left, right
-        else:
-            if hemisphere.lower() in ("lh", "left"):
-                hemi = "lh"
-            elif hemisphere.lower() in ("rh", "right"):
-                hemi = "rh"
-            else:
-                raise TypeError("Not a valid hemisphere name")
-            
-            if type == 'fiducial' and 'fiducial' not in files:
-                wpts, polys = self.getSurf(subject, 'wm', hemi)
-                ppts, _     = self.getSurf(subject, 'pia', hemi)
-                return (wpts + ppts) / 2, polys
 
-            try:
-                import formats
-                return formats.read(os.path.splitext(files[type][hemi])[0])
-            except KeyError:
-                raise IOError
+            return left, right
+        elif hemisphere.lower() in ("lh", "left"):
+            hemi = "lh"
+        elif hemisphere.lower() in ("rh", "right"):
+            hemi = "rh"
+        else:
+            raise TypeError("Not a valid hemisphere name")
+        
+        if type == 'fiducial' and 'fiducial' not in files:
+            wpts, polys = self.getSurf(subject, 'wm', hemi)
+            ppts, _     = self.getSurf(subject, 'pia', hemi)
+            return (wpts + ppts) / 2, polys
+
+        try:
+            import formats
+            return formats.read(os.path.splitext(files[type][hemi])[0])
+        except KeyError:
+            raise IOError
 
     def loadMask(self, subject, xfmname, type, mask):
         fname = self.getFiles(subject)['masks'].format(xfmname=xfmname, type=type)
@@ -370,10 +389,7 @@ class Database(object):
         surfparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).*')
         surfpath = os.path.join(filestore, subject, "surfaces")
 
-        anatfiles = '{type}.nii.gz'
-        maskpath = "{xfmname}_{type}.nii.gz"
         ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
-        flatcache = "{xfmname}_{height}_{date}_v2.pkl"
         projcache = "{xfmname}_{projection}.npz"
 
         surfs = dict()
@@ -388,11 +404,12 @@ class Database(object):
 
         filenames = dict(
             surfs=surfs,
-            anats=os.path.join(filestore, subject, "anatomicals", anatfiles), 
             xfms=os.listdir(os.path.join(filestore, subject, "transforms")),
+            xfmdir=os.path.join(filestore, subject, "transforms", "{xfmname}", "matrices.xfm"),
+            anats=os.path.join(filestore, subject, "anatomicals", '{type}{opts}.{ext}'), 
             masks=os.path.join(filestore, subject, 'transforms', '{xfmname}', 'mask_{type}.nii.gz'),
+            cachedir=os.path.join(filestore, subject, "cache"),
             ctmcache=os.path.join(filestore, subject, "cache", ctmcache),
-            flatcache=os.path.join(filestore, subject, "cache", flatcache),
             projcache=os.path.join(filestore, subject, "cache", projcache),
             rois=os.path.join(filestore, subject, "rois.svg").format(subj=subject),
         )

@@ -244,9 +244,17 @@ class BrainData(object):
 
     @property
     def volume(self):
-        if not self.linear:
-            return self.data
-        return volume.unmask(self.mask, self.data)
+        if self.linear:
+            data = volume.unmask(self.mask, self.data)
+        else:
+            data = self.data
+
+        if self.raw and data.shape[-1] == 3:
+            #stack the alpha dimension
+            alpha = 255*np.ones(data.shape[:3]+(1,)).astype(np.uint8)
+            data = np.concatenate([data, alpha], axis=-1)
+
+        return data
 
     @property
     def priority(self):

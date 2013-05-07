@@ -125,9 +125,10 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     if not os.path.exists(outpath):
         os.makedirs(outpath)
 
-    #Create a new mg2 compressed CTM and move it into the outpath
+    subject, xfmname = dataset[0].subject, dataset[0].xfmname
+    surfs.auxfile = dataset
     xfm = surfs.getXfm(subject, xfmname, 'coord')
-    ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache)
+    ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache, **kwargs)
 
     oldpath, fname = os.path.split(ctmfile)
     fname, ext = os.path.splitext(fname)
@@ -137,7 +138,6 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
         newfname = "surface"
     else:
         newfname = fname
-
     for ext in ['json','ctm', 'svg']:
         newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
         if os.path.exists(newfile):
@@ -155,15 +155,14 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
             ofh.write(jsoncontents.replace(fname, newfname))
             ofh.close()
 
-    #ctmfile = os.path.split(ctmfile)[1]
     ctmfile = newfname+".json"
 
     #Generate the data binary objects and save them into the outpath
-    jsondat, sdat = _make_bindat(_normalize_data(data, xfm.xfm))
-    for name, dat in list(sdat.items()):
+    metadata, images = _convert_dataset(dataset, path='/data/', fmt='%s_%d.png')
+    for name, img in list(images.items()):
         with open(os.path.join(outpath, name), "wb") as binfile:
-            binfile.write(dat)
-    jsobj = json.dumps(jsondat)
+            binfile.write(img)
+    jsobj = json.dumps(metadata)
     
     #Parse the html file and paste all the js and css files directly into the html
     from . import htmlembed
@@ -175,7 +174,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
         ## Load system templates
         templatefile = template
         rootdirs = [serve.cwd]
-
+        
     loader = FallbackLoader(rootdirs)
     tpl = loader.load(templatefile)
     kwargs.update(viewopts)
@@ -191,11 +190,11 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=T
         dataset = Dataset(**dataset)
 
     html = FallbackLoader([serve.cwd]).load("mixer.html")
+
     subject, xfmname = dataset[0].subject, dataset[0].xfmname
     surfs.auxfile = dataset
     xfm = surfs.getXfm(subject, xfmname, 'coord')
     ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache, **kwargs)
-
     metadata, images = _convert_dataset(dataset, path='/data/', fmt='%s_%d.png')
 
     saveevt = mp.Event()

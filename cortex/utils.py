@@ -8,8 +8,9 @@ from .db import surfs
 from .volume import mosaic, unmask
 
 def get_roipack(*args, **kwargs):
-    from .svgroi import get_roipack
-    return get_roipack(*args, **kwargs)
+    import warnings
+    warnings.warn('Please use surfs.getOverlay instead', DeprecationWarning)
+    return surfs.getOverlay(*args, **kwargs)
 
 def get_mapper(*args, **kwargs):
     from .mapper import get_mapper
