@@ -5,13 +5,5 @@ from .quickflat import make_figure as quickshow
 
 from .dataset import Dataset, BrainData
 
-try:
-	from . import webgl
-	from .webgl import show as webshow
-except ImportError:
-	pass
-
-try:
-	from . import anat
-except ImportError:
-	pass
+from . import webgl
+from .webgl import show as webshow

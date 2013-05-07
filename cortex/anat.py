@@ -4,7 +4,6 @@ import shutil
 import tempfile
 import subprocess as sp
 
-import nibabel
 import numpy as np
 
 from . import utils
@@ -54,6 +53,7 @@ def voxelize(outfile, subject, surf='wm', mp=True):
         vox += polyutils.voxelize(xfm(pts), polys, shape=shape, center=(0,0,0), mp=mp)
 
     if surf == 'wm':
+        import nibabel
         nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
         nib.to_filename(outfile)
 

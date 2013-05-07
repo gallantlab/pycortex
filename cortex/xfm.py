@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import nibabel
 
 class Transform(object):
     '''A standard affine transform. Typically holds a transform from anatomical fiducial space to epi magnet space.
@@ -9,6 +8,7 @@ class Transform(object):
         self.xfm = xfm
         self.reference = None
         if isinstance(reference, (str, unicode)):
+            import nibabel
             self.reference = nibabel.load(reference)
             self.shape = self.reference.get_shape()[:3][::-1]
         elif isinstance(reference, tuple):
@@ -55,6 +55,7 @@ class Transform(object):
     @classmethod
     def from_fsl(cls, xfm, epifile, rawfile):
         ## Adapted from dipy.external.fsl.flirt2aff#############################
+        import nibabel
         import numpy.linalg as npl
         
         epi = nibabel.load(epifile)
@@ -78,6 +79,7 @@ class Transform(object):
         return cls(coord, epi)
 
     def to_fsl(self, rawfile):
+        import nibabel
         import numpy.linalg as npl
 
         raw = nibabel.load(rawfile)

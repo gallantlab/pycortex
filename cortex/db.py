@@ -173,7 +173,11 @@ class Database(object):
             from . import svgroi
             pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
             svgform = self.getFiles(subject)['rois']
+            if 'pts' in kwargs:
+                pts = kwargs['pts']
+                del kwargs['pts']
             return svgroi.get_roipack(svgform, pts, polys, **kwargs)
+
         raise TypeError('Invalid overlay type')
     
     def loadXfm(self, subject, name, xfm, xfmtype="magnet", reference=None):

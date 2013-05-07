@@ -16,7 +16,6 @@ def map(func, iterable, procs = mp.cpu_count()):
             length.value += 1
         for _ in range(procs*2):
             input.put((-1,-1))
-        print 'fill finished'
         
     def _func(proc, input, output):
         idx, data = input.get()
@@ -36,7 +35,6 @@ def map(func, iterable, procs = mp.cpu_count()):
         iterlen = len(iterable)
     except:
         filler.join()
-        print 'fill exit'
         iterlen = length.value
 
     data = [[]]*iterlen

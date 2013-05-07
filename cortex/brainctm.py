@@ -20,7 +20,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 from .db import surfs
-from .utils import get_cortical_mask, get_mapper, get_roipack, get_dropout
+from .utils import get_cortical_mask, get_mapper, get_dropout
 from . import polyutils
 from openctm import CTMfile
 
@@ -74,7 +74,7 @@ class BrainCTM(object):
             self.types.append(typename)
 
     def addCurvature(self, **kwargs):
-        npz = np.load(surfs.getAnat(self.subject, type='curvature', **kwargs))
+        npz = surfs.getAnat(self.subject, type='curvature', **kwargs)
         try:
             self.left.aux[:,1] = npz['left'][self.left.mask]
             self.right.aux[:,1] = npz['right'][self.right.mask]
@@ -118,7 +118,7 @@ class BrainCTM(object):
         ##### Save the SVG with remapped indices
         if self.left.flat is not None:
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            roipack = get_roipack(self.subject, pts=flatpts)
+            roipack = surfs.getOverlay(self.subject, pts=flatpts)
             layer = roipack.setup_labels()
             with open(svgname, "w") as fp:
                 for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):

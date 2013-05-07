@@ -1,7 +1,7 @@
+import io
 import os
 import sys
 import binascii
-import io
 import numpy as np
 
 from .db import surfs

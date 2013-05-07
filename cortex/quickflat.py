@@ -8,14 +8,11 @@ import binascii
 import numpy as np
 
 from . import utils
-from . import polyutils
 from . import dataset
 from .db import surfs
 
-from scipy import sparse
-from scipy.spatial import cKDTree, Delaunay
-
 def _gen_flat_border(subject, height=1024):
+    from . import polyutils
     flatpts, flatpolys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
     flatpolyset = set(map(tuple, flatpolys))
     
@@ -85,6 +82,8 @@ def _gen_flat_border(subject, height=1024):
     return lines, ismwalls
 
 def _make_vertex_cache(subject, height=1024):
+    from scipy import sparse
+    from scipy.spatial import cKDTree
     flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
     fmax, fmin = flat.max(0), flat.min(0)
@@ -102,6 +101,8 @@ def _make_vertex_cache(subject, height=1024):
     return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
 
 def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
+    from scipy import sparse
+    from scipy.spatial import cKDTree, Delaunay
     fid, polys = surfs.getSurf(subject, "fiducial", merge=True, nudge=True)
     flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
@@ -150,6 +151,7 @@ def get_flatcache(subject, xfmname, pixelwise=True, projection='nearest', recach
             pixmap = _make_vertex_cache(subject, height=height)
         np.savez(cachefile, data=pixmap.data, indices=pixmap.indices, indptr=pixmap.indptr, shape=pixmap.shape)
     else:
+        from scipy import sparse
         npz = np.load(cachefile)
         pixmap = sparse.csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
 

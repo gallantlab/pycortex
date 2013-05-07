@@ -1,4 +1,3 @@
-import nibabel
 import os
 import numpy as np
 
@@ -119,6 +118,7 @@ def mosaic(data, dim=0, show=True, **kwargs):
     return output, (nwide, ntall)
 
 def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):
+    import nibabel
     from matplotlib import cm
     import matplotlib.pyplot as plt
 
@@ -170,8 +170,8 @@ def show_mip(data, **kwargs):
 
 def show_glass(data, subject, xfmname, pad=10):
     '''Create a classic "glass brain" view of the data, with the outline'''
-    nib = nibabel.load(surfs.getAnat(subject, 'fiducial'))
-
+    import nibabel
+    nib = surfs.getAnat(subject, 'fiducial')
     mask = nib.get_data()
 
     left, right = np.nonzero(np.diff(mask.max(0).max(0)))[0][[0,-1]]
@@ -192,6 +192,7 @@ def epi2anatspace(data, subject, xfmname):
     """
     import tempfile
     import subprocess
+    import nibabel
 
     ## Get transform, save out into ascii file
     xfm = surfs.getXfm(subject, xfmname)

@@ -26,10 +26,7 @@ HDF5 format:
     ds1
     ds2
 """
-import time
-
 import numpy as np
-import tables
 
 from .db import surfs
 from .xfm import Transform
@@ -48,6 +45,7 @@ class Dataset(object):
 
     @classmethod
     def from_file(cls, filename):
+        import tables
         datasets = dict()
         h5 = tables.openFile(filename)
         for node in h5.walkNodes("/datasets/"):
@@ -92,6 +90,7 @@ class Dataset(object):
         return self.__dict__.keys() + self.datasets.keys()
 
     def save(self, filename, pack=False):
+        import tables
         h5 = tables.openFile(filename, "a")
         _hdf_init(h5)
         for name, data in self.datasets.items():
@@ -114,6 +113,7 @@ class Dataset(object):
         h5.close()
 
     def getSurf(self, subject, type, hemi='both', merge=False, nudge=False):
+        import tables
         if hemi == 'both':
             left = self.getSurf(subject, type, "lh")
             right = self.getSurf(subject, type, "rh")
@@ -136,6 +136,7 @@ class Dataset(object):
             raise IOError('Subject not found in package')
 
     def getXfm(self, subject, xfmname):
+        import tables
         try:
             node = getattr(getattr(self.subjects, subject).transforms, xfmname)
             return Transform(node.xfm[:], node.attrs.shape)
@@ -143,6 +144,7 @@ class Dataset(object):
             raise IOError('Transform not found in package')
 
     def getMask(self, subject, xfmname, maskname):
+        import tables
         try:
             node = getattr(getattr(self.subjects, subject).transforms, xfmname).masks
             return getattr(node, maskname)[:]
@@ -229,6 +231,7 @@ class BrainData(object):
 
     @classmethod
     def from_file(cls, filename, name="data"):
+        import tables
         if isinstance(filename, str):
             fname, ext = os.path.splitext(filename)
             if ext in (".hdf", ".h5"):
@@ -267,6 +270,7 @@ class BrainData(object):
         self.attrs['priority'] = val
 
     def save(self, filename, name="data"):
+        import tables
         if isinstance(filename, str):
             fname, ext = os.path.splitext(filename)
             if ext in (".hdf", ".h5"):
@@ -318,6 +322,7 @@ def _find_mask(nvox, subject, xfmname):
     raise ValueError('Cannot find a valid mask')
 
 def _hdf_init(h5):
+    import tables
     try:
         h5.getNode("/datasets")
     except tables.NoSuchNodeError:
@@ -329,6 +334,7 @@ def _hdf_init(h5):
 
 
 def _hdf_write(h5, data, name="data", group="/datasets"):
+    import tables
     atom = tables.Atom.from_dtype(data.dtype)
     filt = tables.filters.Filters(complevel=9, complib='blosc', shuffle=True)
     create = False

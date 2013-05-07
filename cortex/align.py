@@ -1,5 +1,4 @@
 import os
-import nibabel
 import numpy as np
 
 from . import utils
