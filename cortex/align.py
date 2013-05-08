@@ -3,14 +3,14 @@ import numpy as np
 
 from . import utils
 
-def manual(subject, xfmname, epifile=None, **kwargs):
+def manual(subject, xfmname, reference=None, **kwargs):
+    from .db import surfs
     from .mayavi_aligner import get_aligner
     def save_callback(aligner):
-        from .db import surfs
-        surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', epifile=epifile)
+        surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', reference=reference)
         print("saved xfm")
 
-    m = get_aligner(subject, xfmname, epifile=epifile, **kwargs)
+    m = get_aligner(subject, xfmname, epifile=reference, **kwargs)
     m.save_callback = save_callback
     m.configure_traits()
     
@@ -25,8 +25,7 @@ def manual(subject, xfmname, epifile=None, **kwargs):
             if resp in ["y", "yes"]:
                 print("Saving...")
                 try:
-                    from . import db
-                    db.surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', epifile=epifile)
+                    surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', reference=reference)
                 except Exception as e:
                     print("AN ERROR OCCURRED, THE TRANSFORM WAS NOT SAVED: %s"%e)
                 print("Complete!")

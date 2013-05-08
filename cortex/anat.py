@@ -46,16 +46,16 @@ def thickness(outfile, subject):
 def voxelize(outfile, subject, surf='wm', mp=True):
     '''Voxelize the whitematter surface to generate the white matter mask'''
     from . import polyutils
-    shape = surfs.getAnat(subject, "raw").get_shape()
+    nib = surfs.getAnat(subject, "raw")
+    shape = nib.get_shape()
     vox = np.zeros(shape, dtype=bool)
     for pts, polys in surfs.getSurf(subject, surf, nudge=False):
         xfm = Transform(np.linalg.inv(nib.get_affine()), nib)
         vox += polyutils.voxelize(xfm(pts), polys, shape=shape, center=(0,0,0), mp=mp)
-
-    if surf == 'wm':
-        import nibabel
-        nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
-        nib.to_filename(outfile)
+        
+    import nibabel
+    nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
+    nib.to_filename(outfile)
 
     return vox.T
 

@@ -115,7 +115,8 @@ Dataset.prototype = {
         uniforms.hatch.texture.needsUpdate = true;
         uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
         uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
-        uniforms.volxfm.value[dim].set.apply(uniforms.volxfm.value[dim], this.xfm);
+        var xfm = uniforms.volxfm.value[dim];
+        xfm.set.apply(xfm, this.xfm);
         this.set(uniforms, dim, 0);
     },
     set: function(uniforms, dim, frame) {
@@ -128,6 +129,8 @@ Dataset.prototype = {
             }
         }
     },
+
+
     render: function(viewer, res) {
         var scene = new THREE.Scene(), 
             camera = new THREE.OrthographicCamera(-100, 100, -100, 100, -100, 100),

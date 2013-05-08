@@ -148,6 +148,7 @@ class Database(object):
             flatmask='npz',
             thickness='npz',
             distortion='npz',
+            voxelize="nii.gz",
         )
         
         opts = ""
@@ -157,7 +158,7 @@ class Database(object):
         anatfile = anatform.format(type=type, opts=opts, ext=types[type])
 
         if not os.path.exists(anatfile) or recache:
-            print("%s anatomical not found, generating..."%type)
+            print("Generating %s anatomical..."%type)
             from . import anat
             getattr(anat, type)(anatfile, subject, **kwargs)
 
@@ -203,14 +204,15 @@ class Database(object):
 
         import nibabel
 
-        fname = os.path.join(filestore, subject, "transforms", name)
+        path = os.path.join(filestore, subject, "transforms", name)
+        fname = os.path.join(path, "matrices.xfm")
         if os.path.exists(fname):
             jsdict = json.load(open(fname))
         else:
-            os.mkdir(filestore, subject, "transforms", name)
+            os.mkdir(path)
             if reference is None:
                 raise ValueError("Please specify a reference")
-            fpath = os.path.join(filestore, subject, "transforms", name, "reference.nii.gz")
+            fpath = os.path.join(path, "reference.nii.gz")
             nib = nibabel.load(reference)
             data = nib.get_data()
             if len(data.shape) > 3:
@@ -222,7 +224,7 @@ class Database(object):
 
             jsdict = dict()
 
-        nib = nibabel.load(os.path.join(filestore, subject, "transforms", name, "reference.nii.gz"))
+        nib = nibabel.load(os.path.join(path, "reference.nii.gz"))
         if xfmtype == "magnet":
             jsdict['magnet'] = xfm.tolist()
             jsdict['coord'] = np.dot(np.linalg.inv(nib.get_affine()), xfm).tolist()

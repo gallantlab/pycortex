@@ -231,15 +231,26 @@ FacePick.prototype = {
                 geom.morphNormals[i][idx*3+1],
                 geom.morphNormals[i][idx*3+2])).multiplyScalar(influ[i]));
         }
-        pos.addSelf((new THREE.Vector3(
+        var fid = new THREE.Vector3(
             geom.attributes.position.array[idx*3],
             geom.attributes.position.array[idx*3+1],
-            geom.attributes.position.array[idx*3+2])).multiplyScalar(1-sum));
+            geom.attributes.position.array[idx*3+2]);
+        if (geom.attributes.wm) {
+            var mix = this.viewer.uniforms.thickmix.value;
+            var stride = geom.attributes.wm.stride;
+            fid.multiplyScalar(1-mix).addSelf(new THREE.Vector3(
+                geom.attributes.wm.array[idx*stride],
+                geom.attributes.wm.array[idx*stride+1],
+                geom.attributes.wm.array[idx*stride+2]).multiplyScalar(mix)
+            );
+        }
+
+        pos.addSelf(fid.clone().multiplyScalar(1-sum));
         norm.addSelf((new THREE.Vector3(
             geom.attributes.normal.array[idx*3],
             geom.attributes.normal.array[idx*3+1],
             geom.attributes.normal.array[idx*3+2])).multiplyScalar(1-sum));
-        return {pos:pos, norm:norm, name:hemi};
+        return {pos:pos, norm:norm, fid:fid, name:hemi};
     },
 
     undblpick: function() {
@@ -255,6 +266,7 @@ FacePick.prototype = {
             ax.obj.position = vert.pos;
             // Rescale axes for flat view
             ax.obj.scale.x = 1.000-mixevt.flat;
+            ax.obj.children[1].visible = mixevt.mix == 0;
         }
         this._valid = false;
     },
@@ -272,10 +284,22 @@ FacePick.prototype = {
             this.axes = [];
 
         var axes = makeAxes(50, 0xffffff);
-        axes.position = vert.pos;
-        axes.scale.x = 1.0001-this.viewer.flatmix;
-        this.axes.push({idx:ptidx, obj:axes, hemi:hemi});
-        this.viewer.meshes[vert.name].add(axes);
+
+        var xfm = this.viewer.uniforms.volxfm.value[0];
+        var inv = new THREE.Matrix4().getInverse(xfm);
+        var vox = xfm.multiplyVector3(vert.fid.clone());
+        var voxpos = new THREE.Vector3(Math.round(vox.x), Math.round(vox.y), Math.round(vox.z));
+        axes.vox.applyMatrix(inv)
+        axes.vox.position = inv.multiplyVector3(voxpos).subSelf(vert.fid);
+
+        var marker = new THREE.Object3D();
+        marker.add(axes.axes);
+        marker.add(axes.vox);
+        marker.position = vert.pos;
+        marker.scale.x = 1.0001-this.viewer.flatmix;
+
+        this.axes.push({idx:ptidx, obj:marker, hemi:hemi});
+        this.viewer.meshes[vert.name].add(marker);
         this.viewer.schedule();
     }
 }
@@ -290,7 +314,6 @@ function makeAxes(length, color) {
     function v(x,y,z){ 
         return new THREE.Vector3(x,y,z); 
     }
-
     var lineGeo = new THREE.Geometry();
     lineGeo.vertices.push(
         v(-length, 0, 0), v(length, 0, 0),
@@ -300,5 +323,9 @@ function makeAxes(length, color) {
     var lineMat = new THREE.LineBasicMaterial({ color: color, linewidth: 2});
     var axes = new THREE.Line(lineGeo, lineMat);
     axes.type = THREE.Lines;
-    return axes;
+
+    var vox = new THREE.CubeGeometry(1, 1, 1);
+    var voxMat = new THREE.MeshLambertMaterial({color:0xff0000, transparent:true, opacity:0.75});
+    var voxmesh = new THREE.Mesh(vox, voxMat);
+    return {axes:axes, vox:voxmesh};
 }

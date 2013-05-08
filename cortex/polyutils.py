@@ -401,7 +401,7 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True)
     import ImageDraw
     
     pd = tvtk.PolyData(points=pts + center + (0, 0, 0), polys=polys)
-    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,.5)])
+    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
     clip = tvtk.ClipPolyData(clip_function=plane, input=pd)
     feats = tvtk.FeatureEdges(
         manifold_edges=False, 
@@ -411,15 +411,15 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True)
         input=clip.output)
 
     def func(i):
-        plane.points = [(0,0,i+.5)]
+        plane.points = [(0,0,i)]
         feats.update()
         vox = np.zeros(shape[:2][::-1], np.uint8)
         if feats.output.number_of_lines > 0:
             epts = feats.output.points.to_array()
             edges = feats.output.lines.to_array().reshape(-1, 3)[:,1:]
             for poly in trace_poly(edges):
-                vox += rasterize(epts[poly][:,:2], shape=shape[:2][::-1])
-        return vox
+                vox += rasterize(epts[poly][:,:2]+[.5, .5], shape=shape[:2][::-1])
+        return vox % 2
 
     if mp:
         from . import mp

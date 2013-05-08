@@ -510,8 +510,7 @@ MRIview.prototype = {
             if (names.length > (this.colormap.image.height > 8 ? 2 : 1))
                 return false;
 
-            $("#datainterp option").each(function() { $(this).attr("selected", null); });
-            $("#datainterp option[value='"+ds.filter+"']").attr("selected", "selected");
+            this.setVoxView(ds.filter, viewopts.voxlines);
             ds.init(this.uniforms, this.meshes, 0);
             ds.set(this.uniforms, 0, 0, true);
             $("#vrange").slider("option", {min: ds.lmin, max:ds.lmax});
