@@ -334,7 +334,7 @@ ul#datasets li .handle {
     min-width:80px;
 }
 #bottombar:hover, #bottombar:active {
-    margin-top:-80px;
+    margin-top:-20px;
 }
 #moviecontrols {
     width:100%;

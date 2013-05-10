@@ -36,55 +36,7 @@
 {% block javascripts %}
 {% end %}
 
-<link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
-<script type='text/javascript'>
-	function mobile() {
-		//return /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
-		return false;
-	}
-	function webgl() { 
-		try { 
-			return !! window.WebGLRenderingContext && !! document.createElement( 'canvas' ).getContext( 'experimental-webgl' ); 
-		} catch( e ) { 
-			return false; 
-		} 
-	};
-	function vtex(vtmin, atmin) {
-		var gl = document.createElement("canvas").getContext('experimental-webgl');
-		var vtex = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
-		var atex = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
-		if (vtex >= vtmin && atex >= atmin)
-			return true;
-		return false;
-	}
-
-	{% block jsinit %}
-	{% end %}
-
-	var cmapnames = {}
-
-	$(document).ready(function() {
-		$("#colormap option").each(function(idx) {
-			cmapnames[$(this).text()] = idx;
-		});
-
-		if (mobile()) {
-			$(".loadmsg").hide();
-			$("#ctmload").html("<p>Sorry, mobile browsers are not supported.</p><p>Unfortunately, Android and iOS devices do not support WebGL.</p><p>Please ask Apple and Google for WebGL support in their browsers!</p>").show();
-		} else if (!webgl()) {
-			$(".loadmsg").hide();
-			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
-		} else if (!vtex(3, 5)) {
-			$(".loadmsg").hide();
-			$("#ctmload").html("<p>Sorry, your computer does not have the minimum number of texture units :(</p><p>Try upgrading your drivers and/or your browser</p>").show();
-		} else {
-			{% block onload %}
-			{% end %}
-		}
-	})
-</script>
-</head>
-<body>
+<script type='text/html' id='topbar_html'>
 <div id='topbar' class='infobar'>
 	<div class='content'>
 		<form id='display_options'>
@@ -274,28 +226,8 @@
 		</form>
 	</div>
 </div>
-<div id='main'>
-	<div id='left'>
-		<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
-		<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
-		<div id='dataname'></div>
-		<div id='braincover'></div>
-		<canvas id='brain'></canvas>
-	</div>
-	<div id='bar'>
-		<div class='vcenter'>
-			=<br/>=
-		</div>
-	</div>
-	<div id='sidepanel'>
-	    <div class='vcenter'>
-	    	<div id='pluginload' class='loadmsg'><img src='resources/images/loading.gif'>Loading...</div>
-	    	<div id='pluginbox'>
-	    	</div>
-	    </div>
-	</div>
-</div>
-
+</script>
+<script id='bottombar_html' type='text/html'>
 <div id='bottombar' class='infobar'>
 	<div class='content'>
 		<div id='moviecontrols'>
@@ -324,6 +256,85 @@
 				<td><div id="shifthemis"></div></td>
 			</tr>
 		</table>
+	</div>
+</div>
+</script>
+
+<link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
+<script type='text/javascript'>
+	function validator() {
+		var gl;
+		this.webgl = false;
+		this.android = /Android/i.test(navigator.userAgent);
+		this.mobile = /webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
+		try {
+			if (window.WebGLRenderingContext) {
+				gl = document.createElement("canvas").getContext('experimental-webgl');
+				this.webgl = !! gl;
+			}
+		} catch (e) {}
+		this.vtex = function(vtmin, atmin) {
+			var vtex = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+			var atex = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+			if (vtex >= vtmin && atex >= atmin)
+				return true;
+			return false;
+		}
+		this.vattr = function(vmin) {
+			return gl.getParameter(gl.MAX_VERTEX_ATTRIBS) >= vmin;
+		}
+	}
+	var validate = validator();
+
+	{% block jsinit %}
+	{% end %}
+
+	var cmapnames = {}
+
+	$(document).ready(function() {
+		$("#colormap option").each(function(idx) {
+			cmapnames[$(this).text()] = idx;
+		});
+
+		if (validate.mobile) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, mobile browsers are not supported.</p><p>Unfortunately, iOS devices do not support WebGL.</p><p>Please ask Apple for WebGL support in their browsers!</p>").show();
+		} else if (!validate.webgl) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
+		} else if (!validate.vtex(3, 5)) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, your computer does not have the minimum number of texture units :(</p><p>Try upgrading your drivers and/or your browser</p>").show();
+		} else {
+			{% block onload %}
+			{% end %}
+		}
+
+	});
+</script>
+
+</head>
+<body>
+
+<div id='main'>
+	<div id='left'>
+		<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
+		<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
+		<div id='dataname'></div>
+		<div id='braincover'></div>
+		<canvas id='brain'></canvas>
+	</div>
+	<div id='bar'>
+		<div class='vcenter'>
+			=<br/>=
+		</div>
+	</div>
+	<div id='sidepanel'>
+	    <div class='vcenter'>
+	    	<div id='pluginload' class='loadmsg'><img src='resources/images/loading.gif'>Loading...</div>
+	    	<div id='pluginbox'>
+	    	</div>
+	    </div>
 	</div>
 </div>
 
