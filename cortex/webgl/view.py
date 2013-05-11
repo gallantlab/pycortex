@@ -64,8 +64,8 @@ def _normalize_data(data, pfunc):
 def _make_bindat(json, fmt="%s.bin"):
     newjs, bindat = dict(), dict()
     for name, data in list(json.items()):
-        if "data" in data:
-            newjs[name] = dict(data)
+        if isinstance(data, dict):
+            newjs[name] = data.copy()
             newjs[name]['data'] = fmt%name
             bindat[name] = serve.make_binarray(data['data'])
         else:
@@ -272,10 +272,13 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
 
     if pickerfun is None:
         pickerfun = lambda a,b: None
-    
-    class PickerHandler(web.RequestHandler):
-        def get(self):
-            pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
+
+    class JSLocalMixer(serve.JSLocal):
+        def addData(self, **kwargs):
+            Proxy = serve.JSProxy(self.send, "window.viewer.addData")
+            json, data = _make_bindat(_normalize_data(kwargs, pfunc), fmt='data/%s/')
+            queue.put(data)
+            return Proxy(json)
 
     class JSMixer(serve.JSProxy):
         def addData(self, **kwargs):
@@ -326,22 +329,35 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
                 self.saveIMG(filename%i)
                 saveevt.wait()
 
+    class PickerHandler(web.RequestHandler):
+        def initialize(self, server):
+            self.client = JSLocalMixer(server.srvsend, server.srvresp)
+
+        def get(self):
+            pickerfun(self.client, int(self.get_argument("voxel")), int(self.get_argument("vertex")))
+
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
         def get_client(self):
             self.c_evt.wait()
             self.c_evt.clear()
             return JSMixer(self.send, "window.viewer")
+
+        def get_local_client(self):
+            return JSMixer(self.srvsend, "window.viewer")
+
     if port is None:
         port = random.randint(1024, 65536)
         
+    srvdict = dict()
     server = WebApp([
             (r'/ctm/(.*)', CTMHandler),
             (r'/data/(.*)', DataHandler),
             (r'/mixer.html', MixerHandler),
+            (r'/picker', PickerHandler, srvdict),
             (r'/', MixerHandler),
-            (r'/picker', PickerHandler)
         ], port)
+    srvdict['server'] = server
     server.start()
     print("Started server on port %d"%server.port)
     if open_browser:

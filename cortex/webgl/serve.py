@@ -220,6 +220,7 @@ class ClientSocket(websocket.WebSocketHandler):
             self.parent.clients.value += 1
             self.parent.c_evt.set()
         else:
+            self.parent.lastmsg = message
             self.parent._response.send(message)
 
 class WebApp(mp.Process):
@@ -256,6 +257,18 @@ class WebApp(mp.Process):
         else:
             for sock in self.sockets:
                 sock.write_message(msg)
+
+    def srvsend(self, **msg):
+        if not isinstance(msg, str):
+            msg = json.dumps(msg, cls=NPEncode)
+
+        for sock in self.sockets:
+            sock.write_message(msg)
+
+    def srvresp(self):
+        if self.response.poll():
+            json.loads(self.response.recv())
+        return self.lastmsg
 
     def send(self, **msg):
         if not isinstance(msg, str):
@@ -312,7 +325,15 @@ class JSProxy(object):
         if isinstance(resp[0], dict) and "error" in resp[0]:
             raise Exception(resp[0]['error'])
         else:
-            return resp 
+            return resp
+
+class JSLocal(JSProxy):
+    def __init__(self, sendfunc, getfunc, **kwargs):
+        import time
+        def sendget(**msg):
+            sendfunc(**msg)
+            return getfunc()
+        super(JSLocal, self).__init__(sendget, **kwargs)
 
 if __name__ == "__main__":
     app = WebApp([], 8888)
