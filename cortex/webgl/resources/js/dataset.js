@@ -32,7 +32,7 @@ function Dataset(json) {
     this.textures = [];
     this.datatex = [];
     
-    var loadtex = function(idx) {
+    var loadmosaic = function(idx) {
         var img = new Image();
         img.addEventListener("load", function() {
             var tex;
@@ -66,6 +66,10 @@ function Dataset(json) {
         }.bind(this));
         img.src = this.data[this.textures.length];
     }.bind(this);
+    
+    var loadnpy = function(idx) {
+        
+    }
 
     loadtex(0);
     $("#dataload").show();

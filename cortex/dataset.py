@@ -50,7 +50,7 @@ class Dataset(object):
         h5 = tables.openFile(filename)
         for node in h5.walkNodes("/datasets/"):
             if not isinstance(node, tables.Group):
-                datasets[node.name] = BrainData.from_file(h5, name=node.name)
+                datasets[node.name] = _from_file(h5, name=node.name)
 
         ds = cls(**datasets)
         if len(h5.root.subjects._v_children.keys()):
@@ -166,10 +166,9 @@ class BrainData(object):
         self.data = data
         self.subject = subject
         self.xfmname = xfmname
+        self.attrs = kwargs
         
         self._check_size(mask)
-        self.attrs = kwargs
-
         self.masked = Masker(self)
 
     def _check_size(self, mask):
@@ -193,12 +192,10 @@ class BrainData(object):
         else:
             raise ValueError("Invalid data shape")
 
-        self.vertex = self.xfmname is None
-
         if self.linear:
-            #try to guess mask type
-            if mask is None and not self.vertex:
-                nvox = self.data.shape[-1]
+            if mask is None:
+                #try to guess mask type
+                nvox = self.data.shape[-2 if self.raw else -1]
                 if self.raw:
                     nvox = self.data.shape[-2]
                 self.masktype, self.mask = _find_mask(nvox, self.subject, self.xfmname)
@@ -218,6 +215,11 @@ class BrainData(object):
                 raise ValueError("Volumetric data must be same shape as reference for transform")
             self.shape = shape
 
+    def map(self, projection="nearest"):
+        from . import utils
+        mapper = utils.get_mapper(self.subject, self.xfmname, projection)
+        return mapper(self)
+
     def __repr__(self):
         maskstr = "volumetric"
         if self.linear:
@@ -228,22 +230,6 @@ class BrainData(object):
             maskstr += " movie"
         maskstr = maskstr[0].upper()+maskstr[1:]
         return "<%s data for (%s, %s)>"%(maskstr, self.subject, self.xfmname)
-
-    @classmethod
-    def from_file(cls, filename, name="data"):
-        import tables
-        if isinstance(filename, str):
-            fname, ext = os.path.splitext(filename)
-            if ext in (".hdf", ".h5"):
-                h5 = tables.openFile(filename)
-                node = h5.getNode("/datasets", name)
-                data, attrs = _hdf_read(node)
-                h5.close()
-                return cls(data, **attrs)
-        elif isinstance(filename, tables.File):
-            node = filename.getNode("/datasets", name)
-            data, attrs = _hdf_read(node)
-            return cls(data, **attrs)
 
     @property
     def volume(self):
@@ -292,6 +278,57 @@ class BrainData(object):
         for name, value in self.attrs.items():
             node.attrs[name] = value
 
+class VertexData(BrainData):
+    def __init__(self, data, subject, **kwargs):
+        """Vertex Data possibilities
+
+        raw linear movie: (t, v, c)
+        reg linear movie: (t, v)
+        raw linear image: (v, c)
+        reg linear image: (v,)
+        """
+        self.data = data
+        self.subject = subject
+        self.attrs = kwargs
+
+        self.raw = data.dtype == np.uint8
+        if data.ndim == 3:
+            self.movie = True
+            if not self.raw:
+                raise ValueError('Invalid data shape')
+        elif data.ndim == 2:
+            self.movie = not self.raw
+
+        pts, polys = surfs.getSurf(self.subject, "fiducial", merge=True)
+        self.nverts = self.data.shape[-2 if self.raw else -1]
+        if len(pts) != self.nverts:
+            raise ValueError('Invalid number of vertices for subject')
+
+    def _check_size(self):
+        raise NotImplementedError
+
+    def volume(self, xfmname, projection='nearest', **kwargs):
+        from . import utils
+        mapper = utils.get_mapper(self.subject, xfmname, projection)
+        return mapper.backwards(self, **kwargs)
+
+    def __repr__(self):
+        maskstr = ''
+        if 'projection' in self.attrs:
+            maskstr = '%s mapped'%self.attrs['projection']
+
+        if self.raw:
+            maskstr += " raw"
+        if self.movie:
+            maskstr += " movie"
+        return "<%s vertex data for %s>"%(maskstr, self.subject)
+
+    def _write_hdf(self, h5, name="data"):
+        node = _hdf_write(h5, self.data, name=name)
+        node.attrs.subject = self.subject
+        for name, value in self.attrs.items():
+            node.attrs[name] = value
+
 class Masker(object):
     def __init__(self, ds):
         self.ds = ds
@@ -306,6 +343,26 @@ class Masker(object):
         if self.ds.movie:
             return BrainData(self.ds.volume[:,mask], s, x, mask=masktype)
         return BrainData(self.ds.volume[mask], s, x, mask=masktype)
+
+
+def _from_file(filename, name="data"):
+    import tables
+    if isinstance(filename, str):
+        fname, ext = os.path.splitext(filename)
+        if ext in (".hdf", ".h5"):
+            h5 = tables.openFile(filename)
+            node = h5.getNode("/datasets", name)
+            data, attrs = _hdf_read(node)
+            h5.close()
+            if 'xfmname' in attrs:
+                return BrainData(data, **attrs)
+            return VertexData(data, **attrs)
+    elif isinstance(filename, tables.File):
+        node = filename.getNode("/datasets", name)
+        data, attrs = _hdf_read(node)
+        if 'xfmname' in attrs:
+            return BrainData(data, **attrs)
+        return VertexData(data, **attrs)
 
 def _find_mask(nvox, subject, xfmname):
     import re
