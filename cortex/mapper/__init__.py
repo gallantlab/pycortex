@@ -114,7 +114,7 @@ class Mapper(object):
             mapped[0] = mapped[0][:, self.idxmap[0]]
             mapped[1] = mapped[1][:, self.idxmap[1]]
 
-        return VertexData(np.hstack(mapped), data.subject, **data.attrs)
+        return dataset.VertexData(np.hstack(mapped), data.subject, **data.attrs)
         
     def backwards(self, verts, fast=True):
         '''Projects vertex data back into volume space
