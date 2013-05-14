@@ -2,7 +2,7 @@
  * @author Eberhard Graether / http://egraether.com/
  */
 
-THREE.LandscapeControls = function ( camera ) {
+THREE.LandscapeControls = function ( cover, camera ) {
 
     THREE.EventTarget.call( this );
 
@@ -16,7 +16,7 @@ THREE.LandscapeControls = function ( camera ) {
 
     this.keystate = null;
     this.camera = camera;
-    this.domElement = document.getElementById("braincover");
+    this.domElement = cover;
 
     // API
     this.enabled = true;

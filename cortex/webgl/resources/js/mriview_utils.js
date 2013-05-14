@@ -67,75 +67,78 @@ function splitverts(geom, left_off) {
     newgeom.computeBoundingBox();
     return newgeom;
 }
-
-function getTexture(gl, renderbuf) {
-    var canvas = document.createElement("canvas");
-    canvas.width = renderbuf.width;
-    canvas.height = renderbuf.height;
-    var ctx = canvas.getContext("2d");
-    var img = ctx.createImageData(renderbuf.width, renderbuf.height);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
-    gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    ctx.putImageData(img, 0,0);
-    ctx.scale(1, -1);
-    img = new Image();
-    img.src = canvas.toDataURL();
-    return img;
-}
-
-function makeFlat(uv, flatlims, flatoff, right) {
-    var fmin = flatlims[0], fmax = flatlims[1];
-    var flat = new Float32Array(uv.length / 2 * 3);
-    var norms = new Float32Array(uv.length / 2 * 3);
-    for (var i = 0, il = uv.length / 2; i < il; i++) {
-        if (right) {
-            flat[i*3+1] = flatscale*uv[i*2] + flatoff[1];
-            norms[i*3] = 1;
-        } else {
-            flat[i*3+1] = flatscale*-uv[i*2] + flatoff[1];
-            norms[i*3] = -1;
-        }
-        flat[i*3+2] = flatscale*uv[i*2+1];
-        uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
-        uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
-    }
-
-    return {pos:flat, norms:norms};
-}
-
-function makeHatch(size, linewidth, spacing) {
-    //Creates a cross-hatching pattern in canvas for the dropout shading
-    if (spacing === undefined)
-        spacing = 32;
-    if (size === undefined)
-        size = 128;
-    var canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    var ctx = canvas.getContext("2d");
-    ctx.lineWidth = linewidth ? linewidth: 8;
-    ctx.strokeStyle = "white";
-    for (var i = 0, il = size*2; i < il; i+=spacing) {
-        ctx.beginPath();
-        ctx.moveTo(i-size, 0);
-        ctx.lineTo(i, size);
-        ctx.stroke();
-        ctx.moveTo(i, 0)
-        ctx.lineTo(i-size, size);
-        ctx.stroke();
-    }
-
-    var tex = new THREE.Texture(canvas);
-    tex.needsUpdate = true;
-    tex.premultiplyAlpha = true;
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    tex.magFilter = THREE.LinearFilter;
-    tex.minFilter = THREE.LinearMipMapLinearFilter;
-    return tex;
-};
-
 Number.prototype.mod = function(n) {
     return ((this%n)+n)%n;
 }
+
+var mriview = (function(module) {
+    module.getTexture = function(gl, renderbuf) {
+        var canvas = document.createElement("canvas");
+        canvas.width = renderbuf.width;
+        canvas.height = renderbuf.height;
+        var ctx = canvas.getContext("2d");
+        var img = ctx.createImageData(renderbuf.width, renderbuf.height);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
+        gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        ctx.putImageData(img, 0,0);
+        ctx.scale(1, -1);
+        img = new Image();
+        img.src = canvas.toDataURL();
+        return img;
+    }
+
+    module.makeFlat = function(uv, flatlims, flatoff, right) {
+        var fmin = flatlims[0], fmax = flatlims[1];
+        var flat = new Float32Array(uv.length / 2 * 3);
+        var norms = new Float32Array(uv.length / 2 * 3);
+        for (var i = 0, il = uv.length / 2; i < il; i++) {
+            if (right) {
+                flat[i*3+1] = module.flatscale*uv[i*2] + flatoff[1];
+                norms[i*3] = 1;
+            } else {
+                flat[i*3+1] = module.flatscale*-uv[i*2] + flatoff[1];
+                norms[i*3] = -1;
+            }
+            flat[i*3+2] = module.flatscale*uv[i*2+1];
+            uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
+            uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
+        }
+
+        return {pos:flat, norms:norms};
+    }
+
+    module.makeHatch = function(size, linewidth, spacing) {
+        //Creates a cross-hatching pattern in canvas for the dropout shading
+        if (spacing === undefined)
+            spacing = 32;
+        if (size === undefined)
+            size = 128;
+        var canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        var ctx = canvas.getContext("2d");
+        ctx.lineWidth = linewidth ? linewidth: 8;
+        ctx.strokeStyle = "white";
+        for (var i = 0, il = size*2; i < il; i+=spacing) {
+            ctx.beginPath();
+            ctx.moveTo(i-size, 0);
+            ctx.lineTo(i, size);
+            ctx.stroke();
+            ctx.moveTo(i, 0)
+            ctx.lineTo(i-size, size);
+            ctx.stroke();
+        }
+
+        var tex = new THREE.Texture(canvas);
+        tex.needsUpdate = true;
+        tex.premultiplyAlpha = true;
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.magFilter = THREE.LinearFilter;
+        tex.minFilter = THREE.LinearMipMapLinearFilter;
+        return tex;
+    };
+
+    return module;
+}(mriview || {}));

@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <link rel="stylesheet" href="resources/css/ui-lightness/jquery-ui-1.8.21.custom.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/jquery.miniColors.css" type='text/css' />
+<link rel="stylesheet" href="resources/css/w2ui-1.2.min.css" type='text/css' />
 
 <script type='text/javascript' src='resources/js/jquery-1.8.0.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery-ui-1.8.23.custom.min.js'></script>
@@ -29,14 +30,17 @@
 <script type='text/javascript' src="resources/js/LandscapeControls.js"></script>
 <script type='text/javascript' src="resources/js/kdTree-min.js"></script>
 <script type='text/javascript' src='resources/js/facepick.js'></script>
+<script type='text/javascript' src='resources/js/w2ui-1.2.min.js'></script>
+<script type='text/javascript' src='resources/js/figure.js'></script>
 <script type='text/javascript' src='resources/js/mriview.js'></script>
+
 {% if python_interface %}
 <script type='text/javascript' src='resources/js/python_interface.js'></script>
 {% end %}
 {% block javascripts %}
 {% end %}
 
-<script type='text/html' id='topbar_html'>
+<script type='text/html' id='mriview_html'>
 <div id='topbar' class='infobar'>
 	<div class='content'>
 		<form id='display_options'>
@@ -226,8 +230,13 @@
 		</form>
 	</div>
 </div>
-</script>
-<script id='bottombar_html' type='text/html'>
+<div id='main'>
+	<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
+	<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
+	<div id='dataname'></div>
+	<div id='braincover'></div>
+	<canvas id='brain'></canvas>
+</div>
 <div id='bottombar' class='infobar'>
 	<div class='content'>
 		<div id='moviecontrols'>
@@ -262,7 +271,7 @@
 
 <link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
 <script type='text/javascript'>
-	function validator() {
+	var validator = new function() {
 		var gl;
 		this.webgl = false;
 		this.android = /Android/i.test(navigator.userAgent);
@@ -283,8 +292,7 @@
 		this.vattr = function(vmin) {
 			return gl.getParameter(gl.MAX_VERTEX_ATTRIBS) >= vmin;
 		}
-	}
-	var validate = validator();
+	};
 
 	{% block jsinit %}
 	{% end %}
@@ -296,13 +304,13 @@
 			cmapnames[$(this).text()] = idx;
 		});
 
-		if (validate.mobile) {
+		if (validator.mobile) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, mobile browsers are not supported.</p><p>Unfortunately, iOS devices do not support WebGL.</p><p>Please ask Apple for WebGL support in their browsers!</p>").show();
-		} else if (!validate.webgl) {
+		} else if (!validator.webgl) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
-		} else if (!validate.vtex(3, 5)) {
+		} else if (!validator.vtex(3, 5)) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, your computer does not have the minimum number of texture units :(</p><p>Try upgrading your drivers and/or your browser</p>").show();
 		} else {
@@ -315,28 +323,6 @@
 
 </head>
 <body>
-
-<div id='main'>
-	<div id='left'>
-		<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
-		<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
-		<div id='dataname'></div>
-		<div id='braincover'></div>
-		<canvas id='brain'></canvas>
-	</div>
-	<div id='bar'>
-		<div class='vcenter'>
-			=<br/>=
-		</div>
-	</div>
-	<div id='sidepanel'>
-	    <div class='vcenter'>
-	    	<div id='pluginload' class='loadmsg'><img src='resources/images/loading.gif'>Loading...</div>
-	    	<div id='pluginbox'>
-	    	</div>
-	    </div>
-	</div>
-</div>
 
 {% block extrahtml %}
 {% end %}

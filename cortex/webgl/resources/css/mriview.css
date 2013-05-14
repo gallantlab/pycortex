@@ -9,6 +9,9 @@ body {
     overflow:hidden;
     text-align:center;
 }
+div.jsplot_figure {
+    height:100%;
+}
 canvas { display:block; }
 input[type='text'] {
     border:1px solid #CCC;

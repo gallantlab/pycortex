@@ -8,7 +8,10 @@
 			voxlines: {{voxlines}},
 			voxline_width: {{voxline_width}},
 		};
-		viewer = new MRIview();
+
+		figure = new jsplot.W2Figure();
+		viewer = figure.add(mriview.Viewer, "main", true);
+
 		sock = new Websock();
 		viewer.load("/ctm/");
 		viewer.addData(classify({{data}}));
