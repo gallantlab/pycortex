@@ -5,12 +5,14 @@ body {
     font-family:helvetica;
     font-size:10pt;
     height:100%;
-    min-height:100%;
-    overflow:hidden;
     text-align:center;
 }
 div.jsplot_figure {
     height:100%;
+}
+.mriview_container {
+    height:100%;
+    overflow:hidden;
 }
 canvas { display:block; }
 input[type='text'] {
@@ -337,7 +339,7 @@ ul#datasets li .handle {
     min-width:80px;
 }
 #bottombar:hover, #bottombar:active {
-    margin-top:-20px;
+    margin-top:-115px;
 }
 #moviecontrols {
     width:100%;

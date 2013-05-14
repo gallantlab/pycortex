@@ -1,7 +1,7 @@
 {% autoescape None %}
 {% extends template.html %}
 {% block jsinit %}
-    var viewer, sock, viewopts;
+    var viewers = {}, figure, grid, sock, viewopts;
 {% end %}
 {% block onload %}
 		viewopts = {
@@ -9,10 +9,21 @@
 			voxline_width: {{voxline_width}},
 		};
 
+		var viewer;
+		var subjects = {{subjects}};
+		var datasets = classify({{data}});
+
 		figure = new jsplot.W2Figure();
-		viewer = figure.add(mriview.Viewer, "main", true);
+		grid = figure.add(jsplot.GridFigure, "main", true, n, n);
+		for (var i = 0; i < subjects.length; i++) {
+			viewer = grid.add(mriview.Viewer, i);
+			viewer.load("/ctm/"+subject[i]);
+
+			for (var j = 0; j < datasets.length; j++)
+
+			viewer.addData()
+			viewers[subjects[i]] = viewer;
+		}
 
 		sock = new Websock();
-		viewer.load("/ctm/");
-		viewer.addData(classify({{data}}));
 {% end %}
