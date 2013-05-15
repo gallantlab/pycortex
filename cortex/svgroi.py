@@ -254,28 +254,44 @@ class ROI(object):
         self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
     
     def _parse_svg_pts(self, data):
-        data = data.split()
-        if data[0].lower() != "m":
+        data = data.replace(",", " ").split()
+        if data.pop(0).lower() != "m":
             raise ValueError("Unknown path format")
-        offset = np.array([float(x) for x in data[1].split(',')])
-        data = data[2:]
+        #offset = np.array([float(x) for x in data[1].split(',')])
+        offset = np.array(map(float, [data.pop(0), data.pop(0)]))
         mode = "l"
         pts = [[offset[0], offset[1]]]
+        
+        def canfloat(n):
+            try:
+                float(n)
+                return True
+            except ValueError:
+                return False
+
+        lastlen = len(data)
         while len(data) > 0:
-            d = data.pop(0)
-            if isinstance(d, str) and len(d) == 1:
-                mode = d
+            #print mode, data
+            if not canfloat(data[0]):
+                mode = data.pop(0)
                 continue
             if mode == "l":
-                offset += list(map(float, d.split(',')))
+                offset += list(map(float, [data.pop(0), data.pop(0)]))
             elif mode == "L":
-                offset = np.array(list(map(float, d.split(','))))
+                offset = np.array(list(map(float, [data.pop(0), data.pop(0)])))
             elif mode == "c":
-                data.pop(0)
-                offset += list(map(float, data.pop(0).split(',')))
+                data = data[4:]
+                offset += list(map(float, [data.pop(0), data.pop(0)]))
             elif mode == "C":
-                data.pop(0)
-                offset = np.array(list(map(float, data.pop(0).split(','))))
+                data = data[4:]
+                offset = np.array(list(map(float, [data.pop(0), data.pop(0)])))
+
+            ## Check to see if nothing has happened, and, if so, fail
+            if len(data) == lastlen:
+                raise ValueError("Error parsing path.")
+            else:
+                lastlen = len(data)
+
             pts.append([offset[0],offset[1]])
 
         pts = np.array(pts)
