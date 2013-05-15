@@ -191,10 +191,11 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=T
 
     html = FallbackLoader([serve.cwd]).load("mixer.html")
 
-    subject, xfmname = dataset[0].subject, dataset[0].xfmname
     surfs.auxfile = dataset
-    xfm = surfs.getXfm(subject, xfmname, 'coord')
-    ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache, **kwargs)
+    subjects = list(set([ds.subject for name, ds in dataset]))
+    kwargs.update(dict(method='mg2', level=9, recache=recache))
+    ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
+
     metadata, images = _convert_dataset(dataset, path='/data/', fmt='%s_%d.png')
     jsmeta = json.dumps(metadata, cls=serve.NPEncode)
 
@@ -211,11 +212,12 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=T
 
     class CTMHandler(web.RequestHandler):
         def get(self, path):
-            fpath = os.path.split(ctmfile)[0]
+            subj, path = path.split('/')
             if path == '':
                 self.set_header("Content-Type", "application/json")
-                self.write(open(ctmfile).read())
+                self.write(open(ctms[subj]).read())
             else:
+                fpath = os.path.split(ctms[subj])[0]
                 mtype = mimetypes.guess_type(os.path.join(fpath, path))[0]
                 if mtype is None:
                     mtype = "application/octet-stream"
@@ -240,7 +242,14 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=T
     class MixerHandler(web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
-            self.write(html.generate(data=jsmeta, colormaps=colormaps, default_cmap=cmap, python_interface=True, **viewopts))
+            generated = html.generate(
+                data=jsmeta, 
+                colormaps=colormaps, 
+                default_cmap=cmap, 
+                python_interface=True, 
+                subjects=subjects,
+                **viewopts)
+            self.write(generated)
 
         def post(self):
             print("saving file to %s"%saveimg.value)
@@ -323,7 +332,7 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=T
         def get_client(self):
             self.c_evt.wait()
             self.c_evt.clear()
-            return JSMixer(self.send, "window.viewer")
+            return JSMixer(self.send, "window.viewers")
 
     if port is None:
         port = random.randint(1024, 65536)

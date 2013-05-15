@@ -14,7 +14,7 @@ var samplers = {
 
 function Dataset(json) {
     this.loaded = $.Deferred().done(function() { $("#dataload").hide(); });
-
+    this.subject = json.subject;
     this.data = json.data;
     this.mosaic = json.mosaic;
     this.frames = json.data.length;

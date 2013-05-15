@@ -10,16 +10,25 @@ body {
 div.jsplot_figure {
     height:100%;
 }
-.mriview_container {
+.jsplot_figure table {
+    width:100%;
+    height:100%;
+}
+.jsplot_figure tr,td {
+    overflow:hidden;
+    padding:0px;
+}
+.jsplot_axes {
     height:100%;
     overflow:hidden;
+    position:relative;
 }
 canvas { display:block; }
 input[type='text'] {
     border:1px solid #CCC;
     border-radius:10px / 2px;
 }
-table { cell-spacing:0px; }
+table { border-spacing:0; border-collapse:collapse; }
 .clear { clear:both; }
 
 .vcenter {
@@ -89,8 +98,6 @@ a:visited { color:white; }
     position:absolute;
     z-index:2;
     opacity:0;
-    width:100%;
-    height:100%;
 }
 #roilabels {
     position:absolute;
@@ -102,10 +109,6 @@ a:visited { color:white; }
 #braincover {
     z-index:8;
     position:absolute;
-    width:100%;
-    height:100%;
-    top:0px;
-    left:0px;
     opacity:0;
 }
 #hiderois {
@@ -162,13 +165,7 @@ a:visited { color:white; }
 /*************************************************
  * Loading messages
  *************************************************/
-#pluginload {
-    display:none;
-}
 #dataload {
-    width:200px;
-    left:100px;
-    top:100px;
     font-size:150%;
 }
 #dataload img {
@@ -211,6 +208,7 @@ a:visited { color:white; }
     margin:-440px auto -10px auto;      
     border-radius: 0px 0px 10px 10px / 0px 0px 10px 10px;
     text-align:left;
+    overflow:auto;
 }
 #topbar:hover, #topbar:active { 
     margin:0px auto -450px auto;
@@ -333,10 +331,10 @@ ul#datasets li .handle {
 }
 #bottombar table {
     padding:4px;
+    width:100%;
 }
 #bottombar table td:first-child {
-    width:5%;
-    min-width:80px;
+    width:40px;
 }
 #bottombar:hover, #bottombar:active {
     margin-top:-115px;

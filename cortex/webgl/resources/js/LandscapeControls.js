@@ -185,7 +185,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
     window.addEventListener( 'keydown', keydown.bind(this), false );
     window.addEventListener( 'keyup', keyup.bind(this), false );
 
-    this.resize($("#brain").width(), $("#brain").height() );
+    this.resize($(cover).width(), $(cover).height() );
     this.flatmix = 0;
     this.setCamera();
 };

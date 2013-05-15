@@ -135,9 +135,12 @@ var jsplot = (function (module) {
         this.object.appendChild(table);
         for (var i = 0; i < nrows; i++) {
             var tr = document.createElement("tr");
+            tr.style.height = (100 / nrows)+"%";
             table.appendChild(tr);
             for (var j = 0; j < ncols; j++) {
                 var td = document.createElement('td');
+                td.style.width = (100 / ncols)+'%';
+                //td.style.height = "100%";
                 tr.appendChild(td);
                 this.cells.push(td);
                 this.axes.push(null);
@@ -151,9 +154,44 @@ var jsplot = (function (module) {
         args.unshift(this);
         this.ax = module.construct(axcls, args);
         this.axes[where] = this.ax;
-        this.cells[where].appendChild(this.ax);
+        this.cells[where].appendChild(this.ax.object);
         return this.ax;
     }
+
+
+    module.Axes = function(figure) {
+        THREE.EventTarget.call(this);
+        this.figure = figure;
+        this.object = document.createElement("div");
+        this.object.className = "jsplot_axes";
+
+        this.figure.addEventListener("resize", this.resize.bind(this));
+    }
+    module.Axes.prototype.resize = function() {}
+    
+    module.MovieAxes = function(figure, url) {
+        module.Axes.call(this, figure);
+        this.movie = document.createElement("video");
+        this.movie.id = "stim_movie";
+        this.movie.setAttribute("preload", "");
+        this.movie.setAttribute("loop", "loop");
+        var src = document.createElement("source");
+        var ext = url.match(/^(.*)\.(\w{3,4})$/);
+        if (ext.length == 3) {
+            if (ext[2] == 'ogv') {
+                src.setAttribute('type', 'video/ogg; codecs="theora, vorbis"');
+            } else if (ext[2] == 'webm') {
+                src.setAttribute('type', 'video/webm; codecs="vp8, vorbis"');
+            } else if (ext[2] == 'mp4') {
+                src.setAttribute('type', 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+            }
+        }
+        src.setAttribute("src", url);
+        this.movie.appendChild(src);
+        this.object.appendChild(this.movie);
+    }
+    module.MovieAxes.prototype = Object.create(module.Axes.prototype);
+    module.MovieAxes.prototype.constructor = module.MovieAxes;
 
 
     return module;

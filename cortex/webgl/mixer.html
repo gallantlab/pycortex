@@ -13,15 +13,22 @@
 		var subjects = {{subjects}};
 		var datasets = classify({{data}});
 
+		var grid_dim = [null, [1,1], [1, 2], [1, 3], [2, 2], [2, 3], [2, 3], [3, 3], [3,3], [3,3], [3, 4], [3, 4], [3, 4], [3, 4]];
+		var w = grid_dim[subjects.length][0];
+		var h = grid_dim[subjects.length][1];
+
 		figure = new jsplot.W2Figure();
-		grid = figure.add(jsplot.GridFigure, "main", true, n, n);
+		grid = figure.add(jsplot.GridFigure, "main", true, w, h);
 		for (var i = 0; i < subjects.length; i++) {
 			viewer = grid.add(mriview.Viewer, i);
-			viewer.load("/ctm/"+subject[i]);
-
-			for (var j = 0; j < datasets.length; j++)
-
-			viewer.addData()
+			viewer.load("/ctm/"+subjects[i]+"/");
+			var data = {};
+			for (var name in datasets) {
+				if (datasets[name].subject == subjects[i]) {
+					data[name] = datasets[name];
+				}
+			}
+			viewer.addData(data);
 			viewers[subjects[i]] = viewer;
 		}
 
