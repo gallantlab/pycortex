@@ -160,6 +160,12 @@ FacePick.prototype = {
             this.addMarker(p.hemi, p.ptidx, keep);
             if (this.callback !== undefined)
                 this.callback(vec, p.hemi, p.ptidx);
+        } else {
+            for (var i = 0; i < this.axes.length; i++) {
+                this.axes[i].obj.parent.remove(this.axes[i].obj);
+            }
+            this.axes = [];
+            this.viewer.schedule();
         }
     },
     
@@ -178,7 +184,8 @@ FacePick.prototype = {
             var newel = Math.acos(pz / Math.sqrt(Math.pow(px,2) + Math.pow(py,2) + Math.pow(pz,2))) * 180.0 / Math.PI;
             //console.log("New el.: " + newel);
             var states = ["mix", "radius", "target", "azimuth", "altitude", "pivot"];
-            this._undblpickanim = states.map(function(s) { return {idx:speed, state:s, value:this.viewer.getState(s)} });
+            var viewer = this.viewer;
+            this._undblpickanim = states.map(function(s) { return {idx:speed, state:s, value:viewer.getState(s)} });
             var front = newaz < 90 || newaz > 270;
             var newpivot;
             if (p.hemi == "left") {
@@ -255,7 +262,7 @@ FacePick.prototype = {
 
     undblpick: function() {
         if (this._undblpickanim)
-            viewer.animate(this._undblpickanim);
+            this.viewer.animate(this._undblpickanim);
     },
 
     setMix: function(mixevt) {
@@ -291,6 +298,11 @@ FacePick.prototype = {
         var voxpos = new THREE.Vector3(Math.round(vox.x), Math.round(vox.y), Math.round(vox.z));
         axes.vox.applyMatrix(inv)
         axes.vox.position = inv.multiplyVector3(voxpos).subSelf(vert.fid);
+        var mat = axes.vox.matrix.elements;
+        for (var i = 0; i < 16; i++) {
+            if (Math.abs(mat[i]) < 1e-8)
+                mat[i] = 0;
+        }
 
         var marker = new THREE.Object3D();
         marker.add(axes.axes);

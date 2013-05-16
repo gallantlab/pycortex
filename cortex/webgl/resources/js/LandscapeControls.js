@@ -125,9 +125,6 @@ THREE.LandscapeControls = function ( cover, camera ) {
         // Run picker if time since mousedown is short enough
         if ( _clicktime - _mousedowntime < this.clickTimeout && event.button == 0) {
             var mouse2D = this.getMouse(event).clone();
-            //_picktimer = setTimeout(function(){
-            //    this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
-            //}.bind(this), this.clickTimeout);
             this.dispatchEvent({ type: "mouseup" });
             this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
         } else if ( event.button == 0 && _indblpick == 1 ) {
@@ -206,20 +203,21 @@ THREE.LandscapeControls.prototype = {
         }
 
         var rad = this.radius, target = this.target.clone();
-        if ($("#zlockwhole").length > 0) {
-            if ($("#zlockwhole")[0].checked) {
+        var container = $(this.domElement.parentNode.parentNode)
+        if (container.find("#zlockwhole").length > 0) {
+            if (container.find("#zlockwhole")[0].checked) {
                 rad  = this.flatsize / 2 / this.camera.cameraP.aspect;
                 rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
                 rad -= this.flatoff;
                 rad = flatmix * rad + (1 - flatmix) * this.radius;
-            } else if (!$("#zlocknone")[0].checked) {
+            } else if (!container.find("#zlocknone")[0].checked) {
                 rad  = this.flatsize / 4 / this.camera.cameraP.aspect;
                 rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
                 rad -= this.flatoff;
                 rad = flatmix * rad + (1 - flatmix) * this.radius;
-                if ($("#zlockleft")[0].checked) {
+                if (container.find("#zlockleft")[0].checked) {
                     target.x = flatmix * (-this.flatsize / 4) + (1 - flatmix) * target.x;
-                } else if ($("#zlockright")[0].checked) {
+                } else if (container.find("#zlockright")[0].checked) {
                     target.x = flatmix * ( this.flatsize / 4) + (1 - flatmix) * target.x;
                 }
             }
@@ -235,7 +233,8 @@ THREE.LandscapeControls.prototype = {
     },
 
     getMouse: function ( event ) {
-        return new THREE.Vector2( event.clientX, event.clientY);
+        var off = $(event.target).offset();
+        return new THREE.Vector2( event.clientX - off.left, event.clientY - off.top);
     },
 
     setCamera: function(az, alt, rad) {
@@ -307,8 +306,12 @@ THREE.LandscapeControls.prototype = {
     zoom: function( mouseChange ) {
         var factor = 1.0 + mouseChange.y*this.zoomSpeed;
         this.radius *= factor;
-    if (this.radius>this.maxRadius) { this.radius = this.maxRadius; }
-    if (this.radius<this.minRadius(this.flatmix)) { this.radius = this.minRadius(this.flatmix); }
+        if (this.radius > this.maxRadius) { 
+            this.radius = this.maxRadius; 
+        }
+        if (this.radius < this.minRadius(this.flatmix)) { 
+            this.radius = this.minRadius(this.flatmix); 
+        }
     },
     
     wheelzoom: function( wheelEvent ) {

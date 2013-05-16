@@ -336,7 +336,7 @@ class Database(object):
 
         import nibabel
         xfm = self.getXfm(subject, xfmname)
-        affine = xfm.epi.get_affine()
+        affine = xfm.reference.get_affine()
         nib = nibabel.Nifti1Image(mask.astype(np.uint8).T, affine)
         nib.to_filename(fname)
 

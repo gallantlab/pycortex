@@ -82,14 +82,14 @@ var jsplot = (function (module) {
     module.W2Figure.prototype = Object.create(module.Figure.prototype);
     module.W2Figure.prototype.constructor = module.W2Figure;
     module.W2Figure.prototype.init = function() {
-        var style = "border:1px solid #dfdfdf; padding:5px;";
+        //var style = "border:1px solid #dfdfdf; padding:5px;";
         this.w2obj = $(this.object).w2layout({
             name: 'w2figure'+(w2fig_layer++),
             panels: [
-                { type: 'top', resizable: true, hidden: true, style:style },
-                { type: 'bottom', resizable: true, hidden: true, style:style },
-                { type: 'left', resizable: true, hidden: true, style:style },
-                { type: 'right', resizable: true, hidden: true, style:style },
+                { type: 'top', resizable: true, hidden: true },
+                { type: 'bottom', resizable: true, hidden: true },
+                { type: 'left', resizable: true, hidden: true },
+                { type: 'right', resizable: true, hidden: true },
                 { type: 'main' },
             ],
         });
@@ -124,6 +124,17 @@ var jsplot = (function (module) {
     }
     module.W2Figure.prototype.toggle = function(where, instant) {
         this.w2obj.toggle(where, instant);
+    }
+    module.W2Figure.prototype.setSize = function(where, size) {
+        if (typeof(size) == "string" && size[size.length-1] == '%') {
+            var prop = parseFloat(size.slice(0, size.length-1)) / 100;
+            size = $(this.object).width() * prop;
+        }
+        this.w2obj.set(where, {size:size});
+        this.w2obj.resize();
+    }
+    module.W2Figure.prototype.getSize = function(where) {
+        return this.w2obj.get(where).size;
     }
 
     module.GridFigure = function(parent, nrows, ncols) {
@@ -168,31 +179,81 @@ var jsplot = (function (module) {
         this.figure.addEventListener("resize", this.resize.bind(this));
     }
     module.Axes.prototype.resize = function() {}
-    
+
+
     module.MovieAxes = function(figure, url) {
         module.Axes.call(this, figure);
-        this.movie = document.createElement("video");
-        this.movie.id = "stim_movie";
-        this.movie.setAttribute("preload", "");
-        this.movie.setAttribute("loop", "loop");
-        var src = document.createElement("source");
-        var ext = url.match(/^(.*)\.(\w{3,4})$/);
-        if (ext.length == 3) {
-            if (ext[2] == 'ogv') {
-                src.setAttribute('type', 'video/ogg; codecs="theora, vorbis"');
-            } else if (ext[2] == 'webm') {
-                src.setAttribute('type', 'video/webm; codecs="vp8, vorbis"');
-            } else if (ext[2] == 'mp4') {
-                src.setAttribute('type', 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
-            }
+        $(this.object).html(this.constructor.html);
+        this._target = null;
+        var types = { 
+            ogv: 'video/ogg; codecs="theora, vorbis"', 
+            webm: 'video/webm; codecs="vp8, vorbis"',
+            mp4: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'
         }
-        src.setAttribute("src", url);
-        this.movie.appendChild(src);
-        this.object.appendChild(this.movie);
+        var src = $(this.object).find("source");
+        var ext = url.match(/^(.*)\.(\w{3,4})$/);
+        src.attr("type", types[ext]);
+        src.attr("src", url);
+
+        this.loadmsg = $(this.object).find("div.movie_load");
+        this.movie = $(this.object).find("video")[0];
+
+        this.movie.addEventListener("progress", function() {
+            if (this._target != null && 
+                this.seekable.length > 0 && 
+                this.seekable.end(0) >= this._target &&
+                this.parentNode != null) {
+                var func = function() {
+                    try {
+                        this.currentTime = this._target;
+                        this._target = null;
+                        this.loadmsg.hide()
+                    } catch (e) {
+                        console.log(e);
+                        setTimeout(func, 5);
+                    }
+                }.bind(this);
+                func();
+            }
+        });
+
+        this.movie.addEventListener("timeupdate", function() {
+            this.figure.notify("playsync", this, [this.movie.currentTime]);
+        }.bind(this));
+        this.figure.register("playtoggle", this, this.playtoggle.bind(this));
     }
+    module.MovieAxes.html = [
+        "<div class='movie_wrapper'>",
+            "<div class='movie_cell'>",
+                "<div class='movie_load loadmsg'>",
+                    "<img src='resources/images/loading.gif'>",
+                    "Loading...",
+                "</div>",
+                "<video class='movie' preload loop='loop'>",
+                    "<source />",
+                "</video>",
+            "</div>",
+        "</div>",
+    ].join("\n");
     module.MovieAxes.prototype = Object.create(module.Axes.prototype);
     module.MovieAxes.prototype.constructor = module.MovieAxes;
-
+    module.MovieAxes.prototype.setFrame = function(time) {
+        if (this.movie.seekable.length > 0 && 
+            this.movie.seekable.end(0) >= time) {
+            this.movie.currentTime = time;
+            this.loadmsg.hide()
+        } else {
+            this._target = time;
+            this.loadmsg.show()
+        }
+    }
+    module.MovieAxes.prototype.playtoggle = function() {
+        if (this.movie.paused)
+            this.movie.play();
+        else
+            this.movie.pause();
+        this.figure.notify("playtoggle", this);
+    }
 
     return module;
 }(jsplot || {}));

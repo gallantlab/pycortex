@@ -127,6 +127,11 @@ var mriview = (function(module) {
                 rad = this.getState('radius');
             this.figure.notify("setcamera", this, [az, alt, rad, target]);
         }.bind(this));
+        this.figure.register("playsync", this, function(time) {
+            if (this._startplay != null)
+                this._startplay = (new Date()) - (time * 1000);
+        });
+        this.figure.register("playtoggle", this, this.playpause.bind(this));
     }
     module.Viewer.prototype = Object.create(jsplot.Axes.prototype);
     module.Viewer.prototype.constructor = module.Viewer;
@@ -144,12 +149,7 @@ var mriview = (function(module) {
     };
     module.Viewer.prototype.draw = function () {
         if (this.state == "play") {
-            var rate = this.active[0].rate;
-            var sec = ((new Date()) - this._startplay) / 1000 * rate;
-            if (sec > this.active[0].textures.length) {
-                this._startplay += this.active[0].textures.length;
-                sec -= this.active[0].textures.length;
-            }
+            var sec = ((new Date()) - this._startplay) / 1000;
             this.setFrame(sec);
         } 
         if (this._animation) {
@@ -562,6 +562,7 @@ var mriview = (function(module) {
                     $(this).removeClass("ui-selected");
             })
             if (names.length > 1) {
+                ds.init(this.uniforms, this.meshes, 1);
                 ds2.set(this.uniforms, 1, 0, true);
                 this.active.push(ds2);
                 $(this.object).find("#vrange2").slider("option", {min: ds2.lmin, max:ds2.lmax});
@@ -714,26 +715,13 @@ var mriview = (function(module) {
                 this.state = "play";
                 $(this.object).find("#moviecontrols img").attr("src", "resources/images/control-pause.png");
             }.bind(this);
-
-            if (dataset.stim !== undefined) {
-                dataset.stim.callback = function() {
-                    dataset.stim.play();
-                    func();
-                    dataset.stim.callback = null;
-                }
-                dataset.stim.seekTo(this.frame-dataset.delay);
-            } else {
-                func();
-            }
         } else {
             this.state = "pause";
             $(this.object).find("#moviecontrols img").attr("src", "resources/images/control-play.png");
-
-            if (dataset.stim !== undefined) {
-                dataset.stim.pause();
-            }
         }
+        this.figure.notify("playtoggle", this);
     };
+
     module.Viewer.prototype.getImage = function(width, height) {
         if (width === undefined)
             width = this.canvas.width();
@@ -758,6 +746,9 @@ var mriview = (function(module) {
         this.canvas.resize(function() { this.resize(); }.bind(this));
         window.addEventListener( 'keydown', function(e) {
             btnspeed = 0.3;
+            if (e.target.tagName == "INPUT")
+                return;
+            
             if (e.keyCode == 32) {         //space
                 if (this.active[0].textures.length > 1)
                     this.playpause();
@@ -796,7 +787,7 @@ var mriview = (function(module) {
         });
 
         if ($(this.object).find("#color_fieldset").length > 0) {
-            $(this.object).find("#colormap").ddslick({ width:296, height:400, 
+            $(this.object).find("#colormap").ddslick({ width:296, height:350, 
                 onSelected: function() { 
                     this.setColormap($(this.object).find("#colormap .dd-selected-image")[0]);
                 }.bind(this)
@@ -946,6 +937,7 @@ var mriview = (function(module) {
         var setdat = function(event, ui) {
             var names = [];
             $(this.object).find("#datasets li.ui-selected").each(function() { names.push($(this).text()); });
+            console.log(names);
             this.setData(names);
         }.bind(this)
         $(this.object).find("#datasets")

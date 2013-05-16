@@ -181,7 +181,7 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     html = tpl.generate(ctmfile=ctmfile, data=jsobj, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
 
-def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
+def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
     """Display a dynamic viewer using the given dataset
     """
     if isinstance(dataset, tuple):
@@ -190,11 +190,14 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=T
         dataset = Dataset(**dataset)
 
     html = FallbackLoader([serve.cwd]).load("mixer.html")
-
     surfs.auxfile = dataset
+
     subjects = list(set([ds.subject for name, ds in dataset]))
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
+
+    if layout is None:
+        layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
 
     metadata, images = _convert_dataset(dataset, path='/data/', fmt='%s_%d.png')
     jsmeta = json.dumps(metadata, cls=serve.NPEncode)
@@ -247,7 +250,7 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', autoclose=T
                 colormaps=colormaps, 
                 default_cmap=cmap, 
                 python_interface=True, 
-                subjects=subjects,
+                layout=layout,
                 **viewopts)
             self.write(generated)
 

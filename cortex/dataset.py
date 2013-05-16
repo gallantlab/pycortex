@@ -84,7 +84,8 @@ class Dataset(object):
             yield name, ds
 
     def __repr__(self):
-        return "<Dataset with names [%s]>"%(', '.join(self.datasets.keys()))
+        datasets = sorted(self.datasets.items(), key=lambda x: x[1].priority)
+        return "<Dataset with names [%s]>"%(', '.join([n for n, d in datasets]))
 
     def __dir__(self):
         return self.__dict__.keys() + self.datasets.keys()
@@ -308,6 +309,7 @@ class Masker(object):
         return BrainData(self.ds.volume[mask], s, x, mask=masktype)
 
 def _find_mask(nvox, subject, xfmname):
+    import os
     import re
     import glob
     import nibabel
@@ -316,8 +318,9 @@ def _find_mask(nvox, subject, xfmname):
         nib = nibabel.load(fname)
         mask = nib.get_data() != 0
         if nvox == np.sum(mask):
-            name = re.compile(r'([^_]+)_([\w]+)_([\w]+).nii.gz').search(fname)
-            return name.group(3), mask
+            fname = os.path.split(fname)[1]
+            name = re.compile(r'mask_([\w]+).nii.gz').search(fname)
+            return name.group(1), mask
 
     raise ValueError('Cannot find a valid mask')
 
