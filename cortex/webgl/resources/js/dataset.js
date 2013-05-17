@@ -113,21 +113,16 @@ Dataset.prototype = {
 
             meshes.left.material = this.shader;
             meshes.right.material = this.shader;
-
-            if (this.stim && figure) {
-                figure.setSize("right", "30%");
-                this.movie = figure.add(jsplot.MovieAxes, "right", false, "/stim/"+this.stim);
-            }
         }
 
         var xfm = uniforms.volxfm.value[dim];
         xfm.set.apply(xfm, this.xfm);
         uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
         uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
-        this.set(uniforms, dim, 0);
     },
     set: function(uniforms, dim, time) {
         var frame = ((time - this.delay) / this.rate).mod(this.frames);
+        console.log(time, frame);
         var fframe = Math.floor(frame);
         uniforms.framemix.value = frame - fframe;
         if (uniforms.data.texture[dim*2] !== this.textures[fframe]) {

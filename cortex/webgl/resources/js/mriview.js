@@ -523,6 +523,9 @@ var mriview = (function(module) {
         if (!(names instanceof Array))
             names = [names];
 
+        if (this.state == "play")
+            this.playpause();
+
         var ds2, ds = this.datasets[names[0]];
         if (names.length > 1) {
             ds2 = this.datasets[names[1]];
@@ -559,6 +562,11 @@ var mriview = (function(module) {
                 }.bind(this));
                 
                 $(this.object).find("#movieframe").val(0);
+
+                if (ds.stim && figure) {
+                    figure.setSize("right", "30%");
+                    this.movie = figure.add(jsplot.MovieAxes, "right", false, "/stim/"+ds.stim);
+                }
             } else {
                 $(this.object).find("#moviecontrols").hide();
                 $(this.object).find("#bottombar").removeClass("bbar_controls");
@@ -692,6 +700,11 @@ var mriview = (function(module) {
     };
 
     module.Viewer.prototype.setFrame = function(frame) {
+        if (frame > this.active[0].length) {
+            frame -= this.active[0].length;
+            this._startplay += this.active[0].length;
+        }
+
         this.frame = frame;
         this.active[0].set(this.uniforms, 0, frame);
         if (this.active.length > 1)
@@ -709,7 +722,8 @@ var mriview = (function(module) {
             ds.textures[i].magFilter = filtertypes[interp];
             ds.textures[i].needsUpdate = true;
         }
-        ds.init(this.uniforms, this.meshes, 0);
+        ds.init(this.uniforms, this.meshes, 0, this.active.length);
+        ds.set(this.uniforms, 0, this.frame);
         $(this.object).find("#datainterp option").attr("selected", null);
         $(this.object).find("#datainterp option[value="+interp+"]").attr("selected", "selected");
     };
@@ -923,7 +937,8 @@ var mriview = (function(module) {
             else 
                 $(this.object).find("#thickmix_row").hide();
             this.uniforms.nsamples.value = ui.value;
-            this.active[0].init(this.uniforms, this.meshes, 0);
+            this.active[0].init(this.uniforms, this.meshes, 0, this.active.length);
+            this.active[0].set(this.uniforms, 0, this.frame);
             if (this.active.length > 1)
                 this.active[1].set(this.uniforms, 1, this.frame);
             this.schedule();
@@ -971,8 +986,8 @@ var mriview = (function(module) {
             slide: function(event, ui) { 
                 this.setFrame(ui.value); 
                 var dataset = this.active[0];
-                if (dataset.movie !== undefined) {
-                    dataset.movie.setFrame(ui.value - dataset.delay);
+                if (this.movie !== undefined) {
+                    this.movie.setFrame(ui.value);
                 }
             }.bind(this)
         });
@@ -980,9 +995,8 @@ var mriview = (function(module) {
 
         $(this.object).find("#movieframe").change(function() { 
             _this.setFrame(this.value); 
-            var dataset = _this.active[0];
-            if (dataset.movie !== undefined) {
-                dataset.movie.setFrame(this.value - dataset.delay);
+            if (_this.movie !== undefined) {
+                _this.movie.setFrame(this.value);
             }
         });
     };
