@@ -256,6 +256,9 @@ ul#datasets li .handle {
 /*************************************************
  * Bottom Bar
  *************************************************/
+.bbar_controls {
+    margin-top:-47px !important;
+}
 .bbar_controls:hover, .bbar_controls:active{
     margin-top:-135px !important;
 }
@@ -272,7 +275,7 @@ ul#datasets li .handle {
     width:100%;
 }
 #bottombar table td:first-child {
-    width:40px;
+    width:60px;
 }
 #bottombar:hover, #bottombar:active {
     margin-top:-115px;
@@ -283,8 +286,9 @@ ul#datasets li .handle {
     display:none;
 }
 table#movieui {
-    width:60%;
+    width:80%;
     margin:auto;
+    margin-top:-5px;
     text-align:left;
     vertical-align:middle;
 }
@@ -293,6 +297,7 @@ table#movieui {
 }
 #moviecontrol img {
     padding:4px;
+    margin:4px;
     appearance:button;
     -moz-appearance:button;
     -webkit-appearance:button;

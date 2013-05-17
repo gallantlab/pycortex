@@ -19,19 +19,21 @@ var Shaderlib = (function() {
             "vec4 colorlut(vec4 values) {",
                 "float range = vmax[0] - vmin[0];",
                 "float norm0 = (values.x - vmin[0]) / range;",
-                "float norm1 = (values.z - vmin[0]) / range;",
+                "float norm1 = (values.y - vmin[0]) / range;",
                 "float fnorm0 = mix(norm0, norm1, framemix);",
-
+            "#ifdef TWOD",
                 "range = vmax[1] - vmin[1];",
-                "norm0 = (values.y - vmin[1]) / range;",
+                "norm0 = (values.z - vmin[1]) / range;",
                 "norm1 = (values.w - vmin[1]) / range;",
                 "float fnorm1 = mix(norm0, norm1, framemix);",
-                "vec2 cuv = vec2(clamp(fnorm0, 0., .999), clamp(fnorm1, 0., .999) );",
+                "vec2 cuv = vec2(clamp(fnorm0, 0., 1.), clamp(fnorm1, 0., 1.) );",
+            "#else",
+                "vec2 cuv = vec2(clamp(fnorm0, 0., 1.), 0.);",
+            "#endif",
 
                 "vec4 vColor = texture2D(colormap, cuv);",
                 "bvec4 valid = notEqual(lessThanEqual(values, vec4(0.)), lessThan(vec4(0.), values));",
                 "return all(valid) ? vColor : vec4(0.);",
-                // "return vColor;",
             "}"
         ].join("\n"),
 
@@ -74,7 +76,7 @@ var Shaderlib = (function() {
     };
     module.prototype = {
         constructor: module,
-        main: function(sampler, raw, voxline, volume) {
+        main: function(sampler, raw, twod, voxline, volume) {
             //Creates shader code with all the parameters
             //sampler: which sampler to use, IE nearest or trilinear
             //raw: whether the dataset is raw or not
@@ -91,6 +93,8 @@ var Shaderlib = (function() {
                 header += "#define RAWCOLORS\n";
             if (volume > 0)
                 header += "#define CORTSHEET\n";
+            if (twod)
+                header += "#define TWOD\n";
 
             var vertShade =  [
             THREE.ShaderChunk[ "map_pars_vertex" ], 
@@ -219,9 +223,11 @@ var Shaderlib = (function() {
                 "color[1] += "+factor+"*"+sampler+"(data[1], coord_x, 0);",
         "#else",
                 "values.x += "+factor+"*"+sampler+"(data[0], coord_x, 0).r;",
-                "values.z += "+factor+"*"+sampler+"(data[1], coord_x, 0).r;",
-                "values.y += "+factor+"*"+sampler+"(data[2], coord_y, 1).r;",
+                "values.y += "+factor+"*"+sampler+"(data[1], coord_x, 0).r;",
+            "#ifdef TWOD",
+                "values.z += "+factor+"*"+sampler+"(data[2], coord_y, 1).r;",
                 "values.w += "+factor+"*"+sampler+"(data[3], coord_y, 1).r;",
+            "#endif",
         "#endif",
             ].join("\n");
 
@@ -229,14 +235,18 @@ var Shaderlib = (function() {
             if (volume == 0) {
                 fragMid += [
                     "coord_x = vPos_x[0];",
+                "#ifdef TWOD",
                     "coord_y = vPos_y[0];",
+                "#endif",
                     sampling,
                     ""
                 ].join("\n");
             } else if (volume == 1) {
                 fragMid += [
                     "coord_x = mix(vPos_x[0], vPos_x[1], thickmix);",
+                "#ifdef TWOD",
                     "coord_y = mix(vPos_y[0], vPos_y[1], thickmix);",
+                "#endif",
                     sampling,
                     "",
                 ].join("\n");
@@ -247,7 +257,9 @@ var Shaderlib = (function() {
                         "rseed = gl_FragCoord.xy + vec2(2.34*"+i.toFixed(3)+", 3.14*"+i.toFixed(3)+");",
                         "randval = rand(rseed);",
                         "coord_x = mix(vPos_x[0], vPos_x[1], randval);",
+                    "#ifdef TWOD",
                         "coord_y = mix(vPos_y[0], vPos_y[1], randval);",
+                    "#endif",
                         sampling,
                         "", 
                     ].join("\n");

@@ -60,6 +60,10 @@ def _package_data(braindata):
 
     #Overwrite generated metadata
     package.update(braindata.attrs)
+    #include only the filename for any stimuli
+    if 'stim' in package:
+        package['stim'] = os.path.split(package['stim'])[1]
+
     return package
 
 def _convert_dataset(dataset, path="", fmt="%s_%d.png"):
@@ -183,6 +187,14 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
 
 def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
     """Display a dynamic viewer using the given dataset
+
+    Optional attributes that affect the display:
+    cmap
+    vmin / vmax
+    filter: ['nearest', 'trilinear', 'nearlin']
+    stim: a filename for the stimulus (preferably OGV)
+    delay: time in seconds to delay the data with respect to stimulus
+    rate: volumes per second
     """
     if isinstance(dataset, tuple):
         dataset = Dataset(data=dataset)
@@ -191,6 +203,12 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None
 
     html = FallbackLoader([serve.cwd]).load("mixer.html")
     surfs.auxfile = dataset
+
+    stims = dict()
+    for name, ds in dataset:
+        if 'stim' in ds.attrs and os.path.exists(ds.attrs['stim']):
+            sname = os.path.split(ds.attrs['stim'])[1]
+            stims[sname] = ds.attrs['stim']
 
     subjects = list(set([ds.subject for name, ds in dataset]))
     kwargs.update(dict(method='mg2', level=9, recache=recache))
@@ -241,6 +259,18 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None
             else:
                 self.set_status(404)
                 self.write_error(404)
+
+    class StimHandler(serve.StaticFileHandler):
+        def initialize(self):
+            pass
+
+        def get(self, path):
+            if path not in stims:
+                self.set_status(404)
+                self.write_error(404)
+            else:
+                self.root, fname = os.path.split(stims[path])
+                super(StimHandler, self).get(fname)
 
     class MixerHandler(web.RequestHandler):
         def get(self):
@@ -343,6 +373,7 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None
     server = WebApp([
             (r'/ctm/(.*)', CTMHandler),
             (r'/data/(.*)', DataHandler),
+            (r'/stim/(.*)', StimHandler),
             (r'/mixer.html', MixerHandler),
             (r'/', MixerHandler),
             (r'/picker', PickerHandler)

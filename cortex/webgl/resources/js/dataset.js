@@ -31,6 +31,7 @@ function Dataset(json) {
     this.filter = json.filter == undefined ? "nearest" : json.filter;
     this.textures = [];
     this.datatex = [];
+    this.length = this.frames / this.rate;
     
     var loadtex = function(idx) {
         var img = new Image();
@@ -58,7 +59,7 @@ function Dataset(json) {
             this.textures.push(tex);
 
             if (this.textures.length < this.frames) {
-                this.loaded.progress(this.textures.length);
+                this.loaded.notify(this.textures.length);
                 loadtex(this.textures.length);
             } else {
                 this.loaded.resolve();
@@ -75,25 +76,11 @@ Dataset.fromJSON = function(json) {
 }
 
 Dataset.prototype = {
-    init: function(uniforms, meshes, dim) {
-        var sampler = samplers[this.filter];
-        var shaders = Shaders.main(sampler, this.raw, viewopts.voxlines, uniforms.nsamples.value);
-        this.shader = new THREE.ShaderMaterial({ 
-            vertexShader:shaders.vertex,
-            fragmentShader:shaders.fragment,
-            uniforms: uniforms,
-            attributes: { wm:true, auxdat:true },
-            morphTargets:true, 
-            morphNormals:true, 
-            lights:true, 
-            blending:THREE.CustomBlending,
-        });
-        this.shader.map = true;
-        this.shader.metal = true;
-
-        if (uniforms.nsamples.value > 1) {
-            shaders = Shaders.main(sampler, this.raw, viewopts.voxlines, 1);
-            this.fastshader = new THREE.ShaderMaterial({
+    init: function(uniforms, meshes, dim, ndim) {
+        if (dim == 0) {
+            var sampler = samplers[this.filter];
+            var shaders = Shaders.main(sampler, this.raw, ndim > 1, viewopts.voxlines, uniforms.nsamples.value);
+            this.shader = new THREE.ShaderMaterial({ 
                 vertexShader:shaders.vertex,
                 fragmentShader:shaders.fragment,
                 uniforms: uniforms,
@@ -103,29 +90,52 @@ Dataset.prototype = {
                 lights:true, 
                 blending:THREE.CustomBlending,
             });
-            this.fastshader.map = true;
-            this.fastshader.metal = true;
-        } else {
-            this.fastshader = null;
+            this.shader.map = true;
+            this.shader.metal = true;
+
+            if (uniforms.nsamples.value > 1) {
+                shaders = Shaders.main(sampler, this.raw, viewopts.voxlines, 1);
+                this.fastshader = new THREE.ShaderMaterial({
+                    vertexShader:shaders.vertex,
+                    fragmentShader:shaders.fragment,
+                    uniforms: uniforms,
+                    attributes: { wm:true, auxdat:true },
+                    morphTargets:true, 
+                    morphNormals:true, 
+                    lights:true, 
+                    blending:THREE.CustomBlending,
+                });
+                this.fastshader.map = true;
+                this.fastshader.metal = true;
+            } else {
+                this.fastshader = null;
+            }
+
+            meshes.left.material = this.shader;
+            meshes.right.material = this.shader;
+
+            if (this.stim && figure) {
+                figure.setSize("right", "30%");
+                this.movie = figure.add(jsplot.MovieAxes, "right", false, "/stim/"+this.stim);
+            }
         }
 
-        meshes.left.material = this.shader;
-        meshes.right.material = this.shader;
-        uniforms.colormap.texture.needsUpdate = true;
-        uniforms.hatch.texture.needsUpdate = true;
-        uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
-        uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
         var xfm = uniforms.volxfm.value[dim];
         xfm.set.apply(xfm, this.xfm);
+        uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
+        uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
         this.set(uniforms, dim, 0);
     },
-    set: function(uniforms, dim, frame) {
-        if (uniforms.data.texture[dim*2] !== this.textures[frame]) {
-            uniforms.data.texture[dim*2] = this.textures[frame];
-            uniforms.data.texture[dim*2].needsUpdate = true;
+    set: function(uniforms, dim, time) {
+        var frame = ((time - this.delay) / this.rate).mod(this.frames);
+        var fframe = Math.floor(frame);
+        uniforms.framemix.value = frame - fframe;
+        if (uniforms.data.texture[dim*2] !== this.textures[fframe]) {
+            uniforms.data.texture[dim*2] = this.textures[fframe];
             if (this.frames > 1) {
-                uniforms.data.texture[dim*2+1] = this.textures[frame+1];
-                uniforms.data.texture[dim*2+1].needsUpdate = true;
+                uniforms.data.texture[dim*2+1] = this.textures[(fframe+1).mod(this.frames)];
+            } else {
+                uniforms.data.texture[dim*2+1] = mriview.blanktex;
             }
         }
     },
@@ -217,79 +227,3 @@ Dataset.prototype = {
         return {scene:scene, camera:camera};
     }
 }
-
-// if (this.stim === undefined) {
-//     viewer.rmPlugin();
-// } else {
-//     for (var i = 0; i < allStims.length; i++)
-//         $(allStims[i]).unbind("timeupdate");
-    
-//     var delay = this.delay;
-//     viewer.addPlugin(this.stim);
-//     if (delay >= 0)
-//         this.stim.seekTo(viewer.frame - delay);
-//     else
-//         viewer.setFrame(-delay);
-//     $(this.stim).bind("timeupdate", function() {
-//         var now = new Date().getTime() / 1000;
-//         var sec = now - viewer._startplay / 1000;
-//         console.log("Time diff: "+(this.currentTime + delay - sec));
-//         viewer._startplay = (now - this.currentTime - delay)*1000;
-//     })
-// }
-
-    // addStim: function(url, delay) {
-    //     this.delay = delay;
-    //     this.stim = document.createElement("video");
-    //     this.stim.id = "stim_movie";
-    //     this.stim.setAttribute("preload", "");
-    //     this.stim.setAttribute("loop", "loop");
-    //     var src = document.createElement("source");
-    //     var ext = url.match(/^(.*)\.(\w{3,4})$/);
-    //     if (ext.length == 3) {
-    //         if (ext[2] == 'ogv') {
-    //             src.setAttribute('type', 'video/ogg; codecs="theora, vorbis"');
-    //         } else if (ext[2] == 'webm') {
-    //             src.setAttribute('type', 'video/webm; codecs="vp8, vorbis"');
-    //         } else if (ext[2] == 'mp4') {
-    //             src.setAttribute('type', 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
-    //         }
-    //     }
-    //     src.setAttribute("src", url);
-    //     this.stim.appendChild(src);
-
-    //     allStims.push(this.stim);
-
-    //     this.stim.seekTo = function(time) {
-    //         if (this.seekable.length > 0 && 
-    //             this.seekable.end(0) >= time) {
-    //             this.currentTime = time;
-    //             $("#pluginload").hide()
-    //             if (typeof(this.callback) == "function")
-    //                 this.callback();
-    //         } else {
-    //             this.seekTarget = time;
-    //             $("#pluginload").show()
-    //         }
-    //     }
-    //     $(this.stim).bind("progress", function() {
-    //         if (this.seekTarget != null && 
-    //             this.seekable.length > 0 && 
-    //             this.seekable.end(0) >= this.seekTarget &&
-    //             this.parentNode != null) {
-    //             var func = function() {
-    //                 try {
-    //                     this.currentTime = this.seekTarget;
-    //                     this.seekTarget = null;
-    //                     $("#pluginload").hide()
-    //                     if (typeof(this.callback) == "function")
-    //                         this.callback();
-    //                 } catch (e) {
-    //                     console.log(e);
-    //                     setTimeout(func, 5);
-    //                 }
-    //             }.bind(this);
-    //             func();
-    //         }
-    //     });
-    // },

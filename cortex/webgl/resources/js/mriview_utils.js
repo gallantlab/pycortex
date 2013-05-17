@@ -3,6 +3,68 @@ Number.prototype.mod = function(n) {
 }
 
 var mriview = (function(module) {
+    module.MultiView = function(parent, nrows, ncols, dataset) {
+        jsplot.GridFigure.call(this, parent, nrows, ncols);
+
+        var subjects = {}, snames = [], name, subj;
+        for (var i = 0; i < dataset['__order__'].length; i++) {
+            name = dataset['__order__'][i];
+            subj = dataset[name].subject;
+            if (subjects[subj] === undefined) {
+                subjects[subj] = true;
+                snames.push(subj);
+            }
+        }
+
+        var viewer;
+        for (var i = 0; i < snames.length; i++) {
+            viewer = this.add(mriview.Viewer, i);
+            viewer.load("/ctm/"+snames[i]+"/");
+            this[snames[i]] = viewer;
+        }
+        
+        this.subjects = snames;
+        this.addData(dataset);
+    }
+    module.MultiView.prototype = Object.create(jsplot.GridFigure.prototype);
+    module.MultiView.prototype.constructor = module.MultiView;
+    module.MultiView.prototype.addData = function(dataset) {
+        var data = {}, subj, name;
+        for (var i = 0; i < dataset['__order__'].length; i++) {
+            name = dataset['__order__'][i];
+            subj = dataset[name].subject;
+            if (data[subj] === undefined) {
+                data[subj] = {__order__:[]};
+            }
+            data[subj][name] = dataset[name];
+            data[subj]['__order__'].push(name);
+        }
+
+        for (subj in data) {
+            this[subj].addData(data[subj]);
+        }
+    }
+
+    //Create a function multiplexer, to pass calls through to all viewers
+    function multiview_prototype(prot, names) {
+        for (var i = 0; i < names.length; i++) {
+            prot[names[i]] = function(name) {
+                return function() {
+                    var viewer, outputs = [];
+                    for (var j = 0; j < this.subjects.length; j++) {
+                        viewer = this[this.subjects[j]]
+                        outputs.push(viewer[name].apply(viewer, arguments));
+                    }
+                    return outputs;
+                }
+            }(names[i]);
+        }
+    }
+    multiview_prototype(module.MultiView.prototype, ['getState', 'setState', 'setColormap', 'nextData']);
+
+    module.blanktex = new THREE.DataTexture(new Uint8Array(16*16*4), 16, 16);
+    module.blanktex.needsUpdate = true;
+
     module.getTexture = function(gl, renderbuf) {
         var canvas = document.createElement("canvas");
         canvas.width = renderbuf.width;
@@ -39,6 +101,7 @@ var mriview = (function(module) {
         return {pos:flat, norms:norms};
     }
 
+    //Generates a hatch texture in canvas
     module.makeHatch = function(size, linewidth, spacing) {
         //Creates a cross-hatching pattern in canvas for the dropout shading
         if (spacing === undefined)
@@ -71,6 +134,7 @@ var mriview = (function(module) {
         return tex;
     };
 
+    //Still possibly useful? splits the faces into independent vertices
     module.splitverts = function(geom, left_off) {
         var o, ol, i, il, j, jl, k, n = 0, stride, mpts, faceidx, attr, idx, pos;
         var npolys = geom.attributes.index.array.length;

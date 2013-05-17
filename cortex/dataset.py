@@ -66,6 +66,8 @@ class Dataset(object):
             else:
                 self.datasets[name] = BrainData(*data)
 
+        return self
+
     def __getattr__(self, attr):
         if attr in self.__dict__:
             return self.__dict__[attr]
@@ -86,6 +88,18 @@ class Dataset(object):
     def __repr__(self):
         datasets = sorted(self.datasets.items(), key=lambda x: x[1].priority)
         return "<Dataset with names [%s]>"%(', '.join([n for n, d in datasets]))
+
+    def __add__(self, other):
+        if isinstance(other, dict):
+            other = Dataset(**other)
+
+        if not isinstance(other, Dataset):
+            return NotImplemented
+
+        entries = self.datasets.copy()
+        entries.update(other.datasets)
+        return Dataset(**entries)
+
 
     def __dir__(self):
         return self.__dict__.keys() + self.datasets.keys()

@@ -1,37 +1,18 @@
 {% autoescape None %}
 {% extends template.html %}
 {% block jsinit %}
-    var viewers = {}, figure, grid, sock, viewopts;
+    var viewers, datasets, figure, sock, viewopts;
 {% end %}
 {% block onload %}
 		viewopts = {
 			voxlines: {{voxlines}},
 			voxline_width: {{voxline_width}},
 		};
-
-		var viewer, subj, name;
-		var datasets = classify({{data}});
-		var subjects = {}, snames = [];
-
-		for (var i = 0; i < datasets['__order__'].length; i++) {
-			name = datasets['__order__'][i];
-			subj = datasets[name].subject;
-			if (subjects[subj] === undefined) {
-				subjects[subj] = {__order__:[]};
-				snames.push(subj);
-			}
-			subjects[subj][name] = datasets[name];
-			subjects[subj]['__order__'].push(name);
-		}
+		
+		datasets = classify({{data}});
 
 		figure = new jsplot.W2Figure();
-		grid = figure.add(jsplot.GridFigure, "main", true, {{ layout[0] }}, {{ layout[1] }});
-		for (var i = 0; i < snames.length; i++) {
-			viewer = grid.add(mriview.Viewer, i);
-			viewer.load("/ctm/"+snames[i]+"/");
-			viewer.addData(subjects[snames[i]]);
-			viewers[snames[i]] = viewer;
-		}
+		viewers = figure.add(mriview.MultiView, "main", true, {{ layout[0] }}, {{ layout[1] }}, datasets);
 
 		sock = new Websock();
 {% end %}

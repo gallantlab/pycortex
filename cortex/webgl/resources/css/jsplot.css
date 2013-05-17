@@ -33,3 +33,6 @@ div.jsplot_figure {
 .movie {
     width:100%;
 }
+.movie_load {
+    display:none;
+}
