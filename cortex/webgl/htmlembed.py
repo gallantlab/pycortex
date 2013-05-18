@@ -69,6 +69,11 @@ def _embed_worker(worker):
             wdata = wdata.replace("importScripts(%s)"%simport, '\n'.join(imports))
         return wdata
 
+def _embed_images(dom, rootdirs):
+    for img in dom.getElementsByTagName("img"):
+        imgfile = _resolve_path(img.getAttribute("src"), rootdirs)
+        img.setAttribute("src", serve.make_base64(imgfile))
+
 def embed(rawhtml, outfile, rootdirs=(serve.cwd,)):
     parser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))
     dom = parser.parse(rawhtml)
@@ -82,9 +87,22 @@ if (window.webkitURL)
     head.insertBefore(wurl, head.childNodes[0])
 
     for script in dom.getElementsByTagName("script"):
-        src = script.getAttribute("src")
-        if len(src) > 0:
-            _embed_js(dom, script, rootdirs)
+        stype = script.getAttribute("type")
+        if stype == "text/html":
+            sdom = parser.parse(script.childNodes[0].wholeText)
+            _embed_images(sdom, rootdirs)
+            while len(script.childNodes) > 0:
+                for c in script.childNodes:
+                    script.removeChild(c)
+
+            shtml = ""
+            for el in sdom.getElementsByTagName("body")[0].childNodes:
+                shtml += el.toxml()
+            script.appendChild(dom.createTextNode(shtml))
+        elif stype == "text/javascript":
+            src = script.getAttribute("src")
+            if len(src) > 0:
+                _embed_js(dom, script, rootdirs)
     
     for css in dom.getElementsByTagName("link"):
         if (css.getAttribute("type") == "text/css"):
@@ -95,9 +113,7 @@ if (window.webkitURL)
             css.parentNode.insertBefore(ncss, css)
             css.parentNode.removeChild(css)
 
-    for img in dom.getElementsByTagName("img"):
-        imgfile = _resolve_path(img.getAttribute("src"), rootdirs)
-        img.setAttribute("src", serve.make_base64(imgfile))
+    _embed_images(dom, rootdirs)
 
     #Save out the new html file
     with open(outfile, "w") as htmlfile:

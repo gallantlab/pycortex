@@ -132,6 +132,7 @@ var mriview = (function(module) {
                 this._startplay = (new Date()) - (time * 1000);
         });
         this.figure.register("playtoggle", this, this.playpause.bind(this));
+        this.figure.register("setFrame", this, this.setFrame.bind(this));
     }
     module.Viewer.prototype = Object.create(jsplot.Axes.prototype);
     module.Viewer.prototype.constructor = module.Viewer;
@@ -987,18 +988,14 @@ var mriview = (function(module) {
             slide: function(event, ui) { 
                 this.setFrame(ui.value); 
                 var dataset = this.active[0];
-                if (this.movie !== undefined) {
-                    this.movie.setFrame(ui.value);
-                }
+                this.figure.notify("setFrame", this, [ui.value]);
             }.bind(this)
         });
         $(this.object).find("#movieprogress>div").append("<div class='ui-slider-range ui-widget-header'></div>");
 
         $(this.object).find("#movieframe").change(function() { 
             _this.setFrame(this.value); 
-            if (_this.movie !== undefined) {
-                _this.movie.setFrame(this.value);
-            }
+            _this.figure.notify("setFrame", _this, [this.value]);
         });
     };
     module.Viewer.prototype._makeBtns = function(names) {

@@ -183,7 +183,7 @@ var jsplot = (function (module) {
 
     module.MovieAxes = function(figure, url) {
         module.Axes.call(this, figure);
-        $(this.object).html(this.constructor.html);
+        $(this.object).html($("#movieaxes_html").html());
         this._target = null;
         var types = { 
             ogv: 'video/ogg; codecs="theora, vorbis"', 
@@ -221,20 +221,8 @@ var jsplot = (function (module) {
             this.figure.notify("playsync", this, [this.movie.currentTime]);
         }.bind(this));
         this.figure.register("playtoggle", this, this.playtoggle.bind(this));
+        this.figure.register("setFrame", this, this.setFrame.bind(this));
     }
-    module.MovieAxes.html = [
-        "<div class='movie_wrapper'>",
-            "<div class='movie_cell'>",
-                "<div class='movie_load loadmsg'>",
-                    "<img src='resources/images/loading.gif'>",
-                    "Loading...",
-                "</div>",
-                "<video class='movie' preload loop='loop'>",
-                    "<source />",
-                "</video>",
-            "</div>",
-        "</div>",
-    ].join("\n");
     module.MovieAxes.prototype = Object.create(module.Axes.prototype);
     module.MovieAxes.prototype.constructor = module.MovieAxes;
     module.MovieAxes.prototype.setFrame = function(time) {
