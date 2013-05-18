@@ -243,7 +243,7 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None
     subjects = list(set([ds.subject for name, ds in dataset]))
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
-    subjectjs = dict((subj, "/ctm/"+subj) for subj in subjects)
+    subjectjs = dict((subj, "/ctm/%s/"%subj) for subj in subjects)
     surfs.auxfile = None
 
     if layout is None:
