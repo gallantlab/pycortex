@@ -120,13 +120,6 @@ var mriview = (function(module) {
             this.setState('target', target);
             this.schedule();
         }.bind(this));
-        this.controls.addEventListener("change", function() {
-            var target = this.getState('target');
-            var az = this.getState('azimuth'), 
-                alt = this.getState('altitude'),
-                rad = this.getState('radius');
-            this.figure.notify("setcamera", this, [az, alt, rad, target]);
-        }.bind(this));
         this.figure.register("playsync", this, function(time) {
             if (this._startplay != null)
                 this._startplay = (new Date()) - (time * 1000);
@@ -140,6 +133,12 @@ var mriview = (function(module) {
     module.Viewer.prototype.schedule = function() {
         if (!this._scheduled) {
             this._scheduled = true;
+            var target = this.getState('target');
+            var az = this.getState('azimuth'), 
+                alt = this.getState('altitude'),
+                rad = this.getState('radius');
+            this.figure.notify("setcamera", this, [az, alt, rad, target]);
+
             requestAnimationFrame( function() {
                 this.draw();
                 if (this.state == "play" || this._animation != null) {
@@ -718,14 +717,14 @@ var mriview = (function(module) {
 
     module.Viewer.prototype.setVoxView = function(interp, lines) {
         var ds = this.active[0];
-        ds.filter = interp;
-        for (var i = 0, il = ds.textures.length; i < il; i++) {
-            ds.textures[i].minFilter = filtertypes[interp];
-            ds.textures[i].magFilter = filtertypes[interp];
-            ds.textures[i].needsUpdate = true;
-        }
+        ds.setFilter(interp)
         ds.init(this.uniforms, this.meshes, 0, this.active.length);
         ds.set(this.uniforms, 0, this.frame);
+        if (this.active.length > 1) {
+            ds = this.active[1];
+            ds.setFilter(interp);
+            ds.set(this.uniforms, 1, this.frame);
+        }
         $(this.object).find("#datainterp option").attr("selected", null);
         $(this.object).find("#datainterp option[value="+interp+"]").attr("selected", "selected");
     };
@@ -763,37 +762,43 @@ var mriview = (function(module) {
         this.renderer.setClearColorHex(clearColor, clearAlpha);
         return getTexture(this.renderer.context, renderbuf);
     };
+    var _bound = false;
     module.Viewer.prototype._bindUI = function() {
         $(window).scrollTop(0);
         $(window).resize(function() { this.resize(); }.bind(this));
         this.canvas.resize(function() { this.resize(); }.bind(this));
+        if (!_bound) {
+            _bound = true;
+            window.addEventListener( 'keydown', function(e) {
+                btnspeed = 0.5;
+                if (e.keyCode == 32) {         //space
+                    if (this.active[0].frames > 1)
+                        this.playpause();
+                    e.preventDefault();
+                    e.stopPropagation();
+                } else if (e.keyCode == 82) { //r
+                    this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
+                                  {idx:btnspeed, state:"mix", value:0.0}]);
+                } else if (e.keyCode == 70) { //f
+                    this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
+                                  {idx:btnspeed, state:"mix", value:1.0}]);
+                } 
+            }.bind(this));
+        }
         window.addEventListener( 'keydown', function(e) {
             if (e.target.tagName == "INPUT")
                 return;
-
-            btnspeed = 0.5;
-            if (e.keyCode == 32) {         //space
-                if (this.active[0].frames > 1)
-                    this.playpause();
-                e.preventDefault();
-                e.stopPropagation();
-            } else if (e.keyCode == 107) { //+
+            if (e.keyCode == 107) { //+
                 this.nextData(1);
             } else if (e.keyCode == 109) { //-
                 this.nextData(-1);
-            } else if (e.keyCode == 82) { //r
-                this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
-                              {idx:btnspeed, state:"mix", value:0.0}]);
-            } else if (e.keyCode == 70) { //f
-                this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
-                              {idx:btnspeed, state:"mix", value:1.0}]);
             } else if (e.keyCode == 76) { //l
                 this.labelshow = !this.labelshow;
                 this.schedule();
                 e.stopPropagation();
                 e.preventDefault();
             }
-        }.bind(this))
+        }.bind(this));
         var _this = this;
         $(this.object).find("#mix").slider({
             min:0, max:1, step:.001,

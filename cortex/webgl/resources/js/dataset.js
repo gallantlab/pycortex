@@ -133,6 +133,14 @@ Dataset.prototype = {
             }
         }
     },
+    setFilter: function(interp) {
+        this.filter = interp;
+        for (var i = 0, il = this.textures.length; i < il; i++) {
+            this.textures[i].minFilter = filtertypes[interp];
+            this.textures[i].magFilter = filtertypes[interp];
+            this.textures[i].needsUpdate = true;
+        }
+    },
 
 
     render: function(viewer, res) {

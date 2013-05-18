@@ -91,8 +91,6 @@ THREE.CTMLoader.prototype.load = function( url, callback, useWorker, useBuffers,
 	var xhr = new XMLHttpRequest(),
 		callbackProgress = null;
 
-	xhr.responseType = "arraybuffer";
-
 	var length = 0;
 
 	xhr.onreadystatechange = function() {
@@ -190,9 +188,9 @@ THREE.CTMLoader.prototype.load = function( url, callback, useWorker, useBuffers,
 		}
 
 	}
-
-	xhr.overrideMimeType( "text/plain; charset=x-user-defined" );
 	xhr.open( "GET", url, true );
+	xhr.overrideMimeType( "text/plain; charset=x-user-defined" );
+	xhr.responseType = "arraybuffer";
 	xhr.send( null );
 
 };
