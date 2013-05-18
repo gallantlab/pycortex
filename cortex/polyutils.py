@@ -80,12 +80,12 @@ class Surface(object):
                         for q in getpts(p, n-1):
                             yield q
     
-        output = np.zeros(len(scalars))
-        for i, val in enumerate(scalars):
+        output = np.zeros(len(values))
+        for i, val in enumerate(values):
             neighbors = list(set(getpts(i, neighborhood)))
             if len(neighbors) > 0:
-                g = np.exp(-((scalars[neighbors] - val)**2) / (2*smooth**2))
-                output[i] = (g * scalars[neighbors]).mean()
+                g = np.exp(-((values[neighbors] - val)**2) / (2*smooth**2))
+                output[i] = (g * values[neighbors]).mean()
             
         return output
 
