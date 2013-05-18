@@ -13,32 +13,27 @@ def _resolve_path(filename, roots):
         if os.path.exists(p):
             return p
     else:
-        raise IOError("Path %s doesn't exist under any root dir (%s)" % (filename, roots))
+        raise IOError("Path '%s' doesn't exist under any root dir (%s)" % (filename, roots))
 
 def _embed_css(cssfile, rootdirs):
     csspath, fname = os.path.split(cssfile)
     with open(cssfile) as fp:
         css = fp.read()
-        cssparse = re.compile(r'(.*?){(.*?)}', re.S)
-        urlparse = re.compile(r'url\((.*?)\)')
+        cssparse = re.compile(r'(.*?){([^}]+)}', re.S)
+        urlparse = re.compile(r'url\(([^\)]+)\)')
         cssout = []
         for selector, content in cssparse.findall(css):
-            lines = []
-            for line in content.split(';'):
-                if len(line.strip()) > 0:
-                    attr, val = line.strip().split(':')
-                    url = urlparse.search(val)
-                    if url is not None:
-                        imgpath = _resolve_path(os.path.join(csspath, url.group(1)), rootdirs)
-                        imgdat = "url(%s)"%serve.make_base64(imgpath)
-                        val = urlparse.sub(imgdat, val)
-                    lines.append("%s:%s"%(attr, val))
-            cssout.append("%s {\n%s;\n}"%(selector, ';\n'.join(lines)))
+            for url in urlparse.findall(content):
+                if not url.strip().startswith('data:'):
+                    imgpath = _resolve_path(os.path.join(csspath, url), rootdirs)
+                    content = re.sub(url, serve.make_base64(imgpath), content)
+
+            cssout.append("%s {\n%s;\n}"%(selector, content))
         return '\n'.join(cssout)
 
 def _embed_js(dom, script, rootdirs):
     wparse = re.compile(r"new Worker\(\s*(['\"].*?['\"])\s*\)", re.S)
-    aparse = re.compile(r"attr\(\s*['\"]src['\"]\s*,\s*(.*?)\)")
+    aparse = re.compile(r"attr\(\s*['\"]src['\"]\s*,\s*['\"](.*?)['\"]\)")
     with open(_resolve_path(script.getAttribute("src"), rootdirs)) as jsfile:
         jssrc = jsfile.read()
         for worker in wparse.findall(jssrc):
@@ -53,8 +48,9 @@ def _embed_js(dom, script, rootdirs):
             jssrc = jssrc.replace(worker, rplc)
 
         for src in aparse.findall(jssrc):
-            jspath = _resolve_path(src.strip('\'"'), rootdirs)
-            jssrc = jssrc.replace(src, "'%s'"%serve.make_base64(jspath))
+            if not src.strip().startswith("data:"):
+                jspath = _resolve_path(src.strip('\'"'), rootdirs)
+                jssrc = jssrc.replace(src, "%s"%serve.make_base64(jspath))
 
         script.removeAttribute("src")
         script.appendChild(dom.createTextNode(jssrc.decode('utf-8')))
@@ -88,10 +84,7 @@ if (window.webkitURL)
     for script in dom.getElementsByTagName("script"):
         src = script.getAttribute("src")
         if len(src) > 0:
-            try:
-                _embed_js(dom, script, rootdirs)
-            except:
-                print("Unable to embed script %s" %src)
+            _embed_js(dom, script, rootdirs)
     
     for css in dom.getElementsByTagName("link"):
         if (css.getAttribute("type") == "text/css"):

@@ -30,7 +30,7 @@ colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in so
 
 viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
 
-def _package_data(braindata):
+def _package_data(braindata, submap=None):
     from scipy.stats import scoreatpercentile
     package = dict(__class__="Dataset")
 
@@ -43,6 +43,9 @@ def _package_data(braindata):
     package['lmax'] = float(braindata.data.max())
     package['vmin'] = float(scoreatpercentile(braindata.data.ravel(), 1))
     package['vmax'] = float(scoreatpercentile(braindata.data.ravel(), 99))
+
+    if submap is not None:
+        package['subject'] = submap[braindata.subject]
 
     if not braindata.movie:
         voldat = braindata.volume[np.newaxis]
@@ -62,20 +65,20 @@ def _package_data(braindata):
     package.update(braindata.attrs)
     #include only the filename for any stimuli
     if 'stim' in package:
-        package['stim'] = os.path.split(package['stim'])[1]
+        package['stim'] = os.path.join("stim", os.path.split(package['stim'])[1])
 
     return package
 
-def _convert_dataset(dataset, path="", fmt="%s_%d.png"):
+def _convert_dataset(dataset, fmt="%s_%d.png", submap=None):
     metadata, images = dict(__order__=[]), dict()
     for name, braindata in dataset:
         metadata['__order__'].append(name)
-        package = _package_data(braindata)
+        package = _package_data(braindata, submap=submap)
         for i, data in enumerate(package['data']):
             images[fmt%(name, i)] = _pack_png(data)
 
         frames = range(len(package['data']))
-        package['data'] = [os.path.join(path, fmt)%(name, i) for i in frames]
+        package['data'] = [os.path.join("data", fmt%(name, i)) for i in frames]
         metadata[name] = package
 
     return metadata, images
@@ -92,7 +95,7 @@ def _pack_png(mosaic):
     buf.seek(0)
     return buf.read()
 
-def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", anonymize=False, **kwargs):
+def make_static(outpath, dataset, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", layout=None, anonymize=False, **kwargs):
     """
     Creates a static instance of the webGL MRI viewer that can easily be posted 
     or shared. 
@@ -102,12 +105,8 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     outpath : string
         The directory where the static viewer will be saved. Will be created if it
         doesn't already exist.
-    data : array_like or dict
-        The data to be displayed on the surface. For details see docs for show().
-    subject : string
-        Subject identifier (e.g. "JG").
-    xfmname : string
-        Name of anatomical -> functional transform.
+    dataset : Dataset object
+        Dataset object containing all the data you wish to plot
     types : tuple, optional
         Types of surfaces to include. Fiducial and flat surfaces are automatically
         included. Default ("inflated",)
@@ -128,45 +127,68 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
         os.makedirs(outpath)
+        os.makedirs(os.path.join(outpath, "data"))
 
-    subject, xfmname = dataset[0].subject, dataset[0].xfmname
+    if isinstance(dataset, tuple):
+        dataset = Dataset(data=dataset)
+    elif isinstance(dataset, dict):
+        dataset = Dataset(**dataset)
+
     surfs.auxfile = dataset
-    xfm = surfs.getXfm(subject, xfmname, 'coord')
-    ctmfile = utils.get_ctmpack(subject, types, method='mg2', level=9, recache=recache, **kwargs)
+    subjects = list(set([ds.subject for name, ds in dataset]))
+    kwargs.update(dict(method='mg2', level=9, recache=recache))
+    ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
+    surfs.auxfile = None
 
-    oldpath, fname = os.path.split(ctmfile)
-    fname, ext = os.path.splitext(fname)
+    if layout is None:
+        layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
 
     ## Rename files to anonymize?
-    if anonymize:
-        newfname = "surface"
-    else:
-        newfname = fname
-    for ext in ['json','ctm', 'svg']:
-        newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
-        if os.path.exists(newfile):
-            os.unlink(newfile)
-        
-        shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
+    submap = dict()
+    for i, (subj, ctmfile) in enumerate(ctms.items()):
+        oldpath, fname = os.path.split(ctmfile)
+        fname, ext = os.path.splitext(fname)
+        if anonymize:
+            newfname = "S%d"%i
+            submap[subj] = newfname
+        else:
+            newfname = fname
+        ctms[subj] = newfname+".json"
 
-        if ext == "json" and anonymize:
-            ## change filenames in json
-            nfh = open(newfile)
-            jsoncontents = nfh.read()
-            nfh.close()
+        for ext in ['json','ctm', 'svg']:
+            newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
+            if os.path.exists(newfile):
+                os.unlink(newfile)
             
-            ofh = open(newfile, "w")
-            ofh.write(jsoncontents.replace(fname, newfname))
-            ofh.close()
+            shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
 
-    ctmfile = newfname+".json"
+            if ext == "json" and anonymize:
+                ## change filenames in json
+                nfh = open(newfile)
+                jsoncontents = nfh.read()
+                nfh.close()
+                
+                ofh = open(newfile, "w")
+                ofh.write(jsoncontents.replace(fname, newfname))
+                ofh.close()
 
-    #Generate the data binary objects and save them into the outpath
-    metadata, images = _convert_dataset(dataset, path='/data/', fmt='%s_%d.png')
+    if len(submap) == 0:
+        submap = None
+
+    #Process the dataset
+    metadata, images = _convert_dataset(dataset, submap=submap)
+    jsmeta = json.dumps(metadata, cls=serve.NPEncode)
+    #Write out the PNGs
     for name, img in list(images.items()):
-        with open(os.path.join(outpath, name), "wb") as binfile:
+        with open(os.path.join(outpath, "data", name), "wb") as binfile:
             binfile.write(img)
-    jsobj = json.dumps(metadata, cls=serve.NPEncode)
+    #Copy any stimulus files
+    stimpath = os.path.join(outpath, "stim")
+    for name, ds in dataset:
+        if 'stim' in ds.attrs and os.path.exists(ds.attrs['stim']):
+            if not os.path.exists(stimpath):
+                os.makedirs(stimpath)
+            shutil.copy2(ds.attrs['stim'], stimpath)
     
     #Parse the html file and paste all the js and css files directly into the html
     from . import htmlembed
@@ -182,8 +204,16 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), recache=Fa
     loader = FallbackLoader(rootdirs)
     tpl = loader.load(templatefile)
     kwargs.update(viewopts)
-    html = tpl.generate(ctmfile=ctmfile, data=jsobj, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
+    html = tpl.generate(
+        data=jsmeta, 
+        colormaps=colormaps, 
+        default_cmap=cmap, 
+        python_interface=False, 
+        layout=layout,
+        subjects=ctms,
+        **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
+    surfs.auxfile = None
 
 def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
     """Display a dynamic viewer using the given dataset
@@ -213,11 +243,13 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None
     subjects = list(set([ds.subject for name, ds in dataset]))
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
+    subjectjs = dict((subj, "/ctm/"+subj) for subj in subjects)
+    surfs.auxfile = None
 
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
 
-    metadata, images = _convert_dataset(dataset, path='/data/', fmt='%s_%d.png')
+    metadata, images = _convert_dataset(dataset)
     jsmeta = json.dumps(metadata, cls=serve.NPEncode)
 
     saveevt = mp.Event()
@@ -281,6 +313,7 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None
                 default_cmap=cmap, 
                 python_interface=True, 
                 layout=layout,
+                subjects=subjectjs,
                 **viewopts)
             self.write(generated)
 

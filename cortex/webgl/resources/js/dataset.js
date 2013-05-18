@@ -122,7 +122,6 @@ Dataset.prototype = {
     },
     set: function(uniforms, dim, time) {
         var frame = ((time - this.delay) / this.rate).mod(this.frames);
-        console.log(time, frame);
         var fframe = Math.floor(frame);
         uniforms.framemix.value = frame - fframe;
         if (uniforms.data.texture[dim*2] !== this.textures[fframe]) {

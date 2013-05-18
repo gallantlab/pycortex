@@ -1,7 +1,7 @@
 {% autoescape None %}
 {% extends template.html %}
 {% block jsinit %}
-    var viewers, datasets, figure, sock, viewopts;
+    var viewers, subjects, datasets, figure, sock, viewopts;
 {% end %}
 {% block onload %}
 		viewopts = {
@@ -9,6 +9,7 @@
 			voxline_width: {{voxline_width}},
 		};
 		
+		subjects = {{subjects}};
 		datasets = classify({{data}});
 
 		figure = new jsplot.W2Figure();

@@ -200,12 +200,12 @@ var jsplot = (function (module) {
 
         this.movie.addEventListener("progress", function() {
             if (this._target != null && 
-                this.seekable.length > 0 && 
-                this.seekable.end(0) >= this._target &&
-                this.parentNode != null) {
+                this.movie.seekable.length > 0 && 
+                this.movie.seekable.end(0) >= this._target &&
+                this.movie.parentNode != null) {
                 var func = function() {
                     try {
-                        this.currentTime = this._target;
+                        this.movie.currentTime = this._target;
                         this._target = null;
                         this.loadmsg.hide()
                     } catch (e) {
@@ -215,7 +215,7 @@ var jsplot = (function (module) {
                 }.bind(this);
                 func();
             }
-        });
+        }.bind(this));
 
         this.movie.addEventListener("timeupdate", function() {
             this.figure.notify("playsync", this, [this.movie.currentTime]);

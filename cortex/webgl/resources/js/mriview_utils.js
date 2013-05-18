@@ -19,7 +19,7 @@ var mriview = (function(module) {
         var viewer;
         for (var i = 0; i < snames.length; i++) {
             viewer = this.add(mriview.Viewer, i);
-            viewer.load("/ctm/"+snames[i]+"/");
+            viewer.load(window.subjects[snames[i]]);
             this[snames[i]] = viewer;
         }
         

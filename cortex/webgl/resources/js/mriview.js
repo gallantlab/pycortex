@@ -546,7 +546,7 @@ var mriview = (function(module) {
 
             this.setVoxView(ds.filter, viewopts.voxlines);
             ds.init(this.uniforms, this.meshes, 0, names.length);
-            ds.set(this.uniforms, 0, 0);
+            ds.set(this.uniforms, 0, ds.delay);
             $(this.object).find("#vrange").slider("option", {min: ds.lmin, max:ds.lmax});
             this.setVminmax(ds.min, ds.max, 0);
 
@@ -561,11 +561,12 @@ var mriview = (function(module) {
                     $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
                 }.bind(this));
                 
-                $(this.object).find("#movieframe").val(0);
+                this.setFrame(ds.delay);
 
                 if (ds.stim && figure) {
                     figure.setSize("right", "30%");
-                    this.movie = figure.add(jsplot.MovieAxes, "right", false, "/stim/"+ds.stim);
+                    this.movie = figure.add(jsplot.MovieAxes, "right", false, ds.stim);
+                    this.movie.setFrame(ds.delay);
                 }
             } else {
                 $(this.object).find("#moviecontrols").hide();
@@ -578,8 +579,8 @@ var mriview = (function(module) {
                     $(this).removeClass("ui-selected");
             })
             if (names.length > 1) {
-                ds.init(this.uniforms, this.meshes, 1);
-                ds2.set(this.uniforms, 1, 0);
+                ds2.init(this.uniforms, this.meshes, 1);
+                ds2.set(this.uniforms, 1, ds.delay);
                 this.active.push(ds2);
                 $(this.object).find("#vrange2").slider("option", {min: ds2.lmin, max:ds2.lmax});
                 this.setVminmax(ds2.min, ds2.max, 1);
