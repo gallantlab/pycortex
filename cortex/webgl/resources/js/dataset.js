@@ -94,7 +94,7 @@ Dataset.prototype = {
             this.shader.metal = true;
 
             if (uniforms.nsamples.value > 1) {
-                shaders = Shaders.main(sampler, this.raw, viewopts.voxlines, 1);
+                shaders = Shaders.main(sampler, this.raw, ndim > 1, viewopts.voxlines, 1);
                 this.fastshader = new THREE.ShaderMaterial({
                     vertexShader:shaders.vertex,
                     fragmentShader:shaders.fragment,

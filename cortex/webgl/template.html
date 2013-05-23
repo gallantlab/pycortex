@@ -313,10 +313,6 @@
 	var cmapnames = {}
 
 	$(document).ready(function() {
-		$("#colormap option").each(function(idx) {
-			cmapnames[$(this).text()] = idx;
-		});
-
 		if (validator.mobile) {
 			$(".loadmsg").hide();
 			$("#ctmload").html("<p>Sorry, mobile browsers are not supported.</p><p>Unfortunately, iOS devices do not support WebGL.</p><p>Please ask Apple for WebGL support in their browsers!</p>").show();

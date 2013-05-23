@@ -108,6 +108,12 @@ var mriview = (function(module) {
         this.datasets = {}
         this.active = [];
 
+        var cmapnames = {};
+        $(this.object).find("#colormap option").each(function(idx) {
+            cmapnames[$(this).text()] = idx;
+        });
+        this.cmapnames = cmapnames;
+
         this._bindUI();
 
         this.figure.register("setmix", this, this.setMix.bind(this));
@@ -155,8 +161,8 @@ var mriview = (function(module) {
         if (this._animation) {
             var sec = ((new Date()) - this._animation.start) / 1000;
             if (!this._animate(sec)) {
-                this.meshes.left.material = this.shader;
-                this.meshes.right.material = this.shader;
+                this.meshes.left.material = this.active[0].shader;
+                this.meshes.right.material = this.active[0].shader;
                 delete this._animation;
             }
         }
@@ -335,9 +341,9 @@ var mriview = (function(module) {
                     anim.push({start:start, end:end, ended:false});
             }
         }
-        if (this.fastshader) {
-            this.meshes.left.material = this.fastshader;
-            this.meshes.right.material = this.fastshader;
+        if (this.active[0].fastshader) {
+            this.meshes.left.material = this.active[0].fastshader;
+            this.meshes.right.material = this.active[0].fastshader;
         }
         this._animation = {anim:anim, start:new Date()};
         this.schedule();
@@ -629,8 +635,8 @@ var mriview = (function(module) {
 
     module.Viewer.prototype.setColormap = function(cmap) {
         if (typeof(cmap) == 'string') {
-            if (cmapnames[cmap] !== undefined)
-                $(this.object).find("#colormap").ddslick('select', {index:cmapnames[cmap]});
+            if (this.cmapnames[cmap] !== undefined)
+                $(this.object).find("#colormap").ddslick('select', {index:this.cmapnames[cmap]});
 
             return;
         } else if (cmap instanceof Image || cmap instanceof Element) {
