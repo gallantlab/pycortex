@@ -6,6 +6,8 @@ import numpy as np
 from scipy import sparse
 warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
+from . import dataset
+
 def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     from ..db import surfs
     from . import point, patch, volume
@@ -78,38 +80,43 @@ class Mapper(object):
         return '<%s mapper with %d vertices>'%(ptype, self.nverts)
 
     def __call__(self, data):
-        if self.nverts in data.shape:
+        if isinstance(data, tuple):
+            data = dataset.BrainData(*data)
+
+        if isinstance(data, dataset.VertexData):
             llen = self.masks[0].shape[0]
-            left, right = data[..., :llen], data[..., llen:]
-
-            if self.idxmap is not None:
-                return left[..., self.idxmap[0]], right[..., self.idxmap[1]]
+            if data.raw:
+                left, right = data.data[..., :llen,:], data.data[..., llen:,:]
+                if self.idxmap is not None:
+                    left = left[..., self.idxmap[0], :]
+                    right = right[..., self.idxmap[1], :]
+            else:
+                left, right = data[..., :llen], data[..., llen:]
+                if self.idxmap is not None:
+                    left = left[..., self.idxmap[0]]
+                    right = right[..., self.idxmap[1]]
             return left, right
-            
 
-        if data.ndim in (1, 3):
-            data = data[np.newaxis]
+        if data.raw:
+            raise ValueError('Mapping raw data is unsupported')
+
+        volume = data.volume
+        if not data.movie:
+            volume = volume[np.newaxis]
+        volume.shape = len(volume), -1
+        volume = volume.T
 
         mapped = []
         for mask in self.masks:
-            if self.mask.sum() in data.shape:
-                shape = (np.prod(self.shape), data.shape[0])
-                norm = np.zeros(shape)
-                norm[self.mask.ravel()] = data.T
-            elif data.ndim == 4:
-                norm = data.reshape(len(data), -1).T
-            else:
-                raise ValueError('Data size invalid')
-
-            mapped.append(np.array(mask * norm).T.squeeze())
+            mapped.append(np.array(mask * volume).T)
             
         if self.idxmap is not None:
-            mapped[0] = mapped[0][..., self.idxmap[0]]
-            mapped[1] = mapped[1][..., self.idxmap[1]]
+            mapped[0] = mapped[0][:, self.idxmap[0]]
+            mapped[1] = mapped[1][:, self.idxmap[1]]
 
-        return mapped
+        return dataset.VertexData(np.hstack(mapped), data.subject, **data.attrs)
         
-    def backwards(self, verts):
+    def backwards(self, verts, fast=True):
         '''Projects vertex data back into volume space
 
         Parameters
