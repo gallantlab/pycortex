@@ -14,9 +14,8 @@ import numpy as np
 from tornado import web
 from FallbackLoader import FallbackLoader
 
-from .. import utils, options, volume
+from .. import utils, options, volume, dataset
 from ..db import surfs
-from ..dataset import Dataset
 
 from . import serve
 
@@ -69,10 +68,12 @@ def _package_data(braindata, submap=None):
 
     return package
 
-def _convert_dataset(dataset, fmt="%s_%d.png", submap=None):
+def _convert_dataset(data, fmt="%s_%d.png", submap=None):
     metadata, images = dict(__order__=[]), dict()
-    for name, braindata in dataset:
+    for name, braindata in data:
         metadata['__order__'].append(name)
+        if isinstance(braindata, dataset.VertexData):
+            raise TypeError('Sorry, vertex data is currently not supported for webgl...')
         package = _package_data(braindata, submap=submap)
         for i, data in enumerate(package['data']):
             images[fmt%(name, i)] = _pack_png(data)
@@ -95,7 +96,7 @@ def _pack_png(mosaic):
     buf.seek(0)
     return buf.read()
 
-def make_static(outpath, dataset, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", layout=None, anonymize=False, **kwargs):
+def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", layout=None, anonymize=False, **kwargs):
     """
     Creates a static instance of the webGL MRI viewer that can easily be posted 
     or shared. 
@@ -105,7 +106,7 @@ def make_static(outpath, dataset, types=("inflated",), recache=False, cmap="RdBu
     outpath : string
         The directory where the static viewer will be saved. Will be created if it
         doesn't already exist.
-    dataset : Dataset object
+    data : Dataset object
         Dataset object containing all the data you wish to plot
     types : tuple, optional
         Types of surfaces to include. Fiducial and flat surfaces are automatically
@@ -129,10 +130,9 @@ def make_static(outpath, dataset, types=("inflated",), recache=False, cmap="RdBu
         os.makedirs(outpath)
         os.makedirs(os.path.join(outpath, "data"))
 
-    if isinstance(dataset, tuple):
-        dataset = Dataset(data=dataset)
-    elif isinstance(dataset, dict):
-        dataset = Dataset(**dataset)
+    data = dataset.normalize(data)
+    if not isinstance(data, dataset.Dataset):
+        data = dataset.Dataset(data=data)
 
     surfs.auxfile = dataset
     subjects = list(set([ds.subject for name, ds in dataset]))
@@ -176,7 +176,7 @@ def make_static(outpath, dataset, types=("inflated",), recache=False, cmap="RdBu
         submap = None
 
     #Process the dataset
-    metadata, images = _convert_dataset(dataset, submap=submap)
+    metadata, images = _convert_dataset(data, submap=submap)
     jsmeta = json.dumps(metadata, cls=serve.NPEncode)
     #Write out the PNGs
     for name, img in list(images.items()):
@@ -184,7 +184,7 @@ def make_static(outpath, dataset, types=("inflated",), recache=False, cmap="RdBu
             binfile.write(img)
     #Copy any stimulus files
     stimpath = os.path.join(outpath, "stim")
-    for name, ds in dataset:
+    for name, ds in data:
         if 'stim' in ds.attrs and os.path.exists(ds.attrs['stim']):
             if not os.path.exists(stimpath):
                 os.makedirs(stimpath)
@@ -215,7 +215,7 @@ def make_static(outpath, dataset, types=("inflated",), recache=False, cmap="RdBu
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
     surfs.auxfile = None
 
-def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
+def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
     """Display a dynamic viewer using the given dataset
 
     Optional attributes that affect the display:
@@ -226,21 +226,20 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None
     delay: time in seconds to delay the data with respect to stimulus
     rate: volumes per second
     """
-    if isinstance(dataset, tuple):
-        dataset = Dataset(data=dataset)
-    elif isinstance(dataset, dict):
-        dataset = Dataset(**dataset)
+    data = dataset.normalize(data)
+    if not isinstance(data, dataset.Dataset):
+        data = dataset.Dataset(data=data)
 
     html = FallbackLoader([serve.cwd]).load("mixer.html")
-    surfs.auxfile = dataset
+    surfs.auxfile = data
 
     stims = dict()
-    for name, ds in dataset:
+    for name, ds in data:
         if 'stim' in ds.attrs and os.path.exists(ds.attrs['stim']):
             sname = os.path.split(ds.attrs['stim'])[1]
             stims[sname] = ds.attrs['stim']
 
-    subjects = list(set([ds.subject for name, ds in dataset]))
+    subjects = list(set([ds.subject for name, ds in data]))
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
     subjectjs = dict((subj, "/ctm/%s/"%subj) for subj in subjects)
@@ -249,7 +248,7 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
 
-    metadata, images = _convert_dataset(dataset)
+    metadata, images = _convert_dataset(data)
     jsmeta = json.dumps(metadata, cls=serve.NPEncode)
 
     saveevt = mp.Event()
@@ -342,9 +341,9 @@ def show(dataset, types=("inflated",), recache=False, cmap='RdBu_r', layout=None
     class JSMixer(serve.JSProxy):
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
-            metadat, images = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
+            metadata, images = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
             queue.put(images)
-            return Proxy(json)
+            return Proxy(metadata)
 
         def saveflat(self, filename, height=1024):
             Proxy = serve.JSProxy(self.send, "window.viewer.saveflat")

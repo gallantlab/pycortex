@@ -4,6 +4,7 @@ HDF5 format:
 
 /subjects/
     s1/
+        rois.svg
         transforms/
             xfm1/
                 xfm[4,4]
@@ -38,10 +39,11 @@ class Dataset(object):
         self.subjects = {}
         self.datasets = {}
         for name, data in kwargs.items():
-            if isinstance(data, BrainData):
-                self.datasets[name] = data
-            else:
-                self.datasets[name] = BrainData(*data)
+            norm = normalize(data)
+            if isinstance(norm, (BrainData, VertexData)):
+                self.datasets[name] = norm
+            elif isinstance(norm, Dataset):
+                self.datasets.update(norm.datasets)
 
     @classmethod
     def from_file(cls, filename):
@@ -88,6 +90,9 @@ class Dataset(object):
     def __repr__(self):
         datasets = sorted(self.datasets.items(), key=lambda x: x[1].priority)
         return "<Dataset with names [%s]>"%(', '.join([n for n, d in datasets]))
+
+    def __len__(self):
+        return len(self.datasets)
 
     def __add__(self, other):
         if isinstance(other, dict):
@@ -165,6 +170,20 @@ class Dataset(object):
             return getattr(node, maskname)[:]
         except tables.NoSuchNodeError:
             raise IOError('Mask not found in package')
+
+    def getOverlay(self, subject, type='rois', **kwargs):
+        try:
+            node = getattr(getattr(self.subjects, subject), type)
+            if type == "rois":
+                import tempfile
+                tf = tempfile.NamedTemporaryFile()
+                tf.write(node.read())
+                tf.seek(0)
+                return tf
+        except tables.NoSuchNodeError:
+            raise IOError('Overlay not found in package')
+
+        raise TypeError('Unknown overlay type')
 
 class BrainData(object):
     def __init__(self, data, subject, xfmname, mask=None, **kwargs):
@@ -323,6 +342,8 @@ class VertexData(BrainData):
         raise NotImplementedError
 
     def volume(self, xfmname, projection='nearest', **kwargs):
+        import warnings
+        warnings.warn('Inverse mapping cannot be accurate')
         from . import utils
         mapper = utils.get_mapper(self.subject, xfmname, projection)
         return mapper.backwards(self, **kwargs)
@@ -359,6 +380,18 @@ class Masker(object):
             return BrainData(self.ds.volume[:,mask], s, x, mask=masktype)
         return BrainData(self.ds.volume[mask], s, x, mask=masktype)
 
+def normalize(data):
+    if isinstance(data, (BrainData, VertexData, Dataset)):
+        return data
+    elif isinstance(data, dict):
+        return Dataset(**data)
+    elif isinstance(data, str):
+        return Dataset.from_file(data)
+    elif isinstance(data, tuple):
+        try:
+            return BrainData(*data)
+        except ValueError:
+            return VertexData(*data)
 
 def _from_file(filename, name="data"):
     import tables
@@ -378,6 +411,8 @@ def _from_file(filename, name="data"):
         if 'xfmname' in attrs:
             return BrainData(data, **attrs)
         return VertexData(data, **attrs)
+
+    raise TypeError('Unknown file type')
 
 def _find_mask(nvox, subject, xfmname):
     import os
@@ -435,6 +470,8 @@ def _hdf_read(node):
 
 def _pack_subjs(h5, subjects):
     for subject in subjects:
+        rois = surfs.getOverlay(subject, type='rois')
+        h5.createArray("/subjects", "rois", rois.toxml(pretty=False))
         surfaces = surfs.getFiles(subject)['surfs']
         for surf in surfaces.keys():
             for hemi in ("lh", "rh"):

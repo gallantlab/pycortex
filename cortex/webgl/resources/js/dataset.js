@@ -72,7 +72,7 @@ function Dataset(json) {
         
     }
 
-    loadtex(0);
+    loadmosaic(0);
     $("#dataload").show();
 }
 Dataset.fromJSON = function(json) {

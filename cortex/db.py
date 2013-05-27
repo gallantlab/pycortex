@@ -173,11 +173,14 @@ class Database(object):
         if type == "rois":
             from . import svgroi
             pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
-            svgform = self.getFiles(subject)['rois']
+            svgfile = self.getFiles(subject)['rois']
+            if self.auxfile is not None:
+                tf = self.auxfile.getOverlay(subject, type)
+                svgfile = tf.name
             if 'pts' in kwargs:
                 pts = kwargs['pts']
                 del kwargs['pts']
-            return svgroi.get_roipack(svgform, pts, polys, **kwargs)
+            return svgroi.get_roipack(svgfile, pts, polys, **kwargs)
 
         raise TypeError('Invalid overlay type')
     
