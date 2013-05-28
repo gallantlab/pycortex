@@ -54,7 +54,7 @@ def read_vtk(bytes filename):
 
     cstr = strtok(cvtk, "\n")
     while pts is None or polys is None and cstr is not NULL:
-        line = cstr
+        line = cstr.encode('UTF-8')
         if line.startswith("POINTS"):
             _, sn, dtype = line.split()
             n = int(sn)

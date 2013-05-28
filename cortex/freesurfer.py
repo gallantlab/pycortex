@@ -51,8 +51,8 @@ def import_subj(subject, sname=None):
     #voxelize the surface for nicer BBR anatomical
     anat.voxelize(sname)
 
-    np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=-curvs['lh'], right=-curvs['rh'])
-    #np.savez(anats.format(subj=sname, name="thickness", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
+    np.savez(anats.format(subj=sname, name="curvature", type='npz'), left=-curvs['lh'], right=-curvs['rh'])
+    #np.savez(anats.format(subj=sname, name="thickness", type='npz'), left=curvs['lh'], right=curvs['rh'])
 
 def import_flat(subject, patch, sname=None):
     surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.npz")
