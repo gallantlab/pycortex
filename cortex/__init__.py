@@ -3,7 +3,7 @@ from .utils import *
 from . import align, volume, quickflat
 from .quickflat import make_figure as quickshow
 
-from .dataset import Dataset, BrainData
+from .dataset import Dataset, VolumeData, VertexData
 openFile = Dataset.from_file
 
 from . import webgl

@@ -43,7 +43,6 @@ class PatchMapper(Mapper):
             if data is not None:
                 ij.append(np.vstack(np.broadcast_arrays(i, j)).T)
                 alldata.append(data)
-        print len(samples)
 
         data, ij = np.hstack(alldata), np.vstack(ij).T
         csrshape = len(pts), np.prod(shape)

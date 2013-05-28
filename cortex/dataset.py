@@ -40,7 +40,7 @@ class Dataset(object):
         self.datasets = {}
         for name, data in kwargs.items():
             norm = normalize(data)
-            if isinstance(norm, (BrainData, VertexData)):
+            if isinstance(norm, (VolumeData, VertexData)):
                 self.datasets[name] = norm
             elif isinstance(norm, Dataset):
                 self.datasets.update(norm.datasets)
@@ -63,10 +63,10 @@ class Dataset(object):
 
     def append(self, **kwargs):
         for name, data in kwargs.items():
-            if isinstance(data, BrainData):
+            if isinstance(data, VolumeData):
                 self.datasets[name] = data
             else:
-                self.datasets[name] = BrainData(*data)
+                self.datasets[name] = VolumeData(*data)
 
         return self
 
@@ -185,7 +185,7 @@ class Dataset(object):
 
         raise TypeError('Unknown overlay type')
 
-class BrainData(object):
+class VolumeData(object):
     def __init__(self, data, subject, xfmname, mask=None, **kwargs):
         """Three possible variables: raw, volume, movie, vertex. Enumerated with size:
         raw volume movie: (t, z, y, x, c)
@@ -250,9 +250,10 @@ class BrainData(object):
             self.shape = shape
 
     def map(self, projection="nearest"):
-        from . import utils
         mapper = utils.get_mapper(self.subject, self.xfmname, projection)
-        return mapper(self)
+        data = mapper(self)
+        data.attrs['projection'] = (self.xfmname, projection)
+        return data
 
     def __repr__(self):
         maskstr = "volumetric"
@@ -264,6 +265,11 @@ class BrainData(object):
             maskstr += " movie"
         maskstr = maskstr[0].upper()+maskstr[1:]
         return "<%s data for (%s, %s)>"%(maskstr, self.subject, self.xfmname)
+
+    def __getitem__(self, idx):
+        if not self.movie:
+            raise ValueError('Cannot index non-movie data')
+        return VolumeData(self.data[idx], self.subject, self.xfmname, **self.attrs)
 
     @property
     def volume(self):
@@ -312,7 +318,7 @@ class BrainData(object):
         for name, value in self.attrs.items():
             node.attrs[name] = value
 
-class VertexData(BrainData):
+class VertexData(VolumeData):
     def __init__(self, data, subject, **kwargs):
         """Vertex Data possibilities
 
@@ -324,6 +330,7 @@ class VertexData(BrainData):
         self.data = data
         self.subject = subject
         self.attrs = kwargs
+        self.movie = False
 
         self.raw = data.dtype == np.uint8
         if data.ndim == 3:
@@ -351,13 +358,19 @@ class VertexData(BrainData):
     def __repr__(self):
         maskstr = ''
         if 'projection' in self.attrs:
-            maskstr = '%s mapped'%self.attrs['projection']
+            maskstr = '(%s, %s) mapped'%self.attrs['projection']
 
         if self.raw:
             maskstr += " raw"
         if self.movie:
             maskstr += " movie"
         return "<%s vertex data for %s>"%(maskstr, self.subject)
+
+    def __getitem__(self, idx):
+        if not self.movie:
+            raise TypeError("Cannot index non-movie data")
+
+        return VertexData(self.data[idx], self.subject, **self.attrs)
 
     def _write_hdf(self, h5, name="data"):
         node = _hdf_write(h5, self.data, name=name)
@@ -377,11 +390,11 @@ class Masker(object):
         s, x = self.ds.subject, self.ds.xfmname
         mask = surfs.getMask(s, x, masktype)
         if self.ds.movie:
-            return BrainData(self.ds.volume[:,mask], s, x, mask=masktype)
-        return BrainData(self.ds.volume[mask], s, x, mask=masktype)
+            return VolumeData(self.ds.volume[:,mask], s, x, mask=masktype)
+        return VolumeData(self.ds.volume[mask], s, x, mask=masktype)
 
 def normalize(data):
-    if isinstance(data, (BrainData, VertexData, Dataset)):
+    if isinstance(data, (VolumeData, VertexData, Dataset)):
         return data
     elif isinstance(data, dict):
         return Dataset(**data)
@@ -389,7 +402,7 @@ def normalize(data):
         return Dataset.from_file(data)
     elif isinstance(data, tuple):
         try:
-            return BrainData(*data)
+            return VolumeData(*data)
         except ValueError:
             return VertexData(*data)
 
@@ -403,13 +416,13 @@ def _from_file(filename, name="data"):
             data, attrs = _hdf_read(node)
             h5.close()
             if 'xfmname' in attrs:
-                return BrainData(data, **attrs)
+                return VolumeData(data, **attrs)
             return VertexData(data, **attrs)
     elif isinstance(filename, tables.File):
         node = filename.getNode("/datasets", name)
         data, attrs = _hdf_read(node)
         if 'xfmname' in attrs:
-            return BrainData(data, **attrs)
+            return VolumeData(data, **attrs)
         return VertexData(data, **attrs)
 
     raise TypeError('Unknown file type')

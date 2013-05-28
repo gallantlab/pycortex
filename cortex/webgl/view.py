@@ -12,7 +12,7 @@ import multiprocessing as mp
 import numpy as np
 
 from tornado import web
-from FallbackLoader import FallbackLoader
+from .FallbackLoader import FallbackLoader
 
 from .. import utils, options, volume, dataset
 from ..db import surfs

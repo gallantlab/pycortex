@@ -139,13 +139,13 @@ def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
 def get_flatcache(subject, xfmname, pixelwise=True, projection='nearest', recache=False, height=1024):
     cachedir = surfs.getFiles(subject)['cachedir']
     cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
-    if pixelwise:
+    if pixelwise and xfmname is not None:
         cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}.npz")
         cachefile = cachefile.format(height=height, xfmname=xfmname)
     
     if not os.path.exists(cachefile) or recache:
         print("Generating a flatmap cache")
-        if pixelwise:
+        if pixelwise and xfmname is not None:
             pixmap = _make_pixel_cache(subject, xfmname, height=height, projection=projection)
         else:
             pixmap = _make_vertex_cache(subject, height=height)
@@ -155,26 +155,34 @@ def get_flatcache(subject, xfmname, pixelwise=True, projection='nearest', recach
         npz = np.load(cachefile)
         pixmap = sparse.csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
 
-    if not pixelwise:
+    if not pixelwise and xfmname is not None:
         mapper = utils.get_mapper(subject, xfmname, projection)
         pixmap = pixmap * sparse.vstack(mapper.masks)
 
     return pixmap
 
 def make(braindata, height=1024, **kwargs):
-    if isinstance(braindata, tuple):
-        braindata = dataset.BrainData(*braindata)
-    mask = surfs.getAnat(braindata.subject, "flatmask", height=height)['mask'].T
-    pixmap = get_flatcache(braindata.subject, braindata.xfmname, height=height, **kwargs)
+    braindata = dataset.normalize(braindata)
+    if not isinstance(braindata, dataset.VolumeData):
+        raise TypeError('Invalid type for quickflat')
     if braindata.movie:
         raise ValueError('Cannot flatten multiple volumes')
 
+    mask = surfs.getAnat(braindata.subject, "flatmask", height=height)['mask'].T    
+    
+    if isinstance(braindata, dataset.VertexData):
+        pixmap = get_flatcache(braindata.subject, None, height=height, **kwargs)
+        data = braindata.data
+    else:
+        pixmap = get_flatcache(braindata.subject, braindata.xfmname, height=height, **kwargs)
+        data = braindata.volume
+
     if braindata.raw:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
-        img[mask] = pixmap * braindata.volume.reshape(-1, 4)
+        img[mask] = pixmap * data.reshape(-1, 4)
     else:
         img = (np.nan*np.ones(mask.shape)).astype(braindata.data.dtype)
-        img[mask] = pixmap * braindata.volume.ravel()
+        img[mask] = pixmap * data.ravel()
 
     return img.T[::-1]
 

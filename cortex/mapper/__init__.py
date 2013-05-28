@@ -6,7 +6,7 @@ import numpy as np
 from scipy import sparse
 warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
-from . import dataset
+from .. import dataset
 
 def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     from ..db import surfs
@@ -81,7 +81,7 @@ class Mapper(object):
 
     def __call__(self, data):
         if isinstance(data, tuple):
-            data = dataset.BrainData(*data)
+            data = dataset.VolumeData(*data)
 
         if isinstance(data, dataset.VertexData):
             llen = self.masks[0].shape[0]
@@ -114,7 +114,7 @@ class Mapper(object):
             mapped[0] = mapped[0][:, self.idxmap[0]]
             mapped[1] = mapped[1][:, self.idxmap[1]]
 
-        return dataset.VertexData(np.hstack(mapped), data.subject, **data.attrs)
+        return dataset.VertexData(np.hstack(mapped).squeeze(), data.subject, **data.attrs)
         
     def backwards(self, verts, fast=True):
         '''Projects vertex data back into volume space
