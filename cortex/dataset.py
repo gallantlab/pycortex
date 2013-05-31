@@ -236,6 +236,9 @@ class VolumeData(object):
             elif isinstance(mask, str):
                 self.mask = surfs.getMask(self.subject, self.xfmname, mask)
                 self.masktype = mask
+            elif isinstance(mask, np.ndarray):
+                self.mask = mask
+                self.masktype = "user-supplied"
 
             self.shape = self.mask.shape
         else:
