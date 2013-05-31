@@ -7,10 +7,13 @@ class Transform(object):
     def __init__(self, xfm, reference):
         self.xfm = xfm
         self.reference = None
-        if isinstance(reference, (str, unicode)):
-            import nibabel
-            self.reference = nibabel.load(reference)
-            self.shape = self.reference.get_shape()[:3][::-1]
+        if isinstance(reference, str):
+            try:
+                import nibabel
+                self.reference = nibabel.load(reference)
+                self.shape = self.reference.get_shape()[:3][::-1]
+            except:
+                self.reference = reference
         elif isinstance(reference, tuple):
             self.shape = reference
         else:

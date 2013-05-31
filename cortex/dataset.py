@@ -107,7 +107,7 @@ class Dataset(object):
 
 
     def __dir__(self):
-        return self.__dict__.keys() + self.datasets.keys()
+        return list(self.__dict__.keys()) + list(self.datasets.keys())
 
     def save(self, filename, pack=False):
         import tables
@@ -199,6 +199,11 @@ class VolumeData(object):
         reg linear image: (v,)
         """
         self.data = data
+        try:
+            basestring
+        except NameError:
+            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
+            xfmname = xfmname if isinstance(xfmname, str) else xfmname.decode('utf-8')
         self.subject = subject
         self.xfmname = xfmname
         self.attrs = kwargs
@@ -332,6 +337,10 @@ class VertexData(VolumeData):
         reg linear image: (v,)
         """
         self.data = data
+        try:
+            basestring
+        except NameError:
+            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
         self.subject = subject
         self.attrs = kwargs
         self.movie = False
@@ -344,9 +353,10 @@ class VertexData(VolumeData):
         elif data.ndim == 2:
             self.movie = not self.raw
 
-        pts, polys = surfs.getSurf(self.subject, "fiducial", merge=True)
         self.nverts = self.data.shape[-2 if self.raw else -1]
-        if len(pts) != self.nverts:
+        left, right = surfs.getSurf(self.subject, "fiducial")
+        self.llen = len(left[0])
+        if len(np.vstack([left[0], right[0]])) != self.nverts:
             raise ValueError('Invalid number of vertices for subject')
 
     def _check_size(self):
@@ -381,6 +391,14 @@ class VertexData(VolumeData):
         node.attrs.subject = self.subject
         for name, value in self.attrs.items():
             node.attrs[name] = value
+
+    @property
+    def left(self):
+        return self.data[:self.llen]
+
+    @property
+    def right(self):
+        return self.data[self.llen:]
 
 class Masker(object):
     def __init__(self, ds):

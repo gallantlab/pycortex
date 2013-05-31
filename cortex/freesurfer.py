@@ -52,14 +52,14 @@ def import_subj(subject, sname=None):
     #np.savez(anats.format(subj=sname, name="thickness", type='npz'), left=curvs['lh'], right=curvs['rh'])
 
 def import_flat(subject, patch, sname=None):
-    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.npz")
     if sname is None:
         sname = subject
+    surfs = os.path.join(db.filestore, sname, "surfaces", "flat_{hemi}.npz")
     for hemi in ['lh', 'rh']:
         pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat")
         flat = pts[:,[1, 0, 2]]
         flat[:,1] = -flat[:,1]
-        fname = surfs.format(subj=sname, name="flat", hemi=hemi)
+        fname = surfs.format(hemi=hemi)
         np.savez(fname, pts=flat, polys=polys)
 
 def make_fiducial(subject):

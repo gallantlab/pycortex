@@ -331,7 +331,7 @@ class Database(object):
             return (wpts + ppts) / 2, polys
 
         try:
-            import formats
+            from . import formats
             return formats.read(os.path.splitext(files[type][hemi])[0])
         except KeyError:
             raise IOError

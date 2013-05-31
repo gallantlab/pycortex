@@ -10,7 +10,7 @@ from libc.stdlib cimport atoi, atof
 
 np.import_array()
 
-def read(bytes globname):
+def read(str globname):
     readers = OrderedDict([('npz', read_npz), ('vtk', read_vtk), ('off', read_off)])
     for ext, func in readers.items():
         try:
@@ -19,7 +19,7 @@ def read(bytes globname):
             pass
     raise IOError('No such surface file')
 
-def read_off(bytes filename):
+def read_off(str filename):
     pts, polys = [], []
     with open(filename) as fp:
         assert fp.readline()[:3] == 'OFF', 'Not an OFF file'
@@ -33,12 +33,12 @@ def read_off(bytes filename):
 
     return np.array(pts), np.array(polys)
 
-def read_npz(bytes filename):
+def read_npz(str filename):
     npz = np.load(filename)
     return npz['pts'], npz['polys']
 
 @cython.boundscheck(False)
-def read_vtk(bytes filename):
+def read_vtk(str filename):
     cdef str vtk, line
     cdef bytes svtk
     cdef char *cstr = NULL, *cvtk = NULL

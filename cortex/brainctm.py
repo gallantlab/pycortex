@@ -61,7 +61,7 @@ class BrainCTM(object):
         #Find the flatmap limits
         flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
         fmin, fmax = flatmerge.min(0), flatmerge.max(0)
-        self.flatlims = list(-fmin), list(fmax-fmin)
+        self.flatlims = map(float, -fmin), map(float, fmax-fmin)
 
         self.left.setFlat(fleft[0])
         self.right.setFlat(fright[0])
@@ -162,7 +162,7 @@ class Hemi(object):
         self.ctm.addAttrib(attrib, name)
 
     def setFlat(self, pts):
-        self.ctm.addUV(pts[:,:2], 'uv')
+        self.ctm.addUV(pts[:,:2].astype(float), 'uv')
         self.flat = pts[:,:2]
 
     def save(self, **kwargs):
