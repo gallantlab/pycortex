@@ -175,8 +175,12 @@ class Database(object):
             pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
             svgfile = self.getFiles(subject)['rois']
             if self.auxfile is not None:
-                tf = self.auxfile.getOverlay(subject, type)
-                svgfile = tf.name
+                try:
+                    tf = self.auxfile.getOverlay(subject, type)
+                    svgfile = tf.name
+                except (AttributeError, IOError):
+                    pass
+                    
             if 'pts' in kwargs:
                 pts = kwargs['pts']
                 del kwargs['pts']

@@ -172,6 +172,7 @@ class Dataset(object):
             raise IOError('Mask not found in package')
 
     def getOverlay(self, subject, type='rois', **kwargs):
+        import tables
         try:
             node = getattr(getattr(self.subjects, subject), type)
             if type == "rois":
