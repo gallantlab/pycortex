@@ -180,11 +180,11 @@ def make(braindata, height=1024, **kwargs):
     if braindata.raw:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
         img[mask] = pixmap * data.reshape(-1, 4)
+        return img.transpose(1,0,2)[::-1]
     else:
         img = (np.nan*np.ones(mask.shape)).astype(braindata.data.dtype)
         img[mask] = pixmap * data.ravel()
-
-    return img.T[::-1]
+        return img.T[::-1]
 
 rois = dict() ## lame
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
@@ -269,7 +269,7 @@ def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', 
 def make_png(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
     bgcolor=None, dpi=100, **kwargs):
     from matplotlib import pyplot as plt
-    fig = make_figure(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
+    fig = make_figure(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height, **kwargs)
     imsize = fig.get_axes()[0].get_images()[0].get_size()
     fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
     if bgcolor is None:
