@@ -134,8 +134,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
 
-    surfs.auxfile = dataset
-    subjects = list(set([ds.subject for name, ds in dataset]))
+    surfs.auxfile = data
+    subjects = list(set([ds.subject for name, ds in data]))
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
     surfs.auxfile = None
