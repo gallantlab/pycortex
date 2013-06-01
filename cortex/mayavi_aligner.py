@@ -886,7 +886,7 @@ def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", deci
     dbxfm = None
     try:
         db = surfs.getXfm(subject, xfmname, xfmtype='magnet')
-        epifile = db.epi.get_filename()
+        epifile = db.reference.get_filename()
         dbxfm = db.xfm
     except IOError:
         pass

@@ -20,6 +20,7 @@ def add_vcolor(color, mesh=None, name='color', cmap=cm.RdBu, vmin=None, vmax=Non
     elif isinstance(mesh, str):
         mesh = D.meshes[mesh]
 
+    bpy.ops.object.mode_set(mode='OBJECT')
     if color.ndim == 1:
         if vmin is None:
             vmin = color.min()
@@ -45,14 +46,19 @@ def add_shapekey(shape, name=None):
         key.data[i].co = shape[i]
     return key
 
-def show(data, subject, xfmname, types=('inflated',), cmap=cm.RdBu, vmin=None, vmax=None, **kwargs):
-    from .db import surfs
-    from .utils import get_mapper
-    pts, polys = surfs.getSurf(data, "fiducial")
-    mapper = get_mapper(subject, xfmname, **kwargs)
-    obj, mesh = make_object(pts, polys)
-    vcolor = add_vcolor(mapper(data), mesh, cmap=cmap, vmin=vmin, vmax=vmax)
-    return obj, mesh, vcolor
+def cut_data(volumedata, name="retinotopy", projection="nearest", cmap=cm.RdBu, vmin=None, vmax=None, mesh="hemi"):
+    if isinstance(mesh, str):
+        mesh = D.meshes[mesh]
+
+    mapped = volumedata.map(projection)
+    if mapped.llen == len(mesh.vertices):
+        print("left hemisphere")
+        vcolor = mapped.left
+    else:
+        print ("right hemisphere")
+        vcolor = mapped.right
+
+    return add_vcolor(vcolor, mesh=mesh, name=name, cmap=cmap, vmin=vmin, vmax=vmax)
 
 def fs_cut(subject, hemi):
     from .freesurfer import get_surf

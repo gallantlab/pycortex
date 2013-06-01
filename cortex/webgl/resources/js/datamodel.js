@@ -1,4 +1,20 @@
-var allStims = [];
+/*
+ *
+ * Implements a limited parser for a .npy file. Only supports the listed dtypes, no complex ones
+ * Supports slicing in the first dimension only (no strided slicing)
+ * 
+ *
+ */
+var dtypeNames = {
+    "|u4":Uint32Array,
+    "|u2":Uint16Array,
+    "|u1":Uint8Array,
+    "|i4":Int32Array,
+    "|i2":Int16Array,
+    "|i1":Int8Array,
+    "<f4":Float32Array,
+}
+
 function classify(data) {
     if (data['__class__'] !== undefined) {
         data = window[data['__class__']].fromJSON(data);
@@ -12,22 +28,37 @@ function classify(data) {
     return data
 }
 
-var dtypeNames = {
-    "uint32":Uint32Array,
-    "uint16":Uint16Array,
-    "uint8":Uint8Array,
-    "int32":Int32Array,
-    "int16":Int16Array,
-    "int8":Int8Array,
-    "float32":Float32Array,
+function parse_dict(dict) {
+    dict = dict.trim();
+    if (dict[0] != '{' || dict[dict.length-1] != '}')
+        throw 'Invalid dictionary string';
+
+    var parse = /['"]([^'"]*)['"]\s*:\s*['"]?((?:\([^'"\)]*\))|[^'",]*)['"]?,/g;
+    var str, obj = {};
+    while ((str = parse.exec(dict)) !== null) {
+        obj[str[1]] = str[2];
+    }
+    return obj;
 }
-var dtypeMap = [Uint32Array, Uint16Array, Uint8Array, Int32Array, Int16Array, Int8Array, Float32Array]
+
 var loadCount = 0;
-function NParray(data, dtype, shape) {
-    this.data = data;
-    this.shape = shape;
+function NParray(dtype, shape) {
     this.dtype = dtype;
-    this.size = this.data.length;
+    this.shape = shape;
+    this.size = shape[0];
+    if (this.shape.length > 1) {
+        this._slice = shape[1];
+        for (var i = 2, il = shape.length; i < il; i++)
+            this._slice *= shape[i];
+        this.size *= this._slice;
+        this.available = 0;
+    }
+    this.loaded = $.Deferred();
+}
+NParray.fromData = function(data, dtype, shape) {
+    var arr = new NParray(dtype, shape);
+    arr.data = data;
+    return arr;
 }
 NParray.fromJSON = function(json) {
     var size = json.shape.length ? json.shape[0] : 0;
@@ -50,28 +81,54 @@ NParray.fromJSON = function(json) {
         charview[i] = str.charCodeAt(i - start);
     }
 
-    return new NParray(data, json.dtype, json.shape);
+    return NParray.fromData(data, dtype, shape);
 }
 NParray.fromURL = function(url, callback) {
     loadCount++;
     $("#dataload").show();
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = function(e) {
-        if (this.readyState == 4 && this.status == 200) {
-            loadCount--;
-            var data = new Uint32Array(this.response, 0, 2);
-            var dtype = dtypeMap[data[0]];
-            var ndim = data[1];
-            var shape = new Uint32Array(this.response, 8, ndim);
-            var array = new dtype(this.response, (ndim+2)*4);
-            callback(new NParray(array, dtype, shape));
-            if (loadCount == 0)
-                $("#dataload").hide();
-        }
+    var hideload = function() {
+        loadCount--;
+        if (loadCount == 0)
+            $("#dataload").hide();
     };
-    xhr.send()
+    $.ajax(url, {
+        headers: {Range: 'bytes=0-1023'},
+        dataType: 'text',
+        success: function(data, status, headerxhr) {
+            if (data.slice(1, 6) != 'NUMPY')
+                throw "Invalid npy file"
+            console.log("npy version "+data.charCodeAt(6)+"."+data.charCodeAt(7));
+            var nbytes = data.charCodeAt(8) + (data.charCodeAt(9) << 8);
+            var info = parse_dict(data.slice(10, 10+nbytes));
+            var shape = info.shape.slice(1, info.shape.length-1).split(',');
+            shape = shape.map(function(num) { return parseInt(num.trim()) });
+            var array = new NParray(dtypeNames[info.descr], shape);
+
+            if (headerxhr.status == 206) {
+                var length = array.dtype.BYTES_PER_ELEMENT * array.size;
+                var increment = array._slice * array.dtype.BYTES_PER_ELEMENT || length;
+                var offset = nbytes + 10;
+                Stream(url, length, increment, offset).progress(array.update.bind(array)).done(hideload);
+            } else if (headerxhr.status == 200) { 
+                //Server doesn't support partial data, returned the whole thing
+                var chars = new Uint8Array(data.length - nbytes - 10);
+                for (var i = 0, il = chars.length; i < il; i++)
+                    chars[i] = data.charCodeAt(i+nbytes+10);
+                array.update(chars.buffer);
+                hideload();
+            } else throw "Invalid response from server";
+            callback(array);
+        },
+    });
+}
+NParray.prototype.update = function(buffer) {
+    if (this.shape.length > 1) {
+        this.data = new this.dtype(buffer, 0, (++this.available)*this._slice);
+        this.loaded.notify(this.available);
+    } else {
+        this.data = new this.dtype(buffer);
+        this.loaded.resolve();
+    }
 }
 NParray.prototype.view = function() {
     if (arguments.length == 1 && this.shape.length > 1) {
@@ -85,7 +142,7 @@ NParray.prototype.view = function() {
         for (var i = 1, il = shape.length; i < il; i++) {
             size *= shape[i];
         }
-        return new NParray(this.data.subarray(slice*size, (slice+1)*size), this.dtype, shape);
+        return NParray.fromData(this.data.subarray(slice*size, (slice+1)*size), this.dtype, shape);
     } else {
         throw "Can only slice in first dimension for now"
     }
@@ -104,4 +161,39 @@ NParray.prototype.minmax = function() {
     }
 
     return [min, max];
+}
+
+function Stream(url, length, increment, offset) {
+    //Implements a streaming interface via 206 requests
+    var inc = increment || 8192;
+    var off = offset || 0;
+
+    var data = new Uint8Array(length);
+    var chunk = 0, loaded = $.Deferred();
+
+    var next = function() {
+        var start = off + chunk*inc;
+        var stop = start + inc - 1;
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.setRequestHeader("Range", "bytes="+start+"-"+stop);
+        xhr.responseType = 'arraybuffer';
+        xhr.addEventListener("load", function() {
+            if (this.status == 206 && this.readyState == 4) {
+                loaded.notify(this.response);
+                chunk++;
+                if (chunk*inc < length)
+                    next();
+                else
+                    loaded.resolve(data.buffer);
+            }
+        }, false);
+        xhr.send();
+    }
+    next();
+
+    return loaded.then(null, null, function(buffer) {
+        data.subarray(chunk*inc, chunk*inc+inc).set(new Uint8Array(buffer));
+        return data.buffer;
+    });
 }
