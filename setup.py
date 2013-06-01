@@ -48,7 +48,7 @@ ctm = Extension('cortex.openctm',
             ], define_macros=[
                 ('LZMA_PREFIX_CTM', None),
                 ('OPENCTM_BUILD', None),
-                ('__DEBUG_', None),
+                #('__DEBUG_', None),
             ]
         )
 formats = Extension('cortex.formats', ['cortex/formats.pyx'])
