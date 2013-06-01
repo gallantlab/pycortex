@@ -1,13 +1,30 @@
 #!/usr/bin/env python
 
 import os
+import sys
+
 try:
     import configparser
 except ImportError:
     import ConfigParser as configparser
+
+if len(set(('develop', 'bdist_egg', 'bdist_rpm', 'bdist', 'bdist_dumb',
+            'bdist_wininst', 'install_egg_info', 'egg_info', 'easy_install',
+            )).intersection(sys.argv)) > 0:
+    # This formulation is taken from nibabel.
+    # "setup_egg imports setuptools setup, thus monkeypatching distutils."
+    # Turns out, this patching needs to happen before disutils.core.Extension
+    # is imported in order to use cythonize()...
+    from setuptools import setup
+else:
+    # Use standard
+    from distutils.core import setup
+
 from distutils.command.install import install
-from distutils.core import setup, Extension
+from distutils.core import Extension
+
 from Cython.Build import cythonize
+
 
 def set_default_filestore(prefix, optfile):
     config = configparser.ConfigParser()
