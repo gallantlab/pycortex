@@ -425,7 +425,7 @@ def normalize(data):
     elif isinstance(data, tuple):
         try:
             return VolumeData(*data)
-        except ValueError:
+        except (ValueError, TypeError):
             return VertexData(*data)
 
 def _from_file(filename, name="data"):
