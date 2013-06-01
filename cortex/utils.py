@@ -1,42 +1,57 @@
+import io
 import os
 import sys
 import binascii
-import io
 import numpy as np
 
 from .db import surfs
 from .volume import mosaic, unmask
 
 def get_roipack(*args, **kwargs):
-    from .svgroi import get_roipack
-    return get_roipack(*args, **kwargs)
+    import warnings
+    warnings.warn('Please use surfs.getOverlay instead', DeprecationWarning)
+    return surfs.getOverlay(*args, **kwargs)
 
 def get_mapper(*args, **kwargs):
     from .mapper import get_mapper
     return get_mapper(*args, **kwargs)
 
-def get_ctmpack(subject, xfmname, types=("inflated",), projection='nearest', method="raw", level=0, recache=False, recache_mapper=False, **kwargs):
+def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimated=False):
     ctmform = surfs.getFiles(subject)['ctmcache']
-    ctmfile = ctmform.format(xfmname=xfmname, types=','.join(types), method=method, level=level)
-    mapper = get_mapper(subject, xfmname, projection, recache=recache_mapper, **kwargs)
+    lvlstr = ("%dd" if decimated else "%d")%level
+    ctmfile = ctmform.format(types=','.join(types), method=method, level=lvlstr)
     if os.path.exists(ctmfile) and not recache:
-        mapfile = os.path.splitext(ctmfile)[0]+'.npz'
-        if os.path.exists(mapfile):
-            ptmap = np.load(mapfile)
-            mapper.idxmap = ptmap['left'], ptmap['right']
-        return ctmfile, mapper
+        return ctmfile
 
     print("Generating new ctm file...")
     from . import brainctm
-    ptmap = brainctm.make_pack(ctmfile, subject, xfmname, types, method, level)
-    if ptmap is not None:
-        mapper.idxmap = ptmap
-    return ctmfile, mapper
+    ptmap = brainctm.make_pack(ctmfile, subject, types=types, method=method, level=level, decimate=decimated)
+    return ctmfile
 
 def get_cortical_mask(subject, xfmname, type='nearest'):
-    return get_mapper(subject, xfmname, type=type).mask
+    from .db import surfs
+    if type == 'cortical':
+        ppts, polys = surfs.getSurf(subject, "pia", merge=True, nudge=False)
+        wpts, polys = surfs.getSurf(subject, "wm", merge=True, nudge=False)
+        thickness = np.sqrt(((ppts - wpts)**2).sum(1))
 
-def get_vox_dist(subject, xfmname):
+        dist, idx = get_vox_dist(subject, xfmname)
+        cortex = np.zeros(dist.shape, dtype=bool)
+        verts = np.unique(idx)
+        for i, vert in enumerate(verts):
+            mask = idx == vert
+            cortex[mask] = dist[mask] <= thickness[vert]
+            if i % 100 == 0:
+                print("%0.3f%%"%(i/float(len(verts)) * 100))
+        return cortex
+    elif type in ('thick', 'thin'):
+        dist, idx = get_vox_dist(subject, xfmname)
+        return dist < dict(thick=8, thin=2)[type]
+    else:
+        return get_mapper(subject, xfmname, type=type).mask
+
+
+def get_vox_dist(subject, xfmname, surface="fiducial"):
     """Get the distance (in mm) from each functional voxel to the closest
     point on the surface.
 
@@ -60,17 +75,17 @@ def get_vox_dist(subject, xfmname):
     import nibabel
     from scipy.spatial import cKDTree
 
-    fiducial, polys = surfs.getSurf(subject, "fiducial", merge=True)
+    fiducial, polys = surfs.getSurf(subject, surface, merge=True)
     xfm = surfs.getXfm(subject, xfmname)
-    shape = xfm.shape
-    idx = np.mgrid[:shape[0], :shape[1], :shape[2]].reshape(3, -1).T
+    z, y, x = xfm.shape
+    idx = np.mgrid[:x, :y, :z].reshape(3, -1).T
     mm = xfm.inv(idx)
 
     tree = cKDTree(fiducial)
     dist, argdist = tree.query(mm)
-    dist.shape = shape
-    argdist.shape = shape
-    return dist, argdist
+    dist.shape = (x,y,z)
+    argdist.shape = (x,y,z)
+    return dist.T, argdist.T
 
 def get_hemi_masks(subject, xfmname, type='nearest'):
     '''Returns a binary mask of the left and right hemisphere
@@ -219,38 +234,6 @@ def get_curvature(subject, smooth=8, **kwargs):
             curvs.append(curv)
     return curvs
 
-def decimate_mesh(subject, proportion = 0.5):
-    raise NotImplementedError
-    from scipy.spatial import Delaunay
-    from .polyutils import trace_both
-    flat = surfs.getSurf(subject, "flat")
-    fiducial = surfs.getSurf(subject, "fiducial")
-    edges = list(map(np.array, trace_both(*surfs.getSurf(subject, "flat", merge=True, nudge=True))))
-    edges[1] -= len(flat[0][0])
-
-    masks, newpolys = [], []
-    for (fpts, fpolys), (pts, polys), edge in zip(flat, fiducial, edges):
-        valid = np.unique(polys)
-
-        edge_set = set(edge)
-
-        mask = np.zeros((len(pts),), dtype=bool)
-        mask[valid] = True
-        mask[np.random.permutation(len(pts))[:len(pts)*(1-proportion)]] = False
-        mask[edge] = True
-        midx = np.nonzero(mask)[0]
-
-        tri = Delaunay(fpts[mask, :2])
-        #cull all the triangles from concave surfaces
-        pmask = np.array([midx[p] in edge_set for p in tri.vertices.ravel()]).reshape(-1, 3).all(1)
-
-        cutfaces = np.array([p in edge_set for p in polys.ravel()]).reshape(-1, 3).all(1)
-
-        newpolys.append(tri.vertices[~pmask])
-        fullpolys.append()
-        masks.append(mask)
-
-    return masks, newpolys
 
 def get_flatmap_distortion(sub, type="areal", smooth=8, **kwargs):
     """Computes distortion of flatmap relative to fiducial surface. Several different
@@ -384,19 +367,25 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
 
     return tissots, allcenters
 
-def get_dropout(subject, xfmname, projection="trilinear", power=20):
-    """Returns a dropout map for each hemisphere showing where EPI signal
+def get_dropout(subject, xfmname, power=20):
+    """Returns a dropout VolumeData showing where EPI signal
     is very low."""
     xfm = surfs.getXfm(subject, xfmname)
-    rawdata = xfm.epi.get_data().T
+    rawdata = xfm.reference.get_data().T
+
+    ## Collapse epi across time if it's 4D
     if rawdata.ndim > 3:
         rawdata = rawdata.mean(0)
-        
-    mapper = get_mapper(subject, xfmname, projection)
-    left, right = mapper(rawdata)
-    lnorm = (left - left.min()) / (left.max() - left.min())
-    rnorm = (right - right.min()) / (right.max() - right.min())
-    left = (1-lnorm) ** power
-    right = (1-rnorm) ** power
 
-    return left, right
+    normdata = (rawdata - rawdata.min()) / (rawdata.max() - rawdata.min())
+    normdata = (1 - normdata) ** power
+
+    from .dataset import VolumeData
+    return VolumeData(normdata, subject, xfmname)
+
+def make_movie(stim, outfile, fps=15, size="640x480"):
+    import shlex
+    import subprocess as sp
+    cmd = "ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv"
+    fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
+    sp.call(shlex.split(fcmd))

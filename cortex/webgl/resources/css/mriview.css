@@ -1,12 +1,7 @@
-html { height:100%; }
 body { 
-    background-color:#333; 
-    margin:0px;
+    background-color:#333;
     font-family:helvetica;
     font-size:10pt;
-    height:100%;
-    min-height:100%;
-    overflow:hidden;
     text-align:center;
 }
 canvas { display:block; }
@@ -14,13 +9,16 @@ input[type='text'] {
     border:1px solid #CCC;
     border-radius:10px / 2px;
 }
-table { cell-spacing:0px; }
+table { 
+    border-spacing:0; 
+    border-collapse:collapse; 
+}
 .clear { clear:both; }
-
-.vcenter {
-    display:table-cell;
-    vertical-align:middle;
-    text-align:center;
+.jsplot_figure {
+    background-color:#333;
+}
+.jsplot_axes {
+    background-color:#333;
 }
 
 .content { padding:10px; }
@@ -84,8 +82,6 @@ a:visited { color:white; }
     position:absolute;
     z-index:2;
     opacity:0;
-    width:100%;
-    height:100%;
 }
 #roilabels {
     position:absolute;
@@ -97,73 +93,17 @@ a:visited { color:white; }
 #braincover {
     z-index:8;
     position:absolute;
-    width:100%;
-    height:100%;
-    top:0px;
-    left:0px;
     opacity:0;
 }
 #hiderois {
     display:none;
 }
 
-/*************************************************
- * Side panel
- *************************************************/
-#bar {
-    position:absolute;
-    z-index:9;
-    left:100%;
-    width:5px;
-    height:100%;
-    margin-left:-4px;
-    background-color: #FFF;
-    background-image: -webkit-linear-gradient(top, #EEE, #CCC);
-    background-image: -moz-linear-gradient(top, #EEE, #CCC);
-    background-image: linear-gradient(top, #EEE, #CCC);
-    border: 1px solid #CCC;
-    border-bottom: 1px solid #BBB;
-    /*border-radius: 3px;*/
-    color: #333;
-    display:none;
-    line-height:.5;
-}
-#bar:hover {
-    background-color: #dddddd;
-    background-image: -webkit-linear-gradient(top, #dddddd, #bbbbbb);
-    background-image: -moz-linear-gradient(top, #dddddd, #bbbbbb);
-    background-image: linear-gradient(top, #dddddd, #bbbbbb);
-    border: 1px solid #bbb;
-    border-bottom: 1px solid #999;
-    cursor: w-resize;
-    text-shadow: 0 1px 0 #ddd; 
-}
-#bar:active {
-    border: 1px solid #aaa;
-    border-bottom: 1px solid #888;
-    -webkit-box-shadow: inset 0 0 5px 2px #aaaaaa, 0 1px 0 0 #eeeeee;
-    -moz-box-shadow: inset 0 0 5px 2px #aaaaaa, 0 1px 0 0 #eeeeee;
-    box-shadow: inset 0 0 5px 2px #aaaaaa, 0 1px 0 0 #eeeeee; 
-}
-#sidepanel {
-    position:absolute;
-    left:100%;
-    width:0%;
-    height:100%;
-    display:table;
-    overflow:hidden;
-}
 
 /*************************************************
  * Loading messages
  *************************************************/
-#pluginload {
-    display:none;
-}
 #dataload {
-    width:200px;
-    left:100px;
-    top:100px;
     font-size:150%;
 }
 #dataload img {
@@ -206,6 +146,7 @@ a:visited { color:white; }
     margin:-440px auto -10px auto;      
     border-radius: 0px 0px 10px 10px / 0px 0px 10px 10px;
     text-align:left;
+    overflow:auto;
 }
 #topbar:hover, #topbar:active { 
     margin:0px auto -450px auto;
@@ -239,7 +180,7 @@ a:visited { color:white; }
 /* Colorbar */
 .dd-selected-text, .dd-option-text { display:none; }
 .dd-option-image, .dd-selected-image { 
-    min-height:10px; 
+    min-height:8px; 
     width:256px; 
     max-width:256px; 
     max-height:256px; 
@@ -308,9 +249,16 @@ ul#datasets li .handle {
 .ui-selected { background: #def !important; }
 .ui-selected .handle { background: #cde; }
 
+#thickmapping {
+    display:none;
+}
+
 /*************************************************
  * Bottom Bar
  *************************************************/
+.bbar_controls {
+    margin-top:-47px !important;
+}
 .bbar_controls:hover, .bbar_controls:active{
     margin-top:-135px !important;
 }
@@ -324,13 +272,13 @@ ul#datasets li .handle {
 }
 #bottombar table {
     padding:4px;
+    width:100%;
 }
 #bottombar table td:first-child {
-    width:5%;
-    min-width:80px;
+    width:60px;
 }
 #bottombar:hover, #bottombar:active {
-    margin-top:-80px;
+    margin-top:-115px;
 }
 #moviecontrols {
     width:100%;
@@ -338,8 +286,9 @@ ul#datasets li .handle {
     display:none;
 }
 table#movieui {
-    width:60%;
+    width:80%;
     margin:auto;
+    margin-top:-5px;
     text-align:left;
     vertical-align:middle;
 }
@@ -348,6 +297,7 @@ table#movieui {
 }
 #moviecontrol img {
     padding:4px;
+    margin:4px;
     appearance:button;
     -moz-appearance:button;
     -webkit-appearance:button;
@@ -361,26 +311,4 @@ table#movieui {
 
 #mixbtns td {
     text-align:center;
-}
-
-#stim_movie {
-    width:100%;
-}
-
-.roilabel {
-    position:absolute;
-    z-index:5;
-    color:white;
-    font-size:16pt;
-    margin:-25px 0px 0px -50px;
-    width:100px;
-    height:50px;
-    line-height:50px;
-    text-align:center;
-    text-shadow:0px 0px 8px black;
-    font-style:italic;
-    font-weight:bold;
-    user-select:none;
-    -moz-user-select:none;
-    -webkit-user-select:none;
 }

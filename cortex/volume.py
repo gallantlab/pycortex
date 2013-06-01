@@ -1,4 +1,4 @@
-import nibabel
+import os
 import numpy as np
 
 from .db import surfs
@@ -15,13 +15,25 @@ def unmask(mask, data):
     data : array_like
         Actual MRI data to unmask
     """
-    if data.ndim > 1:
-        output = np.zeros((len(data),)+mask.shape, dtype=data.dtype)
-        output[:, mask > 0] = data
+    nvox = mask.sum()
+    if data.shape[0] == nvox:
+        data = data[np.newaxis]
+    elif nvox not in data.shape:
+        raise ValueError('Invalid mask for the data')
+
+    if data.shape[-1] in (3, 4):
+        if data.dtype != np.uint8:
+            raise TypeError('Invalid dtype for raw dataset')
+        #raw dataset, unmask with an alpha channel
+        output = np.zeros((len(data),)+mask.shape+(4,), dtype=np.uint8)
+        output[:, mask > 0, :data.shape[-1]] = data
+        if data.shape[-1] == 3:
+            output[:, mask > 0, 3] = 255
     else:
-        output = np.zeros(mask.shape, dtype=data.dtype)
-        output[mask > 0] = data
-    return output
+        output = (np.nan*np.ones((len(data),)+mask.shape)).astype(data.dtype)
+        output[:, mask > 0] = data
+
+    return output.squeeze()
 
 def detrend_median(data, kernel=15):
     from scipy.signal import medfilt
@@ -53,7 +65,7 @@ def detrend_poly(data, polyorder = 10, mask=None):
     else:
         return detrended.reshape(*s)
 
-def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
+def mosaic(data, dim=0, show=True, **kwargs):
     """mosaic(data, xy=(6, 5), trim=10, skip=1)
 
     Turns volume data into a mosaic, useful for quickly viewing volumetric data
@@ -63,36 +75,50 @@ def mosaic(data, xy=(6, 5), trim=10, skip=1, show=True, **kwargs):
     ----------
     data : array_like
         3D volumetric data to mosaic
-    xy : tuple, optional
-        tuple(x, y) for the grid of images. Default (6, 5)
-    trim : int, optional
-        How many pixels to trim from the edges of each image. Default 10
-    skip : int, optional
-        How many slices to skip in the beginning. Default 1
+    dim : int
+        Dimension across which to mosaic. Default 0.
+    show : bool
+        Display mosaic with matplotlib? Default True.
     """
-    assert len(data.shape) == 3, "Are you sure this is volumetric?"
-    dat = data.copy()
-    if trim>0:
-        dat = dat[:, trim:-trim, trim:-trim]
-    d = dat.shape[1:]
-    output = np.zeros(d*np.array(xy))
-    
-    c = skip
-    for i in range(xy[0]):
-        for j in range(xy[1]):
-            if c < len(dat):
-                output[d[0]*i:d[0]*(i+1), d[1]*j:d[1]*(j+1)] = dat[c]
-            c+= 1
+    if data.ndim not in (3, 4):
+        raise ValueError("Invalid data shape")
+    plane = list(data.shape)
+    slices = plane.pop(dim)
+    height, width = plane[:2]
+    aspect = width / float(height)
+    square = np.sqrt(slices / aspect)
+    nwide = int(np.ceil(square))
+    ntall = int(np.ceil(square * aspect))
+
+    shape = (ntall * (height+1) + 1, nwide * (width+1) + 1)
+    if data.dtype == np.uint8:
+        output = np.zeros(shape+(4,), dtype=np.uint8)
+    else:
+        output = (np.nan*np.ones(shape)).astype(data.dtype)
+
+    sl = [slice(None), slice(None), slice(None)]
+    for h in range(ntall):
+        for w in range(nwide):
+            sl[dim] = h*nwide+w
+            if sl[dim] < slices:
+                hsl = slice(h*(height+1)+1, (h+1)*(height+1))
+                wsl = slice(w*(width+1)+1, (w+1)*(width+1))
+                if data.dtype == np.uint8:
+                    output[hsl, wsl, :data.shape[3]] = data[sl]
+                    if data.shape[3] == 3:
+                        output[hsl, wsl, 3] = 255
+                else:    
+                    output[hsl, wsl] = data[sl]
     
     if show:
         from matplotlib import pyplot as plt
         plt.imshow(output, **kwargs)
-        plt.xticks([])
-        plt.yticks([])
+        plt.axis('off')
 
-    return output
+    return output, (nwide, ntall)
 
 def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):
+    import nibabel
     from matplotlib import cm
     import matplotlib.pyplot as plt
 
@@ -144,8 +170,8 @@ def show_mip(data, **kwargs):
 
 def show_glass(data, subject, xfmname, pad=10):
     '''Create a classic "glass brain" view of the data, with the outline'''
-    nib = nibabel.load(surfs.getAnat(subject, 'fiducial'))
-
+    import nibabel
+    nib = surfs.getAnat(subject, 'fiducial')
     mask = nib.get_data()
 
     left, right = np.nonzero(np.diff(mask.max(0).max(0)))[0][[0,-1]]
@@ -166,6 +192,7 @@ def epi2anatspace(data, subject, xfmname):
     """
     import tempfile
     import subprocess
+    import nibabel
 
     ## Get transform, save out into ascii file
     xfm = surfs.getXfm(subject, xfmname)
@@ -197,6 +224,21 @@ def epi2anatspace(data, subject, xfmname):
 
     return outdata, outfilename
 
-def fslview(*imfilenames):
+def fslview(*ims):
+    import tempfile
     import subprocess
-    subprocess.call(["fslview"] + list(imfilenames))
+
+    fnames = []
+    tempfiles = []
+    for im in ims:
+        if not (isinstance(im, str) and os.path.exists(im)):
+            import nibabel
+            tf = tempfile.NamedTemporaryFile(suffix=".nii.gz")
+            tempfiles.append(tf)
+            nib = nibabel.Nifti1Image(im.T, np.eye(4))
+            nib.to_filename(tf.name)
+            fnames.append(tf.name)
+        else:
+            fnames.append(im)
+
+    subprocess.call(["fslview"] + fnames)

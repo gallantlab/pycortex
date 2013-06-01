@@ -2,7 +2,7 @@
  * @author Eberhard Graether / http://egraether.com/
  */
 
-THREE.LandscapeControls = function ( camera ) {
+THREE.LandscapeControls = function ( cover, camera ) {
 
     THREE.EventTarget.call( this );
 
@@ -16,7 +16,7 @@ THREE.LandscapeControls = function ( camera ) {
 
     this.keystate = null;
     this.camera = camera;
-    this.domElement = document.getElementById("braincover");
+    this.domElement = cover;
 
     // API
     this.enabled = true;
@@ -24,7 +24,7 @@ THREE.LandscapeControls = function ( camera ) {
     // Constants
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
-    this.maxRadius = 300; // makes sure axes & flatmat don't merge in depth buffer
+    this.maxRadius = 400; // makes sure axes & flatmat don't merge in depth buffer
     this.minRadius = function(mix){return 101*mix}; // limits zoom for flatmap, which disappears at r=100
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
@@ -33,8 +33,8 @@ THREE.LandscapeControls = function ( camera ) {
     // internals
     this.target = new THREE.Vector3();
     this.azimuth = 45;
-    this.altitude = 45;
-    this.radius = 200;
+    this.altitude = 75;
+    this.radius = 250;
 
     var _state = STATE.NONE,
         _start = new THREE.Vector3(),
@@ -105,6 +105,8 @@ THREE.LandscapeControls = function ( camera ) {
                 var mouse2D = this.getMouse(event).clone();
                 this.dispatchEvent({ type:"dblpick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM });
                 _indblpick = 1;
+            } else {
+                this.dispatchEvent({ type:"mousedown" });
             }
         }
     };
@@ -123,15 +125,13 @@ THREE.LandscapeControls = function ( camera ) {
         // Run picker if time since mousedown is short enough
         if ( _clicktime - _mousedowntime < this.clickTimeout && event.button == 0) {
             var mouse2D = this.getMouse(event).clone();
-            //_picktimer = setTimeout(function(){
-            //    this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
-            //}.bind(this), this.clickTimeout);
-	    this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
-        }
-
-        if ( event.button == 0 && _indblpick == 1 ) {
+            this.dispatchEvent({ type: "mouseup" });
+            this.dispatchEvent({ type:"pick", x:mouse2D.x, y:mouse2D.y, keep:this.keystate == STATE.ZOOM});
+        } else if ( event.button == 0 && _indblpick == 1 ) {
             this.dispatchEvent({ type:"undblpick" });
             _indblpick = 0;
+        } else {
+            this.dispatchEvent({ type: "mouseup" });
         }
     };
 
@@ -165,8 +165,11 @@ THREE.LandscapeControls = function ( camera ) {
 
     };
 
-    this.domElement.addEventListener( 'touchmove', touchmove.bind(this));
-    this.domElement.addEventListener( 'touchend', function() { _touch = false; }, false);
+    //code from http://vetruvet.blogspot.com/2010/12/converting-single-touch-events-to-mouse.html
+    var touchToMouse=function(b){if(!(b.touches.length>1)){var a=b.changedTouches[0],c="";switch(b.type){case "touchstart":c="mousedown";break;case "touchmove":c="mousemove";break;case "touchend":c="mouseup";break;default:return}var d=document.createEvent("MouseEvent");d.initMouseEvent(c,true,true,window,1,a.screenX,a.screenY,a.clientX,a.clientY,false,false,false,false,0,null);a.target.dispatchEvent(d);b.preventDefault()}};
+    this.domElement.addEventListener( 'touchstart', touchToMouse );
+    this.domElement.addEventListener( 'touchmove', touchToMouse );
+    this.domElement.addEventListener( 'touchend', touchToMouse );
 
     this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
 
@@ -179,7 +182,7 @@ THREE.LandscapeControls = function ( camera ) {
     window.addEventListener( 'keydown', keydown.bind(this), false );
     window.addEventListener( 'keyup', keyup.bind(this), false );
 
-    this.resize($("#brain").width(), $("#brain").height() );
+    this.resize($(cover).width(), $(cover).height() );
     this.flatmix = 0;
     this.setCamera();
 };
@@ -200,20 +203,21 @@ THREE.LandscapeControls.prototype = {
         }
 
         var rad = this.radius, target = this.target.clone();
-        if ($("#zlockwhole").length > 0) {
-            if ($("#zlockwhole")[0].checked) {
-                rad  = this.flatsize / 2 / this.camera.aspect;
+        var container = $(this.domElement.parentNode.parentNode)
+        if (container.find("#zlockwhole").length > 0) {
+            if (container.find("#zlockwhole")[0].checked) {
+                rad  = this.flatsize / 2 / this.camera.cameraP.aspect;
                 rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
                 rad -= this.flatoff;
                 rad = flatmix * rad + (1 - flatmix) * this.radius;
-            } else if (!$("#zlocknone")[0].checked) {
-                rad  = this.flatsize / 4 / this.camera.aspect;
+            } else if (!container.find("#zlocknone")[0].checked) {
+                rad  = this.flatsize / 4 / this.camera.cameraP.aspect;
                 rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
                 rad -= this.flatoff;
                 rad = flatmix * rad + (1 - flatmix) * this.radius;
-                if ($("#zlockleft")[0].checked) {
+                if (container.find("#zlockleft")[0].checked) {
                     target.x = flatmix * (-this.flatsize / 4) + (1 - flatmix) * target.x;
-                } else if ($("#zlockright")[0].checked) {
+                } else if (container.find("#zlockright")[0].checked) {
                     target.x = flatmix * ( this.flatsize / 4) + (1 - flatmix) * target.x;
                 }
             }
@@ -229,7 +233,8 @@ THREE.LandscapeControls.prototype = {
     },
 
     getMouse: function ( event ) {
-        return new THREE.Vector2( event.clientX, event.clientY);
+        var off = $(event.target).offset();
+        return new THREE.Vector2( event.clientX - off.left, event.clientY - off.top);
     },
 
     setCamera: function(az, alt, rad) {
@@ -301,8 +306,12 @@ THREE.LandscapeControls.prototype = {
     zoom: function( mouseChange ) {
         var factor = 1.0 + mouseChange.y*this.zoomSpeed;
         this.radius *= factor;
-	if (this.radius>this.maxRadius) { this.radius = this.maxRadius; }
-	if (this.radius<this.minRadius(this.flatmix)) { this.radius = this.minRadius(this.flatmix); }
+        if (this.radius > this.maxRadius) { 
+            this.radius = this.maxRadius; 
+        }
+        if (this.radius < this.minRadius(this.flatmix)) { 
+            this.radius = this.minRadius(this.flatmix); 
+        }
     },
     
     wheelzoom: function( wheelEvent ) {

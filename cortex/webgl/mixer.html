@@ -1,10 +1,19 @@
+{% autoescape None %}
 {% extends template.html %}
 {% block jsinit %}
-    var viewer, sock;
+    var viewers, subjects, datasets, figure, sock, viewopts;
 {% end %}
 {% block onload %}
-		viewer = new MRIview();
+		viewopts = {
+			voxlines: {{voxlines}},
+			voxline_width: {{voxline_width}},
+		};
+		
+		subjects = {{subjects}};
+		datasets = classify({{data}});
+
+		figure = new jsplot.W2Figure();
+		viewers = figure.add(mriview.MultiView, "main", true, {{ layout[0] }}, {{ layout[1] }}, datasets);
+
 		sock = new Websock();
-		viewer.load("/ctm/");
-		viewer.addData(classify({{data}}));
 {% end %}

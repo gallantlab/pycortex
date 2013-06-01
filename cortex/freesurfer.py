@@ -19,13 +19,13 @@ def get_paths(subject, hemi, type="patch"):
         return os.path.join(base, "surf", hemi+".curv{name}")
 
 def import_subj(subject, sname=None):
-    import nibabel
-    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.npz")
-    anats = os.path.join(db.filestore, "anatomicals", "{subj}_{name}.{type}")
-    fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
-
     if sname is None:
         sname = subject
+
+    import nibabel
+    surfs = os.path.join(db.filestore, sname, "surfaces", "{name}_{hemi}.npz")
+    anats = os.path.join(db.filestore, sname, "anatomicals", "{name}.{type}")
+    fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
 
     #import anatomicals
     for fsname, name in dict(T1="raw").items():
@@ -48,21 +48,18 @@ def import_subj(subject, sname=None):
             if fsname == 'smoothwm':
                 curvs[hemi] = curv
 
-    #voxelize the surface for nicer BBR anatomical
-    anat.voxelize(sname)
-
-    np.savez(anats.format(subj=sname, name="curvature", type='nii.npz'), left=-curvs['lh'], right=-curvs['rh'])
-    #np.savez(anats.format(subj=sname, name="thickness", type='nii.npz'), left=curvs['lh'], right=curvs['rh'])
+    np.savez(anats.format(subj=sname, name="curvature", type='npz'), left=-curvs['lh'], right=-curvs['rh'])
+    #np.savez(anats.format(subj=sname, name="thickness", type='npz'), left=curvs['lh'], right=curvs['rh'])
 
 def import_flat(subject, patch, sname=None):
-    surfs = os.path.join(db.filestore, "surfaces", "{subj}_{name}_{hemi}.npz")
     if sname is None:
         sname = subject
+    surfs = os.path.join(db.filestore, sname, "surfaces", "flat_{hemi}.npz")
     for hemi in ['lh', 'rh']:
         pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat")
         flat = pts[:,[1, 0, 2]]
         flat[:,1] = -flat[:,1]
-        fname = surfs.format(subj=sname, name="flat", hemi=hemi)
+        fname = surfs.format(hemi=hemi)
         np.savez(fname, pts=flat, polys=polys)
 
 def make_fiducial(subject):

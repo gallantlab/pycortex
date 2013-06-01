@@ -1,0 +1,38 @@
+html { height:100%; }
+body { 
+    margin:0px;
+    height:100%;
+}
+div.jsplot_figure {
+    height:100%;
+}
+.jsplot_figure > table {
+    width:100%;
+    height:100%;
+}
+.jsplot_figure > table > tr, .jsplot_figure>table>tr>td {
+    overflow:hidden;
+    padding:0px;
+}
+.jsplot_axes {
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    position:relative;
+}
+
+.movie_wrapper {
+    display:table;
+    height:100%;
+    width:100%;
+}
+.movie_cell {
+    display:table-cell;
+    vertical-align: middle;
+}
+.movie {
+    width:100%;
+}
+.movie_load {
+    display:none;
+}

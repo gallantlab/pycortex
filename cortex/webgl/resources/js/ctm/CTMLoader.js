@@ -99,8 +99,8 @@ THREE.CTMLoader.prototype.load = function( url, callback, useWorker, useBuffers,
 
 			if ( xhr.status === 200 || xhr.status === 0 ) {
 
-				var binaryData = xhr.responseText;
-				var header = offsets[0] > 0 ? binaryData.slice(0, offsets[0]) : "";
+				var binaryData = xhr.response;
+				var header = offsets[0] > 0 ? new Uint8Array(xhr.response, 0, offsets[0]) : "";
 
 				var s = Date.now();
 
@@ -140,8 +140,7 @@ THREE.CTMLoader.prototype.load = function( url, callback, useWorker, useBuffers,
 
 					for ( var i = 0; i < offsets.length; i ++ ) {
 
-						var stream = new CTM.Stream( binaryData );
-						stream.offset = offsets[ i ];
+						var stream = new CTM.Stream( binaryData, offsets[ i ] );
 
 						var ctmFile = new CTM.File( stream );
 
@@ -189,9 +188,9 @@ THREE.CTMLoader.prototype.load = function( url, callback, useWorker, useBuffers,
 		}
 
 	}
-
-	xhr.overrideMimeType( "text/plain; charset=x-user-defined" );
 	xhr.open( "GET", url, true );
+	xhr.overrideMimeType( "text/plain; charset=x-user-defined" );
+	xhr.responseType = "arraybuffer";
 	xhr.send( null );
 
 };
@@ -202,8 +201,6 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 	var Model = function ( ) {
 
 		var scope = this;
-
-		var reorderVertices = true;
 
 		scope.materials = [];
 
@@ -256,21 +253,7 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 
 		scope.attributes = attributes;
 		scope.morphTargets = morphTargets.sort(function(a, b){ return a.num - b.num});
-
-		// reorder vertices
-		// (needed for buffer splitting, to keep together face vertices)
-
-		if ( reorderVertices && attributes.position.array.length / 3 > 65536 ) {
-
-			scope.reorderVertices();
-
-		} else {
-
-			// recast CTM 32-bit indices as 16-bit WebGL indices
-			scope.attributes.index.array = new Uint16Array( attributes.index.array );
-			scope.offsets = [{ start: 0, count: attributes.index.array.length, index: 0 }];
-
-		}
+		scope.offsets = [{ start: 0, count: attributes.index.array.length, index: 0 }];
 
 	}
 

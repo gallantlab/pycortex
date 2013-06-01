@@ -65,6 +65,7 @@ ctm = Extension('cortex.openctm',
             ], define_macros=[
                 ('LZMA_PREFIX_CTM', None),
                 ('OPENCTM_BUILD', None),
+                #('__DEBUG_', None),
             ]
         )
 formats = Extension('cortex.formats', ['cortex/formats.pyx'])
@@ -74,7 +75,7 @@ setup(name='pycortex',
       description='Python Cortical mapping software for fMRI data',
       author='James Gao',
       author_email='james@jamesgao.com',
-      packages=['cortex', 'cortex.webgl'],
+      packages=['cortex', 'cortex.webgl', 'cortex.mapper'],
       ext_modules=cythonize([ctm, formats]),
       package_data={
             'cortex':[ 

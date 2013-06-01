@@ -8,48 +8,11 @@ import binascii
 import numpy as np
 
 from . import utils
+from . import dataset
 from .db import surfs
-
-def _gen_flat_mask(subject, height=1024):
-    from . import polyutils
-    import Image
-    import ImageDraw
-    pts, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    bounds = [p for p in polyutils.trace_poly(polyutils.boundary_edges(polys))]
-    left, right = bounds[0], bounds[1]
-    aspect = (height / (pts.max(0) - pts.min(0))[1])
-    lpts = (pts[left] - pts.min(0)) * aspect
-    rpts = (pts[right] - pts.min(0)) * aspect
-
-    im = Image.new('L', (int(aspect * (pts.max(0) - pts.min(0))[0]), height))
-    draw = ImageDraw.Draw(im)
-    draw.polygon(lpts[:,:2].ravel().tolist(), fill=255)
-    draw.polygon(rpts[:,:2].ravel().tolist(), fill=255)
-    return np.array(im) > 0
-
-def _make_flat_cache(subject, xfmname, height=1024):
-    from scipy.spatial import cKDTree
-
-    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    valid = np.unique(polys)
-    fmax, fmin = flat.max(0), flat.min(0)
-    size = fmax - fmin
-    aspect = size[0] / size[1]
-    width = int(aspect * height)
-
-    mask = _gen_flat_mask(subject, height=height).T
-    assert mask.shape[0] == width and mask.shape[1] == height
-
-    grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
-    kdt = cKDTree(flat[valid,:2])
-    dist, idx = kdt.query(grid.T[mask.ravel()])
-
-    return valid[idx], mask
 
 def _gen_flat_border(subject, height=1024):
     from . import polyutils
-    #import Image
-    #import ImageDraw
     flatpts, flatpolys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
     flatpolyset = set(map(tuple, flatpolys))
     
@@ -118,50 +81,110 @@ def _gen_flat_border(subject, height=1024):
     #return np.array(im)[::-1]/255.0
     return lines, ismwalls
 
-cache = dict()
-def get_cache(subject, xfmname, recache=False, height=1024):
-    key = (subject, xfmname, height)
-    if not recache and key in cache:
-        return cache[key]
+def _make_vertex_cache(subject, height=1024):
+    from scipy import sparse
+    from scipy.spatial import cKDTree
+    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
+    valid = np.unique(polys)
+    fmax, fmin = flat.max(0), flat.min(0)
+    size = fmax - fmin
+    aspect = size[0] / size[1]
+    width = int(aspect * height)
+    grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
 
-    cacheform = surfs.getFiles(subject)['flatcache']
-    cachefile = cacheform.format(xfmname=xfmname, height=height, date="*")
-    #pull a list of candidate cache files
-    files = glob.glob(cachefile)
-    if len(files) < 1 or recache:
-        #if recaching, delete all existing files
-        for f in files:
-            os.unlink(f)
+    mask = surfs.getAnat(subject, "flatmask", height=height)['mask'].T
+    assert mask.shape[0] == width and mask.shape[1] == height
+
+    kdt = cKDTree(flat[:,:2])
+    dist, vert = kdt.query(grid.T[mask.ravel()])
+    dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), vert]))
+    return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
+
+def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
+    from scipy import sparse
+    from scipy.spatial import cKDTree, Delaunay
+    fid, polys = surfs.getSurf(subject, "fiducial", merge=True, nudge=True)
+    flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
+    valid = np.unique(polys)
+    fmax, fmin = flat.max(0), flat.min(0)
+    size = fmax - fmin
+    aspect = size[0] / size[1]
+    width = int(aspect * height)
+    grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
+    
+    mask = surfs.getAnat(subject, "flatmask", height=height)['mask'].T
+    assert mask.shape[0] == width and mask.shape[1] == height
+    
+    ## Get barycentric coordinates
+    dl = Delaunay(flat[:,:2])
+    simps = dl.find_simplex(grid.T[mask.ravel()])
+    missing = simps == -1
+    tfms = dl.transform[simps]
+    l1, l2 = (tfms[:,:2].transpose(1,2,0) * (grid.T[mask.ravel()] - tfms[:,2]).T).sum(1)
+    l3 = 1 - l1 - l2
+
+    ll = np.vstack([l1, l2, l3])
+    ll[:,missing] = 0
+
+    ## Transform fiducial vertex locations to pixel locations using barycentric xfm
+    fidcoords = (fid[dl.vertices][simps] * ll[np.newaxis].T).sum(1)
+
+    from cortex.mapper import samplers
+    xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
+    sampclass = getattr(samplers, projection)
+    i, j, data = sampclass(xfm(fidcoords), xfm.shape)
+    csrshape = len(fidcoords), np.prod(xfm.shape)
+    return sparse.csr_matrix((data, (i, j)), shape=csrshape)
+
+def get_flatcache(subject, xfmname, pixelwise=True, projection='nearest', recache=False, height=1024):
+    cachedir = surfs.getFiles(subject)['cachedir']
+    cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
+    if pixelwise and xfmname is not None:
+        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{projection}.npz")
+        cachefile = cachefile.format(height=height, xfmname=xfmname, projection=projection)
+    
+    if not os.path.exists(cachefile) or recache:
         print("Generating a flatmap cache")
-        #pull points and transform from database
-        verts, mask = _make_flat_cache(subject, xfmname, height=height)
-        #save them into the proper file
-        date = time.strftime("%Y%m%d")
-        cachename = cacheform.format(xfmname=xfmname, height=height, date=date)
-        pickle.dump((verts, mask), open(cachename, "w"), 2)
+        if pixelwise and xfmname is not None:
+            pixmap = _make_pixel_cache(subject, xfmname, height=height, projection=projection)
+        else:
+            pixmap = _make_vertex_cache(subject, height=height)
+        np.savez(cachefile, data=pixmap.data, indices=pixmap.indices, indptr=pixmap.indptr, shape=pixmap.shape)
     else:
-        verts, mask = pickle.load(open(files[0]))
+        from scipy import sparse
+        npz = np.load(cachefile)
+        pixmap = sparse.csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
 
-    cache[key] = verts, mask
-    return verts, mask
+    if not pixelwise and xfmname is not None:
+        mapper = utils.get_mapper(subject, xfmname, projection)
+        pixmap = pixmap * sparse.vstack(mapper.masks)
 
-def make(data, subject, xfmname, recache=False, height=1024, projection='nearest', **kwargs):
-    mapper = utils.get_mapper(subject, xfmname, type=projection, **kwargs)
-    verts, mask = get_cache(subject, xfmname, recache=recache, height=height)
+    return pixmap
 
-    mdata = np.hstack(mapper(data))
-    if mdata.dtype == np.uint8:
-        mdata = mdata.swapaxes(-1, -2)
-        if mdata.ndim == 2:
-            mdata = mdata[np.newaxis]
-        shape = (mdata.shape[0],) + mask.shape + (mdata.shape[-1],)
-    elif mdata.ndim == 1:
-        mdata = mdata[np.newaxis]
-        shape = (mdata.shape[0],) + mask.shape
+def make(braindata, height=1024, **kwargs):
+    braindata = dataset.normalize(braindata)
+    if not isinstance(braindata, dataset.VolumeData):
+        raise TypeError('Invalid type for quickflat')
+    if braindata.movie:
+        raise ValueError('Cannot flatten multiple volumes')
 
-    img = (np.nan*np.ones(shape)).astype(mdata.dtype)
-    img[:, mask] = mdata[:,verts]
-    return img.swapaxes(1, 2)[:,::-1].squeeze()
+    mask = surfs.getAnat(braindata.subject, "flatmask", height=height)['mask'].T    
+    
+    if isinstance(braindata, dataset.VertexData):
+        pixmap = get_flatcache(braindata.subject, None, height=height, **kwargs)
+        data = braindata.data
+    else:
+        pixmap = get_flatcache(braindata.subject, braindata.xfmname, height=height, **kwargs)
+        data = braindata.volume
+
+    if braindata.raw:
+        img = np.zeros(mask.shape+(4,), dtype=np.uint8)
+        img[mask] = pixmap * data.reshape(-1, 4)
+        return img.transpose(1,0,2)[::-1]
+    else:
+        img = (np.nan*np.ones(mask.shape)).astype(braindata.data.dtype)
+        img[mask] = pixmap * data.ravel()
+        return img.T[::-1]
 
 rois = dict() ## lame
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
@@ -189,13 +212,19 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(data, subject, xfmname, recache=False, height=1024, projection='nearest',
-                with_rois=True, labels=True, colorbar=True, dpi=100,
+def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
+                with_rois=True, with_labels=True, with_colorbar=True, dpi=100,
                 with_borders=False, with_dropout=False, **kwargs):
     from matplotlib import pyplot as plt
     from matplotlib.collections import LineCollection
 
-    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
+    braindata = dataset.normalize(braindata)
+    if not isinstance(braindata, dataset.VolumeData):
+        raise TypeError('Invalid type for quickflat')
+    if braindata.movie:
+        raise ValueError('Cannot flatten multiple volumes')
+    
+    im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
     
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
@@ -203,13 +232,13 @@ def make_figure(data, subject, xfmname, recache=False, height=1024, projection='
     ax.axis('off')
     ax.invert_yaxis()
 
-    if colorbar:
+    if with_colorbar:
         cbar = fig.add_axes((.4, .07, .2, .04))
         fig.colorbar(cimg, cax=cbar, orientation='horizontal')
 
     if with_dropout:
         dax = fig.add_axes((0,0,1,1))
-        dmap = make(np.hstack(utils.get_dropout(subject, xfmname)), subject, xfmname,
+        dmap = make(utils.get_dropout(braindata.subject, braindata.xfmname),
                     height=height, projection=projection)
         hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
         hatchspace = 4
@@ -220,9 +249,9 @@ def make_figure(data, subject, xfmname, recache=False, height=1024, projection='
         dax.imshow(hatchim[::-1], aspect="equal", interpolation="nearest", origin="upper")
     
     if with_borders:
-        key = (subject, "borderlines")
+        key = (braindata.subject, "borderlines")
         if key not in rois:
-            border = _gen_flat_border(subject, im.shape[0])
+            border = _gen_flat_border(braindata.subject, im.shape[0])
             rois[key] = border
 
         bax = fig.add_axes((0,0,1,1))
@@ -232,10 +261,10 @@ def make_figure(data, subject, xfmname, recache=False, height=1024, projection='
         #bax.invert_yaxis()
     
     if with_rois:
-        key = (subject, labels)
+        key = (braindata.subject, with_labels)
         if key not in rois:
-            roi = utils.get_roipack(subject)
-            rois[key] = roi.get_texture(im.shape[0], labels=labels)
+            roi = surfs.getOverlay(braindata.subject)
+            rois[key] = roi.get_texture(im.shape[0], labels=with_labels)
         rois[key].seek(0)
         oax = fig.add_axes((0,0,1,1))
         oimg = oax.imshow(plt.imread(rois[key])[::-1],
@@ -243,10 +272,10 @@ def make_figure(data, subject, xfmname, recache=False, height=1024, projection='
 
     return fig
 
-def make_png(name, data, subject, xfmname, recache=False, height=1024, projection='nearest',
-             bgcolor=None, dpi=100, **kwargs):
+def make_png(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
+    bgcolor=None, dpi=100, **kwargs):
     from matplotlib import pyplot as plt
-    fig = make_figure(data, subject, xfmname, recache, height, projection, **kwargs)
+    fig = make_figure(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height, **kwargs)
     imsize = fig.get_axes()[0].get_images()[0].get_size()
     fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
     if bgcolor is None:
@@ -259,9 +288,10 @@ def show(*args, **kwargs):
     raise DeprecationWarning("Use quickflat.make_figure instead")
     return make_figure(*args, **kwargs)
 
-def make_svg(name, data, subject, xfmname, recache=False, height=1024, projection="nearest", **kwargs):
+def make_svg(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
+    **kwargs):
     ## Create quickflat image array
-    im = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
+    im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
     ## Convert to PNG
     try:
         import cStringIO
