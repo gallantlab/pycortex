@@ -140,8 +140,8 @@ def get_flatcache(subject, xfmname, pixelwise=True, projection='nearest', recach
     cachedir = surfs.getFiles(subject)['cachedir']
     cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
     if pixelwise and xfmname is not None:
-        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}.npz")
-        cachefile = cachefile.format(height=height, xfmname=xfmname)
+        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{projection}.npz")
+        cachefile = cachefile.format(height=height, xfmname=xfmname, projection=projection)
     
     if not os.path.exists(cachefile) or recache:
         print("Generating a flatmap cache")
@@ -218,6 +218,12 @@ def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', 
     from matplotlib import pyplot as plt
     from matplotlib.collections import LineCollection
 
+    braindata = dataset.normalize(braindata)
+    if not isinstance(braindata, dataset.VolumeData):
+        raise TypeError('Invalid type for quickflat')
+    if braindata.movie:
+        raise ValueError('Cannot flatten multiple volumes')
+    
     im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
     
     fig = plt.figure()
@@ -232,7 +238,7 @@ def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', 
 
     if with_dropout:
         dax = fig.add_axes((0,0,1,1))
-        dmap = make(np.hstack(utils.get_dropout(subject, xfmname)), subject, xfmname,
+        dmap = make(utils.get_dropout(braindata.subject, braindata.xfmname),
                     height=height, projection=projection)
         hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
         hatchspace = 4

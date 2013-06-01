@@ -367,22 +367,21 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
 
     return tissots, allcenters
 
-def get_dropout(subject, xfmname, projection="trilinear", power=20):
-    """Returns a dropout map for each hemisphere showing where EPI signal
+def get_dropout(subject, xfmname, power=20):
+    """Returns a dropout VolumeData showing where EPI signal
     is very low."""
     xfm = surfs.getXfm(subject, xfmname)
-    rawdata = xfm.epi.get_data().T
+    rawdata = xfm.reference.get_data().T
+
+    ## Collapse epi across time if it's 4D
     if rawdata.ndim > 3:
         rawdata = rawdata.mean(0)
-        
-    mapper = get_mapper(subject, xfmname, projection)
-    left, right = mapper(rawdata)
-    lnorm = (left - left.min()) / (left.max() - left.min())
-    rnorm = (right - right.min()) / (right.max() - right.min())
-    left = (1-lnorm) ** power
-    right = (1-rnorm) ** power
 
-    return left, right
+    normdata = (rawdata - rawdata.min()) / (rawdata.max() - rawdata.min())
+    normdata = (1 - normdata) ** power
+
+    from .dataset import VolumeData
+    return VolumeData(normdata, subject, xfmname)
 
 def make_movie(stim, outfile, fps=15, size="640x480"):
     import shlex
