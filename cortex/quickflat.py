@@ -225,6 +225,8 @@ def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', 
     cimg = ax.imshow(im[::-1], aspect='equal', origin="upper", **kwargs)
     ax.axis('off')
     ax.invert_yaxis()
+    ax.set_xlim(-0.5, im.shape[1]-0.5)
+    ax.set_ylim(-0.5, height-0.5)
 
     if with_colorbar:
         cbar = fig.add_axes((.4, .07, .2, .04))
