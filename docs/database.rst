@@ -94,13 +94,13 @@ Finally, selecting one surface type will give you two new functions: get, and sh
 
 Adding new surfaces
 ^^^^^^^^^^^^^^^^^^^
-Adding new surfaces is easy. Simply copy your surface file into the directory ``{$FILESTORE}/surfaces/`` with a filename format of ``{subject}_{type}_{hemi}.{format}`` where hemi is lh or rh, and format is one of **OFF**, **VTK**, or an **npz** file with keys 'pts' and 'polys'. If you have an anatomical file associated with a subject, also copy it into that directory with format ``{subject}_anatomical_both.{suffix}``. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.
+pycortex implements a simple flat-file database to organize surfaces and transforms. To add a new surface to an existing subject, copy the surface file into ``{$FILESTORE}/{$SUBJECT}/surfaces/`` with the format ``{type}_{hemi}.{format}``, where hemi is lh or rh, and format is one of **OFF**, **VTK**, or an **npz** file with keys 'pts' and 'polys'. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.
 
 In order to adequately utilize all the functions in pycortex, please add the fiducial, inflated, and flat geometries for both hemispheres. Again, make sure that all the surface types for a given subject and hemisphere have the same number of vertices, otherwise unexpected things may happen!
 
 Transforms
 ----------
-Transformations in pycortex are stored as **affine** matrices encoded in 
+Transformations in pycortex are stored as **affine** matrices encoded in magnet isocenter space, as defined in the nifti headers.
 
 Accessing transforms
 ^^^^^^^^^^^^^^^^^^^^
@@ -130,7 +130,7 @@ Adding new transforms
 Transforms from anatomical space to functional space are notoriously tricky. Automated algorithms generally give results optimized for various global energy metrics, but do not attempt to target the alignments for your ROIs. It is highly recommended that you use the included aligner to make your affine transforms. To add a transform, either directly create a transform json in ``{$FILESTORE}/transforms/``, or use this command::
 
     from cortex import surfs
-    surfs.loadXfm(subject, xfmname, xfm, xfmtype='magnet', epifile='path_to_functional.nii')
+    surfs.loadXfm(subject, xfmname, xfm, xfmtype='magnet', reference='path_to_functional.nii')
 
 Database details
 ----------------
