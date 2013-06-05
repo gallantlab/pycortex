@@ -186,6 +186,13 @@ class Dataset(object):
 
         raise TypeError('Unknown overlay type')
 
+    def prepend(self, prefix):
+        ds = dict()
+        for name, data in self:
+            ds[prefix+name] = data
+
+        return Dataset(**ds)
+
 class VolumeData(object):
     def __init__(self, data, subject, xfmname, mask=None, **kwargs):
         """Three possible variables: raw, volume, movie, vertex. Enumerated with size:
@@ -427,6 +434,8 @@ def normalize(data):
             return VolumeData(*data)
         except (ValueError, TypeError):
             return VertexData(*data)
+
+    raise TypeError('Unknown input type')
 
 def _from_file(filename, name="data"):
     import tables
