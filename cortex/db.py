@@ -42,8 +42,8 @@ class SurfaceDB(object):
     def __init__(self, subj):
         self.subject = subj
         self.types = {}
-        for name in surf.getFiles(subj)['surfs'].keys():
-            self.types[fname[0]] = Surf(subj, name)
+        for name in surfs.getFiles(subj)['surfs'].keys():
+            self.types[name] = Surf(subj, name)
                 
     def __repr__(self):
         return "Surfaces: [{surfs}]".format(surfs=', '.join(list(self.types.keys())))
@@ -58,7 +58,7 @@ class SurfaceDB(object):
 
 class Surf(object):
     def __init__(self, subject, surftype):
-        self.subject, self.surftype = subject, surftypes
+        self.subject, self.surftype = subject, surftype
 
     def get(self, hemisphere="both"):
         return surfs.getSurf(self.subject, self.surftype, hemisphere)
@@ -266,7 +266,7 @@ class Database(object):
 
         if name == "identity":
             import nibabel
-            nib = nibabel.load(self.getAnat(subject, 'raw'))
+            nib = self.getAnat(subject, 'raw')
             return Transform(np.linalg.inv(nib.get_affine()), nib)
 
         fname = os.path.join(filestore, subject, "transforms", name, "matrices.xfm")
@@ -343,6 +343,8 @@ class Database(object):
 
         import nibabel
         xfm = self.getXfm(subject, xfmname)
+        if xfm.shape != mask.shape:
+            raise ValueError("Invalid mask shape: must match shape of reference image")
         affine = xfm.reference.get_affine()
         nib = nibabel.Nifti1Image(mask.astype(np.uint8).T, affine)
         nib.to_filename(fname)
