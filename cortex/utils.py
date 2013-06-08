@@ -93,19 +93,18 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
     '''
     return get_mapper(subject, xfmname, type=type).hemimasks
 
-def add_roi(data, subject, xfmname, name="new_roi", recache=False, open_inkscape=True, add_path=True, projection='nearest', **kwargs):
+def add_roi(data, name="new_roi", recache=False, open_inkscape=True, add_path=True, **kwargs):
     import subprocess as sp
     from matplotlib.pylab import imsave
     from .utils import get_roipack
     from . import quickflat
-    rois = get_roipack(subject)
-    im = quickflat.make(data, subject, xfmname, height=1024, recache=recache, projection=projection)
+    rois = get_roipack(data.subject)
     try:
         import cStringIO
         fp = cStringIO.StringIO()
     except:
         fp = io.StringIO()
-    imsave(fp, im, **kwargs)
+    quickflat.make_png(fp, data, height=1024, recache=recache, with_rois=False, with_labels=False, **kwargs)
     fp.seek(0)
     rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
     if open_inkscape:

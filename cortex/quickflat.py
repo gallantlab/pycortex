@@ -215,7 +215,7 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
 def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
                 with_rois=True, with_labels=True, with_colorbar=True, dpi=100,
                 with_borders=False, with_dropout=False, **kwargs):
-    from matplotlib import pyplot as plt
+    from matplotlib import cm, pyplot as plt
     from matplotlib.collections import LineCollection
 
     braindata = dataset.normalize(braindata)
@@ -223,6 +223,13 @@ def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', 
         raise TypeError('Invalid type for quickflat')
     if braindata.movie:
         raise ValueError('Cannot flatten multiple volumes')
+
+    if "cmap" in braindata.attrs and "cmap" not in kwargs:
+        kwargs['cmap'] = cm.get_cmap(braindata.attrs['cmap'])
+    if "vmin" in braindata.attrs and "vmin" not in kwargs:
+        kwargs['vmin'] = float(braindata.attrs['vmin'])
+    if "vmax" in braindata.attrs and "vmax" not in kwargs:
+        kwargs['vmax'] = float(braindata.attrs['vmax'])
     
     im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
     

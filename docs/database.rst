@@ -94,13 +94,13 @@ Finally, selecting one surface type will give you two new functions: get, and sh
 
 Adding new surfaces
 ^^^^^^^^^^^^^^^^^^^
-Adding new surfaces is easy. Simply copy your surface file into the directory ``{$FILESTORE}/surfaces/`` with a filename format of ``{subject}_{type}_{hemi}.{format}`` where hemi is lh or rh, and format is one of **OFF**, **VTK**, or an **npz** file with keys 'pts' and 'polys'. If you have an anatomical file associated with a subject, also copy it into that directory with format ``{subject}_anatomical_both.{suffix}``. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.
+Surface management is implemented through your file manager. To add a new surface to an existing subject, copy the surface file into ``{$FILESTORE}/{$SUBJECT}/surfaces/`` with the format ``{type}_{hemi}.{format}``, where hemi is lh or rh, and format is one of **OFF**, **VTK**, or an **npz** file with keys 'pts' and 'polys'. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.
 
 In order to adequately utilize all the functions in pycortex, please add the fiducial, inflated, and flat geometries for both hemispheres. Again, make sure that all the surface types for a given subject and hemisphere have the same number of vertices, otherwise unexpected things may happen!
 
 Transforms
 ----------
-Transformations in pycortex are stored as **affine** matrices encoded in 
+Transformations in pycortex are stored as **affine** matrices encoded in magnet isocenter space, as defined in the nifti headers.
 
 Accessing transforms
 ^^^^^^^^^^^^^^^^^^^^
@@ -130,18 +130,40 @@ Adding new transforms
 Transforms from anatomical space to functional space are notoriously tricky. Automated algorithms generally give results optimized for various global energy metrics, but do not attempt to target the alignments for your ROIs. It is highly recommended that you use the included aligner to make your affine transforms. To add a transform, either directly create a transform json in ``{$FILESTORE}/transforms/``, or use this command::
 
     from cortex import surfs
-    surfs.loadXfm(subject, xfmname, xfm, xfmtype='magnet', epifile='path_to_functional.nii')
+    surfs.loadXfm(subject, xfmname, xfm, xfmtype='magnet', reference='path_to_functional.nii')
+
+
+Masks
+^^^^^
+One of the fundamental reasons for carefully aligning surfaces is to allow the creation and use of cortical masks. This limits the number of voxels you need to model. Traditionally, these masks are created by selecting the set of nearest neighbor voxels for each vertex on the transformed surface. Unfortunately, pycortex's advanced per-pixel mapping precludes the use of this simple mask, since faces could potentially intersect with voxel corners which are not in this simple mask. Thus, the default masks in pycortex use a distance metric to compute mask membership.
+
+Masks were added into pycortex in May 2013, due to previous issues with masked data and the addition of the per-pixel mapping. Masked datasets are further discussed in the Datasets_ page.
+
+Retrieving a mask
+"""""""""""""""""
+A mask is specified by three variables: subject name, transform name, and mask type. pycortex defines two named masks for each transform by default. These are the ``thick`` and the ``thin`` masks. They correspond to a distance of 8 mm and 2 mm, respectively, from any given cortical vertex. If the subject has both pial and white matter surfaces, all voxels of exactly the cortical thickness distance from each vertex are selected from the fiducial surface. To retrieve the ``thick`` mask::
+
+    from cortex import surfs
+    mask = surfs.getMask(subject, xfmname, "thick")
+
+Additionally, masks corresponding to known mapper types (such as 'nearest' and 'trilinear') will also be automatically generated and recorded by the database when requested.
+
+Loading a mask
+""""""""""""""
+If you use a custom mask for any reason, it is highly recommended that you load it into the database for future reference. It will allow more seamless Datasets_ integration, and will prevent it from being lost. To add a custom mask to the database::
+
+    from cortex import surfs
+    surfs.loadMask(subject, xfmname, masktype, mask)
 
 Database details
 ----------------
-The "database" is stored in the filestore defined in defaults.json. Within the filestore, there are a set of directories:
+pycortex implements a simple flat-file database to store transforms and surfaces. By default, the filestore is in ``INSTALL_DATA/share/pycortex/``. This location can be customized in your options.cfg file.
 
-    * ctmcache: CTM files for use with the webgl viewer
-    * flatcache: Pickled flatmap indices for use with quickflat
-    * overlays: SVG-based ROI overlays
-    * references: EPI reference images for transforms
-    * surfaces: VTK files for surface geometries
-    * transforms: JSON-encoded files for affine transforms
+Within the filestore, each subject has their own directory containing all associated data. Each subject has a few subdirectories:
+
+    * surfaces: formatted as ``{type}_{hemi}.{format}``
+    * transforms: each subdirectory is a transform. Each transform subdirectory contains two files: matrices.xfm, and reference.nii.gz. Masks are also stored in the transforms directory.
+    * 
 
 The ctmcache holds the sequence of files necessary for the webgl viewer. OpenCTM_ is a geometry specification that allows very small files to reduce bandwidth. Files are stored with the format ``{subject}_{transform}_[{types}]_{compression}_{level}.{suffix}``. Each subject and transform is associated with a triplet of files called a "ctmpack". Each ctmpack contains a json file specifying the limits of the data, a ctm file consisting of concatenated left and right hemispheres, and an SVG consisting of the roi's with the data layers deleted. There is a unique ctmpack for each subject, transform, and set of included inflations. Raw CTMs are generated for view.webshow, whereas MG2 CTM's are generated for static WebGL views. These files are considered disposable, and are generated on demand.
 
