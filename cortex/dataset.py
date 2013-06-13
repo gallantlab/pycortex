@@ -27,6 +27,7 @@ HDF5 format:
     ds1
     ds2
 """
+import os
 import numpy as np
 
 from .db import surfs
@@ -466,7 +467,7 @@ def _find_mask(nvox, subject, xfmname):
     files = surfs.getFiles(subject)['masks'].format(xfmname=xfmname, type="*")
     for fname in glob.glob(files):
         nib = nibabel.load(fname)
-        mask = nib.get_data() != 0
+        mask = nib.get_data().T != 0
         if nvox == np.sum(mask):
             fname = os.path.split(fname)[1]
             name = re.compile(r'mask_([\w]+).nii.gz').search(fname)

@@ -52,9 +52,9 @@ def automatic(subject, name, epifile, noclean=False):
     try:
         cache = tempfile.mkdtemp()
         epifile = os.path.abspath(epifile)
-        raw = surfs.getAnat(subject, type='raw')
-        bet = surfs.getAnat(subject, type='brainmask')
-        wmseg = surfs.getAnat(subject, type='whitematter')
+        raw = surfs.getAnat(subject, type='raw').get_filename()
+        bet = surfs.getAnat(subject, type='brainmask').get_filename()
+        wmseg = surfs.getAnat(subject, type='whitematter').get_filename()
 
         print('FLIRT pre-alignment')
         cmd = 'fsl5.0-flirt -ref {bet} -in {epi} -dof 6 -omat {cache}/init.mat'.format(cache=cache, epi=epifile, bet=bet)
@@ -91,11 +91,11 @@ def autotweak(subject, name):
     magnet = surfs.getXfm(subject, name, xfmtype='magnet')
     try:
         cache = tempfile.mkdtemp()
-        epifile = magnet.epi.get_filename()
-        raw = surfs.getAnat(subject, type='raw')
-        bet = surfs.getAnat(subject, type='brainmask')
-        wmseg = surfs.getAnat(subject, type='whitematter')
-        initmat = magnet.to_fsl(surfs.getAnat(subject, 'raw'))
+        epifile = magnet.reference.get_filename()
+        raw = surfs.getAnat(subject, type='raw').get_filename()
+        bet = surfs.getAnat(subject, type='brainmask').get_filename()
+        wmseg = surfs.getAnat(subject, type='whitematter').get_filename()
+        initmat = magnet.to_fsl(surfs.getAnat(subject, 'raw').get_filename())
         with open(os.path.join(cache, 'init.mat'), 'w') as fp:
             np.savetxt(fp, initmat, fmt='%f')
         print('Running BBR')

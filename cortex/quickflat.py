@@ -92,12 +92,12 @@ def _make_vertex_cache(subject, height=1024):
     width = int(aspect * height)
     grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
 
-    mask = surfs.getAnat(subject, "flatmask", height=height)['mask'].T
+    mask = surfs.getAnat(subject, "flatmask", height=height, recache=True)['mask'].T
     assert mask.shape[0] == width and mask.shape[1] == height
 
-    kdt = cKDTree(flat[:,:2])
+    kdt = cKDTree(flat[valid,:2])
     dist, vert = kdt.query(grid.T[mask.ravel()])
-    dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), vert]))
+    dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), valid[vert]]))
     return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
 
 def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
@@ -105,7 +105,6 @@ def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
     from scipy.spatial import cKDTree, Delaunay
     fid, polys = surfs.getSurf(subject, "fiducial", merge=True, nudge=True)
     flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    valid = np.unique(polys)
     fmax, fmin = flat.max(0), flat.min(0)
     size = fmax - fmin
     aspect = size[0] / size[1]

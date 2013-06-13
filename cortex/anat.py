@@ -17,16 +17,20 @@ def brainmask(outfile, subject):
     assert sp.call(cmd, shell=True) == 0, "Error calling fsl-bet"
 
 def whitematter(outfile, subject):
-    bet = surfs.getAnat(subject, type='brainmask').get_filename()
     try:
-        cache = tempfile.mkdtemp()
-        print("Segmenting the brain...")
-        cmd = 'fsl5.0-fast -o {cache}/fast {bet}'.format(cache=cache, bet=bet)
-        assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
-        cmd = 'fsl5.0-fslmaths {cache}/fast_pve_2 -thr 0.5 -bin {out}'.format(cache=cache, out=outfile)
-        assert sp.call(cmd, shell=True) == 0, 'Error calling fsl-maths'
-    finally:
-        shutil.rmtree(cache)
+        voxelize(outfile, subject, surf="wm")
+    except IOError:
+        bet = surfs.getAnat(subject, type='brainmask').get_filename()
+        try:
+            cache = tempfile.mkdtemp()
+            print("Segmenting the brain...")
+            cmd = 'fsl5.0-fast -o {cache}/fast {bet}'.format(cache=cache, bet=bet)
+            assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
+            cmd = 'fsl5.0-fslmaths {cache}/fast_pve_2 -thr 0.5 -bin {out}'.format(cache=cache, out=outfile)
+            assert sp.call(cmd, shell=True) == 0, 'Error calling fsl-maths'
+        finally:
+            shutil.rmtree(cache)
+
 
 def curvature(outfile, subject, **kwargs):
     left, right = utils.get_curvature(subject, **kwargs)

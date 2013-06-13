@@ -144,11 +144,12 @@ class Database(object):
             raw='nii.gz',
             brainmask='nii.gz',
             whitematter='nii.gz',
-            curvature='npz',
+            voxelize='nii.gz',
             flatmask='npz',
+            curvature='npz',
             thickness='npz',
             distortion='npz',
-            voxelize="nii.gz",
+            sulcaldepth='npz',
         )
         
         opts = ""
@@ -166,7 +167,11 @@ class Database(object):
             import nibabel
             return nibabel.load(anatfile)
         elif types[type] == 'npz':
-            return np.load(anatfile)
+            npz = np.load(anatfile)
+            if "left" in npz and "right" in npz:
+                from .dataset import VertexData
+                return VertexData(np.hstack([npz['left'], npz['right']]), subject)
+            return npz
         return anatfile
 
     def getOverlay(self, subject, type='rois', **kwargs):
