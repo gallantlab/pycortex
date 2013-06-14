@@ -100,11 +100,11 @@ def _make_vertex_cache(subject, height=1024):
     dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), valid[vert]]))
     return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
 
-def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
+def _make_pixel_cache(subject, xfmname, height=1024, thick=32, projection='nearest'):
     from scipy import sparse
     from scipy.spatial import cKDTree, Delaunay
-    fid, polys = surfs.getSurf(subject, "fiducial", merge=True, nudge=True)
     flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
+    valid = np.unique(polys)
     fmax, fmin = flat.max(0), flat.min(0)
     size = fmax - fmin
     aspect = size[0] / size[1]
@@ -115,7 +115,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
     assert mask.shape[0] == width and mask.shape[1] == height
     
     ## Get barycentric coordinates
-    dl = Delaunay(flat[:,:2])
+    dl = Delaunay(flat[valid,:2])
     simps = dl.find_simplex(grid.T[mask.ravel()])
     missing = simps == -1
     tfms = dl.transform[simps]
@@ -125,27 +125,59 @@ def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
     ll = np.vstack([l1, l2, l3])
     ll[:,missing] = 0
 
-    ## Transform fiducial vertex locations to pixel locations using barycentric xfm
-    fidcoords = (fid[dl.vertices][simps] * ll[np.newaxis].T).sum(1)
-
     from cortex.mapper import samplers
     xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
     sampclass = getattr(samplers, projection)
-    i, j, data = sampclass(xfm(fidcoords), xfm.shape)
-    csrshape = len(fidcoords), np.prod(xfm.shape)
-    return sparse.csr_matrix((data, (i, j)), shape=csrshape)
 
-def get_flatcache(subject, xfmname, pixelwise=True, projection='nearest', recache=False, height=1024):
+    ## Transform fiducial vertex locations to pixel locations using barycentric xfm
+    try:
+        pia, polys = surfs.getSurf(subject, "pia", merge=True, nudge=False)
+        wm, polys = surfs.getSurf(subject, "wm", merge=True, nudge=False)
+        piacoords = xfm((pia[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
+        wmcoords = xfm((wm[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
+
+        valid_p = reduce(np.logical_and, [reduce(np.logical_and, (0 <= piacoords).T), 
+            piacoords[:,0] < xfm.shape[2], 
+            piacoords[:,1] < xfm.shape[1], 
+            piacoords[:,2] < xfm.shape[0]])
+        valid_w = reduce(np.logical_and, [reduce(np.logical_and, (0 <= wmcoords).T), 
+            wmcoords[:,0] < xfm.shape[2],
+            wmcoords[:,1] < xfm.shape[1],
+            wmcoords[:,2] < xfm.shape[0]])
+        valid = np.logical_and(valid_p, valid_w)
+        vidx = np.nonzero(valid)[0]
+
+        mapper = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
+        for t in np.linspace(0, 1, thick+2)[1:-1]:
+            i, j, data = sampclass(piacoords[valid]*t + wmcoords[valid]*(1-t), xfm.shape)
+            mapper = mapper + sparse.csr_matrix((data / thick, (vidx[i], j)), shape=mapper.shape)
+        return mapper
+
+    except IOError:
+        fid, polys = surfs.getSurf(subject, "fiducial", merge=True)
+        fidcoords = xfm((fid[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
+
+        valid = reduce(np.logical_and, [reduce(np.logical_and, (0 <= fidcoords).T),
+            fidcoords[:,0] < xfm.shape[2],
+            fidcoords[:,1] < xfm.shape[1],
+            fidcoords[:,2] < xfm.shape[0]])
+        vidx = np.nonzero(valid)[0]
+
+        i, j, data = sampclass(fidcoords[valid], xfm.shape)
+        csrshape = mask.sum(), np.prod(xfm.shape)
+        return sparse.csr_matrix((data, (vidx[i], j)), shape=csrshape)
+
+def get_flatcache(subject, xfmname, pixelwise=True, thick=32, projection='nearest', recache=False, height=1024):
     cachedir = surfs.getFiles(subject)['cachedir']
     cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
     if pixelwise and xfmname is not None:
-        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{projection}.npz")
-        cachefile = cachefile.format(height=height, xfmname=xfmname, projection=projection)
+        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{projection}_l{thick}.npz")
+        cachefile = cachefile.format(height=height, xfmname=xfmname, projection=projection, thick=thick)
     
     if not os.path.exists(cachefile) or recache:
         print("Generating a flatmap cache")
         if pixelwise and xfmname is not None:
-            pixmap = _make_pixel_cache(subject, xfmname, height=height, projection=projection)
+            pixmap = _make_pixel_cache(subject, xfmname, height=height, projection=projection, thick=thick)
         else:
             pixmap = _make_vertex_cache(subject, height=height)
         np.savez(cachefile, data=pixmap.data, indices=pixmap.indices, indptr=pixmap.indptr, shape=pixmap.shape)
@@ -211,7 +243,7 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
+def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='nearest', height=1024,
                 with_rois=True, with_labels=True, with_colorbar=True, dpi=100,
                 with_borders=False, with_dropout=False, **kwargs):
     from matplotlib import cm, pyplot as plt
@@ -219,9 +251,9 @@ def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', 
 
     braindata = dataset.normalize(braindata)
     if not isinstance(braindata, dataset.VolumeData):
-        raise TypeError('Invalid type for quickflat')
+        raise TypeError('Please provide a VertexData or a VolumeData, not a Dataset')
     if braindata.movie:
-        raise ValueError('Cannot flatten multiple volumes')
+        raise ValueError('Cannot flatten movie volumes')
 
     if "cmap" in braindata.attrs and "cmap" not in kwargs:
         kwargs['cmap'] = cm.get_cmap(braindata.attrs['cmap'])
@@ -230,7 +262,7 @@ def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', 
     if "vmax" in braindata.attrs and "vmax" not in kwargs:
         kwargs['vmax'] = float(braindata.attrs['vmax'])
     
-    im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
+    im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height, thick=thick)
     
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
