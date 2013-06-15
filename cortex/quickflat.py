@@ -187,6 +187,7 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, projection='neares
         pixmap = sparse.csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
 
     if not pixelwise and xfmname is not None:
+        from scipy import sparse
         mapper = utils.get_mapper(subject, xfmname, projection)
         pixmap = pixmap * sparse.vstack(mapper.masks)
 
@@ -246,7 +247,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
                 with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
                 **kwargs):
-    '''Show a VolumeData or VertexData on a flatmap with matplotlib.
+    """Show a VolumeData or VertexData on a flatmap with matplotlib. Additional kwargs are passed on to
+    matplotlib's imshow command.
 
     Parameters
     ----------
@@ -277,9 +279,11 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
         (R, G, B, A) sepcification for the fill of each ROI region
     shadow : int, optional
         Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
-    labelsize : str
-        
-    '''
+    labelsize : str, optional
+        Font size for the label, E.g. "16pt"
+    labelcolor : tuple of float, optional
+        (R, G, B, A) specification for the label color
+    """
     from matplotlib import cm, pyplot as plt
     from matplotlib.collections import LineCollection
 
@@ -346,6 +350,50 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
 
 def make_png(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
     bgcolor=None, dpi=100, **kwargs):
+    """
+    make_png(name, braindata, recache=False, pixelwise=True, thick=32, projection='nearest', height=1024, dpi=100,
+                with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
+                linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
+                **kwargs)
+
+    Create a PNG of the VertexData or VolumeData on a flatmap.
+
+    Parameters
+    ----------
+    name : str
+        Filename for where to save the PNG file
+    braindata : VertexData or VolumeData
+        the data you would like to plot on a flatmap
+    recache : bool
+        If True, recache the flatmap cache. Useful if you've made changes to the alignment
+    pixelwise : bool
+        Use pixel-wise mapping
+    thick : int
+        Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
+    projection : str
+        Name of sampling function used to sample underlying volume data
+    height : int
+        Height of the image to render. Automatically scales the width for the aspect of the subject's flatmap
+    with_rois, with_labels, with_colorbar, with_borders, with_dropout : bool, optional
+        Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?
+
+    Other Parameters
+    ----------------
+    dpi : int
+        DPI of the generated image. Only applies to the scaling of matplotlib elements, specifically the colormap
+    linewidth : int, optional
+        Width of ROI lines. Defaults to roi options in your local `options.cfg`
+    linecolor : tuple of float, optional
+        (R, G, B, A) specification of line color
+    roifill : tuple of float, optional
+        (R, G, B, A) sepcification for the fill of each ROI region
+    shadow : int, optional
+        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
+    labelsize : str, optional
+        Font size for the label, E.g. "16pt"
+    labelcolor : tuple of float, optional
+        (R, G, B, A) specification for the label color
+    """
     from matplotlib import pyplot as plt
     fig = make_figure(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height, **kwargs)
     imsize = fig.get_axes()[0].get_images()[0].get_size()
@@ -360,8 +408,7 @@ def show(*args, **kwargs):
     raise DeprecationWarning("Use quickflat.make_figure instead")
     return make_figure(*args, **kwargs)
 
-def make_svg(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
-    **kwargs):
+def make_svg(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024, **kwargs):
     ## Create quickflat image array
     im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
     ## Convert to PNG

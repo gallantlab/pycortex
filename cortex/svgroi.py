@@ -104,8 +104,11 @@ class ROIpack(object):
         
         outsvg = copy.deepcopy(self.svg)
         if with_ims is not None:
+            if isinstance(with_ims, (list, tuple)):
+                with_ims = enumerate(with_ims)
+
             datalayer = _make_layer(outsvg.getroot(), "data")
-            for imnum,im in list(enumerate(with_ims))[::-1]:
+            for name,im in reversed(with_ims):
                 imlayer = _make_layer(datalayer, "image_%d" % imnum)
                 img = E.image(
                     {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%im},
