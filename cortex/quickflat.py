@@ -217,7 +217,6 @@ def make(braindata, height=1024, **kwargs):
         img[mask] = pixmap * data.ravel()
         return img.T[::-1]
 
-rois = dict() ## lame
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
     import shlex
     import subprocess as sp
@@ -243,9 +242,44 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='nearest', height=1024,
-                with_rois=True, with_labels=True, with_colorbar=True, dpi=100,
-                with_borders=False, with_dropout=False, **kwargs):
+def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='nearest', height=1024, dpi=100,
+                with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
+                linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
+                **kwargs):
+    '''Show a VolumeData or VertexData on a flatmap with matplotlib.
+
+    Parameters
+    ----------
+    braindata : VertexData or VolumeData
+        the data you would like to plot on a flatmap
+    recache : bool
+        If True, recache the flatmap cache. Useful if you've made changes to the alignment
+    pixelwise : bool
+        Use pixel-wise mapping
+    thick : int
+        Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
+    projection : str
+        Name of sampling function used to sample underlying volume data
+    height : int
+        Height of the image to render. Automatically scales the width for the aspect of the subject's flatmap
+    with_rois, with_labels, with_colorbar, with_borders, with_dropout : bool, optional
+        Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?
+
+    Other Parameters
+    ----------------
+    dpi : int
+        DPI of the generated image. Only applies to the scaling of matplotlib elements, specifically the colormap
+    linewidth : int, optional
+        Width of ROI lines. Defaults to roi options in your local `options.cfg`
+    linecolor : tuple of float, optional
+        (R, G, B, A) specification of line color
+    roifill : tuple of float, optional
+        (R, G, B, A) sepcification for the fill of each ROI region
+    shadow : int, optional
+        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
+    labelsize : str
+        
+    '''
     from matplotlib import cm, pyplot as plt
     from matplotlib.collections import LineCollection
 
@@ -301,13 +335,11 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
         #bax.invert_yaxis()
     
     if with_rois:
-        key = (braindata.subject, with_labels)
-        if key not in rois:
-            roi = surfs.getOverlay(braindata.subject)
-            rois[key] = roi.get_texture(im.shape[0], labels=with_labels)
-        rois[key].seek(0)
+        roi = surfs.getOverlay(braindata.subject, linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
+        roitex = roi.get_texture(height, labels=with_labels)
+        roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
-        oimg = oax.imshow(plt.imread(rois[key])[::-1],
+        oimg = oax.imshow(plt.imread(roitex)[::-1],
                           aspect='equal', interpolation='bicubic', origin="upper", zorder=3)
 
     return fig

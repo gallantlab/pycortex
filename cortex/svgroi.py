@@ -21,10 +21,8 @@ cwd = os.path.abspath(os.path.split(__file__)[0])
 
 class ROIpack(object):
     def __init__(self, tcoords, svgfile, callback=None, 
-            linewidth=float(config.get("rois", "line_width")),
-            linecolor=tuple(map(float, config.get("rois", "line_color").split(','))),
-            roifill=tuple(map(float, config.get("rois", "fill_color").split(','))),
-            shadow=float(config.get("rois", "shadow"))):
+        linewidth=None, linecolor=None, roifill=None, shadow=None,
+        labelsize=None, labelcolor=None):
         if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
             tcoords -= tcoords.min(0)
             tcoords /= tcoords.max(0)
@@ -33,13 +31,14 @@ class ROIpack(object):
         self.svgfile = svgfile
         self.callback = callback
         self.kdt = cKDTree(tcoords)
-        self.linewidth = linewidth
-        self.linecolor = linecolor
-        self.roifill = roifill
-        self.shadow = shadow
-        self.reload()
 
-    def reload(self):
+        self.linewidth = float(config.get("rois", "line_width")) if linewidth is None else linewidth
+        self.linecolor = tuple(map(float, config.get("rois", "line_color").split(','))) if linecolor is None else linecolor
+        self.roifill = tuple(map(float, config.get("rois", "fill_color").split(','))) if roifill is None else roifill
+        self.shadow = float(config.get("rois", "shadow")) if shadow is None else shadow
+        self.reload(size=labelsize, color=labelcolor)
+
+    def reload(self, **kwargs):
         self.svg = scrub(self.svgfile)
         w = float(self.svg.getroot().get("width"))
         h = float(self.svg.getroot().get("height"))
@@ -52,7 +51,7 @@ class ROIpack(object):
             self.rois[roi.name] = roi
 
         self.set()
-        self.labels = self.setup_labels()
+        self.setup_labels(**kwargs)
 
     def add_roi(self, name, pngdata, add_path=True):
         #self.svg deletes the images -- we want to save those, so let's load it again
@@ -88,7 +87,7 @@ class ROIpack(object):
             self.svg.find("//{%s}feGaussianBlur"%svgns).attrib["stdDeviation"] = str(shadow)
 
         for roi in list(self.rois.values()):
-            roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill)
+            roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill, shadow=shadow)
 
         try:
             if self.callback is not None:
@@ -199,7 +198,17 @@ class ROIpack(object):
     def __getitem__(self, name):
         return self.rois[name]
 
-    def setup_labels(self, size="16pt", color="#FFFFFF"):
+    def setup_labels(self, size=None, color=None, shadow=None):
+        if size is None:
+            size = config.get("rois", "labelsize")
+        if color is None:
+            color = tuple(map(float, config.get("rois", "labelcolor").split(",")))
+        if shadow is None:
+            shadow = self.shadow
+
+        alpha = color[3]
+        color = "rgb(%d, %d, %d)"%(color[0]*255, color[1]*255, color[2]*255)
+
         try:
             layer = _find_layer(self.svg, "roilabels")
         except AssertionError:
@@ -213,7 +222,7 @@ class ROIpack(object):
 
         w, h = self.svgshape
         nolabels = set(candidates)
-        txtstyle = "font-family:sans;font-size:%s;font-weight:bold;font-style:italic;fill:%s;text-anchor:middle;"%(size, color)
+        txtstyle = "font-family:sans;font-size:%s;font-weight:bold;font-style:italic;fill:%s;fill-opacity:%f;text-anchor:middle;"%(size, color, alpha)
         for text in layer.findall(".//{%s}text"%svgns):
             x = float(text.get('x'))
             y = float(text.get('y'))
@@ -233,10 +242,12 @@ class ROIpack(object):
             text.text = roi.name
             text.attrib["x"] = str(x*w)
             text.attrib["y"] = str((1-y)*h)
-            text.attrib['filter'] = "url(#dropshadow)"
+            if self.shadow > 0:
+                text.attrib['filter'] = "url(#dropshadow)"
             text.attrib['style'] = txtstyle
             text.attrib['data-ptidx'] = str(self.kdt.query((x, y))[1])
 
+        self.labels = layer
         return layer
 
     def toxml(self, pretty=True):
@@ -447,7 +458,7 @@ def make_svg(pts, polys):
 
     return svg
 
-def get_roipack(svgfile, pts, polys, remove_medial=False):
+def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
     from .db import surfs
     
     cullpts = pts[:,:2]
@@ -459,7 +470,7 @@ def get_roipack(svgfile, pts, polys, remove_medial=False):
         with open(svgfile, "w") as fp:
             fp.write(svgroi.make_svg(pts.copy(), polys))
 
-    rois = ROIpack(cullpts, svgfile)
+    rois = ROIpack(cullpts, svgfile, **kwargs)
     if remove_medial:
         return rois, valid
         
