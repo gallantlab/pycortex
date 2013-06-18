@@ -92,18 +92,17 @@ def _make_vertex_cache(subject, height=1024):
     width = int(aspect * height)
     grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
 
-    mask = surfs.getAnat(subject, "flatmask", height=height)['mask'].T
+    mask = surfs.getAnat(subject, "flatmask", height=height, recache=True)['mask'].T
     assert mask.shape[0] == width and mask.shape[1] == height
 
-    kdt = cKDTree(flat[:,:2])
+    kdt = cKDTree(flat[valid,:2])
     dist, vert = kdt.query(grid.T[mask.ravel()])
-    dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), vert]))
+    dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), valid[vert]]))
     return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
 
-def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
+def _make_pixel_cache(subject, xfmname, height=1024, thick=32, projection='nearest'):
     from scipy import sparse
     from scipy.spatial import cKDTree, Delaunay
-    fid, polys = surfs.getSurf(subject, "fiducial", merge=True, nudge=True)
     flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
     fmax, fmin = flat.max(0), flat.min(0)
@@ -116,7 +115,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
     assert mask.shape[0] == width and mask.shape[1] == height
     
     ## Get barycentric coordinates
-    dl = Delaunay(flat[:,:2])
+    dl = Delaunay(flat[valid,:2])
     simps = dl.find_simplex(grid.T[mask.ravel()])
     missing = simps == -1
     tfms = dl.transform[simps]
@@ -126,27 +125,59 @@ def _make_pixel_cache(subject, xfmname, height=1024, projection='nearest'):
     ll = np.vstack([l1, l2, l3])
     ll[:,missing] = 0
 
-    ## Transform fiducial vertex locations to pixel locations using barycentric xfm
-    fidcoords = (fid[dl.vertices][simps] * ll[np.newaxis].T).sum(1)
-
     from cortex.mapper import samplers
     xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
     sampclass = getattr(samplers, projection)
-    i, j, data = sampclass(xfm(fidcoords), xfm.shape)
-    csrshape = len(fidcoords), np.prod(xfm.shape)
-    return sparse.csr_matrix((data, (i, j)), shape=csrshape)
 
-def get_flatcache(subject, xfmname, pixelwise=True, projection='nearest', recache=False, height=1024):
+    ## Transform fiducial vertex locations to pixel locations using barycentric xfm
+    try:
+        pia, polys = surfs.getSurf(subject, "pia", merge=True, nudge=False)
+        wm, polys = surfs.getSurf(subject, "wm", merge=True, nudge=False)
+        piacoords = xfm((pia[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
+        wmcoords = xfm((wm[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
+
+        valid_p = reduce(np.logical_and, [reduce(np.logical_and, (0 <= piacoords).T), 
+            piacoords[:,0] < xfm.shape[2], 
+            piacoords[:,1] < xfm.shape[1], 
+            piacoords[:,2] < xfm.shape[0]])
+        valid_w = reduce(np.logical_and, [reduce(np.logical_and, (0 <= wmcoords).T), 
+            wmcoords[:,0] < xfm.shape[2],
+            wmcoords[:,1] < xfm.shape[1],
+            wmcoords[:,2] < xfm.shape[0]])
+        valid = np.logical_and(valid_p, valid_w)
+        vidx = np.nonzero(valid)[0]
+
+        mapper = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
+        for t in np.linspace(0, 1, thick+2)[1:-1]:
+            i, j, data = sampclass(piacoords[valid]*t + wmcoords[valid]*(1-t), xfm.shape)
+            mapper = mapper + sparse.csr_matrix((data / thick, (vidx[i], j)), shape=mapper.shape)
+        return mapper
+
+    except IOError:
+        fid, polys = surfs.getSurf(subject, "fiducial", merge=True)
+        fidcoords = xfm((fid[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
+
+        valid = reduce(np.logical_and, [reduce(np.logical_and, (0 <= fidcoords).T),
+            fidcoords[:,0] < xfm.shape[2],
+            fidcoords[:,1] < xfm.shape[1],
+            fidcoords[:,2] < xfm.shape[0]])
+        vidx = np.nonzero(valid)[0]
+
+        i, j, data = sampclass(fidcoords[valid], xfm.shape)
+        csrshape = mask.sum(), np.prod(xfm.shape)
+        return sparse.csr_matrix((data, (vidx[i], j)), shape=csrshape)
+
+def get_flatcache(subject, xfmname, pixelwise=True, thick=32, projection='nearest', recache=False, height=1024):
     cachedir = surfs.getFiles(subject)['cachedir']
     cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
     if pixelwise and xfmname is not None:
-        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{projection}.npz")
-        cachefile = cachefile.format(height=height, xfmname=xfmname, projection=projection)
+        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{projection}_l{thick}.npz")
+        cachefile = cachefile.format(height=height, xfmname=xfmname, projection=projection, thick=thick)
     
     if not os.path.exists(cachefile) or recache:
         print("Generating a flatmap cache")
         if pixelwise and xfmname is not None:
-            pixmap = _make_pixel_cache(subject, xfmname, height=height, projection=projection)
+            pixmap = _make_pixel_cache(subject, xfmname, height=height, projection=projection, thick=thick)
         else:
             pixmap = _make_vertex_cache(subject, height=height)
         np.savez(cachefile, data=pixmap.data, indices=pixmap.indices, indptr=pixmap.indptr, shape=pixmap.shape)
@@ -156,6 +187,7 @@ def get_flatcache(subject, xfmname, pixelwise=True, projection='nearest', recach
         pixmap = sparse.csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
 
     if not pixelwise and xfmname is not None:
+        from scipy import sparse
         mapper = utils.get_mapper(subject, xfmname, projection)
         pixmap = pixmap * sparse.vstack(mapper.masks)
 
@@ -186,7 +218,6 @@ def make(braindata, height=1024, **kwargs):
         img[mask] = pixmap * data.ravel()
         return img.T[::-1]
 
-rois = dict() ## lame
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
     import shlex
     import subprocess as sp
@@ -212,17 +243,55 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
-                with_rois=True, with_labels=True, with_colorbar=True, dpi=100,
-                with_borders=False, with_dropout=False, **kwargs):
+def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='nearest', height=1024, dpi=100,
+                with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
+                linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
+                **kwargs):
+    """Show a VolumeData or VertexData on a flatmap with matplotlib. Additional kwargs are passed on to
+    matplotlib's imshow command.
+
+    Parameters
+    ----------
+    braindata : VertexData or VolumeData
+        the data you would like to plot on a flatmap
+    recache : bool
+        If True, recache the flatmap cache. Useful if you've made changes to the alignment
+    pixelwise : bool
+        Use pixel-wise mapping
+    thick : int
+        Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
+    projection : str
+        Name of sampling function used to sample underlying volume data
+    height : int
+        Height of the image to render. Automatically scales the width for the aspect of the subject's flatmap
+    with_rois, with_labels, with_colorbar, with_borders, with_dropout : bool, optional
+        Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?
+
+    Other Parameters
+    ----------------
+    dpi : int
+        DPI of the generated image. Only applies to the scaling of matplotlib elements, specifically the colormap
+    linewidth : int, optional
+        Width of ROI lines. Defaults to roi options in your local `options.cfg`
+    linecolor : tuple of float, optional
+        (R, G, B, A) specification of line color
+    roifill : tuple of float, optional
+        (R, G, B, A) sepcification for the fill of each ROI region
+    shadow : int, optional
+        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
+    labelsize : str, optional
+        Font size for the label, E.g. "16pt"
+    labelcolor : tuple of float, optional
+        (R, G, B, A) specification for the label color
+    """
     from matplotlib import cm, pyplot as plt
     from matplotlib.collections import LineCollection
 
     braindata = dataset.normalize(braindata)
     if not isinstance(braindata, dataset.VolumeData):
-        raise TypeError('Invalid type for quickflat')
+        raise TypeError('Please provide a VertexData or a VolumeData, not a Dataset')
     if braindata.movie:
-        raise ValueError('Cannot flatten multiple volumes')
+        raise ValueError('Cannot flatten movie volumes')
 
     if "cmap" in braindata.attrs and "cmap" not in kwargs:
         kwargs['cmap'] = cm.get_cmap(braindata.attrs['cmap'])
@@ -231,7 +300,7 @@ def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', 
     if "vmax" in braindata.attrs and "vmax" not in kwargs:
         kwargs['vmax'] = float(braindata.attrs['vmax'])
     
-    im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
+    im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height, thick=thick)
     
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
@@ -270,19 +339,61 @@ def make_figure(braindata, recache=False, pixelwise=True, projection='nearest', 
         #bax.invert_yaxis()
     
     if with_rois:
-        key = (braindata.subject, with_labels)
-        if key not in rois:
-            roi = surfs.getOverlay(braindata.subject)
-            rois[key] = roi.get_texture(im.shape[0], labels=with_labels)
-        rois[key].seek(0)
+        roi = surfs.getOverlay(braindata.subject, linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
+        roitex = roi.get_texture(height, labels=with_labels)
+        roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
-        oimg = oax.imshow(plt.imread(rois[key])[::-1],
+        oimg = oax.imshow(plt.imread(roitex)[::-1],
                           aspect='equal', interpolation='bicubic', origin="upper", zorder=3)
 
     return fig
 
 def make_png(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
     bgcolor=None, dpi=100, **kwargs):
+    """
+    make_png(name, braindata, recache=False, pixelwise=True, thick=32, projection='nearest', height=1024, dpi=100,
+                with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
+                linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
+                **kwargs)
+
+    Create a PNG of the VertexData or VolumeData on a flatmap.
+
+    Parameters
+    ----------
+    name : str
+        Filename for where to save the PNG file
+    braindata : VertexData or VolumeData
+        the data you would like to plot on a flatmap
+    recache : bool
+        If True, recache the flatmap cache. Useful if you've made changes to the alignment
+    pixelwise : bool
+        Use pixel-wise mapping
+    thick : int
+        Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
+    projection : str
+        Name of sampling function used to sample underlying volume data
+    height : int
+        Height of the image to render. Automatically scales the width for the aspect of the subject's flatmap
+    with_rois, with_labels, with_colorbar, with_borders, with_dropout : bool, optional
+        Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?
+
+    Other Parameters
+    ----------------
+    dpi : int
+        DPI of the generated image. Only applies to the scaling of matplotlib elements, specifically the colormap
+    linewidth : int, optional
+        Width of ROI lines. Defaults to roi options in your local `options.cfg`
+    linecolor : tuple of float, optional
+        (R, G, B, A) specification of line color
+    roifill : tuple of float, optional
+        (R, G, B, A) sepcification for the fill of each ROI region
+    shadow : int, optional
+        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
+    labelsize : str, optional
+        Font size for the label, E.g. "16pt"
+    labelcolor : tuple of float, optional
+        (R, G, B, A) specification for the label color
+    """
     from matplotlib import pyplot as plt
     fig = make_figure(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height, **kwargs)
     imsize = fig.get_axes()[0].get_images()[0].get_size()
@@ -297,8 +408,7 @@ def show(*args, **kwargs):
     raise DeprecationWarning("Use quickflat.make_figure instead")
     return make_figure(*args, **kwargs)
 
-def make_svg(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
-    **kwargs):
+def make_svg(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024, **kwargs):
     ## Create quickflat image array
     im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
     ## Convert to PNG
