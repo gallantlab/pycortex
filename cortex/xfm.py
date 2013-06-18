@@ -44,11 +44,10 @@ class Transform(object):
         raw = nibabel.load(rawfile)
         in_hdr = epi.get_header()
         ref_hdr = raw.get_header()
-        
         # get_zooms gets the positive voxel sizes as returned in the header
         inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        
+        # Assure that both determinants are negative, i.e. that both spaces are FLIPPED (??)
         if npl.det(in_hdr.get_best_affine())>=0:
             inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
         if npl.det(ref_hdr.get_best_affine())>=0:
@@ -56,7 +55,6 @@ class Transform(object):
 
         M = raw.get_affine()
         inv = np.linalg.inv
-
         coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
         return cls(coord, epi)
 
