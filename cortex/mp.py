@@ -20,11 +20,8 @@ def map(func, iterable, procs = mp.cpu_count()):
     def _func(proc, input, output):
         idx, data = input.get()
         while idx != -1:
-            #print "Running %d..."%idx
-            #sys.stdout.flush()
             output.put((idx, func(data)))
             idx, data = input.get()
-        #print "end proc %d"%proc
     
     filler = mp.Process(target = _fill, args=(iterable, procs, input, output))
     filler.daemon = True

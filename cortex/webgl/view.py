@@ -4,21 +4,20 @@ import glob
 import json
 import shutil
 import random
+import functools
 import binascii
 import mimetypes
-import functools
 import webbrowser
 import multiprocessing as mp
 import numpy as np
 
-from tornado import web, template
+from tornado import web
+from .FallbackLoader import FallbackLoader
 
-from .. import utils, options
+from .. import utils, options, volume, dataset
+from ..db import surfs
 
 from . import serve
-
-sloader = template.Loader(serve.cwd)
-lloader = template.Loader("./")
 
 name_parse = re.compile(r".*/(\w+).png")
 try:
@@ -28,92 +27,76 @@ except:
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
-def _normalize_data(data, pfunc):
+viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
+
+def _package_data(braindata, submap=None):
     from scipy.stats import scoreatpercentile
-    if not isinstance(data, dict):
-        data = dict(data0=data)
+    package = dict(__class__="Dataset")
 
-    json = dict()
-    json['__order__'] = list(data.keys())
-    for name, dat in list(data.items()):
-        ds = dict(__class__="Dataset")
-        mapper = pfunc()[1]
-        if 'projection' in dat:
-            mapper = pfunc(projection=dat['projection'])[1]
+    #Fill in extra metadata
+    xfm = surfs.getXfm(braindata.subject, braindata.xfmname, 'coord')
+    package['subject'] = braindata.subject
+    package['raw'] = braindata.raw
+    package['xfm'] = list(np.array(xfm.xfm).ravel())
+    package['lmin'] = float(braindata.data.min())
+    package['lmax'] = float(braindata.data.max())
+    package['vmin'] = float(scoreatpercentile(braindata.data.ravel(), 1))
+    package['vmax'] = float(scoreatpercentile(braindata.data.ravel(), 99))
 
-        if isinstance(dat, dict):
-            data = _fixarray(dat['data'], mapper)
-            if 'stim' in dat:
-                ds['stim'] = dat['stim']
-            ds['delay'] = dat['delay'] if 'delay' in dat else 0
-        else:
-            data = _fixarray(dat, mapper)
+    if submap is not None:
+        package['subject'] = submap[braindata.subject]
 
-        ds['data'] = data
-        ds['min'] = float(scoreatpercentile(data.ravel(), 1) if 'min' not in dat else dat['min'])
-        ds['max'] = float(scoreatpercentile(data.ravel(), 99) if 'max' not in dat else dat['max'])
-        if 'cmap' in dat:
-            ds['cmap'] = dat['cmap']
-        if 'rate' in dat:
-            ds['rate'] = dat['rate']
+    if not braindata.movie:
+        voldat = braindata.volume[np.newaxis]
+    else:
+        voldat = braindata.volume
+    if braindata.raw:
+        voldat = voldat.astype(np.uint8)
+    else:
+        voldat = voldat.astype(np.float32)
 
-        json[name] = ds
+    package['data'] = []
+    for vol in voldat:
+        im, package['mosaic'] = volume.mosaic(vol, show=False)
+        package['data'].append(im)
 
-    return json
+    #Overwrite generated metadata
+    package.update(braindata.attrs)
+    #include only the filename for any stimuli
+    if 'stim' in package:
+        package['stim'] = os.path.join("stim", os.path.split(package['stim'])[1])
 
-def _make_bindat(json, fmt="%s.bin"):
-    newjs, bindat = dict(), dict()
-    for name, data in list(json.items()):
-        if "data" in data:
-            newjs[name] = dict(data)
-            newjs[name]['data'] = fmt%name
-            bindat[name] = serve.make_binarray(data['data'])
-        else:
-            newjs[name] = data
+    return package
 
-    return newjs, bindat
+def _convert_dataset(data, fmt="%s_%d.png", submap=None):
+    metadata, images = dict(__order__=[]), dict()
+    for name, braindata in data:
+        metadata['__order__'].append(name)
+        if isinstance(braindata, dataset.VertexData):
+            raise TypeError('Sorry, vertex data is currently not supported for webgl...')
+        package = _package_data(braindata, submap=submap)
+        for i, data in enumerate(package['data']):
+            images[fmt%(name, i)] = _pack_png(data)
 
-def _fixarray(data, mapper):
-    if isinstance(data, str):
-        if os.path.splitext(data)[1] in ('.hdf', '.mat'):
-            try:
-                import tables
-                data = tables.openFile(data).root.data[:]
-            except IOError:
-                import scipy.io as sio
-                data = sio.loadmat(data)['data'].T
-        elif '.nii' in data:
-            import nibabel
-            data = nibabel.load(data).get_data().T
-    if data.dtype != np.uint8:
-        data = data.astype(np.float32)
+        frames = range(len(package['data']))
+        package['data'] = [os.path.join("data", fmt%(name, i)) for i in frames]
+        metadata[name] = package
 
-    raw = data.dtype.type == np.uint8
-    mapped = mapper.nverts in data.shape
+    return metadata, images
 
-    if raw:
-        assert mapped and data.shape[-2] in (3, 4)
-        if data.shape[-2] == 3:
-            if data.ndim == 2:
-                data = np.vstack([data, 255*np.ones((1, mapper.nverts), dtype=np.uint8)])
-            else:
-                data = np.hstack([data, 255*np.ones((len(data), 1, mapper.nverts), dtype=np.uint8)])
+def _pack_png(mosaic):
+    import Image
+    import cStringIO
+    buf = cStringIO.StringIO()
+    if mosaic.dtype not in (np.float32, np.uint8):
+        raise TypeError
 
-        data = np.hstack(mapper(data.reshape(-1, mapper.nverts)))
-        if data.shape[-2] != 4:
-            data = data.reshape(-1, 4, mapper.nverts)
-        return data.swapaxes(-1, -2)
-    else: #regular
-        return np.hstack(mapper(data)).astype(np.float32)
+    im = Image.frombuffer('RGBA', mosaic.shape[:2], mosaic.data, 'raw', 'RGBA', 0, 1)
+    im.save(buf, format='PNG')
+    buf.seek(0)
+    return buf.read()
 
-def make_movie(stim, outfile, fps=15, size="640x480"):
-    import shlex
-    import subprocess as sp
-    cmd = "ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv"
-    fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
-    sp.call(shlex.split(fcmd))
-
-def make_static(outpath, data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, cmap="RdBu_r", template="static.html", anonymize=False, **kwargs):
+def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", layout=None, anonymize=False, **kwargs):
     """
     Creates a static instance of the webGL MRI viewer that can easily be posted 
     or shared. 
@@ -123,12 +106,8 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     outpath : string
         The directory where the static viewer will be saved. Will be created if it
         doesn't already exist.
-    data : array_like or dict
-        The data to be displayed on the surface. For details see docs for show().
-    subject : string
-        Subject identifier (e.g. "JG").
-    xfmname : string
-        Name of anatomical -> functional transform.
+    data : Dataset object
+        Dataset object containing all the data you wish to plot
     types : tuple, optional
         Types of surfaces to include. Fiducial and flat surfaces are automatically
         included. Default ("inflated",)
@@ -149,85 +128,148 @@ def make_static(outpath, data, subject, xfmname, types=("inflated",), projection
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
         os.makedirs(outpath)
+        os.makedirs(os.path.join(outpath, "data"))
 
-    #Create a new mg2 compressed CTM and move it into the outpath
-    pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9)
-    ctmfile, mapper = pfunc(recache=recache)
-    oldpath, fname = os.path.split(ctmfile)
-    fname, ext = os.path.splitext(fname)
+    data = dataset.normalize(data)
+    if not isinstance(data, dataset.Dataset):
+        data = dataset.Dataset(data=data)
+
+    surfs.auxfile = data
+    subjects = list(set([ds.subject for name, ds in data]))
+    kwargs.update(dict(method='mg2', level=9, recache=recache))
+    ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
+    surfs.auxfile = None
+
+    if layout is None:
+        layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
 
     ## Rename files to anonymize?
-    if anonymize:
-        newfname = "surface"
-    else:
-        newfname = fname
+    submap = dict()
+    for i, (subj, ctmfile) in enumerate(ctms.items()):
+        oldpath, fname = os.path.split(ctmfile)
+        fname, ext = os.path.splitext(fname)
+        if anonymize:
+            newfname = "S%d"%i
+            submap[subj] = newfname
+        else:
+            newfname = fname
+        ctms[subj] = newfname+".json"
 
-    for ext in ['json','ctm', 'svg']:
-        newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
-        if os.path.exists(newfile):
-            os.unlink(newfile)
-        
-        shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
-
-        if ext == "json" and anonymize:
-            ## change filenames in json
-            nfh = open(newfile)
-            jsoncontents = nfh.read()
-            nfh.close()
+        for ext in ['json','ctm', 'svg']:
+            newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
+            if os.path.exists(newfile):
+                os.unlink(newfile)
             
-            ofh = open(newfile, "w")
-            ofh.write(jsoncontents.replace(fname, newfname))
-            ofh.close()
+            shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
 
-    #ctmfile = os.path.split(ctmfile)[1]
-    ctmfile = newfname+".json"
+            if ext == "json" and anonymize:
+                ## change filenames in json
+                nfh = open(newfile)
+                jsoncontents = nfh.read()
+                nfh.close()
+                
+                ofh = open(newfile, "w")
+                ofh.write(jsoncontents.replace(fname, newfname))
+                ofh.close()
 
-    #Generate the data binary objects and save them into the outpath
-    json, sdat = _make_bindat(_normalize_data(data, pfunc))
-    for name, dat in list(sdat.items()):
-        with open(os.path.join(outpath, "%s.bin"%name), "wb") as binfile:
-            binfile.write(dat)
+    if len(submap) == 0:
+        submap = None
+
+    #Process the dataset
+    metadata, images = _convert_dataset(data, submap=submap)
+    jsmeta = json.dumps(metadata, cls=serve.NPEncode)
+    #Write out the PNGs
+    for name, img in list(images.items()):
+        with open(os.path.join(outpath, "data", name), "wb") as binfile:
+            binfile.write(img)
+    #Copy any stimulus files
+    stimpath = os.path.join(outpath, "stim")
+    for name, ds in data:
+        if 'stim' in ds.attrs and os.path.exists(ds.attrs['stim']):
+            if not os.path.exists(stimpath):
+                os.makedirs(stimpath)
+            shutil.copy2(ds.attrs['stim'], stimpath)
     
     #Parse the html file and paste all the js and css files directly into the html
     from . import htmlembed
-    if os.path.exists(os.path.join("./", template)):
-        template = lloader.load(template)
+    if os.path.exists(template):
+        ## Load locally
+        templatedir, templatefile = os.path.split(os.path.abspath(template))
+        rootdirs = [templatedir, serve.cwd]
     else:
-        template = sloader.load(template)
-    html = template.generate(ctmfile=ctmfile, data=json, colormaps=colormaps, default_cmap=cmap, python_interface=False, **kwargs)
-    htmlembed.embed(html, os.path.join(outpath, "index.html"))
-    return mapper
+        ## Load system templates
+        templatefile = template
+        rootdirs = [serve.cwd]
+        
+    loader = FallbackLoader(rootdirs)
+    tpl = loader.load(templatefile)
+    kwargs.update(viewopts)
+    html = tpl.generate(
+        data=jsmeta, 
+        colormaps=colormaps, 
+        default_cmap=cmap, 
+        python_interface=False, 
+        layout=layout,
+        subjects=ctms,
+        **kwargs)
+    htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
+    surfs.auxfile = None
 
-def show(data, subject, xfmname, types=("inflated",), projection='nearest', recache=False, recache_mapper=False, cmap="RdBu_r", autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
-    """Data can be a dictionary of arrays. Alternatively, the dictionary can also contain a 
-    sub dictionary with keys [data, stim, delay].
+def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
+    """Display a dynamic viewer using the given dataset
 
-    Data array can be a variety of shapes:
-    Regular volume movie: [t, z, y, x]
-    Regular volume image: [z, y, x]
-    Regular masked movie: [t, vox]
-    Regular masked image: [vox]
-    Regular vertex movie: [t, verts]
-    Regular vertex image: [verts]
-    Raw vertex movie:     [[3, 4], t, verts]
-    Raw vertex image:     [[3, 4], verts]
+    Optional attributes that affect the display:
+    cmap
+    vmin / vmax
+    filter: ['nearest', 'trilinear', 'nearlin']
+    stim: a filename for the stimulus (preferably OGV)
+    delay: time in seconds to delay the data with respect to stimulus
+    rate: volumes per second
     """
-    html = sloader.load("mixer.html")
-    pfunc = functools.partial(utils.get_ctmpack, subject, xfmname, types, projection=projection, method='mg2', level=9)
-    ctmfile, mapper = pfunc(recache=recache, recache_mapper=recache_mapper)
-    jsondat, bindat = _make_bindat(_normalize_data(data, pfunc), fmt='data/%s/')
+    data = dataset.normalize(data)
+    if not isinstance(data, dataset.Dataset):
+        data = dataset.Dataset(data=data)
+
+    html = FallbackLoader([serve.cwd]).load("mixer.html")
+    surfs.auxfile = data
+
+    stims = dict()
+    for name, ds in data:
+        if 'stim' in ds.attrs and os.path.exists(ds.attrs['stim']):
+            sname = os.path.split(ds.attrs['stim'])[1]
+            stims[sname] = ds.attrs['stim']
+
+    subjects = list(set([ds.subject for name, ds in data]))
+    kwargs.update(dict(method='mg2', level=9, recache=recache))
+    ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
+    subjectjs = dict((subj, "/ctm/%s/"%subj) for subj in subjects)
+    surfs.auxfile = None
+
+    if layout is None:
+        layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
+
+    metadata, images = _convert_dataset(data)
+    jsmeta = json.dumps(metadata, cls=serve.NPEncode)
 
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
     queue = mp.Queue()
-    
+
+    linear = lambda x, y, m: (1.-m)*x + m*y
+    mixes = dict(
+        linear=linear,
+        smoothstep=(lambda x, y, m: linear(x,y,3*m**2 - 2*m**3)), 
+        smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
+    )
+
     class CTMHandler(web.RequestHandler):
         def get(self, path):
-            fpath = os.path.split(ctmfile)[0]
+            subj, path = path.split('/')
             if path == '':
                 self.set_header("Content-Type", "application/json")
-                self.write(open(ctmfile).read())
+                self.write(open(ctms[subj]).read())
             else:
+                fpath = os.path.split(ctms[subj])[0]
                 mtype = mimetypes.guess_type(os.path.join(fpath, path))[0]
                 if mtype is None:
                     mtype = "application/octet-stream"
@@ -240,20 +282,41 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
             try:
                 d = queue.get(True, 0.1)
                 print("Got new data: %r"%list(d.keys()))
-                bindat.update(d)
+                images.update(d)
             except:
                 pass
 
-            if path in bindat:
-                self.write(bindat[path])
+            if path in images:
+                self.set_header("Content-Type", "image/png")
+                self.write(images[path])
             else:
                 self.set_status(404)
                 self.write_error(404)
 
+    class StimHandler(serve.StaticFileHandler):
+        def initialize(self):
+            pass
+
+        def get(self, path):
+            if path not in stims:
+                self.set_status(404)
+                self.write_error(404)
+            else:
+                self.root, fname = os.path.split(stims[path])
+                super(StimHandler, self).get(fname)
+
     class MixerHandler(web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
-            self.write(html.generate(data=jsondat, colormaps=colormaps, default_cmap=cmap, python_interface=True))
+            generated = html.generate(
+                data=jsmeta, 
+                colormaps=colormaps, 
+                default_cmap=cmap, 
+                python_interface=True, 
+                layout=layout,
+                subjects=subjectjs,
+                **viewopts)
+            self.write(generated)
 
         def post(self):
             print("saving file to %s"%saveimg.value)
@@ -272,17 +335,20 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
 
     if pickerfun is None:
         pickerfun = lambda a,b: None
-    
-    class PickerHandler(web.RequestHandler):
-        def get(self):
-            pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
 
-    class JSMixer(serve.JSProxy):
+    class JSLocalMixer(serve.JSLocal):
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewer.addData")
             json, data = _make_bindat(_normalize_data(kwargs, pfunc), fmt='data/%s/')
             queue.put(data)
             return Proxy(json)
+
+    class JSMixer(serve.JSProxy):
+        def addData(self, **kwargs):
+            Proxy = serve.JSProxy(self.send, "window.viewer.addData")
+            metadata, images = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
+            queue.put(images)
+            return Proxy(metadata)
 
         def saveflat(self, filename, height=1024):
             Proxy = serve.JSProxy(self.send, "window.viewer.saveflat")
@@ -294,7 +360,7 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
             saveimg.value = filename
             return Proxy("mixer.html")
 
-        def makeMovie(self, animation, filename="brainmovie%07d.png", fps=30, shape=(1920, 1080)):
+        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, shape=(1920, 1080), mix="linear"):
             state = dict()
             anim = []
             for f in sorted(animation, key=lambda x:x['idx']):
@@ -317,31 +383,50 @@ def show(data, subject, xfmname, types=("inflated",), projection='nearest', reca
                 for start, end in anim:
                     if start['idx'] < sec < end['idx']:
                         idx = (sec - start['idx']) / (end['idx'] - start['idx'])
-                        val = np.array(start['value']) * (1-idx) + np.array(end['value']) * idx
+                        if start['state'] == 'frame':
+                            func = mixes['linear']
+                        else:
+                            func = mixes[mix]
+                            
+                        val = func(np.array(start['value']), np.array(end['value']), idx)
                         if isinstance(val, np.ndarray):
                             self.setState(start['state'], list(val))
                         else:
                             self.setState(start['state'], val)
                 saveevt.clear()
-                self.saveIMG(filename%i)
+                self.saveIMG(filename%(i+offset))
                 saveevt.wait()
+
+    class PickerHandler(web.RequestHandler):
+        def initialize(self, server):
+            self.client = JSLocalMixer(server.srvsend, server.srvresp)
+
+        def get(self):
+            pickerfun(self.client, int(self.get_argument("voxel")), int(self.get_argument("vertex")))
 
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
         def get_client(self):
             self.c_evt.wait()
             self.c_evt.clear()
-            return JSMixer(self.send, "window.viewer")
+            return JSMixer(self.send, "window.viewers")
+
+        def get_local_client(self):
+            return JSMixer(self.srvsend, "window.viewers")
+
     if port is None:
         port = random.randint(1024, 65536)
         
+    srvdict = dict()
     server = WebApp([
             (r'/ctm/(.*)', CTMHandler),
             (r'/data/(.*)', DataHandler),
+            (r'/stim/(.*)', StimHandler),
             (r'/mixer.html', MixerHandler),
+            (r'/picker', PickerHandler, srvdict),
             (r'/', MixerHandler),
-            (r'/picker', PickerHandler)
         ], port)
+    srvdict['server'] = server
     server.start()
     print("Started server on port %d"%server.port)
     if open_browser:

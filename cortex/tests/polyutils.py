@@ -32,3 +32,12 @@ def test_voxelize():
         [0, 0, 0, 0]]], dtype=np.uint8)
 
 	assert allclose(vox, target)
+
+def test_surfpatch():
+    from ..db import surfs
+    wm, polys = surfs.getSurf("JGfs", "wm", "lh")
+    pia, _ = surfs.getSurf("JGfs", "pia", "lh")
+    surf = polyutils.Surface(wm, polys)
+    subwm, subpia, subpolys = surf.extract_chunk(auxpts=pia)
+    subsurf = polyutils.Surface(subwm, subpolys)
+    return [patch for patch in subsurf.patches(n=0.5)]

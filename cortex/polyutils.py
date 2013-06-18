@@ -1,11 +1,13 @@
 from collections import OrderedDict
 import numpy as np
-from scipy.spatial import distance, Delaunay
+from scipy.spatial import distance, Delaunay, cKDTree
 
 class Surface(object):
     def __init__(self, pts, polys):
         self.pts = pts
         self.polys = polys
+
+        #connected holds map of ptidx -> face
         self._connected = None
 
     @property
@@ -67,27 +69,30 @@ class Surface(object):
 
         return np.array(pts), np.array(polys)
 
-    def smooth(self, values, neighborhood=3, smooth=8):
-        if len(values) != len(self.pts):
+    def smooth(self, scalars, neighborhood=2, smooth=8):
+        if len(scalars) != len(self.pts):
             raise ValueError('Each point must have a single value')
             
         def getpts(pt, n):
-            if pt in self.connected:
-                for p in self.connected[pt]:
+            for face in self.connected[pt]:
+                for pt in self.polys[face]:
                     if n == 0:
-                        yield p
+                        yield pt
                     else:
-                        for q in getpts(p, n-1):
+                        for q in getpts(pt, n-1):
                             yield q
-    
-        output = np.zeros(len(scalars))
-        for i, val in enumerate(scalars):
+        
+        from . import mp
+        def func(i):
+            val = scalars[i]
             neighbors = list(set(getpts(i, neighborhood)))
             if len(neighbors) > 0:
                 g = np.exp(-((scalars[neighbors] - val)**2) / (2*smooth**2))
-                output[i] = (g * scalars[neighbors]).mean()
-            
-        return output
+                return (g * scalars[neighbors]).mean()
+            else:
+                return 0
+
+        return np.array(mp.map(func, range(len(scalars))))
 
     def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
@@ -118,41 +123,63 @@ class Surface(object):
 
             yield pts.points, np.array(list(polys.triangles))
 
-    def polyconvex(self, wm):
-        try:
-            import progressbar as pb
-            progress = pb.ProgressBar(maxval=len(self.connected))
-            progress.start()
-        except ImportError:
-            pass
+    def neighbors(self, n=1):
+        def neighbors(pt, n):
+            current = set(self.polys[self.connected[pt]])
+            if n - 1 > 0:
+                next = set()
+                for pt in current:
+                    next = next | neighbors(pt, n-1)
+
+            return current | next
+
+    def patches(self, auxpts=None, n=1):
+        def align_polys(p, polys):
+            x, y = np.nonzero(polys == p)
+            y = np.vstack([y, (y+1)%3, (y+2)%3]).T
+            return polys[np.tile(x, [3, 1]).T, y]
+
+        def half_edge_align(p, pts, polys):
+            poly = align_polys(p, polys)
+            mid   = pts[poly].mean(1)
+            left  = pts[poly[:,[0,2]]].mean(1)
+            right = pts[poly[:,[0,1]]].mean(1)
+            s1 = np.array(np.broadcast_arrays(pts[p], mid, left)).swapaxes(0,1)
+            s2 = np.array(np.broadcast_arrays(pts[p], mid, right)).swapaxes(0,1)
+            return np.vstack([s1, s2])
+
+        def half_edge(p, pts, polys):
+            poly = align_polys(p, polys)
+            mid   = pts[poly].mean(1)
+            left  = pts[poly[:,[0,2]]].mean(1)
+            right = pts[poly[:,[0,1]]].mean(1)
+            stack = np.vstack([mid, left, right, pts[p]])
+            return stack[(distance.cdist(stack, stack) == 0).sum(0) == 1]
 
         for p, faces in enumerate(self.connected):
-            polys = self.polys[faces]
-            x, y = np.nonzero(polys == p)
-            x = np.tile(x, [3, 1]).T
-            y = np.vstack([y, (y+1)%3, (y+2)%3]).T
-            polys = polys[x, y]
-            mid = self.pts[polys].mean(1)
-            left = self.pts[polys[:,[0,2]]].mean(1)
-            right = self.pts[polys[:,[0,1]]].mean(1)
-            wmid = wm[polys].mean(1)
-            wleft = wm[polys[:,[0,2]]].mean(1)
-            wright = wm[polys[:,[0,1]]].mean(1)
-            top = np.vstack([mid, left, right])
-            bot = np.vstack([wmid, wleft, wright])
-            #remove duplicates
-            top = top[(distance.cdist(top, top) == 0).sum(0) == 1]
-            bot = bot[(distance.cdist(bot, bot) == 0).sum(0) == 1]
-            try:
-                progress.update(p+1)
-            except NameError:
-                pass
-            yield np.vstack([top, bot, self.pts[p], wm[p]])
-        try:
-            progress.finish()
-        except NameError:
-            pass
+            if len(faces) > 0:
+                if n == 1:
+                    if auxpts is not None:
+                        pidx = np.unique(self.polys[faces])
+                        yield np.vstack([self.pts[pidx], auxpts[pidx]])
+                    else:
+                        yield self.pts[self.polys[faces]]
+                elif n == 0.5:
+                    if auxpts is not None:
+                        pts = half_edge(p, self.pts, self.polys[faces])
+                        aux = half_edge(p, auxpts, self.polys[faces])
+                        yield np.vstack([pts, aux])
+                    else:
+                        yield half_edge_align(p, self.pts, self.polys[faces])
+                else:
+                    raise ValueError
+            else:
+                yield None
 
+    def edge_collapse(self, p1, p2, target):
+        face1 = self.connected[p1]
+        face2 = self.connected[p2]
+        raise NotImplementedError
 
 class _ptset(object):
     def __init__(self):
@@ -244,6 +271,21 @@ def brick_vol(pts):
     '''Volume of a triangular prism'''
     return tetra_vol(pts[[0, 1, 2, 4]]) + tetra_vol(pts[[0, 2, 3, 4]]) + tetra_vol(pts[[2, 3, 4, 5]])
 
+def sort_polys(polys):
+    amin = polys.argmin(1)
+    xind = np.arange(len(polys))
+    return np.array([polys[xind, amin], polys[xind, (amin+1)%3], polys[xind, (amin+2)%3]]).T
+
+def face_area(pts):
+    '''Area of triangles
+
+    Parameters
+    ----------
+    pts : array_like
+        n x 3 x 3 array with n triangles, 3 pts, and (x,y,z) coordinates
+    '''
+    return 0.5 * np.sqrt((np.cross(pts[:,1]-pts[:,0], pts[:,2]-pts[:,0])**2).sum(1))
+
 def face_volume(pts1, pts2, polys):
     '''Volume of each face in a polyhedron sheet'''
     vols = np.zeros((len(polys),))
@@ -259,7 +301,9 @@ def decimate(pts, polys):
     dec = tvtk.DecimatePro(input=pd)
     dec.set(preserve_topology=True, splitting=False, boundary_vertex_deletion=False, target_reduction=1.0)
     dec.update()
-    return dec.output.points.to_array(), dec.output.polys.to_array().reshape(-1, 4)[:,1:]
+    dpts = dec.output.points.to_array()
+    dpolys = dec.output.polys.to_array().reshape(-1, 4)[:,1:]
+    return dpts, dpolys
 
 def curvature(pts, polys):
     '''Computes mean curvature using VTK'''
@@ -357,7 +401,7 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True)
     import ImageDraw
     
     pd = tvtk.PolyData(points=pts + center + (0, 0, 0), polys=polys)
-    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,.5)])
+    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
     clip = tvtk.ClipPolyData(clip_function=plane, input=pd)
     feats = tvtk.FeatureEdges(
         manifold_edges=False, 
@@ -367,15 +411,15 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True)
         input=clip.output)
 
     def func(i):
-        plane.points = [(0,0,i+.5)]
+        plane.points = [(0,0,i)]
         feats.update()
         vox = np.zeros(shape[:2][::-1], np.uint8)
         if feats.output.number_of_lines > 0:
             epts = feats.output.points.to_array()
             edges = feats.output.lines.to_array().reshape(-1, 3)[:,1:]
             for poly in trace_poly(edges):
-                vox += rasterize(epts[poly][:,:2], shape=shape[:2][::-1])
-        return vox
+                vox += rasterize(epts[poly][:,:2]+[.5, .5], shape=shape[:2][::-1])
+        return vox % 2
 
     if mp:
         from . import mp

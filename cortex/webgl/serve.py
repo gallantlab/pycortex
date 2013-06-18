@@ -27,29 +27,6 @@ def make_base64(imgfile):
         data = binascii.b2a_base64(img.read()).strip()
         return "data:{mtype};base64,{data}".format(mtype=mtype, data=data)
 
-dtypeMap = [np.uint32, np.uint16, np.uint8, np.int32, np.int16, np.int8, np.float32]
-dtypeMap = dict([(dt, i) for i, dt in enumerate(dtypeMap)])
-dtypeNames = {
-    np.int: "int32",
-    np.int32: "int32",
-    np.float32: "float32",
-    np.uint8: "uint8",
-    np.uint16: "uint16",
-    np.int16: "int16",
-    np.int8:"int8",
-}
-
-def make_binarray(data):
-    header  = struct.pack('II', dtypeMap[data.dtype.type], data.ndim)
-    header += struct.pack('I'*data.ndim, *data.shape)
-    return header+data.tostring()
-
-def read_binarray(data):
-    didx, ndim = struct.unpack('II', data[:8])
-    dtype = [k for k, v in dtypeMap.items() if v == didx][0]
-    shape = struct.unpack('I'*ndim, data[8:ndim*4+8])
-    return np.fromstring(data[ndim*4+8:], dtype=dtype).reshape(*shape)
-
 class NPEncode(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -60,9 +37,13 @@ class NPEncode(json.JSONEncoder):
 
             return dict(
                 __class__="NParray",
-                dtype=dtypeNames[obj.dtype.type], 
+                dtype=obj.dtype.descr[0][1], 
                 shape=obj.shape, 
                 data=binascii.b2a_base64(obj.tostring()))
+        elif isinstance(obj, (np.int64, np.int32, np.int16, np.int8, np.uint64, np.uint32, np.uint16, np.uint8)):
+            return int(obj)
+        elif isinstance(obj, (np.float64, np.float32)):
+            return float(obj)
         else:
             return super(NPEncode, self).default(obj)
 
@@ -220,6 +201,7 @@ class ClientSocket(websocket.WebSocketHandler):
             self.parent.clients.value += 1
             self.parent.c_evt.set()
         else:
+            self.parent.lastmsg = message
             self.parent._response.send(message)
 
 class WebApp(mp.Process):
@@ -256,6 +238,18 @@ class WebApp(mp.Process):
         else:
             for sock in self.sockets:
                 sock.write_message(msg)
+
+    def srvsend(self, **msg):
+        if not isinstance(msg, str):
+            msg = json.dumps(msg, cls=NPEncode)
+
+        for sock in self.sockets:
+            sock.write_message(msg)
+
+    def srvresp(self):
+        if self.response.poll():
+            json.loads(self.response.recv())
+        return self.lastmsg
 
     def send(self, **msg):
         if not isinstance(msg, str):
@@ -312,7 +306,15 @@ class JSProxy(object):
         if isinstance(resp[0], dict) and "error" in resp[0]:
             raise Exception(resp[0]['error'])
         else:
-            return resp 
+            return resp
+
+class JSLocal(JSProxy):
+    def __init__(self, sendfunc, getfunc, **kwargs):
+        import time
+        def sendget(**msg):
+            sendfunc(**msg)
+            return getfunc()
+        super(JSLocal, self).__init__(sendget, **kwargs)
 
 if __name__ == "__main__":
     app = WebApp([], 8888)

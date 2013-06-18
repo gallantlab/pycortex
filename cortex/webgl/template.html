@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <link rel="stylesheet" href="resources/css/ui-lightness/jquery-ui-1.8.21.custom.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/jquery.miniColors.css" type='text/css' />
+<link rel="stylesheet" href="resources/css/w2ui-1.2.min.css" type='text/css' />
 
 <script type='text/javascript' src='resources/js/jquery-1.8.0.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery-ui-1.8.23.custom.min.js'></script>
@@ -24,64 +25,22 @@
 <script type='text/javascript' src='resources/js/dataset.js'></script>
 <script type='text/javascript' src='resources/js/svgroi.js'></script>
 <script type='text/javascript' src='resources/js/shadowtex.js'></script>
-<script type='text/javascript' src='resources/js/facepick.js'></script>
+<script type='text/javascript' src='resources/js/shaderlib.js'></script>
 <script type='text/javascript' src="resources/js/LandscapeControls.js"></script>
+<script type='text/javascript' src="resources/js/kdTree-min.js"></script>
+<script type='text/javascript' src='resources/js/facepick.js'></script>
+<script type='text/javascript' src='resources/js/w2ui-1.2.min.js'></script>
+<script type='text/javascript' src='resources/js/figure.js'></script>
+<script type='text/javascript' src='resources/js/mriview_utils.js'></script>
 <script type='text/javascript' src='resources/js/mriview.js'></script>
+
 {% if python_interface %}
 <script type='text/javascript' src='resources/js/python_interface.js'></script>
 {% end %}
 {% block javascripts %}
 {% end %}
 
-<link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
-<script type='text/javascript'>
-	function mobile() {
-		//return /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
-		return false;
-	}
-	function webgl() { 
-		try { 
-			return !! window.WebGLRenderingContext && !! document.createElement( 'canvas' ).getContext( 'experimental-webgl' ); 
-		} catch( e ) { 
-			return false; 
-		} 
-	};
-	function vtex(vtmin, atmin) {
-		var gl = document.createElement("canvas").getContext('experimental-webgl');
-		var vtex = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
-		var atex = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
-		if (vtex >= vtmin && atex >= atmin)
-			return true;
-		return false;
-	}
-
-	{% block jsinit %}
-	{% end %}
-
-	var cmapnames = {}
-
-	$(document).ready(function() {
-		$("#colormap option").each(function(idx) {
-			cmapnames[$(this).text()] = idx;
-		});
-
-		if (mobile()) {
-			$(".loadmsg").hide();
-			$("#ctmload").html("<p>Sorry, mobile browsers are not supported.</p><p>Unfortunately, Android and iOS devices do not support WebGL.</p><p>Please ask Apple and Google for WebGL support in their browsers!</p>").show();
-		} else if (!webgl()) {
-			$(".loadmsg").hide();
-			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
-		} else if (!vtex(3, 5)) {
-			$(".loadmsg").hide();
-			$("#ctmload").html("<p>Sorry, your computer does not have the minimum number of texture units :(</p><p>Try upgrading your drivers and/or your browser</p>").show();
-		} else {
-			{% block onload %}
-			{% end %}
-		}
-	})
-</script>
-</head>
-<body>
+<script type='text/html' id='mriview_html'>
 <div id='topbar' class='infobar'>
 	<div class='content'>
 		<form id='display_options'>
@@ -200,22 +159,69 @@
 				</div>
 			</fieldset>
 			</div>
-			<fieldset id="viewopt_fieldset" class='opt_category'>
-				<legend>View</legend>
-				<div class='display_opt'>
-					<p id='zlocklabel'>Zoom lock:</p>
-					<div id='zlockopts'>
-						<input id='zlocknone' type='radio' name='zoomlock' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='None' checked>
-					    <label for='zlocknone'>​​​​​​​​​​​​​​​​​​​​​None</label><br>
-					    <input id='zlockleft' type='radio' name='zoomlock' value='left'>
-					    <label for='zlockleft'>left</label><br>
-					    <input id='zlockright' type='radio' name='zoomlock' value='right'>
-					    <label for='zlockright'>right</label><br>
-					    <input id='zlockwhole' type='radio' name='zoomlock' value='whole'>
-					    <label for='zlockwhole'>whole</label><br>
+			<div class='opt_category'>
+				<fieldset id="viewopt_fieldset" class='subtable'>
+					<legend>View</legend>
+					<div class='display_opt'>
+						<p id='zlocklabel'>Zoom lock:</p>
+						<div id='zlockopts'>
+							<input id='zlocknone' type='radio' name='zoomlock' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='None' checked>
+						    <label for='zlocknone'>​​​​​​​​​​​​​​​​​​​​​None</label><br>
+						    <input id='zlockleft' type='radio' name='zoomlock' value='left'>
+						    <label for='zlockleft'>left</label><br>
+						    <input id='zlockright' type='radio' name='zoomlock' value='right'>
+						    <label for='zlockright'>right</label><br>
+						    <input id='zlockwhole' type='radio' name='zoomlock' value='whole'>
+						    <label for='zlockwhole'>whole</label><br>
+						</div>
 					</div>
-				</div>
-			</fieldset>
+				</fieldset>
+				<fieldset id='voxopt_fieldset' class='subtable'>
+					<legend>Voxels</legend>
+					<div class='display_opt'>
+						<table id='voxline'>
+							<tr>
+								<td><label for='voxline_show'>Voxel lines</label></td>
+								<td><input id='voxline_show' type='checkbox' /></td>
+							</tr>
+							<tr>
+								<td><label for='voxline_color'>Color</label></td>
+								<td><input type='hidden' id='voxline_color' value='{{voxline_color}}' /></td>
+							</tr>
+							<tr>
+								<td><label for='voxline_color'>Width</label></td>
+								<td><div id='voxline_width'></div></td>
+							</tr>
+						</table>
+					</div>
+					<div class='display_opt'>
+						<table>
+							<tr>
+								<td><label for='datainterp'>Interpolation</label></td>
+								<td>
+									<select id='datainterp'>
+										<option value='nearest'>Nearest</option>
+										<option value='trilinear'>Trilinear</option>
+										<option value='nearlin'>Bilinear/nearest</option>
+									</select>
+								</td>
+							</tr>
+						</table>
+					</div>
+					<div class='display_opt' id='thickmapping'>
+						<table>
+							<tr>
+								<td><label for='thicklayers'>Layers</label></td>
+								<td><div id='thicklayers'></div></td>
+							</tr>
+							<tr id='thickmix_row'>
+								<td><label for='thickmix'>Depth</label></td>
+								<td><div id='thickmix'></div></td>
+							</tr>
+						</table>
+					</div>
+				</fieldset>
+			</div>
 			<fieldset id="dataset_fieldset" class='opt_category'>
 				<legend>Datasets</legend>
 				<ul id='datasets'>
@@ -225,28 +231,11 @@
 	</div>
 </div>
 <div id='main'>
-	<div id='left'>
-		<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
-		<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
-		<div id='dataname'></div>
-		<div id='roilabels'></div>
-		<div id='braincover'></div>
-		<canvas id='brain'></canvas>
-	</div>
-	<div id='bar'>
-		<div class='vcenter'>
-			=<br/>=
-		</div>
-	</div>
-	<div id='sidepanel'>
-	    <div class='vcenter'>
-	    	<div id='pluginload' class='loadmsg'><img src='resources/images/loading.gif'>Loading...</div>
-	    	<div id='pluginbox'>
-	    	</div>
-	    </div>
-	</div>
+	<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
+	<div id='dataname'></div>
+	<div id='braincover'></div>
+	<canvas id='brain'></canvas>
 </div>
-
 <div id='bottombar' class='infobar'>
 	<div class='content'>
 		<div id='moviecontrols'>
@@ -277,7 +266,73 @@
 		</table>
 	</div>
 </div>
+</script>
+<script type='text/html' id='movieaxes_html'>
+	<div class='movie_wrapper'>
+        <div class='movie_cell'>
+            <div class='movie_load loadmsg'>
+                <img src='resources/images/loading.gif'>
+                Loading...
+            </div>
+            <video class='movie' preload loop='loop'>
+                <source />
+            </video>
+        </div>
+    </div>
+</script>
 
+<link rel="stylesheet" href="resources/css/jsplot.css" type='text/css' />
+<link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
+<script type='text/javascript'>
+	var validator = new function() {
+		var gl;
+		this.webgl = false;
+		this.android = /Android/i.test(navigator.userAgent);
+		this.mobile = /webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
+		try {
+			if (window.WebGLRenderingContext) {
+				gl = document.createElement("canvas").getContext('experimental-webgl');
+				this.webgl = !! gl;
+			}
+		} catch (e) {}
+		this.vtex = function(vtmin, atmin) {
+			var vtex = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+			var atex = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+			if (vtex >= vtmin && atex >= atmin)
+				return true;
+			return false;
+		}
+		this.vattr = function(vmin) {
+			return gl.getParameter(gl.MAX_VERTEX_ATTRIBS) >= vmin;
+		}
+	};
+
+	{% block jsinit %}
+	{% end %}
+
+	var cmapnames = {}
+
+	$(document).ready(function() {
+		if (validator.mobile) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, mobile browsers are not supported.</p><p>Unfortunately, iOS devices do not support WebGL.</p><p>Please ask Apple for WebGL support in their browsers!</p>").show();
+		} else if (!validator.webgl) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
+		} else if (!validator.vtex(3, 5)) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, your computer does not have the minimum number of texture units :(</p><p>Try upgrading your drivers and/or your browser</p>").show();
+		} else {
+			{% block onload %}
+			{% end %}
+		}
+
+	});
+</script>
+
+</head>
+<body>
+<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
 {% block extrahtml %}
 {% end %}
 
