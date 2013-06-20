@@ -140,6 +140,9 @@ var jsplot = (function (module) {
     module.GridFigure = function(parent, nrows, ncols) {
         module.Figure.call(this, parent);
 
+        this.nrows = nrows;
+        this.ncols = ncols;
+
         this.axes = [];
         this.cells = [];
         var table = document.createElement("table");
