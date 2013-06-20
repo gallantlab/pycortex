@@ -206,6 +206,11 @@ class VolumeData(object):
         raw linear image: (v, c)
         reg linear image: (v,)
         """
+        if isinstance(data, str):
+            import nibabel
+            nib = nibabel.load(data)
+            data = nib.get_data().T
+
         self.data = data
         try:
             basestring
@@ -431,9 +436,9 @@ def normalize(data):
     elif isinstance(data, str):
         return Dataset.from_file(data)
     elif isinstance(data, tuple):
-        try:
+        if len(tuple) == 3:
             return VolumeData(*data)
-        except (ValueError, TypeError):
+        else:
             return VertexData(*data)
 
     raise TypeError('Unknown input type')

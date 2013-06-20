@@ -45,6 +45,26 @@ var mriview = (function(module) {
         }
     }
 
+    module.MultiView.prototype.saveIMG = function(post) {
+        var canvas = document.createElement("canvas");
+        canvas.width = this[this.subjects[0]].canvas.width() * this.ncols;
+        canvas.height = this[this.subjects[0]].canvas.height() * this.nrows;
+        var ctx = canvas.getContext("2d");
+        var subj, off;
+
+        for (var i = 0; i < this.subjects.length; i++) {
+            subj = this[this.subjects[i]];
+            off = subj.canvas.offset();
+            ctx.drawImage(subj.canvas[0], off.left, off.top);
+        }
+
+        var png = canvas.toDataURL();
+        if (post !== undefined)
+            $.post(post, {png:png});
+        else
+            window.location.href = png.replace("image/png", "application/octet-stream");
+    }
+
     //Create a function multiplexer, to pass calls through to all viewers
     function multiview_prototype(prot, names) {
         for (var i = 0; i < names.length; i++) {

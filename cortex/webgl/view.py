@@ -97,8 +97,7 @@ def _pack_png(mosaic):
     return buf.read()
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", layout=None, anonymize=False, **kwargs):
-    """
-    Creates a static instance of the webGL MRI viewer that can easily be posted 
+    """Creates a static instance of the webGL MRI viewer that can easily be posted 
     or shared. 
 
     Parameters
@@ -338,25 +337,20 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
     class JSLocalMixer(serve.JSLocal):
         def addData(self, **kwargs):
-            Proxy = serve.JSProxy(self.send, "window.viewer.addData")
+            Proxy = serve.JSProxy(self.send, "window.viewers.addData")
             json, data = _make_bindat(_normalize_data(kwargs, pfunc), fmt='data/%s/')
             queue.put(data)
             return Proxy(json)
 
     class JSMixer(serve.JSProxy):
         def addData(self, **kwargs):
-            Proxy = serve.JSProxy(self.send, "window.viewer.addData")
+            Proxy = serve.JSProxy(self.send, "window.viewers.addData")
             metadata, images = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
             queue.put(images)
             return Proxy(metadata)
 
-        def saveflat(self, filename, height=1024):
-            Proxy = serve.JSProxy(self.send, "window.viewer.saveflat")
-            saveimg.value = filename
-            return Proxy(height, "mixer.html")
-
         def saveIMG(self, filename):
-            Proxy = serve.JSProxy(self.send, "window.viewer.saveIMG")
+            Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
             saveimg.value = filename
             return Proxy("mixer.html")
 
