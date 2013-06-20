@@ -224,6 +224,8 @@ class VolumeData(object):
         self._check_size(mask)
         self.masked = Masker(self)
 
+        #self.add_numpy_methods()
+
     def _check_size(self, mask):
         self.raw = self.data.dtype == np.uint8
         if self.data.ndim == 5:
@@ -293,6 +295,12 @@ class VolumeData(object):
             raise ValueError('Cannot index non-movie data')
         return VolumeData(self.data[idx], self.subject, self.xfmname, **self.attrs)
 
+    def copy(self, newdata=None):
+        if newdata is None:
+            return VolumeData(self.data, self.subject, self.xfmname, **self.attrs)
+        else:
+            return VolumeData(newdata, self.subject, self.xfmname, **self.attrs)
+
     @property
     def volume(self):
         if self.linear:
@@ -340,6 +348,30 @@ class VolumeData(object):
         for name, value in self.attrs.items():
             node.attrs[name] = value
 
+    @classmethod
+    def add_numpy_methods(cls):
+        """Adds numpy operator methods (+, -, etc.) to this class to allow
+        simple manipulation of the data, e.g. with VolumeData v:
+        v + 1 # Returns new VolumeData with 1 added to data
+        v ** 2 # Returns new VolumeData with data squared
+        """
+        # Binary operations
+        npops = ["__add__", "__sub__", "__mul__", "__div__", "__pow__",
+                 "__neg__", "__abs__"]
+
+        def make_opfun(op): # function nesting creates closure containing op
+            def opfun(self, *args):
+                return self.copy(getattr(self.data, op)(*args))
+            return opfun
+        
+        for op in npops:
+            opfun = make_opfun(op)
+            opfun.__name__ = op
+            setattr(cls, opfun.__name__, opfun)
+
+VolumeData.add_numpy_methods()
+
+
 class VertexData(VolumeData):
     def __init__(self, data, subject, **kwargs):
         """Vertex Data possibilities
@@ -372,6 +404,8 @@ class VertexData(VolumeData):
         if len(np.vstack([left[0], right[0]])) != self.nverts:
             raise ValueError('Invalid number of vertices for subject')
 
+        #self.add_numpy_methods()
+
     def _check_size(self):
         raise NotImplementedError
 
@@ -398,6 +432,12 @@ class VertexData(VolumeData):
             raise TypeError("Cannot index non-movie data")
 
         return VertexData(self.data[idx], self.subject, **self.attrs)
+
+    def copy(self, newdata=None):
+        if newdata is None:
+            return VertexData(self.data, self.subject, **self.attrs)
+        else:
+            return VertexData(newdata, self.subject, **self.attrs)
 
     def _write_hdf(self, h5, name="data"):
         node = _hdf_write(h5, self.data, name=name)
