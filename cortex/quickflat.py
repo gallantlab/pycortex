@@ -280,7 +280,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
     shadow : int, optional
         Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
     labelsize : str, optional
-        Font size for the label, E.g. "16pt"
+        Font size for the label, e.g. "16pt"
     labelcolor : tuple of float, optional
         (R, G, B, A) specification for the label color
     """
@@ -348,7 +348,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
 
     return fig
 
-def make_png(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
+def make_png(fname, braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
     bgcolor=None, dpi=100, **kwargs):
     """
     make_png(name, braindata, recache=False, pixelwise=True, thick=32, projection='nearest', height=1024, dpi=100,
@@ -360,7 +360,7 @@ def make_png(name, braindata, recache=False, pixelwise=True, projection='nearest
 
     Parameters
     ----------
-    name : str
+    fname : str
         Filename for where to save the PNG file
     braindata : VertexData or VolumeData
         the data you would like to plot on a flatmap
@@ -390,7 +390,7 @@ def make_png(name, braindata, recache=False, pixelwise=True, projection='nearest
     shadow : int, optional
         Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
     labelsize : str, optional
-        Font size for the label, E.g. "16pt"
+        Font size for the label, e.g. "16pt"
     labelcolor : tuple of float, optional
         (R, G, B, A) specification for the label color
     """
@@ -399,16 +399,16 @@ def make_png(name, braindata, recache=False, pixelwise=True, projection='nearest
     imsize = fig.get_axes()[0].get_images()[0].get_size()
     fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
     if bgcolor is None:
-        fig.savefig(name, transparent=True, dpi=dpi)
+        fig.savefig(fname, transparent=True, dpi=dpi)
     else:
-        fig.savefig(name, facecolor=bgcolor, transparent=False, dpi=dpi)
+        fig.savefig(fname, facecolor=bgcolor, transparent=False, dpi=dpi)
     plt.close()
 
 def show(*args, **kwargs):
     raise DeprecationWarning("Use quickflat.make_figure instead")
     return make_figure(*args, **kwargs)
 
-def make_svg(name, braindata, recache=False, pixelwise=True, projection='nearest', height=1024, **kwargs):
+def make_svg(fname, braindata, recache=False, pixelwise=True, projection='nearest', height=1024, **kwargs):
     ## Create quickflat image array
     im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
     ## Convert to PNG
@@ -423,7 +423,7 @@ def make_svg(name, braindata, recache=False, pixelwise=True, projection='nearest
     pngdata = binascii.b2a_base64(fp.read())
     ## Create and save SVG file
     roipack = utils.get_roipack(subject)
-    roipack.get_svg(name, labels=True, with_ims=[pngdata])
+    roipack.get_svg(fname, labels=True, with_ims=[pngdata])
 
 def make_movie(name, data, subject, xfmname, recache=False, height=1024, projection='nearest', dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
     import sys

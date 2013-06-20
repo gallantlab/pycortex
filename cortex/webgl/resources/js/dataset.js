@@ -60,7 +60,7 @@ function Dataset(json) {
 
             if (this.textures.length < this.frames) {
                 this.loaded.notify(this.textures.length);
-                loadtex(this.textures.length);
+                loadmosaic(this.textures.length);
             } else {
                 this.loaded.resolve();
             }

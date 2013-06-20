@@ -396,24 +396,6 @@ var mriview = (function(module) {
                 return startval * (1-idx) + endval * idx;
         }
     };
-    module.Viewer.prototype.saveIMG = function(post) {
-        var png = this.canvas[0].toDataURL();
-        if (post !== undefined)
-            $.post(post, {png:png});
-        else
-            window.location.href = png.replace("image/png", "application/octet-stream");
-    };
-    module.Viewer.prototype.screenshot = function(width, height, pre, post) {
-        $(this.object).css("opacity", 0);
-        setTimeout(function() {
-            if (typeof(pre) == "function")
-                pre();
-            this.resize(width, height);
-            this.saveShot(post);
-            this.resize();
-            $(this.object).css("opacity", 1);
-        }.bind(this), 500);
-    };
     module.Viewer.prototype.reset_view = function(center, height) {
         var asp = this.flatlims[1][0] / this.flatlims[1][1];
         var camasp = height !== undefined ? asp : this.camera.cameraP.aspect;
@@ -428,20 +410,20 @@ var mriview = (function(module) {
         this.setMix(1);
         this.setShift(0);
     };
-    module.Viewer.prototype.saveflat = function(height, posturl) {
-        var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
-        var roistate = $(this.object).find("#roishow").attr("checked");
-        this.screenshot(width, height, function() { 
-            this.reset_view(false, height); 
-            $(this.object).find("#roishow").attr("checked", false);
-            $(this.object).find("#roishow").change();
-        }.bind(this), function(png) {
-            $(this.object).find("#roishow").attr("checked", roistate);
-            $(this.object).find("#roishow").change();
-            this.controls.target.set(0,0,0);
-            this.roipack.saveSVG(png, posturl);
-        }.bind(this));
-    }; 
+    // module.Viewer.prototype.saveflat = function(height, posturl) {
+    //     var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
+    //     var roistate = $(this.object).find("#roishow").attr("checked");
+    //     this.screenshot(width, height, function() { 
+    //         this.reset_view(false, height); 
+    //         $(this.object).find("#roishow").attr("checked", false);
+    //         $(this.object).find("#roishow").change();
+    //     }.bind(this), function(png) {
+    //         $(this.object).find("#roishow").attr("checked", roistate);
+    //         $(this.object).find("#roishow").change();
+    //         this.controls.target.set(0,0,0);
+    //         this.roipack.saveSVG(png, posturl);
+    //     }.bind(this));
+    // }; 
     module.Viewer.prototype.setMix = function(val) {
         var num = this.meshes.left.geometry.morphTargets.length;
         var flat = num - 1;
