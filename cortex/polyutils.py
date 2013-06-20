@@ -80,7 +80,13 @@ class Surface(object):
                  (ppts[:,1]-ppts[:,2])).sum(1) / np.sqrt((np.cross(ppts[:,0]-ppts[:,2],
                                                                    ppts[:,1]-ppts[:,2])**2).sum(1))
 
-        return np.vstack([cots1, cots2, cots3])
+        # Then we have to sanitize the fuck out of everything..
+        cots = np.vstack([cots1, cots2, cots3])
+        cots[np.isinf(cots)] = 0
+        cots[np.isnan(cots)] = 0
+        # Clip to a reasonable range, these meshes are the worst
+        cots = np.clip(cots, -100, 100)
+        return cots
 
     @property
     @_memo
@@ -174,9 +180,10 @@ class Surface(object):
         gradu = ((np.cross(fnorms, e12).T * pu[:,2] +
                   np.cross(fnorms, e23).T * pu[:,0] +
                   np.cross(fnorms, e31).T * pu[:,1]) / (2 * self.face_areas)).T
-
+        gradu = np.nan_to_num(gradu)
+        
         # Compute X (normalized grad u)
-        X = (-gradu.T / np.sqrt((gradu**2).sum(1))).T
+        X = np.nan_to_num((-gradu.T / np.sqrt((gradu**2).sum(1))).T)
 
         # Compute integrated divergence of X at each vertex
         cots1, cots2, cots3 = self.cotangent_weights
@@ -196,6 +203,9 @@ class Surface(object):
         goodphi = self._nLC_solvers[m](divx[goodrows])
         phi = np.zeros((npt,))
         phi[goodrows] = goodphi - goodphi.min()
+
+        # Ensure that distance is zero for selected verts
+        phi[verts] = 0.0
 
         return phi
 
