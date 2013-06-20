@@ -1,38 +1,203 @@
 from collections import OrderedDict
 import numpy as np
 from scipy.spatial import distance, Delaunay, cKDTree
+from scipy import sparse
+import functools
+
+def _memo(fn):
+    """Helper decorator memoizes the given zero-argument function.
+    """
+    @functools.wraps(fn)
+    def memofn(self):
+        if id(fn) not in self._cache:
+            self._cache[id(fn)] = fn(self)
+        return self._cache[id(fn)]
+
+    return memofn
 
 class Surface(object):
     def __init__(self, pts, polys):
         self.pts = pts
         self.polys = polys
 
-        #connected holds map of ptidx -> face
-        self._connected = None
+        self._cache = dict()
+        self._rlfac_solvers = dict()
+        self._nLC_solvers = dict()
 
     @property
+    @_memo
+    def ppts(self):
+        """3D matrix of points in each face: n faces x 3 points per face x 3 coords per point.
+        """
+        return self.pts[self.polys]
+    
+    @property
+    @_memo
     def connected(self):
-        if self._connected is None:
-            self._connected = [set([]) for _ in range(len(self.pts))]
-            for i, poly in enumerate(self.polys):
-                for p in poly:
-                    self._connected[p].add(i)
-
-            self._connected = [list(i) for i in self._connected]
-        return self._connected
+        """Sparse matrix of vertex-face associations.
+        """
+        npt = len(self.pts)
+        npoly = len(self.polys)
+        return sparse.coo_matrix((np.ones((3*npoly,)), # data
+                                  (np.hstack(self.polys.T), # row
+                                   np.tile(range(npoly),(1,3)).squeeze())), # col
+                                 (npt, npoly)).tocsr() # size
 
     @property
-    def normals(self):
-        fnorms = np.zeros((len(self.polys),3))
-        for i, face in enumerate(self.polys):
-            x, y, z = self.pts[face]
-            fnorms[i] = np.cross(y-x, z-x)
+    @_memo
+    def face_normals(self):
+        """Normal vector for each face.
+        """
+        return np.cross(self.ppts[:,1] - self.ppts[:,0], self.ppts[:,2] - self.ppts[:,0])
 
-        vnorms = np.zeros((len(self.pts),3))
-        for i in range(len(self.pts)):
-            vnorms[i] = fnorms[self.connected[i]].mean(0)
+    @property
+    @_memo
+    def vertex_normals(self):
+        """Normal vector for each vertex (average of normals for neighboring faces).
+        """
+        return np.nan_to_num(self.connected.dot(self.face_normals) / self.connected.sum(1))
 
-        return vnorms
+    @property
+    @_memo
+    def face_areas(self):
+        """Area of each face.
+        """
+        return np.sqrt((self.face_normals**2).sum(-1))
+
+    @property
+    @_memo
+    def cotangent_weights(self):
+        """Cotangent of angle opposite each vertex in each face.
+        """
+        ppts = self.ppts
+        cots1 = ((ppts[:,1]-ppts[:,0]) *
+                 (ppts[:,2]-ppts[:,0])).sum(1) / np.sqrt((np.cross(ppts[:,1]-ppts[:,0],
+                                                                   ppts[:,2]-ppts[:,0])**2).sum(1))
+        cots2 = ((ppts[:,2]-ppts[:,1]) *
+                 (ppts[:,0]-ppts[:,1])).sum(1) / np.sqrt((np.cross(ppts[:,2]-ppts[:,1],
+                                                                   ppts[:,0]-ppts[:,1])**2).sum(1))
+        cots3 = ((ppts[:,0]-ppts[:,2]) *
+                 (ppts[:,1]-ppts[:,2])).sum(1) / np.sqrt((np.cross(ppts[:,0]-ppts[:,2],
+                                                                   ppts[:,1]-ppts[:,2])**2).sum(1))
+
+        return np.vstack([cots1, cots2, cots3])
+
+    @property
+    @_memo
+    def laplace_operator(self):
+        """Laplace-Beltrami operator for this surface. A sparse adjacency matrix with
+        edge weights determined by the cotangents of the angles opposite each edge.
+        Returns a triplet (D,W,V) where D is the 'lumped mass matrix', W is the weighted
+        adjacency matrix, and V is a diagonal matrix that normalizes the adjacencies.
+        The 'stiffness matrix', A, can be computed as V - W.
+        
+        See 'Discrete Laplace-Beltrami operators for shape analysis and segmentation'
+        by Reuter et al., 2009 for details.
+        """
+        ## Lumped mass matrix
+        D = self.connected.dot(self.face_areas) / 3.0
+
+        ## Stiffness matrix
+        npt = len(self.pts)
+        cots1, cots2, cots3 = self.cotangent_weights
+        # W is weighted adjacency matrix
+        W1 = sparse.coo_matrix((cots1, (self.polys[:,1], self.polys[:,2])), (npt, npt))
+        W2 = sparse.coo_matrix((cots2, (self.polys[:,2], self.polys[:,0])), (npt, npt))
+        W3 = sparse.coo_matrix((cots3, (self.polys[:,0], self.polys[:,1])), (npt, npt))
+        W = (W1 + W1.T + W2 + W2.T + W3 + W3.T).tocsr() / 2.0
+        
+        # V is sum of each col
+        V = sparse.dia_matrix((np.array(W.sum(0)).ravel(),[0]), (npt,npt))
+
+        # A is stiffness matrix
+        #A = W - V # negative operator -- more useful in practice
+
+        return D, W, V
+
+    @property
+    @_memo
+    def avg_edge_length(self):
+        """Average length of all edges in the surface.
+        """
+        adj = self.laplace_operator[1] # use laplace operator as adjacency matrix
+        tadj = sparse.triu(adj, 1) # only entries above main diagonal, in coo format
+        edgelens = np.sqrt(((self.pts[tadj.row] - self.pts[tadj.col])**2).sum(1))
+        return edgelens.mean()
+
+    def geodesic_distance(self, verts, m=1.0):
+        """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
+        vertex in the collection verts.
+
+        Geodesic distance is estimated using heat-based method (see 'Geodesics in Heat',
+        Crane et al, 2012). The diffusion of heat along the mesh is simulated and then
+        used to infer geodesic distance. The duration of the simulation is controlled
+        by the parameter m. Larger values of m will smooth & regularize the distance
+        computation. Smaller values of m will roughen and will usually increase error
+        in the distance computation. The default value of 1.0 is probably pretty good.
+
+        This function caches some data (sparse LU factorizations of the laplace-beltrami
+        operator and the weighted adjacency matrix), so it will be much faster on
+        subsequent runs.
+
+        The time taken by this function is independent of the number of vertices in verts.
+        """
+        npt = len(self.pts)
+        D, W, V = self.laplace_operator
+        nLC = W - V # negative laplace matrix
+        spD = sparse.dia_matrix((D,[0]), (npt,npt)).tocsr() # lumped mass matrix
+        t = m * self.avg_edge_length ** 2 # time of heat evolution
+        lfac = spD - t * nLC # backward Euler matrix
+
+        # Exclude rows with zero weight (these break the sparse LU, that finicky fuck)
+        goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
+        
+        if m not in self._rlfac_solvers:
+            self._rlfac_solvers[m] = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
+        # Also solve system to get phi, the distances
+        if m not in self._nLC_solvers:
+            self._nLC_solvers[m] = sparse.linalg.dsolve.factorized(nLC[goodrows][:,goodrows])
+
+        # Solve system to get u, the heat values
+        u0 = np.zeros((npt,)) # initial heat values
+        u0[verts] = 1.0
+        goodu = self._rlfac_solvers[m](u0[goodrows])
+        u = np.zeros((npt,))
+        u[goodrows] = goodu
+
+        # Compute grad u at each face
+        ppts = self.ppts
+        fnorms = self.face_normals
+        pu = u[self.polys]
+        e12 = ppts[:,1] - ppts[:,0]
+        e23 = ppts[:,2] - ppts[:,1]
+        e31 = ppts[:,0] - ppts[:,2]
+        gradu = ((np.cross(fnorms, e12).T * pu[:,2] +
+                  np.cross(fnorms, e23).T * pu[:,0] +
+                  np.cross(fnorms, e31).T * pu[:,1]) / (2 * self.face_areas)).T
+
+        # Compute X (normalized grad u)
+        X = (-gradu.T / np.sqrt((gradu**2).sum(1))).T
+
+        # Compute integrated divergence of X at each vertex
+        cots1, cots2, cots3 = self.cotangent_weights
+        divx = np.zeros((npt,))
+        x1 = 0.5 * (cots3 * ((ppts[:,1]-ppts[:,0]) * X).sum(1) +
+                    cots2 * ((ppts[:,2]-ppts[:,0]) * X).sum(1))
+        x2 = 0.5 * (cots1 * ((ppts[:,2]-ppts[:,1]) * X).sum(1) +
+                    cots3 * ((ppts[:,0]-ppts[:,1]) * X).sum(1))
+        x3 = 0.5 * (cots2 * ((ppts[:,0]-ppts[:,2]) * X).sum(1) +
+                    cots1 * ((ppts[:,1]-ppts[:,2]) * X).sum(1))
+
+        divx = (sparse.coo_matrix((x1, (self.polys[:,0]*0, self.polys[:,0])), (1,npt)) +
+                sparse.coo_matrix((x2, (self.polys[:,0]*0, self.polys[:,1])), (1,npt)) +
+                sparse.coo_matrix((x3, (self.polys[:,0]*0, self.polys[:,2])), (1,npt))).todense().A.squeeze()
+
+        # Compute phi (distance)
+        goodphi = self._nLC_solvers[m](divx[goodrows])
+        phi = np.zeros((npt,))
+        phi[goodrows] = goodphi - goodphi.min()
+
+        return phi
 
     def extract_chunk(self, nfaces=100, seed=None, auxpts=None):
         '''Extract a chunk of the surface using breadth first search, for testing purposes'''
@@ -46,7 +211,7 @@ class Surface(object):
         visited = set([node])
         while len(faces) < nfaces and len(queue) > 0:
             node = queue.pop(0)
-            for face in self.connected[node]:
+            for face in self.connected[node].indices:
                 if face not in faces:
                     faces.add(face)
                     for pt in self.polys[face]:
@@ -74,7 +239,7 @@ class Surface(object):
             raise ValueError('Each point must have a single value')
             
         def getpts(pt, n):
-            for face in self.connected[pt]:
+            for face in self.connected[pt].indices:
                 for pt in self.polys[face]:
                     if n == 0:
                         yield pt
@@ -96,7 +261,8 @@ class Surface(object):
 
     def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
-        for p, faces in enumerate(self.connected):
+        for p, facerow in enumerate(self.connected):
+            faces = facerow.indices
             pts, polys = _ptset(), _quadset()
             if len(faces) > 0:
                 poly = np.roll(self.polys[faces[0]], -np.nonzero(self.polys[faces[0]] == p)[0][0])
@@ -123,15 +289,15 @@ class Surface(object):
 
             yield pts.points, np.array(list(polys.triangles))
 
-    def neighbors(self, n=1):
-        def neighbors(pt, n):
-            current = set(self.polys[self.connected[pt]])
-            if n - 1 > 0:
-                next = set()
-                for pt in current:
-                    next = next | neighbors(pt, n-1)
-
-            return current | next
+    #def neighbors(self, n=1):
+    #    def neighbors(pt, n):
+    #        current = set(self.polys[self.connected[pt].indices])
+    #        if n - 1 > 0:
+    #            next = set()
+    #            for pt in current:
+    #                next = next | neighbors(pt, n-1)
+    #
+    #        return current | next
 
     def patches(self, auxpts=None, n=1):
         def align_polys(p, polys):
@@ -156,7 +322,8 @@ class Surface(object):
             stack = np.vstack([mid, left, right, pts[p]])
             return stack[(distance.cdist(stack, stack) == 0).sum(0) == 1]
 
-        for p, faces in enumerate(self.connected):
+        for p, facerow in enumerate(self.connected):
+            faces = facerow.indices
             if len(faces) > 0:
                 if n == 1:
                     if auxpts is not None:
@@ -177,9 +344,9 @@ class Surface(object):
                 yield None
 
     def edge_collapse(self, p1, p2, target):
+        raise NotImplementedError
         face1 = self.connected[p1]
         face2 = self.connected[p2]
-        raise NotImplementedError
 
 class _ptset(object):
     def __init__(self):

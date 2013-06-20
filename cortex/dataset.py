@@ -407,11 +407,17 @@ class VertexData(VolumeData):
 
     @property
     def left(self):
-        return self.data[:self.llen]
+        if self.movie:
+            return self.data[:,:self.llen]
+        else:
+            return self.data[:self.llen]
 
     @property
     def right(self):
-        return self.data[self.llen:]
+        if self.movie:
+            return self.data[:,self.llen:]
+        else:
+            return self.data[self.llen:]
 
 class Masker(object):
     def __init__(self, ds):
