@@ -482,7 +482,7 @@ def normalize(data):
     elif isinstance(data, str):
         return Dataset.from_file(data)
     elif isinstance(data, tuple):
-        if len(tuple) == 3:
+        if len(data) == 3:
             return VolumeData(*data)
         else:
             return VertexData(*data)
