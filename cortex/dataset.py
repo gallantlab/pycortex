@@ -446,18 +446,25 @@ class VertexData(VolumeData):
             node.attrs[name] = value
 
     @property
+    def vertices(self):
+        if self.raw and self.data.shape[-1] < 4:
+            shape = (1,)+self.data.shape[::-1][1:]
+            return np.vstack([self.data.T, 255*np.ones(shape, dtype=np.uint8)]).T
+        return self.data
+
+    @property
     def left(self):
         if self.movie:
-            return self.data[:,:self.llen]
+            return self.vertices[:,:self.llen]
         else:
-            return self.data[:self.llen]
+            return self.vertices[:self.llen]
 
     @property
     def right(self):
         if self.movie:
-            return self.data[:,self.llen:]
+            return self.vertices[:,self.llen:]
         else:
-            return self.data[self.llen:]
+            return self.vertices[self.llen:]
 
 class Masker(object):
     def __init__(self, ds):

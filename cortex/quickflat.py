@@ -204,7 +204,7 @@ def make(braindata, height=1024, **kwargs):
     
     if isinstance(braindata, dataset.VertexData):
         pixmap = get_flatcache(braindata.subject, None, height=height, **kwargs)
-        data = braindata.data
+        data = braindata.vertices
     else:
         pixmap = get_flatcache(braindata.subject, braindata.xfmname, height=height, **kwargs)
         data = braindata.volume
