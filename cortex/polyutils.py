@@ -2,6 +2,7 @@ from collections import OrderedDict
 import numpy as np
 from scipy.spatial import distance, Delaunay, cKDTree
 from scipy import sparse
+import scipy.sparse.linalg
 import functools
 
 def _memo(fn):
@@ -130,6 +131,26 @@ class Surface(object):
         edgelens = np.sqrt(((self.pts[tadj.row] - self.pts[tadj.col])**2).sum(1))
         return edgelens.mean()
 
+    def surface_gradient(self, vertvals, at_verts=True):
+        """Gradient of a function with values vertvals at each vertex along surface.
+        If at_verts, returns values at each vertex. Otherwise, returns values at each
+        face.
+        """
+        ppts = self.ppts
+        fnorms = self.face_normals
+        pu = vertvals[self.polys]
+        e12 = ppts[:,1] - ppts[:,0]
+        e23 = ppts[:,2] - ppts[:,1]
+        e31 = ppts[:,0] - ppts[:,2]
+        gradu = ((np.cross(fnorms, e12).T * pu[:,2] +
+                  np.cross(fnorms, e23).T * pu[:,0] +
+                  np.cross(fnorms, e31).T * pu[:,1]) / (2 * self.face_areas)).T
+        gradu = np.nan_to_num(gradu)
+
+        if at_verts:
+            return (self.connected.dot(gradu).T / self.connected.sum(1).A.squeeze()).T
+        return gradu
+
     def geodesic_distance(self, verts, m=1.0):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
         vertex in the collection verts.
@@ -208,6 +229,23 @@ class Surface(object):
         phi[verts] = 0.0
 
         return phi
+
+    def get_graph(self):
+        """NetworkX undirected graph representing this Surface.
+        """
+        import networkx as nx
+        def iter_surfedges(tris):
+            for a,b,c in tris:
+                yield a,b
+                yield b,c
+                yield a,c
+
+        def make_surface_graph(tris):
+            graph = nx.Graph()
+            graph.add_edges_from(iter_surfedges(tris))
+            return graph
+
+        return make_surface_graph(self.polys)
 
     def extract_chunk(self, nfaces=100, seed=None, auxpts=None):
         '''Extract a chunk of the surface using breadth first search, for testing purposes'''
