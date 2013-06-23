@@ -112,7 +112,7 @@ def add_roi(data, name="new_roi", recache=False, open_inkscape=True, add_path=Tr
 
 def get_roi_verts(subject, roi=None):
     '''Return vertices for the given ROIs'''
-    rois = get_roipack(subject)
+    rois = surfs.getOverlay(subject)
 
     if roi is None:
         roi = rois.names
