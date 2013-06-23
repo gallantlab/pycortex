@@ -185,6 +185,7 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, projection='neares
         from scipy import sparse
         npz = np.load(cachefile)
         pixmap = sparse.csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
+        npz.close()
 
     if not pixelwise and xfmname is not None:
         from scipy import sparse
@@ -200,7 +201,9 @@ def make(braindata, height=1024, **kwargs):
     if braindata.movie:
         raise ValueError('Cannot flatten multiple volumes')
 
-    mask = surfs.getAnat(braindata.subject, "flatmask", height=height)['mask'].T    
+    fmfile = surfs.getAnat(braindata.subject, "flatmask", height=height)
+    mask = fmfile['mask'].T
+    fmfile.close()
     
     if isinstance(braindata, dataset.VertexData):
         pixmap = get_flatcache(braindata.subject, None, height=height, **kwargs)
