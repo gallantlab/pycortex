@@ -776,9 +776,9 @@ var mriview = (function(module) {
         window.addEventListener( 'keydown', function(e) {
             if (e.target.tagName == "INPUT")
                 return;
-            if (e.keyCode == 107) { //+
+            if (e.keyCode == 107 || e.keyCode == 187) { //+
                 this.nextData(1);
-            } else if (e.keyCode == 109) { //-
+            } else if (e.keyCode == 109 || e.keyCode == 189) { //-
                 this.nextData(-1);
             } else if (e.keyCode == 76) { //l
                 this.labelshow = !this.labelshow;
