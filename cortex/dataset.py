@@ -226,6 +226,14 @@ class VolumeData(object):
 
         #self.add_numpy_methods()
 
+    def copy(self, newdata=None):
+        """Copies this VolumeData.
+        """
+        if newdata is None:
+            return VolumeData(self.data, self.subject, self.xfmname, **self.attrs)
+        else:
+            return VolumeData(newdata, self.subject, self.xfmname, **self.attrs)
+
     def _check_size(self, mask):
         self.raw = self.data.dtype == np.uint8
         if self.data.ndim == 5:
@@ -295,12 +303,6 @@ class VolumeData(object):
             raise ValueError('Cannot index non-movie data')
         return VolumeData(self.data[idx], self.subject, self.xfmname, **self.attrs)
 
-    def copy(self, newdata=None):
-        if newdata is None:
-            return VolumeData(self.data, self.subject, self.xfmname, **self.attrs)
-        else:
-            return VolumeData(newdata, self.subject, self.xfmname, **self.attrs)
-
     @property
     def volume(self):
         if self.linear:
@@ -348,6 +350,11 @@ class VolumeData(object):
         for name, value in self.attrs.items():
             node.attrs[name] = value
 
+    def exp(self):
+        """Copy of this object with data exponentiated.
+        """
+        return self.copy(np.exp(self.data))
+    
     @classmethod
     def add_numpy_methods(cls):
         """Adds numpy operator methods (+, -, etc.) to this class to allow
@@ -381,15 +388,25 @@ class VertexData(VolumeData):
         raw linear image: (v, c)
         reg linear image: (v,)
         """
-        self.data = data
         try:
             basestring
         except NameError:
             subject = subject if isinstance(subject, str) else subject.decode('utf-8')
         self.subject = subject
         self.attrs = kwargs
-        self.movie = False
+        
+        left, right = surfs.getSurf(self.subject, "fiducial")
+        self.llen = len(left[0])
+        self.rlen = len(right[0])
+        self._set_data(data)
 
+    def _set_data(self, data):
+        """Sets the data of this VertexData. Also sets flags if the data appears to
+        be in 'movie' or 'raw' format. See __init__ for data shape possibilities.
+        """
+        self.data = data
+        
+        self.movie = False
         self.raw = data.dtype == np.uint8
         if data.ndim == 3:
             self.movie = True
@@ -399,12 +416,24 @@ class VertexData(VolumeData):
             self.movie = not self.raw
 
         self.nverts = self.data.shape[-2 if self.raw else -1]
-        left, right = surfs.getSurf(self.subject, "fiducial")
-        self.llen = len(left[0])
-        if len(np.vstack([left[0], right[0]])) != self.nverts:
+        if self.llen + self.rlen != self.nverts:
             raise ValueError('Invalid number of vertices for subject')
 
-        #self.add_numpy_methods()
+    def copy(self, newdata=None):
+        """Copies this VertexData. Uses __new__ to avoid expensive initialization.
+        """
+        newvd = self.__class__.__new__(self.__class__)
+        newvd.subject = self.subject
+        newvd.attrs = self.attrs
+        newvd.llen = self.llen
+        newvd.rlen = self.rlen
+        
+        if newdata is None:
+            newvd._set_data(self.data)
+        else:
+            newvd._set_data(newdata)
+
+        return newvd
 
     def _check_size(self):
         raise NotImplementedError
@@ -430,14 +459,9 @@ class VertexData(VolumeData):
     def __getitem__(self, idx):
         if not self.movie:
             raise TypeError("Cannot index non-movie data")
-
-        return VertexData(self.data[idx], self.subject, **self.attrs)
-
-    def copy(self, newdata=None):
-        if newdata is None:
-            return VertexData(self.data, self.subject, **self.attrs)
-        else:
-            return VertexData(newdata, self.subject, **self.attrs)
+        
+        #return VertexData(self.data[idx], self.subject, **self.attrs)
+        return self.copy(self.data[idx])
 
     def _write_hdf(self, h5, name="data"):
         node = _hdf_write(h5, self.data, name=name)
