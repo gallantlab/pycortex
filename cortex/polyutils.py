@@ -119,7 +119,14 @@ class Surface(object):
         # A is stiffness matrix
         #A = W - V # negative operator -- more useful in practice
 
-        return D, W, V
+        # For FEM:
+        Be1 = sparse.coo_matrix((self.face_areas, (self.polys[:,1], self.polys[:,2])), (npt, npt))
+        Be2 = sparse.coo_matrix((self.face_areas, (self.polys[:,2], self.polys[:,0])), (npt, npt))
+        Be3 = sparse.coo_matrix((self.face_areas, (self.polys[:,0], self.polys[:,1])), (npt, npt))
+        Bd = self.connected.dot(self.face_areas) / 6
+        dBd = scipy.sparse.dia_matrix((Bd,[0]), (len(D),len(D)))
+        B = (Be1 + Be1.T + Be2 + Be2.T + Be3 + Be3.T)/12 + dBd
+        return B, D, W, V
 
     @property
     @_memo
@@ -151,7 +158,7 @@ class Surface(object):
             return (self.connected.dot(gradu).T / self.connected.sum(1).A.squeeze()).T
         return gradu
 
-    def geodesic_distance(self, verts, m=1.0):
+    def geodesic_distance(self, verts, m=1.0, fem=False):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
         vertex in the collection verts.
 
@@ -169,9 +176,13 @@ class Surface(object):
         The time taken by this function is independent of the number of vertices in verts.
         """
         npt = len(self.pts)
-        D, W, V = self.laplace_operator
+        B, D, W, V = self.laplace_operator
         nLC = W - V # negative laplace matrix
-        spD = sparse.dia_matrix((D,[0]), (npt,npt)).tocsr() # lumped mass matrix
+        if not fem:
+            spD = sparse.dia_matrix((D,[0]), (npt,npt)).tocsr() # lumped mass matrix
+        else:
+            spD = B
+        
         t = m * self.avg_edge_length ** 2 # time of heat evolution
         lfac = spD - t * nLC # backward Euler matrix
 
