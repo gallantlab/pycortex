@@ -4,6 +4,7 @@ from scipy.spatial import distance, Delaunay, cKDTree
 from scipy import sparse
 import scipy.sparse.linalg
 import functools
+import numexpr as ne
 
 def _memo(fn):
     """Helper decorator memoizes the given zero-argument function.
@@ -43,27 +44,44 @@ class Surface(object):
                                   (np.hstack(self.polys.T), # row
                                    np.tile(range(npoly),(1,3)).squeeze())), # col
                                  (npt, npoly)).tocsr() # size
-
+    @property
+    @_memo
+    def adj(self):
+        """Sparse vertex adjacency matrix.
+        """
+        npt = len(self.pts)
+        npoly = len(self.polys)
+        adj1 = sparse.coo_matrix((np.ones((npoly,)),
+                                  (self.polys[:,0], self.polys[:,1])), (npt,npt))
+        adj2 = sparse.coo_matrix((np.ones((npoly,)),
+                                  (self.polys[:,0], self.polys[:,2])), (npt,npt))
+        adj3 = sparse.coo_matrix((np.ones((npoly,)),
+                                  (self.polys[:,1], self.polys[:,2])), (npt,npt))
+        return (adj1 + adj2 + adj3).tocsr()
+    
     @property
     @_memo
     def face_normals(self):
         """Normal vector for each face.
         """
-        return np.cross(self.ppts[:,1] - self.ppts[:,0], self.ppts[:,2] - self.ppts[:,0])
+        nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], self.ppts[:,2] - self.ppts[:,0])
+        return nnfnorms / np.sqrt((nnfnorms**2).sum(1))[:,np.newaxis]
 
     @property
     @_memo
     def vertex_normals(self):
         """Normal vector for each vertex (average of normals for neighboring faces).
         """
-        return np.nan_to_num(self.connected.dot(self.face_normals) / self.connected.sum(1))
+        nnvnorms = np.nan_to_num(self.connected.dot(self.face_normals) / self.connected.sum(1)).A
+        return nnvnorms / np.sqrt((nnvnorms**2).sum(1))[:,np.newaxis]
 
     @property
     @_memo
     def face_areas(self):
         """Area of each face.
         """
-        return np.sqrt((self.face_normals**2).sum(-1))
+        nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], self.ppts[:,2] - self.ppts[:,0])
+        return np.sqrt((nnfnorms**2).sum(-1))
 
     @property
     @_memo
@@ -143,20 +161,29 @@ class Surface(object):
         If at_verts, returns values at each vertex. Otherwise, returns values at each
         face.
         """
-        ppts = self.ppts
-        fnorms = self.face_normals
         pu = vertvals[self.polys]
-        e12 = ppts[:,1] - ppts[:,0]
-        e23 = ppts[:,2] - ppts[:,1]
-        e31 = ppts[:,0] - ppts[:,2]
-        gradu = ((np.cross(fnorms, e12).T * pu[:,2] +
-                  np.cross(fnorms, e23).T * pu[:,0] +
-                  np.cross(fnorms, e31).T * pu[:,1]) / (2 * self.face_areas)).T
-        gradu = np.nan_to_num(gradu)
+        fe12, fe23, fe31 = [f.T for f in self._facenorm_cross_edge]
+        pu1, pu2, pu3 = pu.T
+        fa = self.face_areas
+        #gradu = ((fe12.T * pu[:,2] +
+        #          fe23.T * pu[:,0] +
+        #          fe31.T * pu[:,1]) / (2 * self.face_areas)).T
+        gradu = ne.evaluate("(fe12 * pu3 + fe23 * pu1 + fe31 * pu2) / (2 * fa)").T
+        #gradu = np.nan_to_num(gradu)
 
         if at_verts:
             return (self.connected.dot(gradu).T / self.connected.sum(1).A.squeeze()).T
         return gradu
+
+    @property
+    @_memo
+    def _facenorm_cross_edge(self):
+        ppts = self.ppts
+        fnorms = self.face_normals
+        fe12 = np.cross(fnorms, ppts[:,1] - ppts[:,0])
+        fe23 = np.cross(fnorms, ppts[:,2] - ppts[:,1])
+        fe31 = np.cross(fnorms, ppts[:,0] - ppts[:,2])
+        return fe12, fe23, fe31
 
     def geodesic_distance(self, verts, m=1.0, fem=False):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
@@ -176,70 +203,83 @@ class Surface(object):
         The time taken by this function is independent of the number of vertices in verts.
         """
         npt = len(self.pts)
-        B, D, W, V = self.laplace_operator
-        nLC = W - V # negative laplace matrix
-        if not fem:
-            spD = sparse.dia_matrix((D,[0]), (npt,npt)).tocsr() # lumped mass matrix
-        else:
-            spD = B
-        
-        t = m * self.avg_edge_length ** 2 # time of heat evolution
-        lfac = spD - t * nLC # backward Euler matrix
-
-        # Exclude rows with zero weight (these break the sparse LU, that finicky fuck)
-        goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
-        
         if m not in self._rlfac_solvers:
+            B, D, W, V = self.laplace_operator
+            nLC = W - V # negative laplace matrix
+            if not fem:
+                spD = sparse.dia_matrix((D,[0]), (npt,npt)).tocsr() # lumped mass matrix
+            else:
+                spD = B
+            
+            t = m * self.avg_edge_length ** 2 # time of heat evolution
+            lfac = spD - t * nLC # backward Euler matrix
+
+            # Exclude rows with zero weight (these break the sparse LU, that finicky fuck)
+            goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
+            self._goodrows = goodrows
             self._rlfac_solvers[m] = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
-        # Also solve system to get phi, the distances
-        if m not in self._nLC_solvers:
             self._nLC_solvers[m] = sparse.linalg.dsolve.factorized(nLC[goodrows][:,goodrows])
 
         # Solve system to get u, the heat values
         u0 = np.zeros((npt,)) # initial heat values
         u0[verts] = 1.0
-        goodu = self._rlfac_solvers[m](u0[goodrows])
+        goodu = self._rlfac_solvers[m](u0[self._goodrows])
         u = np.zeros((npt,))
-        u[goodrows] = goodu
+        u[self._goodrows] = goodu
 
         # Compute grad u at each face
-        ppts = self.ppts
-        fnorms = self.face_normals
-        pu = u[self.polys]
-        e12 = ppts[:,1] - ppts[:,0]
-        e23 = ppts[:,2] - ppts[:,1]
-        e31 = ppts[:,0] - ppts[:,2]
-        gradu = ((np.cross(fnorms, e12).T * pu[:,2] +
-                  np.cross(fnorms, e23).T * pu[:,0] +
-                  np.cross(fnorms, e31).T * pu[:,1]) / (2 * self.face_areas)).T
-        gradu = np.nan_to_num(gradu)
+        gradu = self.surface_gradient(u, at_verts=False)
         
         # Compute X (normalized grad u)
-        X = np.nan_to_num((-gradu.T / np.sqrt((gradu**2).sum(1))).T)
+        #X = np.nan_to_num((-gradu.T / np.sqrt((gradu**2).sum(1))).T)
+        graduT = gradu.T
+        gusum = ne.evaluate("sum(gradu ** 2, 1)")
+        X = ne.evaluate("-graduT / sqrt(gusum)").T
 
         # Compute integrated divergence of X at each vertex
-        cots1, cots2, cots3 = self.cotangent_weights
-        divx = np.zeros((npt,))
-        x1 = 0.5 * (cots3 * ((ppts[:,1]-ppts[:,0]) * X).sum(1) +
-                    cots2 * ((ppts[:,2]-ppts[:,0]) * X).sum(1))
-        x2 = 0.5 * (cots1 * ((ppts[:,2]-ppts[:,1]) * X).sum(1) +
-                    cots3 * ((ppts[:,0]-ppts[:,1]) * X).sum(1))
-        x3 = 0.5 * (cots2 * ((ppts[:,0]-ppts[:,2]) * X).sum(1) +
-                    cots1 * ((ppts[:,1]-ppts[:,2]) * X).sum(1))
-
-        divx = (sparse.coo_matrix((x1, (self.polys[:,0]*0, self.polys[:,0])), (1,npt)) +
-                sparse.coo_matrix((x2, (self.polys[:,0]*0, self.polys[:,1])), (1,npt)) +
-                sparse.coo_matrix((x3, (self.polys[:,0]*0, self.polys[:,2])), (1,npt))).todense().A.squeeze()
+        ppts = self.ppts
+        #x1 = x2 = x3 = np.zeros((X.shape[0],))
+        c32, c13, c21 = self._cot_edge
+        x1 = 0.5 * (c32 * X).sum(1)
+        x2 = 0.5 * (c13 * X).sum(1)
+        x3 = 0.5 * (c21 * X).sum(1)
+        
+        conn1, conn2, conn3 = self._polyconn
+        divx = conn1.dot(x1) + conn2.dot(x2) + conn3.dot(x3)
 
         # Compute phi (distance)
-        goodphi = self._nLC_solvers[m](divx[goodrows])
+        goodphi = self._nLC_solvers[m](divx[self._goodrows])
         phi = np.zeros((npt,))
-        phi[goodrows] = goodphi - goodphi.min()
+        phi[self._goodrows] = goodphi - goodphi.min()
 
         # Ensure that distance is zero for selected verts
         phi[verts] = 0.0
 
         return phi
+
+    @property
+    @_memo
+    def _cot_edge(self):
+        ppts = self.ppts
+        cots1, cots2, cots3 = self.cotangent_weights
+        c3 = cots3[:,np.newaxis] * (ppts[:,1] - ppts[:,0])
+        c2 = cots2[:,np.newaxis] * (ppts[:,0] - ppts[:,2])
+        c1 = cots1[:,np.newaxis] * (ppts[:,2] - ppts[:,1])
+        c32 = c3 - c2
+        c13 = c1 - c3
+        c21 = c2 - c1
+        return c32, c13, c21
+
+    @property
+    @_memo
+    def _polyconn(self):
+        npt = len(self.pts)
+        npoly = len(self.polys)
+        o = np.ones((npoly,))
+        c1 = sparse.coo_matrix((o, (self.polys[:,0], range(npoly))), (npt, npoly)).tocsr()
+        c2 = sparse.coo_matrix((o, (self.polys[:,1], range(npoly))), (npt, npoly)).tocsr()
+        c3 = sparse.coo_matrix((o, (self.polys[:,2], range(npoly))), (npt, npoly)).tocsr()
+        return c1, c2, c3
 
     def get_graph(self):
         """NetworkX undirected graph representing this Surface.
