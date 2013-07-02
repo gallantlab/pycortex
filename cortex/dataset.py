@@ -1,31 +1,4 @@
 """Module for maintaining brain data and their masks
-
-HDF5 format:
-
-/subjects/
-    s1/
-        rois.svg
-        transforms/
-            xfm1/
-                xfm[4,4]
-                masks/
-                    thin[z,y,x]
-                    thick[z,y,x]
-            xfm2/
-                xfm[4,4]
-                masks/
-                    thin[z,y,x]
-        surfaces
-            fiducial
-                lh
-                    pts[n,3]
-                    polys[m,3]
-                rh
-                    pts[n,3]
-                    polys[m,3]
-/datasets/
-    ds1
-    ds2
 """
 import os
 import numpy as np
@@ -282,6 +255,8 @@ class VolumeData(object):
             self.shape = shape
 
     def map(self, projection="nearest"):
+        """Convert this VolumeData into a VertexData using the given sampler
+        """
         mapper = utils.get_mapper(self.subject, self.xfmname, projection)
         data = mapper(self)
         data.attrs['projection'] = (self.xfmname, projection)
@@ -305,6 +280,7 @@ class VolumeData(object):
 
     @property
     def volume(self):
+        """Standardizes the VolumeData, ensuring that masked data are unmasked"""
         if self.linear:
             data = volume.unmask(self.mask, self.data)
         else:
@@ -319,6 +295,8 @@ class VolumeData(object):
 
     @property
     def priority(self):
+        """Sets the priority of this VolumeData in a dataset.
+        """
         if 'priority' in self.attrs:
             return self.attrs['priority']
         return 1000
@@ -328,6 +306,8 @@ class VolumeData(object):
         self.attrs['priority'] = val
 
     def save(self, filename, name="data"):
+        """Save the dataset into an hdf file with the provided name
+        """
         import tables
         if isinstance(filename, str):
             fname, ext = os.path.splitext(filename)
