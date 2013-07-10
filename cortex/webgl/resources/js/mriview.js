@@ -195,6 +195,12 @@ var mriview = (function(module) {
             this._makeBtns(json.names);
             this.controls.flatsize = module.flatscale * this.flatlims[1][0];
             this.controls.flatoff = this.flatoff[1];
+            var gb0 = geometries[0].boundingBox, gb1 = geometries[1].boundingBox;
+            this.surfcenter = [
+                -((gb0.max.x - gb0.min.x) + (gb1.max.x - gb1.min.x)) / 2,
+                -((gb0.max.y - gb0.min.y) + (gb1.max.y - gb1.min.y)) / 2,
+                -((gb0.max.z - gb0.min.z) + (gb1.max.z - gb1.min.z)) / 2,
+            ];
 
             if (geometries[0].attributes.wm !== undefined) {
                 //We have a thickness volume!
@@ -256,6 +262,8 @@ var mriview = (function(module) {
             this.controls.addEventListener("undblpick", function(event) {
                 this.picker.undblpick();
             }.bind(this));
+
+            this.setState("target", this.surfcenter);
             
             if (typeof(callback) == "function")
                 this.loaded.done(callback);
@@ -765,7 +773,7 @@ var mriview = (function(module) {
                     e.preventDefault();
                     e.stopPropagation();
                 } else if (e.keyCode == 82) { //r
-                    this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
+                    this.animate([{idx:btnspeed, state:"target", value:this.surfcenter},
                                   {idx:btnspeed, state:"mix", value:0.0}]);
                 } else if (e.keyCode == 70) { //f
                     this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
