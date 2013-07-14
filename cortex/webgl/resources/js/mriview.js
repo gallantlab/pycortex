@@ -197,9 +197,9 @@ var mriview = (function(module) {
             this.controls.flatoff = this.flatoff[1];
             var gb0 = geometries[0].boundingBox, gb1 = geometries[1].boundingBox;
             this.surfcenter = [
-                -((gb0.max.x - gb0.min.x) + (gb1.max.x - gb1.min.x)) / 2,
-                -((gb0.max.y - gb0.min.y) + (gb1.max.y - gb1.min.y)) / 2,
-                -((gb0.max.z - gb0.min.z) + (gb1.max.z - gb1.min.z)) / 2,
+                ((gb1.max.x - gb0.min.x) / 2) + gb0.min.x,
+                (Math.max(gb0.max.y, gb1.max.y) - Math.min(gb0.min.y, gb1.min.y)) / 2 + Math.min(gb0.min.y, gb1.min.y),
+                (Math.max(gb0.max.z, gb1.max.z) - Math.min(gb0.min.z, gb1.min.z)) / 2 + Math.min(gb0.min.z, gb1.min.z),
             ];
 
             if (geometries[0].attributes.wm !== undefined) {
