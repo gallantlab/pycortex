@@ -445,12 +445,12 @@ def scrub(svgfile):
     return svg
 
 def make_svg(pts, polys):
-    from .polyutils import trace_both
+    from .polyutils import trace_poly, boundary_edges
     pts -= pts.min(0)
     pts *= 1024 / pts.max(0)[1]
     pts[:,1] = 1024 - pts[:,1]
     path = ""
-    for poly in trace_both(pts, polys):
+    for poly in trace_poly(boundary_edges(polys)):
         path +="M%f %f L"%tuple(pts[poly.pop(0), :2])
         path += ', '.join(['%f %f'%tuple(pts[p, :2]) for p in poly])
         path += 'Z '
@@ -471,7 +471,7 @@ def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
 
     if not os.path.exists(svgfile):
         with open(svgfile, "w") as fp:
-            fp.write(svgroi.make_svg(pts.copy(), polys))
+            fp.write(make_svg(pts.copy(), polys))
 
     rois = ROIpack(cullpts, svgfile, **kwargs)
     if remove_medial:

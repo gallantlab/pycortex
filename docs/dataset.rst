@@ -86,8 +86,8 @@ If you are inputting masked data for a VolumeData entry, the mask MUST be in the
 If a VolumeData object receives data with dimensionality 3, 
 
 VertexData
-----------
-VertexData objects hold data that has been masked into vertex space. Typically, you will not directly create your own VertexData objects. 
+~~~~~~~~~~
+VertexData objects hold data that has been masked into vertex space. Typically, you will not directly create your own VertexData objects. VertexData objects are typically created through the :meth:`VolumeData.map` function. This will automatically compute and cache a projection, and return you the projected data. VertexData can also be raw (RGB color values).
 
 Dataset
 -------

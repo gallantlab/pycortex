@@ -436,4 +436,16 @@ class Database(object):
 
         return filenames
 
+    def makeSubj(self, subject):
+        if os.path.exists(os.path.join(filestore, subject)):
+            if raw_input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
+                shutil.rmtree(os.path.join(filestore, subject))
+
+        for dirname in ['transforms', 'anatomicals', 'cache', 'surfaces']:
+            try:
+                path = os.path.join(filestore, subject, dirname)
+                os.makedirs(path)
+            except OSError:
+                print "Error making directory %s"%path
+
 surfs = Database()
