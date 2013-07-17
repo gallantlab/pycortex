@@ -112,7 +112,7 @@ class Surface(object):
     def laplace_operator(self):
         """Laplace-Beltrami operator for this surface. A sparse adjacency matrix with
         edge weights determined by the cotangents of the angles opposite each edge.
-        Returns a triplet (D,W,V) where D is the 'lumped mass matrix', W is the weighted
+        Returns a 4-tuple (B,D,W,V) where D is the 'lumped mass matrix', W is the weighted
         adjacency matrix, and V is a diagonal matrix that normalizes the adjacencies.
         The 'stiffness matrix', A, can be computed as V - W.
         
@@ -133,7 +133,7 @@ class Surface(object):
         
         # V is sum of each col
         V = sparse.dia_matrix((np.array(W.sum(0)).ravel(),[0]), (npt,npt))
-
+        
         # A is stiffness matrix
         #A = W - V # negative operator -- more useful in practice
 
@@ -174,6 +174,33 @@ class Surface(object):
         if at_verts:
             return (self.connected.dot(gradu).T / self.connected.sum(1).A.squeeze()).T
         return gradu
+
+    def interp(self, verts, vals):
+        """Interpolates a function between N knot points `verts` with the values `vals`.
+        `vals` can be a D x N array to interpolate multiple functions with the same
+        knot points.
+        """
+        from scikits.sparse.cholmod import cholesky
+        B, D, W, V = self.laplace_operator
+        npt = len(D)
+        r = np.zeros((npt,))
+        r[verts] = vals
+        g = np.nonzero(D > 0)[0]
+        spDinv = sparse.dia_matrix((D**-1,[0]), (npt,npt)).tocsr()
+        L = spDinv.dot((V-W))
+        notp = np.setdiff1d(np.arange(npt)[g], verts)
+
+        L2r = (V-W).dot(L)#[notp][:,notp]
+        #L2rfac = sparse.linalg.dsolve.factorized(L2r) # 7.2 s
+        L2rfac = cholesky(L2r[notp][:,notp]) # 832 ms stock BLAS/LAPACK; 245 ms w/ MKL    
+        vr = spDinv.dot(L2r.dot(r))
+        phi = L2rfac(-D[notp] * vr[notp])
+
+        tphi = np.zeros((npt,))
+        tphi[notp] = phi
+        tphi[verts] = vals
+        
+        return tphi
 
     @property
     @_memo
