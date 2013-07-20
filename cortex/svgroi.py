@@ -15,7 +15,7 @@ from cortex.options import config
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
 sodins = "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-parser = etree.XMLParser(remove_blank_text=True)
+parser = etree.XMLParser(remove_blank_text=True, huge_tree=True)
 
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
