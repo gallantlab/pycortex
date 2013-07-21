@@ -2,6 +2,7 @@
 
 import os
 import sys
+from numpy.distutils.misc_util import get_numpy_include_dirs
 
 try:
     import configparser
@@ -62,13 +63,15 @@ ctm = Extension('cortex.openctm',
             ], libraries=['m'], include_dirs=
             ['OpenCTM-1.0.3/lib/', 
              'OpenCTM-1.0.3/lib/liblzma/'
-            ], define_macros=[
+            ] + get_numpy_include_dirs(),
+            define_macros=[
                 ('LZMA_PREFIX_CTM', None),
                 ('OPENCTM_BUILD', None),
                 #('__DEBUG_', None),
             ]
         )
-formats = Extension('cortex.formats', ['cortex/formats.pyx'])
+formats = Extension('cortex.formats', ['cortex/formats.pyx'],
+                    include_dirs=get_numpy_include_dirs())
 
 setup(name='pycortex',
       version='0.1.0',
