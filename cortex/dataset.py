@@ -367,6 +367,9 @@ class VertexData(VolumeData):
         reg linear movie: (t, v)
         raw linear image: (v, c)
         reg linear image: (v,)
+
+        where t is the number of time points, c is colors (i.e. RGB), and v is the
+        number of vertices (either in both hemispheres or one hemisphere)
         """
         try:
             basestring
@@ -396,7 +399,22 @@ class VertexData(VolumeData):
             self.movie = not self.raw
 
         self.nverts = self.data.shape[-2 if self.raw else -1]
-        if self.llen + self.rlen != self.nverts:
+        if self.llen == self.nverts:
+            # Just data for left hemisphere
+            self.hem = "left"
+            rshape = list(self.data.shape)
+            rshape[1 if self.movie else 0] = self.rlen
+            self.data = np.hstack([self.data, np.zeros(rshape, dtype=self.data.dtype)])
+        elif self.rlen == self.nverts:
+            # Just data for right hemisphere
+            self.hem = "right"
+            lshape = list(self.data.shape)
+            lshape[1 if self.movie else 0] = self.llen
+            self.data = np.hstack([np.zeros(lshape, dtype=self.data.dtype), self.data])
+        elif self.llen + self.rlen == self.nverts:
+            # Data for both hemispheres
+            self.hem = "both"
+        else:
             raise ValueError('Invalid number of vertices for subject')
 
     def copy(self, newdata=None):
