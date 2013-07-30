@@ -65,7 +65,8 @@ class Surface(object):
         """Normal vector for each face.
         """
         nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], self.ppts[:,2] - self.ppts[:,0])
-        return nnfnorms / np.sqrt((nnfnorms**2).sum(1))[:,np.newaxis]
+        nfnorms = nnfnorms / np.sqrt((nnfnorms**2).sum(1))[:,np.newaxis]
+        return np.nan_to_num(nfnorms)
 
     @property
     @_memo
@@ -114,7 +115,8 @@ class Surface(object):
         edge weights determined by the cotangents of the angles opposite each edge.
         Returns a 4-tuple (B,D,W,V) where D is the 'lumped mass matrix', W is the weighted
         adjacency matrix, and V is a diagonal matrix that normalizes the adjacencies.
-        The 'stiffness matrix', A, can be computed as V - W.
+        The 'stiffness matrix', A, can be computed as V - W. B is the finite elemented
+        method (FEM) 'mass matrix', which replaces D in FEM analyses.
         
         See 'Discrete Laplace-Beltrami operators for shape analysis and segmentation'
         by Reuter et al., 2009 for details.
@@ -157,8 +159,8 @@ class Surface(object):
         return edgelens.mean()
 
     def surface_gradient(self, vertvals, at_verts=True):
-        """Gradient of a function with values vertvals at each vertex along surface.
-        If at_verts, returns values at each vertex. Otherwise, returns values at each
+        """Gradient of a function with values `vertvals` at each vertex along surface.
+        If `at_verts`, returns values at each vertex. Otherwise, returns values at each
         face.
         """
         pu = vertvals[self.polys]
@@ -168,39 +170,98 @@ class Surface(object):
         #gradu = ((fe12.T * pu[:,2] +
         #          fe23.T * pu[:,0] +
         #          fe31.T * pu[:,1]) / (2 * self.face_areas)).T
-        gradu = ne.evaluate("(fe12 * pu3 + fe23 * pu1 + fe31 * pu2) / (2 * fa)").T
-        #gradu = np.nan_to_num(gradu)
-
+        gradu = np.nan_to_num(ne.evaluate("(fe12 * pu3 + fe23 * pu1 + fe31 * pu2) / (2 * fa)").T)
+        
         if at_verts:
             return (self.connected.dot(gradu).T / self.connected.sum(1).A.squeeze()).T
         return gradu
+
+    def _create_biharmonic_solver(self, verts):
+        """Set up biharmonic equation with Dirichlet boundary conditions on the cortical
+        mesh and precompute Cholesky factorization for solving it. The vertices listed in
+        `verts` are considered part of the boundary, and will not be included in the
+        factorization.
+
+        To facilitate Cholesky decomposition (which requires a symmetric matrix), the
+        squared Laplace-Beltrami operator is separated into left-hand-side (L2) and
+        right-hand-side (Dinv) parts. If we write the L-B operator as the product of
+        the stiffness matrix (V-W) and the inverse mass matrix (Dinv), the biharmonic
+        problem is as follows (with `\v` denoting non-boundary vertices)
+
+        .. math::
+        
+            L^2_{\\v} \phi = -\rho_{\\v} \\
+            \left[ D^{-1} (V-W) D^{-1} (V-W) \right]_{\\v} \phi = -\rho_{\\v} \\
+            \left[ (V-W) D^{-1} (V-W) \right]_{\\v} \phi = -\left[D \rho\right]_{\\v}
+
+        Parameters
+        ----------
+        verts : list or ndarray of length V
+            Indices of vertices that will be part of the Dirichlet boundary.
+
+        Returns
+        -------
+        lhs : sparse matrix
+            Left side of biharmonic problem, (V-W) D^{-1} (V-W)
+        rhs : sparse matrix, dia
+            Right side of biharmonic problem, D
+        Dinv : sparse matrix, dia
+            Inverse mass matrix, D^{-1}
+        lhsfac : cholesky Factor object
+            Factorized left side, solves biharmonic problem
+        notboundary : ndarray, int
+            Indices of non-boundary vertices
+        """
+        try:
+            from sksparse.sparse.cholmod import cholesky
+        except ImportError:
+            pass
+            #from sksparse.sparse.cholmod import cholesky
+        B, D, W, V = self.laplace_operator
+        npt = len(D)
+        
+        g = np.nonzero(D > 0)[0] # Find vertices with non-zero mass
+        Dinv = sparse.dia_matrix((D**-1,[0]), (npt,npt)).tocsr() # construct Dinv
+        L = Dinv.dot((V-W)) # construct Laplace-Beltrami operator
+        notboundary = np.setdiff1d(np.arange(npt)[g], verts) # find
+        
+        lhs = (V-W).dot(L) # construct left side, almost squared L-B operator
+        lhsfac = cholesky(lhs[notboundary][:,notboundary]) # factorize
+
+        return lhs, D, Dinv, lhsfac, notboundary
+
+    def _create_interp(self, verts, bhsolver=None):
+        """Creates interpolator that will interpolate values at the given `verts` using
+        biharmonic interpolation.
+        """
+        if bhsolver is None:
+            lhs, D, Dinv, lhsfac, notb = self._create_biharmonic_solver(verts)
+        else:
+            lhs, D, Dinv, lhsfac, notb = bhsolver
+        
+        npt = len(D)
+        def _interp(vals):
+            v2 = np.atleast_2d(vals)
+            nd = v2.shape[0]
+            r = np.zeros((npt,nd))
+            r[verts] = v2.T
+            vr = Dinv.dot(lhs.dot(r))
+            phi = lhsfac.solve_A(-D[notb][:,np.newaxis] * vr[notb])
+            
+            tphi = np.zeros((npt,nd))
+            tphi[notb] = phi
+            tphi[verts] = v2.T
+            
+            return tphi
+
+        return _interp
 
     def interp(self, verts, vals):
         """Interpolates a function between N knot points `verts` with the values `vals`.
         `vals` can be a D x N array to interpolate multiple functions with the same
         knot points.
         """
-        from scikits.sparse.cholmod import cholesky
-        B, D, W, V = self.laplace_operator
-        npt = len(D)
-        r = np.zeros((npt,))
-        r[verts] = vals
-        g = np.nonzero(D > 0)[0]
-        spDinv = sparse.dia_matrix((D**-1,[0]), (npt,npt)).tocsr()
-        L = spDinv.dot((V-W))
-        notp = np.setdiff1d(np.arange(npt)[g], verts)
-
-        L2r = (V-W).dot(L)#[notp][:,notp]
-        #L2rfac = sparse.linalg.dsolve.factorized(L2r) # 7.2 s
-        L2rfac = cholesky(L2r[notp][:,notp]) # 832 ms stock BLAS/LAPACK; 245 ms w/ MKL    
-        vr = spDinv.dot(L2r.dot(r))
-        phi = L2rfac(-D[notp] * vr[notp])
-
-        tphi = np.zeros((npt,))
-        tphi[notp] = phi
-        tphi[verts] = vals
-        
-        return tphi
+        return self._create_interp(verts)(vals)
 
     @property
     @_memo
@@ -261,7 +322,7 @@ class Surface(object):
         #X = np.nan_to_num((-gradu.T / np.sqrt((gradu**2).sum(1))).T)
         graduT = gradu.T
         gusum = ne.evaluate("sum(gradu ** 2, 1)")
-        X = ne.evaluate("-graduT / sqrt(gusum)").T
+        X = np.nan_to_num(ne.evaluate("-graduT / sqrt(gusum)").T)
 
         # Compute integrated divergence of X at each vertex
         ppts = self.ppts
@@ -308,7 +369,9 @@ class Surface(object):
         c3 = sparse.coo_matrix((o, (self.polys[:,2], range(npoly))), (npt, npoly)).tocsr()
         return c1, c2, c3
 
-    def get_graph(self):
+    @property
+    @_memo
+    def graph(self):
         """NetworkX undirected graph representing this Surface.
         """
         import networkx as nx
@@ -324,6 +387,9 @@ class Surface(object):
             return graph
 
         return make_surface_graph(self.polys)
+
+    def get_graph(self):
+        return self.graph
 
     def extract_chunk(self, nfaces=100, seed=None, auxpts=None):
         '''Extract a chunk of the surface using breadth first search, for testing purposes'''
