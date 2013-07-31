@@ -230,7 +230,7 @@ def get_curvature(subject, smooth=20.0, **kwargs):
     return curvs
 
 
-def get_flatmap_distortion(sub, type="areal", smooth=8):
+def get_flatmap_distortion(sub, type="areal", smooth=20.0):
     """Computes distortion of flatmap relative to fiducial surface. Several different
     types of distortion are available:
     
@@ -248,12 +248,11 @@ def get_flatmap_distortion(sub, type="areal", smooth=8):
     for hem in ["lh", "rh"]:
         fidvert, fidtri = surfs.getSurf(sub, "fiducial", hem)
         flatvert, flattri = surfs.getSurf(sub, "flat", hem)
+        surf = Surface(fidvert, fidtri)
 
         dist = getattr(Distortion(flatvert, fidvert, flattri), type)
-        if smooth > 0:
-            surf = Surface(fidvert, flattri)
-            dist = surf.smooth(dist, smooth=20.0)
-        distortions.append(dist)
+        smdist = surf.smooth(dist, smooth)
+        distortions.append(smdist)
 
     return distortions
 
@@ -269,13 +268,13 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
         nvert = fidpts.shape[0]
         tissot_array = np.zeros((nvert,))
 
-        #maxfails = 20
-        numfails = 0
-        cnum = 0
         centers = [np.random.randint(nvert)]
+        cdists = [surf.geodesic_distance(centers)]
         while True:
             ## Find possible vertices
-            possverts = np.nonzero(surf.geodesic_distance(centers) > spacing)[0]
+            mcdist = np.vstack(cdists).min(0)
+            possverts = np.nonzero(mcdist > spacing)[0]
+            #possverts = np.nonzero(surf.geodesic_distance(centers) > spacing)[0]
             if not len(possverts):
                 break
             ## Pick random vertex
@@ -283,11 +282,11 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
             centers.append(centervert)
             print("Adding vertex %d.." % centervert)
             dists = surf.geodesic_distance([centervert])
+            cdists.append(dists)
 
             ## Find appropriate set of vertices
             selverts = dists < radius
             tissot_array[selverts] = 1
-            cnum += 1
 
         tissots.append(tissot_array)
         allcenters.append(np.array(centers))
