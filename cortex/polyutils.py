@@ -115,8 +115,11 @@ class Surface(object):
         edge weights determined by the cotangents of the angles opposite each edge.
         Returns a 4-tuple (B,D,W,V) where D is the 'lumped mass matrix', W is the weighted
         adjacency matrix, and V is a diagonal matrix that normalizes the adjacencies.
-        The 'stiffness matrix', A, can be computed as V - W. B is the finite elemented
-        method (FEM) 'mass matrix', which replaces D in FEM analyses.
+        The 'stiffness matrix', A, can be computed as V - W.
+
+        The full LB operator can be computed as D^{-1} (V - W).
+        
+        B is the finite element method (FEM) 'mass matrix', which replaces D in FEM analyses.
         
         See 'Discrete Laplace-Beltrami operators for shape analysis and segmentation'
         by Reuter et al., 2009 for details.
@@ -148,6 +151,36 @@ class Surface(object):
         B = (Be1 + Be1.T + Be2 + Be2.T + Be3 + Be3.T)/12 + dBd
         return B, D, W, V
 
+    def mean_curvature(self):
+        """Compute mean curvature of this surface using the Laplace-Beltrami operator.
+        Curvature is computed at each vertex. And it's probably pretty noise, and should
+        be smoothed.
+        """
+        B,D,W,V = self.laplace_operator
+        npt = len(D)
+        Dinv = sparse.dia_matrix((D**-1,[0]), (npt,npt)).tocsr() # construct Dinv
+        L = Dinv.dot((V-W))
+        return (L.dot(self.pts) * self.vertex_normals).sum(1)
+
+    def smooth(self, scalars, factor=1.0):
+        """Smooth vertex-wise function given by `scalars` across the surface using
+        mean curvature flow method (see http://brickisland.net/cs177fa12/?p=302).
+
+        Degree of smoothing is controlled by `factor`.
+        """
+        if factor == 0.0:
+            return scalars
+        
+        B,D,W,V = self.laplace_operator
+        npt = len(D)
+        lfac = sparse.dia_matrix((D,[0]), (npt,npt)) - factor * (W-V)
+        goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
+        lfac_solver = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
+        goodsmscalars = lfac_solver((D * scalars)[goodrows])
+        smscalars = np.zeros(scalars.shape)
+        smscalars[goodrows] = goodsmscalars
+        return smscalars
+        
     @property
     @_memo
     def avg_edge_length(self):
@@ -426,30 +459,31 @@ class Surface(object):
 
         return np.array(pts), np.array(polys)
 
-    def smooth(self, scalars, neighborhood=2, smooth=8):
-        if len(scalars) != len(self.pts):
-            raise ValueError('Each point must have a single value')
+    # def smooth(self, scalars, neighborhood=2, smooth=8):
+    #     return scalars
+    #     if len(scalars) != len(self.pts):
+    #         raise ValueError('Each point must have a single value')
             
-        def getpts(pt, n):
-            for face in self.connected[pt].indices:
-                for pt in self.polys[face]:
-                    if n == 0:
-                        yield pt
-                    else:
-                        for q in getpts(pt, n-1):
-                            yield q
+    #     def getpts(pt, n):
+    #         for face in self.connected[pt].indices:
+    #             for pt in self.polys[face]:
+    #                 if n == 0:
+    #                     yield pt
+    #                 else:
+    #                     for q in getpts(pt, n-1):
+    #                         yield q
         
-        from . import mp
-        def func(i):
-            val = scalars[i]
-            neighbors = list(set(getpts(i, neighborhood)))
-            if len(neighbors) > 0:
-                g = np.exp(-((scalars[neighbors] - val)**2) / (2*smooth**2))
-                return (g * scalars[neighbors]).mean()
-            else:
-                return 0
+    #     from . import mp
+    #     def func(i):
+    #         val = scalars[i]
+    #         neighbors = list(set(getpts(i, neighborhood)))
+    #         if len(neighbors) > 0:
+    #             g = np.exp(-((scalars[neighbors] - val)**2) / (2*smooth**2))
+    #             return (g * scalars[neighbors]).mean()
+    #         else:
+    #             return 0
 
-        return np.array(mp.map(func, range(len(scalars))))
+    #     return np.array(mp.map(func, range(len(scalars))))
 
     def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
@@ -664,13 +698,13 @@ def decimate(pts, polys):
     dpolys = dec.output.polys.to_array().reshape(-1, 4)[:,1:]
     return dpts, dpolys
 
-def curvature(pts, polys):
-    '''Computes mean curvature using VTK'''
-    from tvtk.api import tvtk
-    pd = tvtk.PolyData(points=pts, polys=polys)
-    curv = tvtk.Curvatures(input=pd, curvature_type="mean")
-    curv.update()
-    return curv.output.point_data.scalars.to_array()
+# def curvature(pts, polys):
+#     '''Computes mean curvature using VTK'''
+#     from tvtk.api import tvtk
+#     pd = tvtk.PolyData(points=pts, polys=polys)
+#     curv = tvtk.Curvatures(input=pd, curvature_type="mean")
+#     curv.update()
+#     return curv.output.point_data.scalars.to_array()
 
 def inside_convex_poly(pts):
     """Returns a function that checks if inputs are inside the convex hull of polyhedron defined by pts
