@@ -105,7 +105,7 @@ class Surface(object):
         cots[np.isinf(cots)] = 0
         cots[np.isnan(cots)] = 0
         # Clip to a reasonable range, these meshes are the worst
-        cots = np.clip(cots, -100, 100)
+        #cots = np.clip(cots, -100, 100)
         return cots
 
     @property
