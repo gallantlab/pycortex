@@ -30,7 +30,7 @@ from Cython.Build import cythonize
 def set_default_filestore(prefix, optfile):
     config = configparser.ConfigParser()
     config.read(optfile)
-    config.set("basic", "filestore", os.path.join(prefix))
+    config.set("basic", "filestore", os.path.join(prefix, "db"))
     config.set("webgl", "colormaps", os.path.join(prefix, "colormaps"))
     with open(optfile, 'w') as fp:
         config.write(fp)

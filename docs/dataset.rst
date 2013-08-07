@@ -126,4 +126,7 @@ HDF5 format::
                         polys[m,3]
     /datasets/
         ds1
+            ->subject
+            ->xfm
+            ->mask
         ds2

@@ -12,6 +12,7 @@ class Dataset(object):
     def __init__(self, **kwargs):
         self.subjects = {}
         self.datasets = {}
+        self.views = []
         for name, data in kwargs.items():
             norm = normalize(data)
             if isinstance(norm, (VolumeData, VertexData)):
