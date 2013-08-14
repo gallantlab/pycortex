@@ -190,6 +190,16 @@ class Database(object):
                 pts = kwargs['pts']
                 del kwargs['pts']
             return svgroi.get_roipack(svgfile, pts, polys, **kwargs)
+        if type == "external":
+            from . import svgroi
+            pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
+            #svgfile = self.getFiles(subject)['rois']
+            svgfile = kwargs["svgfile"]
+            del kwargs["svgfile"]
+            if 'pts' in kwargs:
+                pts = kwargs['pts']
+                del kwargs['pts']
+            return svgroi.get_roipack(svgfile, pts, polys, **kwargs)
 
         raise TypeError('Invalid overlay type')
     

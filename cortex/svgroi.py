@@ -51,7 +51,7 @@ class ROIpack(object):
             self.rois[roi.name] = roi
 
         self.set()
-        self.setup_labels(**kwargs)
+        #self.setup_labels(**kwargs)
 
     def add_roi(self, name, pngdata, add_path=True):
         #self.svg deletes the images -- we want to save those, so let's load it again
@@ -98,9 +98,13 @@ class ROIpack(object):
     def get_svg(self, filename=None, labels=True, with_ims=None):
         """Returns an SVG with the included images."""
         if labels:
-            self.labels.attrib['style'] = "display:inline;"
+            if hasattr(self, "labels"):
+                self.labels.attrib['style'] = "display:inline;"
+            else:
+                self.setup_labels(**kwargs)
         else:
-            self.labels.attrib['style'] = "display:none;"
+            if hasattr(self, "labels"):
+                self.labels.attrib['style'] = "display:none;"
         
         outsvg = copy.deepcopy(self.svg)
         if with_ims is not None:
@@ -141,9 +145,13 @@ class ROIpack(object):
             self.svg.getroot().insert(0, img)
 
         if labels:
-            self.labels.attrib['style'] = "display:inline;"
+            if hasattr(self, "labels"):
+                self.labels.attrib['style'] = "display:inline;"
+            else:
+                self.setup_labels(**kwargs)
         else:
-            self.labels.attrib['style'] = "display:none;"
+            if hasattr(self, "labels"):
+                self.labels.attrib['style'] = "display:none;"
 
         pngfile = name
         if name is None:
@@ -262,8 +270,6 @@ class ROI(object):
         self.parent = parent
         self.name = xml.get("{%s}label"%inkns)
         self.paths = xml.findall(".//{%s}path"%svgns)
-        pts = [ self._parse_svg_pts(path.get("d")) for path in self.paths]
-        self.coords = [ self.parent.kdt.query(p)[1] for p in pts ]
         self.hide = "style" in xml.attrib and "display:none" in xml.get("style")
         self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
     
@@ -342,6 +348,10 @@ class ROI(object):
                 del path.attrib['filter']
     
     def get_labelpos(self, pts=None, norms=None, fancy=True):
+        if not hasattr(self, "coords"):
+            pts = [self._parse_svg_pts(path.get("d")) for path in self.paths]
+            self.coords = [ self.parent.kdt.query(p)[1] for p in pts ]
+        
         if pts is None:
             pts = self.parent.tcoords
 
