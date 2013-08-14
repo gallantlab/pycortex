@@ -330,14 +330,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         dax.imshow(hatchim[::-1], aspect="equal", interpolation="nearest", origin="upper")
     
     if with_borders:
-        key = (braindata.subject, "borderlines")
-        if key not in rois:
-            border = _gen_flat_border(braindata.subject, im.shape[0])
-            rois[key] = border
-
+        border = _gen_flat_border(braindata.subject, im.shape[0])
         bax = fig.add_axes((0,0,1,1))
-        blc = LineCollection(rois[key][0], linewidths=3.0,
-                             colors=[['r','b'][mw] for mw in rois[key][1]])
+        blc = LineCollection(border[0], linewidths=3.0,
+                             colors=[['r','b'][mw] for mw in border[1]])
         bax.add_collection(blc)
         #bax.invert_yaxis()
     
