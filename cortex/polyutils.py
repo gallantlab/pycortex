@@ -209,27 +209,27 @@ class Surface(object):
             return (self.connected.dot(gradu).T / self.connected.sum(1).A.squeeze()).T
         return gradu
 
-    def _create_biharmonic_solver(self, verts):
+    def _create_biharmonic_solver(self, boundary_verts, clip_D=0.1):
         """Set up biharmonic equation with Dirichlet boundary conditions on the cortical
         mesh and precompute Cholesky factorization for solving it. The vertices listed in
-        `verts` are considered part of the boundary, and will not be included in the
-        factorization.
+        `boundary_verts` are considered part of the boundary, and will not be included in
+        the factorization.
 
         To facilitate Cholesky decomposition (which requires a symmetric matrix), the
         squared Laplace-Beltrami operator is separated into left-hand-side (L2) and
         right-hand-side (Dinv) parts. If we write the L-B operator as the product of
         the stiffness matrix (V-W) and the inverse mass matrix (Dinv), the biharmonic
-        problem is as follows (with `\v` denoting non-boundary vertices)
+        problem is as follows (with `\b` denoting non-boundary vertices)
 
         .. math::
         
-            L^2_{\\v} \phi = -\rho_{\\v} \\
-            \left[ D^{-1} (V-W) D^{-1} (V-W) \right]_{\\v} \phi = -\rho_{\\v} \\
-            \left[ (V-W) D^{-1} (V-W) \right]_{\\v} \phi = -\left[D \rho\right]_{\\v}
+            L^2_{\\b} \phi = -\rho_{\\b} \\
+            \left[ D^{-1} (V-W) D^{-1} (V-W) \right]_{\\b} \phi = -\rho_{\\b} \\
+            \left[ (V-W) D^{-1} (V-W) \right]_{\\b} \phi = -\left[D \rho\right]_{\\b}
 
         Parameters
         ----------
-        verts : list or ndarray of length V
+        boundary_verts : list or ndarray of length V
             Indices of vertices that will be part of the Dirichlet boundary.
 
         Returns
@@ -248,22 +248,24 @@ class Surface(object):
         try:
             from sksparse.sparse.cholmod import cholesky
         except ImportError:
-            pass
-            #from sksparse.sparse.cholmod import cholesky
+            from scikits.sparse.cholmod import cholesky
         B, D, W, V = self.laplace_operator
         npt = len(D)
-        
+
         g = np.nonzero(D > 0)[0] # Find vertices with non-zero mass
+        #g = np.nonzero((L.sum(0) != 0).A.ravel())[0] # Find vertices with non-zero mass
+        notboundary = np.setdiff1d(np.arange(npt)[g], boundary_verts) # find non-boundary verts
+        D = np.clip(D, clip_D, D.max())
+
         Dinv = sparse.dia_matrix((D**-1,[0]), (npt,npt)).tocsr() # construct Dinv
         L = Dinv.dot((V-W)) # construct Laplace-Beltrami operator
-        notboundary = np.setdiff1d(np.arange(npt)[g], verts) # find
         
         lhs = (V-W).dot(L) # construct left side, almost squared L-B operator
         lhsfac = cholesky(lhs[notboundary][:,notboundary]) # factorize
-
+        #raise Exception
         return lhs, D, Dinv, lhsfac, notboundary
 
-    def _create_interp(self, verts, bhsolver=None):
+    def _create_interp(self, verts, bhsolver=None, newinterp=True):
         """Creates interpolator that will interpolate values at the given `verts` using
         biharmonic interpolation.
         """
@@ -273,19 +275,47 @@ class Surface(object):
             lhs, D, Dinv, lhsfac, notb = bhsolver
         
         npt = len(D)
-        def _interp(vals):
-            v2 = np.atleast_2d(vals)
-            nd = v2.shape[0]
-            r = np.zeros((npt,nd))
-            r[verts] = v2.T
-            vr = Dinv.dot(lhs.dot(r))
-            phi = lhsfac.solve_A(-D[notb][:,np.newaxis] * vr[notb])
-            
-            tphi = np.zeros((npt,nd))
-            tphi[notb] = phi
-            tphi[verts] = v2.T
-            
-            return tphi
+        if newinterp:
+            def _interp(vals):
+                v2 = np.atleast_2d(vals)
+                nd,nv = v2.shape
+                ij = np.zeros((2,nv*nd))
+                ij[0] = np.array(verts)[np.repeat(np.arange(nv), nd)]
+                ij[1] = np.tile(np.arange(nd), nv)
+                
+                r = sparse.csr_matrix((vals.T.ravel(), ij), shape=(npt,nd))
+
+                #vr = Dinv.dot(lhs.dot(r))
+                vr = lhs.dot(r)
+                
+                #phi = lhsfac.solve_A(-D[notb][:,np.newaxis] * vr[notb])
+                #phi = lhsfac.solve_A(-vr.todense()[notb]) # 29.9ms
+                phi = lhsfac.solve_A(-vr[notb].todense()) # 28.2ms
+                # phi = lhsfac.solve_A(-vr[notb]).todense() # 29.3ms
+                
+                tphi = np.zeros((npt,nd))
+                tphi[notb] = phi
+                tphi[verts] = v2.T
+                
+                return tphi
+
+        else:
+            def _interp(vals):
+                v2 = np.atleast_2d(vals)
+                nd = v2.shape[0]
+                r = np.zeros((npt,nd))
+                # r = sparse.lil_matrix((npt, nd))
+                r[verts] = v2.T
+                vr = lhs.dot(r)
+                # vr = lhs.dot(r)
+                phi = lhsfac.solve_A(-vr[notb])
+                # phi = lhsfac.solve_A(-vr[notb]).todense()
+                
+                tphi = np.zeros((npt,nd))
+                tphi[notb] = phi
+                tphi[verts] = v2.T
+                
+                return tphi
 
         return _interp
 
@@ -459,32 +489,6 @@ class Surface(object):
 
         return np.array(pts), np.array(polys)
 
-    # def smooth(self, scalars, neighborhood=2, smooth=8):
-    #     return scalars
-    #     if len(scalars) != len(self.pts):
-    #         raise ValueError('Each point must have a single value')
-            
-    #     def getpts(pt, n):
-    #         for face in self.connected[pt].indices:
-    #             for pt in self.polys[face]:
-    #                 if n == 0:
-    #                     yield pt
-    #                 else:
-    #                     for q in getpts(pt, n-1):
-    #                         yield q
-        
-    #     from . import mp
-    #     def func(i):
-    #         val = scalars[i]
-    #         neighbors = list(set(getpts(i, neighborhood)))
-    #         if len(neighbors) > 0:
-    #             g = np.exp(-((scalars[neighbors] - val)**2) / (2*smooth**2))
-    #             return (g * scalars[neighbors]).mean()
-    #         else:
-    #             return 0
-
-    #     return np.array(mp.map(func, range(len(scalars))))
-
     def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
         for p, facerow in enumerate(self.connected):
@@ -514,16 +518,6 @@ class Surface(object):
                     polys((d, b, a, c))
 
             yield pts.points, np.array(list(polys.triangles))
-
-    #def neighbors(self, n=1):
-    #    def neighbors(pt, n):
-    #        current = set(self.polys[self.connected[pt].indices])
-    #        if n - 1 > 0:
-    #            next = set()
-    #            for pt in current:
-    #                next = next | neighbors(pt, n-1)
-    #
-    #        return current | next
 
     def patches(self, auxpts=None, n=1):
         def align_polys(p, polys):
@@ -697,14 +691,6 @@ def decimate(pts, polys):
     dpts = dec.output.points.to_array()
     dpolys = dec.output.polys.to_array().reshape(-1, 4)[:,1:]
     return dpts, dpolys
-
-# def curvature(pts, polys):
-#     '''Computes mean curvature using VTK'''
-#     from tvtk.api import tvtk
-#     pd = tvtk.PolyData(points=pts, polys=polys)
-#     curv = tvtk.Curvatures(input=pd, curvature_type="mean")
-#     curv.update()
-#     return curv.output.point_data.scalars.to_array()
 
 def inside_convex_poly(pts):
     """Returns a function that checks if inputs are inside the convex hull of polyhedron defined by pts
