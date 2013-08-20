@@ -129,7 +129,7 @@ class ROIpack(object):
             with open(filename, "w") as outfile:
                 outfile.write(etree.tostring(outsvg))
         
-    def get_texture(self, texres, name=None, background=None, labels=True, bits=32):
+    def get_texture(self, texres, name=None, background=None, labels=True, bits=32, **kwargs):
         '''Renders the current roimap as a png'''
         #set the current size of the texture
         w, h = self.svgshape
@@ -349,8 +349,8 @@ class ROI(object):
     
     def get_labelpos(self, pts=None, norms=None, fancy=True):
         if not hasattr(self, "coords"):
-            pts = [self._parse_svg_pts(path.get("d")) for path in self.paths]
-            self.coords = [ self.parent.kdt.query(p)[1] for p in pts ]
+            cpts = [self._parse_svg_pts(path.get("d")) for path in self.paths]
+            self.coords = [ self.parent.kdt.query(p)[1] for p in cpts ]
         
         if pts is None:
             pts = self.parent.tcoords
