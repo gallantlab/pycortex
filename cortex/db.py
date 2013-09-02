@@ -456,6 +456,6 @@ class Database(object):
                 path = os.path.join(filestore, subject, dirname)
                 os.makedirs(path)
             except OSError:
-                print "Error making directory %s"%path
+                print("Error making directory %s"%path)
 
 surfs = Database()
