@@ -456,6 +456,7 @@ def scrub(svgfile):
 
 def make_svg(pts, polys):
     from .polyutils import trace_poly, boundary_edges
+    pts = pts.copy()
     pts -= pts.min(0)
     pts *= 1024 / pts.max(0)[1]
     pts[:,1] = 1024 - pts[:,1]
