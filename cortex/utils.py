@@ -95,7 +95,6 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
 
 def add_roi(data, name="new_roi", recache=False, open_inkscape=True, add_path=True, **kwargs):
     import subprocess as sp
-    from matplotlib.pylab import imsave
     from .utils import get_roipack
     from . import quickflat
     rois = get_roipack(data.subject)
@@ -229,6 +228,16 @@ def get_curvature(subject, smooth=20.0, **kwargs):
         curvs.append(curv)
     return curvs
 
+def get_thickness(subject):
+    """Compute cortical thickness (in mm) at each vertex.
+    Returns a VertexData object.
+    """
+    wmpts, wmpolys = surfs.getSurf(subject, "wm", merge=True)
+    piapts, piapolys = surfs.getSurf(subject, "pia", merge=True)
+    thickness = np.sqrt(((piapts - wmpts)**2).sum(1))
+
+    from .dataset import VertexData
+    return VertexData(thickness, subject)
 
 def get_flatmap_distortion(sub, type="areal", smooth=20.0):
     """Computes distortion of flatmap relative to fiducial surface. Several different
