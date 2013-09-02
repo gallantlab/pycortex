@@ -10,7 +10,7 @@ from .. import dataset
 
 def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     from ..db import surfs
-    from . import point, patch, volume
+    from . import point, patch, volume, line
 
     mapcls = dict(
         nearest=point.PointNN,
@@ -19,7 +19,9 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
         lanczos=point.PointLanczos,
         const_patch_nn=patch.ConstPatchNN,
         const_patch_trilin=patch.ConstPatchTrilin,
-        const_patch_lanczos=patch.ConstPatchLanczos)
+        const_patch_lanczos=patch.ConstPatchLanczos,
+        line_nearest=line.LineNN,
+        line_trilinear=line.LineTrilin)
     Map = mapcls[type]
     ptype = Map.__name__.lower()
     kwds ='_'.join(['%s%s'%(k,str(v)) for k, v in list(kwargs.items())])
