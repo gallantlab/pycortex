@@ -105,7 +105,10 @@ HDF5 format::
 
     /subjects/
         s1/
-            rois.svg
+            rois/
+                name[n]
+                name[n]
+                name[n]
             transforms/
                 xfm1/
                     xfm[4,4]
@@ -125,8 +128,12 @@ HDF5 format::
                         pts[n,3]
                         polys[m,3]
     /datasets/
-        ds1
-            ->subject
-            ->xfm
-            ->mask
-        ds2
+        name
+            -> subject
+            -> xfmname
+            -> maskname
+    - views
+        - datalist
+        - name
+        - description
+        - view attrs (in json)
