@@ -15,10 +15,8 @@ class Dataset(object):
         self.views = []
         for name, data in kwargs.items():
             norm = normalize(data)
-            if isinstance(norm, (VolumeData, VertexData)):
+            if isinstance(norm, BrainData):
                 self.datasets[name] = norm
-            elif isinstance(norm, Dataset):
-                self.datasets.update(norm.datasets)
 
     @classmethod
     def from_file(cls, filename):
@@ -168,8 +166,44 @@ class Dataset(object):
 
         return Dataset(**ds)
 
-class VolumeData(object):
-    def __init__(self, data, subject, xfmname, mask=None, **kwargs):
+class BrainData(object):
+    def __init__(self, data):
+        if isinstance(data, str):
+            import nibabel
+            nib = nibabel.load(data)
+            data = nib.get_data().T
+        self.data = data
+
+    def exp(self):
+        """Copy of this object with data exponentiated.
+        """
+        return self.copy(np.exp(self.data))
+    
+    @classmethod
+    def add_numpy_methods(cls):
+        """Adds numpy operator methods (+, -, etc.) to this class to allow
+        simple manipulation of the data, e.g. with VolumeData v:
+        v + 1 # Returns new VolumeData with 1 added to data
+        v ** 2 # Returns new VolumeData with data squared
+        """
+        # Binary operations
+        npops = ["__add__", "__sub__", "__mul__", "__div__", "__pow__",
+                 "__neg__", "__abs__"]
+
+        def make_opfun(op): # function nesting creates closure containing op
+            def opfun(self, *args):
+                return self.copy(getattr(self.data, op)(*args))
+            return opfun
+        
+        for op in npops:
+            opfun = make_opfun(op)
+            opfun.__name__ = op
+            setattr(cls, opfun.__name__, opfun)
+
+BrainData.add_numpy_methods()
+
+class VolumeData(BrainData):
+    def __init__(self, data, subject, xfmname, mask=None):
         """Three possible variables: raw, volume, movie, vertex. Enumerated with size:
         raw volume movie: (t, z, y, x, c)
         raw volume image: (z, y, x, c)
@@ -180,12 +214,7 @@ class VolumeData(object):
         raw linear image: (v, c)
         reg linear image: (v,)
         """
-        if isinstance(data, str):
-            import nibabel
-            nib = nibabel.load(data)
-            data = nib.get_data().T
-
-        self.data = data
+        super(VolumeData, self).__init__(data)
         try:
             basestring
         except NameError:
@@ -193,12 +222,9 @@ class VolumeData(object):
             xfmname = xfmname if isinstance(xfmname, str) else xfmname.decode('utf-8')
         self.subject = subject
         self.xfmname = xfmname
-        self.attrs = kwargs
         
         self._check_size(mask)
-        self.masked = Masker(self)
-
-        #self.add_numpy_methods()
+        self.masked = _masker(self)
 
     def copy(self, newdata=None):
         """Copies this VolumeData.
@@ -294,18 +320,6 @@ class VolumeData(object):
 
         return data
 
-    @property
-    def priority(self):
-        """Sets the priority of this VolumeData in a dataset.
-        """
-        if 'priority' in self.attrs:
-            return self.attrs['priority']
-        return 1000
-
-    @priority.setter
-    def priority(self, val):
-        self.attrs['priority'] = val
-
     def save(self, filename, name="data"):
         """Save the dataset into an hdf file with the provided name
         """
@@ -330,35 +344,6 @@ class VolumeData(object):
             node.attrs.mask = self.masktype
         for name, value in self.attrs.items():
             node.attrs[name] = value
-
-    def exp(self):
-        """Copy of this object with data exponentiated.
-        """
-        return self.copy(np.exp(self.data))
-    
-    @classmethod
-    def add_numpy_methods(cls):
-        """Adds numpy operator methods (+, -, etc.) to this class to allow
-        simple manipulation of the data, e.g. with VolumeData v:
-        v + 1 # Returns new VolumeData with 1 added to data
-        v ** 2 # Returns new VolumeData with data squared
-        """
-        # Binary operations
-        npops = ["__add__", "__sub__", "__mul__", "__div__", "__pow__",
-                 "__neg__", "__abs__"]
-
-        def make_opfun(op): # function nesting creates closure containing op
-            def opfun(self, *args):
-                return self.copy(getattr(self.data, op)(*args))
-            return opfun
-        
-        for op in npops:
-            opfun = make_opfun(op)
-            opfun.__name__ = op
-            setattr(cls, opfun.__name__, opfun)
-
-VolumeData.add_numpy_methods()
-
 
 class VertexData(VolumeData):
     def __init__(self, data, subject, **kwargs):
@@ -489,7 +474,25 @@ class VertexData(VolumeData):
         else:
             return self.vertices[self.llen:]
 
-class Masker(object):
+class View(object):
+    def __init__(self, cmap=None, vmin=None, vmax=None, state=None):
+        self.cmap = cmap
+        self.vmin = vmin
+        self.vmax = vmax
+        self.state = state
+
+    def __call__(self, name, data):
+        return DataView(name, data, cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state)
+
+class DataView(View):
+    def __init__(self, name, data, description="", **kwargs):
+        self.name = name
+        self.data = data
+        self.description = description
+        super(DataView, self).__init__(**kwargs)
+
+
+class _masker(object):
     def __init__(self, ds):
         self.ds = ds
 
