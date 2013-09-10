@@ -388,8 +388,14 @@ class VertexData(VolumeData):
         """Sets the data of this VertexData. Also sets flags if the data appears to
         be in 'movie' or 'raw' format. See __init__ for data shape possibilities.
         """
+        # If no data is given, initialize to empty floats
+        if data is None:
+            data = np.zeros((self.llen + self.rlen,))
+
+        # Store the data
         self.data = data
-        
+
+        # Figure out what kind of data it is
         self.movie = False
         self.raw = data.dtype == np.uint8
         if data.ndim == 3:

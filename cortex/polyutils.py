@@ -454,6 +454,55 @@ class Surface(object):
     def get_graph(self):
         return self.graph
 
+    @property
+    def poly_graph(self):
+        """NetworkX undirected graph representing polygons of this Surface.
+        """
+        import networkx as nx
+        from collections import defaultdict
+        edges = defaultdict(list)
+        for ii,(a,b,c) in enumerate(self.polys):
+            edges[frozenset([a,b])].append(ii)
+            edges[frozenset([a,c])].append(ii)
+            edges[frozenset([b,c])].append(ii)
+
+        #nedges = len(edges)
+        #ii,jj = np.vstack(edges.values()).T
+        #polymat = sparse.coo_matrix((np.ones((nedges,)), (ii, jj)), shape=[len(self.polys)]*2)
+        polygraph = nx.Graph()
+        polygraph.add_edges_from(((p[0], p[1], dict(verts=k)) for k,p in edges.iteritems()))
+        return polygraph
+
+    def get_boundary(self, vertices, remove_danglers=False):
+        """Return interior and exterior boundary sets for `vertices`.
+        If `remove_danglers` is True vertices in the internal boundary with
+        only one neighbor in the internal boundary will be moved to the external
+        boundary.
+        """
+        if not len(vertices):
+            return [], []
+        
+        import networkx as nx
+        
+        # Use networkx to get external boundary
+        external_boundary = set(nx.node_boundary(self.graph, vertices))
+
+        # Find adjacent vertices to get inner boundary
+        internal_boundary = set.union(*[set(self.graph[v].keys())
+                                        for v in external_boundary]).intersection(set(vertices))
+
+        if remove_danglers:
+            ingraph = self.graph.subgraph(internal_boundary)
+            danglers = [n for n,d in ingraph.degree().items() if d==1]
+            while danglers:
+                internal_boundary -= set(danglers)
+                external_boundary |= set(danglers)
+                
+                ingraph = self.graph.subgraph(internal_boundary)
+                danglers = [n for n,d in ingraph.degree().items() if d<2]
+            
+        return list(internal_boundary), list(external_boundary)
+        
     def extract_chunk(self, nfaces=100, seed=None, auxpts=None):
         '''Extract a chunk of the surface using breadth first search, for testing purposes'''
         node = seed

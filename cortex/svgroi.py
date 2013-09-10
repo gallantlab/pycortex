@@ -20,7 +20,7 @@ parser = etree.XMLParser(remove_blank_text=True, huge_tree=True)
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
 class ROIpack(object):
-    def __init__(self, tcoords, svgfile, callback=None, 
+    def __init__(self, tcoords, svgfile, valid, callback=None, 
         linewidth=None, linecolor=None, roifill=None, shadow=None,
         labelsize=None, labelcolor=None):
         if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
@@ -29,6 +29,7 @@ class ROIpack(object):
 
         self.tcoords = tcoords
         self.svgfile = svgfile
+        self.valid = valid
         self.callback = callback
         self.kdt = cKDTree(tcoords)
 
@@ -194,13 +195,14 @@ class ROIpack(object):
         imdat = np.array(Image.open(im))[::-1]
         idx = (self.tcoords*(np.array(self.svgshape)-1)).round().astype(int)[:,::-1]
         roiidx = np.nonzero(imdat[tuple(idx.T)] == 1)[0]
+        validroiidx = np.intersect1d(roiidx, self.valid)
 
         #restore the old roi settings
         for name, roi in list(self.rois.items()):
             roi.set(**state[name])
 
         self.set(shadow=shadow)
-        return roiidx
+        return validroiidx
     
     @property
     def names(self):
@@ -476,15 +478,15 @@ def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
     from .db import surfs
     
     cullpts = pts[:,:2]
+    valid = np.unique(polys)
     if remove_medial:
-        valid = np.unique(polys)
         cullpts = cullpts[valid]
 
     if not os.path.exists(svgfile):
         with open(svgfile, "w") as fp:
             fp.write(make_svg(pts.copy(), polys))
 
-    rois = ROIpack(cullpts, svgfile, **kwargs)
+    rois = ROIpack(cullpts, svgfile, valid, **kwargs)
     if remove_medial:
         return rois, valid
         
