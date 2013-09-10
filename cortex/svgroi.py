@@ -273,8 +273,9 @@ class ROI(object):
         self.hide = "style" in xml.attrib and "display:none" in xml.get("style")
         self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
     
-    def _parse_svg_pts(self, data):
-        data = data.replace(",", " ").split()
+    def _parse_svg_pts(self, datastr):
+        data = list(_tokenize_path(datastr))
+        #data = data.replace(",", " ").split()
         if data.pop(0).lower() != "m":
             raise ValueError("Unknown path format")
         #offset = np.array([float(x) for x in data[1].split(',')])
@@ -489,3 +490,19 @@ def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
         return rois, valid
         
     return rois
+
+## From svg.path (https://github.com/regebro/svg.path/blob/master/src/svg/path/parser.py)
+import re
+
+COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
+UPPERCASE = set('MZLHVCSQTA')
+
+COMMAND_RE = re.compile("([MmZzLlHhVvCcSsQqTtAa])")
+FLOAT_RE = re.compile("[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?")
+
+def _tokenize_path(pathdef):
+    for x in COMMAND_RE.split(pathdef):
+        if x in COMMANDS:
+            yield x
+        for token in FLOAT_RE.findall(x):
+            yield token
