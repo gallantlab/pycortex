@@ -1,6 +1,7 @@
 """Module for maintaining brain data and their masks
 """
 import os
+import hashlib
 import numpy as np
 
 from .db import surfs
@@ -9,14 +10,31 @@ from . import volume
 from . import utils
 
 class Dataset(object):
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.subjects = {}
-        self.datasets = {}
-        self.views = []
+        self.views = {}
+        self.data = {}
+        self.append(*args, **kwargs)
+
+    def append(self, *args, **kwargs):
+        for view in args:
+            if isinstance(view, View):
+                self.views[view.name] = view
+                if isinstance(view, DataView):
+                    self.data[hash(view.data)] = view.data
+            else:
+                raise TypeError("Unknown dataset input type")
+
         for name, data in kwargs.items():
             norm = normalize(data)
             if isinstance(norm, BrainData):
-                self.datasets[name] = norm
+                self.data[hash(norm)] = norm
+                self.views[name] = DataView(name, norm)
+            elif isinstance(norm, Dataset):
+                self.views.update(norm.views)
+                self.data.update(norm.data)
+
+        return self
 
     @classmethod
     def from_file(cls, filename):
@@ -34,20 +52,11 @@ class Dataset(object):
             h5.close()
         return ds
 
-    def append(self, **kwargs):
-        for name, data in kwargs.items():
-            if isinstance(data, VolumeData):
-                self.datasets[name] = data
-            else:
-                self.datasets[name] = VolumeData(*data)
-
-        return self
-
     def __getattr__(self, attr):
         if attr in self.__dict__:
             return self.__dict__[attr]
-        elif attr in self.datasets:
-            return self.datasets[attr]
+        elif attr in self.views:
+            return self.views[attr]
 
         raise AttributeError
 
@@ -178,6 +187,9 @@ class BrainData(object):
         """Copy of this object with data exponentiated.
         """
         return self.copy(np.exp(self.data))
+
+    def __hash__(self):
+        return hashlib.sha1(self.data.view(np.uint8)).hexdigest()
     
     @classmethod
     def add_numpy_methods(cls):
@@ -475,21 +487,23 @@ class VertexData(VolumeData):
             return self.vertices[self.llen:]
 
 class View(object):
-    def __init__(self, cmap=None, vmin=None, vmax=None, state=None):
+    def __init__(self, name, cmap=None, vmin=None, vmax=None, state=None):
+        self.name = name
         self.cmap = cmap
         self.vmin = vmin
         self.vmax = vmax
         self.state = state
 
-    def __call__(self, name, data):
+    def __call__(self, data, name=None):
+        if name is None:
+            name = self.name
         return DataView(name, data, cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state)
 
 class DataView(View):
     def __init__(self, name, data, description="", **kwargs):
-        self.name = name
         self.data = data
         self.description = description
-        super(DataView, self).__init__(**kwargs)
+        super(DataView, self).__init__(name, **kwargs)
 
 
 class _masker(object):
@@ -508,7 +522,7 @@ class _masker(object):
         return VolumeData(self.ds.volume[mask], s, x, mask=masktype)
 
 def normalize(data):
-    if isinstance(data, (VolumeData, VertexData, Dataset)):
+    if isinstance(data, (BrainData, Dataset, View)):
         return data
     elif isinstance(data, dict):
         return Dataset(**data)
