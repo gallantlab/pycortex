@@ -55,7 +55,8 @@ def automatic(subject, name, epifile, noclean=False):
         raw = surfs.getAnat(subject, type='raw').get_filename()
         bet = surfs.getAnat(subject, type='brainmask').get_filename()
         wmseg = surfs.getAnat(subject, type='whitematter').get_filename()
-
+        # The following transformations compute EPI-to-ANATOMICAL transformations.
+        # These are BACKWARDS from what we eventually want
         print('FLIRT pre-alignment')
         cmd = 'fsl5.0-flirt -ref {bet} -in {epi} -dof 6 -omat {cache}/init.mat'.format(cache=cache, epi=epifile, bet=bet)
         if sp.call(cmd, shell=True) != 0:
@@ -68,7 +69,12 @@ def automatic(subject, name, epifile, noclean=False):
             raise IOError('Error calling BBR flirt')
 
         x = np.loadtxt(os.path.join(cache, "out.mat"))
-        Transform.from_fsl(x, epifile, raw).save(subject, name, 'coord')
+        # Original code (before ML modification of from_fsl):
+        #Transform.from_fsl(x, epifile, raw).save(subject, name, 'coord')
+        # Modified by ML 2013.07
+        # Take the inverse of the transform
+        inv = np.linalg.inv
+        Transform.from_fsl(inv(x),raw,epifile).save(subject,name,'coord')
         print('Success')
 
     finally:
