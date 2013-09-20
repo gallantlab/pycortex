@@ -7,7 +7,7 @@ from . import samplers
 class VolumeMapper(Mapper):
     @classmethod
     def _cache(cls, filename, subject, xfmname, **kwargs):
-        from .db import surfs
+        from cortex.db import surfs
         masks = []
         xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
         pia = surfs.getSurf(subject, "pia", merge=False, nudge=False)
@@ -59,7 +59,8 @@ class Polyhedral(VolumeMapper):
     to estimate the thickness'''
     @staticmethod
     def _getmask(pia, wm, polys, shape):
-        mask = sparse.csr_matrix((len(wpts), np.prod(shape)))
+        from .. import polyutils
+        mask = sparse.csr_matrix((len(wm), np.prod(shape)))
 
         from tvtk.api import tvtk
         measure = tvtk.MassProperties()
@@ -104,7 +105,8 @@ class Polyhedral(VolumeMapper):
 class ConvexPolyhedra(VolumeMapper):
     @classmethod
     def _getmask(cls, pia, wm, polys, shape, npts=1024):
-        from . import mp
+        from .. import mp
+        from .. import polyutils
         rand = np.random.rand(npts, 3)
         csrshape = len(wm), np.prod(shape)
 
