@@ -21,6 +21,7 @@ def get_paths(subject, hemi, type="patch"):
 def import_subj(subject, sname=None):
     if sname is None:
         sname = subject
+    db.surfs.makeSubj(sname)
 
     import nibabel
     surfs = os.path.join(db.filestore, sname, "surfaces", "{name}_{hemi}.npz")
@@ -40,7 +41,7 @@ def import_subj(subject, sname=None):
 
     curvs = dict(lh=[], rh=[])
     #import surfaces
-    for fsname, name in dict(smoothwm="wm", pial="pia", inflated="inflated").items():
+    for fsname, name in [('smoothwm',"wm"), ('pial',"pia"), ('inflated',"inflated"), ('inflated',"flat")]:
         for hemi in ("lh", "rh"):
             pts, polys, curv = get_surf(subject, hemi, fsname)
             fname = surfs.format(subj=sname, name=name, hemi=hemi)

@@ -1,5 +1,6 @@
 import os
 import glob
+import struct
 import numpy as np
 from collections import OrderedDict
 
@@ -107,3 +108,11 @@ def write_off(bytes filename, object pts, object polys):
         fp.write('%d %d 0\n'%(len(pts), len(polys)))
         np.savetxt(fp, pts, fmt='%f')
         np.savetxt(fp, spolys, fmt='%d')
+
+def write_stl(bytes filename, object pts, object polys):
+    dtype = np.dtype("3f4, 9f4, H")
+    data = np.zeros((len(polys),), dtype=dtype)
+    data['f1'] = pts[polys].reshape(-1, 9)
+    with open(filename, 'w') as fp:
+        fp.write(struct.pack('80xI', len(polys)))
+        fp.write(data.tostring())

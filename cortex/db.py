@@ -190,6 +190,16 @@ class Database(object):
                 pts = kwargs['pts']
                 del kwargs['pts']
             return svgroi.get_roipack(svgfile, pts, polys, **kwargs)
+        if type == "external":
+            from . import svgroi
+            pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
+            #svgfile = self.getFiles(subject)['rois']
+            svgfile = kwargs["svgfile"]
+            del kwargs["svgfile"]
+            if 'pts' in kwargs:
+                pts = kwargs['pts']
+                del kwargs['pts']
+            return svgroi.get_roipack(svgfile, pts, polys, **kwargs)
 
         raise TypeError('Invalid overlay type')
     
@@ -435,5 +445,17 @@ class Database(object):
         )
 
         return filenames
+
+    def makeSubj(self, subject):
+        if os.path.exists(os.path.join(filestore, subject)):
+            if raw_input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
+                shutil.rmtree(os.path.join(filestore, subject))
+
+        for dirname in ['transforms', 'anatomicals', 'cache', 'surfaces']:
+            try:
+                path = os.path.join(filestore, subject, dirname)
+                os.makedirs(path)
+            except OSError:
+                print("Error making directory %s"%path)
 
 surfs = Database()

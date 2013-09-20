@@ -1,31 +1,4 @@
 """Module for maintaining brain data and their masks
-
-HDF5 format:
-
-/subjects/
-    s1/
-        rois.svg
-        transforms/
-            xfm1/
-                xfm[4,4]
-                masks/
-                    thin[z,y,x]
-                    thick[z,y,x]
-            xfm2/
-                xfm[4,4]
-                masks/
-                    thin[z,y,x]
-        surfaces
-            fiducial
-                lh
-                    pts[n,3]
-                    polys[m,3]
-                rh
-                    pts[n,3]
-                    polys[m,3]
-/datasets/
-    ds1
-    ds2
 """
 import os
 import numpy as np
@@ -39,6 +12,7 @@ class Dataset(object):
     def __init__(self, **kwargs):
         self.subjects = {}
         self.datasets = {}
+        self.views = []
         for name, data in kwargs.items():
             norm = normalize(data)
             if isinstance(norm, (VolumeData, VertexData)):
@@ -226,6 +200,14 @@ class VolumeData(object):
 
         #self.add_numpy_methods()
 
+    def copy(self, newdata=None):
+        """Copies this VolumeData.
+        """
+        if newdata is None:
+            return VolumeData(self.data, self.subject, self.xfmname, **self.attrs)
+        else:
+            return VolumeData(newdata, self.subject, self.xfmname, **self.attrs)
+
     def _check_size(self, mask):
         self.raw = self.data.dtype == np.uint8
         if self.data.ndim == 5:
@@ -274,6 +256,8 @@ class VolumeData(object):
             self.shape = shape
 
     def map(self, projection="nearest"):
+        """Convert this VolumeData into a VertexData using the given sampler
+        """
         mapper = utils.get_mapper(self.subject, self.xfmname, projection)
         data = mapper(self)
         data.attrs['projection'] = (self.xfmname, projection)
@@ -295,14 +279,9 @@ class VolumeData(object):
             raise ValueError('Cannot index non-movie data')
         return VolumeData(self.data[idx], self.subject, self.xfmname, **self.attrs)
 
-    def copy(self, newdata=None):
-        if newdata is None:
-            return VolumeData(self.data, self.subject, self.xfmname, **self.attrs)
-        else:
-            return VolumeData(newdata, self.subject, self.xfmname, **self.attrs)
-
     @property
     def volume(self):
+        """Standardizes the VolumeData, ensuring that masked data are unmasked"""
         if self.linear:
             data = volume.unmask(self.mask, self.data)
         else:
@@ -317,6 +296,8 @@ class VolumeData(object):
 
     @property
     def priority(self):
+        """Sets the priority of this VolumeData in a dataset.
+        """
         if 'priority' in self.attrs:
             return self.attrs['priority']
         return 1000
@@ -326,6 +307,8 @@ class VolumeData(object):
         self.attrs['priority'] = val
 
     def save(self, filename, name="data"):
+        """Save the dataset into an hdf file with the provided name
+        """
         import tables
         if isinstance(filename, str):
             fname, ext = os.path.splitext(filename)
@@ -348,6 +331,11 @@ class VolumeData(object):
         for name, value in self.attrs.items():
             node.attrs[name] = value
 
+    def exp(self):
+        """Copy of this object with data exponentiated.
+        """
+        return self.copy(np.exp(self.data))
+    
     @classmethod
     def add_numpy_methods(cls):
         """Adds numpy operator methods (+, -, etc.) to this class to allow
@@ -380,16 +368,29 @@ class VertexData(VolumeData):
         reg linear movie: (t, v)
         raw linear image: (v, c)
         reg linear image: (v,)
+
+        where t is the number of time points, c is colors (i.e. RGB), and v is the
+        number of vertices (either in both hemispheres or one hemisphere)
         """
-        self.data = data
         try:
             basestring
         except NameError:
             subject = subject if isinstance(subject, str) else subject.decode('utf-8')
         self.subject = subject
         self.attrs = kwargs
-        self.movie = False
+        
+        left, right = surfs.getSurf(self.subject, "fiducial")
+        self.llen = len(left[0])
+        self.rlen = len(right[0])
+        self._set_data(data)
 
+    def _set_data(self, data):
+        """Sets the data of this VertexData. Also sets flags if the data appears to
+        be in 'movie' or 'raw' format. See __init__ for data shape possibilities.
+        """
+        self.data = data
+        
+        self.movie = False
         self.raw = data.dtype == np.uint8
         if data.ndim == 3:
             self.movie = True
@@ -399,12 +400,39 @@ class VertexData(VolumeData):
             self.movie = not self.raw
 
         self.nverts = self.data.shape[-2 if self.raw else -1]
-        left, right = surfs.getSurf(self.subject, "fiducial")
-        self.llen = len(left[0])
-        if len(np.vstack([left[0], right[0]])) != self.nverts:
+        if self.llen == self.nverts:
+            # Just data for left hemisphere
+            self.hem = "left"
+            rshape = list(self.data.shape)
+            rshape[1 if self.movie else 0] = self.rlen
+            self.data = np.hstack([self.data, np.zeros(rshape, dtype=self.data.dtype)])
+        elif self.rlen == self.nverts:
+            # Just data for right hemisphere
+            self.hem = "right"
+            lshape = list(self.data.shape)
+            lshape[1 if self.movie else 0] = self.llen
+            self.data = np.hstack([np.zeros(lshape, dtype=self.data.dtype), self.data])
+        elif self.llen + self.rlen == self.nverts:
+            # Data for both hemispheres
+            self.hem = "both"
+        else:
             raise ValueError('Invalid number of vertices for subject')
 
-        #self.add_numpy_methods()
+    def copy(self, newdata=None):
+        """Copies this VertexData. Uses __new__ to avoid expensive initialization.
+        """
+        newvd = self.__class__.__new__(self.__class__)
+        newvd.subject = self.subject
+        newvd.attrs = self.attrs
+        newvd.llen = self.llen
+        newvd.rlen = self.rlen
+        
+        if newdata is None:
+            newvd._set_data(self.data)
+        else:
+            newvd._set_data(newdata)
+
+        return newvd
 
     def _check_size(self):
         raise NotImplementedError
@@ -430,14 +458,9 @@ class VertexData(VolumeData):
     def __getitem__(self, idx):
         if not self.movie:
             raise TypeError("Cannot index non-movie data")
-
-        return VertexData(self.data[idx], self.subject, **self.attrs)
-
-    def copy(self, newdata=None):
-        if newdata is None:
-            return VertexData(self.data, self.subject, **self.attrs)
-        else:
-            return VertexData(newdata, self.subject, **self.attrs)
+        
+        #return VertexData(self.data[idx], self.subject, **self.attrs)
+        return self.copy(self.data[idx])
 
     def _write_hdf(self, h5, name="data"):
         node = _hdf_write(h5, self.data, name=name)
@@ -446,18 +469,25 @@ class VertexData(VolumeData):
             node.attrs[name] = value
 
     @property
+    def vertices(self):
+        if self.raw and self.data.shape[-1] < 4:
+            shape = (1,)+self.data.shape[::-1][1:]
+            return np.vstack([self.data.T, 255*np.ones(shape, dtype=np.uint8)]).T
+        return self.data
+
+    @property
     def left(self):
         if self.movie:
-            return self.data[:,:self.llen]
+            return self.vertices[:,:self.llen]
         else:
-            return self.data[:self.llen]
+            return self.vertices[:self.llen]
 
     @property
     def right(self):
         if self.movie:
-            return self.data[:,self.llen:]
+            return self.vertices[:,self.llen:]
         else:
-            return self.data[self.llen:]
+            return self.vertices[self.llen:]
 
 class Masker(object):
     def __init__(self, ds):

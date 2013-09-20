@@ -100,7 +100,7 @@ def _make_vertex_cache(subject, height=1024):
     dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), valid[vert]]))
     return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
 
-def _make_pixel_cache(subject, xfmname, height=1024, thick=32, projection='nearest'):
+def _make_pixel_cache(subject, xfmname, height=1024, thick=32, sampler='nearest'):
     from scipy import sparse
     from scipy.spatial import cKDTree, Delaunay
     flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
@@ -127,7 +127,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, projection='neare
 
     from cortex.mapper import samplers
     xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
-    sampclass = getattr(samplers, projection)
+    sampclass = getattr(samplers, sampler)
 
     ## Transform fiducial vertex locations to pixel locations using barycentric xfm
     try:
@@ -167,17 +167,17 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, projection='neare
         csrshape = mask.sum(), np.prod(xfm.shape)
         return sparse.csr_matrix((data, (vidx[i], j)), shape=csrshape)
 
-def get_flatcache(subject, xfmname, pixelwise=True, thick=32, projection='nearest', recache=False, height=1024):
+def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest', recache=False, height=1024):
     cachedir = surfs.getFiles(subject)['cachedir']
     cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
     if pixelwise and xfmname is not None:
-        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{projection}_l{thick}.npz")
-        cachefile = cachefile.format(height=height, xfmname=xfmname, projection=projection, thick=thick)
+        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{sampler}_l{thick}.npz")
+        cachefile = cachefile.format(height=height, xfmname=xfmname, sampler=sampler, thick=thick)
     
     if not os.path.exists(cachefile) or recache:
         print("Generating a flatmap cache")
         if pixelwise and xfmname is not None:
-            pixmap = _make_pixel_cache(subject, xfmname, height=height, projection=projection, thick=thick)
+            pixmap = _make_pixel_cache(subject, xfmname, height=height, sampler=sampler, thick=thick)
         else:
             pixmap = _make_vertex_cache(subject, height=height)
         np.savez(cachefile, data=pixmap.data, indices=pixmap.indices, indptr=pixmap.indptr, shape=pixmap.shape)
@@ -185,10 +185,11 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, projection='neares
         from scipy import sparse
         npz = np.load(cachefile)
         pixmap = sparse.csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
+        npz.close()
 
     if not pixelwise and xfmname is not None:
         from scipy import sparse
-        mapper = utils.get_mapper(subject, xfmname, projection)
+        mapper = utils.get_mapper(subject, xfmname, sampler)
         pixmap = pixmap * sparse.vstack(mapper.masks)
 
     return pixmap
@@ -200,11 +201,13 @@ def make(braindata, height=1024, **kwargs):
     if braindata.movie:
         raise ValueError('Cannot flatten multiple volumes')
 
-    mask = surfs.getAnat(braindata.subject, "flatmask", height=height)['mask'].T    
+    fmfile = surfs.getAnat(braindata.subject, "flatmask", height=height)
+    mask = fmfile['mask'].T
+    fmfile.close()
     
     if isinstance(braindata, dataset.VertexData):
         pixmap = get_flatcache(braindata.subject, None, height=height, **kwargs)
-        data = braindata.data
+        data = braindata.vertices
     else:
         pixmap = get_flatcache(braindata.subject, braindata.xfmname, height=height, **kwargs)
         data = braindata.volume
@@ -243,7 +246,7 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='nearest', height=1024, dpi=100,
+def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100,
                 with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
                 **kwargs):
@@ -260,7 +263,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
         Use pixel-wise mapping
     thick : int
         Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
-    projection : str
+    sampler : str
         Name of sampling function used to sample underlying volume data
     height : int
         Height of the image to render. Automatically scales the width for the aspect of the subject's flatmap
@@ -300,7 +303,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
     if "vmax" in braindata.attrs and "vmax" not in kwargs:
         kwargs['vmax'] = float(braindata.attrs['vmax'])
     
-    im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height, thick=thick)
+    im = make(braindata, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick)
     
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
@@ -317,7 +320,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
     if with_dropout:
         dax = fig.add_axes((0,0,1,1))
         dmap = make(utils.get_dropout(braindata.subject, braindata.xfmname),
-                    height=height, projection=projection)
+                    height=height, sampler=sampler)
         hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
         hatchspace = 4
         hatchpat = (hx+hy)%(2*hatchspace) < 2
@@ -327,14 +330,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
         dax.imshow(hatchim[::-1], aspect="equal", interpolation="nearest", origin="upper")
     
     if with_borders:
-        key = (braindata.subject, "borderlines")
-        if key not in rois:
-            border = _gen_flat_border(braindata.subject, im.shape[0])
-            rois[key] = border
-
+        border = _gen_flat_border(braindata.subject, im.shape[0])
         bax = fig.add_axes((0,0,1,1))
-        blc = LineCollection(rois[key][0], linewidths=3.0,
-                             colors=[['r','b'][mw] for mw in rois[key][1]])
+        blc = LineCollection(border[0], linewidths=3.0,
+                             colors=[['r','b'][mw] for mw in border[1]])
         bax.add_collection(blc)
         #bax.invert_yaxis()
     
@@ -348,10 +347,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, projection='
 
     return fig
 
-def make_png(fname, braindata, recache=False, pixelwise=True, projection='nearest', height=1024,
+def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
     bgcolor=None, dpi=100, **kwargs):
     """
-    make_png(name, braindata, recache=False, pixelwise=True, thick=32, projection='nearest', height=1024, dpi=100,
+    make_png(name, braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100,
                 with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
                 **kwargs)
@@ -370,7 +369,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, projection='neares
         Use pixel-wise mapping
     thick : int
         Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
-    projection : str
+    sampler : str
         Name of sampling function used to sample underlying volume data
     height : int
         Height of the image to render. Automatically scales the width for the aspect of the subject's flatmap
@@ -395,7 +394,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, projection='neares
         (R, G, B, A) specification for the label color
     """
     from matplotlib import pyplot as plt
-    fig = make_figure(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height, **kwargs)
+    fig = make_figure(braindata, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, **kwargs)
     imsize = fig.get_axes()[0].get_images()[0].get_size()
     fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
     if bgcolor is None:
@@ -408,9 +407,9 @@ def show(*args, **kwargs):
     raise DeprecationWarning("Use quickflat.make_figure instead")
     return make_figure(*args, **kwargs)
 
-def make_svg(fname, braindata, recache=False, pixelwise=True, projection='nearest', height=1024, **kwargs):
+def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024, **kwargs):
     ## Create quickflat image array
-    im = make(braindata, recache=recache, pixelwise=pixelwise, projection=projection, height=height)
+    im = make(braindata, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height)
     ## Convert to PNG
     try:
         import cStringIO
@@ -425,7 +424,8 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, projection='neares
     roipack = utils.get_roipack(subject)
     roipack.get_svg(fname, labels=True, with_ims=[pngdata])
 
-def make_movie(name, data, subject, xfmname, recache=False, height=1024, projection='nearest', dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
+def make_movie(name, data, subject, xfmname, recache=False, height=1024, sampler='nearest', dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
+    raise NotImplementedError
     import sys
     import shlex
     import shutil
@@ -436,7 +436,7 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, project
     from scipy.interpolate import interp1d
 
     #make the flatmaps
-    ims = make(data, subject, xfmname, recache=recache, height=height, projection=projection)
+    ims = make(data, subject, xfmname, recache=recache, height=height, sampler=sampler)
     if vmin is None:
         vmin = np.nanmin(ims)
     if vmax is None:

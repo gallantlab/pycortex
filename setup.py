@@ -2,6 +2,7 @@
 
 import os
 import sys
+from numpy.distutils.misc_util import get_numpy_include_dirs
 
 try:
     import configparser
@@ -29,7 +30,7 @@ from Cython.Build import cythonize
 def set_default_filestore(prefix, optfile):
     config = configparser.ConfigParser()
     config.read(optfile)
-    config.set("basic", "filestore", os.path.join(prefix))
+    config.set("basic", "filestore", os.path.join(prefix, "db"))
     config.set("webgl", "colormaps", os.path.join(prefix, "colormaps"))
     with open(optfile, 'w') as fp:
         config.write(fp)
@@ -62,13 +63,15 @@ ctm = Extension('cortex.openctm',
             ], libraries=['m'], include_dirs=
             ['OpenCTM-1.0.3/lib/', 
              'OpenCTM-1.0.3/lib/liblzma/'
-            ], define_macros=[
+            ] + get_numpy_include_dirs(),
+            define_macros=[
                 ('LZMA_PREFIX_CTM', None),
                 ('OPENCTM_BUILD', None),
                 #('__DEBUG_', None),
             ]
         )
-formats = Extension('cortex.formats', ['cortex/formats.pyx'])
+formats = Extension('cortex.formats', ['cortex/formats.pyx'],
+                    include_dirs=get_numpy_include_dirs())
 
 setup(name='pycortex',
       version='0.1.0',

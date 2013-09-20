@@ -112,7 +112,7 @@ def add_roi(data, name="new_roi", recache=False, open_inkscape=True, add_path=Tr
 
 def get_roi_verts(subject, roi=None):
     '''Return vertices for the given ROIs'''
-    rois = get_roipack(subject)
+    rois = surfs.getOverlay(subject)
 
     if roi is None:
         roi = rois.names
@@ -231,21 +231,17 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         pass
     return mask,roiIdx
 
-def get_curvature(subject, smooth=8, **kwargs):
+def get_curvature(subject, smooth=20.0, **kwargs):
     from . import polyutils
-    from tvtk.api import tvtk
     curvs = []
     for pts, polys in surfs.getSurf(subject, "fiducial"):
-        curv = polyutils.curvature(pts, polys)
-        if smooth > 0:
-            surf = polyutils.Surface(pts, polys)
-            curvs.append(surf.smooth(curv, smooth=smooth, **kwargs))
-        else:
-            curvs.append(curv)
+        surf = polyutils.Surface(pts, polys)
+        curv = surf.smooth(surf.mean_curvature(), smooth)
+        curvs.append(curv)
     return curvs
 
 
-def get_flatmap_distortion(sub, type="areal", smooth=8, **kwargs):
+def get_flatmap_distortion(sub, type="areal", smooth=20.0):
     """Computes distortion of flatmap relative to fiducial surface. Several different
     types of distortion are available:
     
@@ -263,114 +259,45 @@ def get_flatmap_distortion(sub, type="areal", smooth=8, **kwargs):
     for hem in ["lh", "rh"]:
         fidvert, fidtri = surfs.getSurf(sub, "fiducial", hem)
         flatvert, flattri = surfs.getSurf(sub, "flat", hem)
+        surf = Surface(fidvert, fidtri)
 
         dist = getattr(Distortion(flatvert, fidvert, flattri), type)
-        if smooth > 0:
-            surf = Surface(fidvert, flattri)
-            dist = surf.smooth(dist, smooth=8, **kwargs)
-        distortions.append(dist)
+        smdist = surf.smooth(dist, smooth)
+        distortions.append(smdist)
 
     return distortions
 
 def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
-    import networkx as nx
-    def iter_surfedges(tris):
-        for a,b,c in tris:
-            yield a,b
-            yield b,c
-            yield a,c
-
-    def make_surface_graph(tris):
-        graph = nx.Graph()
-        graph.add_edges_from(iter_surfedges(tris))
-        return graph
-
-    def dilate_vertset(vset, graph, iters=1):
-        outset = set(vset)
-        for ii in range(iters):
-            newset = set(outset)
-            for v in outset:
-                newset.update(graph[v].keys())
-            outset = set(newset)
-        return outset
-
-    def get_path_len_mm(path, verts):
-        if len(path)==1:
-            return 0
-        hops = zip(path[:-1], path[1:])
-        hopvecs = np.vstack([verts[a] - verts[b] for a,b in hops])
-        return np.sqrt((hopvecs**2).sum(1)).sum()
-
-    def memo_get_path_len_mm(path, verts, memo=dict()):
-        if len(path)==1:
-            return 0
-        if tuple(path) in memo:
-            return memo[tuple(path)]
-        lasthoplen = np.sqrt(((verts[path[-2]] - verts[path[-1]])**2).sum())
-        pathlen = memo_get_path_len_mm(path[:-1], verts, memo) + lasthoplen
-        memo[tuple(path)] = pathlen
-        return pathlen
-
+    from . import polyutils
+    
     tissots = []
     allcenters = []
     for hem in ["lh", "rh"]:
-        fidvert, fidtric = surfs.getSurf(sub, "fiducial", hem)
-        G = make_surface_graph(fidtri)
-        nvert = fidvert.shape[0]
+        fidpts, fidpolys = surfs.getSurf(sub, "fiducial", hem)
+        #G = make_surface_graph(fidtri)
+        surf = polyutils.Surface(fidpts, fidpolys)
+        nvert = fidpts.shape[0]
         tissot_array = np.zeros((nvert,))
 
-        #maxfails = 20
-        numfails = 0
-        cnum = 0
-        centers = []
-        while numfails < maxfails:
+        centers = [np.random.randint(nvert)]
+        cdists = [surf.geodesic_distance(centers)]
+        while True:
+            ## Find possible vertices
+            mcdist = np.vstack(cdists).min(0)
+            possverts = np.nonzero(mcdist > spacing)[0]
+            #possverts = np.nonzero(surf.geodesic_distance(centers) > spacing)[0]
+            if not len(possverts):
+                break
             ## Pick random vertex
-            centervert = np.random.randint(nvert)
-            print("Trying vertex %d.." % centervert)
-
-            ## Find distance from this center to all previous centers
-            #center_dists = [get_path_len_mm(nx.algorithms.shortest_path(G, centervert, cv), fidvert)
-            #                for cv in centers]
-
-            ## Check whether new center is sufficiently far from previous
-            paths = nx.algorithms.single_source_shortest_path(G, centervert, spacing/2 + 20)
-            scrap = False
-            for cv in centers:
-                if cv in paths:
-                    center_dist = get_path_len_mm(paths[cv], fidvert)
-                    if center_dist < spacing:
-                        scrap = True
-                        break
-
-            if scrap:
-                numfails += 1
-                print("Vertex too close to others, scrapping (nfails=%d).." % numfails)
-                continue
-
-            print("Vertex is good center, continuing..")
+            centervert = possverts[np.random.randint(len(possverts))]
             centers.append(centervert)
-            numfails = 0
-
-            paths = nx.algorithms.single_source_shortest_path(G, centervert, radius*2)
-            ## Find all vertices within a few steps of the center
-            #nearbyverts = dilate_vertset(set([centervert]), G, radius/2 + 10)
-
-            ## Pull out small graph containing only these vertices
-            #subG = G.subgraph(nearbyverts)
-
-            ## Find distance from center to each vertex
-            #paths = nx.algorithms.single_source_shortest_path(subG, centervert)
-            mymemo = dict()
-            dists = dict([(vi,memo_get_path_len_mm(p, fidvert, mymemo)) for vi,p in paths.iteritems()])
+            print("Adding vertex %d.." % centervert)
+            dists = surf.geodesic_distance([centervert])
+            cdists.append(dists)
 
             ## Find appropriate set of vertices
-            distfun = lambda d: np.tanh(radius-d)/2 + 0.5
-            #selverts = np.array([vi for vi,d in dists.iteritems() if d<radius])
-            #tissot_array[selverts] = cnum
-            verts, vals = map(np.array, zip(*[(vi,distfun(d)) for vi,d in dists.iteritems()]))
-            tissot_array[verts] += vals
-            print(vals.sum())
-            cnum += 1
+            selverts = dists < radius
+            tissot_array[selverts] = 1
 
         tissots.append(tissot_array)
         allcenters.append(np.array(centers))

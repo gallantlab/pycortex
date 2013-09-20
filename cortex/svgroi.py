@@ -15,7 +15,7 @@ from cortex.options import config
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
 sodins = "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-parser = etree.XMLParser(remove_blank_text=True)
+parser = etree.XMLParser(remove_blank_text=True, huge_tree=True)
 
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
@@ -51,7 +51,7 @@ class ROIpack(object):
             self.rois[roi.name] = roi
 
         self.set()
-        self.setup_labels(**kwargs)
+        #self.setup_labels(**kwargs)
 
     def add_roi(self, name, pngdata, add_path=True):
         #self.svg deletes the images -- we want to save those, so let's load it again
@@ -98,9 +98,13 @@ class ROIpack(object):
     def get_svg(self, filename=None, labels=True, with_ims=None):
         """Returns an SVG with the included images."""
         if labels:
-            self.labels.attrib['style'] = "display:inline;"
+            if hasattr(self, "labels"):
+                self.labels.attrib['style'] = "display:inline;"
+            else:
+                self.setup_labels(**kwargs)
         else:
-            self.labels.attrib['style'] = "display:none;"
+            if hasattr(self, "labels"):
+                self.labels.attrib['style'] = "display:none;"
         
         outsvg = copy.deepcopy(self.svg)
         if with_ims is not None:
@@ -125,7 +129,7 @@ class ROIpack(object):
             with open(filename, "w") as outfile:
                 outfile.write(etree.tostring(outsvg))
         
-    def get_texture(self, texres, name=None, background=None, labels=True, bits=32):
+    def get_texture(self, texres, name=None, background=None, labels=True, bits=32, **kwargs):
         '''Renders the current roimap as a png'''
         #set the current size of the texture
         w, h = self.svgshape
@@ -141,9 +145,13 @@ class ROIpack(object):
             self.svg.getroot().insert(0, img)
 
         if labels:
-            self.labels.attrib['style'] = "display:inline;"
+            if hasattr(self, "labels"):
+                self.labels.attrib['style'] = "display:inline;"
+            else:
+                self.setup_labels(**kwargs)
         else:
-            self.labels.attrib['style'] = "display:none;"
+            if hasattr(self, "labels"):
+                self.labels.attrib['style'] = "display:none;"
 
         pngfile = name
         if name is None:
@@ -262,8 +270,6 @@ class ROI(object):
         self.parent = parent
         self.name = xml.get("{%s}label"%inkns)
         self.paths = xml.findall(".//{%s}path"%svgns)
-        pts = [ self._parse_svg_pts(path.get("d")) for path in self.paths]
-        self.coords = [ self.parent.kdt.query(p)[1] for p in pts ]
         self.hide = "style" in xml.attrib and "display:none" in xml.get("style")
         self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
     
@@ -342,6 +348,10 @@ class ROI(object):
                 del path.attrib['filter']
     
     def get_labelpos(self, pts=None, norms=None, fancy=True):
+        if not hasattr(self, "coords"):
+            cpts = [self._parse_svg_pts(path.get("d")) for path in self.paths]
+            self.coords = [ self.parent.kdt.query(p)[1] for p in cpts ]
+        
         if pts is None:
             pts = self.parent.tcoords
 
@@ -445,12 +455,12 @@ def scrub(svgfile):
     return svg
 
 def make_svg(pts, polys):
-    from .polyutils import trace_both
+    from .polyutils import trace_poly, boundary_edges
     pts -= pts.min(0)
     pts *= 1024 / pts.max(0)[1]
     pts[:,1] = 1024 - pts[:,1]
     path = ""
-    for poly in trace_both(pts, polys):
+    for poly in trace_poly(boundary_edges(polys)):
         path +="M%f %f L"%tuple(pts[poly.pop(0), :2])
         path += ', '.join(['%f %f'%tuple(pts[p, :2]) for p in poly])
         path += 'Z '
@@ -471,7 +481,7 @@ def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
 
     if not os.path.exists(svgfile):
         with open(svgfile, "w") as fp:
-            fp.write(svgroi.make_svg(pts.copy(), polys))
+            fp.write(make_svg(pts.copy(), polys))
 
     rois = ROIpack(cullpts, svgfile, **kwargs)
     if remove_medial:

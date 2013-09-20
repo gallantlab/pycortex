@@ -76,11 +76,11 @@ class BrainCTM(object):
     def addCurvature(self, **kwargs):
         npz = surfs.getAnat(self.subject, type='curvature', **kwargs)
         try:
-            self.left.aux[:,1] = npz['left'][self.left.mask]
-            self.right.aux[:,1] = npz['right'][self.right.mask]
+            self.left.aux[:,1] = npz.left[self.left.mask]
+            self.right.aux[:,1] = npz.right[self.right.mask]
         except AttributeError:
-            self.left.aux[:,1] = npz['left']
-            self.right.aux[:,1] = npz['right']
+            self.left.aux[:,1] = npz.left
+            self.right.aux[:,1] = npz.right
 
     def save(self, path, method='mg2', **kwargs):
         ctmname = path+".ctm"

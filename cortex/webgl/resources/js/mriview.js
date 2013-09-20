@@ -68,10 +68,10 @@ var mriview = (function(module) {
                 hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
                 offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
                 
-                hatch:      { type:'t',  value:0, texture: module.makeHatch() },
-                colormap:   { type:'t',  value:1, texture: null },
-                map:        { type:'t',  value:2, texture: null },
-                data:       { type:'tv', value:3, texture: [null, null, null, null]},
+                //hatch:      { type:'t',  value:0, texture: module.makeHatch() },
+                colormap:   { type:'t',  value:0, texture: mriview.blanktex },
+                map:        { type:'t',  value:1, texture: mriview.blanktex },
+                data:       { type:'tv', value:2, texture: [mriview.blanktex, mriview.blanktex, mriview.blanktex, mriview.blanktex]},
                 mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
                 dshape:     { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
                 volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
@@ -195,6 +195,12 @@ var mriview = (function(module) {
             this._makeBtns(json.names);
             this.controls.flatsize = module.flatscale * this.flatlims[1][0];
             this.controls.flatoff = this.flatoff[1];
+            var gb0 = geometries[0].boundingBox, gb1 = geometries[1].boundingBox;
+            this.surfcenter = [
+                ((gb1.max.x - gb0.min.x) / 2) + gb0.min.x,
+                (Math.max(gb0.max.y, gb1.max.y) - Math.min(gb0.min.y, gb1.min.y)) / 2 + Math.min(gb0.min.y, gb1.min.y),
+                (Math.max(gb0.max.z, gb1.max.z) - Math.min(gb0.min.z, gb1.min.z)) / 2 + Math.min(gb0.min.z, gb1.min.z),
+            ];
 
             if (geometries[0].attributes.wm !== undefined) {
                 //We have a thickness volume!
@@ -256,6 +262,8 @@ var mriview = (function(module) {
             this.controls.addEventListener("undblpick", function(event) {
                 this.picker.undblpick();
             }.bind(this));
+
+            this.setState("target", this.surfcenter);
             
             if (typeof(callback) == "function")
                 this.loaded.done(callback);
@@ -765,7 +773,7 @@ var mriview = (function(module) {
                     e.preventDefault();
                     e.stopPropagation();
                 } else if (e.keyCode == 82) { //r
-                    this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
+                    this.animate([{idx:btnspeed, state:"target", value:this.surfcenter},
                                   {idx:btnspeed, state:"mix", value:0.0}]);
                 } else if (e.keyCode == 70) { //f
                     this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
