@@ -171,11 +171,14 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     #return rois, flat, coords, voxDst, voxIdx ## rois is a list of class svgROI; flat = flat cortex coords; coords = 3D coords
     if roiList is None:
         roiList = rois.names
+    else:
+        roiList = [r for r in roiList if r in ['Cortex','cortex']+rois.names]
 
     if isinstance(roiList, str):
         roiList = [roiList]
     # First: get all roi voxels into 4D volume
     tmpMask = np.zeros((np.prod(shape),len(roiList),2),np.bool)
+    dropROI = []
     for ir,roi in enumerate(roiList):
         if roi.lower()=='cortex':
             roiIdxB3 = np.ones(Lmask.shape)>0
@@ -190,15 +193,23 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
             roiIdxB3 = np.in1d(voxIdxF,roiIdxS2) # binary index to 3D volume (flattened, though)
         tmpMask[:,ir,0] = np.all(np.array([roiIdxB3,Lmask,CxMask]),axis=0)
         tmpMask[:,ir,1] = np.all(np.array([roiIdxB3,Rmask,CxMask]),axis=0)
-    roiListL = [r.lower() for r in roiList]
+        if not np.any(tmpMask[:,ir]):
+            dropROI += [ir]
+    print('shape before dropping:')
+    print(tmpMask.shape)
+    keepROI = np.array([not ir in dropROI for ir in range(len(roiList))])
+    roiListL = [r.lower() for ir,r in enumerate(roiList) if not ir in dropROI]
+    tmpMask = tmpMask[:,keepROI,:]
+    print("after dropping ROIs:")
+    print(tmpMask.shape)
     # Kill all overlap btw. "Cortex" and other ROIs
     if 'cortex' in roiListL:
         cIdx = roiListL.index('cortex')
         # Left:
-        OtherROIs = tmpMask[:,np.arange(len(roiList))!=cIdx,0] 
+        OtherROIs = tmpMask[:,np.arange(len(roiListL))!=cIdx,0] 
         tmpMask[:,cIdx,0] = np.logical_and(np.logical_not(np.any(OtherROIs,axis=1)),tmpMask[:,cIdx,0])
         # Right:
-        OtherROIs = tmpMask[:,np.arange(len(roiList))!=cIdx,1]
+        OtherROIs = tmpMask[:,np.arange(len(roiListL))!=cIdx,1]
         tmpMask[:,cIdx,1] = np.logical_and(np.logical_not(np.any(OtherROIs,axis=1)),tmpMask[:,cIdx,1])
 
     # Second: 
@@ -211,7 +222,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         # each voxel being assigned only ONE closest vertex
         print(('%d voxels cut'%np.sum(toCut)))
         tmpMask[toCut] = False 
-        for ir,roi in enumerate(roiList):
+        for ir,roi in enumerate(roiListL):
             mask[tmpMask[:,ir,0]] = -ir-1
             mask[tmpMask[:,ir,1]] = ir+1
             roiIdx[roi] = ir+1
