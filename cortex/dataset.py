@@ -2,6 +2,7 @@
 """
 import os
 import hashlib
+import tempfile
 import numpy as np
 
 from .db import surfs
@@ -10,10 +11,14 @@ from . import volume
 from . import utils
 
 class Dataset(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
+        import h5py
+        self.filename = tempfile.NamedTemporaryFile(suffix=".hdf")
+        self.hdf = h5py.File(self.filename)
         self.subjects = {}
         self.views = {}
         self.data = {}
+
         self.append(*args, **kwargs)
 
     def append(self, *args, **kwargs):
@@ -36,6 +41,31 @@ class Dataset(object):
 
         return self
 
+    def __getattr__(self, attr):
+        if attr in self.__dict__:
+            return self.__dict__[attr]
+        elif attr in self.views:
+            return self.views[attr]
+
+        raise AttributeError
+
+    def __getitem__(self, item):
+        return self.views[item]
+
+    def __iter__(self):
+        for name, dv in sorted(self.views.items(), key=lambda x: x[1].priority):
+            yield name, dv
+
+    def __repr__(self):
+        views = sorted(self.views.items(), key=lambda x: x[1].priority)
+        return "<Dataset with names [%s]>"%(', '.join([n for n, d in views]))
+
+    def __len__(self):
+        return len(self.views)
+
+    def __dir__(self):
+        return list(self.__dict__.keys()) + list(self.views.keys())
+
     @classmethod
     def from_file(cls, filename):
         import tables
@@ -51,45 +81,6 @@ class Dataset(object):
         else:
             h5.close()
         return ds
-
-    def __getattr__(self, attr):
-        if attr in self.__dict__:
-            return self.__dict__[attr]
-        elif attr in self.views:
-            return self.views[attr]
-
-        raise AttributeError
-
-    def __getitem__(self, item):
-        if isinstance(item, int):
-            return self.datasets[self.datasets.keys()[item]]
-        return self.datasets[item]
-
-    def __iter__(self):
-        for name, ds in sorted(self.datasets.items(), key=lambda x: x[1].priority):
-            yield name, ds
-
-    def __repr__(self):
-        datasets = sorted(self.datasets.items(), key=lambda x: x[1].priority)
-        return "<Dataset with names [%s]>"%(', '.join([n for n, d in datasets]))
-
-    def __len__(self):
-        return len(self.datasets)
-
-    def __add__(self, other):
-        if isinstance(other, dict):
-            other = Dataset(**other)
-
-        if not isinstance(other, Dataset):
-            return NotImplemented
-
-        entries = self.datasets.copy()
-        entries.update(other.datasets)
-        return Dataset(**entries)
-
-
-    def __dir__(self):
-        return list(self.__dict__.keys()) + list(self.datasets.keys())
 
     def save(self, filename, pack=False):
         import tables
@@ -487,12 +478,12 @@ class VertexData(VolumeData):
             return self.vertices[self.llen:]
 
 class View(object):
-    def __init__(self, name, cmap=None, vmin=None, vmax=None, state=None):
-        self.name = name
+    def __init__(self, cmap=None, vmin=None, vmax=None, state=None):
         self.cmap = cmap
         self.vmin = vmin
         self.vmax = vmax
         self.state = state
+        self.priority = 0
 
     def __call__(self, data, name=None):
         if name is None:
@@ -500,10 +491,10 @@ class View(object):
         return DataView(name, data, cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state)
 
 class DataView(View):
-    def __init__(self, name, data, description="", **kwargs):
+    def __init__(self, data, cmap=None, vmin=None, vmax=None, description="", **kwargs):
         self.data = data
         self.description = description
-        super(DataView, self).__init__(name, **kwargs)
+        super(DataView, self).__init__(cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
 
 
 class _masker(object):
@@ -576,16 +567,19 @@ def _find_mask(nvox, subject, xfmname):
 def _hdf_init(h5):
     import tables
     try:
-        h5.getNode("/datasets")
+        h5.getNode("/data")
     except tables.NoSuchNodeError:
-        h5.createGroup("/","datasets")
+        h5.createGroup("/","data")
     try:
         h5.getNode("/subjects")
     except tables.NoSuchNodeError:
         h5.createGroup("/", "subjects")
+    try:
+        h5.getNode("/views")
+        h5.createTable()
 
 
-def _hdf_write(h5, data, name="data", group="/datasets"):
+def _hdf_write(h5, data, name="data", group="/data"):
     import tables
     atom = tables.Atom.from_dtype(data.dtype)
     filt = tables.filters.Filters(complevel=9, complib='blosc', shuffle=True)
