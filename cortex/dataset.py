@@ -32,6 +32,7 @@ class Dataset(object):
 
         for name, data in kwargs.items():
             norm = normalize(data)
+
             if isinstance(norm, BrainData):
                 self.data[hash(norm)] = norm
                 self.views[name] = DataView(name, norm)
@@ -485,10 +486,8 @@ class View(object):
         self.state = state
         self.priority = 0
 
-    def __call__(self, data, name=None):
-        if name is None:
-            name = self.name
-        return DataView(name, data, cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state)
+    def __call__(self, data):
+        return DataView(data, cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state)
 
 class DataView(View):
     def __init__(self, data, cmap=None, vmin=None, vmax=None, description="", **kwargs):
