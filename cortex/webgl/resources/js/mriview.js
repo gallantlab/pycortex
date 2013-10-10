@@ -513,8 +513,7 @@ var mriview = (function(module) {
                 $(this.object).find("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
         }
         
-        //this.setData(names.slice(0, 2));
-	this.setData(names[0]);
+        this.setData(names[0]);
     };
     module.Viewer.prototype.setData = function(names) {
         if (!(names instanceof Array))

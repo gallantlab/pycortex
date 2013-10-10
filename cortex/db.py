@@ -407,9 +407,9 @@ class Database(object):
         vtkTmp = self.getSurf(subject, "fiducial", hemisphere=hemisphere, nudge=False)
         if not isinstance(vtkTmp,(tuple,list)):
             vtkTmp = [vtkTmp]
-        for pts, polys, norms in vtkTmp:
+        for pts, polys in vtkTmp:
             wpts = np.vstack([pts.T, np.ones(len(pts))])
-            coords.append(np.dot(xfm, wpts)[:3].round().astype(int).T)
+            coords.append(np.dot(xfm.xfm, wpts)[:3].round().astype(int).T)
 
         return coords
 
