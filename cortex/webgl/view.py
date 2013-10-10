@@ -135,8 +135,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
     surfs.auxfile = data
     subjects = list(set([ds.subject for name, ds in data]))
-    kwargs.update(dict(method='mg2', level=9, recache=recache))
-    ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
+    ctmargs = dict(method='mg2', level=9, recache=recache)
+    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs)) for subj in subjects)
     surfs.auxfile = None
 
     if layout is None:
