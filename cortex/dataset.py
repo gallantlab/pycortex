@@ -19,23 +19,15 @@ class Dataset(object):
         self.views = {}
         self.data = {}
 
-        self.append(*args, **kwargs)
+        self.append(**kwargs)
 
-    def append(self, *args, **kwargs):
-        for view in args:
-            if isinstance(view, View):
-                self.views[view.name] = view
-                if isinstance(view, DataView):
-                    self.data[hash(view.data)] = view.data
-            else:
-                raise TypeError("Unknown dataset input type")
-
+    def append(self, **kwargs):
         for name, data in kwargs.items():
             norm = normalize(data)
 
             if isinstance(norm, BrainData):
                 self.data[hash(norm)] = norm
-                self.views[name] = DataView(name, norm)
+                self.views[name] = DataView(norm)
             elif isinstance(norm, Dataset):
                 self.views.update(norm.views)
                 self.data.update(norm.data)
@@ -236,7 +228,7 @@ class VolumeData(BrainData):
         if newdata is None:
             return VolumeData(self.data, self.subject, self.xfmname, **self.attrs)
         else:
-            return VolumeData(newdata, self.subject, self.xfmname, **self.attrs)
+            return VolumeData(newdata, self.subject, self.xfmname, mask=self.mask, **self.attrs)
 
     def _check_size(self, mask):
         self.raw = self.data.dtype == np.uint8
@@ -271,7 +263,7 @@ class VolumeData(BrainData):
                 self.masktype = mask
             elif isinstance(mask, np.ndarray):
                 self.mask = mask
-                self.masktype = "user-supplied"
+                self.masktype = hashlib.sha1(mask.view(np.uint8)).hexdigest()[:6]
 
             self.shape = self.mask.shape
         else:
