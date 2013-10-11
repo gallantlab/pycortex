@@ -302,6 +302,8 @@ var mriview = (function(module) {
             case 'target':
                 var t = this.controls.target;
                 return [t.x, t.y, t.z];
+            case 'depth':
+                return this.uniforms.thickmix.value;
         };
     };
     module.Viewer.prototype.setState = function(state, value) {
@@ -321,6 +323,8 @@ var mriview = (function(module) {
             case 'target':
                 if (this.roipack) this.roipack._updatemove = true;
                 return this.controls.target.set(value[0], value[1], value[2]);
+            case 'depth':
+                return this.uniforms.thickmix.value = value;
         };
     };
     module.Viewer.prototype.animate = function(animation) {
@@ -353,6 +357,7 @@ var mriview = (function(module) {
             this.meshes.left.material = this.active[0].fastshader;
             this.meshes.right.material = this.active[0].fastshader;
         }
+        console.log(anim);
         this._animation = {anim:anim, start:new Date()};
         this.schedule();
     };
@@ -379,6 +384,8 @@ var mriview = (function(module) {
                 } else if (sec >= f.end.idx) {
                     this.setState(f.end.state, f.end.value);
                     f.ended = true;
+                } else if (sec < f.start.idx) {
+                    state = true;
                 }
             }
         }
