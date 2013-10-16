@@ -1,9 +1,22 @@
 """Module for maintaining brain data and their masks
+
+Three basic classes, with child classes:
+  1. Dataset
+  2. BrainData
+    a. VolumeData
+    b. VertexData
+  3. View
+    a. DataView
+
+Dataset holds a collection of View and BrainData objects. It provides a thin
+wrapper around h5py to store data. Datasets will store all View and BrainData
+objects into the h5py file, reconstituting each when requested.
 """
 import os
 import hashlib
 import tempfile
 import numpy as np
+import h5py
 
 from .db import surfs
 from .xfm import Transform
@@ -12,9 +25,6 @@ from . import utils
 
 class Dataset(object):
     def __init__(self, **kwargs):
-        import h5py
-        self.filename = tempfile.NamedTemporaryFile(suffix=".hdf")
-        self.hdf = h5py.File(self.filename)
         self.subjects = {}
         self.views = {}
         self.data = {}
@@ -51,7 +61,7 @@ class Dataset(object):
 
     def __repr__(self):
         views = sorted(self.views.items(), key=lambda x: x[1].priority)
-        return "<Dataset with names [%s]>"%(', '.join([n for n, d in views]))
+        return "<Dataset with views [%s]>"%(', '.join([n for n, d in views]))
 
     def __len__(self):
         return len(self.views)
@@ -61,42 +71,11 @@ class Dataset(object):
 
     @classmethod
     def from_file(cls, filename):
-        import tables
-        datasets = dict()
-        h5 = tables.openFile(filename)
-        for node in h5.walkNodes("/datasets/"):
-            if not isinstance(node, tables.Group):
-                datasets[node.name] = _from_file(h5, name=node.name)
-
-        ds = cls(**datasets)
-        if len(h5.root.subjects._v_children.keys()):
-            ds.subjects = h5.root.subjects
-        else:
-            h5.close()
-        return ds
+        h5 = h5py.File(filename)
+        raise NotImplementedError
 
     def save(self, filename, pack=False):
-        import tables
-        h5 = tables.openFile(filename, "a")
-        _hdf_init(h5)
-        for name, data in self.datasets.items():
-            data.save(h5, name=name)
-
-        if pack:
-            subjs = set()
-            xfms = set()
-            masks = set()
-            for name, data in self.datasets.items():
-                subjs.add(data.subject)
-                xfms.add((data.subject, data.xfmname))
-                if data.linear:
-                    masks.add((data.subject, data.xfmname, data.masktype))
-
-            _pack_subjs(h5, subjs)
-            _pack_xfms(h5, xfms)
-            _pack_masks(h5, masks)
-
-        h5.close()
+        raise NotImplementedError
 
     def getSurf(self, subject, type, hemi='both', merge=False, nudge=False):
         import tables
@@ -174,7 +153,12 @@ class BrainData(object):
 
     def __hash__(self):
         return hashlib.sha1(self.data.view(np.uint8)).hexdigest()
-    
+
+    def _write_hdf(self, node):
+        node.attrs['subject'] = self.subject
+        for name, value in self.attrs.items():
+            node.attrs[name] = value
+
     @classmethod
     def add_numpy_methods(cls):
         """Adds numpy operator methods (+, -, etc.) to this class to allow
@@ -218,7 +202,7 @@ class VolumeData(BrainData):
             xfmname = xfmname if isinstance(xfmname, str) else xfmname.decode('utf-8')
         self.subject = subject
         self.xfmname = xfmname
-        
+
         self._check_size(mask)
         self.masked = _masker(self)
 
@@ -226,9 +210,9 @@ class VolumeData(BrainData):
         """Copies this VolumeData.
         """
         if newdata is None:
-            return VolumeData(self.data, self.subject, self.xfmname, **self.attrs)
+            return VolumeData(self.data, self.subject, self.xfmname, mask=self._mask, **self.attrs)
         else:
-            return VolumeData(newdata, self.subject, self.xfmname, mask=self.mask, **self.attrs)
+            return VolumeData(newdata, self.subject, self.xfmname, mask=self._mask, **self.attrs)
 
     def _check_size(self, mask):
         self.raw = self.data.dtype == np.uint8
@@ -257,16 +241,17 @@ class VolumeData(BrainData):
                 nvox = self.data.shape[-2 if self.raw else -1]
                 if self.raw:
                     nvox = self.data.shape[-2]
-                self.masktype, self.mask = _find_mask(nvox, self.subject, self.xfmname)
+                self._mask, self.mask = _find_mask(nvox, self.subject, self.xfmname)
             elif isinstance(mask, str):
                 self.mask = surfs.getMask(self.subject, self.xfmname, mask)
-                self.masktype = mask
+                self._mask = mask
             elif isinstance(mask, np.ndarray):
                 self.mask = mask
-                self.masktype = hashlib.sha1(mask.view(np.uint8)).hexdigest()[:6]
+                self._mask = mask
 
             self.shape = self.mask.shape
         else:
+            self._mask = None
             shape = self.data.shape
             if self.movie:
                 shape = shape[1:]
@@ -305,9 +290,9 @@ class VolumeData(BrainData):
     def volume(self):
         """Standardizes the VolumeData, ensuring that masked data are unmasked"""
         if self.linear:
-            data = volume.unmask(self.mask, self.data)
+            data = volume.unmask(self.mask, self.data[:])
         else:
-            data = self.data
+            data = self.data[:]
 
         if self.raw and data.shape[-1] == 3:
             #stack the alpha dimension
@@ -319,11 +304,10 @@ class VolumeData(BrainData):
     def save(self, filename, name="data"):
         """Save the dataset into an hdf file with the provided name
         """
-        import tables
         if isinstance(filename, str):
             fname, ext = os.path.splitext(filename)
             if ext in (".hdf", ".h5"):
-                h5 = tables.openFile(filename, "a")
+                h5 = h5py.File(filename, "a")
                 _hdf_init(h5)
                 self._write_hdf(h5, name=name)
                 h5.close()
@@ -333,13 +317,13 @@ class VolumeData(BrainData):
             self._write_hdf(filename, name=name)
 
     def _write_hdf(self, h5, name="data"):
-        node = _hdf_write(h5, self.data, name=name)
-        node.attrs.subject = self.subject
-        node.attrs.xfmname = self.xfmname
+        node = _hdf_write(h5, self.data, self._mask, name=name)
+        node.attrs['xfmname'] = self.xfmname
         if self.linear:
-            node.attrs.mask = self.masktype
-        for name, value in self.attrs.items():
-            node.attrs[name] = value
+            node.attrs['mask'] = self.masktype
+
+        super(VolumeData, self)._write_hdf(node)
+
 
 class VertexData(VolumeData):
     def __init__(self, data, subject, **kwargs):
@@ -425,6 +409,10 @@ class VertexData(VolumeData):
         mapper = utils.get_mapper(self.subject, xfmname, projection)
         return mapper.backwards(self, **kwargs)
 
+    def _write_hdf(self, h5, name="data"):
+        node = _hdf_write(h5, self.data, name=name)
+        super(VertexData, self)._write_hdf(node)
+
     def __repr__(self):
         maskstr = ''
         if 'projection' in self.attrs:
@@ -442,12 +430,6 @@ class VertexData(VolumeData):
         
         #return VertexData(self.data[idx], self.subject, **self.attrs)
         return self.copy(self.data[idx])
-
-    def _write_hdf(self, h5, name="data"):
-        node = _hdf_write(h5, self.data, name=name)
-        node.attrs.subject = self.subject
-        for name, value in self.attrs.items():
-            node.attrs[name] = value
 
     @property
     def vertices(self):
@@ -471,6 +453,7 @@ class VertexData(VolumeData):
             return self.vertices[self.llen:]
 
 class View(object):
+    indices = ('data', 'description', 'cmap', 'vmin', 'vmax' 'state', 'animation')
     def __init__(self, cmap=None, vmin=None, vmax=None, state=None):
         self.cmap = cmap
         self.vmin = vmin
@@ -487,6 +470,16 @@ class DataView(View):
         self.description = description
         super(DataView, self).__init__(cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
 
+    def _write_hdf(self, h5, idx=None, name="data"):
+        ds = h5.get("/views")
+        if idx is None:
+            ds.resize(len(ds)+1, axis=0)
+        ds[idx, 0] = json.dumps(self.data)
+        ds[idx, 1] = self.description
+        ds[idx, 2] = self.cmap
+        ds[idx, 3] = json.dumps(self.vmin)
+        ds[idx, 4] = json.dumps(self.vmax)
+        ds[idx, 5] = json.dumps(self.state)
 
 class _masker(object):
     def __init__(self, ds):
@@ -556,18 +549,13 @@ def _find_mask(nvox, subject, xfmname):
     raise ValueError('Cannot find a valid mask')
 
 def _hdf_init(h5):
-    import tables
-    try:
-        h5.getNode("/data")
-    except tables.NoSuchNodeError:
-        h5.createGroup("/","data")
-    try:
-        h5.getNode("/subjects")
-    except tables.NoSuchNodeError:
-        h5.createGroup("/", "subjects")
-    try:
-        h5.getNode("/views")
-        h5.createTable()
+    if h5.get("/data") is None:
+        h5.create_group("/data")
+    if h5.get("/subjects") is None:
+        h5.create_group("/subjects")
+    if h5.get("/views") is None:
+        h5.create_dataset("/views", (0,len(View.indices)), maxshape=(0, 10), 
+            dtype=h5py.special_dtype(vlen=unicode)
 
 
 def _hdf_write(h5, data, name="data", group="/data"):
