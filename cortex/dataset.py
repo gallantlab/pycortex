@@ -11,6 +11,8 @@ Three basic classes, with child classes:
 Dataset holds a collection of View and BrainData objects. It provides a thin
 wrapper around h5py to store data. Datasets will store all View and BrainData
 objects into the h5py file, reconstituting each when requested.
+
+
 """
 import os
 import hashlib
@@ -71,14 +73,20 @@ class Dataset(object):
 
     @classmethod
     def from_file(cls, filename):
-        h5 = h5py.File(filename)
-        raise NotImplementedError
+        ds = cls()
+        views = set()
+        ds.h5 = h5py.File(filename)
+        for name, node in ds.h5['data']:
+            data = BrainData.from_file(ds, node)
+            self.data[hash(data)] = data
+
+        for name, node in ds.h5['views']:
+            pass
 
     def save(self, filename, pack=False):
         raise NotImplementedError
 
     def getSurf(self, subject, type, hemi='both', merge=False, nudge=False):
-        import tables
         if hemi == 'both':
             left = self.getSurf(subject, type, "lh")
             right = self.getSurf(subject, type, "rh")
@@ -89,44 +97,41 @@ class Dataset(object):
 
             return left, right
         try:
-            node = getattr(getattr(getattr(self.subjects, subject).surfaces, type), hemi)
-            pts, polys = node.pts[:], node.polys[:]
+            group = self.h5['subjects'][subject]['surfaces'][type][hemi]
+            pts, polys = group.pts[:], group.polys[:]
             if nudge:
                 if hemi == 'lh':
                     pts[:,0] -= pts[:,0].min()
                 else:
                     pts[:,0] -= pts[:,0].max()
             return pts, polys
-        except tables.NoSuchNodeError:
+        except KeyError:
             raise IOError('Subject not found in package')
 
     def getXfm(self, subject, xfmname):
-        import tables
         try:
-            node = getattr(getattr(self.subjects, subject).transforms, xfmname)
-            return Transform(node.xfm[:], node.attrs.shape)
-        except tables.NoSuchNodeError:
+            group = self.h5['subjects'][subject]['transforms'][xfmname]
+            return Transform(group.xfm[:], group.attrs.shape)
+        except KeyError:
             raise IOError('Transform not found in package')
 
     def getMask(self, subject, xfmname, maskname):
-        import tables
         try:
-            node = getattr(getattr(self.subjects, subject).transforms, xfmname).masks
-            return getattr(node, maskname)[:]
-        except tables.NoSuchNodeError:
+            group = self.h5['subjects'][subject]['transforms'][xfmname]['masks']
+            return group[maskname]
+        except KeyError:
             raise IOError('Mask not found in package')
 
     def getOverlay(self, subject, type='rois', **kwargs):
-        import tables
         try:
-            node = getattr(getattr(self.subjects, subject), type)
+            group = self.h5['subjects'][subject]
             if type == "rois":
                 import tempfile
                 tf = tempfile.NamedTemporaryFile()
-                tf.write(node.read())
+                tf.write(group['rois'].value)
                 tf.seek(0)
                 return tf
-        except tables.NoSuchNodeError:
+        except KeyError:
             raise IOError('Overlay not found in package')
 
         raise TypeError('Unknown overlay type')
@@ -154,10 +159,22 @@ class BrainData(object):
     def __hash__(self):
         return hashlib.sha1(self.data.view(np.uint8)).hexdigest()
 
-    def _write_hdf(self, node):
+    def _write_hdf(self, h5, name="data"):
+        node = _hdf_write(h5['data'], name, self.data)
         node.attrs['subject'] = self.subject
         for name, value in self.attrs.items():
             node.attrs[name] = value
+        return node
+
+    @staticmethod
+    def from_hdf(dataset, node):
+        subj = node.attrs['subject']
+        if "xfmname" in node.attrs:
+            xfmname = node.attrs['xfmname']
+            mask = dataset.getMask(node.attrs['mask'])
+            return VolumeData(node, subj, xfmname, mask=mask)
+        else:
+            return VertexData(node, subj)
 
     @classmethod
     def add_numpy_methods(cls):
@@ -284,7 +301,7 @@ class VolumeData(BrainData):
     def __getitem__(self, idx):
         if not self.movie:
             raise ValueError('Cannot index non-movie data')
-        return VolumeData(self.data[idx], self.subject, self.xfmname, **self.attrs)
+        return VolumeData(self.data[idx], self.subject, self.xfmname, mask=self._mask, **self.attrs)
 
     @property
     def volume(self):
@@ -308,25 +325,32 @@ class VolumeData(BrainData):
             fname, ext = os.path.splitext(filename)
             if ext in (".hdf", ".h5"):
                 h5 = h5py.File(filename, "a")
-                _hdf_init(h5)
                 self._write_hdf(h5, name=name)
                 h5.close()
             else:
                 raise TypeError('Unknown file type')
-        elif isinstance(filename, tables.File):
+        elif isinstance(filename, h5py.Group):
             self._write_hdf(filename, name=name)
 
     def _write_hdf(self, h5, name="data"):
-        node = _hdf_write(h5, self.data, self._mask, name=name)
-        node.attrs['xfmname'] = self.xfmname
-        if self.linear:
-            node.attrs['mask'] = self.masktype
+        node = super(VolumeData, self)._write_hdf(h5, name=name)
 
-        super(VolumeData, self)._write_hdf(node)
+        #write the mask into the file, as necessary
+        mask = self._mask
+        if isinstance(self._mask, np.ndarray):
+            mgrp = h5.file['subjects'][self.subject]['transforms'][self.xfmname]['masks']
+            mname = "__%s" % hashlib.sha1(self._mask.view(np.uint8)).hexdigest()[:8]
+            _hdf_write(mgrp, mname, self._mask)
+            mask = mname
+
+        node.attrs['xfmname'] = self.xfmname
+        node.attrs['mask'] = mask
+
+        return node
 
 
 class VertexData(VolumeData):
-    def __init__(self, data, subject, **kwargs):
+    def __init__(self, data, subject):
         """Vertex Data possibilities
 
         raw linear movie: (t, v, c)
@@ -342,8 +366,7 @@ class VertexData(VolumeData):
         except NameError:
             subject = subject if isinstance(subject, str) else subject.decode('utf-8')
         self.subject = subject
-        self.attrs = kwargs
-        
+
         left, right = surfs.getSurf(self.subject, "fiducial")
         self.llen = len(left[0])
         self.rlen = len(right[0])
@@ -409,10 +432,6 @@ class VertexData(VolumeData):
         mapper = utils.get_mapper(self.subject, xfmname, projection)
         return mapper.backwards(self, **kwargs)
 
-    def _write_hdf(self, h5, name="data"):
-        node = _hdf_write(h5, self.data, name=name)
-        super(VertexData, self)._write_hdf(node)
-
     def __repr__(self):
         maskstr = ''
         if 'projection' in self.attrs:
@@ -470,8 +489,9 @@ class DataView(View):
         self.description = description
         super(DataView, self).__init__(cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
 
-    def _write_hdf(self, h5, idx=None, name="data"):
-        ds = h5.get("/views")
+    def _write_hdf(self, h5, idx=None):
+        views = h5.get("/views")
+        datas = h5.get("/data")
         if idx is None:
             ds.resize(len(ds)+1, axis=0)
         ds[idx, 0] = json.dumps(self.data)
@@ -497,7 +517,7 @@ class _masker(object):
         return VolumeData(self.ds.volume[mask], s, x, mask=masktype)
 
 def normalize(data):
-    if isinstance(data, (BrainData, Dataset, View)):
+    if isinstance(data, (Dataset, View)):
         return data
     elif isinstance(data, dict):
         return Dataset(**data)
@@ -505,9 +525,9 @@ def normalize(data):
         return Dataset.from_file(data)
     elif isinstance(data, tuple):
         if len(data) == 3:
-            return VolumeData(*data)
+            return DataView(VolumeData(*data))
         else:
-            return VertexData(*data)
+            return DataView(VertexData(*data))
 
     raise TypeError('Unknown input type')
 
@@ -559,7 +579,6 @@ def _hdf_init(h5):
 
 
 def _hdf_write(h5, data, name="data", group="/data"):
-    import tables
     atom = tables.Atom.from_dtype(data.dtype)
     filt = tables.filters.Filters(complevel=9, complib='blosc', shuffle=True)
     create = False

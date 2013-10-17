@@ -115,6 +115,7 @@ HDF5 format::
                     masks/
                         thin[z,y,x]
                         thick[z,y,x]
+                        __sha1hash[z,y,x]
                 xfm2/
                     xfm[4,4]
                     masks/
@@ -128,12 +129,10 @@ HDF5 format::
                         pts[n,3]
                         polys[m,3]
     /datasets/
-        name
+        hash
             -> subject
             -> xfmname
             -> maskname
-    - views
-        - datalist
-        - name
-        - description
-        - view attrs (in json)
+    /views
+        name1[dataref, desc, cmap, vmin, vmax, state]
+        name2[dataref, desc, cmap, vmin, vmax, state]
