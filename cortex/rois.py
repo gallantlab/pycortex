@@ -82,7 +82,7 @@ class ROIpack(object):
         curv = VertexData(np.hstack(get_curvature(self.subject)), self.subject)
         fp = cStringIO.StringIO()
         curvim = quickflat.make_png(fp, curv, height=1024, with_rois=False, with_labels=False,
-                                    with_colorbar=False, cmap=cm.gray)
+                                    with_colorbar=False, cmap=cm.gray,recache=True)
         fp.seek(0)
         svgroipack.add_roi("curvature", binascii.b2a_base64(fp.read()), add_path=False)
 
