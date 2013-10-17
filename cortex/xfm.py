@@ -11,14 +11,14 @@ class Transform(object):
             try:
                 import nibabel
                 self.reference = nibabel.load(reference)
-                self.shape = self.reference.get_shape()[:3][::-1]
+                self.shape = self.reference.shape[:3][::-1]
             except:
                 self.reference = reference
         elif isinstance(reference, tuple):
             self.shape = reference
         else:
             self.reference = reference
-            self.shape = self.reference.get_shape()[:3][::-1]
+            self.shape = self.reference.shape[:3][::-1]
 
     def __call__(self, pts):
         return np.dot(self.xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
@@ -55,54 +55,112 @@ class Transform(object):
         from .db import surfs
         surfs.loadXfm(subject, name, self.xfm, xfmtype=xfmtype, reference=self.reference.get_filename())
 
+    # @classmethod
+    # def from_fsl(cls, xfm, epifile, rawfile):
+    #     """
+    #     takes transform xfm (estimated )
+    #     """
+    #     ## Adapted from dipy.external.fsl.flirt2aff#############################
+    #     import nibabel
+    #     import numpy.linalg as npl
+        
+    #     epi = nibabel.load(epifile)
+    #     raw = nibabel.load(rawfile)
+    #     in_hdr = epi.get_header()
+    #     ref_hdr = raw.get_header()
+    #     # get_zooms gets the positive voxel sizes as returned in the header
+    #     inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
+    #     refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
+    #     # Assure that both determinants are negative, i.e. that both spaces are FLIPPED (??)
+    #     if npl.det(in_hdr.get_best_affine())>=0:
+    #         inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
+    #     if npl.det(ref_hdr.get_best_affine())>=0:
+    #         refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
+
+    #     M = raw.get_affine()
+    #     inv = np.linalg.inv
+    #     coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
+    #     return cls(coord, epi)
     @classmethod
-    def from_fsl(cls, xfm, epifile, rawfile):
+    def from_fsl(cls, xfm, basefile, reffile):
+        """
+        takes transform xfm (estimated FROM basefile TO reffile) and converts to GLab COORDINATE transform
+        """
         ## Adapted from dipy.external.fsl.flirt2aff#############################
         import nibabel
         import numpy.linalg as npl
         
-        epi = nibabel.load(epifile)
-        raw = nibabel.load(rawfile)
-        in_hdr = epi.get_header()
-        ref_hdr = raw.get_header()
-        
+        baseIm = nibabel.load(basefile)
+        refIm = nibabel.load(reffile)
+        base_hdr = baseIm.get_header()
+        ref_hdr = refIm.get_header()
         # get_zooms gets the positive voxel sizes as returned in the header
-        inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
+        inspace = np.diag(base_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        
-        if npl.det(in_hdr.get_best_affine())>=0:
-            inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
+        # Assure that both determinants are negative, i.e. that both spaces are FLIPPED (??)
+        if npl.det(base_hdr.get_best_affine())>=0:
+            inspace = np.dot(inspace, _x_flipper(base_hdr.get_data_shape()[0]))
         if npl.det(ref_hdr.get_best_affine())>=0:
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
-        M = raw.get_affine()
+        M = refIm.get_affine()
         inv = np.linalg.inv
+        coord = np.dot(M,np.dot(inv(refspace),np.dot(xfm,inspace)))
+        # This works as well (demonstration of different path to same transform)
+        #coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
+        #coord = inv(coord)
+        return cls(coord, refIm)
 
-        coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
-        return cls(coord, epi)
+    # def to_fsl(self, rawfile):
+    #     import nibabel
+    #     import numpy.linalg as npl
 
-    def to_fsl(self, rawfile):
+    #     raw = nibabel.load(rawfile)
+    #     in_hdr = self.reference.get_header()
+    #     ref_hdr = raw.get_header()
+        
+    #     # get_zooms gets the positive voxel sizes as returned in the header
+    #     inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
+    #     refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
+        
+    #     if npl.det(in_hdr.get_best_affine())>=0:
+    #         inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
+    #     if npl.det(ref_hdr.get_best_affine())>=0:
+    #         refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
+
+    #     M = raw.get_affine()
+    #     inv = np.linalg.inv
+
+    #     fslx = inv(np.dot(inspace, np.dot(self.xfm, np.dot(M, inv(refspace)))))
+    #     return fslx
+    def to_fsl(self, basefile):
+        """
+        Converts a Glab transform to an FSL transform.
+        The resulting FSL transform goes FROM the space of the "basefile" input
+        TO the space of the reference nifti stored in the GLab transform.
+        """
         import nibabel
         import numpy.linalg as npl
 
-        raw = nibabel.load(rawfile)
-        in_hdr = self.reference.get_header()
-        ref_hdr = raw.get_header()
+        baseIm = nibabel.load(basefile)
+        in_hdr = baseIm.get_header()
+        ref_hdr = self.reference.get_header()
         
         # get_zooms gets the positive voxel sizes as returned in the header
         inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        
+
         if npl.det(in_hdr.get_best_affine())>=0:
             inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
         if npl.det(ref_hdr.get_best_affine())>=0:
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
-        M = raw.get_affine()
+        M = self.reference.get_affine()
         inv = np.linalg.inv
-
-        fslx = inv(np.dot(inspace, np.dot(self.xfm, np.dot(M, inv(refspace)))))
+        fslx = np.dot(refspace,np.dot(inv(M),np.dot(self.xfm,inv(inspace))))
+        #fslx = inv(np.dot(inspace, np.dot(inv(self.xfm), np.dot(M, inv(refspace)))))
         return fslx
+
 
 def _x_flipper(N_i):
     #Copied from dipy
