@@ -517,20 +517,26 @@ class DataView(View):
         super(DataView, self).__init__(cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
 
     @classmethod
-    def from_hdf(cls, ds, node):
-        pass
+    def from_hdf(cls, h5, node):
+        h5.get("/data/%s"%name)
 
-    def _write_hdf(self, h5, idx=None):
+    def _write_hdf(self, h5, name="data"):
+        if isinstance(self.data, BrainData):
+            self.data._write_hdf(h5, name=name)
+            name = [name]
+        else:
+            for i, data in enumerate(self.data):
+                data._write_hdf(h5, name="%s_%d"%(name, i))
+            name = ["%s_%d"%(name, i) for i in range(len(self.data))]
+
         views = h5.get("/views")
-        datas = h5.get("/data")
-        if idx is None:
-            ds.resize(len(ds)+1, axis=0)
-        ds[idx, 0] = json.dumps(self.data)
-        ds[idx, 1] = self.description
-        ds[idx, 2] = self.cmap
-        ds[idx, 3] = json.dumps(self.vmin)
-        ds[idx, 4] = json.dumps(self.vmax)
-        ds[idx, 5] = json.dumps(self.state)
+        view = views.require_dataset(name, (8,), h5.special_dtype(vlen=unicode))
+        view[0] = json.dumps(self.data)
+        view[1] = self.description
+        view[2] = self.cmap
+        view[3] = json.dumps(self.vmin)
+        view[4] = json.dumps(self.vmax)
+        view[5] = json.dumps(self.state)
 
 class _masker(object):
     def __init__(self, ds):
