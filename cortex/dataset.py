@@ -187,19 +187,18 @@ class BrainData(object):
         return self.copy(np.exp(self.data))
 
     def __hash__(self):
-        return hash(hashlib.sha1(self.data.view(np.uint8)).hexdigest())
+        return hash(_hash(self.data))
 
-    def _write_hdf(self, h5, name="data"):
-        #avoid overwriting the data if it hasn't changed
-        dhash = hash(self)
+    def _write_hdf(self, h5, name=None):
+        if name is None:
+            name = "__%s"%_hash(self.data)[:16]
+
         dgrp = h5.require_group("/data")
         if name in dgrp:
-            node = dgrp[name]
-            if '_hash' in node.attrs and dhash == node.attrs['_hash']:
-                return None
+            #don't need to update anything, since it's saved already
+            return None
 
         node = _hdf_write(h5, self.data, name=name)
-        node.attrs['_hash'] = dhash
         node.attrs['subject'] = self.subject
         return node
 
@@ -385,7 +384,7 @@ class VolumeData(BrainData):
             if isinstance(self._mask, np.ndarray):
                 mgrp = "/subjects/{subj}/transforms/{xfm}/masks/"
                 mgrp = h5.file.require_group(mgrp.format(subj=self.subject, xfm=self.xfmname))
-                mname = "__%s" % hashlib.sha1(self._mask.view(np.uint8)).hexdigest()[:8]
+                mname = "__%s" % _hash(self._mask)[:8]
                 _hdf_write(h5, self._mask, name=mname, group=mgrp)
                 mask = mname
 
@@ -551,21 +550,23 @@ class DataView(View):
 
     def _write_hdf(self, h5, name="data"):
         if isinstance(self.data, BrainData):
-            self.data._write_hdf(h5, name=name)
-            nname = [name]
+            dnode = self.data._write_hdf(h5)
+            nname = [dnode.name]
         else:
+            nname = []
             for i, data in enumerate(self.data):
-                data._write_hdf(h5, name="%s_%d"%(name, i))
-            nname = ["%s_%d"%(name, i) for i in range(len(self.data))]
+                dnode = data._write_hdf(h5)
+                nname.append(dnode.name)
 
         views = h5.require_group("/views")
-        view = views.require_dataset(name, (8,), h5py.special_dtype(vlen=unicode))
+        view = views.require_dataset(name, (8,), h5py.special_dtype(vlen=str))
         view[0] = json.dumps(nname)
         view[1] = self.description
         view[2] = self.cmap
         view[3] = json.dumps(self.vmin)
         view[4] = json.dumps(self.vmax)
         view[5] = json.dumps(self.state)
+        return view
 
 class _masker(object):
     def __init__(self, ds):
@@ -648,3 +649,8 @@ def _pack_masks(h5, masks):
         mask = surfs.getMask(subj, xfm, maskname)
         group = "/subjects/%s/transforms/%s/masks"%(subj, xfm)
         _hdf_write(h5, mask, maskname, group)
+
+
+def _hash(array):
+    '''A simple numpy hash function'''
+    return hashlib.sha1(array.view(np.uint8)).hexdigest()
