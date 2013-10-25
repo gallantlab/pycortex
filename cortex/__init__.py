@@ -1,7 +1,7 @@
 from . import align, volume, quickflat, webgl
 from .utils import *
 
-from .dataset import Dataset, VolumeData, VertexData
+from .dataset import Dataset, VolumeData, VertexData, DataView, View
 openFile = Dataset.from_file
 
 try:
