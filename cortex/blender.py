@@ -14,6 +14,15 @@ def make_object(pts, polys, name="mesh"):
     C.scene.objects.link(obj)
     return obj, mesh
 
+def get_ptpoly(name):
+    verts = D.meshes[name].vertices
+    faces = D.meshes[name].polygons
+    pts = np.empty((len(verts),3))
+    polys = np.empty((len(faces),3), dtype=np.uint32)
+    verts.foreach_get('co', pts.ravel())
+    faces.foreach_get('vertices', polys.ravel())
+    return pts, polys
+
 def add_vcolor(color, mesh=None, name='color', cmap=cm.RdBu, vmin=None, vmax=None):
     if mesh is None:
         mesh = C.scene.objects.active.data
