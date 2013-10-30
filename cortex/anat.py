@@ -68,8 +68,8 @@ def flatmask(outfile, subject, height=1024):
     import Image
     import ImageDraw
     pts, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    bounds = [p for p in polyutils.trace_poly(polyutils.boundary_edges(polys))]
-    left, right = bounds[0], bounds[1]
+    bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
+    left, right = bounds.next(), bounds.next()
     aspect = (height / (pts.max(0) - pts.min(0))[1])
     lpts = (pts[left] - pts.min(0)) * aspect
     rpts = (pts[right] - pts.min(0)) * aspect
