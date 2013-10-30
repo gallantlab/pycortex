@@ -272,6 +272,7 @@ class Axis(HasTraits):
             self.scene.scene_editor.control.SetFocusFromKbd()
 
         self.scene.scene.interactor.add_observer("MouseMoveEvent", focusfunc)
+        self._outline_color_changed()
 
     @on_trait_change("parent.scene_3d.activated")
     def activate_3d(self):
@@ -570,7 +571,7 @@ class Align(HasTraits):
 
     brightness = Range(-1., 1., value=0.)
     contrast = Range(0., 3., value=1.)
-    opacity = Range(0., 1., value=float(options.config.get("mayavi_aligner", "opacity")))
+    opacity = Range(0., 1., value=.1)
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
 
@@ -703,7 +704,7 @@ class Align(HasTraits):
         self.scene_3d.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
         self.scene_3d.scene_editor.aligner = self
 
-        self.opacity = 0.1
+        self.opacity = float(options.config.get("mayavi_aligner", "opacity"))
         self.xfm.widget.enabled = False
         self.colormap = options.config.get("mayavi_aligner", "colormap")
 

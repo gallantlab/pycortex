@@ -255,7 +255,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     Parameters
     ----------
-    braindata : VertexData or VolumeData
+    braindata : DataView
         the data you would like to plot on a flatmap
     recache : bool
         If True, recache the flatmap cache. Useful if you've made changes to the alignment
@@ -361,7 +361,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     ----------
     fname : str
         Filename for where to save the PNG file
-    braindata : VertexData or VolumeData
+    braindata : DataView
         the data you would like to plot on a flatmap
     recache : bool
         If True, recache the flatmap cache. Useful if you've made changes to the alignment
