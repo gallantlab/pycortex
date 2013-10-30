@@ -537,11 +537,12 @@ class VertexData(VolumeData):
 
 class View(object):
     indices = ('data', 'description', 'cmap', 'vmin', 'vmax' 'state', 'animation')
-    def __init__(self, cmap=None, vmin=None, vmax=None, state=None):
+    def __init__(self, cmap=None, vmin=None, vmax=None, state=None, **kwargs):
         self.cmap = cmap
         self.vmin = vmin
         self.vmax = vmax
         self.state = state
+        self.attrs = kwargs
         self.priority = 0
 
     def __call__(self, data):
@@ -549,7 +550,17 @@ class View(object):
 
 class DataView(View):
     def __init__(self, data, description="", **kwargs):
-        self.data = data
+        if isinstance(data, tuple):
+            if len(data) == 3:
+                self.data = VolumeData(*data)
+            elif len(data) == 2:
+                self.data = VertexData(*data)
+            else:
+                raise TypeError("Invalid input for DataView")
+        elif isinstance(data, BrainData):
+            self.data = data
+        else:
+            raise TypeError("Invalid input for DataView")
         self.description = description
         super(DataView, self).__init__(**kwargs)
         if self.vmin is None:
@@ -577,6 +588,7 @@ class DataView(View):
         vmin = json.loads(node[3])
         vmax = json.loads(node[4])
         state = json.loads(node[5])
+        attrs = json.loads(node[6])
         return cls(data, cmap=cmap, vmin=vmin, vmax=vmax, description=desc)
 
     def __iter__(self):
@@ -589,6 +601,20 @@ class DataView(View):
                 else:
                     for d in data:
                         yield d
+
+    def view(self, cmap=None, vmin=None, vmax=None, state=None, **kwargs):
+        """Generate a new view on the contained data. Any variable that is not 
+        None will be updated"""
+        cmap = self.cmap if cmap is None else cmap
+        vmin = self.vmin if vmin is None else vmin
+        vmax = self.vmax if vmax is None else vmax
+        state = self.state if state is None else state
+
+        for key, value in self.attrs.items():
+            if key not in kwargs:
+                kwargs[key] = value
+
+        return DataView(self.data, cmap=cmap, vmin=vmin, vmax=vmax, state=state, **kwargs)
 
     def _write_hdf(self, h5, name="data"):
         #Must support 3 optional layers of stacking
@@ -616,6 +642,7 @@ class DataView(View):
         view[3] = json.dumps(self.vmin)
         view[4] = json.dumps(self.vmax)
         view[5] = json.dumps(self.state)
+        view[6] = json.dumps(self.attrs)
         return view
 
 class _masker(object):
