@@ -55,32 +55,6 @@ class Transform(object):
         from .db import surfs
         surfs.loadXfm(subject, name, self.xfm, xfmtype=xfmtype, reference=self.reference.get_filename())
 
-    # @classmethod
-    # def from_fsl(cls, xfm, epifile, rawfile):
-    #     """
-    #     takes transform xfm (estimated )
-    #     """
-    #     ## Adapted from dipy.external.fsl.flirt2aff#############################
-    #     import nibabel
-    #     import numpy.linalg as npl
-        
-    #     epi = nibabel.load(epifile)
-    #     raw = nibabel.load(rawfile)
-    #     in_hdr = epi.get_header()
-    #     ref_hdr = raw.get_header()
-    #     # get_zooms gets the positive voxel sizes as returned in the header
-    #     inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
-    #     refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-    #     # Assure that both determinants are negative, i.e. that both spaces are FLIPPED (??)
-    #     if npl.det(in_hdr.get_best_affine())>=0:
-    #         inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
-    #     if npl.det(ref_hdr.get_best_affine())>=0:
-    #         refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
-
-    #     M = raw.get_affine()
-    #     inv = np.linalg.inv
-    #     coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
-    #     return cls(coord, epi)
     @classmethod
     def from_fsl(cls, xfm, basefile, reffile):
         """
@@ -111,28 +85,6 @@ class Transform(object):
         #coord = inv(coord)
         return cls(coord, refIm)
 
-    # def to_fsl(self, rawfile):
-    #     import nibabel
-    #     import numpy.linalg as npl
-
-    #     raw = nibabel.load(rawfile)
-    #     in_hdr = self.reference.get_header()
-    #     ref_hdr = raw.get_header()
-        
-    #     # get_zooms gets the positive voxel sizes as returned in the header
-    #     inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
-    #     refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        
-    #     if npl.det(in_hdr.get_best_affine())>=0:
-    #         inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
-    #     if npl.det(ref_hdr.get_best_affine())>=0:
-    #         refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
-
-    #     M = raw.get_affine()
-    #     inv = np.linalg.inv
-
-    #     fslx = inv(np.dot(inspace, np.dot(self.xfm, np.dot(M, inv(refspace)))))
-    #     return fslx
     def to_fsl(self, basefile):
         """
         Converts a Glab transform to an FSL transform.
