@@ -78,4 +78,5 @@ def flatmask(outfile, subject, height=1024):
     draw = ImageDraw.Draw(im)
     draw.polygon(lpts[:,:2].ravel().tolist(), fill=255)
     draw.polygon(rpts[:,:2].ravel().tolist(), fill=255)
-    np.savez(outfile, mask=np.array(im) > 0)
+    extents = np.hstack([pts.min(0), pts.max(0)])[[0,3,1,4]]
+    np.savez(outfile, mask=np.array(im) > 0, extents=extents)

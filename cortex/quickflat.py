@@ -92,7 +92,9 @@ def _make_vertex_cache(subject, height=1024):
     width = int(aspect * height)
     grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
 
-    mask = surfs.getAnat(subject, "flatmask", height=height, recache=True)['mask'].T
+    npz = surfs.getAnat(subject, "flatmask", height=height, recache=True)
+    mask = npz['mask'].T
+    npz.close()
     assert mask.shape[0] == width and mask.shape[1] == height
 
     kdt = cKDTree(flat[valid,:2])
@@ -111,7 +113,9 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, sampler='nearest'
     width = int(aspect * height)
     grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
     
-    mask = surfs.getAnat(subject, "flatmask", height=height)['mask'].T
+    npz = surfs.getAnat(subject, "flatmask", height=height)
+    mask = npz['mask'].T
+    npz.close()
     assert mask.shape[0] == width and mask.shape[1] == height
     
     ## Get barycentric coordinates
@@ -195,15 +199,15 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
     return pixmap
 
 def make(braindata, height=1024, **kwargs):
-    braindata = dataset.normalize(braindata)
-    if not isinstance(braindata, dataset.VolumeData):
+    if not isinstance(braindata, dataset.BrainData):
         raise TypeError('Invalid type for quickflat')
     if braindata.movie:
         raise ValueError('Cannot flatten multiple volumes')
 
-    fmfile = surfs.getAnat(braindata.subject, "flatmask", height=height)
-    mask = fmfile['mask'].T
-    fmfile.close()
+    npz = surfs.getAnat(braindata.subject, "flatmask", height=height)
+    mask = npz['mask'].T
+    extents = npz['extents']
+    npz.close()
     
     if isinstance(braindata, dataset.VertexData):
         pixmap = get_flatcache(braindata.subject, None, height=height, **kwargs)
@@ -215,11 +219,11 @@ def make(braindata, height=1024, **kwargs):
     if braindata.raw:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
         img[mask] = pixmap * data.reshape(-1, 4)
-        return img.transpose(1,0,2)[::-1]
+        return img.transpose(1,0,2)[::-1], extents
     else:
         img = (np.nan*np.ones(mask.shape)).astype(braindata.data.dtype)
         img[mask] = pixmap * data.ravel()
-        return img.T[::-1]
+        return img.T[::-1], extents
 
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
     import shlex
@@ -290,28 +294,27 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     from matplotlib import cm, pyplot as plt
     from matplotlib.collections import LineCollection
 
-    braindata = dataset.normalize(braindata)
-    if not isinstance(braindata, dataset.VolumeData):
-        raise TypeError('Please provide a VertexData or a VolumeData, not a Dataset')
-    if braindata.movie:
+    dataview = dataset.normalize(braindata)
+    if not isinstance(dataview, dataset.DataView):
+        raise TypeError('Please provide a DataView, not a Dataset')
+    if dataview.data.movie:
         raise ValueError('Cannot flatten movie volumes')
-
-    if "cmap" in braindata.attrs and "cmap" not in kwargs:
-        kwargs['cmap'] = cm.get_cmap(braindata.attrs['cmap'])
-    if "vmin" in braindata.attrs and "vmin" not in kwargs:
-        kwargs['vmin'] = float(braindata.attrs['vmin'])
-    if "vmax" in braindata.attrs and "vmax" not in kwargs:
-        kwargs['vmax'] = float(braindata.attrs['vmax'])
     
-    im = make(braindata, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick)
+    im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick)
     
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
-    cimg = ax.imshow(im[::-1], aspect='equal', origin="upper", **kwargs)
+    cimg = ax.imshow(im[::-1], 
+        aspect='equal', 
+        extent=extents, 
+        cmap=dataview.cmap, 
+        vmin=dataview.vmin, 
+        vmax=dataview.vmax,
+        origin='lower',
+        **dataview.attrs)
     ax.axis('off')
-    ax.invert_yaxis()
-    ax.set_xlim(-0.5, im.shape[1]-0.5)
-    ax.set_ylim(-0.5, height-0.5)
+    ax.set_xlim(extents[0], extents[1])
+    ax.set_ylim(extents[2], extents[3])
 
     if with_colorbar:
         cbar = fig.add_axes((.4, .07, .2, .04))
@@ -319,7 +322,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     if with_dropout:
         dax = fig.add_axes((0,0,1,1))
-        dmap = make(utils.get_dropout(braindata.subject, braindata.xfmname),
+        dmap, extents = make(utils.get_dropout(braindata.subject, braindata.xfmname),
                     height=height, sampler=sampler)
         hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
         hatchspace = 4
@@ -327,10 +330,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
         hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
         hatchim[:,:,3] *= (dmap>0.5).astype(float)
-        dax.imshow(hatchim[::-1], aspect="equal", interpolation="nearest", origin="upper")
+        dax.imshow(hatchim[::-1], aspect="equal", interpolation="nearest", extent=extents, origin='lower')
     
     if with_borders:
-        border = _gen_flat_border(braindata.subject, im.shape[0])
+        border = _gen_flat_border(braindata.data.subject, im.shape[0])
         bax = fig.add_axes((0,0,1,1))
         blc = LineCollection(border[0], linewidths=3.0,
                              colors=[['r','b'][mw] for mw in border[1]])
@@ -338,12 +341,16 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         #bax.invert_yaxis()
     
     if with_rois:
-        roi = surfs.getOverlay(braindata.subject, linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
+        roi = surfs.getOverlay(braindata.data.subject, linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
         roitex = roi.get_texture(height, labels=with_labels)
         roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
         oimg = oax.imshow(plt.imread(roitex)[::-1],
-                          aspect='equal', interpolation='bicubic', origin="upper", zorder=3)
+            aspect='equal', 
+            interpolation='bicubic', 
+            extent=extents, 
+            zorder=3,
+            origin='lower')
 
     return fig
 
