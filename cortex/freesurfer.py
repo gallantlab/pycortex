@@ -105,18 +105,6 @@ def parse_patch(filename):
         assert len(data) == nverts
         return data
 
-def write_patch(filename, pts, edges=None):
-    if edges is None:
-        edges = set()
-
-    with open(filename, 'wb') as fp:
-        fp.write(struct.pack('>2i', -1, len(pts)))
-        for i, pt in pts:
-            if i in edges:
-                fp.write(struct.pack('>i3f', -i-1, *pt))
-            else:
-                fp.write(struct.pack('>i3f', i+1, *pt))
-
 def get_surf(subject, hemi, type, patch=None):
     if type == "patch":
         assert patch is not None
