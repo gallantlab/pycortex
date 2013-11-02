@@ -63,3 +63,7 @@ def test_pack():
 
 	xfm = cortex.surfs.getXfm("AH", "AH_huth")
 	assert np.allclose(xfm.xfm, ds.getXfm("AH", "AH_huth").xfm)
+
+def test_convertraw():
+	ds = cortex.Dataset(test=(np.random.randn(32, 100, 100), "AH", "AH_huth"))
+	ds.test.raw
