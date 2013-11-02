@@ -1,5 +1,6 @@
 import json
 
+import h5py
 import numpy as np
 
 from .. import options
@@ -47,7 +48,7 @@ class DataView(View):
         elif isinstance(data, list):
             #validate if the input is of a recognizable form
             if isinstance(data[0], (list, tuple)) and (
-                len(data[0]) != 2 or data[0][0].data.subject != data[0][1].data.subject):
+                len(data[0]) != 2 or data[0][0].subject != data[0][1].subject):
                 raise ValueError('Invalid input for dataview')
             self.data = data
 
@@ -172,12 +173,3 @@ class DataView(View):
         view[5] = json.dumps(self.state)
         view[6] = json.dumps(self.attrs)
         return view
-
-def _hdf_write(h5, data, name="data", group="/data"):
-    try:
-        node = h5.require_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
-    except TypeError:
-        del h5[group][name]
-        node = h5.create_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
-    node[:] = data
-    return node

@@ -22,7 +22,7 @@ import h5py
 from ..db import surfs
 from ..xfm import Transform
 
-from .braindata import BrainData, VertexData, VolumeData
+from .braindata import BrainData, VertexData, VolumeData, _hdf_write
 from .views import View, DataView
 
 class Dataset(object):
@@ -182,7 +182,7 @@ class Dataset(object):
                 tf.write(group['rois'][0])
                 tf.seek(0)
 
-                import svgroi
+                from .. import svgroi
                 pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
                 return svgroi.get_roipack(tf.name, pts, polys, **kwargs)
         except (KeyError, TypeError):
@@ -196,3 +196,50 @@ class Dataset(object):
             ds[prefix+name] = data
 
         return Dataset(**ds)
+
+def normalize(data):
+    if isinstance(data, (Dataset, View)):
+        return data
+    elif isinstance(data, BrainData):
+        return DataView(data)
+    elif isinstance(data, dict):
+        return Dataset(**data)
+    elif isinstance(data, str):
+        return Dataset.from_file(data)
+    elif isinstance(data, tuple):
+        if len(data) == 3:
+            return DataView(VolumeData(*data))
+        else:
+            return DataView(VertexData(*data))
+    elif isinstance(data, list):
+        return DataView(data)
+
+    raise TypeError('Unknown input type')
+
+def _pack_subjs(h5, subjects):
+    for subject in subjects:
+        rois = surfs.getOverlay(subject, type='rois')
+        rnode = h5.require_dataset("/subjects/%s/rois"%subject, (1,),
+            dtype=h5py.special_dtype(vlen=str))
+        rnode[0] = rois.toxml(pretty=False)
+
+        surfaces = surfs.getFiles(subject)['surfs']
+        for surf in surfaces.keys():
+            for hemi in ("lh", "rh"):
+                pts, polys = surfs.getSurf(subject, surf, hemi)
+                group = "/subjects/%s/surfaces/%s/%s"%(subject, surf, hemi)
+                _hdf_write(h5, pts, "pts", group)
+                _hdf_write(h5, polys, "polys", group)
+
+def _pack_xfms(h5, xfms):
+    for subj, xfmname in xfms:
+        xfm = surfs.getXfm(subj, xfmname, 'coord')
+        group = "/subjects/%s/transforms/%s"%(subj, xfmname)
+        node = _hdf_write(h5, np.array(xfm.xfm), "xfm", group)
+        node.attrs['shape'] = xfm.shape
+
+def _pack_masks(h5, masks):
+    for subj, xfm, maskname in masks:
+        mask = surfs.getMask(subj, xfm, maskname)
+        group = "/subjects/%s/transforms/%s/masks"%(subj, xfm)
+        _hdf_write(h5, mask, maskname, group)

@@ -1,3 +1,4 @@
+import hashlib
 import numpy as np
 import h5py
 
@@ -397,49 +398,11 @@ def _hash(array):
     '''A simple numpy hash function'''
     return hashlib.sha1(array.view(np.uint8)).hexdigest()
 
-def normalize(data):
-    if isinstance(data, (Dataset, View)):
-        return data
-    elif isinstance(data, BrainData):
-        return DataView(data)
-    elif isinstance(data, dict):
-        return Dataset(**data)
-    elif isinstance(data, str):
-        return Dataset.from_file(data)
-    elif isinstance(data, tuple):
-        if len(data) == 3:
-            return DataView(VolumeData(*data))
-        else:
-            return DataView(VertexData(*data))
-    elif isinstance(data, list):
-        return DataView(data)
-
-    raise TypeError('Unknown input type')
-
-def _pack_subjs(h5, subjects):
-    for subject in subjects:
-        rois = surfs.getOverlay(subject, type='rois')
-        rnode = h5.require_dataset("/subjects/%s/rois"%subject, (1,),
-            dtype=h5py.special_dtype(vlen=str))
-        rnode[0] = rois.toxml(pretty=False)
-
-        surfaces = surfs.getFiles(subject)['surfs']
-        for surf in surfaces.keys():
-            for hemi in ("lh", "rh"):
-                pts, polys = surfs.getSurf(subject, surf, hemi)
-                group = "/subjects/%s/surfaces/%s/%s"%(subject, surf, hemi)
-                _hdf_write(h5, pts, "pts", group)
-                _hdf_write(h5, polys, "polys", group)
-
-def _pack_xfms(h5, xfms):
-    for subj, xfmname in xfms:
-        xfm = surfs.getXfm(subj, xfmname, 'coord')
-        group = "/subjects/%s/transforms/%s"%(subj, xfmname)
-        node = _hdf_write(h5, np.array(xfm.xfm), "xfm", group)
-        node.attrs['shape'] = xfm.shape
-
-def _pack_masks(h5, masks):
-    for subj, xfm, maskname in masks:
-        mask = surfs.getMask(subj, xfm, maskname)
-        group = "/subjects/%s/transforms/%s/masks"%(subj, xfm)
-        _hdf_write(h5, mask, maskname, group)
+def _hdf_write(h5, data, name="data", group="/data"):
+    try:
+        node = h5.require_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
+    except TypeError:
+        del h5[group][name]
+        node = h5.create_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
+    node[:] = data
+    return node
