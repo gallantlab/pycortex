@@ -9,6 +9,7 @@ class Package(object):
     def __init__(self, data):
         self.dataset = dataset.normalize(data)
         self.uniques = data.uniques
+        
         self.brains = dict()
         self.images = dict()
         for ds in self.uniques:

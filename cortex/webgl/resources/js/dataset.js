@@ -1,16 +1,38 @@
-var filtertypes = { 
-    nearest: THREE.NearestFilter, 
-    trilinear: THREE.LinearFilter, 
-    nearlin: THREE.LinearFilter, 
-    debug: THREE.NearestFilter 
-};
+var dataset = (function(module) {
 
-var samplers = {
-    trilinear: "trilinear",
-    nearest: "nearest",
-    nearlin: "nearest",
-    debug: "debug",
-}
+    module.filtertypes = { 
+        nearest: THREE.NearestFilter, 
+        trilinear: THREE.LinearFilter, 
+        nearlin: THREE.LinearFilter, 
+        debug: THREE.NearestFilter 
+    };
+
+    module.samplers = {
+        trilinear: "trilinear",
+        nearest: "nearest",
+        nearlin: "nearest",
+        debug: "debug",
+    };
+
+    module.brains = {}; //Singleton containing all BrainData objects
+
+    module.DataView = function(json) {
+
+    }
+    module.BrainData = function(json, images) {
+        this.xfm = json.xfm;
+        this.data = json.name;
+        this.subject = json.subject,;
+        this.movie = json.movie;
+        this.raw = json.raw;
+        this.shape = json.shape;
+        this.min = json.min;
+        this.max = json.max;
+        this.mosaic = json.mosaic;
+
+        this.images = images[this.data];
+        this.frames = images[this.data].length;
+    }
 
 function Dataset(json) {
     this.loaded = $.Deferred().done(function() { $("#dataload").hide(); });
@@ -233,3 +255,4 @@ Dataset.prototype = {
         return {scene:scene, camera:camera};
     }
 }
+}(dataset || {}));

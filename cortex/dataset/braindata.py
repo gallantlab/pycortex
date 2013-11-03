@@ -116,7 +116,7 @@ class VolumeData(BrainData):
     def to_json(self):
         xfm = surfs.getXfm(self.subject, self.xfmname, 'coord').xfm
         return dict(
-            name=self.name, 
+            data=self.name,
             subject=self.subject, 
             xfm=xfm,
             movie=self.movie,

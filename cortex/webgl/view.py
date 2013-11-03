@@ -170,6 +170,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     metadata = json.dumps(dict(views=package.views, data=package.brains))
     images = package.images
     subjects = list(package.subjects)
+    #Extract the list of stimuli, for special-casing
     stims = dict()
     for name, view in data:
         if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
