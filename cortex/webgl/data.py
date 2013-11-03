@@ -41,6 +41,12 @@ class Package(object):
     def subjects(self):
         return set(braindata.subject for braindata in self.uniques)
 
+    def image_names(self, fmt="/data/{img}/{frame}/"):
+        names = dict()
+        for name, imgs in self.images.items():
+            names[name] = [fmt.format(img=name, frame=i) for i in range(len(imgs))]
+        return names
+
 def _pack_png(mosaic):
     import Image
     import cStringIO

@@ -167,7 +167,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     surfs.auxfile = data
 
     package = Package(data)
-    metadata = json.dumps(dict(views=package.views, data=package.brains))
+    metadata = json.dumps(dict(views=package.views, data=package.brains, images=package.image_names()))
     images = package.images
     subjects = list(package.subjects)
     #Extract the list of stimuli, for special-casing
@@ -228,7 +228,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
             if dataname in images:
                 self.set_header("Content-Type", "image/png")
-                self.write(images[dataname][frame])
+                self.write(images[dataname][int(frame)])
             else:
                 self.set_status(404)
                 self.write_error(404)

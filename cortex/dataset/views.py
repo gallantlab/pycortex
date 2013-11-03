@@ -26,13 +26,8 @@ class View(object):
     def priority(self, value):
         self.attrs['priority'] = value
 
-    def __call__(self, data, description=None):
-        if description is None:
-            try:
-                desc = self.description
-            except:
-                pass
-        return DataView(data, cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state)
+    def __call__(self, data, description=""):
+        return DataView(data, description, cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state)
 
 class DataView(View):
     def __init__(self, data, description="", **kwargs):

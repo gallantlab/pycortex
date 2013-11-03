@@ -10,7 +10,7 @@
 		};
 		
 		subjects = {{subjects}};
-		datasets = classify({{data}});
+		dataviews = dataset.fromJSON({{data}});
 
 		figure = new jsplot.W2Figure();
 		viewers = figure.add(mriview.MultiView, "main", true, {{ layout[0] }}, {{ layout[1] }}, datasets);
