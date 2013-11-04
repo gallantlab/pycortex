@@ -68,7 +68,10 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         data = dataset.Dataset(data=data)
 
     surfs.auxfile = data
-    subjects = list(set([ds.subject for name, ds in data]))
+
+    package = Package(data)
+    subjects = list(package.subjects)
+
     ctmargs = dict(method='mg2', level=9, recache=recache)
     ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs)) for subj in subjects)
     surfs.auxfile = None
@@ -108,20 +111,23 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     if len(submap) == 0:
         submap = None
 
-    #Process the dataset
-    metadata, images = _convert_dataset(data, submap=submap)
-    jsmeta = json.dumps(metadata, cls=serve.NPEncode)
+    #Process the data
+    metadata = package.metadata(fmt="data/{name}_{frame}.png")
+    images = package.images
     #Write out the PNGs
-    for name, img in list(images.items()):
-        with open(os.path.join(outpath, "data", name), "wb") as binfile:
-            binfile.write(img)
+    for name, imgs in images.items():
+        impath = os.path.join(outpath, "data", "{name}_{frame}.png")
+        for i, img in enumerate(imgs):
+            with open(impath.format(name=name, frame=i), "wb") as binfile:
+                binfile.write(img)
+
     #Copy any stimulus files
     stimpath = os.path.join(outpath, "stim")
-    for name, ds in data:
-        if 'stim' in ds.attrs and os.path.exists(ds.attrs['stim']):
+    for name, view in data:
+        if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
             if not os.path.exists(stimpath):
                 os.makedirs(stimpath)
-            shutil.copy2(ds.attrs['stim'], stimpath)
+            shutil.copy2(view.attrs['stim'], stimpath)
     
     #Parse the html file and paste all the js and css files directly into the html
     from . import htmlembed
@@ -138,7 +144,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     tpl = loader.load(templatefile)
     kwargs.update(viewopts)
     html = tpl.generate(
-        data=jsmeta, 
+        data=json.dumps(metadata), 
         colormaps=colormaps, 
         default_cmap=cmap, 
         python_interface=False, 

@@ -2,6 +2,7 @@ import os
 import numpy as np
 
 from .db import surfs
+from . import dataset
 
 def unmask(mask, data):
     """unmask(mask, data)
@@ -117,16 +118,23 @@ def mosaic(data, dim=0, show=True, **kwargs):
 
     return output, (nwide, ntall)
 
-def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):
+def show_slice(dataview, **kwargs):
     import nibabel
     from matplotlib import cm
     import matplotlib.pyplot as plt
 
-    if vmax is None:
-        from scipy import stats
-        vmax = stats.scoreatpercentile(data.ravel(), 99)
+    dataview = dataset.normalize(dataview)
+    if not isinstance(dataview.data, dataset.BrainData):
+        raise TypeError('Only simple views supported by matplotlib')
+    if not isinstance(dataview.data, dataset.VolumeData):
+        raise TypeError('Only volumetric data may be visualized in show_slice')
 
-    anat = nibabel.load(surfs.getAnat(subject, 'raw')).get_data().T
+    subject = dataview.data.subject
+    xfmname = dataview.data.xfmname
+    imshow_kw = dict(vmin=dataview.vmin, vmax=dataview.vmax, cmap=dataview.cmap)
+    imshow_kw.update(kwargs)
+
+    anat = surfs.getAnat(subject, 'raw').get_data().T
     data, _ = epi2anatspace(data, subject, xfmname)
     data[data < vmin] = np.nan
 
@@ -135,7 +143,7 @@ def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     anatomical = ax.imshow(anat[state['pad'] + (state['slice'],)], cmap=cm.gray, aspect='equal')
-    functional = ax.imshow(data[state['pad'] + (state['slice'],)], vmin=vmin, vmax=vmax, aspect='equal', **kwargs)
+    functional = ax.imshow(data[state['pad'] + (state['slice'],)], aspect='equal', **imshow_kw)
 
     def update():
         print("showing dim %d, slice %d"%(state['dim'] % 3, state['slice']))
@@ -168,7 +176,7 @@ def show_mip(data, **kwargs):
     fig.add_subplot(223).imshow(data.max(2), **kwargs)
     return fig
 
-def show_glass(data, subject, xfmname, pad=10):
+def show_glass(dataview, pad=10):
     '''Create a classic "glass brain" view of the data, with the outline'''
     import nibabel
     nib = surfs.getAnat(subject, 'fiducial')
