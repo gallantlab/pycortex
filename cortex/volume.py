@@ -135,8 +135,9 @@ def show_slice(dataview, **kwargs):
     imshow_kw.update(kwargs)
 
     anat = surfs.getAnat(subject, 'raw').get_data().T
-    data, _ = epi2anatspace(data, subject, xfmname)
-    data[data < vmin] = np.nan
+    data, _ = epi2anatspace(dataview.data)
+
+    data[data < dataview.vmin] = np.nan
 
     state = dict(slice=data.shape[0]*.66, dim=0, pad=())
 
@@ -192,7 +193,7 @@ def show_glass(dataview, pad=10):
     #too much work for something we'll never use
     raise NotImplementedError
 
-def epi2anatspace(data, subject, xfmname):
+def epi2anatspace(volumedata):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
 
@@ -202,9 +203,14 @@ def epi2anatspace(data, subject, xfmname):
     import subprocess
     import nibabel
 
+    volumedata = dataset.normalize(volumedata).data
+    subject = volumedata.subject
+    xfmname = volumedata.xfmname
+    data = volumedata.volume
+
     ## Get transform, save out into ascii file
     xfm = surfs.getXfm(subject, xfmname)
-    fslxfm = xfm.to_fsl(surfs.getAnat(subject, 'raw'))
+    fslxfm = xfm.to_fsl(surfs.getAnat(subject, 'raw').get_filename())
 
     xfmfilename = tempfile.mktemp(".mat")
     with open(xfmfilename, "w") as xfmh:
@@ -212,12 +218,12 @@ def epi2anatspace(data, subject, xfmname):
             xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
 
     ## Save out data into nifti file
-    datafile = nibabel.Nifti1Image(data.T, xfm.epi.get_affine(), xfm.epi.get_header())
+    datafile = nibabel.Nifti1Image(data.T, xfm.reference.get_affine(), xfm.reference.get_header())
     datafilename = tempfile.mktemp(".nii")
     nibabel.save(datafile, datafilename)
 
     ## Reslice epi-space image
-    raw = surfs.getAnat(subject, type='raw')
+    raw = surfs.getAnat(subject, type='raw').get_filename()
     outfilename = tempfile.mktemp(".nii")
     subprocess.call(["fsl5.0-flirt",
                      "-ref", raw,
