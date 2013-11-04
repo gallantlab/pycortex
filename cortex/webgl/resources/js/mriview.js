@@ -750,16 +750,17 @@ var mriview = (function(module) {
         if (!_bound) {
             _bound = true;
             window.addEventListener( 'keydown', function(e) {
-                console.log(e.keyCode);
                 btnspeed = 0.5;
                 if (e.keyCode == 32) {         //space
-                    if (this.active.movie)
+                    if (this.active.data[0].movie)
                         this.playpause();
                     e.preventDefault();
                     e.stopPropagation();
                 } else if (e.keyCode == 82) { //r
                     this.animate([{idx:btnspeed, state:"target", value:this.surfcenter},
                                   {idx:btnspeed, state:"mix", value:0.0}]);
+                } else if (e.keyCode == 73) { //i
+                    this.animate([{idx:btnspeed, state:"mix", value:0.5}]);
                 } else if (e.keyCode == 70) { //f
                     this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
                                   {idx:btnspeed, state:"mix", value:1.0}]);
