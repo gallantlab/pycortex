@@ -310,8 +310,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         cmap=dataview.cmap, 
         vmin=dataview.vmin, 
         vmax=dataview.vmax,
-        origin='lower',
-        **dataview.attrs)
+        origin='lower')
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
     ax.set_ylim(extents[2], extents[3])
