@@ -15,9 +15,23 @@ var dataset = (function(module) {
 
     module.brains = {}; //Singleton containing all BrainData objects
 
+    module.makeFrom = function(dvx, dvy) {
+        //Generate a new DataView given two existing ones
+        var json = {};
+        json.name = dvx.name + " vs. "+ dvy.name;
+        json.data = [[dvx.data[0].name, dvy.data[0].name]];
+        json.description = "2D colormap for "+dvx.name+" and "+dvy.name;
+        json.cmap = viewopts.default_2Dcmap;
+        json.vmin = [[dvx.vmin[0][0], dvy.vmin[0][0]]];
+        json.vmax = [[dvx.vmax[0][0], dvy.vmax[0][0]]];
+        json.attrs = dvx.attrs;
+        json.state = dvx.state;
+        return new module.DataView(json);
+    };
+
     module.DataView = function(json) {
         this.data = [];
-        //Only handle two-d case for now -- muliviews are difficult to handle in this framework
+        //Only handle 2D case for now -- muliviews are difficult to handle in this framework
         for (var i = 0; i < json.data.length; i++) {
             if (json.data[i] instanceof Array) {
                 this.data.push(module.brains[json.data[i][0]]);
@@ -26,6 +40,7 @@ var dataset = (function(module) {
                 this.data.push(module.brains[json.data[i]]);
             }
         }
+        this.name = json.name;
         this.description = json.desc;
         this.cmap = json.cmap;
         this.vmin = json.vmin;
@@ -37,18 +52,25 @@ var dataset = (function(module) {
         this.delay = json.attrs.delay === undefined ? 0 : json.attrs.delay;
         this.filter = json.attrs.filter == undefined ? "nearest" : json.attrs.filter;
 
+        if (!(json.vmin instanceof Array))
+            this.vmin = [[json.vmin]]
+        if (!(json.vmax instanceof Array))
+            this.vmax = [[json.vmax]]
+
         this.frames = this.data[0].frames
         this.length = this.frames / this.rate;
     }
-    module.DataView.prototype.init = function(uniforms, meshes) {
-        $("#dataload").show();
+    module.DataView.prototype.init = function(uniforms, meshes, frames) {
+        if (this.loaded.state() == "pending")
+            $("#dataload").show();
+        frames = frames || 0;
         var deferred = this.data.length == 1 ? 
             $.when(this.data[0].loaded) : 
             $.when(this.data[0].loaded, this.data[1].loaded);
         deferred.then(function() {
             this.loaded.resolve();
 
-            var sampler = samplers[this.filter];
+            var sampler = module.samplers[this.filter];
             var shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, uniforms.nsamples.value);
             this.shader = new THREE.ShaderMaterial({ 
                 vertexShader:shaders.vertex,
@@ -58,7 +80,8 @@ var dataset = (function(module) {
                 morphTargets:true, 
                 morphNormals:true, 
                 lights:true, 
-                blending:THREE.CustomBlending,
+
+                 blending:THREE.CustomBlending,
             });
             this.shader.map = true;
             this.shader.metal = true;
@@ -87,7 +110,7 @@ var dataset = (function(module) {
             for (var i = 0; i < this.data.length; i++) {
                 this.data[i].setFilter(this.filter);
                 this.data[i].init(uniforms, i);
-                this.data[i].set(uniforms, i, 0);
+                this.data[i].set(uniforms, i, frames);
             }
         }.bind(this));
     }
@@ -95,10 +118,15 @@ var dataset = (function(module) {
         var frame = ((time - this.delay) / this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
         uniforms.framemix.value = frame - fframe;
-        for (var i = 0; i < this.data.length;i++) {
+        for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(uniforms, i, fframe);
         }
     };
+    module.DataView.prototype.setFilter = function(interp) {
+        this.filter = interp;
+        for (var i = 0; i < this.data.length; i++)
+            this.data[i].setFilter(interp);
+    }
 
     module.BrainData = function(json, images) {
         this.loaded = $.Deferred();
@@ -109,6 +137,7 @@ var dataset = (function(module) {
         this.min = json.min;
         this.max = json.max;
         this.mosaic = json.mosaic;
+        this.name = json.data;
 
         this.data = images[json.data];
         this.frames = images[json.data].length;
@@ -153,8 +182,8 @@ var dataset = (function(module) {
     module.BrainData.prototype.setFilter = function(interp) {
         this.filter = interp;
         for (var i = 0, il = this.textures.length; i < il; i++) {
-            this.textures[i].minFilter = filtertypes[interp];
-            this.textures[i].magFilter = filtertypes[interp];
+            this.textures[i].minFilter = module.filtertypes[interp];
+            this.textures[i].magFilter = module.filtertypes[interp];
             this.textures[i].needsUpdate = true;
         }
     };

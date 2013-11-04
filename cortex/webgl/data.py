@@ -1,3 +1,12 @@
+"""This module defines a class Package which is used by webgl to encode pycortex datasets into json objects.
+The general structure of the object that's transmitted looks like this:
+
+dict(
+    views = [ dict(name="proper name", cmap=cmap, vmin=vmin, vmax=vmax, data=["__braindata_name"]) ],
+    data  = dict(__braindata_name=dict(subject=subject, min=min, max=max)),
+    images=(__braindata_name=["img1.png", "img2.png"]),
+)
+"""
 import json
 import numpy as np
 
@@ -12,13 +21,13 @@ class Package(object):
         
         self.brains = dict()
         self.images = dict()
-        for ds in self.uniques:
-            name = ds.name
-            self.brains[name] = ds.to_json()
-            voldata = ds.data
-            if not ds.movie:
+        for brain in self.uniques:
+            name = brain.name
+            self.brains[name] = brain.to_json()
+            voldata = brain.volume
+            if not brain.movie:
                 voldata = voldata[np.newaxis]
-            if ds.raw:
+            if brain.raw:
                 voldata = voldata.astype(np.uint8)
             else:
                 voldata = voldata.astype(np.float32)
@@ -41,10 +50,13 @@ class Package(object):
     def subjects(self):
         return set(braindata.subject for braindata in self.uniques)
 
-    def image_names(self, fmt="/data/{img}/{frame}/"):
+    def metadata(self, **kwargs):
+        return dict(views=self.views, data=self.brains, images=self.image_names(**kwargs))
+
+    def image_names(self, fmt="/data/{name}/{frame}/"):
         names = dict()
         for name, imgs in self.images.items():
-            names[name] = [fmt.format(img=name, frame=i) for i in range(len(imgs))]
+            names[name] = [fmt.format(name=name, frame=i) for i in range(len(imgs))]
         return names
 
 def _pack_png(mosaic):

@@ -7,13 +7,14 @@
 		viewopts = {
 			voxlines: {{voxlines}},
 			voxline_width: {{voxline_width}},
+			default_2Dcmap: "RdBu_covar",
 		};
 		
 		subjects = {{subjects}};
 		dataviews = dataset.fromJSON({{data}});
 
 		figure = new jsplot.W2Figure();
-		viewers = figure.add(mriview.MultiView, "main", true, {{ layout[0] }}, {{ layout[1] }}, datasets);
+		viewers = figure.add(mriview.MultiView, "main", true, {{ layout[0] }}, {{ layout[1] }}, dataviews);
 
 		sock = new Websock();
 {% end %}

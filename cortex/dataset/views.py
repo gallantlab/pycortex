@@ -2,9 +2,10 @@ import json
 
 import h5py
 import numpy as np
+from scipy.stats import scoreatpercentile
 
 from .. import options
-from . import BrainData
+from . import BrainData, VolumeData
 
 default_cmap = options.config.get("basic", "default_cmap")
 
@@ -31,28 +32,49 @@ class View(object):
 
 class DataView(View):
     def __init__(self, data, description="", **kwargs):
+        super(DataView, self).__init__(**kwargs)
+        if isinstance(data, list):
+            #validate if the input is of a recognizable form
+            if len(data) != 1 or len(data[0]) != 2:
+                raise TypeError("Sorry, multi views are currently not supported...")
+            xdim, ydim = map(DataView.normalize, data[0])
+            if xdim.subject != ydim.subject:
+                raise TypeError("2D data views require the same subject")
+            if xdim.raw or ydim.raw:
+                raise TypeError("2D data views cannot be raw")
+            #this awful bit of logic checks validity of movies
+            if xdim.movie ^ ydim.movie or (
+                xdim.movie and 
+                len(xdim.data) != len(ydim.data)):
+                raise TypeError('2D movies must be same length')
+
+            if self.vmin is None:
+                self.vmin = [(scoreatpercentile(xdim.data, 1), scoreatpercentile(ydim.data, 1))]
+            if self.vmax is None:
+                self.vmax = [(scoreatpercentile(xdim.data, 99), scoreatpercentile(ydim.data, 99))]
+            self.data = [(xdim, ydim)]
+        else:
+            self.data = DataView.normalize(data)
+
+        self.description = description
+        if self.vmin is None:
+            self.vmin = scoreatpercentile(self.data.data, 1)
+        if self.vmax is None:
+            self.vmax = scoreatpercentile(self.data.data, 99)
+
+    @staticmethod
+    def normalize(data):
         if isinstance(data, tuple):
             if len(data) == 3:
-                self.data = VolumeData(*data)
+                return VolumeData(*data)
             elif len(data) == 2:
-                self.data = VertexData(*data)
+                return VertexData(*data)
             else:
                 raise TypeError("Invalid input for DataView")
         elif isinstance(data, BrainData):
-            self.data = data
-        elif isinstance(data, list):
-            #validate if the input is of a recognizable form
-            if isinstance(data[0], (list, tuple)) and (
-                len(data[0]) != 2 or data[0][0].subject != data[0][1].subject):
-                raise ValueError('Invalid input for dataview')
-            self.data = data
-
-        self.description = description
-        super(DataView, self).__init__(**kwargs)
-        if self.vmin is None:
-            self.vmin = min([d.data.min() for d in self])
-        if self.vmax is None:
-            self.vmax = max([d.data.max() for d in self])
+            return data
+        else:
+            raise TypeError("Invalid input for DataView")
 
     @classmethod
     def from_hdf(cls, ds, node):

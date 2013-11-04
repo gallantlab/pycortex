@@ -118,7 +118,7 @@ class VolumeData(BrainData):
         return dict(
             data=self.name,
             subject=self.subject, 
-            xfm=xfm,
+            xfm=list(np.array(xfm).ravel()),
             movie=self.movie,
             raw=self.raw,
             shape=self.shape,
