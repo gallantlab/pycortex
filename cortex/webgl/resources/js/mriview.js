@@ -951,9 +951,8 @@ var mriview = (function(module) {
              })
             .selectable({
                 selecting: function(event, ui) {
-                    var max = this.colormap.image.height > 8 ? 2 : 1;
                     var selected = $(this.object).find("#datasets li.ui-selected, #datasets li.ui-selecting");
-                    if (selected.length > max) {
+                    if (selected.length > 2) {
                         $(ui.selecting).removeClass("ui-selecting");
                     }
                 }.bind(this),

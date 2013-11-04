@@ -73,6 +73,8 @@ class DataView(View):
                 raise TypeError("Invalid input for DataView")
         elif isinstance(data, BrainData):
             return data
+        elif isinstance(data, DataView) and isinstance(data.data, BrainData):
+            return data.data
         else:
             raise TypeError("Invalid input for DataView")
 
