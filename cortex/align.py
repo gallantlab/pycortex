@@ -1,8 +1,6 @@
 import os
 import numpy as np
 
-from . import utils
-
 def manual(subject, xfmname, reference=None, **kwargs):
     from .db import surfs
     from .mayavi_aligner import get_aligner
