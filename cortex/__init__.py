@@ -1,4 +1,5 @@
-from . import align, volume, quickflat, webgl, options
+from . import align, volume, quickflat, webgl, segment, options
+
 from .utils import *
 
 from .dataset import Dataset, VolumeData, VertexData, DataView, View

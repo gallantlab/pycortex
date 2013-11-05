@@ -3,6 +3,7 @@ import numpy as np
 import h5py
 
 from ..db import surfs
+from .. import utils
 
 class BrainData(object):
     def __init__(self, data):
@@ -267,7 +268,7 @@ class VertexData(VolumeData):
         """Sets the data of this VertexData. Also sets flags if the data appears to
         be in 'movie' or 'raw' format. See __init__ for data shape possibilities.
         """
-        self.data = data
+        self._data = data
         
         self.movie = False
         self.raw = data.dtype == np.uint8
@@ -325,9 +326,6 @@ class VertexData(VolumeData):
 
     def __repr__(self):
         maskstr = ''
-        if 'projection' in self.attrs:
-            maskstr = '(%s, %s) mapped'%self.attrs['projection']
-
         if self.raw:
             maskstr += " raw"
         if self.movie:

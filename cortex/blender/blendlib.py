@@ -1,15 +1,37 @@
-import os
+"""This module is intended to be imported directly by blender.
+It provides utility functions for adding meshes and saving them to communicate with the rest of pycortex
+"""
 import struct
-import numpy as np
-from matplotlib import cm, colors
+import xdrlib
+import tempfile
 
 import bpy.ops
 from bpy import context as C
 from bpy import data as D
 
+def _repack(linear, n=3):
+    """This ridiculous function returns chunks of n from a linear list.
+    For example, _repack([1, 2, 3, 4, 5, 6], n=3) -> [[1, 2, 3], [4, 5, 6]]
+    Good for unravelling ravelled data
+    """
+    return list(zip(*[iter(linear)]*3))
+
+def clear_all():
+    bpy.ops.object.select_all(action='SELECT')
+    bpy.ops.object.delete()
+
+def init_subject(wpts, ipts, polys, curv):
+    obj, mesh = make_object(_repack(wpts), _repack(polys), name='hemi')
+    obj.scale = .1, .1, .1
+    C.scene.objects.active = obj
+    bpy.ops.object.shape_key_add()
+    add_vcolor(curv, mesh, name='curvature')
+    add_shapekey(_repack(ipts), name='inflated')
+    obj.use_shape_key_edit_mode = True
+
 def make_object(pts, polys, name="mesh"):
     mesh = D.meshes.new(name)
-    mesh.from_pydata(pts.tolist(), [], polys.tolist())
+    mesh.from_pydata(pts, [], polys)
     obj = D.objects.new(name, mesh)
     C.scene.objects.link(obj)
     return obj, mesh
@@ -23,26 +45,25 @@ def get_ptpoly(name):
     faces.foreach_get('vertices', polys.ravel())
     return pts, polys
 
-def add_vcolor(color, mesh=None, name='color', cmap=cm.RdBu, vmin=None, vmax=None):
+def add_vcolor(color, mesh=None, name='color'):
     if mesh is None:
         mesh = C.scene.objects.active.data
     elif isinstance(mesh, str):
         mesh = D.meshes[mesh]
 
     bpy.ops.object.mode_set(mode='OBJECT')
-    if color.ndim == 1:
-        if vmin is None:
-            vmin = color.min()
-        if vmax is None:
-            vmax = color.max()
-        color = cmap((color - vmin) / (vmax - vmin))[:,:3]
-
-    loopidx = np.zeros((len(mesh.loops),), dtype=np.uint32)
+    loopidx = [0]*len(mesh.loops)
     mesh.loops.foreach_get('vertex_index', loopidx)
 
     vcolor = mesh.vertex_colors.new(name)
-    for i, j in enumerate(loopidx):
-        vcolor.data[i].color = list(color[j])
+    if not isinstance(color[0], (list, tuple)):
+        for i, j in enumerate(loopidx):
+            vcolor.data[i].color = [color[j]]*3
+    else:
+        for i, j in enumerate(loopidx):
+            vcolor.data[i].color = color[j]
+
+    print("Successfully added vcolor '%s'"%name)
     return vcolor
 
 def add_shapekey(shape, name=None):
@@ -55,36 +76,19 @@ def add_shapekey(shape, name=None):
         key.data[i].co = shape[i]
     return key
 
-def cut_data(volumedata, name="retinotopy", projection="nearest", cmap=cm.RdBu, vmin=None, vmax=None, mesh="hemi"):
-    if isinstance(mesh, str):
-        mesh = D.meshes[mesh]
+def write_patch(filename, pts, edges=None):
+    if edges is None:
+        edges = set()
 
-    mapped = volumedata.map(projection)
-    if mapped.llen == len(mesh.vertices):
-        print("left hemisphere")
-        vcolor = mapped.left
-    else:
-        print ("right hemisphere")
-        vcolor = mapped.right
+    with open(filename, 'wb') as fp:
+        fp.write(struct.pack('>2i', -1, len(pts)))
+        for i, pt in pts:
+            if i in edges:
+                fp.write(struct.pack('>i3f', -i-1, *pt))
+            else:
+                fp.write(struct.pack('>i3f', i+1, *pt))
 
-    return add_vcolor(vcolor, mesh=mesh, name=name, cmap=cmap, vmin=vmin, vmax=vmax)
-
-def fs_cut(subject, hemi):
-    from .freesurfer import get_surf
-    wpts, polys, curv = get_surf(subject, hemi, 'smoothwm')
-    ipts, _, _ = get_surf(subject, hemi, 'inflated')
-
-    obj, mesh = make_object(wpts, polys, name='hemi')
-    obj.scale = .1, .1, .1
-    C.scene.objects.active = obj
-    bpy.ops.object.shape_key_add()
-    add_vcolor(curv, mesh, vmin=-.6, vmax=.6, name='curvature')
-    add_shapekey(ipts, name='inflated')
-    obj.use_shape_key_edit_mode = True
-    return mesh
-
-def write_patch(subject, hemi, name, mesh='hemi'):
-    from .freesurfer import get_paths, write_patch
+def save_patch(fname, mesh='hemi'):
     if isinstance(mesh, str):
         mesh = D.meshes[mesh]
 
@@ -133,4 +137,17 @@ def write_patch(subject, hemi, name, mesh='hemi'):
     edges = mwall_edge | (smore - seam)
     verts = fverts - seam
     pts = [(v, D.shape_keys['Key'].key_blocks['inflated'].data[v].co) for v in verts]
-    write_patch(get_paths(subject, hemi).format(name=name), pts, edges)
+    write_patch(fname, pts, edges)
+
+def read_xdr(filename):
+    with open(filename, "rb") as fp:
+        u = xdrlib.Unpacker(fp.read())
+        pts = u.unpack_array(p.unpack_double)
+        polys = u.unpack_array(p.unpack_uint)
+        return pts, polys
+def write_xdr(filename, pts, polys):
+    with open(filename, "wb") as fp:
+        p = xdrlib.Packer()
+        p.pack_array(pts, p.pack_double)
+        p.pack_array(polys, p.pack_uint)
+        fp.write(p.get_buffer())
