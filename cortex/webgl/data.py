@@ -66,7 +66,8 @@ def _pack_png(mosaic):
     if mosaic.dtype not in (np.float32, np.uint8):
         raise TypeError
 
-    im = Image.frombuffer('RGBA', mosaic.shape[:2], mosaic.data, 'raw', 'RGBA', 0, 1)
+    y, x = mosaic.shape[:2]
+    im = Image.frombuffer('RGBA', (x,y), mosaic.data, 'raw', 'RGBA', 0, 1)
     im.save(buf, format='PNG')
     buf.seek(0)
     return buf.read()
