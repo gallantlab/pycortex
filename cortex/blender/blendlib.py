@@ -1,6 +1,7 @@
 """This module is intended to be imported directly by blender.
 It provides utility functions for adding meshes and saving them to communicate with the rest of pycortex
 """
+import struct
 import xdrlib
 import tempfile
 
@@ -61,6 +62,8 @@ def add_vcolor(color, mesh=None, name='color'):
     else:
         for i, j in enumerate(loopidx):
             vcolor.data[i].color = color[j]
+
+    print("Successfully added vcolor '%s'"%name)
     return vcolor
 
 def add_shapekey(shape, name=None):

@@ -24,7 +24,7 @@ def _call_blender(filename, code):
     """
     with tempfile.NamedTemporaryFile() as tf:
         startcode=_base_imports
-        endcode = "\nbpy.ops.wm.save_mainfile()"
+        endcode = "\nbpy.ops.wm.save_mainfile(filepath='{fname}')".format(fname=filename)
         cmd = "blender -b {fname} -P {tfname}".format(fname=filename, tfname=tf.name)
         if not os.path.exists(filename):
             startcode += "blendlib.clear_all()\n"
@@ -35,16 +35,16 @@ def _call_blender(filename, code):
         tf.flush()
         sp.call(shlex.split(cmd))
 
-def add_braindata(fname, dataview, name="retinotopy", projection="nearest", mesh="hemi"):
+def add_cutdata(fname, dataview, name="retinotopy", projection="nearest", mesh="hemi"):
+    from matplotlib import cm
     dataview = dataset.normalize(dataview)
     mapped = dataview.data.map(projection)
+    vcolor = mapped.data
 
-    if vcolor.ndim == 1:
-        if vmin is None:
-            vmin = vcolor.min()
-        if vmax is None:
-            vmax = vcolor.max()
-        vcolor = cmap((vcolor - vmin) / (vmax - vmin))[:,:3]
+    cmap = cm.get_cmap(dataview.cmap)
+    vmin = dataview.vmin
+    vmax = dataview.vmax
+    vcolor = cmap((vcolor - vmin) / (vmax - vmin))[:,:3]
 
     p = xdrlib.Packer()
     p.pack_string(mesh)
@@ -55,8 +55,8 @@ def add_braindata(fname, dataview, name="retinotopy", projection="nearest", mesh
         tf.flush()
         code = """with open('{tfname}', 'rb') as fp:
             u = xdrlib.Unpacker(fp.read())
-            mesh = u.unpack_string()
-            name = u.unpack_string()
+            mesh = u.unpack_string().decode('utf-8')
+            name = u.unpack_string().decode('utf-8')
             color = u.unpack_array(u.unpack_double)
             blendlib.add_vcolor(blendlib._repack(color), mesh, name)
         """.format(tfname=tf.name)
@@ -98,8 +98,8 @@ def write_patch(bname, pname, mesh="hemi"):
         tf.flush()
         code = """with open('{tfname}', 'rb') as fp:
             u = xdrlib.Unpacker(fp.read())
-            pname = u.unpack_string()
-            mesh = u.unpack_string()
-            save_patch(pname, mesh)
+            pname = u.unpack_string().decode('utf-8')
+            mesh = u.unpack_string().decode('utf-8')
+            blendlib.save_patch(pname, mesh)
         """.format(tfname=tf.name)
-        _call_blender(fname, code)
+        _call_blender(bname, code)
