@@ -266,7 +266,7 @@ class Database(object):
         
         files = self.getFiles(subject)
         if len(glob.glob(files['masks'].format(xfmname=name, type="*"))) > 0:
-            raise ValueError('Refusing to change a transfrom with masks')
+            raise ValueError('Refusing to change a transform with masks')
             
         json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
     

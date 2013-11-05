@@ -3,7 +3,6 @@ import numpy as np
 import h5py
 
 from ..db import surfs
-from .. import utils
 
 class BrainData(object):
     def __init__(self, data):
@@ -178,6 +177,7 @@ class VolumeData(BrainData):
     def map(self, projection="nearest"):
         """Convert this VolumeData into a VertexData using the given sampler
         """
+        from .. import utils
         mapper = utils.get_mapper(self.subject, self.xfmname, projection)
         data = mapper(self)
         return data
@@ -320,7 +320,7 @@ class VertexData(VolumeData):
     def volume(self, xfmname, projection='nearest', **kwargs):
         import warnings
         warnings.warn('Inverse mapping cannot be accurate')
-        from . import utils
+        from .. import utils
         mapper = utils.get_mapper(self.subject, xfmname, projection)
         return mapper.backwards(self, **kwargs)
 

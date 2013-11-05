@@ -10,6 +10,13 @@ def manual(subject, xfmname, reference=None, **kwargs):
         surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', reference=reference)
         print("saved xfm")
 
+    if reference is not None:
+        try:
+            surfs.getXfm(subject, xfmname)
+            raise ValueError('Refusing to overwrite an existing transform')
+        except IOError:
+            pass
+
     m = get_aligner(subject, xfmname, epifile=reference, **kwargs)
     m.save_callback = save_callback
     m.configure_traits()
