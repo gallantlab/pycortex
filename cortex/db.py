@@ -12,6 +12,7 @@ import glob
 import time
 import json
 import shutil
+import warnings
 import numpy as np
 
 from . import options
@@ -21,8 +22,15 @@ filestore = options.config.get('basic', 'filestore')
 class SubjectDB(object):
     def __init__(self, subj):
         self.subject = subj
+        self._warning = None
         self._transforms = None
         self._surfaces = None
+
+        try:
+            with open(os.path.join(filestore, subj, "warning.txt")) as fp:
+                self._warning = fp.read()
+        except IOError:
+            pass
 
     @property
     def transforms(self):
@@ -132,6 +140,8 @@ class Database(object):
     
     def __getattr__(self, attr):
         if attr in self.subjects:
+            if self.subjects[attr]._warning is not None:
+                warnings.warn(self.subjects[attr]._warning)
             return self.subjects[attr]
         else:
             raise AttributeError
@@ -256,7 +266,7 @@ class Database(object):
         
         files = self.getFiles(subject)
         if len(glob.glob(files['masks'].format(xfmname=name, type="*"))) > 0:
-            raise ValueError('Refusing to change a transfrom with masks')
+            raise ValueError('Refusing to change a transform with masks')
             
         json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
     
@@ -421,6 +431,9 @@ class Database(object):
 
         ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
         projcache = "{xfmname}_{projection}.npz"
+
+        if self.subjects[subject]._warning is not None:
+            warnings.warn(self.subjects[subject]._warning)
 
         surfs = dict()
         for surf in os.listdir(surfpath):

@@ -2,6 +2,7 @@ import os
 import numpy as np
 
 from .db import surfs
+from . import dataset
 
 def unmask(mask, data):
     """unmask(mask, data)
@@ -117,25 +118,33 @@ def mosaic(data, dim=0, show=True, **kwargs):
 
     return output, (nwide, ntall)
 
-def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):
+def show_slice(dataview, **kwargs):
     import nibabel
     from matplotlib import cm
     import matplotlib.pyplot as plt
 
-    if vmax is None:
-        from scipy import stats
-        vmax = stats.scoreatpercentile(data.ravel(), 99)
+    dataview = dataset.normalize(dataview)
+    if not isinstance(dataview.data, dataset.BrainData):
+        raise TypeError('Only simple views supported by matplotlib')
+    if not isinstance(dataview.data, dataset.VolumeData):
+        raise TypeError('Only volumetric data may be visualized in show_slice')
 
-    anat = nibabel.load(surfs.getAnat(subject, 'raw')).get_data().T
-    data, _ = epi2anatspace(data, subject, xfmname)
-    data[data < vmin] = np.nan
+    subject = dataview.data.subject
+    xfmname = dataview.data.xfmname
+    imshow_kw = dict(vmin=dataview.vmin, vmax=dataview.vmax, cmap=dataview.cmap)
+    imshow_kw.update(kwargs)
+
+    anat = surfs.getAnat(subject, 'raw').get_data().T
+    data, _ = epi2anatspace(dataview.data)
+
+    data[data < dataview.vmin] = np.nan
 
     state = dict(slice=data.shape[0]*.66, dim=0, pad=())
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
     anatomical = ax.imshow(anat[state['pad'] + (state['slice'],)], cmap=cm.gray, aspect='equal')
-    functional = ax.imshow(data[state['pad'] + (state['slice'],)], vmin=vmin, vmax=vmax, aspect='equal', **kwargs)
+    functional = ax.imshow(data[state['pad'] + (state['slice'],)], aspect='equal', **imshow_kw)
 
     def update():
         print("showing dim %d, slice %d"%(state['dim'] % 3, state['slice']))
@@ -168,7 +177,7 @@ def show_mip(data, **kwargs):
     fig.add_subplot(223).imshow(data.max(2), **kwargs)
     return fig
 
-def show_glass(data, subject, xfmname, pad=10):
+def show_glass(dataview, pad=10):
     '''Create a classic "glass brain" view of the data, with the outline'''
     import nibabel
     nib = surfs.getAnat(subject, 'fiducial')
@@ -184,7 +193,7 @@ def show_glass(data, subject, xfmname, pad=10):
     #too much work for something we'll never use
     raise NotImplementedError
 
-def epi2anatspace(data, subject, xfmname):
+def epi2anatspace(volumedata):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
 
@@ -194,9 +203,14 @@ def epi2anatspace(data, subject, xfmname):
     import subprocess
     import nibabel
 
+    volumedata = dataset.normalize(volumedata).data
+    subject = volumedata.subject
+    xfmname = volumedata.xfmname
+    data = volumedata.volume
+
     ## Get transform, save out into ascii file
     xfm = surfs.getXfm(subject, xfmname)
-    fslxfm = xfm.to_fsl(surfs.getAnat(subject, 'raw'))
+    fslxfm = xfm.to_fsl(surfs.getAnat(subject, 'raw').get_filename())
 
     xfmfilename = tempfile.mktemp(".mat")
     with open(xfmfilename, "w") as xfmh:
@@ -204,12 +218,12 @@ def epi2anatspace(data, subject, xfmname):
             xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
 
     ## Save out data into nifti file
-    datafile = nibabel.Nifti1Image(data.T, xfm.epi.get_affine(), xfm.epi.get_header())
+    datafile = nibabel.Nifti1Image(data.T, xfm.reference.get_affine(), xfm.reference.get_header())
     datafilename = tempfile.mktemp(".nii")
     nibabel.save(datafile, datafilename)
 
     ## Reslice epi-space image
-    raw = surfs.getAnat(subject, type='raw')
+    raw = surfs.getAnat(subject, type='raw').get_filename()
     outfilename = tempfile.mktemp(".nii")
     subprocess.call(["fsl5.0-flirt",
                      "-ref", raw,

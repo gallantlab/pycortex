@@ -3,13 +3,13 @@ Number.prototype.mod = function(n) {
 }
 
 var mriview = (function(module) {
-    module.MultiView = function(parent, nrows, ncols, dataset) {
+    module.MultiView = function(parent, nrows, ncols, dataviews) {
         jsplot.GridFigure.call(this, parent, nrows, ncols);
 
-        var subjects = {}, snames = [], name, subj;
-        for (var i = 0; i < dataset['__order__'].length; i++) {
-            name = dataset['__order__'][i];
-            subj = dataset[name].subject;
+        var subjects = {}, snames = [], view, subj;
+        for (var i = 0; i < dataviews.length; i++) {
+            view = dataviews[i];
+            subj = view.data[0].subject;
             if (subjects[subj] === undefined) {
                 subjects[subj] = true;
                 snames.push(subj);
@@ -24,20 +24,19 @@ var mriview = (function(module) {
         }
         
         this.subjects = snames;
-        this.addData(dataset);
+        this.addData(dataviews);
     }
     module.MultiView.prototype = Object.create(jsplot.GridFigure.prototype);
     module.MultiView.prototype.constructor = module.MultiView;
-    module.MultiView.prototype.addData = function(dataset) {
-        var data = {}, subj, name;
-        for (var i = 0; i < dataset['__order__'].length; i++) {
-            name = dataset['__order__'][i];
-            subj = dataset[name].subject;
+    module.MultiView.prototype.addData = function(dataviews) {
+        var data = {}, subj, view;
+        for (var i = 0; i < dataviews.length; i++) {
+            view = dataviews[i];
+            subj = view.data[0].subject;
             if (data[subj] === undefined) {
-                data[subj] = {__order__:[]};
+                data[subj] = [];
             }
-            data[subj][name] = dataset[name];
-            data[subj]['__order__'].push(name);
+            data[subj].push(view);
         }
 
         for (subj in data) {

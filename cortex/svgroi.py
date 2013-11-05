@@ -384,7 +384,8 @@ class ROI(object):
 ###################################################################################
 def _find_layer(svg, label):
     layers = [l for l in svg.findall("//{%s}g[@{%s}label]"%(svgns, inkns)) if l.get("{%s}label"%inkns) == label]
-    assert len(layers) > 0, "Cannot find layer %s"%label
+    if len(layers) < 1:
+        raise ValueError("Cannot find layer %s"%label)
     return layers[0]
 
 def _make_layer(parent, name):
@@ -438,8 +439,11 @@ def _labelpos(pts):
 
 def scrub(svgfile):
     svg = etree.parse(svgfile, parser=parser)
-    rmnode = _find_layer(svg, "data")
-    rmnode.getparent().remove(rmnode)
+    try:
+        rmnode = _find_layer(svg, "data")
+        rmnode.getparent().remove(rmnode)
+    except ValueError:
+        pass
     svgtag = svg.getroot()
     svgtag.attrib['id'] = "svgroi"
     inkver = "{%s}version"%inkns

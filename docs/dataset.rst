@@ -105,13 +105,17 @@ HDF5 format::
 
     /subjects/
         s1/
-            rois.svg
+            rois/
+                name[n]
+                name[n]
+                name[n]
             transforms/
                 xfm1/
                     xfm[4,4]
                     masks/
                         thin[z,y,x]
                         thick[z,y,x]
+                        __sha1hash[z,y,x]
                 xfm2/
                     xfm[4,4]
                     masks/
@@ -125,8 +129,10 @@ HDF5 format::
                         pts[n,3]
                         polys[m,3]
     /datasets/
-        ds1
-            ->subject
-            ->xfm
-            ->mask
-        ds2
+        hash
+            -> subject
+            -> xfmname
+            -> maskname
+    /views
+        name1[dataref, desc, cmap, vmin, vmax, state]
+        name2[dataref, desc, cmap, vmin, vmax, state]

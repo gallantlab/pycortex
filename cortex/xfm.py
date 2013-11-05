@@ -64,7 +64,11 @@ class Transform(object):
         import nibabel
         import numpy.linalg as npl
         
-        baseIm = nibabel.load(basefile)
+        try:
+            baseIm = nibabel.load(basefile)
+        except AttributeError:
+            baseIm = basefile
+            
         refIm = nibabel.load(reffile)
         base_hdr = baseIm.get_header()
         ref_hdr = refIm.get_header()
@@ -94,7 +98,10 @@ class Transform(object):
         import nibabel
         import numpy.linalg as npl
 
-        baseIm = nibabel.load(basefile)
+        try:
+            baseIm = nibabel.load(basefile)
+        except AttributeError:
+            baseIm = basefile
         in_hdr = baseIm.get_header()
         ref_hdr = self.reference.get_header()
         

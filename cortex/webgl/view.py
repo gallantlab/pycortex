@@ -18,6 +18,7 @@ from .. import utils, options, volume, dataset
 from ..db import surfs
 
 from . import serve
+from .data import Package
 
 name_parse = re.compile(r".*/(\w+).png")
 try:
@@ -28,73 +29,6 @@ colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
 viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
-
-def _package_data(braindata, submap=None):
-    from scipy.stats import scoreatpercentile
-    package = dict(__class__="Dataset")
-
-    #Fill in extra metadata
-    xfm = surfs.getXfm(braindata.subject, braindata.xfmname, 'coord')
-    package['subject'] = braindata.subject
-    package['raw'] = braindata.raw
-    package['xfm'] = list(np.array(xfm.xfm).ravel())
-    package['lmin'] = float(braindata.data.min())
-    package['lmax'] = float(braindata.data.max())
-    package['vmin'] = float(scoreatpercentile(braindata.data.ravel(), 1))
-    package['vmax'] = float(scoreatpercentile(braindata.data.ravel(), 99))
-
-    if submap is not None:
-        package['subject'] = submap[braindata.subject]
-
-    if not braindata.movie:
-        voldat = braindata.volume[np.newaxis]
-    else:
-        voldat = braindata.volume
-    if braindata.raw:
-        voldat = voldat.astype(np.uint8)
-    else:
-        voldat = voldat.astype(np.float32)
-
-    package['data'] = []
-    for vol in voldat:
-        im, package['mosaic'] = volume.mosaic(vol, show=False)
-        package['data'].append(im)
-
-    #Overwrite generated metadata
-    package.update(braindata.attrs)
-    #include only the filename for any stimuli
-    if 'stim' in package:
-        package['stim'] = os.path.join("stim", os.path.split(package['stim'])[1])
-
-    return package
-
-def _convert_dataset(data, fmt="%s_%d.png", submap=None):
-    metadata, images = dict(__order__=[]), dict()
-    for name, braindata in data:
-        metadata['__order__'].append(name)
-        if isinstance(braindata, dataset.VertexData):
-            raise TypeError('Sorry, vertex data is currently not supported for webgl...')
-        package = _package_data(braindata, submap=submap)
-        for i, data in enumerate(package['data']):
-            images[fmt%(name, i)] = _pack_png(data)
-
-        frames = range(len(package['data']))
-        package['data'] = [os.path.join("data", fmt%(name, i)) for i in frames]
-        metadata[name] = package
-
-    return metadata, images
-
-def _pack_png(mosaic):
-    import Image
-    import cStringIO
-    buf = cStringIO.StringIO()
-    if mosaic.dtype not in (np.float32, np.uint8):
-        raise TypeError
-
-    im = Image.frombuffer('RGBA', mosaic.shape[:2], mosaic.data, 'raw', 'RGBA', 0, 1)
-    im.save(buf, format='PNG')
-    buf.seek(0)
-    return buf.read()
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", layout=None, anonymize=False, **kwargs):
     """Creates a static instance of the webGL MRI viewer that can easily be posted 
@@ -134,9 +68,12 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         data = dataset.Dataset(data=data)
 
     surfs.auxfile = data
-    subjects = list(set([ds.subject for name, ds in data]))
-    kwargs.update(dict(method='mg2', level=9, recache=recache))
-    ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
+
+    package = Package(data)
+    subjects = list(package.subjects)
+
+    ctmargs = dict(method='mg2', level=9, recache=recache)
+    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs)) for subj in subjects)
     surfs.auxfile = None
 
     if layout is None:
@@ -174,20 +111,23 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     if len(submap) == 0:
         submap = None
 
-    #Process the dataset
-    metadata, images = _convert_dataset(data, submap=submap)
-    jsmeta = json.dumps(metadata, cls=serve.NPEncode)
+    #Process the data
+    metadata = package.metadata(fmt="data/{name}_{frame}.png")
+    images = package.images
     #Write out the PNGs
-    for name, img in list(images.items()):
-        with open(os.path.join(outpath, "data", name), "wb") as binfile:
-            binfile.write(img)
+    for name, imgs in images.items():
+        impath = os.path.join(outpath, "data", "{name}_{frame}.png")
+        for i, img in enumerate(imgs):
+            with open(impath.format(name=name, frame=i), "wb") as binfile:
+                binfile.write(img)
+
     #Copy any stimulus files
     stimpath = os.path.join(outpath, "stim")
-    for name, ds in data:
-        if 'stim' in ds.attrs and os.path.exists(ds.attrs['stim']):
+    for name, view in data:
+        if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
             if not os.path.exists(stimpath):
                 os.makedirs(stimpath)
-            shutil.copy2(ds.attrs['stim'], stimpath)
+            shutil.copy2(view.attrs['stim'], stimpath)
     
     #Parse the html file and paste all the js and css files directly into the html
     from . import htmlembed
@@ -204,7 +144,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     tpl = loader.load(templatefile)
     kwargs.update(viewopts)
     html = tpl.generate(
-        data=jsmeta, 
+        data=json.dumps(metadata), 
         colormaps=colormaps, 
         default_cmap=cmap, 
         python_interface=False, 
@@ -232,13 +172,17 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     html = FallbackLoader([serve.cwd]).load("mixer.html")
     surfs.auxfile = data
 
+    package = Package(data)
+    metadata = json.dumps(package.metadata())
+    images = package.images
+    subjects = list(package.subjects)
+    #Extract the list of stimuli, for special-casing
     stims = dict()
-    for name, ds in data:
-        if 'stim' in ds.attrs and os.path.exists(ds.attrs['stim']):
-            sname = os.path.split(ds.attrs['stim'])[1]
-            stims[sname] = ds.attrs['stim']
-
-    subjects = list(set([ds.subject for name, ds in data]))
+    for name, view in data:
+        if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
+            sname = os.path.split(view.attrs['stim'])[1]
+            stims[sname] = view.attrs['stim']
+    
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
     subjectjs = dict((subj, "/ctm/%s/"%subj) for subj in subjects)
@@ -246,9 +190,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
-
-    metadata, images = _convert_dataset(data)
-    jsmeta = json.dumps(metadata, cls=serve.NPEncode)
 
     saveevt = mp.Event()
     saveimg = mp.Array('c', 8192)
@@ -285,9 +226,15 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
             except:
                 pass
 
-            if path in images:
+            try:
+                dataname, frame = path.split('/')
+            except ValueError:
+                dataname = path
+                frame = 0
+
+            if dataname in images:
                 self.set_header("Content-Type", "image/png")
-                self.write(images[path])
+                self.write(images[dataname][int(frame)])
             else:
                 self.set_status(404)
                 self.write_error(404)
@@ -308,7 +255,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
         def get(self):
             self.set_header("Content-Type", "text/html")
             generated = html.generate(
-                data=jsmeta, 
+                data=metadata, 
                 colormaps=colormaps, 
                 default_cmap=cmap, 
                 python_interface=True, 

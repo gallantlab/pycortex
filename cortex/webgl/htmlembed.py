@@ -28,7 +28,7 @@ def _embed_css(cssfile, rootdirs):
                     imgpath = _resolve_path(os.path.join(csspath, url), rootdirs)
                     content = re.sub(url, serve.make_base64(imgpath), content)
 
-            cssout.append("%s {\n%s;\n}"%(selector, content))
+            cssout.append("%s {\n%s\n}"%(selector, content))
         return '\n'.join(cssout)
 
 def _embed_js(dom, script, rootdirs):
