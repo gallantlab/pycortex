@@ -438,7 +438,7 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     except:
         fp = io.StringIO()
     from matplotlib.pylab import imsave
-    imsave(fp, im, **kwargs)
+    imsave(fp, im, cmap=dataview.cmap, vmin=dataview.vmin, vmax=dataview.vmax, **kwargs)
     fp.seek(0)
     pngdata = binascii.b2a_base64(fp.read())
     ## Create and save SVG file
