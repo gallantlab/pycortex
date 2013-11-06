@@ -49,8 +49,8 @@ var Shaderlib = (function() {
 
         samplers: [
             "vec2 make_uv_x(vec2 coord, float slice) {",
-                "vec2 pos = vec2(mod(slice, mosaic[0].x), floor(slice / mosaic[0].x));",
-                "vec2 offset = (pos * (dshape[0]+1.)) + 1.;",
+                "vec2 pos = vec2(mod(slice, mosaic[0].x), slice / mosaic[0].x);",
+                "vec2 offset = (floor(pos) * (dshape[0]+1.)) + 1.;",
                 "vec2 imsize = (mosaic[0] * (dshape[0]+1.)) + 1.;",
                 "return (2.*(offset+coord)+1.) / (2.*imsize);",
             "}",
@@ -66,7 +66,7 @@ var Shaderlib = (function() {
             "}",
 
             "vec4 debug_x(sampler2D data, vec3 coord) {",
-                "return vec4(coord / vec3(100., 100., 32.), 1.);",
+                "return vec4(coord / vec3(136., 136., 38.), 1.);",
             "}",
 
             "vec2 make_uv_y(vec2 coord, float slice) {",

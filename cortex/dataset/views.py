@@ -49,18 +49,18 @@ class DataView(View):
                 raise TypeError('2D movies must be same length')
 
             if self.vmin is None:
-                self.vmin = [(scoreatpercentile(xdim.data, 1), scoreatpercentile(ydim.data, 1))]
+                self.vmin = [(float(scoreatpercentile(xdim.data, 1)), float(scoreatpercentile(ydim.data, 1)))]
             if self.vmax is None:
-                self.vmax = [(scoreatpercentile(xdim.data, 99), scoreatpercentile(ydim.data, 99))]
+                self.vmax = [(float(scoreatpercentile(xdim.data, 99)), float(scoreatpercentile(ydim.data, 99)))]
             self.data = [(xdim, ydim)]
         else:
             self.data = DataView.normalize(data)
 
         self.description = description
         if self.vmin is None:
-            self.vmin = scoreatpercentile(self.data.data, 1)
+            self.vmin = float(scoreatpercentile(self.data.data, 1))
         if self.vmax is None:
-            self.vmax = scoreatpercentile(self.data.data, 99)
+            self.vmax = float(scoreatpercentile(self.data.data, 99))
 
     @staticmethod
     def normalize(data):
@@ -125,7 +125,7 @@ class DataView(View):
         if data is None:
             data = self.data
         return DataView(data, 
-            self.description, vmin=self.vmin, vmax=self.vmax, cmap=self.cmap, state=self.state, attrs=self.attrs)
+            self.description, vmin=self.vmin, vmax=self.vmax, cmap=self.cmap, state=self.state, **self.attrs)
 
     @property
     def raw(self):

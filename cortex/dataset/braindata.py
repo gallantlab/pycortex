@@ -122,8 +122,8 @@ class VolumeData(BrainData):
             movie=self.movie,
             raw=self.raw,
             shape=self.shape,
-            min=self.data.min(),
-            max=self.data.max(),
+            min=float(self.data.min()),
+            max=float(self.data.max()),
         )
 
     def _check_size(self, mask):
