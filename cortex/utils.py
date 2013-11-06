@@ -94,10 +94,14 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
     return get_mapper(subject, xfmname, type=type).hemimasks
 
 def add_roi(data, name="new_roi", recache=False, open_inkscape=True, add_path=True, **kwargs):
+    """
+    data is a DataView instance
+    """
     import subprocess as sp
     from .utils import get_roipack
     from . import quickflat
-    rois = get_roipack(data.subject)
+    # May require more flexible code to deal with other type of datasets (vertex,etc)
+    rois = get_roipack(data.data.subject)
     try:
         import cStringIO
         fp = cStringIO.StringIO()
@@ -140,8 +144,7 @@ def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
 def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     '''
     Return a numbered mask + dictionary of roi numbers
-    roiList is a list of ROIs (which better be defined in the .svg file)
-    poop.
+    roiList is a list of ROIs (which should be defined in the .svg file)
     '''
     # Get ROIs from inkscape SVGs
     rois, vertIdx = get_roipack(subject, remove_medial=True)
@@ -165,7 +168,10 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     # mask for left hemisphere
     Lmask = (voxIdx < nL).flatten()
     Rmask = np.logical_not(Lmask)
-    CxMask = (voxDst < Dst).flatten()
+    if type(Dst) in (str,unicode) and lower(Dst)=='cortical':
+        CxMask = cx.surfs.getMask(subject,xfmname,'cortical')
+    else:
+        CxMask = (voxDst < Dst).flatten()
     
     #return rois, flat, coords, voxDst, voxIdx ## rois is a list of class svgROI; flat = flat cortex coords; coords = 3D coords
     if roiList is None:
