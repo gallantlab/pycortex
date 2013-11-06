@@ -430,7 +430,7 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     if dataview.data.movie:
         raise ValueError('Cannot flatten movie volumes')
     ## Create quickflat image array
-    im = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
+    im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
     ## Convert to PNG
     try:
         import cStringIO
@@ -442,7 +442,7 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     fp.seek(0)
     pngdata = binascii.b2a_base64(fp.read())
     ## Create and save SVG file
-    roipack = utils.get_roipack(subject)
+    roipack = utils.get_roipack(dataview.data.subject)
     roipack.get_svg(fname, labels=True, with_ims=[pngdata])
 
 def make_movie(name, data, subject, xfmname, recache=False, height=1024, sampler='nearest', dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
@@ -457,7 +457,7 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, sampler
     from scipy.interpolate import interp1d
 
     #make the flatmaps
-    ims = make(data, subject, xfmname, recache=recache, height=height, sampler=sampler)
+    ims,extents = make(data, subject, xfmname, recache=recache, height=height, sampler=sampler)
     if vmin is None:
         vmin = np.nanmin(ims)
     if vmax is None:
