@@ -58,7 +58,7 @@ class Transform(object):
     @classmethod
     def from_fsl(cls, xfm, basefile, reffile):
         """
-        takes transform xfm (estimated FROM basefile TO reffile) and converts to GLab COORDINATE transform
+        Converts fsl transform xfm (estimated FROM basefile TO reffile)to pycortex COORDINATE transform
         """
         ## Adapted from dipy.external.fsl.flirt2aff#############################
         import nibabel
@@ -93,7 +93,7 @@ class Transform(object):
         """
         Converts a Glab transform to an FSL transform.
         The resulting FSL transform goes FROM the space of the "basefile" input
-        TO the space of the reference nifti stored in the GLab transform.
+        TO the space of the reference nifti stored in the pycortex transform.
         """
         import nibabel
         import numpy.linalg as npl
@@ -119,7 +119,6 @@ class Transform(object):
         fslx = np.dot(refspace,np.dot(inv(M),np.dot(self.xfm,inv(inspace))))
         #fslx = inv(np.dot(inspace, np.dot(inv(self.xfm), np.dot(M, inv(refspace)))))
         return fslx
-
 
 def _x_flipper(N_i):
     #Copied from dipy

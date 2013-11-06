@@ -208,13 +208,19 @@ def epi2anatspace(volumedata):
     xfmname = volumedata.xfmname
     data = volumedata.volume
 
-    ## Get transform, save out into ascii file
+    ## Get transform (remember cortex estimates anat-to-epi!)
     xfm = surfs.getXfm(subject, xfmname)
     fslxfm = xfm.to_fsl(surfs.getAnat(subject, 'raw').get_filename())
-
+    ## Invert to epi-to-anat
+    #print('orig transform')
+    #print(fslxfm)
+    fslxfm = np.linalg.inv(fslxfm)
+    #print('inverted transform')
+    #print(fslxfm)
+    ## Save out into ascii file
     xfmfilename = tempfile.mktemp(".mat")
     with open(xfmfilename, "w") as xfmh:
-        for ll in fslxfm.tolist():
+        for ll in fslxfm.tolist():      
             xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
 
     ## Save out data into nifti file
@@ -232,6 +238,52 @@ def epi2anatspace(volumedata):
                      "-init", xfmfilename,
                      #"-interp", "sinc",
                      "-out", outfilename])
+
+    ## Load resliced image
+    outdata = nibabel.load(outfilename+".gz").get_data().T
+
+    return outdata, outfilename
+def anat2epispace(data,subject,xfmname):
+    """Resamples anat-space volumedata into the epi space for the given [subject]
+    and transformation [xfm] incorporated into the volumedata object.
+
+    Returns the data and a temporary filename.
+    """
+    import tempfile
+    import subprocess
+    import nibabel
+
+    #volumedata = dataset.normalize(volumedata).data
+    #subject = volumedata.subject
+    #xfmname = volumedata.xfmname
+    #data = volumedata.volume
+
+    ## Get transform (pycortex estimates anat-to-epi)
+    xfm = surfs.getXfm(subject, xfmname)
+    anatNII = surfs.getAnat(subject, type='raw')
+    fslxfm = xfm.to_fsl(anatNII.get_filename())
+    ## Save out into ascii file
+    xfmfilename = tempfile.mktemp(".mat")
+    print('xfm file: %s'%xfmfilename)
+    with open(xfmfilename, "w") as xfmh:
+        for ll in fslxfm.tolist():
+            xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
+
+    ## Save out data into nifti file
+    datafile = nibabel.Nifti1Image(data.T, anatNII.get_affine(), anatNII.get_header())
+    datafilename = tempfile.mktemp(".nii")
+    nibabel.save(datafile, datafilename)
+
+    ## Reslice epi-space image
+    epiNIIf = xfm.reference.get_filename()
+    outfilename = tempfile.mktemp(".nii")
+    subprocess.call(["fsl5.0-flirt",
+                     "-in", datafilename,
+                     "-ref", epiNIIf,
+                     "-out", outfilename,
+                     "-init", xfmfilename,
+                     #"-interp", "sinc",
+                     "-applyxfm"])
 
     ## Load resliced image
     outdata = nibabel.load(outfilename+".gz").get_data().T
