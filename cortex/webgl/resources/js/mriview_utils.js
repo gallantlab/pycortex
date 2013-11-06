@@ -106,7 +106,7 @@ var mriview = (function(module) {
         canvas.height = renderbuf.height;
         var ctx = canvas.getContext("2d");
         ctx.scale(1,-1);
-        ctx.drawImage(glcanvas, 0,-1024);
+        ctx.drawImage(glcanvas, 0,-renderbuf.height);
         return canvas;
     }
 

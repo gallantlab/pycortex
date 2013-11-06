@@ -535,11 +535,11 @@ var mriview = (function(module) {
 
         this.active = this.dataviews[name];
         if (this.active.data[0].raw) {
-            $("#color_fieldset").hide();
+            $("#color_fieldset").fadeTo(0.15, 0);
         } else {
             if (this.active.cmap !== undefined)
                 this.setColormap(this.active.cmap);
-            $("#color_fieldset").show();
+            $("#color_fieldset").fadeTo(.15, 1);
         }
 
         $.when(this.cmapload, this.loaded).done(function() {
@@ -733,7 +733,7 @@ var mriview = (function(module) {
         this.figure.notify("playtoggle", this);
     };
 
-    module.Viewer.prototype.getImage = function(width, height) {
+    module.Viewer.prototype.getImage = function(width, height, post) {
         if (width === undefined)
             width = this.canvas.width();
         
@@ -760,7 +760,11 @@ var mriview = (function(module) {
         this.renderer.setClearColorHex(clearColor, clearAlpha);
         this.camera.setSize(oldw, oldh);
         this.camera.updateProjectionMatrix();
-        return mriview.getTexture(this.renderer.context, renderbuf);
+
+        var img = mriview.getTexture(this.renderer.context, renderbuf)
+        if (post !== undefined)
+            $.post(post, {png:img.toDataURL()});
+        return img;
     };
     var _bound = false;
     module.Viewer.prototype._bindUI = function() {

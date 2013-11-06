@@ -47,23 +47,27 @@ class DataView(View):
                 len(xdim.data) != len(ydim.data)):
                 raise TypeError('2D movies must be same length')
 
+            no_nan_x = xdim.data[~np.isnan(xdim.data)]
+            no_nan_y = ydim.data[~np.isnan(ydim.data)]
             if self.vmin is None:
                 self.vmin = [(
-                    float(np.percentile(xdim.data.ravel(), 1)), 
-                    float(np.percentile(ydim.data.ravel(), 1)))]
+                    float(np.percentile(no_nan_x, 1)), 
+                    float(np.percentile(no_nan_y, 1)))]
             if self.vmax is None:
                 self.vmax = [(
-                    float(np.percentile(xdim.data.ravel(), 99)), 
-                    float(np.percentile(ydim.data.ravel(), 99)))]
+                    float(np.percentile(no_nan_x, 99)), 
+                    float(np.percentile(no_nan_y, 99)))]
             self.data = [(xdim, ydim)]
         else:
             self.data = DataView.normalize(data)
 
         self.description = description
+        
+        no_nan = self.data.data[~np.isnan(self.data.data)]
         if self.vmin is None:
-            self.vmin = float(np.percentile(self.data.data.ravel(), 1))
+            self.vmin = float(np.percentile(no_nan, 1))
         if self.vmax is None:
-            self.vmax = float(np.percentile(self.data.data.ravel(), 99))
+            self.vmax = float(np.percentile(no_nan, 99))
 
     @staticmethod
     def normalize(data):
