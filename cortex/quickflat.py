@@ -423,9 +423,14 @@ def show(*args, **kwargs):
     raise DeprecationWarning("Use quickflat.make_figure instead")
     return make_figure(*args, **kwargs)
 
-def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024, **kwargs):
+def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024, thick=32, depth=0.5, **kwargs):
+    dataview = dataset.normalize(braindata)
+    if not isinstance(dataview, dataset.DataView):
+        raise TypeError('Please provide a DataView, not a Dataset')
+    if dataview.data.movie:
+        raise ValueError('Cannot flatten movie volumes')
     ## Create quickflat image array
-    im = make(braindata, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height)
+    im = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
     ## Convert to PNG
     try:
         import cStringIO
