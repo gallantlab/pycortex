@@ -534,8 +534,13 @@ var mriview = (function(module) {
         }
 
         this.active = this.dataviews[name];
-        if (this.active.cmap !== undefined)
-            this.setColormap(this.active.cmap);
+        if (this.active.data[0].raw) {
+            $("#color_fieldset").hide();
+        } else {
+            if (this.active.cmap !== undefined)
+                this.setColormap(this.active.cmap);
+            $("#color_fieldset").show();
+        }
 
         $.when(this.cmapload, this.loaded).done(function() {
             this.setVoxView(this.active.filter, viewopts.voxlines);
@@ -580,7 +585,12 @@ var mriview = (function(module) {
             })
 
             $(this.object).find("#datasets").val(name);
-            $(this.object).find("#dataname").text(name).show();
+            if (typeof(this.active.description) == "string") {
+                var html = name+"<div class='datadesc'>"+this.active.description+"</div>";
+                $(this.object).find("#dataname").html(html).show();
+            } else {
+                $(this.object).find("#dataname").text(name).show();
+            }
             this.schedule();
         }.bind(this));
     };
@@ -726,20 +736,31 @@ var mriview = (function(module) {
     module.Viewer.prototype.getImage = function(width, height) {
         if (width === undefined)
             width = this.canvas.width();
+        
         if (height === undefined)
             height = width * this.canvas.height() / this.canvas.width();
+
+        console.log(width, height);
         var renderbuf = new THREE.WebGLRenderTarget(width, height, {
             minFilter: THREE.LinearFilter,
             magFilter: THREE.LinearFilter,
             format:THREE.RGBAFormat,
             stencilBuffer:false,
         });
+
         var clearAlpha = this.renderer.getClearAlpha();
         var clearColor = this.renderer.getClearColor();
+        var oldw = this.canvas.width(), oldh = this.canvas.height();
+        this.camera.setSize(width, height);
+        this.camera.updateProjectionMatrix();
+        //this.renderer.setSize(width, height);
         this.renderer.setClearColorHex(0x0, 0);
         this.renderer.render(this.scene, this.camera, renderbuf);
+        //this.renderer.setSize(oldw, oldh);
         this.renderer.setClearColorHex(clearColor, clearAlpha);
-        return getTexture(this.renderer.context, renderbuf);
+        this.camera.setSize(oldw, oldh);
+        this.camera.updateProjectionMatrix();
+        return mriview.getTexture(this.renderer.context, renderbuf);
     };
     var _bound = false;
     module.Viewer.prototype._bindUI = function() {

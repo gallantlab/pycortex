@@ -133,14 +133,20 @@ class DataView(View):
     @property
     def raw(self):
         if not isinstance(self.data, BrainData):
-            raise AttributeError('Can only colormap single data views')
+            raise ValueError('Can only colormap single data views')
         if self.data.raw:
-            raise AttributeError('Data is already colormapped')
+            raise ValueError('Data is already colormapped')
         from matplotlib import cm, colors
         cmap = cm.get_cmap(self.cmap)
         norm = colors.Normalize(vmin=self.vmin, vmax=self.vmax, clip=True)
         raw = (cmap(norm(self.data.data)) * 255).astype(np.uint8)
         return self.copy(self.data.copy(raw))
+
+    def map(self, sampler="nearest"):
+        if not isinstance(self.data, VolumeData):
+            raise ValueError("Can only map volumedata views")
+
+        return self.copy(self.data.map(sampler))
 
     def __iter__(self):
         if isinstance(self.data, BrainData):

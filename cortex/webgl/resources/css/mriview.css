@@ -134,6 +134,12 @@ a:visited { color:white; }
     margin:20px;
     border-radius:10px;
     background:rgba(255,255,255,.2);
+    font-weight:bold;
+}
+.datadesc {
+    font-size:10pt;
+    font-weight:normal;
+    color:#CCC;
 }
 
 

@@ -90,19 +90,24 @@ var mriview = (function(module) {
     module.blanktex.minFilter = THREE.NearestFilter;
 
     module.getTexture = function(gl, renderbuf) {
+        var glcanvas = document.createElement("canvas");
+        glcanvas.width = renderbuf.width;
+        glcanvas.height = renderbuf.height;
+        var glctx = glcanvas.getContext("2d");
+        var img = glctx.createImageData(renderbuf.width, renderbuf.height);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
+        gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        glctx.putImageData(img, 0, 0);
+
+        //This ridiculousness is necessary to flip the image...
         var canvas = document.createElement("canvas");
         canvas.width = renderbuf.width;
         canvas.height = renderbuf.height;
         var ctx = canvas.getContext("2d");
-        var img = ctx.createImageData(renderbuf.width, renderbuf.height);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
-        gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        ctx.putImageData(img, 0,0);
-        ctx.scale(1, -1);
-        img = new Image();
-        img.src = canvas.toDataURL();
-        return img;
+        ctx.scale(1,-1);
+        ctx.drawImage(glcanvas, 0,-1024);
+        return canvas;
     }
 
     module.makeFlat = function(uv, flatlims, flatoff, right) {
