@@ -413,8 +413,8 @@ var mriview = (function(module) {
     module.Viewer.prototype.reset_view = function(center, height) {
         var asp = this.flatlims[1][0] / this.flatlims[1][1];
         var camasp = height !== undefined ? asp : this.camera.cameraP.aspect;
-        var size = [flatscale*this.flatlims[1][0], flatscale*this.flatlims[1][1]];
-        var min = [flatscale*this.flatlims[0][0], flatscale*this.flatlims[0][1]];
+        var size = [module.flatscale*this.flatlims[1][0], module.flatscale*this.flatlims[1][1]];
+        var min = [module.flatscale*this.flatlims[0][0], module.flatscale*this.flatlims[0][1]];
         var xoff = center ? 0 : size[0] / 2 - min[0];
         var zoff = center ? 0 : size[1] / 2 - min[1];
         var h = size[0] / 2 / camasp;

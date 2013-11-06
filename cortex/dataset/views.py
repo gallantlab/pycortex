@@ -2,10 +2,9 @@ import json
 
 import h5py
 import numpy as np
-from scipy.stats import scoreatpercentile
 
 from .. import options
-from . import BrainData, VolumeData
+from . import BrainData, VolumeData, VertexData
 
 default_cmap = options.config.get("basic", "default_cmap")
 
@@ -49,18 +48,22 @@ class DataView(View):
                 raise TypeError('2D movies must be same length')
 
             if self.vmin is None:
-                self.vmin = [(float(scoreatpercentile(xdim.data, 1)), float(scoreatpercentile(ydim.data, 1)))]
+                self.vmin = [(
+                    float(np.percentile(xdim.data.ravel(), 1)), 
+                    float(np.percentile(ydim.data.ravel(), 1)))]
             if self.vmax is None:
-                self.vmax = [(float(scoreatpercentile(xdim.data, 99)), float(scoreatpercentile(ydim.data, 99)))]
+                self.vmax = [(
+                    float(np.percentile(xdim.data.ravel(), 99)), 
+                    float(np.percentile(ydim.data.ravel(), 99)))]
             self.data = [(xdim, ydim)]
         else:
             self.data = DataView.normalize(data)
 
         self.description = description
         if self.vmin is None:
-            self.vmin = float(scoreatpercentile(self.data.data, 1))
+            self.vmin = float(np.percentile(self.data.data.ravel(), 1))
         if self.vmax is None:
-            self.vmax = float(scoreatpercentile(self.data.data, 99))
+            self.vmax = float(np.percentile(self.data.data.ravel(), 99))
 
     @staticmethod
     def normalize(data):

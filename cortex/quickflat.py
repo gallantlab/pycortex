@@ -102,7 +102,7 @@ def _make_vertex_cache(subject, height=1024):
     dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), valid[vert]]))
     return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
 
-def _make_pixel_cache(subject, xfmname, height=1024, thick=32, sampler='nearest'):
+def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sampler='nearest'):
     from scipy import sparse
     from scipy.spatial import cKDTree, Delaunay
     flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
@@ -152,6 +152,11 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, sampler='nearest'
         vidx = np.nonzero(valid)[0]
 
         mapper = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
+        if thick == 1:
+            i, j, data = sampclass(piacoords[valid]*depth + wmcoords[valid]*(1-depth), xfm.shape)
+            mapper = mapper + sparse.csr_matrix((data / thick, (vidx[i], j)), shape=mapper.shape)
+            return mapper
+
         for t in np.linspace(0, 1, thick+2)[1:-1]:
             i, j, data = sampclass(piacoords[valid]*t + wmcoords[valid]*(1-t), xfm.shape)
             mapper = mapper + sparse.csr_matrix((data / thick, (vidx[i], j)), shape=mapper.shape)
@@ -171,17 +176,18 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, sampler='nearest'
         csrshape = mask.sum(), np.prod(xfm.shape)
         return sparse.csr_matrix((data, (vidx[i], j)), shape=csrshape)
 
-def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest', recache=False, height=1024):
+def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest', recache=False, height=1024, depth=0.5):
     cachedir = surfs.getFiles(subject)['cachedir']
     cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
     if pixelwise and xfmname is not None:
-        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{sampler}_l{thick}.npz")
-        cachefile = cachefile.format(height=height, xfmname=xfmname, sampler=sampler, thick=thick)
-    
+        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{sampler}_{extra}.npz")
+        extra = "l%d"%thick if thick > 1 else "d%g"%depth
+        cachefile = cachefile.format(height=height, xfmname=xfmname, sampler=sampler, extra=extra)
+
     if not os.path.exists(cachefile) or recache:
         print("Generating a flatmap cache")
         if pixelwise and xfmname is not None:
-            pixmap = _make_pixel_cache(subject, xfmname, height=height, sampler=sampler, thick=thick)
+            pixmap = _make_pixel_cache(subject, xfmname, height=height, sampler=sampler, thick=thick, depth=depth)
         else:
             pixmap = _make_vertex_cache(subject, height=height)
         np.savez(cachefile, data=pixmap.data, indices=pixmap.indices, indptr=pixmap.indptr, shape=pixmap.shape)
@@ -221,8 +227,12 @@ def make(braindata, height=1024, **kwargs):
         img[mask] = pixmap * data.reshape(-1, 4)
         return img.transpose(1,0,2)[::-1], extents
     else:
+        badmask = np.array(pixmap.sum(1) > 0).ravel()
         img = (np.nan*np.ones(mask.shape)).astype(braindata.data.dtype)
-        img[mask] = pixmap * data.ravel()
+        mimg = (np.nan*np.ones(badmask.shape)).astype(braindata.data.dtype)
+        mimg[badmask] = (pixmap*data.ravel())[badmask]
+        img[mask] = mimg
+
         return img.T[::-1], extents
 
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
@@ -250,7 +260,7 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100,
+def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100, depth=0.5,
                 with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
                 **kwargs):
@@ -300,7 +310,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if dataview.data.movie:
         raise ValueError('Cannot flatten movie volumes')
     
-    im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick)
+    im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
     
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
