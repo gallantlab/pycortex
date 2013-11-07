@@ -108,15 +108,6 @@ class DataView(View):
         attrs = json.loads(node[6])
         return cls(data, cmap=cmap, vmin=vmin, vmax=vmax, description=desc)
 
-    @property
-    def uniques(self):
-        """Return the set of unique BrainData objects contained by this dataview"""
-        uniques = set()
-        for data in self:
-            uniques.add(data)
-
-        return uniques
-
     def to_json(self):
         dnames = []
         if isinstance(self.data, BrainData):

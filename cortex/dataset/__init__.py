@@ -51,6 +51,9 @@ class Dataset(object):
         elif attr in self.views:
             return self.views[attr]
 
+        import ipdb
+        ipdb.set_trace()
+
         raise AttributeError
 
     def __getitem__(self, item):
@@ -100,8 +103,7 @@ class Dataset(object):
                     print 'No metadata found for "%s", skipping...'%name
 
         return ds
-
-    @property
+        
     def uniques(self):
         """Return the set of unique BrainData objects contained by this dataset"""
         uniques = set()
