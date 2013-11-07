@@ -394,7 +394,7 @@ class _masker(object):
 
 def _hash(array):
     '''A simple numpy hash function'''
-    return hashlib.sha1(array.data).hexdigest()
+    return hashlib.sha1(array.astype(np.uint8)).hexdigest()
 
 def _hdf_write(h5, data, name="data", group="/data"):
     try:
