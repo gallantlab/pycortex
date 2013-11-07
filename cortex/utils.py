@@ -169,7 +169,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     Lmask = (voxIdx < nL).flatten()
     Rmask = np.logical_not(Lmask)
     if type(Dst) in (str,unicode) and Dst.lower()=='cortical':
-        CxMask = cx.surfs.getMask(subject,xfmname,'cortical')
+        CxMask = surfs.getMask(subject,xfmname,'cortical').flatten()
     else:
         CxMask = (voxDst < Dst).flatten()
     
