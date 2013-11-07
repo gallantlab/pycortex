@@ -62,7 +62,7 @@ class DataView(View):
             self.data = DataView.normalize(data)
 
         self.description = description
-        
+
         no_nan = self.data.data[~np.isnan(self.data.data)]
         if self.vmin is None:
             self.vmin = float(np.percentile(no_nan, 1))
@@ -107,6 +107,15 @@ class DataView(View):
         state = json.loads(node[5])
         attrs = json.loads(node[6])
         return cls(data, cmap=cmap, vmin=vmin, vmax=vmax, description=desc)
+
+    @property
+    def uniques(self):
+        """Return the set of unique BrainData objects contained by this dataview"""
+        uniques = set()
+        for data in self:
+            uniques.add(data)
+
+        return uniques
 
     def to_json(self):
         dnames = []
