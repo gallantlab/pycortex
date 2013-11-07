@@ -168,7 +168,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     # mask for left hemisphere
     Lmask = (voxIdx < nL).flatten()
     Rmask = np.logical_not(Lmask)
-    if type(Dst) in (str,unicode) and lower(Dst)=='cortical':
+    if type(Dst) in (str,unicode) and Dst.lower()=='cortical':
         CxMask = cx.surfs.getMask(subject,xfmname,'cortical')
     else:
         CxMask = (voxDst < Dst).flatten()
