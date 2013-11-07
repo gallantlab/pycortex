@@ -129,24 +129,26 @@ class Mapper(object):
         '''
         left = np.zeros((self.masks[0].shape[0],), dtype=bool)
         right = np.zeros((self.masks[1].shape[0],), dtype=bool)
-        if isinstance(verts, (list, tuple)) and len(verts) == 2:
-            if len(verts[0]) == len(left):
-                left = verts[0]
-                right = verts[1]
-            elif verts[0].max() < len(left):
-                left[verts[0]] = True
-                right[verts[1]] = True
+        
+        if len(verts) > 0:
+            if isinstance(verts, (list, tuple)) and len(verts) == 2:
+                if len(verts[0]) == len(left):
+                    left = verts[0]
+                    right = verts[1]
+                elif verts[0].max() < len(left):
+                    left[verts[0]] = True
+                    right[verts[1]] = True
+                else:
+                    raise ValueError
             else:
-                raise ValueError
-        else:
-            if len(verts) == self.nverts:
-                left = verts[:len(left)]
-                right = verts[len(left):]
-            elif verts.max() < self.nverts:
-                left[verts[verts < len(left)]] = True
-                right[verts[verts >= len(left)] - len(left)] = True
-            else:
-                raise ValueError
+                if len(verts) == self.nverts:
+                    left = verts[:len(left)]
+                    right = verts[len(left):]
+                elif verts.max() < self.nverts:
+                    left[verts[verts < len(left)]] = True
+                    right[verts[verts >= len(left)] - len(left)] = True
+                else:
+                    raise ValueError
 
         output = []
         for mask, data in zip(self.masks, [left, right]):

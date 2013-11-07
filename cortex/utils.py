@@ -203,7 +203,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     print('shape before dropping:')
     print(tmpMask.shape)
     keepROI = np.array([not ir in dropROI for ir in range(len(roiList))])
-    roiListL = [r.lower() for ir,r in enumerate(roiList) if not ir in dropROI]
+    roiListL = [r for ir,r in enumerate(roiList) if not ir in dropROI]
     tmpMask = tmpMask[:,keepROI,:]
     print("after dropping ROIs:")
     print(tmpMask.shape)

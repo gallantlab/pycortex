@@ -81,7 +81,7 @@ NParray.fromJSON = function(json) {
         charview[i] = str.charCodeAt(i - start);
     }
 
-    return NParray.fromData(data, dtype, shape);
+    return NParray.fromData(data, json.dtype, json.shape);
 }
 NParray.fromURL = function(url, callback) {
     loadCount++;

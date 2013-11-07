@@ -331,7 +331,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
                             
                         val = func(np.array(start['value']), np.array(end['value']), idx)
                         if isinstance(val, np.ndarray):
-                            self.setState(start['state'], list(val))
+                            self.setState(start['state'], val.ravel().tolist())
                         else:
                             self.setState(start['state'], val)
                 saveevt.clear()
