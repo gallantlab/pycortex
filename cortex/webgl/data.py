@@ -17,7 +17,7 @@ class Package(object):
     """Package the data into a form usable by javascript"""
     def __init__(self, data):
         self.dataset = dataset.normalize(data)
-        self.uniques = data.uniques
+        self.uniques = data.uniques()
         
         self.brains = dict()
         self.images = dict()
