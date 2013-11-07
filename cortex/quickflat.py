@@ -102,7 +102,7 @@ def _make_vertex_cache(subject, height=1024):
     dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), valid[vert]]))
     return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
 
-def _make_pixel_cache(subject, xfmname, height=1024, thick=32, sampler='nearest'):
+def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sampler='nearest'):
     from scipy import sparse
     from scipy.spatial import cKDTree, Delaunay
     flat, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
@@ -152,6 +152,11 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, sampler='nearest'
         vidx = np.nonzero(valid)[0]
 
         mapper = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
+        if thick == 1:
+            i, j, data = sampclass(piacoords[valid]*depth + wmcoords[valid]*(1-depth), xfm.shape)
+            mapper = mapper + sparse.csr_matrix((data / thick, (vidx[i], j)), shape=mapper.shape)
+            return mapper
+
         for t in np.linspace(0, 1, thick+2)[1:-1]:
             i, j, data = sampclass(piacoords[valid]*t + wmcoords[valid]*(1-t), xfm.shape)
             mapper = mapper + sparse.csr_matrix((data / thick, (vidx[i], j)), shape=mapper.shape)
@@ -171,17 +176,18 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, sampler='nearest'
         csrshape = mask.sum(), np.prod(xfm.shape)
         return sparse.csr_matrix((data, (vidx[i], j)), shape=csrshape)
 
-def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest', recache=False, height=1024):
+def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest', recache=False, height=1024, depth=0.5):
     cachedir = surfs.getFiles(subject)['cachedir']
     cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
     if pixelwise and xfmname is not None:
-        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{sampler}_l{thick}.npz")
-        cachefile = cachefile.format(height=height, xfmname=xfmname, sampler=sampler, thick=thick)
-    
+        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{sampler}_{extra}.npz")
+        extra = "l%d"%thick if thick > 1 else "d%g"%depth
+        cachefile = cachefile.format(height=height, xfmname=xfmname, sampler=sampler, extra=extra)
+
     if not os.path.exists(cachefile) or recache:
         print("Generating a flatmap cache")
         if pixelwise and xfmname is not None:
-            pixmap = _make_pixel_cache(subject, xfmname, height=height, sampler=sampler, thick=thick)
+            pixmap = _make_pixel_cache(subject, xfmname, height=height, sampler=sampler, thick=thick, depth=depth)
         else:
             pixmap = _make_vertex_cache(subject, height=height)
         np.savez(cachefile, data=pixmap.data, indices=pixmap.indices, indptr=pixmap.indptr, shape=pixmap.shape)
@@ -221,8 +227,12 @@ def make(braindata, height=1024, **kwargs):
         img[mask] = pixmap * data.reshape(-1, 4)
         return img.transpose(1,0,2)[::-1], extents
     else:
+        badmask = np.array(pixmap.sum(1) > 0).ravel()
         img = (np.nan*np.ones(mask.shape)).astype(braindata.data.dtype)
-        img[mask] = pixmap * data.ravel()
+        mimg = (np.nan*np.ones(badmask.shape)).astype(braindata.data.dtype)
+        mimg[badmask] = (pixmap*data.ravel())[badmask]
+        img[mask] = mimg
+
         return img.T[::-1], extents
 
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
@@ -250,7 +260,7 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         fp.seek(0)
         return fp
 
-def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100,
+def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100, depth=0.5,
                 with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
                 **kwargs):
@@ -300,7 +310,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if dataview.data.movie:
         raise ValueError('Cannot flatten movie volumes')
     
-    im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick)
+    im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
     
     fig = plt.figure()
     ax = fig.add_axes((0,0,1,1))
@@ -413,9 +423,14 @@ def show(*args, **kwargs):
     raise DeprecationWarning("Use quickflat.make_figure instead")
     return make_figure(*args, **kwargs)
 
-def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024, **kwargs):
+def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024, thick=32, depth=0.5, **kwargs):
+    dataview = dataset.normalize(braindata)
+    if not isinstance(dataview, dataset.DataView):
+        raise TypeError('Please provide a DataView, not a Dataset')
+    if dataview.data.movie:
+        raise ValueError('Cannot flatten movie volumes')
     ## Create quickflat image array
-    im = make(braindata, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height)
+    im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
     ## Convert to PNG
     try:
         import cStringIO
@@ -423,11 +438,11 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     except:
         fp = io.StringIO()
     from matplotlib.pylab import imsave
-    imsave(fp, im, **kwargs)
+    imsave(fp, im, cmap=dataview.cmap, vmin=dataview.vmin, vmax=dataview.vmax, **kwargs)
     fp.seek(0)
     pngdata = binascii.b2a_base64(fp.read())
     ## Create and save SVG file
-    roipack = utils.get_roipack(subject)
+    roipack = utils.get_roipack(dataview.data.subject)
     roipack.get_svg(fname, labels=True, with_ims=[pngdata])
 
 def make_movie(name, data, subject, xfmname, recache=False, height=1024, sampler='nearest', dpi=100, tr=2, interp='linear', fps=30, vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
@@ -442,7 +457,7 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, sampler
     from scipy.interpolate import interp1d
 
     #make the flatmaps
-    ims = make(data, subject, xfmname, recache=recache, height=height, sampler=sampler)
+    ims,extents = make(data, subject, xfmname, recache=recache, height=height, sampler=sampler)
     if vmin is None:
         vmin = np.nanmin(ims)
     if vmax is None:

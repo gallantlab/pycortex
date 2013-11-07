@@ -95,7 +95,7 @@ class ROIpack(object):
         except:
             print("cannot callback")
 
-    def get_svg(self, filename=None, labels=True, with_ims=None):
+    def get_svg(self, filename=None, labels=True, with_ims=None, **kwargs):
         """Returns an SVG with the included images."""
         if labels:
             if hasattr(self, "labels"):
@@ -109,10 +109,10 @@ class ROIpack(object):
         outsvg = copy.deepcopy(self.svg)
         if with_ims is not None:
             if isinstance(with_ims, (list, tuple)):
-                with_ims = enumerate(with_ims)
+                with_ims = zip(range(len(with_ims)), with_ims)
 
             datalayer = _make_layer(outsvg.getroot(), "data")
-            for name,im in reversed(with_ims):
+            for imnum,im in reversed(with_ims):
                 imlayer = _make_layer(datalayer, "image_%d" % imnum)
                 img = E.image(
                     {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%im},

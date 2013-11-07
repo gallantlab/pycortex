@@ -270,7 +270,8 @@ FacePick.prototype = {
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
             vert = this._getPos(ax.hemi, ax.idx);
-            ax.obj.position = vert.pos;
+            //ax.obj.position = vert.pos;
+	    ax.obj.position = addFlatNorm(vert.pos, vert.norm, mixevt.mix);
             // Rescale axes for flat view
             ax.obj.scale.x = 1.000-mixevt.flat;
             ax.obj.children[1].visible = mixevt.mix == 0;
@@ -289,9 +290,12 @@ FacePick.prototype = {
         }
         if (keep !== true)
             this.axes = [];
-
-        var axes = makeAxes(50, 0xffffff);
-
+	
+	
+	// Create axes
+        var axes = makeAxes(500, 0xffffff);
+	
+	// Create voxel box
         var xfm = this.viewer.uniforms.volxfm.value[0];
         var inv = new THREE.Matrix4().getInverse(xfm);
         var vox = xfm.multiplyVector3(vert.fid.clone());
@@ -303,23 +307,26 @@ FacePick.prototype = {
             if (Math.abs(mat[i]) < 1e-8)
                 mat[i] = 0;
         }
+	axes.vox.visible = this.viewer.getState("mix") == 0;
 
         var marker = new THREE.Object3D();
         marker.add(axes.axes);
         marker.add(axes.vox);
-        marker.position = vert.pos;
-        marker.scale.x = 1.0001-this.viewer.flatmix;
+        marker.position = addFlatNorm(vert.pos, vert.norm, this.viewer.getState("mix"));
+        marker.scale.x = 1.000-this.viewer.flatmix;
 
         this.axes.push({idx:ptidx, obj:marker, hemi:hemi});
         this.viewer.meshes[vert.name].add(marker);
+	//this.setMix({mix:this.viewer.getState("mix"), flat:this.viewer.getState("flat")});
         this.viewer.schedule();
     }
 }
 
-function blendPosNorm(pos, norm, flatmix) {
+function addFlatNorm(pos, norm, flatmix) {
     var posfrac = flatmix - 0.01;
-    var normfrac = 1 - posfrac;
-    return pos.clone().multiplyScalar(posfrac).addSelf(norm.clone().multiplyScalar(normfrac));
+    var normfrac = flatmix;
+    //return pos.clone().multiplyScalar(posfrac).addSelf(norm.clone().multiplyScalar(normfrac));
+    return pos.clone().addSelf(norm.clone().multiplyScalar(normfrac));
 }
 
 function makeAxes(length, color) {

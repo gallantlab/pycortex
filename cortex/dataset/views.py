@@ -2,10 +2,9 @@ import json
 
 import h5py
 import numpy as np
-from scipy.stats import scoreatpercentile
 
 from .. import options
-from . import BrainData, VolumeData
+from . import BrainData, VolumeData, VertexData
 
 default_cmap = options.config.get("basic", "default_cmap")
 
@@ -48,19 +47,27 @@ class DataView(View):
                 len(xdim.data) != len(ydim.data)):
                 raise TypeError('2D movies must be same length')
 
+            no_nan_x = xdim.data[~np.isnan(xdim.data)]
+            no_nan_y = ydim.data[~np.isnan(ydim.data)]
             if self.vmin is None:
-                self.vmin = [(float(scoreatpercentile(xdim.data, 1)), float(scoreatpercentile(ydim.data, 1)))]
+                self.vmin = [(
+                    float(np.percentile(no_nan_x, 1)), 
+                    float(np.percentile(no_nan_y, 1)))]
             if self.vmax is None:
-                self.vmax = [(float(scoreatpercentile(xdim.data, 99)), float(scoreatpercentile(ydim.data, 99)))]
+                self.vmax = [(
+                    float(np.percentile(no_nan_x, 99)), 
+                    float(np.percentile(no_nan_y, 99)))]
             self.data = [(xdim, ydim)]
         else:
             self.data = DataView.normalize(data)
 
         self.description = description
+        
+        no_nan = self.data.data[~np.isnan(self.data.data)]
         if self.vmin is None:
-            self.vmin = float(scoreatpercentile(self.data.data, 1))
+            self.vmin = float(np.percentile(no_nan, 1))
         if self.vmax is None:
-            self.vmax = float(scoreatpercentile(self.data.data, 99))
+            self.vmax = float(np.percentile(no_nan, 99))
 
     @staticmethod
     def normalize(data):
@@ -130,14 +137,20 @@ class DataView(View):
     @property
     def raw(self):
         if not isinstance(self.data, BrainData):
-            raise AttributeError('Can only colormap single data views')
+            raise ValueError('Can only colormap single data views')
         if self.data.raw:
-            raise AttributeError('Data is already colormapped')
+            raise ValueError('Data is already colormapped')
         from matplotlib import cm, colors
         cmap = cm.get_cmap(self.cmap)
         norm = colors.Normalize(vmin=self.vmin, vmax=self.vmax, clip=True)
         raw = (cmap(norm(self.data.data)) * 255).astype(np.uint8)
         return self.copy(self.data.copy(raw))
+
+    def map(self, sampler="nearest"):
+        if not isinstance(self.data, VolumeData):
+            raise ValueError("Can only map volumedata views")
+
+        return self.copy(self.data.map(sampler))
 
     def __iter__(self):
         if isinstance(self.data, BrainData):
