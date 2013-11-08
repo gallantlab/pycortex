@@ -105,7 +105,7 @@ function ROIpack(svgdoc, renderer, positions) {
     var w = this.svgroi.getAttribute("width");
     var h = this.svgroi.getAttribute("height");
     this.aspect = w / h;
-    this.svgroi.setAttribute("viewBox", "0 0 "+w*dpi_ratio+" "+h*dpi_ratio);
+    this.svgroi.setAttribute("viewBox", "0 0 "+w+" "+h);
 
     var gl = renderer.context;
     var height = Math.min(4096, gl.getParameter(gl.MAX_TEXTURE_SIZE)) / this.aspect;
