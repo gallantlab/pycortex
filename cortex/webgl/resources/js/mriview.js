@@ -278,7 +278,17 @@ var mriview = (function(module) {
         var w = width === undefined ? $(this.object).width()  : width;
         var h = height === undefined ? $(this.object).height()  : height;
         var aspect = w / h;
-        this.renderer.setSize(w, h);
+
+        // make sure canvas size is set properly for high DPI displays
+        // From: http://www.khronos.org/webgl/wiki/HandlingHighDPI
+        var dpi_ratio = window.devicePixelRatio || 1;
+        
+        console.log(w + "px, " + h + "px");
+        this.renderer.setSize( w * dpi_ratio, h * dpi_ratio );
+        this.renderer.domElement.style.width = w + 'px'; 
+        this.renderer.domElement.style.height = h + 'px'; 
+
+        // this.renderer.setSize(w, h);
         this.camera.setSize(aspect * 100, 100);
         this.camera.updateProjectionMatrix();
         this.dispatchEvent({ type:"resize", width:w, height:h});
