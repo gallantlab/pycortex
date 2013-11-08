@@ -1,3 +1,7 @@
+// make sure canvas size is set properly for high DPI displays
+// From: http://www.khronos.org/webgl/wiki/HandlingHighDPI
+var dpi_ratio = window.devicePixelRatio || 1;
+
 var mriview = (function(module) {
     module.flatscale = .25;
 
@@ -279,11 +283,6 @@ var mriview = (function(module) {
         var h = height === undefined ? $(this.object).height()  : height;
         var aspect = w / h;
 
-        // make sure canvas size is set properly for high DPI displays
-        // From: http://www.khronos.org/webgl/wiki/HandlingHighDPI
-        var dpi_ratio = window.devicePixelRatio || 1;
-        
-        console.log(w + "px, " + h + "px");
         this.renderer.setSize( w * dpi_ratio, h * dpi_ratio );
         this.renderer.domElement.style.width = w + 'px'; 
         this.renderer.domElement.style.height = h + 'px'; 
