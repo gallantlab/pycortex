@@ -135,7 +135,7 @@ def show_slice(dataview, **kwargs):
     imshow_kw.update(kwargs)
 
     anat = surfs.getAnat(subject, 'raw').get_data().T
-    data, _ = epi2anatspace(dataview.data)
+    data = epi2anatspace(dataview.data)
 
     data[data < dataview.vmin] = np.nan
 
@@ -203,13 +203,12 @@ def epi2anatspace(volumedata, order=1):
     anat = surfs.getAnat(volumedata.subject)
     xfm = surfs.getXfm(volumedata.subject, volumedata.xfmname, "coord")
 
-    allxfm = xfm.inv * Transform(anat.get_affine(), anat.shape).inv
+    #allxfm =  Transform(anat.get_affine(), anat.shape).inv * xfm.inv
+    allxfm = xfm * Transform(anat.get_affine(), anat.shape)
 
     rotpart = allxfm.xfm[:3, :3]
     transpart = allxfm.xfm[:3,-1]
-    import ipdb
-    ipdb.set_trace()
-    return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape, cval=np.nan, order=order, mode='nearest')
+    return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape, cval=np.nan, order=order).T
 
 def epi2anatspace_fsl(volumedata):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
