@@ -39,16 +39,15 @@ def manual(subject, xfmname, reference=None, **kwargs):
         print("saved xfm")
 
     # Check whether transform w/ this xfmname already exists
-    if reference is not None:
-        try:
-            surfs.getXfm(subject, xfmname)
-            raise ValueError('Refusing to overwrite an existing transform')
-        except IOError:
-            pass
-
-    # Check whether reference file exists
-    if not os.path.exists(reference):
-        raise ValueError('Reference image (%s) does not exist' % reference)
+    try:
+        surfs.getXfm(subject, xfmname)
+        # Transform exists, make sure that reference is None
+        if reference is not None:
+            raise ValueError('Refusing to overwrite reference for existing transform %s, use reference=None to load stored reference' % xfmname)
+    except IOError:
+        # Transform does not exist, make sure that reference exists
+        if not os.path.exists(reference):
+            raise ValueError('Reference image file (%s) does not exist' % reference)
 
     m = get_aligner(subject, xfmname, epifile=reference, **kwargs)
     m.save_callback = save_callback
@@ -96,8 +95,7 @@ def automatic(subject, xfmname, reference, noclean=False):
         Path to a nibabel-readable image that will be used as the reference for this transform.
     noclean : bool, optional
         If True intermediate files will not be removed from /tmp (this is useful for debugging things),
-        and the returned value will be the name of the temp directory.
-        Default False.
+        and the returned value will be the name of the temp directory. Default False.
 
     Returns
     -------
