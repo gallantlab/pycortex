@@ -1,8 +1,10 @@
 import os
 import numpy as np
+from scipy.ndimage.interpolation import affine_transform
 
-from .db import surfs
 from . import dataset
+from .db import surfs
+from .xfm import Transform
 
 def unmask(mask, data):
     """unmask(mask, data)
@@ -194,11 +196,8 @@ def show_glass(dataview, pad=10):
     raise NotImplementedError
 
 def epi2anatspace(volumedata, order=1):
-    if not isinstance(volumedata, dataset.VolumeData):
-        raise TypeError('Requires VolumeData')
-
-    from scipy.ndimage.interpolation import affine_transform
-    from .xfm import Transform
+    ds = dataset.normalize(volumedata)
+    volumedata = ds.data
 
     anat = surfs.getAnat(volumedata.subject)
     xfm = surfs.getXfm(volumedata.subject, volumedata.xfmname, "coord")
@@ -210,12 +209,27 @@ def epi2anatspace(volumedata, order=1):
     transpart = allxfm.xfm[:3,-1]
     return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape, cval=np.nan, order=order).T
 
+def anat2epispace(anatdata, subject, xfmname, order=1):
+    anatref = surfs.getAnat(subject)
+    target = surfs.getXfm(subject, xfmname, "coord")
+
+    allxfm =  Transform(anatref.get_affine(), anatref.shape).inv * target.inv
+    #allxfm = xfm * Transform(anat.get_affine(), anat.shape)
+
+    rotpart = allxfm.xfm[:3, :3]
+    transpart = allxfm.xfm[:3,-1]
+    return affine_transform(anatdata.T, rotpart, offset=transpart, output_shape=target.shape, cval=np.nan, order=order).T
+
+
 def epi2anatspace_fsl(volumedata):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
 
     Returns the data and a temporary filename.
     """
+    #This function is currently broken! do not use it!
+    raise NotImplementedError
+
     import tempfile
     import subprocess
     import nibabel
@@ -260,12 +274,14 @@ def epi2anatspace_fsl(volumedata):
     outdata = nibabel.load(outfilename+".gz").get_data().T
 
     return outdata, outfilename
-def anat2epispace(data,subject,xfmname):
+def anat2epispace_fsl(data,subject,xfmname):
     """Resamples anat-space volumedata into the epi space for the given [subject]
     and transformation [xfm] incorporated into the volumedata object.
 
     Returns the data and a temporary filename.
     """
+    #this function is currently broken! do not use it!
+    raise NotImplementedError
     import tempfile
     import subprocess
     import nibabel

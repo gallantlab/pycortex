@@ -47,8 +47,8 @@ def manual(subject, xfmname, reference=None, **kwargs):
             pass
 
     # Check whether reference file exists
-    if not os.path.exists(reference):
-        raise ValueError('Reference image (%s) does not exist' % reference)
+#    if not os.path.exists(reference):
+#        raise ValueError('Reference image (%s) does not exist' % reference)
 
     m = get_aligner(subject, xfmname, epifile=reference, **kwargs)
     m.save_callback = save_callback

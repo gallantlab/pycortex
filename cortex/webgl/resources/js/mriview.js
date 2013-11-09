@@ -120,6 +120,7 @@ var mriview = (function(module) {
 
         this._bindUI();
 
+        this.figure.register("setdepth", this, function(depth) { this.setState("depth", depth);}.bind(this));
         this.figure.register("setmix", this, this.setMix.bind(this));
         this.figure.register("setpivot", this, this.setPivot.bind(this));
         this.figure.register("setshift", this, this.setShift.bind(this));
@@ -964,6 +965,7 @@ var mriview = (function(module) {
             this.schedule();
         }.bind(this)});
         $(this.object).find("#thickmix").slider({ min:0, max:1, step:.001, value:0.5, slide:function(event, ui) {
+            this.figure.notify("setdepth", this, [ui.value]);
             this.uniforms.thickmix.value = ui.value;
             this.schedule();
         }.bind(this)})
