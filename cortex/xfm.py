@@ -2,7 +2,9 @@ import os
 import numpy as np
 
 class Transform(object):
-    '''A standard affine transform. Typically holds a transform from anatomical fiducial space to epi magnet space.
+    '''
+    A standard affine transform. Typically holds a transform from anatomical 
+    magnet space to epi file space.
     '''
     def __init__(self, xfm, reference):
         self.xfm = xfm
@@ -56,63 +58,63 @@ class Transform(object):
         surfs.loadXfm(subject, name, self.xfm, xfmtype=xfmtype, reference=self.reference.get_filename())
 
     @classmethod
-    def from_fsl(cls, xfm, basefile, reffile):
+    def from_fsl(cls, xfm, infile, reffile):
         """
-        Converts fsl transform xfm (estimated FROM basefile TO reffile)to pycortex COORDINATE transform
+        Converts fsl transform xfm (estimated FROM infile TO reffile) 
+        to a pycortex COORD transform. 
         """
         ## Adapted from dipy.external.fsl.flirt2aff#############################
         import nibabel
         import numpy.linalg as npl
         
         try:
-            baseIm = nibabel.load(basefile)
+            inIm = nibabel.load(infile)
         except AttributeError:
-            baseIm = basefile
+            inIm = infile
             
         refIm = nibabel.load(reffile)
-        base_hdr = baseIm.get_header()
+        in_hdr = inIm.get_header()
         ref_hdr = refIm.get_header()
         # get_zooms gets the positive voxel sizes as returned in the header
-        inspace = np.diag(base_hdr.get_zooms()[:3] + (1,))
+        inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        # Assure that both determinants are negative, i.e. that both spaces are FLIPPED
-        # Per conversation with JG: It is unclear how FSL handles header info. It seems 
-        # to be the case that it doesn't at all. So if the header reveals that the matrix 
-        # should be flipped in the X dimension, FSL WILL NOT KNOW. This is a problem. SO: 
-        # Read the header info, and modify the matrix (which is all FSL sees) accordingly.
-        if npl.det(base_hdr.get_best_affine())>=0:
-            inspace = np.dot(inspace, _x_flipper(base_hdr.get_data_shape()[0]))
+        # Since FSL does not use the full transform info in the nifti header, 
+        # determine whether the transform indicates that the X axis should be 
+        # flipped; if so, flip the X axis (for both infile and reffile)
+        if npl.det(in_hdr.get_best_affine())>=0:
+            inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
         if npl.det(ref_hdr.get_best_affine())>=0:
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
-        M = refIm.get_affine()
+        refAffine = refIm.get_affine()
         inv = np.linalg.inv
-        coord = np.dot(M,np.dot(inv(refspace),np.dot(xfm,inspace)))
-        # This works as well (demonstration of different path to same transform)
-        #coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
-        #coord = inv(coord)
+        coord = np.dot(inv(refspace),np.dot(xfm,np.dot(inspace,inv(refAffine))))
         return cls(coord, refIm)
 
-    def to_fsl(self, basefile):
+    def to_fsl(self, infile):
         """
-        Converts a Glab transform to an FSL transform.
-        The resulting FSL transform goes FROM the space of the "basefile" input
+        Converts a pycortex transform to an FSL transform.
+        The resulting FSL transform goes FROM the space of the "infile" input
         TO the space of the reference nifti stored in the pycortex transform.
+
+        This should ONLY be used for "coord" transforms! Will fail hard for 
+        "magnet" transforms!
         """
         import nibabel
         import numpy.linalg as npl
 
         try:
-            baseIm = nibabel.load(basefile)
+            inIm = nibabel.load(infile)
         except AttributeError:
-            baseIm = basefile
-        in_hdr = baseIm.get_header()
+            inIm = infile
+        in_hdr = inIm.get_header()
         ref_hdr = self.reference.get_header()
-        
         # get_zooms gets the positive voxel sizes as returned in the header
         inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-
+        # Since FSL does not use the full transform info in the nifti header, 
+        # determine whether the transform indicates that the X axis should be 
+        # flipped; if so, flip the X axis (for both infile and reffile)
         if npl.det(in_hdr.get_best_affine())>=0:
             print("Determinant is > 0: FLIPPING!")
             inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
@@ -120,10 +122,9 @@ class Transform(object):
             print("Determinant is > 0: FLIPPING!")
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
-        M = self.reference.get_affine()
+        inAffine = inIm.get_affine()
         inv = np.linalg.inv
-        fslx = np.dot(refspace,np.dot(inv(M),np.dot(self.xfm,inv(inspace))))
-        #fslx = inv(np.dot(inspace, np.dot(inv(self.xfm), np.dot(M, inv(refspace)))))
+        fslx = np.dot(refspace,np.dot(self.xfm,np.dot(inAffine,inv(inspace))))
         return fslx
 
 def _x_flipper(N_i):

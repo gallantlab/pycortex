@@ -196,8 +196,6 @@ def show_glass(dataview, pad=10):
 def epi2anatspace(volumedata):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
-
-    Returns the data and a temporary filename.
     """
     import tempfile
     import subprocess
@@ -208,15 +206,11 @@ def epi2anatspace(volumedata):
     xfmname = volumedata.xfmname
     data = volumedata.volume
 
-    ## Get transform (remember cortex estimates anat-to-epi!)
+    ## Get transform (pycortex estimates anat-to-epi)
     xfm = surfs.getXfm(subject, xfmname)
     fslxfm = xfm.to_fsl(surfs.getAnat(subject, 'raw').get_filename())
-    ## Invert to epi-to-anat
-    #print('orig transform')
-    #print(fslxfm)
+    ## Invert transform to epi-to-anat
     fslxfm = np.linalg.inv(fslxfm)
-    #print('inverted transform')
-    #print(fslxfm)
     ## Save out into ascii file
     xfmfilename = tempfile.mktemp(".mat")
     with open(xfmfilename, "w") as xfmh:
@@ -241,22 +235,19 @@ def epi2anatspace(volumedata):
 
     ## Load resliced image
     outdata = nibabel.load(outfilename+".gz").get_data().T
+    ## Clean up
+    os.remove(outfilename+".gz")
+    os.remove(datafilename)
+    ## Done!
+    return outdata
 
-    return outdata, outfilename
-def anat2epispace(data,subject,xfmname):
-    """Resamples anat-space volumedata into the epi space for the given [subject]
-    and transformation [xfm] incorporated into the volumedata object.
-
-    Returns the data and a temporary filename.
+def anat2epispace_fsl(data,subject,xfmname):
+    """Resamples anat-space data into the epi space for the given [subject]
+    and transformation [xfm] 
     """
     import tempfile
     import subprocess
     import nibabel
-
-    #volumedata = dataset.normalize(volumedata).data
-    #subject = volumedata.subject
-    #xfmname = volumedata.xfmname
-    #data = volumedata.volume
 
     ## Get transform (pycortex estimates anat-to-epi)
     xfm = surfs.getXfm(subject, xfmname)
@@ -287,8 +278,11 @@ def anat2epispace(data,subject,xfmname):
 
     ## Load resliced image
     outdata = nibabel.load(outfilename+".gz").get_data().T
-
-    return outdata, outfilename
+    ## Clean up
+    os.remove(outfilename+".gz")
+    os.remove(datafilename)
+    ## Done!
+    return outdata
 
 def fslview(*ims):
     import tempfile
