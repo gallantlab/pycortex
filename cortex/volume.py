@@ -193,7 +193,25 @@ def show_glass(dataview, pad=10):
     #too much work for something we'll never use
     raise NotImplementedError
 
-def epi2anatspace(volumedata):
+def epi2anatspace(volumedata, order=1):
+    if not isinstance(volumedata, dataset.VolumeData):
+        raise TypeError('Requires VolumeData')
+
+    from scipy.ndimage.interpolation import affine_transform
+    from .xfm import Transform
+
+    anat = surfs.getAnat(volumedata.subject)
+    xfm = surfs.getXfm(volumedata.subject, volumedata.xfmname, "coord")
+
+    allxfm = xfm.inv * Transform(anat.get_affine(), anat.shape).inv
+
+    rotpart = allxfm.xfm[:3, :3]
+    transpart = allxfm.xfm[:3,-1]
+    import ipdb
+    ipdb.set_trace()
+    return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape, cval=np.nan, order=order, mode='nearest')
+
+def epi2anatspace_fsl(volumedata):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
 

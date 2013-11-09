@@ -34,12 +34,16 @@ class Transform(object):
         ref = self.reference
         if ref is None:
             ref = self.shape
+        if isinstance(other, Transform):
+            other = other.xfm
         return Transform(np.dot(self.xfm, other), ref)
 
     def __rmul__(self, other):
         ref = self.reference
         if ref is None:
             ref = self.shape
+        if isinstance(other, Transform):
+            other = other.xfm
         return Transform(np.dot(other, self.xfm), ref)
 
     def __repr__(self):

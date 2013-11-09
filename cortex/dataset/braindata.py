@@ -185,7 +185,10 @@ class VolumeData(BrainData):
     def __repr__(self):
         maskstr = "volumetric"
         if self.linear:
-            maskstr = "%s masked"%self.masktype
+            name = self._mask
+            if isinstance(self._mask, np.ndarray):
+                name = "custom"
+            maskstr = "%s masked"%name
         if self.raw:
             maskstr += " raw"
         if self.movie:
@@ -196,6 +199,7 @@ class VolumeData(BrainData):
     @property
     def volume(self):
         """Standardizes the VolumeData, ensuring that masked data are unmasked"""
+        from .. import volume
         if self.linear:
             data = volume.unmask(self.mask, self.data[:])
         else:
