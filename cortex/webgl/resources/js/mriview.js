@@ -520,7 +520,7 @@ var mriview = (function(module) {
                 $(this.object).find("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
         }
         
-        this.setData(name);
+        this.setData(data[0].name);
     };
     module.Viewer.prototype.setData = function(name) {
         if (this.state == "play")

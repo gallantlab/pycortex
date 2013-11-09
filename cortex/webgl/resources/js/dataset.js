@@ -50,7 +50,9 @@ var dataset = (function(module) {
         this.loaded = $.Deferred().done(function() { $("#dataload").hide(); });
         this.rate = json.attrs.rate === undefined ? 1 : json.attrs.rate;
         this.delay = json.attrs.delay === undefined ? 0 : json.attrs.delay;
-        this.filter = json.attrs.filter == undefined ? "nearest" : json.attrs.filter;
+        this.filter = json.attrs.filter === undefined ? "nearest" : json.attrs.filter;
+        if (json.attrs.stim !== undefined)
+            this.stim = "stim/"+json.attrs.stim;
 
         if (!(json.vmin instanceof Array))
             this.vmin = [[json.vmin]]
@@ -64,15 +66,26 @@ var dataset = (function(module) {
         if (this.loaded.state() == "pending")
             $("#dataload").show();
         frames = frames || 0;
-        var deferred = this.data.length == 1 ? 
-            $.when(this.data[0].loaded) : 
-            $.when(this.data[0].loaded, this.data[1].loaded);
-        deferred.then(function() {
-            this.loaded.resolve();
 
-            var sampler = module.samplers[this.filter];
-            var shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, uniforms.nsamples.value);
-            this.shader = new THREE.ShaderMaterial({ 
+        var sampler = module.samplers[this.filter];
+        var shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, uniforms.nsamples.value);
+        this.shader = new THREE.ShaderMaterial({ 
+            vertexShader:shaders.vertex,
+            fragmentShader:shaders.fragment,
+            uniforms: uniforms,
+            attributes: { wm:true, auxdat:true },
+            morphTargets:true, 
+            morphNormals:true, 
+            lights:true, 
+
+             blending:THREE.CustomBlending,
+        });
+        this.shader.map = true;
+        this.shader.metal = true;
+
+        if (uniforms.nsamples.value > 1) {
+            shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, 1);
+            this.fastshader = new THREE.ShaderMaterial({
                 vertexShader:shaders.vertex,
                 fragmentShader:shaders.fragment,
                 uniforms: uniforms,
@@ -80,32 +93,22 @@ var dataset = (function(module) {
                 morphTargets:true, 
                 morphNormals:true, 
                 lights:true, 
-
-                 blending:THREE.CustomBlending,
+                blending:THREE.CustomBlending,
             });
-            this.shader.map = true;
-            this.shader.metal = true;
+            this.fastshader.map = true;
+            this.fastshader.metal = true;
+        } else {
+            this.fastshader = null;
+        }
 
-            if (uniforms.nsamples.value > 1) {
-                shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, 1);
-                this.fastshader = new THREE.ShaderMaterial({
-                    vertexShader:shaders.vertex,
-                    fragmentShader:shaders.fragment,
-                    uniforms: uniforms,
-                    attributes: { wm:true, auxdat:true },
-                    morphTargets:true, 
-                    morphNormals:true, 
-                    lights:true, 
-                    blending:THREE.CustomBlending,
-                });
-                this.fastshader.map = true;
-                this.fastshader.metal = true;
-            } else {
-                this.fastshader = null;
-            }
+        meshes.left.material = this.shader;
+        meshes.right.material = this.shader;
 
-            meshes.left.material = this.shader;
-            meshes.right.material = this.shader;
+        var deferred = this.data.length == 1 ? 
+            $.when(this.data[0].loaded) : 
+            $.when(this.data[0].loaded, this.data[1].loaded);
+        deferred.then(null, null, function() {
+            this.loaded.resolve();
 
             for (var i = 0; i < this.data.length; i++) {
                 this.data[i].setFilter(this.filter);

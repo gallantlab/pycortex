@@ -60,14 +60,14 @@ class DataView(View):
             self.data = [(xdim, ydim)]
         else:
             self.data = DataView.normalize(data)
+            no_nan = self.data.data[~np.isnan(self.data.data)]
+            
+            if self.vmin is None:
+                self.vmin = float(np.percentile(no_nan, 1))
+            if self.vmax is None:
+                self.vmax = float(np.percentile(no_nan, 99))
 
         self.description = description
-
-        no_nan = self.data.data[~np.isnan(self.data.data)]
-        if self.vmin is None:
-            self.vmin = float(np.percentile(no_nan, 1))
-        if self.vmax is None:
-            self.vmax = float(np.percentile(no_nan, 99))
 
     @staticmethod
     def normalize(data):
