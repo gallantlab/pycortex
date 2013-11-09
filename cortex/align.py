@@ -46,7 +46,7 @@ def manual(subject, xfmname, reference=None, **kwargs):
             raise ValueError('Refusing to overwrite reference for existing transform %s, use reference=None to load stored reference' % xfmname)
     except IOError:
         # Transform does not exist, make sure that reference exists
-        if not os.path.exists(reference):
+        if reference is None or not os.path.exists(reference):
             raise ValueError('Reference image file (%s) does not exist' % reference)
 
     m = get_aligner(subject, xfmname, epifile=reference, **kwargs)
