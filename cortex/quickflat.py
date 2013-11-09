@@ -101,7 +101,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         #bax.invert_yaxis()
     
     if with_rois:
-        roi = surfs.getOverlay(braindata.data.subject, linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
+        roi = surfs.getOverlay(dataview.data.subject, linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
         roitex = roi.get_texture(height, labels=with_labels)
         roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
