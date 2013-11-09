@@ -155,11 +155,6 @@ class Database(object):
             brainmask='nii.gz',
             whitematter='nii.gz',
             voxelize='nii.gz',
-            flatmask='npz',
-            curvature='npz',
-            thickness='npz',
-            distortion='npz',
-            sulcaldepth='npz',
         )
         
         opts = ""
@@ -361,6 +356,18 @@ class Database(object):
         except KeyError:
             raise IOError
 
+    def getSurfInfo(self, subject, type="sulcaldepth"):
+        types = dict(
+            curvature='npz',
+            thickness='npz',
+            distortion='npz',
+            sulcaldepth='npz',
+        )
+
+    def getCache(self, subject):
+        return self.getFiles(subject)['cachedir']
+
+
     def loadMask(self, subject, xfmname, type, mask):
         fname = self.getFiles(subject)['masks'].format(xfmname=xfmname, type=type)
         if os.path.exists(fname):
@@ -464,7 +471,7 @@ class Database(object):
             if raw_input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
                 shutil.rmtree(os.path.join(filestore, subject))
 
-        for dirname in ['transforms', 'anatomicals', 'cache', 'surfaces']:
+        for dirname in ['transforms', 'anatomicals', 'cache', 'surfaces', 'surface-info']:
             try:
                 path = os.path.join(filestore, subject, dirname)
                 os.makedirs(path)
