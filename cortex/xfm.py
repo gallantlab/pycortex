@@ -75,7 +75,10 @@ class Transform(object):
         # get_zooms gets the positive voxel sizes as returned in the header
         inspace = np.diag(base_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        # Assure that both determinants are negative, i.e. that both spaces are FLIPPED (??)
+        # Assure that both determinants are negative, i.e. that both spaces are FLIPPED
+        # Per conversation with JG: It is unclear how FSL handles header info. Probably 
+        # it doesn't at all. Thus these operations are designed to flip the order of the
+        # X axis in the 
         if npl.det(base_hdr.get_best_affine())>=0:
             inspace = np.dot(inspace, _x_flipper(base_hdr.get_data_shape()[0]))
         if npl.det(ref_hdr.get_best_affine())>=0:
@@ -110,8 +113,10 @@ class Transform(object):
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
 
         if npl.det(in_hdr.get_best_affine())>=0:
+            print("Determinant is > 0: FLIPPING!")
             inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
         if npl.det(ref_hdr.get_best_affine())>=0:
+            print("Determinant is > 0: FLIPPING!")
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
         M = self.reference.get_affine()

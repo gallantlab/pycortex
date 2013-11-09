@@ -200,16 +200,15 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         tmpMask[:,ir,1] = np.all(np.array([roiIdxB3,Rmask,CxMask]),axis=0)
         if not np.any(tmpMask[:,ir]):
             dropROI += [ir]
-    print('shape before dropping:')
-    print(tmpMask.shape)
+    # Cull rois with no voxels
     keepROI = np.array([not ir in dropROI for ir in range(len(roiList))])
+    # Cull rois requested, but not avialable in pycortex
     roiListL = [r for ir,r in enumerate(roiList) if not ir in dropROI]
     tmpMask = tmpMask[:,keepROI,:]
-    print("after dropping ROIs:")
-    print(tmpMask.shape)
     # Kill all overlap btw. "Cortex" and other ROIs
-    if 'cortex' in roiListL:
-        cIdx = roiListL.index('cortex')
+    roiListL_lower = [xx.lower() for xx in roiListL]
+    if 'cortex' in roiListL_lower:
+        cIdx = roiListL_lower.index('cortex')
         # Left:
         OtherROIs = tmpMask[:,np.arange(len(roiListL))!=cIdx,0] 
         tmpMask[:,cIdx,0] = np.logical_and(np.logical_not(np.any(OtherROIs,axis=1)),tmpMask[:,cIdx,0])
