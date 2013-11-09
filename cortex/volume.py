@@ -9,7 +9,14 @@ from .xfm import Transform
 def unmask(mask, data):
     """unmask(mask, data)
 
-    `Unmasks` the data, assuming it's been masked.
+    Unmask the data, assuming it's been masked. Creates a volume
+    the same size as `mask` containing `data` at the locations
+    where `mask` is True.
+
+    If `data` is RGB valued (dtype uint8 and last dim is 3 or 4),
+    the area outside the mask will be filled with zeros.
+
+    Otherwise, a numpy MaskedArray will be returned.
 
     Parameters
     ----------
@@ -17,6 +24,11 @@ def unmask(mask, data):
         The data mask
     data : array_like
         Actual MRI data to unmask
+
+    Returns
+    -------
+    unmasked : array_like
+        Volume same size as `mask` but same dtype as `data`.
     """
     nvox = mask.sum()
     if data.shape[0] == nvox:
@@ -33,8 +45,11 @@ def unmask(mask, data):
         if data.shape[-1] == 3:
             output[:, mask > 0, 3] = 255
     else:
-        output = (np.nan*np.ones((len(data),)+mask.shape)).astype(data.dtype)
-        output[:, mask > 0] = data
+        #output = (np.nan*np.ones((len(data),)+mask.shape)).astype(data.dtype)
+        outdata = np.zeros((len(data),)+mask.shape).astype(data.dtype)
+        outdata[:, mask>0] = data
+        outmask = np.tile(~mask[None,:,:,:], (len(data), 1, 1, 1))
+        output = np.ma.MaskedArray(outdata, mask=outmask)
 
     return output.squeeze()
 
