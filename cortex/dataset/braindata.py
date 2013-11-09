@@ -247,7 +247,7 @@ class VolumeData(BrainData):
 
 class VertexData(VolumeData):
     def __init__(self, data, subject):
-        """Vertex Data possibilities
+        """VertexData `data` possibilities:
 
         raw linear movie: (t, v, c)
         reg linear movie: (t, v)
@@ -289,13 +289,13 @@ class VertexData(VolumeData):
             self.hem = "left"
             rshape = list(self.data.shape)
             rshape[1 if self.movie else 0] = self.rlen
-            self.data = np.hstack([self.data, np.zeros(rshape, dtype=self.data.dtype)])
+            self._data = np.hstack([self.data, np.zeros(rshape, dtype=self.data.dtype)])
         elif self.rlen == self.nverts:
             # Just data for right hemisphere
             self.hem = "right"
             lshape = list(self.data.shape)
             lshape[1 if self.movie else 0] = self.llen
-            self.data = np.hstack([np.zeros(lshape, dtype=self.data.dtype), self.data])
+            self._data = np.hstack([np.zeros(lshape, dtype=self.data.dtype), self.data])
         elif self.llen + self.rlen == self.nverts:
             # Data for both hemispheres
             self.hem = "both"
