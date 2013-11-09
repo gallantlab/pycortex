@@ -23,6 +23,9 @@ class BrainData(object):
         '''Name of this BrainData, according to its hash'''
         return "__%s"%_hash(self.data)[:16]
 
+    def copy(self):
+        raise NotImplementedError("Copy not supported for BrainData, use VolumeData or VertexData")
+
     def exp(self):
         """Copy of this object with data exponentiated.
         """
@@ -247,7 +250,8 @@ class VolumeData(BrainData):
 
 class VertexData(VolumeData):
     def __init__(self, data, subject):
-        """VertexData `data` possibilities:
+        """Represents `data` at each vertex on a `subject`s cortex.
+        `data` shape possibilities:
 
         raw linear movie: (t, v, c)
         reg linear movie: (t, v)
@@ -255,7 +259,7 @@ class VertexData(VolumeData):
         reg linear image: (v,)
 
         where t is the number of time points, c is colors (i.e. RGB), and v is the
-        number of vertices (either in both hemispheres or one hemisphere)
+        number of vertices (either in both hemispheres or one hemisphere).
         """
         try:
             basestring
@@ -269,8 +273,8 @@ class VertexData(VolumeData):
         self._set_data(data)
 
     def _set_data(self, data):
-        """Sets the data of this VertexData. Also sets flags if the data appears to
-        be in 'movie' or 'raw' format. See __init__ for data shape possibilities.
+        """Stores data for this VertexData. Also sets flags if `data` appears to
+        be in 'movie' or 'raw' format. See __init__ for `data` shape possibilities.
         """
         self._data = data
         
@@ -303,7 +307,9 @@ class VertexData(VolumeData):
             raise ValueError('Invalid number of vertices for subject')
 
     def copy(self, data=None):
-        """Copies this VertexData. Uses __new__ to avoid expensive initialization.
+        """Copies this VertexData. Uses __new__ to avoid expensive initialization that
+        involves loading the surface from disk. Can also be used to cheaply create a
+        new VertexData object for a subject with new `data`, if supplied.
         """
         newvd = self.__class__.__new__(self.__class__)
         newvd.subject = self.subject
