@@ -1,8 +1,10 @@
 import os
 import numpy as np
+from scipy.ndimage.interpolation import affine_transform
 
-from .db import surfs
 from . import dataset
+from .db import surfs
+from .xfm import Transform
 
 def unmask(mask, data):
     """unmask(mask, data)
@@ -135,7 +137,7 @@ def show_slice(dataview, **kwargs):
     imshow_kw.update(kwargs)
 
     anat = surfs.getAnat(subject, 'raw').get_data().T
-    data, _ = epi2anatspace(dataview.data)
+    data = epi2anatspace(dataview.data)
 
     data[data < dataview.vmin] = np.nan
 
@@ -194,29 +196,38 @@ def show_glass(dataview, pad=10):
     raise NotImplementedError
 
 def epi2anatspace(volumedata, order=1):
-    if not isinstance(volumedata, dataset.VolumeData):
-        raise TypeError('Requires VolumeData')
-
-    from scipy.ndimage.interpolation import affine_transform
-    from .xfm import Transform
+    ds = dataset.normalize(volumedata)
+    volumedata = ds.data
 
     anat = surfs.getAnat(volumedata.subject)
     xfm = surfs.getXfm(volumedata.subject, volumedata.xfmname, "coord")
 
-    allxfm = xfm.inv * Transform(anat.get_affine(), anat.shape).inv
+    #allxfm =  Transform(anat.get_affine(), anat.shape).inv * xfm.inv
+    allxfm = xfm * Transform(anat.get_affine(), anat.shape)
 
     rotpart = allxfm.xfm[:3, :3]
     transpart = allxfm.xfm[:3,-1]
-    import ipdb
-    ipdb.set_trace()
-    return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape, cval=np.nan, order=order, mode='nearest')
+    return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape, cval=np.nan, order=order).T
+
+def anat2epispace(anatdata, subject, xfmname, order=1):
+    anatref = surfs.getAnat(subject)
+    target = surfs.getXfm(subject, xfmname, "coord")
+
+    allxfm =  Transform(anatref.get_affine(), anatref.shape).inv * target.inv
+    #allxfm = xfm * Transform(anat.get_affine(), anat.shape)
+
+    rotpart = allxfm.xfm[:3, :3]
+    transpart = allxfm.xfm[:3,-1]
+    return affine_transform(anatdata.T, rotpart, offset=transpart, output_shape=target.shape, cval=np.nan, order=order).T
+
 
 def epi2anatspace_fsl(volumedata):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
-
-    Returns the data and a temporary filename.
     """
+    #This function is currently broken! do not use it!
+    raise NotImplementedError
+
     import tempfile
     import subprocess
     import nibabel
@@ -226,15 +237,11 @@ def epi2anatspace_fsl(volumedata):
     xfmname = volumedata.xfmname
     data = volumedata.volume
 
-    ## Get transform (remember cortex estimates anat-to-epi!)
+    ## Get transform (pycortex estimates anat-to-epi)
     xfm = surfs.getXfm(subject, xfmname)
     fslxfm = xfm.to_fsl(surfs.getAnat(subject, 'raw').get_filename())
-    ## Invert to epi-to-anat
-    #print('orig transform')
-    #print(fslxfm)
+    ## Invert transform to epi-to-anat
     fslxfm = np.linalg.inv(fslxfm)
-    #print('inverted transform')
-    #print(fslxfm)
     ## Save out into ascii file
     xfmfilename = tempfile.mktemp(".mat")
     with open(xfmfilename, "w") as xfmh:
@@ -259,22 +266,19 @@ def epi2anatspace_fsl(volumedata):
 
     ## Load resliced image
     outdata = nibabel.load(outfilename+".gz").get_data().T
+    ## Clean up
+    os.remove(outfilename+".gz")
+    os.remove(datafilename)
+    ## Done!
+    return outdata
 
-    return outdata, outfilename
-def anat2epispace(data,subject,xfmname):
-    """Resamples anat-space volumedata into the epi space for the given [subject]
-    and transformation [xfm] incorporated into the volumedata object.
-
-    Returns the data and a temporary filename.
+def anat2epispace_fsl(data,subject,xfmname):
+    """Resamples anat-space data into the epi space for the given [subject]
+    and transformation [xfm] 
     """
     import tempfile
     import subprocess
     import nibabel
-
-    #volumedata = dataset.normalize(volumedata).data
-    #subject = volumedata.subject
-    #xfmname = volumedata.xfmname
-    #data = volumedata.volume
 
     ## Get transform (pycortex estimates anat-to-epi)
     xfm = surfs.getXfm(subject, xfmname)
@@ -305,8 +309,11 @@ def anat2epispace(data,subject,xfmname):
 
     ## Load resliced image
     outdata = nibabel.load(outfilename+".gz").get_data().T
-
-    return outdata, outfilename
+    ## Clean up
+    os.remove(outfilename+".gz")
+    os.remove(datafilename)
+    ## Done!
+    return outdata
 
 def fslview(*ims):
     import tempfile
