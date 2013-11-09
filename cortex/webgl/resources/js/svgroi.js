@@ -1,4 +1,5 @@
 var label_size = 22;
+var dpi_ratio = window.devicePixelRatio || 1;
 var roilabel_vshader = [
     "uniform float size;",
 
@@ -114,7 +115,7 @@ function ROIpack(svgdoc, renderer, positions) {
 }
 ROIpack.prototype = {
     resize: function(width, height) {
-        this.labels.resize(width, height);
+        this.labels.resize(width * dpi_ratio, height * dpi_ratio);
     },
     setHeight: function(height) {
         this.height = height;
@@ -327,6 +328,8 @@ function ROIlabels(names, positions) {
 
 ROIlabels.prototype = {
     resize: function(width, height) {
+        width *= dpi_ratio;
+        height *= dpi_ratio;
         this.depth = new THREE.WebGLRenderTarget(width, height, {
             minFilter: THREE.LinearFilter,
             magFilter: THREE.LinearFilter,
@@ -340,6 +343,7 @@ ROIlabels.prototype = {
     },
     update: function(renderer, height) {
         height *= 2;
+        height *= dpi_ratio;
         var w, width = 0, allnames = [];
         var ctx = this.canvas.getContext('2d');
         ctx.font = 'italic bold '+(height*0.5)+'px helvetica';

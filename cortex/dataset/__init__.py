@@ -114,10 +114,10 @@ class Dataset(object):
         return uniques
 
     def save(self, filename=None, pack=False):
-        if self.h5 is None:
-            if filename is None:
-                raise ValueError("Must provide filename for new datasets")
+        if filename is not None:
             self.h5 = h5py.File(filename)
+        elif self.h5 is None:
+            raise ValueError("Must provide filename for new datasets")
 
         for name, view in self.views.items():
             view._write_hdf(self.h5, name=name)

@@ -1,3 +1,7 @@
+// make sure canvas size is set properly for high DPI displays
+// From: http://www.khronos.org/webgl/wiki/HandlingHighDPI
+var dpi_ratio = window.devicePixelRatio || 1;
+
 var mriview = (function(module) {
     module.flatscale = .25;
 
@@ -116,6 +120,7 @@ var mriview = (function(module) {
 
         this._bindUI();
 
+        this.figure.register("setdepth", this, function(depth) { this.setState("depth", depth);}.bind(this));
         this.figure.register("setmix", this, this.setMix.bind(this));
         this.figure.register("setpivot", this, this.setPivot.bind(this));
         this.figure.register("setshift", this, this.setShift.bind(this));
@@ -278,7 +283,12 @@ var mriview = (function(module) {
         var w = width === undefined ? $(this.object).width()  : width;
         var h = height === undefined ? $(this.object).height()  : height;
         var aspect = w / h;
-        this.renderer.setSize(w, h);
+
+        this.renderer.setSize( w * dpi_ratio, h * dpi_ratio );
+        this.renderer.domElement.style.width = w + 'px'; 
+        this.renderer.domElement.style.height = h + 'px'; 
+
+        // this.renderer.setSize(w, h);
         this.camera.setSize(aspect * 100, 100);
         this.camera.updateProjectionMatrix();
         this.dispatchEvent({ type:"resize", width:w, height:h});
@@ -511,7 +521,7 @@ var mriview = (function(module) {
                 $(this.object).find("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
         }
         
-        this.setData(name);
+        this.setData(data[0].name);
     };
     module.Viewer.prototype.setData = function(name) {
         if (this.state == "play")
@@ -955,6 +965,7 @@ var mriview = (function(module) {
             this.schedule();
         }.bind(this)});
         $(this.object).find("#thickmix").slider({ min:0, max:1, step:.001, value:0.5, slide:function(event, ui) {
+            this.figure.notify("setdepth", this, [ui.value]);
             this.uniforms.thickmix.value = ui.value;
             this.schedule();
         }.bind(this)})

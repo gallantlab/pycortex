@@ -52,7 +52,8 @@ class BrainData(object):
             mask = None
             if "mask" in node.attrs:
                 try:
-                    mask = surfs.getMask(subj, xfmname, node.attrs['mask'])
+                    surfs.getMask(subj, xfmname, node.attrs['mask'])
+                    mask = node.attrs['mask']
                 except IOError:
                     mask = dataset.getMask(subj, xfmname, node.attrs['mask'])
             return VolumeData(node, subj, xfmname, mask=mask)
@@ -185,7 +186,10 @@ class VolumeData(BrainData):
     def __repr__(self):
         maskstr = "volumetric"
         if self.linear:
-            maskstr = "%s masked"%self.masktype
+            name = self._mask
+            if isinstance(self._mask, np.ndarray):
+                name = "custom"
+            maskstr = "%s masked"%name
         if self.raw:
             maskstr += " raw"
         if self.movie:
@@ -196,6 +200,7 @@ class VolumeData(BrainData):
     @property
     def volume(self):
         """Standardizes the VolumeData, ensuring that masked data are unmasked"""
+        from .. import volume
         if self.linear:
             data = volume.unmask(self.mask, self.data[:])
         else:
@@ -231,7 +236,7 @@ class VolumeData(BrainData):
             mask = self._mask
             if isinstance(self._mask, np.ndarray):
                 mgrp = "/subjects/{subj}/transforms/{xfm}/masks/"
-                mgrp = h5.file.require_group(mgrp.format(subj=self.subject, xfm=self.xfmname))
+                mgrp = mgrp.format(subj=self.subject, xfm=self.xfmname)
                 mname = "__%s" % _hash(self._mask)[:8]
                 _hdf_write(h5, self._mask, name=mname, group=mgrp)
                 mask = mname
@@ -402,5 +407,9 @@ def _hdf_write(h5, data, name="data", group="/data"):
     except TypeError:
         del h5[group][name]
         node = h5.create_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
+
+    if '<' in node.name:
+        import ipdb
+        ipdb.set_trace()
     node[:] = data
     return node

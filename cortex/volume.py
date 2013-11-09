@@ -1,8 +1,10 @@
 import os
 import numpy as np
+from scipy.ndimage.interpolation import affine_transform
 
-from .db import surfs
 from . import dataset
+from .db import surfs
+from .xfm import Transform
 
 def unmask(mask, data):
     """unmask(mask, data)
@@ -135,7 +137,7 @@ def show_slice(dataview, **kwargs):
     imshow_kw.update(kwargs)
 
     anat = surfs.getAnat(subject, 'raw').get_data().T
-    data, _ = epi2anatspace(dataview.data)
+    data = epi2anatspace(dataview.data)
 
     data[data < dataview.vmin] = np.nan
 
@@ -193,10 +195,39 @@ def show_glass(dataview, pad=10):
     #too much work for something we'll never use
     raise NotImplementedError
 
-def epi2anatspace(volumedata):
+def epi2anatspace(volumedata, order=1):
+    ds = dataset.normalize(volumedata)
+    volumedata = ds.data
+
+    anat = surfs.getAnat(volumedata.subject)
+    xfm = surfs.getXfm(volumedata.subject, volumedata.xfmname, "coord")
+
+    #allxfm =  Transform(anat.get_affine(), anat.shape).inv * xfm.inv
+    allxfm = xfm * Transform(anat.get_affine(), anat.shape)
+
+    rotpart = allxfm.xfm[:3, :3]
+    transpart = allxfm.xfm[:3,-1]
+    return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape, cval=np.nan, order=order).T
+
+def anat2epispace(anatdata, subject, xfmname, order=1):
+    anatref = surfs.getAnat(subject)
+    target = surfs.getXfm(subject, xfmname, "coord")
+
+    allxfm =  Transform(anatref.get_affine(), anatref.shape).inv * target.inv
+    #allxfm = xfm * Transform(anat.get_affine(), anat.shape)
+
+    rotpart = allxfm.xfm[:3, :3]
+    transpart = allxfm.xfm[:3,-1]
+    return affine_transform(anatdata.T, rotpart, offset=transpart, output_shape=target.shape, cval=np.nan, order=order).T
+
+
+def epi2anatspace_fsl(volumedata):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
     """
+    #This function is currently broken! do not use it!
+    raise NotImplementedError
+
     import tempfile
     import subprocess
     import nibabel
