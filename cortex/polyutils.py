@@ -8,6 +8,8 @@ import numexpr as ne
 
 def _memo(fn):
     """Helper decorator memoizes the given zero-argument function.
+    Really helpful for memoizing properties so they don't have to be recomputed
+    dozens of times.
     """
     @functools.wraps(fn)
     def memofn(self):
@@ -18,7 +20,22 @@ def _memo(fn):
     return memofn
 
 class Surface(object):
+    """Represents a single cortical hemisphere surface. Can be the white matter surface,
+    pial surface, fiducial (mid-cortical) surface, inflated surface, flattened surface,
+    etc.
+
+    Implements some useful functions for dealing with functions across surfaces.
+    """
     def __init__(self, pts, polys):
+        """Initialize Surface.
+
+        Parameters
+        ----------
+        pts : 2D ndarray, shape (total_verts, 3)
+            Location of each vertex in space (mm). Order is x, y, z.
+        polys : 2D ndarray, shape (total_polys, 3)
+            Indices of the vertices in each triangle in the surface.
+        """
         self.pts = pts
         self.polys = polys
 
@@ -64,8 +81,12 @@ class Surface(object):
     def face_normals(self):
         """Normal vector for each face.
         """
-        nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], self.ppts[:,2] - self.ppts[:,0])
+        # Compute normal vector direction
+        nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], 
+                            self.ppts[:,2] - self.ppts[:,0])
+        # Normalize to norm 1
         nfnorms = nnfnorms / np.sqrt((nnfnorms**2).sum(1))[:,np.newaxis]
+        # Ensure that there are no nans (shouldn't be a problem with well-formed surfaces)
         return np.nan_to_num(nfnorms)
 
     @property
@@ -73,7 +94,9 @@ class Surface(object):
     def vertex_normals(self):
         """Normal vector for each vertex (average of normals for neighboring faces).
         """
+        # Average adjacent face normals
         nnvnorms = np.nan_to_num(self.connected.dot(self.face_normals) / self.connected.sum(1)).A
+        # Normalize to norm 1
         return nnvnorms / np.sqrt((nnvnorms**2).sum(1))[:,np.newaxis]
 
     @property
@@ -81,7 +104,10 @@ class Surface(object):
     def face_areas(self):
         """Area of each face.
         """
-        nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], self.ppts[:,2] - self.ppts[:,0])
+        # Compute normal vector (length is face area)
+        nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], 
+                            self.ppts[:,2] - self.ppts[:,0])
+        # Compute vector length
         return np.sqrt((nnfnorms**2).sum(-1))
 
     @property
@@ -104,8 +130,6 @@ class Surface(object):
         cots = np.vstack([cots1, cots2, cots3])
         cots[np.isinf(cots)] = 0
         cots[np.isnan(cots)] = 0
-        # Clip to a reasonable range, these meshes are the worst
-        #cots = np.clip(cots, -100, 100)
         return cots
 
     @property
@@ -153,7 +177,7 @@ class Surface(object):
 
     def mean_curvature(self):
         """Compute mean curvature of this surface using the Laplace-Beltrami operator.
-        Curvature is computed at each vertex. And it's probably pretty noise, and should
+        Curvature is computed at each vertex. It's probably pretty noisy, and should
         be smoothed.
         """
         B,D,W,V = self.laplace_operator
@@ -200,6 +224,8 @@ class Surface(object):
         fe12, fe23, fe31 = [f.T for f in self._facenorm_cross_edge]
         pu1, pu2, pu3 = pu.T
         fa = self.face_areas
+
+        # numexpr is much faster than doing this using numpy!
         #gradu = ((fe12.T * pu[:,2] +
         #          fe23.T * pu[:,0] +
         #          fe31.T * pu[:,1]) / (2 * self.face_areas)).T
@@ -268,6 +294,21 @@ class Surface(object):
     def _create_interp(self, verts, bhsolver=None, newinterp=True):
         """Creates interpolator that will interpolate values at the given `verts` using
         biharmonic interpolation.
+
+        Parameters
+        ----------
+        verts : 1D array-like of ints
+            Indices of vertices that will serve as knot points for interpolation.
+        bhsolver : (lhs, rhs, Dinv, lhsfac, notboundary), optional
+            A 5-tuple representing a biharmonic equation solver. This structure
+            is created by _create_biharmonic_solver.
+        
+        Returns
+        -------
+        _interp : function
+            Function that will interpolate a given set of values across the surface.
+            The values can be 1D or 2D (number of dimensions by len `verts`). Any
+            number of dimensions can be interpolated simultaneously.
         """
         if bhsolver is None:
             lhs, D, Dinv, lhsfac, notb = self._create_biharmonic_solver(verts)
@@ -275,47 +316,26 @@ class Surface(object):
             lhs, D, Dinv, lhsfac, notb = bhsolver
         
         npt = len(D)
-        if newinterp:
-            def _interp(vals):
-                v2 = np.atleast_2d(vals)
-                nd,nv = v2.shape
-                ij = np.zeros((2,nv*nd))
-                ij[0] = np.array(verts)[np.repeat(np.arange(nv), nd)]
-                ij[1] = np.tile(np.arange(nd), nv)
-                
-                r = sparse.csr_matrix((vals.T.ravel(), ij), shape=(npt,nd))
-
-                #vr = Dinv.dot(lhs.dot(r))
-                vr = lhs.dot(r)
-                
-                #phi = lhsfac.solve_A(-D[notb][:,np.newaxis] * vr[notb])
-                #phi = lhsfac.solve_A(-vr.todense()[notb]) # 29.9ms
-                phi = lhsfac.solve_A(-vr[notb].todense()) # 28.2ms
-                # phi = lhsfac.solve_A(-vr[notb]).todense() # 29.3ms
-                
-                tphi = np.zeros((npt,nd))
-                tphi[notb] = phi
-                tphi[verts] = v2.T
-                
-                return tphi
-
-        else:
-            def _interp(vals):
-                v2 = np.atleast_2d(vals)
-                nd = v2.shape[0]
-                r = np.zeros((npt,nd))
-                # r = sparse.lil_matrix((npt, nd))
-                r[verts] = v2.T
-                vr = lhs.dot(r)
-                # vr = lhs.dot(r)
-                phi = lhsfac.solve_A(-vr[notb])
-                # phi = lhsfac.solve_A(-vr[notb]).todense()
-                
-                tphi = np.zeros((npt,nd))
-                tphi[notb] = phi
-                tphi[verts] = v2.T
-                
-                return tphi
+        def _interp(vals):
+            """Interpolate function with values `vals` at the knot points."""
+            v2 = np.atleast_2d(vals)
+            nd,nv = v2.shape
+            ij = np.zeros((2,nv*nd))
+            ij[0] = np.array(verts)[np.repeat(np.arange(nv), nd)]
+            ij[1] = np.tile(np.arange(nd), nv)
+            
+            r = sparse.csr_matrix((vals.T.ravel(), ij), shape=(npt,nd))
+            vr = lhs.dot(r)
+            
+            #phi = lhsfac.solve_A(-vr.todense()[notb]) # 29.9ms
+            phi = lhsfac.solve_A(-vr[notb].todense()) # 28.2ms
+            # phi = lhsfac.solve_A(-vr[notb]).todense() # 29.3ms
+            
+            tphi = np.zeros((npt,nd))
+            tphi[notb] = phi
+            tphi[verts] = v2.T
+            
+            return tphi
 
         return _interp
 
@@ -323,6 +343,25 @@ class Surface(object):
         """Interpolates a function between N knot points `verts` with the values `vals`.
         `vals` can be a D x N array to interpolate multiple functions with the same
         knot points.
+
+        Using this function directly is unnecessarily expensive if you want to interpolate
+        many different values between the same knot points. Instead, you should directly
+        create and interpolator function using _create_interp, and then call that function.
+        In fact, that's exactly what this function does.
+
+        See _create_biharmonic_solver for math details.
+
+        Parameters
+        ----------
+        verts : 1D array-like of ints
+            Indices of vertices that will serve as knot points for interpolation.
+        vals : 2D ndarray, shape (dimensions, len(verts))
+            Values at the knot points. Can be multidimensional.
+
+        Returns
+        -------
+        tphi : 2D ndarray, shape (total_verts, dimensions)
+            Interpolated value at every vertex on the surface.
         """
         return self._create_interp(verts)(vals)
 
@@ -338,13 +377,13 @@ class Surface(object):
 
     def geodesic_distance(self, verts, m=1.0, fem=False):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
-        vertex in the collection verts.
+        vertex in the collection `verts`.
 
         Geodesic distance is estimated using heat-based method (see 'Geodesics in Heat',
-        Crane et al, 2012). The diffusion of heat along the mesh is simulated and then
+        Crane et al, 2012). Diffusion of heat along the mesh is simulated and then
         used to infer geodesic distance. The duration of the simulation is controlled
-        by the parameter m. Larger values of m will smooth & regularize the distance
-        computation. Smaller values of m will roughen and will usually increase error
+        by the parameter `m`. Larger values of `m` will smooth & regularize the distance
+        computation. Smaller values of `m` will roughen and will usually increase error
         in the distance computation. The default value of 1.0 is probably pretty good.
 
         This function caches some data (sparse LU factorizations of the laplace-beltrami
@@ -352,6 +391,24 @@ class Surface(object):
         subsequent runs.
 
         The time taken by this function is independent of the number of vertices in verts.
+
+        Parameters
+        ----------
+        verts : 1D array-like of ints
+            Set of vertices to compute distance from. This function returns the shortest
+            distance to any of these vertices from every vertex in the surface.
+        m : float, optional
+            Reverse Euler step length. The optimal value is likely between 0.5 and 1.5.
+            Default is 1.0, which should be fine for most cases.
+        fem : bool, optional
+            Whether to use Finite Element Method lumped mass matrix. Wasn't used in 
+            Crane 2012 paper. Doesn't seem to help any.
+
+        Returns
+        -------
+        dist : 1D ndarray, shape (total_verts,)
+            Geodesic distance (in mm) from each vertex in the surface to the closest
+            vertex in `verts`.
         """
         npt = len(self.pts)
         if m not in self._rlfac_solvers:
@@ -599,13 +656,44 @@ class _quadset(object):
             yield [quad[0], quad[2], quad[3]]
 
 class Distortion(object):
+    """Object that computes distortion metrics between fiducial and another (e.g. flat)
+    surface.
+    """
     def __init__(self, flat, ref, polys):
+        """Initialize Distortion object.
+
+        Parameters
+        ----------
+        flat : 2D ndarray, shape (total_verts, 3)
+            Location of each vertex in flatmap space.
+        ref : 2D ndarray, shape (total_verts, 3)
+            Location of each vertex in fiducial (reference) space.
+        polys : 2D ndarray, shape (total_polys, 3)
+            Triangle vertex indices in both `flat` and `ref`.
+        """
         self.flat = flat
         self.ref = ref
         self.polys = polys
 
     @property
     def areal(self):
+        """Compute areal distortion of the flatmap.
+
+        Areal distortion is calculated at each triangle as the log2 ratio of
+        the triangle area in the flatmap to the area in the reference surface.
+        Distortion values are then resampled onto the vertices.
+
+        Thus a value of 0 indicates the areas are equal (no distortion), a 
+        value of +1 indicates that the area in the flatmap is 2x the area
+        in the reference surface (expansion), and a value of -1 indicates
+        that the area in the flatmap is 1/2x the area in the reference
+        surface (compression).
+
+        Returns
+        -------
+        vertratios : 1D ndarray, shape (total_verts,)
+            Areal distortion at each vertex.
+        """
         def area(pts, polys):
             ppts = pts[polys]
             cross = np.cross(ppts[:,1] - ppts[:,0], ppts[:,2] - ppts[:,0])
@@ -626,6 +714,20 @@ class Distortion(object):
 
     @property
     def metric(self):
+        """Compute metric distortion of the flatmap.
+
+        Metric distortion is calculated as the difference in squared distance
+        from each vertex to its neighbors between the flatmap and the reference.
+
+        Positive values of metric distortion mean that vertices are farther from
+        their neighbors in the flatmap than in the reference surface (expansion),
+        etc.
+
+        Returns
+        -------
+        vertdists : 1D ndarray, shape (total_verts,)
+            Metric distortion at each vertex.
+        """
         import networkx as nx
         def iter_surfedges(tris):
             for a,b,c in tris:
@@ -644,7 +746,7 @@ class Distortion(object):
                      for ii in selverts]
         flat_dists = [np.sqrt(((self.flat[G.neighbors(ii)] - self.flat[ii])**2).sum(1))
                       for ii in selverts]
-        msdists = np.array([(fl-fi).mean() for fi,fl in zip(ref_dists, flat_dists)])
+        msdists = np.array([(f-r).mean() for r,f in zip(ref_dists, flat_dists)])
         alldists = np.zeros((len(self.ref),))
         alldists[selverts] = msdists
         return alldists
