@@ -24,6 +24,8 @@ def manual(subject, xfmname, reference=None, **kwargs):
         Path to a nibabel-readable image that will be used as the reference for this transform.
         If given the default value of None, this function will attempt to load an existing reference
         image from the database.
+    kwargs : dict
+        Passed to mayavi_aligner.get_aligner.
 
     Returns
     -------

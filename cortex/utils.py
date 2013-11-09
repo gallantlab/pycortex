@@ -93,9 +93,22 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
     '''
     return get_mapper(subject, xfmname, type=type).hemimasks
 
-def add_roi(data, name="new_roi", recache=False, open_inkscape=True, add_path=True, **kwargs):
-    """
-    data is a DataView instance
+def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
+    """Add new overlay data to the ROI file for a subject.
+
+    Parameters
+    ----------
+    data : BrainData
+        The data that will be overlaid on the ROI file.
+    name : str, optional
+        Name that will be assigned to the new dataset. <<IS THIS NECESSARY ANYMORE?>>
+    open_inkscape : bool, optional
+        If True, Inkscape will automatically open the ROI file.
+    add_path : bool, optional
+        If True, a new SVG layer will automatically be created in the ROI group
+        with the same `name` as the overlay.
+    kwargs : dict
+        Passed to cortex.quickflat.make_png
     """
     import subprocess as sp
     from .utils import get_roipack
@@ -107,7 +120,7 @@ def add_roi(data, name="new_roi", recache=False, open_inkscape=True, add_path=Tr
         fp = cStringIO.StringIO()
     except:
         fp = io.StringIO()
-    quickflat.make_png(fp, data, height=1024, recache=recache, with_rois=False, with_labels=False, **kwargs)
+    quickflat.make_png(fp, data, height=1024, with_rois=False, with_labels=False, **kwargs)
     fp.seek(0)
     rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
     if open_inkscape:
@@ -246,7 +259,7 @@ def get_curvature(subject, smooth=20.0, **kwargs):
     return curvs
 
 def get_thickness(subject):
-    """Compute cortical thickness (in mm) at each vertex.
+    """Compute cortical thickness (in mm) at each vertex in `subject`.
     Returns a VertexData object.
     """
     wmpts, wmpolys = surfs.getSurf(subject, "wm", merge=True)
@@ -320,8 +333,9 @@ def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
     return tissots, allcenters
 
 def get_dropout(subject, xfmname, power=20):
-    """Returns a dropout VolumeData showing where EPI signal
-    is very low."""
+    """Create a dropout VolumeData showing where EPI signal
+    is very low.
+    """
     xfm = surfs.getXfm(subject, xfmname)
     rawdata = xfm.reference.get_data().T
 

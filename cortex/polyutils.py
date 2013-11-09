@@ -689,6 +689,8 @@ class Distortion(object):
         that the area in the flatmap is 1/2x the area in the reference
         surface (compression).
 
+        See: http://brainvis.wustl.edu/wiki/index.php/Caret:Operations/Morphing
+
         Returns
         -------
         vertratios : 1D ndarray, shape (total_verts,)
@@ -722,6 +724,8 @@ class Distortion(object):
         Positive values of metric distortion mean that vertices are farther from
         their neighbors in the flatmap than in the reference surface (expansion),
         etc.
+
+        See: Fishl, Sereno, and Dale, 1999.
 
         Returns
         -------
