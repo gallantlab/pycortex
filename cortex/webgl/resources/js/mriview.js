@@ -10,6 +10,14 @@ var mriview = (function(module) {
         THREE.EventTarget.call( this );
         jsplot.Axes.call(this, figure);
 
+        var blanktex = document.createElement("canvas");
+        blanktex.width = 16;
+        blanktex.height = 16;
+        this.blanktex = new THREE.Texture(blanktex);
+        this.blanktex.needsUpdate = true;
+        this.blanktex.magFilter = THREE.NearestFilter;
+        this.blanktex.minFilter = THREE.NearestFilter;
+
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
 
@@ -56,6 +64,7 @@ var mriview = (function(module) {
         this.renderer.sortObjects = true;
         this.renderer.setClearColorHex( 0x0, 1 );
         this.renderer.context.getExtension("OES_texture_float");
+        this.renderer.context.getExtension("OES_texture_float_linear");
         this.renderer.context.getExtension("OES_standard_derivatives");
         this.renderer.setSize( this.canvas.width(), this.canvas.height() );
 
@@ -73,9 +82,9 @@ var mriview = (function(module) {
                 offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
                 
                 //hatch:      { type:'t',  value:0, texture: module.makeHatch() },
-                colormap:   { type:'t',  value:0, texture: mriview.blanktex },
-                map:        { type:'t',  value:1, texture: mriview.blanktex },
-                data:       { type:'tv', value:2, texture: [mriview.blanktex, mriview.blanktex, mriview.blanktex, mriview.blanktex]},
+                colormap:   { type:'t',  value:0, texture: this.blanktex },
+                map:        { type:'t',  value:1, texture: this.blanktex },
+                data:       { type:'tv', value:2, texture: [this.blanktex, this.blanktex, this.blanktex, this.blanktex]},
                 mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
                 dshape:     { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
                 volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
@@ -554,7 +563,7 @@ var mriview = (function(module) {
 
         $.when(this.cmapload, this.loaded).done(function() {
             this.setVoxView(this.active.filter, viewopts.voxlines);
-            this.active.init(this.uniforms, this.meshes);
+            //this.active.init(this.uniforms, this.meshes);
             $(this.object).find("#vrange").slider("option", {min: this.active.data[0].min, max:this.active.data[0].max});
             this.setVminmax(this.active.vmin[0][0], this.active.vmax[0][0], 0);
             if (this.active.data.length > 1) {
@@ -569,14 +578,16 @@ var mriview = (function(module) {
                 $(this.object).find("#moviecontrols").show();
                 $(this.object).find("#bottombar").addClass("bbar_controls");
                 $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
-                this.active.loaded.progress(function(idx) {
+                this.active.data[0].loaded.progress(function(idx) {
                     var pct = idx / this.active.frames * 100;
                     $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
                 }.bind(this)).done(function() {
                     $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
                 }.bind(this));
                 
-                this.setFrame(this.active.delay);
+                this.active.loaded.done(function() {
+                    this.setFrame(this.active.delay);
+                }.bind(this));
 
                 if (this.active.stim && figure) {
                     figure.setSize("right", "30%");
@@ -903,7 +914,7 @@ var mriview = (function(module) {
             if (this.checked) 
                 updateROIs();
             else {
-                _this.uniforms.map.texture = mriview.blanktex;
+                _this.uniforms.map.texture = this.blanktex;
                 _this.schedule();
             }
         });

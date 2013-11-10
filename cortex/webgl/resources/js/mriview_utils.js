@@ -81,14 +81,6 @@ var mriview = (function(module) {
     }
     multiview_prototype(module.MultiView.prototype, ['getState', 'setState', 'setColormap', 'nextData']);
 
-    var blanktex = document.createElement("canvas");
-    blanktex.width = 16;
-    blanktex.height = 16;
-    module.blanktex = new THREE.Texture(blanktex);
-    module.blanktex.needsUpdate = true;
-    module.blanktex.magFilter = THREE.NearestFilter;
-    module.blanktex.minFilter = THREE.NearestFilter;
-
     module.getTexture = function(gl, renderbuf) {
         var glcanvas = document.createElement("canvas");
         glcanvas.width = renderbuf.width;

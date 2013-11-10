@@ -104,16 +104,34 @@ var dataset = (function(module) {
         meshes.left.material = this.shader;
         meshes.right.material = this.shader;
 
+        var allready = [];
+        for (var i = 0; i < this.data.length; i++) {
+            this.data[i].init(uniforms, i);
+            allready.push(false);
+        }
+
         var deferred = this.data.length == 1 ? 
             $.when(this.data[0].loaded) : 
             $.when(this.data[0].loaded, this.data[1].loaded);
-        deferred.then(null, null, function() {
+        deferred.done(function() {
             this.loaded.resolve();
-
             for (var i = 0; i < this.data.length; i++) {
                 this.data[i].setFilter(this.filter);
-                this.data[i].init(uniforms, i);
-                this.data[i].set(uniforms, i, frames);
+                this.data[i].set(uniforms, i, this.delay);
+            }
+        }.bind(this)).progress(function() {
+            for (var i = 0; i < this.data.length; i++) {
+                if (this.data[i].textures.length > this.delay && !allready[i]) {
+                    this.data[i].setFilter(this.filter);
+                    this.data[i].set(uniforms, i, this.delay);
+                    allready[i] = true;
+
+                    var test = true;
+                    for (var i = 0; i < allready.length; i++)
+                        test = test && allready[i];
+                    if (test)
+                        this.loaded.resolve();
+                }
             }
         }.bind(this));
     }
@@ -164,6 +182,8 @@ var dataset = (function(module) {
                     tex = new THREE.DataTexture(arr, img.width, img.height, THREE.LuminanceFormat, THREE.FloatType);
                     tex.premultiplyAlpha = false;
                 }
+                tex.minFilter = module.filtertypes['nearest'];
+                tex.magfilter = module.filtertypes['nearest'];
                 tex.needsUpdate = true;
                 tex.flipY = false;
                 this.shape = [((img.width-1) / this.mosaic[0])-1, ((img.height-1) / this.mosaic[1])-1];
@@ -183,7 +203,7 @@ var dataset = (function(module) {
         module.brains[json.data] = this;
     };
     module.BrainData.prototype.setFilter = function(interp) {
-        this.filter = interp;
+        //this.filter = interp;
         for (var i = 0, il = this.textures.length; i < il; i++) {
             this.textures[i].minFilter = module.filtertypes[interp];
             this.textures[i].magFilter = module.filtertypes[interp];
@@ -202,7 +222,7 @@ var dataset = (function(module) {
             if (this.frames > 1) {
                 uniforms.data.texture[dim*2+1] = this.textures[(fframe+1).mod(this.frames)];
             } else {
-                uniforms.data.texture[dim*2+1] = mriview.blanktex;
+                uniforms.data.texture[dim*2+1] = null;
             }
         }
     }
