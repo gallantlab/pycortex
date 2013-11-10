@@ -196,6 +196,20 @@ def show_glass(dataview, pad=10):
     raise NotImplementedError
 
 def epi2anatspace(volumedata, order=1):
+    """Resample an epi volume data into anatomical space using scipy.
+
+    Parameters
+    ----------
+    volumedata : VolumeData
+        The input epi volumedata object.
+    order : int
+        The order of the resampler, in terms of splines. 0 is nearest, 1 is linear.
+
+    Returns
+    -------
+    anatspace : ndarray
+        The ND array of the anatomy space data
+    """
     ds = dataset.normalize(volumedata)
     volumedata = ds.data
 
