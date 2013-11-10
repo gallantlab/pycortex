@@ -31,22 +31,6 @@ def whitematter(outfile, subject):
         finally:
             shutil.rmtree(cache)
 
-
-def curvature(outfile, subject, **kwargs):
-    left, right = utils.get_curvature(subject, **kwargs)
-    np.savez(outfile, left=left, right=right)
-
-def distortion(outfile, subject, type='areal', **kwargs):
-    left, right = utils.get_distortion(subject, type=type, **kwargs)
-    np.savez(outfile, left=left, right=right)
-
-def thickness(outfile, subject):
-    pl, pr = surfs.getSurf(subject, "pia")
-    wl, wr = surfs.getSurf(subject, "wm")
-    left = np.sqrt(((pl[0] - wl[0])**2).sum(1))
-    right = np.sqrt(((pr[0] - wr[0])**2).sum(1))
-    np.savez(outfile, left=left, right=right)
-
 def voxelize(outfile, subject, surf='wm', mp=True):
     '''Voxelize the whitematter surface to generate the white matter mask'''
     from . import polyutils
@@ -62,21 +46,3 @@ def voxelize(outfile, subject, surf='wm', mp=True):
     nib.to_filename(outfile)
 
     return vox.T
-
-def flatmask(outfile, subject, height=1024):
-    from . import polyutils
-    import Image
-    import ImageDraw
-    pts, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
-    left, right = bounds.next(), bounds.next()
-    aspect = (height / (pts.max(0) - pts.min(0))[1])
-    lpts = (pts[left] - pts.min(0)) * aspect
-    rpts = (pts[right] - pts.min(0)) * aspect
-
-    im = Image.new('L', (int(aspect * (pts.max(0) - pts.min(0))[0]), height))
-    draw = ImageDraw.Draw(im)
-    draw.polygon(lpts[:,:2].ravel().tolist(), fill=255)
-    draw.polygon(rpts[:,:2].ravel().tolist(), fill=255)
-    extents = np.hstack([pts.min(0), pts.max(0)])[[0,3,1,4]]
-    np.savez(outfile, mask=np.array(im) > 0, extents=extents)

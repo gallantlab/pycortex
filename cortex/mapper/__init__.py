@@ -28,9 +28,11 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     if len(kwds) > 0:
         ptype += '_'+kwds
 
-    fnames = surfs.getFiles(subject)
-    xfmfile = fnames['xfmdir'].format(xfmname=xfmname)
-    cachefile = fnames['projcache'].format(xfmname=xfmname, projection=ptype)
+    fname = "{xfmname}_{projection}.npz".format(xfmname=xfmname, projection=ptype)
+
+    xfmfile = surfs.getFiles(subject)['xfmdir'].format(xfmname=xfmname)
+    cachefile = os.path.join(surfs.getCache(subject), fname)
+
     try:
         if not recache and xfmname == "identity" or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
            return mapcls[type].from_cache(cachefile) 

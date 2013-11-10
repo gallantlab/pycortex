@@ -17,7 +17,9 @@ def get_mapper(*args, **kwargs):
     return get_mapper(*args, **kwargs)
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False):
-    ctmform = surfs.getFiles(subject)['ctmcache']
+    ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
+    ctmform = os.path.join(surfs.getCache(subject), ctmcache)
+    
     lvlstr = ("%dd" if decimate else "%d")%level
     ctmfile = ctmform.format(types=','.join(types), method=method, level=lvlstr)
     if os.path.exists(ctmfile) and not recache:
@@ -247,89 +249,6 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     elif overlapOpt=='split':
         pass
     return mask,roiIdx
-
-def get_curvature(subject, smooth=20.0, **kwargs):
-    from . import polyutils
-    curvs = []
-    for pts, polys in surfs.getSurf(subject, "fiducial"):
-        surf = polyutils.Surface(pts, polys)
-        curv = surf.smooth(surf.mean_curvature(), smooth)
-        curvs.append(curv)
-    return curvs
-
-def get_thickness(subject):
-    """Compute cortical thickness (in mm) at each vertex in `subject`.
-    Returns a VertexData object.
-    """
-    wmpts, wmpolys = surfs.getSurf(subject, "wm", merge=True)
-    piapts, piapolys = surfs.getSurf(subject, "pia", merge=True)
-    thickness = np.sqrt(((piapts - wmpts)**2).sum(1))
-
-    from .dataset import VertexData
-    return VertexData(thickness, subject)
-
-def get_flatmap_distortion(sub, type="areal", smooth=20.0):
-    """Computes distortion of flatmap relative to fiducial surface. Several different
-    types of distortion are available:
-    
-    'areal': computes the areal distortion for each triangle in the flatmap, defined as the
-    log ratio of the area in the fiducial mesh to the area in the flat mesh. Returns
-    a per-vertex value that is the average of the neighboring triangles.
-    See: http://brainvis.wustl.edu/wiki/index.php/Caret:Operations/Morphing
-    
-    'metric': computes the linear distortion for each vertex in the flatmap, defined as
-    the mean squared difference between distances in the fiducial map and distances in
-    the flatmap, for each pair of neighboring vertices. See Fishl, Sereno, and Dale, 1999.
-    """
-    from polyutils import Distortion, Surface
-    distortions = []
-    for hem in ["lh", "rh"]:
-        fidvert, fidtri = surfs.getSurf(sub, "fiducial", hem)
-        flatvert, flattri = surfs.getSurf(sub, "flat", hem)
-        surf = Surface(fidvert, fidtri)
-
-        dist = getattr(Distortion(flatvert, fidvert, flattri), type)
-        smdist = surf.smooth(dist, smooth)
-        distortions.append(smdist)
-
-    return distortions
-
-def get_tissots_indicatrix(sub, radius=10, spacing=50, maxfails=100):
-    from . import polyutils
-    
-    tissots = []
-    allcenters = []
-    for hem in ["lh", "rh"]:
-        fidpts, fidpolys = surfs.getSurf(sub, "fiducial", hem)
-        #G = make_surface_graph(fidtri)
-        surf = polyutils.Surface(fidpts, fidpolys)
-        nvert = fidpts.shape[0]
-        tissot_array = np.zeros((nvert,))
-
-        centers = [np.random.randint(nvert)]
-        cdists = [surf.geodesic_distance(centers)]
-        while True:
-            ## Find possible vertices
-            mcdist = np.vstack(cdists).min(0)
-            possverts = np.nonzero(mcdist > spacing)[0]
-            #possverts = np.nonzero(surf.geodesic_distance(centers) > spacing)[0]
-            if not len(possverts):
-                break
-            ## Pick random vertex
-            centervert = possverts[np.random.randint(len(possverts))]
-            centers.append(centervert)
-            print("Adding vertex %d.." % centervert)
-            dists = surf.geodesic_distance([centervert])
-            cdists.append(dists)
-
-            ## Find appropriate set of vertices
-            selverts = dists < radius
-            tissot_array[selverts] = 1
-
-        tissots.append(tissot_array)
-        allcenters.append(np.array(centers))
-
-    return tissots, allcenters
 
 def get_dropout(subject, xfmname, power=20):
     """Create a dropout VolumeData showing where EPI signal

@@ -192,22 +192,19 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     roipack = utils.get_roipack(dataview.data.subject)
     roipack.get_svg(fname, labels=True, with_ims=[pngdata])
 
-def make(braindata, height=1024, **kwargs):
+def make(braindata, height=1024, recache=False, **kwargs):
     if not isinstance(braindata, dataset.BrainData):
         raise TypeError('Invalid type for quickflat')
     if braindata.movie:
         raise ValueError('Cannot flatten multiple volumes')
 
-    npz = surfs.getAnat(braindata.subject, "flatmask", height=height)
-    mask = npz['mask'].T
-    extents = npz['extents']
-    npz.close()
-    
+    mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
+
     if isinstance(braindata, dataset.VertexData):
-        pixmap = get_flatcache(braindata.subject, None, height=height, **kwargs)
+        pixmap = get_flatcache(braindata.subject, None, height=height, recache=recache, **kwargs)
         data = braindata.vertices
     else:
-        pixmap = get_flatcache(braindata.subject, braindata.xfmname, height=height, **kwargs)
+        pixmap = get_flatcache(braindata.subject, braindata.xfmname, height=height, recache=recache, **kwargs)
         data = braindata.volume
 
     if braindata.raw:
@@ -296,76 +293,67 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, sampler
     finally:
         shutil.rmtree(path)
 
+def get_flatmask(subject, height=1024, recache=False):
+    cachedir = surfs.getCache(subject)
+    cachefile = os.path.join(cachedir, "flatmask_{h}.npz".format(h=height))
 
-def _gen_flat_border(subject, height=1024):
+    if not os.path.exists(cachefile) or recache:
+        mask, extents = _make_flatmask(subject, height=height)
+        np.savez(cachefile, mask=mask, extents=extents)
+    else:
+        npz = np.load(cachefile)
+        mask, extents = npz['mask'], npz['extents']
+        npz.close()
+
+    return mask, extents
+
+def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest', recache=False, height=1024, depth=0.5):
+    cachedir = surfs.getCache(subject)
+    cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
+    if pixelwise and xfmname is not None:
+        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{sampler}_{extra}.npz")
+        extra = "l%d"%thick if thick > 1 else "d%g"%depth
+        cachefile = cachefile.format(height=height, xfmname=xfmname, sampler=sampler, extra=extra)
+
+    if not os.path.exists(cachefile) or recache:
+        print("Generating a flatmap cache")
+        if pixelwise and xfmname is not None:
+            pixmap = _make_pixel_cache(subject, xfmname, height=height, sampler=sampler, thick=thick, depth=depth)
+        else:
+            pixmap = _make_vertex_cache(subject, height=height)
+        np.savez(cachefile, data=pixmap.data, indices=pixmap.indices, indptr=pixmap.indptr, shape=pixmap.shape)
+    else:
+        from scipy import sparse
+        npz = np.load(cachefile)
+        pixmap = sparse.csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
+        npz.close()
+
+    if not pixelwise and xfmname is not None:
+        from scipy import sparse
+        mapper = utils.get_mapper(subject, xfmname, sampler)
+        pixmap = pixmap * sparse.vstack(mapper.masks)
+
+    return pixmap
+
+
+def _make_flatmask(subject, height=1024):
     from . import polyutils
-    flatpts, flatpolys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
-    flatpolyset = set(map(tuple, flatpolys))
-    
-    fidpts, fidpolys = surfs.getSurf(subject, "fiducial", merge=True, nudge=True)
-    fidpolyset = set(map(tuple, fidpolys))
-    fidonlypolys = fidpolyset - flatpolyset
-    fidonlypolyverts = np.unique(np.array(list(fidonlypolys)).ravel())
-    
-    fidonlyverts = np.setdiff1d(fidpolys.ravel(), flatpolys.ravel())
-    
-    import networkx as nx
-    def iter_surfedges(tris):
-        for a,b,c in tris:
-            yield a,b
-            yield b,c
-            yield a,c
+    import Image
+    import ImageDraw
+    pts, polys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
+    bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
+    left, right = bounds.next(), bounds.next()
+    aspect = (height / (pts.max(0) - pts.min(0))[1])
+    lpts = (pts[left] - pts.min(0)) * aspect
+    rpts = (pts[right] - pts.min(0)) * aspect
 
-    def make_surface_graph(tris):
-        graph = nx.Graph()
-        graph.add_edges_from(iter_surfedges(tris))
-        return graph
+    im = Image.new('L', (int(aspect * (pts.max(0) - pts.min(0))[0]), height))
+    draw = ImageDraw.Draw(im)
+    draw.polygon(lpts[:,:2].ravel().tolist(), fill=255)
+    draw.polygon(rpts[:,:2].ravel().tolist(), fill=255)
+    extents = np.hstack([pts.min(0), pts.max(0)])[[0,3,1,4]]
 
-    bounds = [p for p in polyutils.trace_poly(polyutils.boundary_edges(flatpolys))]
-    allbounds = np.hstack(bounds)
-    
-    g = make_surface_graph(fidonlypolys)
-    fog = g.subgraph(fidonlyverts)
-    badverts = np.array([v for v,d in fog.degree().iteritems() if d<2])
-    g.remove_nodes_from(badverts)
-    fog.remove_nodes_from(badverts)
-    mwallset = set.union(*(set(g[v]) for v in fog.nodes())) & set(allbounds)
-    #cutset = (set(g.nodes()) - mwallset) & set(allbounds)
-
-    mwallbounds = [np.in1d(b, mwallset) for b in bounds]
-    changes = [np.nonzero(np.diff(b.astype(float))!=0)[0]+1 for b in mwallbounds]
-    
-    #splitbounds = [np.split(b, c) for b,c in zip(bounds, changes)]
-    splitbounds = []
-    for b,c in zip(bounds, changes):
-        sb = []
-        rb = [b[-1]] + b
-        rc = [1] + (c + 1).tolist() + [len(b)]
-        for ii in range(len(rc)-1):
-            sb.append(rb[rc[ii]-1 : rc[ii+1]])
-        splitbounds.append(sb)
-    
-    ismwall = [[s.mean()>0.5 for s in np.split(mwb, c)] for mwb,c in zip(mwallbounds, changes)]
-    
-    aspect = (height / (flatpts.max(0) - flatpts.min(0))[1])
-    lpts = (flatpts - flatpts.min(0)) * aspect
-    rpts = (flatpts - flatpts.min(0)) * aspect
-    
-    #im = Image.new('RGBA', (int(aspect * (flatpts.max(0) - flatpts.min(0))[0]), height))
-    #draw = ImageDraw.Draw(im)
-
-    ismwalls = []
-    lines = []
-    
-    for bnds, mw, pts in zip(splitbounds, ismwall, [lpts, rpts]):
-        for pbnd, pmw in zip(bnds, mw):
-            #color = {True:(0,0,255,255), False:(255,0,0,255)}[pmw]
-            #draw.line(pts[pbnd,:2].ravel().tolist(), fill=color, width=2)
-            ismwalls.append(pmw)
-            lines.append(pts[pbnd,:2])
-    
-    #return np.array(im)[::-1]/255.0
-    return lines, ismwalls
+    return np.array(im).T > 0, extents
 
 def _make_vertex_cache(subject, height=1024):
     from scipy import sparse
@@ -378,9 +366,7 @@ def _make_vertex_cache(subject, height=1024):
     width = int(aspect * height)
     grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
 
-    npz = surfs.getAnat(subject, "flatmask", height=height, recache=True)
-    mask = npz['mask'].T
-    npz.close()
+    mask, extents = get_flatmask(subject, height=height)
     assert mask.shape[0] == width and mask.shape[1] == height
 
     kdt = cKDTree(flat[valid,:2])
@@ -399,9 +385,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
     width = int(aspect * height)
     grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
     
-    npz = surfs.getAnat(subject, "flatmask", height=height)
-    mask = npz['mask'].T
-    npz.close()
+    mask, extents = get_flatmask(subject, height=height)
     assert mask.shape[0] == width and mask.shape[1] == height
     
     ## Get barycentric coordinates
@@ -462,30 +446,3 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
         csrshape = mask.sum(), np.prod(xfm.shape)
         return sparse.csr_matrix((data, (vidx[i], j)), shape=csrshape)
 
-def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest', recache=False, height=1024, depth=0.5):
-    cachedir = surfs.getFiles(subject)['cachedir']
-    cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
-    if pixelwise and xfmname is not None:
-        cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{sampler}_{extra}.npz")
-        extra = "l%d"%thick if thick > 1 else "d%g"%depth
-        cachefile = cachefile.format(height=height, xfmname=xfmname, sampler=sampler, extra=extra)
-
-    if not os.path.exists(cachefile) or recache:
-        print("Generating a flatmap cache")
-        if pixelwise and xfmname is not None:
-            pixmap = _make_pixel_cache(subject, xfmname, height=height, sampler=sampler, thick=thick, depth=depth)
-        else:
-            pixmap = _make_vertex_cache(subject, height=height)
-        np.savez(cachefile, data=pixmap.data, indices=pixmap.indices, indptr=pixmap.indptr, shape=pixmap.shape)
-    else:
-        from scipy import sparse
-        npz = np.load(cachefile)
-        pixmap = sparse.csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
-        npz.close()
-
-    if not pixelwise and xfmname is not None:
-        from scipy import sparse
-        mapper = utils.get_mapper(subject, xfmname, sampler)
-        pixmap = pixmap * sparse.vstack(mapper.masks)
-
-    return pixmap
