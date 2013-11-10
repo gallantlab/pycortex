@@ -74,7 +74,7 @@ class BrainCTM(object):
             self.types.append(typename)
 
     def addCurvature(self, **kwargs):
-        npz = surfs.getAnat(self.subject, type='curvature', **kwargs)
+        npz = surfs.getSurfInfo(self.subject, type='curvature', **kwargs)
         try:
             self.left.aux[:,1] = npz.left[self.left.mask]
             self.right.aux[:,1] = npz.right[self.right.mask]

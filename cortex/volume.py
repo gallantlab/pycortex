@@ -199,7 +199,7 @@ def epi2anatspace(volumedata, order=1):
     ds = dataset.normalize(volumedata)
     volumedata = ds.data
 
-    anat = surfs.getAnat(volumedata.subject)
+    anat = surfs.getAnat(volumedata.subject, "raw")
     xfm = surfs.getXfm(volumedata.subject, volumedata.xfmname, "coord")
 
     #allxfm =  Transform(anat.get_affine(), anat.shape).inv * xfm.inv

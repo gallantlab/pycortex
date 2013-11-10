@@ -385,9 +385,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
     width = int(aspect * height)
     grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
     
-    npz = surfs.getAnat(subject, "flatmask", height=height)
-    mask = npz['mask'].T
-    npz.close()
+    mask, extents = get_flatmask(subject, height=height)
     assert mask.shape[0] == width and mask.shape[1] == height
     
     ## Get barycentric coordinates
