@@ -75,7 +75,7 @@ class Transform(object):
             inIm = nibabel.load(infile)
         except AttributeError:
             inIm = infile
-            
+        
         refIm = nibabel.load(reffile)
         in_hdr = inIm.get_header()
         ref_hdr = refIm.get_header()
@@ -90,9 +90,9 @@ class Transform(object):
         if npl.det(ref_hdr.get_best_affine())>=0:
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
-        refAffine = refIm.get_affine()
+        inAffine = inIm.get_affine()
         inv = np.linalg.inv
-        coord = np.dot(inv(refspace),np.dot(xfm,np.dot(inspace,inv(refAffine))))
+        coord = np.dot(inv(refspace),np.dot(xfm,np.dot(inspace,inv(inAffine))))
         return cls(coord, refIm)
 
     def to_fsl(self, infile):
