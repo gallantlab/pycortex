@@ -222,7 +222,7 @@ def epi2anatspace(volumedata, order=1):
 
     rotpart = allxfm.xfm[:3, :3]
     transpart = allxfm.xfm[:3,-1]
-    return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape, cval=np.nan, order=order).T
+    return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape[::-1], cval=np.nan, order=order).T
 
 def anat2epispace(anatdata, subject, xfmname, order=1):
     anatref = surfs.getAnat(subject)
@@ -233,7 +233,7 @@ def anat2epispace(anatdata, subject, xfmname, order=1):
 
     rotpart = allxfm.xfm[:3, :3]
     transpart = allxfm.xfm[:3,-1]
-    return affine_transform(anatdata.T, rotpart, offset=transpart, output_shape=target.shape, cval=np.nan, order=order).T
+    return affine_transform(anatdata.T, rotpart, offset=transpart, output_shape=target.shape[::-1], cval=np.nan, order=order).T
 
 
 def epi2anatspace_fsl(volumedata):
