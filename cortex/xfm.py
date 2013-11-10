@@ -10,11 +10,11 @@ class Transform(object):
         self.xfm = xfm
         self.reference = None
         if isinstance(reference, str):
+            import nibabel
             try:
-                import nibabel
                 self.reference = nibabel.load(reference)
                 self.shape = self.reference.shape[:3][::-1]
-            except:
+            except IOError:
                 self.reference = reference
         elif isinstance(reference, tuple):
             self.shape = reference

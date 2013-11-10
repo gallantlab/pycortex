@@ -178,19 +178,42 @@ class Surface(object):
     def mean_curvature(self):
         """Compute mean curvature of this surface using the Laplace-Beltrami operator.
         Curvature is computed at each vertex. It's probably pretty noisy, and should
-        be smoothed.
+        be smoothed using smooth().
+
+        Negative values of mean curvature mean that the surface is folded inward
+        (as in a sulcus), positive values of curvature mean that the surface is
+        folded outward (as on a gyrus).
+
+        Returns
+        -------
+        curv : 1D ndarray, shape (total_verts,)
+            The mean curvature at each vertex.
         """
         B,D,W,V = self.laplace_operator
         npt = len(D)
         Dinv = sparse.dia_matrix((D**-1,[0]), (npt,npt)).tocsr() # construct Dinv
         L = Dinv.dot((V-W))
-        return (L.dot(self.pts) * self.vertex_normals).sum(1)
+        curv = (L.dot(self.pts) * self.vertex_normals).sum(1)
+        return curv
 
     def smooth(self, scalars, factor=1.0):
         """Smooth vertex-wise function given by `scalars` across the surface using
         mean curvature flow method (see http://brickisland.net/cs177fa12/?p=302).
 
-        Degree of smoothing is controlled by `factor`.
+        Amount of smoothing is controlled by `factor`.
+
+        Parameters
+        ----------
+        scalars : 1D ndarray, shape (total_verts,)
+            A scalar-valued function across the cortex, such as the curvature
+            supplied by mean_curvature.
+        factor : float, optional
+            Amount of smoothing to perform, larger values smooth more.
+
+        Returns
+        -------
+        smscalars : 1D ndarray, shape (total_verts,)
+            Smoothed scalar values.
         """
         if factor == 0.0:
             return scalars
@@ -215,12 +238,26 @@ class Surface(object):
         edgelens = np.sqrt(((self.pts[tadj.row] - self.pts[tadj.col])**2).sum(1))
         return edgelens.mean()
 
-    def surface_gradient(self, vertvals, at_verts=True):
-        """Gradient of a function with values `vertvals` at each vertex along surface.
+    def surface_gradient(self, scalars, at_verts=True):
+        """Gradient of a function with values `scalars` at each vertex on the surface.
         If `at_verts`, returns values at each vertex. Otherwise, returns values at each
         face.
+
+        Parameters
+        ----------
+        scalars : 1D ndarray, shape (total_verts,)
+            A scalar-valued function across the cortex.
+        at_verts : bool, optional
+            If True (default), values will be returned for each vertex. Otherwise,
+            values will be retruned for each face.
+
+        Returns
+        -------
+        gradu : 2D ndarray, shape (total_verts,3) or (total_polys,3)
+            Contains the x-, y-, and z-axis gradients of the given `scalars` at either
+            each vertex (if `at_verts` is True) or each face.
         """
-        pu = vertvals[self.polys]
+        pu = scalars[self.polys]
         fe12, fe23, fe31 = [f.T for f in self._facenorm_cross_edge]
         pu1, pu2, pu3 = pu.T
         fa = self.face_areas
