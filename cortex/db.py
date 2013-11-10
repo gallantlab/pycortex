@@ -147,37 +147,82 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["loadXfm","getXfm", "getSurf"] + list(self.subjects.keys())
+        return ["loadXfm","getXfm", "getSurf", "getAnat", "getSurfInfo", "getMask", "getOverlay"] + list(self.subjects.keys())
 
     def getAnat(self, subject, type='raw', recache=False, **kwargs):
-        types = dict(
-            raw='nii.gz',
-            brainmask='nii.gz',
-            whitematter='nii.gz',
-            voxelize='nii.gz',
-        )
-        
+        """Return anatomical information from the filestore. Anatomical information is defined as
+        any volume-space anatomical information pertaining to the subject, such as T1 image,
+        white matter masks, etc. Volumes not found in the database will be automatically generated.
+
+        Parameters
+        ----------
+        subject : str
+            Name of the subject
+        type : str
+            Type of anatomical volume to return
+        recache : bool
+            Regenerate the information
+
+        Returns
+        -------
+        volume : nibabel object
+            Volume containing
+        """
         opts = ""
         if len(kwargs) > 0:
             opts = "[%s]"%','.join(["%s=%s"%i for i in kwargs.items()])
         anatform = self.getFiles(subject)['anats']
-        anatfile = anatform.format(type=type, opts=opts, ext=types[type])
+        anatfile = anatform.format(type=type, opts=opts)
 
         if not os.path.exists(anatfile) or recache:
             print("Generating %s anatomical..."%type)
             from . import anat
             getattr(anat, type)(anatfile, subject, **kwargs)
 
-        if types[type] == 'nii.gz':
-            import nibabel
-            return nibabel.load(anatfile)
-        elif types[type] == 'npz':
-            npz = np.load(anatfile)
-            if "left" in npz and "right" in npz:
-                from .dataset import VertexData
-                return VertexData(np.hstack([npz['left'], npz['right']]), subject)
-            return npz
-        return anatfile
+        import nibabel
+        return nibabel.load(anatfile)
+
+    def getSurfInfo(self, subject, type="curvature", recache=False, **kwargs):
+        """Return auxillary surface information from the filestore. Surface info is defined as 
+        anatomical information specific to a subject in surface space. A VertexData will be returned
+        as necessary. Info not found in the filestore will be automatically generated.
+
+        See documentation in cortex.surfinfo for auto-generation code
+
+        Parameters
+        ----------
+        subject: str
+            Subject name for which to return info
+        type: str
+            Type of surface info returned, IE. curvature, distortion, sulcaldepth, etc.
+        recache: bool
+            Regenerate the information
+
+        Returns
+        -------
+        verts : VertexData
+            If the surface information has "left" and "right" entries, a VertexData is returned
+        npz : npzfile
+            Otherwise, an npz object is returned. Remember to close it!
+        """
+        opts = ""
+        if len(kwargs) > 0:
+            opts = "[%s]"%','.join(["%s=%s"%i for i in kwargs.items()])
+        surfiform = self.getFiles(subject)['surfinfo']
+        surfifile = surfiform.format(type=type, opts=opts)
+
+        if not os.path.exists(surfifile) or recache:
+            print ("Generating %s surface info..."%type)
+            from . import surfinfo
+            getattr(surfinfo, type)(surfifile, subject, **kwargs)
+
+        npz = np.load(surfifile)
+        if "left" in npz and "right" in npz:
+            from .dataset import VertexData
+            verts = np.hstack([npz['left'], npz['right']])
+            npz.close()
+            return VertexData(verts, subject)
+        return npz
 
     def getOverlay(self, subject, type='rois', **kwargs):
         if type == "rois":
@@ -356,14 +401,6 @@ class Database(object):
         except KeyError:
             raise IOError
 
-    def getSurfInfo(self, subject, type="sulcaldepth"):
-        types = dict(
-            curvature='npz',
-            thickness='npz',
-            distortion='npz',
-            sulcaldepth='npz',
-        )
-
     def getCache(self, subject):
         return self.getFiles(subject)['cachedir']
 
@@ -436,9 +473,6 @@ class Database(object):
         surfparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).*')
         surfpath = os.path.join(filestore, subject, "surfaces")
 
-        ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
-        projcache = "{xfmname}_{projection}.npz"
-
         if self.subjects[subject]._warning is not None:
             warnings.warn(self.subjects[subject]._warning)
 
@@ -456,11 +490,10 @@ class Database(object):
             surfs=surfs,
             xfms=os.listdir(os.path.join(filestore, subject, "transforms")),
             xfmdir=os.path.join(filestore, subject, "transforms", "{xfmname}", "matrices.xfm"),
-            anats=os.path.join(filestore, subject, "anatomicals", '{type}{opts}.{ext}'), 
+            anats=os.path.join(filestore, subject, "anatomicals", '{type}{opts}.nii.gz'), 
+            surfinfo=os.path.join(filestore, subject, "surface-info", '{type}{opts}.npz'),
             masks=os.path.join(filestore, subject, 'transforms', '{xfmname}', 'mask_{type}.nii.gz'),
             cachedir=os.path.join(filestore, subject, "cache"),
-            ctmcache=os.path.join(filestore, subject, "cache", ctmcache),
-            projcache=os.path.join(filestore, subject, "cache", projcache),
             rois=os.path.join(filestore, subject, "rois.svg").format(subj=subject),
         )
 

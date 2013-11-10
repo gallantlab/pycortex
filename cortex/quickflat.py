@@ -192,22 +192,19 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     roipack = utils.get_roipack(dataview.data.subject)
     roipack.get_svg(fname, labels=True, with_ims=[pngdata])
 
-def make(braindata, height=1024, **kwargs):
+def make(braindata, height=1024, recache=False, **kwargs):
     if not isinstance(braindata, dataset.BrainData):
         raise TypeError('Invalid type for quickflat')
     if braindata.movie:
         raise ValueError('Cannot flatten multiple volumes')
 
-    npz = surfs.getAnat(braindata.subject, "flatmask", height=height)
-    mask = npz['mask'].T
-    extents = npz['extents']
-    npz.close()
-    
+    mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
+
     if isinstance(braindata, dataset.VertexData):
-        pixmap = get_flatcache(braindata.subject, None, height=height, **kwargs)
+        pixmap = get_flatcache(braindata.subject, None, height=height, recache=recache, **kwargs)
         data = braindata.vertices
     else:
-        pixmap = get_flatcache(braindata.subject, braindata.xfmname, height=height, **kwargs)
+        pixmap = get_flatcache(braindata.subject, braindata.xfmname, height=height, recache=recache, **kwargs)
         data = braindata.volume
 
     if braindata.raw:
@@ -296,17 +293,17 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, sampler
     finally:
         shutil.rmtree(path)
 
-def get_flatmask(subject, height=1024):
+def get_flatmask(subject, height=1024, recache=False):
     cachedir = surfs.getCache(subject)
-    cachefile = os.path.join(cachedir, "flatmask_{h}.npz".format(height=h))
+    cachefile = os.path.join(cachedir, "flatmask_{h}.npz".format(h=height))
 
-    try:
+    if not os.path.exists(cachefile) or recache:
+        mask, extents = _make_flatmask(subject, height=height)
+        np.savez(cachefile, mask=mask, extents=extents)
+    else:
         npz = np.load(cachefile)
         mask, extents = npz['mask'], npz['extents']
         npz.close()
-    except IOError:
-        mask, extents = _make_flatmask(subject, height=height)
-        np.savez(cachefile, mask=mask, extents=extents)
 
     return mask, extents
 
@@ -356,7 +353,7 @@ def _make_flatmask(subject, height=1024):
     draw.polygon(rpts[:,:2].ravel().tolist(), fill=255)
     extents = np.hstack([pts.min(0), pts.max(0)])[[0,3,1,4]]
 
-    return np.array(im) > 0, extents
+    return np.array(im).T > 0, extents
 
 def _make_vertex_cache(subject, height=1024):
     from scipy import sparse
@@ -369,9 +366,7 @@ def _make_vertex_cache(subject, height=1024):
     width = int(aspect * height)
     grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
 
-    npz = surfs.getAnat(subject, "flatmask", height=height, recache=True)
-    mask = npz['mask'].T
-    npz.close()
+    mask, extents = get_flatmask(subject, height=height)
     assert mask.shape[0] == width and mask.shape[1] == height
 
     kdt = cKDTree(flat[valid,:2])
