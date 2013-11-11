@@ -417,8 +417,5 @@ def _hdf_write(h5, data, name="data", group="/data"):
         del h5[group][name]
         node = h5.create_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
 
-    if '<' in node.name:
-        import ipdb
-        ipdb.set_trace()
     node[:] = data
     return node
