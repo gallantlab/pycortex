@@ -211,7 +211,10 @@ class VolumeData(BrainData):
 
         if self.raw and data.shape[-1] == 3:
             #stack the alpha dimension
-            alpha = 255*np.ones(data.shape[:3]+(1,)).astype(np.uint8)
+            shape = data.shape[:3]+(1,)
+            if self.movie:
+                shape = data.shape[:4]+(1,)
+            alpha = 255*np.ones(shape).astype(np.uint8)
             data = np.concatenate([data, alpha], axis=-1)
 
         return data

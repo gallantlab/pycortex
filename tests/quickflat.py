@@ -4,5 +4,5 @@ import tempfile
 
 def test_quickflat():
 	tf = tempfile.NamedTemporaryFile(suffix=".png")
-	view = cortex.DataView((np.random.randn(32, 100, 100), "AH", "AH_huth"), cmap="hot")
+	view = cortex.DataView((np.random.randn(31, 100, 100), "S1", "fullhead"), cmap="hot")
 	cortex.quickflat.make_png(tf.name, view)

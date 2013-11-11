@@ -151,6 +151,11 @@ class Dataset(object):
 
             return left, right
         try:
+            if type == 'fiducial':
+                wpts, polys = self.getSurf(subject, 'wm', hemi)
+                ppts, _     = self.getSurf(subject, 'pia', hemi)
+                return (wpts + ppts) / 2, polys
+
             group = self.h5['subjects'][subject]['surfaces'][type][hemi]
             pts, polys = group['pts'].value, group['polys'].value
             if nudge:
