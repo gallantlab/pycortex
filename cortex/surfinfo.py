@@ -34,8 +34,8 @@ def distortion(outfile, subject, type='areal', smooth=20):
     """
     distortions = []
     for hem in ["lh", "rh"]:
-        fidvert, fidtri = surfs.getSurf(sub, "fiducial", hem)
-        flatvert, flattri = surfs.getSurf(sub, "flat", hem)
+        fidvert, fidtri = surfs.getSurf(subject, "fiducial", hem)
+        flatvert, flattri = surfs.getSurf(subject, "flat", hem)
         surf = polyutils.Surface(fidvert, fidtri)
 
         dist = getattr(polyutils.Distortion(flatvert, fidvert, flattri), type)

@@ -1,6 +1,7 @@
 from .dataset import Dataset, VolumeData, VertexData, DataView, View
 from . import align, volume, quickflat, webgl, segment, options
 from .utils import *
+from .quickflat import make_figure as quickshow
 
 openFile = Dataset.from_file
 
