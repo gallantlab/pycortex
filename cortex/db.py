@@ -211,6 +211,9 @@ class Database(object):
         surfiform = self.getFiles(subject)['surfinfo']
         surfifile = surfiform.format(type=type, opts=opts)
 
+        if not os.path.exists(os.path.join(filestore, subject, "surface-info")):
+            os.makedirs(os.path.join(filestore, subject, "surface-info"))
+
         if not os.path.exists(surfifile) or recache:
             print ("Generating %s surface info..."%type)
             from . import surfinfo
@@ -402,8 +405,10 @@ class Database(object):
             raise IOError
 
     def getCache(self, subject):
-        return self.getFiles(subject)['cachedir']
-
+        cachedir = self.getFiles(subject)['cachedir']
+        if not os.path.exists(cachedir):
+            os.makedirs(cachedir)
+        return cachedir
 
     def loadMask(self, subject, xfmname, type, mask):
         fname = self.getFiles(subject)['masks'].format(xfmname=xfmname, type=type)
