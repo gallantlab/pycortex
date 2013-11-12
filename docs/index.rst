@@ -9,12 +9,14 @@ Welcome to pycortex!
 .. image:: wn_med.png
     :width: 100%
 
-pycortex is a package that provides an accessible way to store a database of surface reconstructions for anatomical MRI images. Additionally, tools are provided to coregister epi fMRI images with the reconstructions, and project data from the epi to the anatomicals.
+pycortex is a package that provides an accessible way to store a database of surface reconstructions for anatomical MRI images. Additionally, tools are provided to coregister epi fMRI images with the reconstructions, and project data from the epi to the anatomicals. 
+
+This documentation is still under development, and may contain inaccurate information. If you find anything that appears to be documented incorrectly or appears to be a bug, please let us know on github at https://github.com/jamesgao/pycortex/issues.
 
 For example::
     
     import cortex
-    im = cortex.quickshow((np.random.randn(32, 100, 100), "S1", "fullhead"));
+    im = cortex.quickshow((np.random.randn(32, 100, 100), "S1", "fullhead"))
 
 Contents:
 

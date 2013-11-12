@@ -1,24 +1,18 @@
 Installation
 ============
 
-pycortex relies on a large number of open source projects:
+Pycortex is available on the Python Packaging Index. The easiest way to install it is with the Anaconda_. To use pycortex with Anaconda_, first install anaconda as instructed, then type the following commands into a terminal::
 
-    numpy
-    scipy
-    matplotlib
-    shapely
-    traits
-    mayavi
-    lxml
-    html5lib
-    tornado
-    cython
+    sudo pip install nibabel
+    sudo pip install pycortex
 
-    jquery
-    jquery-ui
-    Three.js
-    jquery.minicolors
-    ddSlick
+If you are running Ubuntu, the built-in python packages should be sufficient. Use the following commands::
+
+    sudo apt-get install python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib
+    sudo pip install pycortex
+
+.. _Anaconda: https://store.continuum.io/cshop/anaconda/
+
 
 
 Configuration
@@ -28,3 +22,4 @@ The pycortex configuration file is located in :file:`~/.config/pycortex/options.
    [basic]
    filestore=/abs/path/to/filestore
 
+By default, the filestore is automatically installed in 
