@@ -136,8 +136,9 @@ var dataset = (function(module) {
         }.bind(this));
     }
     module.DataView.prototype.set = function(uniforms, time) {
-        var frame = ((time + this.delay) / this.rate).mod(this.frames);
+        var frame = ((time + this.delay) * this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
+        console.log(frame);
         uniforms.framemix.value = frame - fframe;
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(uniforms, i, fframe);

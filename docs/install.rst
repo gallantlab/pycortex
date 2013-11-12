@@ -12,6 +12,7 @@ pycortex relies on a large number of open source projects:
     lxml
     html5lib
     tornado
+    cython
 
     jquery
     jquery-ui
@@ -19,6 +20,9 @@ pycortex relies on a large number of open source projects:
     jquery.minicolors
     ddSlick
 
+
+Configuration
+-------------
 The pycortex configuration file is located in :file:`~/.config/pycortex/options.cfg`. The location of the *filestore* (i.e. database) needs to be written into the file under the ``[basic]`` header::
 
    [basic]
