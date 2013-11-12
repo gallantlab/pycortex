@@ -117,13 +117,13 @@ var dataset = (function(module) {
             this.loaded.resolve();
             for (var i = 0; i < this.data.length; i++) {
                 this.data[i].setFilter(this.filter);
-                this.data[i].set(uniforms, i, this.delay);
+                this.data[i].set(uniforms, i, 0);
             }
         }.bind(this)).progress(function() {
             for (var i = 0; i < this.data.length; i++) {
                 if (this.data[i].textures.length > this.delay && !allready[i]) {
                     this.data[i].setFilter(this.filter);
-                    this.data[i].set(uniforms, i, this.delay);
+                    this.data[i].set(uniforms, i, 0);
                     allready[i] = true;
 
                     var test = true;
@@ -136,7 +136,7 @@ var dataset = (function(module) {
         }.bind(this));
     }
     module.DataView.prototype.set = function(uniforms, time) {
-        var frame = ((time - this.delay) / this.rate).mod(this.frames);
+        var frame = ((time + this.delay) / this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
         uniforms.framemix.value = frame - fframe;
         for (var i = 0; i < this.data.length; i++) {

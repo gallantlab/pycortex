@@ -586,13 +586,13 @@ var mriview = (function(module) {
                 }.bind(this));
                 
                 this.active.loaded.done(function() {
-                    this.setFrame(this.active.delay);
+                    this.setFrame(0);
                 }.bind(this));
 
                 if (this.active.stim && figure) {
                     figure.setSize("right", "30%");
                     this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
-                    this.movie.setFrame(this.active.delay);
+                    this.movie.setFrame(0);
                 }
             } else {
                 $(this.object).find("#moviecontrols").hide();
