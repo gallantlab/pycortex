@@ -26,9 +26,9 @@ Contents:
    install
    segmentation
    database
-   rois
    align
    dataset
+   rois
    transforms
 
 Indices and tables

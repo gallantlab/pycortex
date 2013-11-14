@@ -1,7 +1,6 @@
 Installation
 ============
-
-Pycortex is available on the Python Packaging Index. The easiest way to install it is with the Anaconda_. To use pycortex with Anaconda_, first install anaconda as instructed, then type the following commands into a terminal::
+Pycortex is available on the Python Packaging Index. The easiest way to install it is with Anaconda_. To use pycortex with Anaconda_, first install anaconda as instructed, then type the following commands into a terminal::
 
     sudo pip install nibabel
     sudo pip install pycortex
@@ -11,15 +10,32 @@ If you are running Ubuntu, the built-in python packages should be sufficient. Us
     sudo apt-get install python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib
     sudo pip install pycortex
 
+If you wish to run the latest bleeding-edge version of pycortex, use the following instructions::
+
+    git clone https://github.com/jamesgao/pycortex.git
+    cd pycortex
+    sudo python setup.py install
+
 .. _Anaconda: https://store.continuum.io/cshop/anaconda/
 
+Demo
+----
+To test if your install went well, first download the `example dataset <http://gallantlab.org/pycortex/S1_retinotopy.hdf>`_. Then run the following commands at a terminal::
+    
+    $ ipython
+    In [1]: import cortex
+    In [2]: ds = cortex.openFile("S1_retinotopy.hdf")
+    In [3]: cortex.webshow(ds)
 
+If everything went well, this should pop up a web browser window with the same view as http://gallantlab.org/pycortex/retinotopy_demo/.
 
 Configuration
 -------------
-The pycortex configuration file is located in :file:`~/.config/pycortex/options.cfg`. The location of the *filestore* (i.e. database) needs to be written into the file under the ``[basic]`` header::
+Pycortex will automatically create a database filestore when it is first installed. In Linux, this filestore is located at :file:`/usr/local/share/pycortex/`. On first import, it will also create a configuration file in your user directory which allows you to specify additional options, including alternate filestore locations.
+
+In Linux, this user configuration file is located in :file:`~/.config/pycortex/options.cfg`. The location of the *filestore* (i.e. database) needs to be written into the file under the ``[basic]`` header::
 
    [basic]
    filestore=/abs/path/to/filestore
 
-By default, the filestore is automatically installed in 
+.. todo:: Additional option documentation

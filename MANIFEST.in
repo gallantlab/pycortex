@@ -1,0 +1,2 @@
+recursive-include filestore *
+recursive-include cortex/webgl/resources *
