@@ -16,7 +16,7 @@ This documentation is still under development, and may contain inaccurate inform
 For example::
     
     import cortex
-    im = cortex.quickshow((np.random.randn(32, 100, 100), "S1", "fullhead"))
+    im = cortex.quickshow((np.random.randn(31, 100, 100), "S1", "fullhead"))
 
 Contents:
 
