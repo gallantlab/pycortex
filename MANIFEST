@@ -45,6 +45,9 @@ cortex/mapper/patch.py
 cortex/mapper/point.py
 cortex/mapper/samplers.py
 cortex/mapper/volume.py
+cortex/tests/test_dataset.py
+cortex/tests/test_quickflat.py
+cortex/tests/test_polyutils.py
 cortex/webgl/FallbackLoader.py
 cortex/webgl/__init__.py
 cortex/webgl/data.py
