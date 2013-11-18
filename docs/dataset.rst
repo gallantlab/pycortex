@@ -3,35 +3,46 @@ Data input format
 
 .. currentmodule:: cortex.dataset
 
-Pycortex implements a set of helper functions that help normalize and standard data formats. It also wraps pytables to provide a standard way to store your data in HDF format.
+Pycortex implements a set of helper functions that help normalize and standard data formats. It also wraps h5py to provide a standard way to store your data in HDF format.
 
 Quickstart
 ----------
 :class:`Dataset` objects can be defined implicitly using a tuple syntax::
 
     import cortex
-    cortex.webshow((np.random.randn(32, 100, 100), "AH", "AH_huth"))
+    cortex.webshow((np.random.randn(32, 100, 100), "S1", "fullhead"))
 
 To create a dataset manually::
 
-    ds = cortex.Dataset(name=(np.random.randn(32, 100, 100), "AH", "AH_huth"))
+    ds = cortex.Dataset(name=(np.random.randn(32, 100, 100), "S1", "fullhead"))
 
-This implicitly creates a :class:`VolumeData` or :class:`VertexData` object, depending on the shape of the data. For the full syntax::
+To generate a data view and save it::
 
-    volume = cortex.VolumeData(np.random.randn(32, 100, 100), "AH", "AH_huth", cmap="RdBu")
-    ds = cortex.Dataset(rand_data=volume)
-    ds.save("test_data.hdf", pack=False)
+    dv = cortex.DataView((np.random.randn(32, 100, 100), "S1", "fullhead"), cmap="RdBu_r", vmin=-3, vmax=3)
+    ds = cortex.Dataset(name=dv)
+    ds.save("test_data.hdf")
 
 Loading data::
 
     ds = cortex.openFile("test_data.hdf")
 
+If you already have a Nifti file with the alignment written into the 
 
-VolumeData
-----------
-Volumetric data is encapsulated by the :class:`VolumeData` class. :class:`VolumeData` expects at least three arguments to initialize properly:
+Overview
+--------
+Pycortex's main data structures consists of the :class:`Dataset`, the :class:`DataView`, and the :class:`BrainData` objects. These three objects serve different roles:
 
-    * **data**: Data to be made into a VolumeData object. Can be one of the following:
+    * :class:`BrainData` objects store brain data together with the subject information. Most pycortex data structures will automatically cast a tuple into the appropriate :class:`VolumeData` and :class:`VertexData` objects.
+    * :class:`DataView` objects store :class:`BrainData` objects along with view attributes such as the colormap, minimum, and maximum. The stored :class:`BrainData` object is only a reference.
+    * :class:`Dataset` objects store a collection of :class:`DataView` objects with associated names. It provides additional functionality to store and load the DataViews as HDF files.
+
+These data structures can typically be cast from simpler structures such as tuples or dictionaries.
+
+BrainData
+---------
+Brain data is encapsulated by the :class:`VolumeData` and :class:`VertexData` classes. :class:`VolumeData` expects three arguments to initialize properly:
+
+    * **data**: Data to be interpreted as volumetric data. Can be one of the following:
         * Numpy array with shape
             * (t, z, y, x, c): Time series volume data in raw colors
             * (z, y, x, c): Single volume data in raw colors
@@ -41,26 +52,25 @@ Volumetric data is encapsulated by the :class:`VolumeData` class. :class:`Volume
             * (t, m): Time series masked data
             * (m, c): Single masked data in raw colors
             * (m,): Single masked data
-        * Tuple with (filename, data) for matfiles or hdf files
         * Filename of a NifTi file
     * **subject**: string name of the subject
     * **xfmname**: string name of the transform
 
-Additional optional arguments are mostly for display properties. Some useful ones:
+:class:`VertexData` objects require just two elements:
+
+    * **data**: Data to be interpreted as vertex data. Can be one of the following:
+        * Numpy array with shape
+            * raw linear movie: (t, v, c)
+            * reg linear movie: (t, v)
+            * raw linear image: (v, c)
+            * reg linear image: (v,)
+    * **subject**: string name of the subject
+
+Generally, you will not need to instantiate BrainData objects yourself. They are automatically instantiated when Dataset objects or DataView objects are created. VertexData objects allow numpy operations::
     
-    * **mask**: an important keyword argument, string name of the mask. If not provided, VolumeData will guess.
-    * **cmap**: string name of the colormap
-    * **vmin / vmax**: colormap limits
-
-To create :class:`VolumeData` objects::
-
-    import cortex
-    ones = cortex.VolumeData(np.ones((32, 100, 100)), "AH", "AH_huth", cmap="RdBu_r")
-
-:class:`VolumeData` objects also allow standard numpy operations to be performed::
-
-    fives = ones + 4
-    np.allclose(fives.volume, 5)
+    ones = cortex.DataView((np.ones(32, 100, 100), "S1", "fullhead"))
+    fives = cortex.DataView(ones.data + 4)
+    np.allclose(fives.data.volume, 5)
 
 :class:`VolumeData` also include a few important properties and methods:
 
@@ -70,36 +80,38 @@ To create :class:`VolumeData` objects::
     VolumeData.map
     VolumeData.copy
     VolumeData.volume
-    VolumeData.priority
-
 
 Raw Data
 ~~~~~~~~
-Any data that has uint8 type is automatically considered to be "raw" color data. This allows the support and plotting of RGB values as computed seperately, outside of the regular colormaps. If the data is input with type uint8, only a few data shapes are legal: (t, z, y, x, c), (z, y, x, c), (t, m, c), and (m, c). 
-
-To input masked data, typically you can just 
+Any data that has uint8 type is automatically considered to be "raw" color data. This allows the support and plotting of RGB values as computed seperately, outside of colormaps. If the data is input with type uint8, only a few data shapes are legal: (t, z, y, x, c), (z, y, x, c), (t, m, c), and (m, c). 
 
 Masked Data
 ~~~~~~~~~~~
-If you are inputting masked data for a VolumeData entry, the mask MUST be in the pycortex database. This ensures that transforms don't get edited when you have masks associated. The database module checks for masks before it attempts to write to a transform to ensure nothing bad happens to the masks.
+Masked data is data in which the following operation has occurred::
+    
+    data = np.random.randn(32, 100, 100)
+    mask = np.random.rand(32, 100, 100) > .5
+    masked = data[mask]
 
-If a VolumeData object receives data with dimensionality 3, 
+This is exceptionally useful for doing voxel selection. Masks should be stored in the pycortex database in order to avoid overwritten transforms. However, :class:`VolumeData` objects do allow you to store custom masks. The syntax for using custom masks is as follows::
 
-VertexData
-~~~~~~~~~~
-VertexData objects hold data that has been masked into vertex space. Typically, you will not directly create your own VertexData objects. VertexData objects are typically created through the :meth:`VolumeData.map` function. This will automatically compute and cache a projection, and return you the projected data. VertexData can also be raw (RGB color values).
+    vol = cortex.VolumeData(data, subject, xfmname, mask=mask)
+
+The **mask** parameter may be either an ndarray with the same shape as the transform reference or the name of a transform in the database. If 
+
+DataView
+--------
+
 
 Dataset
 -------
-Dataset objects hold a list of VolumeData and VertexData in a dictionary. Its main function is saving out data into a standardized HDF format. Datasets also allow subject data packing, if you desire to send data to someone without the subject database.
+Dataset objects hold a dictionary of DataView objects. Its main function is saving out data into a standardized HDF format. Datasets also allow subject data packing, if you desire to send data to someone without the subject database.
 
 To save data::
 
     import cortex
     ds = cortex.Dataset(rand=(np.random.randn(32, 100, 100), "AH", "AH_huth"))
     ds.save("/tmp/dataset.hdf", pack=True)
-
-Note that this example uses normalization to implicitly create a VolumeData object. 
 
 HDF5 format::
 
@@ -128,7 +140,7 @@ HDF5 format::
                     rh
                         pts[n,3]
                         polys[m,3]
-    /datasets/
+    /data/
         hash
             -> subject
             -> xfmname
