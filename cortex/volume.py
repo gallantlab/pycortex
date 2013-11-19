@@ -1,6 +1,5 @@
 import os
 import numpy as np
-from scipy.ndimage.interpolation import affine_transform
 
 from . import dataset
 from .db import surfs
@@ -225,6 +224,7 @@ def epi2anatspace(volumedata, order=1):
     anatspace : ndarray
         The ND array of the anatomy space data
     """
+    from scipy.ndimage.interpolation import affine_transform
     ds = dataset.normalize(volumedata)
     volumedata = ds.data
 
@@ -239,6 +239,7 @@ def epi2anatspace(volumedata, order=1):
     return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape[::-1], cval=np.nan, order=order).T
 
 def anat2epispace(anatdata, subject, xfmname, order=1):
+    from scipy.ndimage.interpolation import affine_transform
     anatref = surfs.getAnat(subject)
     target = surfs.getXfm(subject, xfmname, "coord")
 
