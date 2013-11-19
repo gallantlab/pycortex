@@ -10,15 +10,15 @@ Quickstart
 :class:`Dataset` objects can be defined implicitly using a tuple syntax::
 
     import cortex
-    cortex.webshow((np.random.randn(32, 100, 100), "S1", "fullhead"))
+    cortex.webshow((np.random.randn(31, 100, 100), "S1", "fullhead"))
 
 To create a dataset manually::
 
-    ds = cortex.Dataset(name=(np.random.randn(32, 100, 100), "S1", "fullhead"))
+    ds = cortex.Dataset(name=(np.random.randn(31, 100, 100), "S1", "fullhead"))
 
 To generate a data view and save it::
 
-    dv = cortex.DataView((np.random.randn(32, 100, 100), "S1", "fullhead"), cmap="RdBu_r", vmin=-3, vmax=3)
+    dv = cortex.DataView((np.random.randn(31, 100, 100), "S1", "fullhead"), cmap="RdBu_r", vmin=-3, vmax=3)
     ds = cortex.Dataset(name=dv)
     ds.save("test_data.hdf")
 
@@ -26,7 +26,10 @@ Loading data::
 
     ds = cortex.openFile("test_data.hdf")
 
-If you already have a Nifti file with the alignment written into the 
+If you already have a Nifti file with the alignment written into the header::
+
+    dv = cortex.DataView(("path/to/nifti_file.nii.gz", "S1", "identity"))
+    cortex.quickshow(dv)
 
 Overview
 --------
@@ -66,9 +69,9 @@ Brain data is encapsulated by the :class:`VolumeData` and :class:`VertexData` cl
             * reg linear image: (v,)
     * **subject**: string name of the subject
 
-Generally, you will not need to instantiate BrainData objects yourself. They are automatically instantiated when Dataset objects or DataView objects are created. VertexData objects allow numpy operations::
+Generally, you will not need to instantiate BrainData objects yourself. They are automatically instantiated when Dataset objects or DataView objects are created. BrainData objects allow numpy operations::
     
-    ones = cortex.DataView((np.ones(32, 100, 100), "S1", "fullhead"))
+    ones = cortex.DataView((np.ones(31, 100, 100), "S1", "fullhead"))
     fives = cortex.DataView(ones.data + 4)
     np.allclose(fives.data.volume, 5)
 
@@ -97,11 +100,34 @@ This is exceptionally useful for doing voxel selection. Masks should be stored i
 
     vol = cortex.VolumeData(data, subject, xfmname, mask=mask)
 
-The **mask** parameter may be either an ndarray with the same shape as the transform reference or the name of a transform in the database. If 
+The **mask** parameter may be either an ndarray with the same shape as the transform reference, or the name of a mask in the database. If a "linear" shaped data is passed to VolumeData and a mask name is not specified, pycortex will attempt to locate the correct mask from the database. An exception will occur if a matching one is not found.
 
 DataView
 --------
+DataView objects allow you to define a specific set of view attributes to attach to BrainData objects. This separation of data from its view allows for data deduplication if you want different views of the same data. For example::
 
+    vol = cortex.VolumeData(np.random.randn(31, 100, 100), "S1", "fullhead")
+    dv1 = cortex.DataView(vol, cmap="hot", vmin=0, vmax=1)
+    dv2 = cortex.DataView(vol, cmap="RdBu_r", vmin=-1, vmax=1)
+
+If you have not saved out a dataset file, then both ``dv1`` and ``dv2`` only contain references to the same ``vol`` VolumeData object. During the dataset saving process, hashes of the volumes are taken, allowing data deduplication. Datasets loaded from files reference the same h5py datasets to avoid memory duplication.
+
+Dataview objects can be instantiated with many attributes. The default ones are as follows:
+
+    * **data**: either a BrainData object or a multiview list
+    * **description**: a text string describing the view on this data
+    * **cmap**: a string that's passed to matplotlib that determines the colormap. This parameter is ignored if the BrainData object is raw.
+    * **vmin**: the colormap minimum
+    * **vmax**: the colormap maximum
+    * **priority**: Priority of this data view when included with others in a :class:`Dataset`.
+
+Additional attributes are saved in the **attrs** dictionary inside the DataView. These are automatically stored inside the Dataset HDF file.
+
+Multiviews
+~~~~~~~~~~
+DataView objects allow the definition of something called a "multiview". The majority of the multiview functionality is not yet implemented yet. However, one important functionality is already supported -- two-dimensional colormaps.
+
+Multiviews are intended to support the ability to view multiple brains at the same time. For example, the `movie demo <http://gallantlab.org/pycortex/movie_demo/>`_ is a rudimentary multiview, where two subjects are displayed at the same time. A multiview is defined by passing a list of BrainData objects as the first parameter. Within this list, 
 
 Dataset
 -------
@@ -110,10 +136,10 @@ Dataset objects hold a dictionary of DataView objects. Its main function is savi
 To save data::
 
     import cortex
-    ds = cortex.Dataset(rand=(np.random.randn(32, 100, 100), "AH", "AH_huth"))
+    ds = cortex.Dataset(rand=(np.random.randn(31, 100, 100), "S1", "fullhead"))
     ds.save("/tmp/dataset.hdf", pack=True)
 
-HDF5 format::
+The saved out HDF5 format has the following structure::
 
     /subjects/
         s1/

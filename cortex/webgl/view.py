@@ -149,21 +149,13 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         default_cmap=cmap, 
         python_interface=False, 
         layout=layout,
-        subjects=ctms,
+        subjects=json.dumps(ctms),
         **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
     surfs.auxfile = None
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
     """Display a dynamic viewer using the given dataset
-
-    Optional attributes that affect the display:
-    cmap
-    vmin / vmax
-    filter: ['nearest', 'trilinear', 'nearlin']
-    stim: a filename for the stimulus (preferably OGV)
-    delay: time in seconds to delay the data with respect to stimulus
-    rate: volumes per second
     """
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
@@ -185,7 +177,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
-    subjectjs = dict((subj, "/ctm/%s/"%subj) for subj in subjects)
+    subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))
     surfs.auxfile = None
 
     if layout is None:

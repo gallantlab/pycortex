@@ -106,7 +106,6 @@ var dataset = (function(module) {
 
         var allready = [];
         for (var i = 0; i < this.data.length; i++) {
-            this.data[i].init(uniforms, i);
             allready.push(false);
         }
 
@@ -116,6 +115,7 @@ var dataset = (function(module) {
         deferred.done(function() {
             this.loaded.resolve();
             for (var i = 0; i < this.data.length; i++) {
+                this.data[i].init(uniforms, i);
                 this.data[i].setFilter(this.filter);
                 this.data[i].set(uniforms, i, 0);
             }

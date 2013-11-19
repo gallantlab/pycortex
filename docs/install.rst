@@ -20,7 +20,7 @@ If you wish to run the latest bleeding-edge version of pycortex, use the followi
 
 Demo
 ----
-To test if your install went well, first download the `example dataset<http://gallantlab.org/pycortex/S1_retinotopy.hdf>`_. Then run the following commands at a terminal::
+To test if your install went well, first download the `example dataset <http://gallantlab.org/pycortex/S1_retinotopy.hdf>`_. Then run the following commands at a terminal::
     
     $ ipython
     In [1]: import cortex

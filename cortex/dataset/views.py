@@ -59,7 +59,7 @@ class DataView(View):
                     float(np.percentile(no_nan_y, 99)))]
             self.data = [(xdim, ydim)]
         else:
-            self.data = DataView.normalize(data)
+            self.data = normalize(data)
             no_nan = self.data.data[~np.isnan(self.data.data)]
 
             if self.vmin is None:
@@ -68,22 +68,6 @@ class DataView(View):
                 self.vmax = float(np.percentile(no_nan, 99))
 
         self.description = description
-
-    @staticmethod
-    def normalize(data):
-        if isinstance(data, tuple):
-            if len(data) == 3:
-                return VolumeData(*data)
-            elif len(data) == 2:
-                return VertexData(*data)
-            else:
-                raise TypeError("Invalid input for DataView")
-        elif isinstance(data, BrainData):
-            return data
-        elif isinstance(data, DataView) and isinstance(data.data, BrainData):
-            return data.data
-        else:
-            raise TypeError("Invalid input for DataView")
 
     @classmethod
     def from_hdf(cls, ds, node):
@@ -205,3 +189,18 @@ class DataView(View):
         view[5] = json.dumps(self.state)
         view[6] = json.dumps(self.attrs)
         return view
+
+def normalize(data):
+    if isinstance(data, tuple):
+        if len(data) == 3:
+            return VolumeData(*data)
+        elif len(data) == 2:
+            return VertexData(*data)
+        else:
+            raise TypeError("Invalid input for DataView")
+    elif isinstance(data, BrainData):
+        return data
+    elif isinstance(data, DataView) and isinstance(data.data, BrainData):
+        return data.data
+    else:
+        raise TypeError("Invalid input for DataView")

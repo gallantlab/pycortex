@@ -9,12 +9,40 @@ from . import freesurfer
 from .db import surfs
 
 def init_subject(subject, filename):
+    """Run the first initial segmentation for a subject's anatomy. This function runs 
+    autorecon-all, then imports the subject into the pycortex database.
+
+    Parameters
+    ----------
+    subject : str
+        The name of the subject
+    filename : str
+        Freesurfer-compatible filename for the anatomical image
+    """
     cmd = "recon-all -i {fname} -s {subj}".format(subj=subject, fname=filename)
     sp.call(shlex.split(cmd))
     freesurfer.autorecon(subject, "all")
     freesurfer.import_subj(subject)
 
 def fix_wm(subject):
+    """Initializes an interface to make white matter edits to the surface. 
+    This will open two windows -- a tkmedit window that makes the actual edits,
+    as well as a mayavi window to display the surface. Clicking on the mayavi window
+    will drop markers which can be loaded using the "Goto Save Point" button in tkmedit.
+
+    If you wish to load the other hemisphere, simply close the mayavi window and the
+    other hemisphere will pop up. Mayavi will stop popping up once the tkmedit window
+    is closed.
+
+    Once the tkmedit window is closed, a variety of autorecon options are available.
+    When autorecon finishes, the new surfaces are immediately imported into the pycortex 
+    database.
+
+    Parameters
+    ----------
+    subject : str
+        Name of the subject to edit
+    """
     status = _cycle_surf(subject, "smoothwm")
     cmd = "tkmedit {subj} wm.mgz lh.smoothwm -aux brainmask.mgz -aux-surface rh.smoothwm"
     sp.call(shlex.split(cmd.format(subj=subject)))
@@ -32,6 +60,24 @@ def fix_wm(subject):
     freesurfer.import_subj(subject)
 
 def fix_pia(subject):
+    """Initializes an interface to make pial surface edits.
+    This function will open two windows -- a tkmedit window that makse the actual edits,
+    as well as a mayavi window to display the surface. Clicking on the mayavi window
+    will drop markers which can be loaded using the "Goto Save Point" button in tkmedit.
+
+    If you wish to load the other hemisphere, simply close the mayavi window and the
+    other hemisphere will pop up. Mayavi will stop popping up once the tkmedit window
+    is closed.
+
+    Once the tkmedit window is closed, a variety of autorecon options are available.
+    When autorecon finishes, the new surfaces are immediately imported into the pycortex 
+    database.
+
+    Parameters
+    ----------
+    subject : str
+        Name of the subject to edit
+    """
     status = _cycle_surf(subject, "pial")
     cmd = "tkmedit {subj} brainmask.mgz lh.smoothwm -aux T1.mgz -aux-surface rh.smoothwm"
     sp.call(shlex.split(cmd.format(subj=subject)))
@@ -49,7 +95,28 @@ def fix_pia(subject):
     freesurfer.import_subj(subject)
 
 def cut_surface(subject, hemi, name='flatten', data=None):
-    opts = "[hemi=lh,name=%s]"%name
+    """Initializes an interface to cut the segmented surface for flatmapping.
+    This function creates or opens a blend file in your filestore which allows
+    surfaces to be cut along hand-defined seams. Blender will automatically 
+    open the file. After edits are made, remember to save the file, then exit
+    Blender.
+
+    The surface will be automatically extracted from blender then run through
+    the mris_flatten command in freesurfer. The flatmap will be imported once
+    that command finishes.
+
+    Parameters
+    ----------
+    subject : str
+        Name of the subject to edit
+    hemi : str
+        Which hemisphere to flatten. Should be "lh" or "rh"
+    name : str, optional
+        String name of the current flatten attempt. Defaults to "flatten"
+    data : DataView
+        A data view object to display on the surface as a cutting guide.
+    """
+    opts = "[hemi=%s,name=%s]"%(hemi, name)
     fname = surfs.getFiles(subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
 
     if not os.path.exists(fname):
