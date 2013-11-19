@@ -9,7 +9,8 @@ class Transform(object):
     def __init__(self, xfm, reference):
         self.xfm = xfm
         self.reference = None
-        if isinstance(reference, str):
+
+        if isstr(reference):
             import nibabel
             try:
                 self.reference = nibabel.load(reference)
@@ -130,6 +131,13 @@ class Transform(object):
         inv = np.linalg.inv
         fslx = np.dot(refspace,np.dot(self.xfm,np.dot(inAffine,inv(inspace))))
         return fslx
+
+def isstr(obj):
+    """Check for stringy-ness in python 2.7 or 3"""
+    try:
+        return isinstance(obj, basestring)
+    except NameError:
+        return isinstance(obj, str)
 
 def _x_flipper(N_i):
     #Copied from dipy
