@@ -1,6 +1,6 @@
 pycortex
 ========
-![quickflat demo](https://raw.github.com/jamesgao/pycortex/master/docs/wn_med.png?token=22802__eyJzY29wZSI6IlJhd0Jsb2I6amFtZXNnYW8vcHljb3J0ZXgvbWFzdGVyL2RvY3Mvd25fbWVkLnBuZyIsImV4cGlyZXMiOjEzODQ4MjY0NzV9--e150cac229582222fd97128d47029c8d479aaeba)
+![quickflat demo](https://raw.github.com/jamesgao/pycortex/master/docs/wn_med.png)
 
 Pycortex is a software that allows you to visualize fMRI or other volumetric mapping data on cortical surfaces.
 
