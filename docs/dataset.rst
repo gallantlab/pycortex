@@ -127,7 +127,15 @@ Multiviews
 ~~~~~~~~~~
 DataView objects allow the definition of something called a "multiview". The majority of the multiview functionality is not yet implemented yet. However, one important functionality is already supported -- two-dimensional colormaps.
 
-Multiviews are intended to support the ability to view multiple brains at the same time. For example, the `movie demo <http://gallantlab.org/pycortex/movie_demo/>`_ is a rudimentary multiview, where two subjects are displayed at the same time. A multiview is defined by passing a list of BrainData objects as the first parameter. Within this list, 
+Multiviews are intended to support the ability to view multiple brains at the same time. For example, the `movie demo <http://gallantlab.org/pycortex/movie_demo/>`_ is a rudimentary multiview, where two subjects are displayed at the same time. A multiview is defined by passing a list of BrainData objects as the first parameter.
+
+Two-dimensional colormaps are supported using a multiview definition. If any multiview entry contains a 2-tuple instead of a BrainData object, the pair of BrainData objects are the two dimension for a 2D colormap. For example::
+    
+    dim1 = cortex.VolumeData(np.random.randn(31, 100, 100), "S1", "fullhead")
+    dim2 = cortex.VolumeData(np.random.randn(31, 100, 100), "S1", "fullhead")
+    dv = cortex.DataView([(dim1, dim2)], cmap="RdBu_covar", vmin=[(-1,-3)], vmax=[(1,3)])
+
+Notice that the vmin/vmax values should match the structure of input.
 
 Dataset
 -------
