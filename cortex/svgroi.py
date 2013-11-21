@@ -405,6 +405,10 @@ try:
         max = pts.max(0)
         pts /= max
 
+        #probably don't need more than 20 points, reduce detail of the polys
+        if len(pts) > 20:
+            pts = pts[::len(pts)/20]
+
         poly = Polygon([tuple(p) for p in pts])
         for i in np.linspace(0,1,100):
             if poly.buffer(-i).is_empty:
@@ -466,7 +470,8 @@ def make_svg(pts, polys):
     pts *= 1024 / pts.max(0)[1]
     pts[:,1] = 1024 - pts[:,1]
     path = ""
-    for poly in trace_poly(boundary_edges(polys)):
+    polyiter = trace_poly(boundary_edges(polys))
+    for poly in [polyiter.next(), polyiter.next()]:
         path +="M%f %f L"%tuple(pts[poly.pop(0), :2])
         path += ', '.join(['%f %f'%tuple(pts[p, :2]) for p in poly])
         path += 'Z '

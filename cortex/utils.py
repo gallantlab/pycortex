@@ -100,7 +100,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
 
     Parameters
     ----------
-    data : BrainData
+    data : DataView
         The data that will be overlaid on the ROI file.
     name : str, optional
         Name that will be assigned to the new dataset. <<IS THIS NECESSARY ANYMORE?>>
@@ -115,14 +115,19 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     import subprocess as sp
     from .utils import get_roipack
     from . import quickflat
-    # May require more flexible code to deal with other type of datasets (vertex,etc)
-    rois = get_roipack(data.data.subject)
+    from . import dataset
+
+    dv = dataset.normalize(data)
+    if isinstance(dv, dataset.Dataset):
+        raise TypeError("Please specify a data view")
+
+    rois = get_roipack(dv.data.subject)
     try:
         import cStringIO
         fp = cStringIO.StringIO()
     except:
         fp = io.StringIO()
-    quickflat.make_png(fp, data, height=1024, with_rois=False, with_labels=False, **kwargs)
+    quickflat.make_png(fp, dv, height=1024, with_rois=False, with_labels=False, **kwargs)
     fp.seek(0)
     rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
     if open_inkscape:
