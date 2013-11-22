@@ -12,7 +12,7 @@ from libc.stdlib cimport atoi, atof
 np.import_array()
 
 def read(str globname):
-    readers = OrderedDict([('npz', read_npz), ('vtk', read_vtk), ('off', read_off)])
+    readers = OrderedDict([('gii', read_gii), ('npz', read_npz), ('vtk', read_vtk), ('off', read_off)])
     for ext, func in readers.items():
         try:
             return func(globname+"."+ext)
@@ -37,6 +37,13 @@ def read_off(str filename):
 def read_npz(str filename):
     npz = np.load(filename)
     return npz['pts'], npz['polys']
+
+def read_gii(str filename):
+    from nibabel import gifti
+    gii = gifti.read(filename)
+    pts = gii.getArraysFromIntent('pointset')[0].data
+    polys = gii.getArraysFromIntent('triangle')[0].data
+    return pts, polys
 
 @cython.boundscheck(False)
 def read_vtk(str filename):
@@ -116,3 +123,10 @@ def write_stl(bytes filename, object pts, object polys):
     with open(filename, 'w') as fp:
         fp.write(struct.pack('80xI', len(polys)))
         fp.write(data.tostring())
+
+def write_gii(bytes filename, object pts, object polys):
+    from nibabel import gifti
+    pts_darray = gifti.GiftiDataArray.from_array(pts.astype(np.float32), "pointset")
+    polys_darray = gifti.GiftiDataArray.from_array(polys, "triangle")
+    gii = gifti.GiftiImage(darrays=[pts_darray, polys_darray])
+    gifti.write(gii, filename)

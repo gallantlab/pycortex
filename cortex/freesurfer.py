@@ -79,12 +79,13 @@ def import_subj(subject, sname=None):
     trans = nibabel.load(out).get_affine()[:3, -1]
     surfmove = trans - np.sign(trans) * [128, 128, 128]
 
+    from . import formats
     #import surfaces
     for fsname, name in [('smoothwm',"wm"), ('pial',"pia"), ('inflated',"inflated"), ('inflated',"flat")]:
         for hemi in ("lh", "rh"):
             pts, polys, _ = get_surf(subject, hemi, fsname)
             fname = surfs.format(subj=sname, name=name, hemi=hemi)
-            np.savez(fname, pts=pts + surfmove, polys=polys)
+            formats.write_gii(fname, pts=pts + surfmove, polys=polys)
 
     #import surfinfo
     for curv, info in dict(sulc="sulcaldepth", thickness="thickness", curv="curvature").items():
@@ -95,13 +96,14 @@ def import_flat(subject, patch, sname=None):
     if sname is None:
         sname = subject
     surfs = os.path.join(db.filestore, sname, "surfaces", "flat_{hemi}.npz")
+    from . import formats
     for hemi in ['lh', 'rh']:
         pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat")
         flat = pts[:,[1, 0, 2]]
         flat[:,1] = -flat[:,1]
         fname = surfs.format(hemi=hemi)
         print("saving to %s"%fname)
-        #np.savez(fname, pts=flat, polys=polys)
+        formats.write_gii(fname, pts=flat, polys=polys)
 
 def make_fiducial(subject):
     for hemi in ['lh', 'rh']:
