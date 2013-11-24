@@ -95,7 +95,7 @@ def import_subj(subject, sname=None):
 def import_flat(subject, patch, sname=None):
     if sname is None:
         sname = subject
-    surfs = os.path.join(db.filestore, sname, "surfaces", "flat_{hemi}.npz")
+    surfs = os.path.join(db.filestore, sname, "surfaces", "flat_{hemi}.gii")
     from . import formats
     for hemi in ['lh', 'rh']:
         pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat")
