@@ -81,7 +81,7 @@ def import_subj(subject, sname=None):
 
     from . import formats
     #import surfaces
-    for fsname, name in [('smoothwm',"wm"), ('pial',"pia"), ('inflated',"inflated"), ('inflated',"flat")]:
+    for fsname, name in [('smoothwm',"wm"), ('pial',"pia"), ('inflated',"inflated")]:
         for hemi in ("lh", "rh"):
             pts, polys, _ = get_surf(subject, hemi, fsname)
             fname = surfs.format(subj=sname, name=name, hemi=hemi)

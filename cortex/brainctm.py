@@ -31,7 +31,11 @@ class BrainCTM(object):
         self.types = []
 
         left, right = surfs.getSurf(subject, "fiducial")
-        fleft, fright = surfs.getSurf(subject, "flat", nudge=True, merge=False)
+        try:
+            fleft, fright = surfs.getSurf(subject, "flat", nudge=True, merge=False)
+        except IOError:
+            fleft = None
+
         if decimate:
             try:
                 pleft, pright = surfs.getSurf(subject, "pia")
@@ -52,19 +56,23 @@ class BrainCTM(object):
                 self.left = Hemi(left[0], left[1])
                 self.right = Hemi(right[0], right[1])
 
-            #set medial wall
-            for hemi, ptpoly in ([self.left, fleft], [self.right, fright]):
-                fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
-                flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
-                hemi.aux[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
+            if fleft is not None:
+                #set medial wall
+                for hemi, ptpoly in ([self.left, fleft], [self.right, fright]):
+                    fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
+                    flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
+                    hemi.aux[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
 
         #Find the flatmap limits
-        flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
-        fmin, fmax = flatmerge.min(0), flatmerge.max(0)
-        self.flatlims = map(float, -fmin), map(float, fmax-fmin)
+        if fleft is not None:
+            flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
+            fmin, fmax = flatmerge.min(0), flatmerge.max(0)
+            self.flatlims = map(float, -fmin), map(float, fmax-fmin)
 
-        self.left.setFlat(fleft[0])
-        self.right.setFlat(fright[0])
+            self.left.setFlat(fleft[0])
+            self.right.setFlat(fright[0])
+        else:
+            self.flatlims = None
 
     def addSurf(self, typename, addtype=True, **kwargs):
         left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
@@ -99,8 +107,11 @@ class BrainCTM(object):
             fp.write(rbin)
 
         ##### Save the JSON descriptor
-        json.dump(dict(rois=os.path.split(svgname)[1], data=os.path.split(ctmname)[1], names=self.types, 
-            materials=[], offsets=offsets, flatlims=self.flatlims), open(jsname, 'w'))
+        jsdict = dict(rois=os.path.split(svgname)[1], data=os.path.split(ctmname)[1], names=self.types, 
+            materials=[], offsets=offsets)
+        if self.flatlims is not None:
+            jsdict['flatlims'] = self.flatlims
+        json.dump(jsdict, open(jsname, 'w'))
 
         ##### Compute and save the index map
         if method != 'raw':

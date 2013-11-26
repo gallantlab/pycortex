@@ -97,7 +97,7 @@ var Shaderlib = (function() {
     };
     module.prototype = {
         constructor: module,
-        main: function(sampler, raw, twod, voxline, volume) {
+        main: function(sampler, raw, twod, voxline, volume, rois) {
             //Creates shader code with all the parameters
             //sampler: which sampler to use, IE nearest or trilinear
             //raw: whether the dataset is raw or not
@@ -116,6 +116,8 @@ var Shaderlib = (function() {
                 header += "#define CORTSHEET\n";
             if (twod)
                 header += "#define TWOD\n";
+            if (rois)
+                header += "#define ROI_RENDER\n";
 
             var vertShade =  [
             THREE.ShaderChunk[ "map_pars_vertex" ], 
@@ -310,13 +312,17 @@ var Shaderlib = (function() {
                 // "vec4 hColor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
 
                 //roi layer
+        "#ifdef ROI_RENDER",
                 "vec4 rColor = texture2D(map, vUv);",
+        "#endif",                
 
                 "if (vMedial < .999) {",
                     "gl_FragColor = cColor;",
                     "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
                     // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
+        "#ifdef ROI_RENDER",
                     "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
+        "#endif",
                 "} else if (hide_mwall == 1) {",
                     "discard;",
                 "} else {",

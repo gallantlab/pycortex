@@ -62,13 +62,13 @@ var dataset = (function(module) {
         this.frames = this.data[0].frames
         this.length = this.frames / this.rate;
     }
-    module.DataView.prototype.init = function(uniforms, meshes, frames) {
+    module.DataView.prototype.init = function(uniforms, meshes, rois, frames) {
         if (this.loaded.state() == "pending")
             $("#dataload").show();
         frames = frames || 0;
 
         var sampler = module.samplers[this.filter];
-        var shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, uniforms.nsamples.value);
+        var shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, uniforms.nsamples.value, rois);
         this.shader = new THREE.ShaderMaterial({ 
             vertexShader:shaders.vertex,
             fragmentShader:shaders.fragment,
@@ -77,14 +77,13 @@ var dataset = (function(module) {
             morphTargets:true, 
             morphNormals:true, 
             lights:true, 
-
-             blending:THREE.CustomBlending,
+            blending:THREE.CustomBlending,
         });
         this.shader.map = true;
         this.shader.metal = true;
 
         if (uniforms.nsamples.value > 1) {
-            shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, 1);
+            shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, 1, rois);
             this.fastshader = new THREE.ShaderMaterial({
                 vertexShader:shaders.vertex,
                 fragmentShader:shaders.fragment,

@@ -14,9 +14,9 @@ var mriview = (function(module) {
         blanktex.width = 16;
         blanktex.height = 16;
         this.blanktex = new THREE.Texture(blanktex);
-        this.blanktex.needsUpdate = true;
         this.blanktex.magFilter = THREE.NearestFilter;
         this.blanktex.minFilter = THREE.NearestFilter;
+        this.blanktex.needsUpdate = true;
 
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
@@ -207,7 +207,7 @@ var mriview = (function(module) {
                     geometries[1].boundingBox.min.y
                 )];
             this._makeBtns(json.names);
-            this.controls.flatsize = module.flatscale * this.flatlims[1][0];
+            //this.controls.flatsize = module.flatscale * this.flatlims[1][0];
             this.controls.flatoff = this.flatoff[1];
             var gb0 = geometries[0].boundingBox, gb1 = geometries[1].boundingBox;
             this.surfcenter = [
@@ -222,41 +222,55 @@ var mriview = (function(module) {
                 $(this.object).find("#thickmapping").show();
             }
 
-            var posdata = {left:[], right:[]};
             var names = {left:0, right:1};
-            for (var name in names) {
-                var right = names[name];
-                var flats = module.makeFlat(geometries[right].attributes.uv.array, json.flatlims, this.flatoff, right);
-                geometries[right].morphTargets.push({itemSize:3, stride:3, array:flats.pos});
-                geometries[right].morphNormals.push(flats.norms);
-                posdata[name].push(geometries[right].attributes.position);
-                for (var i = 0, il = geometries[right].morphTargets.length; i < il; i++) {
-                    posdata[name].push(geometries[right].morphTargets[i]);
+            if (this.flatlims !== undefined) {
+                //Do not attempt to create flatmaps or load ROIs if there are no flats
+                var posdata = {left:[], right:[]};
+                for (var name in names) {
+                    var right = names[name];
+                    var flats = module.makeFlat(geometries[right].attributes.uv.array, json.flatlims, this.flatoff, right);
+                    geometries[right].morphTargets.push({itemSize:3, stride:3, array:flats.pos});
+                    geometries[right].morphNormals.push(flats.norms);
+                    posdata[name].push(geometries[right].attributes.position);
+                    for (var i = 0, il = geometries[right].morphTargets.length; i < il; i++) {
+                        posdata[name].push(geometries[right].morphTargets[i]);
+                    }
+                    geometries[right].reorderVertices();
+                    geometries[right].dynamic = true;
+
+                    //var geom = splitverts(geometries[right], name == "right" ? leftlen : 0);
+                    var meshpiv = this._makeMesh(geometries[right], this.shader);
+                    this.meshes[name] = meshpiv.mesh;
+                    this.pivot[name] = meshpiv.pivots;
+                    this.scene.add(meshpiv.pivots.front);
                 }
-                geometries[right].reorderVertices();
-                geometries[right].dynamic = true;
 
-                //var geom = splitverts(geometries[right], name == "right" ? leftlen : 0);
-                var meshpiv = this._makeMesh(geometries[right], this.shader);
-                this.meshes[name] = meshpiv.mesh;
-                this.pivot[name] = meshpiv.pivots;
-                this.scene.add(meshpiv.pivots.front);
+                $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
+                    this.roipack = new ROIpack(svgdoc, this.renderer, posdata);
+                    this.addEventListener("mix", function(evt) {
+                         this.roipack.labels.setMix(evt.mix);
+                    }.bind(this));
+                    this.addEventListener("resize", function(event) {
+                        this.roipack.resize(event.width, event.height);
+                    }.bind(this));
+                    this.roipack.update(this.renderer).done(function(tex) {
+                        this.uniforms.map.texture = tex;
+                        this.schedule();
+                    }.bind(this));
+                }.bind(this));
+            } else {
+                for (var name in names) {
+                    var right = names[name];
+                    var len = geometries[right].attributes.position.array.length / 3;
+                    geometries[right].reorderVertices();
+                    geometries[right].dynamic = true;
+                    var meshpiv = this._makeMesh(geometries[right], this.shader);
+                    this.meshes[name] = meshpiv.mesh;
+                    this.pivot[name] = meshpiv.pivots;
+                    this.scene.add(meshpiv.pivots.front);
+                }
             }
-
-            $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
-                this.roipack = new ROIpack(svgdoc, this.renderer, posdata);
-                this.addEventListener("mix", function(evt) {
-                     this.roipack.labels.setMix(evt.mix);
-                }.bind(this));
-                this.addEventListener("resize", function(event) {
-                    this.roipack.resize(event.width, event.height);
-                }.bind(this));
-                this.roipack.update(this.renderer).done(function(tex) {
-                    this.uniforms.map.texture = tex;
-                    this.schedule();
-                }.bind(this));
-            }.bind(this));
-
+            
             this.picker = new FacePick(this, 
                 this.meshes.left.geometry.attributes.position.array, 
                 this.meshes.right.geometry.attributes.position.array);
@@ -301,7 +315,7 @@ var mriview = (function(module) {
         this.camera.setSize(aspect * 100, 100);
         this.camera.updateProjectionMatrix();
         this.dispatchEvent({ type:"resize", width:w, height:h});
-        this.schedule();
+        this.loaded.done(this.schedule.bind(this));
     };
     module.Viewer.prototype.getState = function(state) {
         switch (state) {
@@ -470,16 +484,19 @@ var mriview = (function(module) {
                     hemi.morphTargetInfluences[i] = 0;
                 }
 
-                this.uniforms.hide_mwall.value = (n2 == flat);
+                if (this.flatlims !== undefined)
+                    this.uniforms.hide_mwall.value = (n2 == flat);
 
                 hemi.morphTargetInfluences[n2] = (val * num)%1;
                 if (n1 >= 0)
                     hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
             }
         }
-        this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
-        this.setPivot(this.flatmix*180);
-        this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
+        if (this.flatlims !== undefined) {
+            this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
+            this.setPivot(this.flatmix*180);
+            this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
+        }
         $(this.object).find("#mix").slider("value", val);
         
         this.dispatchEvent({type:"mix", flat:this.flatmix, mix:val});
@@ -672,7 +689,7 @@ var mriview = (function(module) {
             this.colormap.minFilter = THREE.LinearFilter;
             this.colormap.magFilter = THREE.LinearFilter;
             this.uniforms.colormap.texture = this.colormap;
-            this.schedule();
+            this.loaded.done(this.schedule.bind(this));
             
             if (this.colormap.image.height > 8) {
                 $(this.object).find(".vcolorbar").show();
@@ -735,7 +752,7 @@ var mriview = (function(module) {
         if (this.active.filter != interp) {
             this.active.setFilter(interp);
         }
-        this.active.init(this.uniforms, this.meshes);
+        this.active.init(this.uniforms, this.meshes, this.flatlims !== undefined);
         $(this.object).find("#datainterp option").attr("selected", null);
         $(this.object).find("#datainterp option[value="+interp+"]").attr("selected", "selected");
     };
@@ -1042,6 +1059,7 @@ var mriview = (function(module) {
         td.appendChild(btn);
         $(this.object).find("#mixbtns").append(td);
 
+        var nameoff = this.flatlims === undefined ? 0 : 1;
         for (var i = 0; i < names.length; i++) {
             name = names[i][0].toUpperCase() + names[i].slice(1);
             td = document.createElement("td");
@@ -1050,21 +1068,25 @@ var mriview = (function(module) {
             btn.setAttribute("title", "Switch to the "+name+" view of the brain");
 
             btn.addEventListener("click", function(j) {
-                this.animate([{idx:btnspeed, state:"mix", value: (j+1) / (names.length+1)}]);
+                this.animate([{idx:btnspeed, state:"mix", value: (j+1) / (names.length+nameoff)}]);
             }.bind(this, i));
             td.appendChild(btn);
             $(this.object).find("#mixbtns").append(td);
         }
-        td = document.createElement("td");
-        btn = document.createElement("button");
-        btn.innerHTML = "Flat";
-        btn.setAttribute("title", "Switch to the flattened view of the brain");
-        td.setAttribute("style", "text-align:right;width:150px;");
-        btn.addEventListener("click", function() {
-            this.animate([{idx:btnspeed, state:"mix", value:1.0}]);
-        }.bind(this));
-        td.appendChild(btn);
-        $(this.object).find("#mixbtns").append(td);
+
+        if (this.flatlims !== undefined) {
+            td = document.createElement("td");
+            btn = document.createElement("button");
+            btn.innerHTML = "Flat";
+            btn.setAttribute("title", "Switch to the flattened view of the brain");
+            td.setAttribute("style", "text-align:right;width:150px;");
+            btn.addEventListener("click", function() {
+                this.animate([{idx:btnspeed, state:"mix", value:1.0}]);
+            }.bind(this));
+            td.appendChild(btn);
+            $(this.object).find("#mixbtns").append(td);
+        }
+
         $(this.object).find("#mix, #pivot, #shifthemis").parent().attr("colspan", names.length+2);
     };
     module.Viewer.prototype._makeMesh = function(geom, shader) {
