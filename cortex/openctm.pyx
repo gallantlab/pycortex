@@ -44,7 +44,7 @@ cdef class CTMfile:
 	def __len__(self):
 		return self.length
 
-	def setMesh(self, object[np.double_t, ndim=2] pts, object[np.uint32_t, ndim=2] polys, object[np.double_t, ndim=2] norms = None):
+	def setMesh(self, object[np.float32_t, ndim=2] pts, object[np.uint32_t, ndim=2] polys, object[np.float32_t, ndim=2] norms = None):
 		if self.mode == "r":
 			raise IOError
 		if self.length == 0:

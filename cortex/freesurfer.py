@@ -59,7 +59,7 @@ def import_subj(subject, sname=None):
     db.surfs.makeSubj(sname)
 
     import nibabel
-    surfs = os.path.join(db.filestore, sname, "surfaces", "{name}_{hemi}.npz")
+    surfs = os.path.join(db.filestore, sname, "surfaces", "{name}_{hemi}.gii")
     anats = os.path.join(db.filestore, sname, "anatomicals", "{name}.nii.gz")
     surfinfo = os.path.join(db.filestore, sname, "surface-info", "{name}.npz")
     fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
