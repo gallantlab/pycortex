@@ -22,7 +22,7 @@ cwd = os.path.abspath(os.path.split(__file__)[0])
 class ROIpack(object):
     def __init__(self, tcoords, svgfile, callback=None, 
         linewidth=None, linecolor=None, roifill=None, shadow=None,
-        labelsize=None, labelcolor=None):
+        labelsize=None, labelcolor=None,layer='rois'):
         if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
             tcoords -= tcoords.min(0)
             tcoords /= tcoords.max(0)
@@ -31,22 +31,24 @@ class ROIpack(object):
         self.svgfile = svgfile
         self.callback = callback
         self.kdt = cKDTree(tcoords)
+        self.layer = layer 
 
-        self.linewidth = float(config.get("rois", "line_width")) if linewidth is None else linewidth
-        self.linecolor = tuple(map(float, config.get("rois", "line_color").split(','))) if linecolor is None else linecolor
-        self.roifill = tuple(map(float, config.get("rois", "fill_color").split(','))) if roifill is None else roifill
-        self.shadow = float(config.get("rois", "shadow")) if shadow is None else shadow
+        self.linewidth = float(config.get(self.layer, "line_width")) if linewidth is None else linewidth
+        self.linecolor = tuple(map(float, config.get(self.layer, "line_color").split(','))) if linecolor is None else linecolor
+        self.roifill = tuple(map(float, config.get(self.layer, "fill_color").split(','))) if roifill is None else roifill
+        self.shadow = float(config.get(self.layer, "shadow")) if shadow is None else shadow
         self.reload(size=labelsize, color=labelcolor)
 
     def reload(self, **kwargs):
         self.svg = scrub(self.svgfile)
+        self.svg = _strip_top_layers(self.svg,self.layer)
         w = float(self.svg.getroot().get("width"))
         h = float(self.svg.getroot().get("height"))
         self.svgshape = w, h
 
         #Set up the ROI dict
         self.rois = {}
-        for r in _find_layer(self.svg, "rois").findall("{%s}g"%svgns):
+        for r in _find_layer(self.svg, self.layer).findall("{%s}g"%svgns):
             roi = ROI(self, r)
             self.rois[roi.name] = roi
 
@@ -54,6 +56,7 @@ class ROIpack(object):
         #self.setup_labels(**kwargs)
 
     def add_roi(self, name, pngdata, add_path=True):
+        """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
         #self.svg deletes the images -- we want to save those, so let's load it again
         svg = etree.parse(self.svgfile)
         imglayer = _find_layer(svg, "data")
@@ -396,6 +399,15 @@ def _make_layer(parent, name):
     layer.attrib["{%s}groupmode"%inkns] = "layer"
     return layer
 
+def _strip_top_layers(svg,layer):
+    """Remove all top-level layers except <layer> from lxml svg object"""
+    tokeep = _find_layer(svg,layer) # will throw an error if not present
+    tostrip = [l for l in svg.getroot().getchildren() if l.get('{%s}label'%inkns) and not l.get('{%s}label'%inkns)==layer
+        and not l.get('{%s}label'%inkns)=='roilabels']
+    for s in tostrip:
+        s.getparent().remove(s)
+    return svg
+    
 try:
     from shapely.geometry import Polygon
     def _center_pts(pts):
@@ -441,7 +453,9 @@ def _labelpos(pts):
     pt = np.dot(np.dot(np.array([x,y,0]), sp), v)
     return pt + pts.mean(0)
 
+
 def scrub(svgfile):
+    """Remove data layers from an svg object prior to rendering"""
     svg = etree.parse(svgfile, parser=parser)
     try:
         rmnode = _find_layer(svg, "data")
