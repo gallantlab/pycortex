@@ -989,7 +989,7 @@ var mriview = (function(module) {
             else 
                 $(this.object).find("#thickmix_row").hide();
             this.uniforms.nsamples.value = ui.value;
-            this.active.init(this.uniforms, this.meshes, this.frames);
+            this.active.init(this.uniforms, this.meshes, this.flatlims !== undefined, this.frames);
             this.schedule();
         }.bind(this)});
         $(this.object).find("#thickmix").slider({ min:0, max:1, step:.001, value:0.5, slide:function(event, ui) {
