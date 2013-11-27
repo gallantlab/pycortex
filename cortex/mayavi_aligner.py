@@ -67,7 +67,7 @@ class RotationWidget(HasTraits):
         def startmove(obj, evt):
             self.startmove = (self.pos, self.angle, self.radius)
         def endmove(obj, evt):
-            if hasattr(self.callback, "__call__") and self._btn == 1:
+            if hasattr(self.callback, "__call__"):
                 self.callback( self, self.pos - self.startmove[0], 
                                 self.angle - self.startmove[1], 
                                 self.radius / self.startmove[2])
@@ -308,7 +308,8 @@ class Axis(HasTraits):
 
     def handle_keys(self, evt, name):
         key, sym = evt.GetKeyCode(), evt.GetKeySym()
-        print repr(key), repr(sym), evt.GetShiftKey(), evt.GetControlKey()
+        #print repr(key), repr(sym), evt.GetShiftKey(), evt.GetControlKey()
+
         if key in ('', chr(127)):
             i = -1 if self.invert else 1
             mult = (2,.2)[evt.GetShiftKey()]
@@ -719,6 +720,8 @@ class Align(HasTraits):
         self.center = self.spacing*nii.get_shape()[:3] / 2 + self.origin
 
         self.padshape = 2**(np.ceil(np.log2(np.array(epi.shape))))
+
+        epi = np.nan_to_num(epi)
         self.epi_orig = epi - epi.min()
         self.epi_orig /= self.epi_orig.max()
         self.epi_orig *= 2

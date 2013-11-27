@@ -246,5 +246,20 @@ var jsplot = (function (module) {
         this.figure.notify("playtoggle", this);
     }
 
+    module.ImageAxes = function(figure) {
+        module.Axes.call(this, figure);
+    }
+    module.ImageAxes.prototype = Object.create(module.Axes.prototype);
+    module.ImageAxes.prototype.constructor = module.ImageAxes;
+    module.ImageAxes.prototype.set = function(url) {
+        $(this.object).fadeTo(0);
+        var img = new Image();
+        img.onload = function() {
+            $(this.object).html(img);
+            $(this.object).fadeTo(1);
+        }.bind(this);
+        img.src = url;
+    }
+
     return module;
 }(jsplot || {}));

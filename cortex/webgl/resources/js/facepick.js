@@ -158,6 +158,7 @@ FacePick.prototype = {
             var vec = this.viewer.uniforms.volxfm.value[0].multiplyVector3(p.pos.clone());
             console.log("Picked vertex "+p.ptidx+" in "+p.hemi+" hemisphere, distance="+p.dist+", voxel=["+vec.x+","+vec.y+","+vec.z+"]");
             this.addMarker(p.hemi, p.ptidx, keep);
+            this.viewer.figure.notify("pick", this, [vec]);
             if (this.callback !== undefined)
                 this.callback(vec, p.hemi, p.ptidx);
         } else {
