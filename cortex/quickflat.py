@@ -10,11 +10,12 @@ import numpy as np
 from . import utils
 from . import dataset
 from .db import surfs
+from .options import config
 
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100, depth=0.5,
-                with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
+                with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, with_curvature=False,
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
-                **kwargs):
+                cutout=None,**kwargs):
     """Show a VolumeData or VertexData on a flatmap with matplotlib. Additional kwargs are passed on to
     matplotlib's imshow command.
 
@@ -32,9 +33,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Name of sampling function used to sample underlying volume data
     height : int
         Height of the image to render. Automatically scales the width for the aspect of the subject's flatmap
-    with_rois, with_labels, with_colorbar, with_borders, with_dropout : bool, optional
+    with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature : bool, optional
         Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?
-
+    cutout : str
+        Name of flatmap cutout with which to clip the full flatmap. Should be the name of a sub-layer of the "cutouts" layer in <filestore>/<subject>/display.svg
     Other Parameters
     ----------------
     dpi : int
@@ -63,9 +65,62 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     
     im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
     
+    if cutout:
+        roi = surfs.getOverlay(dataview.data.subject, type='cutouts',
+            roifill=(0.,0.,0.,0.),linecolor=(0.,0.,0.,0.),linewidth=0.)
+        # Set ONLY desired cutout to be white
+        roi.rois[cutout].set(roifill=(1.,1.,1.,1.),linewidth=2.,linecolor=(1.,1.,1.,1.))
+        roitex = roi.get_texture(height, labels=False)
+        roitex.seek(0)
+        co = plt.imread(roitex)[:,:,0] # Cutout image
+        # STUPID BULLSHIT 1-PIXEL CHECK:
+        if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,co.shape)]):
+            from scipy.misc import imresize
+            co = imresize(co,im.shape[:2]).astype(np.float32)/255.
+        # Alpha
+        if im.dtype == np.uint8:
+            im[:,:,3]*=co
+            h,w,cdim = [float(v) for v in im.shape]
+        else:
+            im[co==0] = np.nan
+            h,w = [float(v) for v in im.shape]
+        # set extents
+        y,x = np.nonzero(co)
+        l,r,t,b = extents
+        extents = [x.min()/w * (l-r)+l,
+                    x.max()/w * (l-r)+l,
+                    y.min()/h * (t-b)+b,
+                    y.max()/h * (t-b)+b]
+        # bounding box indices
+        iy,ix = ((y.min(),y.max()),(x.min(),x.max()))
+    else:
+        iy,ix = ((0,-1),(0,-1))
+
     fig = plt.figure()
+
+    if with_curvature:
+        curv,ee = make(surfs.getSurfInfo(dataview.data.subject))
+        if cutout: curv[co==0] = np.nan
+        axcv = fig.add_axes((0,0,1,1))
+        # Option to use thresholded curvature
+        use_threshold_curvature = config.get('curvature','threshold').lower() in ('true','t','1','y','yes')
+        if use_threshold_curvature:
+            curvT = (curv>0).astype(np.float32)
+            curvT[np.isnan(curv)] = np.nan
+            curv = curvT
+        cvimg = axcv.imshow(curv[iy[1]:iy[0]:-1,ix[0]:ix[1]], 
+                aspect='equal', 
+                extent=extents, 
+                cmap=plt.cm.gray,
+                vmin=float(config.get('curvature','min')),
+                vmax=float(config.get('curvature','max')),
+                origin='lower')
+        axcv.axis('off')
+        axcv.set_xlim(extents[0], extents[1])
+        axcv.set_ylim(extents[2], extents[3])
+
     ax = fig.add_axes((0,0,1,1))
-    cimg = ax.imshow(im[::-1], 
+    cimg = ax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]], 
         aspect='equal', 
         extent=extents, 
         cmap=dataview.cmap, 
@@ -76,13 +131,14 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     ax.set_xlim(extents[0], extents[1])
     ax.set_ylim(extents[2], extents[3])
 
+
     if with_colorbar:
         cbar = fig.add_axes((.4, .07, .2, .04))
         fig.colorbar(cimg, cax=cbar, orientation='horizontal')
 
     if with_dropout:
         dax = fig.add_axes((0,0,1,1))
-        dmap, extents = make(utils.get_dropout(braindata.subject, braindata.xfmname),
+        dmap, ee = make(utils.get_dropout(dataview.data.subject, dataview.data.xfmname),
                     height=height, sampler=sampler)
         hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
         hatchspace = 4
@@ -90,22 +146,29 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
         hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
         hatchim[:,:,3] *= (dmap>0.5).astype(float)
-        dax.imshow(hatchim[::-1], aspect="equal", interpolation="nearest", extent=extents, origin='lower')
+        if cutout: hatchim[:,:,3]*=co
+        dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal", interpolation="nearest", extent=extents, origin='lower')
     
     if with_borders:
-        border = _gen_flat_border(braindata.data.subject, im.shape[0])
+        border = _gen_flat_border(dataview.data.subject, im.shape[0])
         bax = fig.add_axes((0,0,1,1))
         blc = LineCollection(border[0], linewidths=3.0,
                              colors=[['r','b'][mw] for mw in border[1]])
         bax.add_collection(blc)
-        #bax.invert_yaxis()
     
     if with_rois:
-        roi = surfs.getOverlay(dataview.data.subject, linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
+        roi = surfs.getOverlay(dataview.data.subject,linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
         roitex = roi.get_texture(height, labels=with_labels)
         roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
-        oimg = oax.imshow(plt.imread(roitex)[::-1],
+        roi_im = plt.imread(roitex)
+        if cutout: 
+            # STUPID BULLSHIT 1-PIXEL CHECK:
+            if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,roi_im.shape)]):
+                from scipy.misc import imresize
+                co = imresize(co,roi_im.shape[:2]).astype(np.float32)/255.
+            roi_im[:,:,3]*=co
+        oimg = oax.imshow(roi_im[iy[1]:iy[0]:-1,ix[0]:ix[1]],
             aspect='equal', 
             interpolation='bicubic', 
             extent=extents, 
@@ -446,3 +509,8 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
         csrshape = mask.sum(), np.prod(xfm.shape)
         return sparse.csr_matrix((data, (vidx[i], j)), shape=csrshape)
 
+def is_str(obj):
+    try:
+        return isinstance(obj, basestring)
+    except NameError:
+        return isinstance(obj, str)

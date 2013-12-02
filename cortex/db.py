@@ -228,10 +228,10 @@ class Database(object):
         return npz
 
     def getOverlay(self, subject, type='rois', **kwargs):
-        if type == "rois":
+        if type in ["rois","cutouts"]:
             from . import svgroi
             pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
-            svgfile = self.getFiles(subject)['rois']
+            svgfile = self.getFiles(subject)["rois"]
             if self.auxfile is not None:
                 try:
                     tf = self.auxfile.getOverlay(subject, type)
@@ -242,7 +242,7 @@ class Database(object):
             if 'pts' in kwargs:
                 pts = kwargs['pts']
                 del kwargs['pts']
-            return svgroi.get_roipack(svgfile, pts, polys, **kwargs)
+            return svgroi.get_roipack(svgfile, pts, polys, layer=type,**kwargs)
         if type == "external":
             from . import svgroi
             pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
