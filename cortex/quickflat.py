@@ -73,12 +73,16 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         roitex = roi.get_texture(height, labels=False)
         roitex.seek(0)
         co = plt.imread(roitex)[:,:,0] # Cutout image
+        # STUPID BULLSHIT 1-PIXEL CHECK:
+        if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,co.shape)]):
+            from scipy.misc import imresize
+            co = imresize(co,im.shape[:2]).astype(np.float32)/255.
         # Alpha
         if im.dtype == np.uint8:
             im[:,:,3]*=co
             h,w,cdim = [float(v) for v in im.shape]
         else:
-            im[co<1] = np.nan
+            im[co==0] = np.nan
             h,w = [float(v) for v in im.shape]
         # set extents
         y,x = np.nonzero(co)
@@ -96,10 +100,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     if with_curvature:
         curv,ee = make(surfs.getSurfInfo(dataview.data.subject))
-        if cutout: curv[co<1] = np.nan
+        if cutout: curv[co==0] = np.nan
         axcv = fig.add_axes((0,0,1,1))
         # Option to use thresholded curvature
-        use_threshold_curvature = eval(config.get('curvature','threshold'))
+        use_threshold_curvature = config.get('curvature','threshold').lower() in ('true','t','1','y','yes')
         if use_threshold_curvature:
             curvT = (curv>0).astype(np.float32)
             curvT[np.isnan(curv)] = np.nan
@@ -158,8 +162,12 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
         roi_im = plt.imread(roitex)
-        #1/0
-        if cutout: roi_im[:,:,3]*=co
+        if cutout: 
+            # STUPID BULLSHIT 1-PIXEL CHECK:
+            if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,roi_im.shape)]):
+                from scipy.misc import imresize
+                co = imresize(co,roi_im.shape[:2]).astype(np.float32)/255.
+            roi_im[:,:,3]*=co
         oimg = oax.imshow(roi_im[iy[1]:iy[0]:-1,ix[0]:ix[1]],
             aspect='equal', 
             interpolation='bicubic', 
