@@ -103,6 +103,10 @@ var sliceplane = (function(module) {
     module.Plane.prototype.prev = function() {
         this.update((this.slice-1).mod(this.shape[this.dir]));
     }
+
+    module.MIP = function(viewer) {
+        
+    }
     
     return module;
 }(sliceplane || {}));

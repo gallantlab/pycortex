@@ -952,6 +952,7 @@ var mriview = (function(module) {
             min:0, max:20, step:1, value:4,
             change: updateROIs,
         });
+        $(this.object).find("#volview").change(this.toggle_view.bind(this));
         $(this.object).find("#roi_linecolor").miniColors({close: updateROIs});
         $(this.object).find("#roi_fillcolor").miniColors({close: updateROIs});
         $(this.object).find("#roi_shadowcolor").miniColors({close: updateROIs});
