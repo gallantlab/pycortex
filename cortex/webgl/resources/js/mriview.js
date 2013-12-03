@@ -118,6 +118,13 @@ var mriview = (function(module) {
         this.labelshow = true;
         this._pivot = 0;
 
+        this.planes = [new sliceplane.Plane(this, 0), 
+            new sliceplane.Plane(this, 1), 
+            new sliceplane.Plane(this, 2)]
+        this.planes[0].mesh.visible = false;
+        this.planes[1].mesh.visible = false;
+        this.planes[2].mesh.visible = false;
+
         this.dataviews = {};
         this.active = null;
 
@@ -457,6 +464,12 @@ var mriview = (function(module) {
         this.setMix(1);
         this.setShift(0);
     };
+    module.Viewer.prototype.toggle_view = function() {
+        this.meshes.left.visible = !this.meshes.left.visible;
+        this.meshes.right.visible = !this.meshes.right.visible;
+        for (var i = 0; i < 3; i++)
+            this.planes[i].mesh.visible = !this.planes[i].mesh.visible;
+    };
     // module.Viewer.prototype.saveflat = function(height, posturl) {
     //     var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
     //     var roistate = $(this.object).find("#roishow").attr("checked");
@@ -570,12 +583,14 @@ var mriview = (function(module) {
         }
 
         this.active = this.dataviews[name];
+        this.dispatchEvent({type:"setData", data:this.active});
+
         if (this.active.data[0].raw) {
             $("#color_fieldset").fadeTo(0.15, 0);
         } else {
             if (this.active.cmap !== undefined)
                 this.setColormap(this.active.cmap);
-            $("#color_fieldset").fadeTo(.15, 1);
+            $("#color_fieldset").fadeTo(0.15, 1);
         }
 
         $.when(this.cmapload, this.loaded).done(function() {
