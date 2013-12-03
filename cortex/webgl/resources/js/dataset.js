@@ -70,8 +70,8 @@ var dataset = (function(module) {
         var sampler = module.samplers[this.filter];
         var shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, uniforms.nsamples.value, rois);
         this.shader = new THREE.ShaderMaterial({ 
-            vertexShader:shaders.vertex,
-            fragmentShader:shaders.fragment,
+            vertexShader:"#define SUBJ_SURF\n"+shaders.vertex,
+            fragmentShader:"#define SUBJ_SURF\n"+shaders.fragment,
             uniforms: uniforms,
             attributes: { wm:true, auxdat:true },
             morphTargets:true, 
@@ -85,8 +85,8 @@ var dataset = (function(module) {
         if (uniforms.nsamples.value > 1) {
             shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, 1, rois);
             this.fastshader = new THREE.ShaderMaterial({
-                vertexShader:shaders.vertex,
-                fragmentShader:shaders.fragment,
+                vertexShader:"#define SUBJ_SURF\n"+shaders.vertex,
+                fragmentShader:"#define SUBJ_SURF\n"+shaders.fragment,
                 uniforms: uniforms,
                 attributes: { wm:true, auxdat:true },
                 morphTargets:true, 
@@ -242,8 +242,8 @@ var dataset = (function(module) {
             camera = new THREE.OrthographicCamera(-100, 100, -100, 100, -100, 100),
             shaders = Shaders.data(),
             shader = new THREE.ShaderMaterial( {
-                vertexShader: shaders.vertex,
-                fragmentShader: shaders.fragment,
+                vertexShader: "#define SUBJ_SURF\n"+shaders.vertex,
+                fragmentShader: "#define SUBJ_SURF\n"+shaders.fragment,
                 uniforms: {
                     volxfm: { type:'m4', value: new THREE.Matrix4() },
                     data:   { type: 't', value: 0, texture: null },

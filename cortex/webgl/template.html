@@ -23,6 +23,7 @@
 
 <script type='text/javascript' src='resources/js/datamodel.js'></script>
 <script type='text/javascript' src='resources/js/dataset.js'></script>
+<script type='text/javascript' src='resources/js/sliceplane.js'></script>
 <script type='text/javascript' src='resources/js/svgroi.js'></script>
 <script type='text/javascript' src='resources/js/shadowtex.js'></script>
 <script type='text/javascript' src='resources/js/shaderlib.js'></script>
@@ -162,6 +163,9 @@
 			<div class='opt_category'>
 				<fieldset id="viewopt_fieldset" class='subtable'>
 					<legend>View</legend>
+					<div class='display_opt'>
+						<input id='volview' type='checkbox'><label for='volview'>Toggle view</label>
+					</div>
 					<div class='display_opt'>
 						<p id='zlocklabel'>Zoom lock:</p>
 						<div id='zlockopts'>
