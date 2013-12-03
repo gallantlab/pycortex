@@ -467,8 +467,11 @@ var mriview = (function(module) {
     module.Viewer.prototype.toggle_view = function() {
         this.meshes.left.visible = !this.meshes.left.visible;
         this.meshes.right.visible = !this.meshes.right.visible;
-        for (var i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++) {
+            this.planes[i].update();
             this.planes[i].mesh.visible = !this.planes[i].mesh.visible;
+        }
+        this.schedule();
     };
     // module.Viewer.prototype.saveflat = function(height, posturl) {
     //     var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
@@ -857,6 +860,18 @@ var mriview = (function(module) {
                 this.schedule();
                 e.stopPropagation();
                 e.preventDefault();
+            } else if (e.keyCode == 81) { //q
+                this.planes[0].next();
+            } else if (e.keyCode == 87) { //w
+                this.planes[0].prev();
+            } else if (e.keyCode == 65) { //a
+                this.planes[1].next();
+            } else if (e.keyCode == 83) { //s
+                this.planes[1].prev();
+            } else if (e.keyCode == 90) { //z
+                this.planes[2].next();
+            } else if (e.keyCode == 88) { //x
+                this.planes[2].prev();
             }
         }.bind(this));
         var _this = this;

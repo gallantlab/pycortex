@@ -64,6 +64,7 @@ var sliceplane = (function(module) {
         if (slice === undefined || slice.type !== undefined)
             slice = Math.round(shape[this.dir] / 2);
 
+        this.shape = shape;
         this.slice = slice;
 
         var xfm = this.viewer.uniforms.volxfm.value[0];
@@ -95,6 +96,12 @@ var sliceplane = (function(module) {
         this._makeShader(this.viewer.active);
         this.mesh.material = this.shader;
         this.viewer.schedule();
+    }
+    module.Plane.prototype.next = function() {
+        this.update((this.slice+1).mod(this.shape[this.dir]));
+    }
+    module.Plane.prototype.prev = function() {
+        this.update((this.slice-1).mod(this.shape[this.dir]));
     }
     
     return module;
