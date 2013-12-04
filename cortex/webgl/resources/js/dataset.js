@@ -61,12 +61,33 @@ var dataset = (function(module) {
 
         this.frames = this.data[0].frames
         this.length = this.frames / this.rate;
+
+        this.uniforms = {
+            data:       { type:'tv', value:0, texture: [this.blanktex, this.blanktex, this.blanktex, this.blanktex]},
+            colormap:   { type:'t',  value:4, texture: this.blanktex },
+            mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
+            dshape:     { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
+            volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
+            framemix:   { type:'f',  value:0},
+
+            vmin:       { type:'fv1',value:[0,0]},
+            vmax:       { type:'fv1',value:[1,1]},
+
+            dataAlpha:  { type:'f', value:1.0},
+            voxlineColor:{type:'v3', value:new THREE.Vector3( 0,0,0 )},
+            voxlineWidth:{type:'f', value:viewopts.voxline_width},
+        }
     }
-    module.DataView.prototype.init = function(uniforms, meshes, rois, frames) {
+    module.DataView.prototype.get_shader = function(uniforms, shaderfunc) {
         if (this.loaded.state() == "pending")
             $("#dataload").show();
-        frames = frames || 0;
 
+        if (this.shader !== undefined)
+            this.shader.dispose();
+        if (this.fastshader !== undefined)
+            this.fastshader.dispose();
+
+        var rois = uniforms.map.texture !== null;
         var sampler = module.samplers[this.filter];
         var shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, uniforms.nsamples.value, rois);
         this.shader = new THREE.ShaderMaterial({ 
@@ -100,9 +121,6 @@ var dataset = (function(module) {
             this.fastshader = null;
         }
 
-        meshes.left.material = this.shader;
-        meshes.right.material = this.shader;
-
         var allready = [];
         for (var i = 0; i < this.data.length; i++) {
             allready.push(false);
@@ -133,6 +151,8 @@ var dataset = (function(module) {
                 }
             }
         }.bind(this));
+
+        return this.shader;
     }
     module.DataView.prototype.set = function(uniforms, time) {
         var xfm;
@@ -234,93 +254,6 @@ var dataset = (function(module) {
         }
         return dataviews
     }
-
-    module.render = function(viewer, res) {
-        //Function is not finished yet
-        var scene = new THREE.Scene(), 
-            camera = new THREE.OrthographicCamera(-100, 100, -100, 100, -100, 100),
-            shaders = Shaders.data(),
-            shader = new THREE.ShaderMaterial( {
-                vertexShader: "#define SUBJ_SURF\n"+shaders.vertex,
-                fragmentShader: "#define SUBJ_SURF\n"+shaders.fragment,
-                uniforms: {
-                    volxfm: { type:'m4', value: new THREE.Matrix4() },
-                    data:   { type: 't', value: 0, texture: null },
-                },
-                attributes: { flatpos: true, wm:true, auxdat:true, },
-            }),
-            targets = {
-                left: new THREE.WebGLRenderTarget(res, res, {
-                    minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
-                    stencilBuffer:false,
-                    generateMipmaps:true,
-                }),
-                right: new THREE.WebGLRenderTarget(res, res, {
-                    minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
-                    stencilBuffer:false,
-                    generateMipmaps:true,
-                }),
-            }
-        var hemi, geom, target, mesh, name, attr;
-        var names = ["position", "wm", "auxdat", "index"];
-        var limits = {top:-1000, bottom:1000};
-        var xfm = shader.uniforms.volxfm.value;
-        xfm.set.apply(xfm, this.xfm);
-        scene.add(camera);
-        camera.up.set(0, 0, 1);
-        camera.position.set(0,-100,0);
-        camera.lookAt(scene.position);
-
-        for (hemi in targets) {
-            target = targets[hemi];
-            geom = new THREE.BufferGeometry();
-            for (var i = 0; i < names.length; i++) {
-                name = names[i];
-                attr = viewer.meshes[hemi].geometry.attributes[name];
-                if (attr !== undefined)
-                    geom.attributes[name] = attr;
-            }
-            geom.offsets = viewer.meshes[hemi].geometry.offsets;
-            var mt = viewer.meshes[hemi].geometry.morphTargets;
-            geom.attributes.flatpos = mt[mt.length-1];
-
-            var min = [1000, 1000, 1000], max=[0,0,0];
-            for (var i = 0, il = geom.attributes.flatpos.array.length; i < il; i+=3) {
-                for (var j = 0; j < 3; j++) {
-                    min[j] = Math.min(min[j], geom.attributes.flatpos.array[i+j]);
-                    max[j] = Math.max(max[j], geom.attributes.flatpos.array[i+j]);
-                }
-            }
-            limits[hemi] = max[1] - min[1];
-            limits.top = Math.max(max[2], limits.top);
-            limits.bottom = Math.min(min[2], limits.bottom);
-
-            mesh = new THREE.Mesh(geom, shader);
-            mesh.position.y = -min[1];
-            mesh.doubleSided = true;
-            mesh.updateMatrix();
-            obj = new THREE.Object3D();
-            obj.rotation.z = hemi == "left" ? Math.PI / 2. : -Math.PI / 2.;
-            obj.add(mesh);
-            scene.add(obj);
-        }
-
-        var aspect = (limits.right - limits.left) / (limits.top - limits.bottom);
-
-        
-        camera.left = -limits.left;
-        camera.right = limits.right;
-        camera.top = limits.top;
-        camera.bottom = limits.bottom;
-
-        for (var frame = 0; frame < this.textures.length; frame++) {
-
-        }
-
-        camera.updateProjectionMatrix();
-        viewer.renderer.render(scene, camera);
-        return {scene:scene, camera:camera};
-    };
 
     return module;
 }(dataset || {}));
