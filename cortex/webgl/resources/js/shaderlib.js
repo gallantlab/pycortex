@@ -347,6 +347,7 @@ var Shaderlib = (function() {
                     "gl_FragColor = cColor;",
                 "}",
         "#else",
+                "if (vColor.a < .01) discard;",
                 "gl_FragColor = vColor;",
         "#endif",
 
