@@ -111,6 +111,19 @@ var Shaderlib = (function() {
             "uniform vec2 dshape[2];",
             "uniform sampler2D data[4];",
         ].join("\n"),
+
+        mixer: function(morphs) {
+            var glsl = [
+            "uniform float mix;",
+            "attribute vec3 mixSurfs["+morphs+"];",
+            "attribute vec3 mixNorms["+morphs+"];",
+            "vec3 mixfunc(vec3 basepos) {",
+                "float smix = mix * "+morphs";",
+                "float clamp(1.-smix, 0., 1.);",
+            "}",
+            ].join("\n");
+            return glsl;
+        }
     }
 
     var module = function() {
@@ -212,6 +225,7 @@ var Shaderlib = (function() {
                 "vColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge*1.001));",
         "#endif",
 
+                "if (vColor.a < .001) discard;",
                 "gl_FragColor = vColor;",
 
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
@@ -241,10 +255,6 @@ var Shaderlib = (function() {
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
             "uniform mat4 volxfm[2];",
 
-            "uniform float mix;",
-            "attribute vec3 mixSurfs["+morphs+"];",
-            "attribute vec3 mixNorms["+morphs+"];",
-
             "uniform float thickmix;",
             "attribute vec3 position2;",
 
@@ -263,9 +273,7 @@ var Shaderlib = (function() {
             "varying vec3 vPos_x[2];",
             "varying vec3 vPos_y[2];",
 
-            "vec3 mixfunc(vec3 basepos) {",
-                "",
-            "}",
+            utils.mixer(morphs),
 
             "void main() {",
 
@@ -274,18 +282,18 @@ var Shaderlib = (function() {
 
                 //Find voxel positions with both transforms (2D colormap x and y datasets)
                 "vPos_x[0] = (volxfm[0]*vec4(position,1.)).xyz;",
-        "#ifdef TWOD",
+            "#ifdef TWOD",
                 "vPos_y[0] = (volxfm[1]*vec4(position,1.)).xyz;",
-        "#endif",
-            "#ifdef CORTSHEET",
-                "vPos_x[1] = (volxfm[0]*vec4(position2,1.)).xyz;",
-        "#ifdef TWOD",
-                "vPos_y[1] = (volxfm[1]*vec4(position2,1.)).xyz;",
-        "#endif",
-                "vec3 npos = mix(position, position2, thickmix);",
-            "#else",
-                "vec3 npos = position;",
             "#endif",
+        "#ifdef CORTSHEET",
+                "vPos_x[1] = (volxfm[0]*vec4(position2,1.)).xyz;",
+            "#ifdef TWOD",
+                "vPos_y[1] = (volxfm[1]*vec4(position2,1.)).xyz;",
+            "#endif",
+                "vec3 npos = mix(position, position2, thickmix);",
+        "#else",
+                "vec3 npos = position;",
+        "#endif",
 
             "#ifdef ROI_RENDER",
                 //Overlay
@@ -303,8 +311,6 @@ var Shaderlib = (function() {
             "}"
             ].join("\n");
 
-            var factor = volume > 1 ? (1/volume).toFixed(6) : "1.";
-
             var fragHead = [
             "#extension GL_OES_standard_derivatives: enable",
             "#extension GL_OES_texture_float: enable",
@@ -312,22 +318,8 @@ var Shaderlib = (function() {
             THREE.ShaderChunk[ "map_pars_fragment" ],
             THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
-            "uniform vec3 diffuse;",
-            "uniform vec3 ambient;",
-            "uniform vec3 emissive;",
-            "uniform vec3 specular;",
-            "uniform float shininess;",
+            utils.standard_frag_vars,
 
-            "uniform sampler2D colormap;",
-            "uniform float vmin[2];",
-            "uniform float vmax[2];",
-            "uniform float framemix;",
-
-            "uniform vec3 voxlineColor;",
-            "uniform float voxlineWidth;",
-            "uniform float dataAlpha;",
-
-        "#ifdef SUBJ_SURF",
             "uniform int hide_mwall;",
             "uniform float curvAlpha;",
             "uniform float curvScale;",
@@ -341,11 +333,7 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             // "varying float vDrop;",
             "varying float vMedial;",
-        "#endif",
 
-            "uniform vec2 mosaic[2];",
-            "uniform vec2 dshape[2];",
-            "uniform sampler2D data[4];",
             "uniform float thickmix;",
 
             "varying vec3 vPos_x[2];",
@@ -357,12 +345,9 @@ var Shaderlib = (function() {
             utils.samplers,
 
             "void main() {",
-
-        "#ifdef SUBJ_SURF",
                 //Curvature Underlay
                 "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
                 "vec4 cColor = vec4(vec3(curv) * curvAlpha, curvAlpha);",
-        "#endif",
 
                 "vec3 coord_x, coord_y;",
             "#ifdef RAWCOLORS",
@@ -374,6 +359,7 @@ var Shaderlib = (function() {
             ].join("\n");
 
             
+            var factor = volume > 1 ? (1/volume).toFixed(6) : "1.";
             var sampling = [
         "#ifdef RAWCOLORS",
                 "color[0] += "+factor+"*"+sampler+"_x(data[0], coord_x);",
@@ -467,6 +453,11 @@ var Shaderlib = (function() {
                 "if (vColor.a < .01) discard;",
                 "gl_FragColor = vColor;",
         "#endif",
+            "} else if (hide_mwall == 1) {",
+                "discard;",
+            "} else {",
+                "gl_FragColor = cColor;",
+            "}",
 
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
             "}"
