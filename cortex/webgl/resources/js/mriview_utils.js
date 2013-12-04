@@ -102,26 +102,6 @@ var mriview = (function(module) {
         return canvas;
     }
 
-    module.makeFlat = function(uv, flatlims, flatoff, right) {
-        var fmin = flatlims[0], fmax = flatlims[1];
-        var flat = new Float32Array(uv.length / 2 * 3);
-        var norms = new Float32Array(uv.length / 2 * 3);
-        for (var i = 0, il = uv.length / 2; i < il; i++) {
-            if (right) {
-                flat[i*3+1] = module.flatscale*uv[i*2] + flatoff[1];
-                norms[i*3] = 1;
-            } else {
-                flat[i*3+1] = module.flatscale*-uv[i*2] + flatoff[1];
-                norms[i*3] = -1;
-            }
-            flat[i*3+2] = module.flatscale*uv[i*2+1];
-            uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
-            uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
-        }
-
-        return {pos:flat, norms:norms};
-    }
-
     //Generates a hatch texture in canvas
     module.makeHatch = function(size, linewidth, spacing) {
         //Creates a cross-hatching pattern in canvas for the dropout shading

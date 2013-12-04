@@ -90,6 +90,27 @@ var Shaderlib = (function() {
                 "return vec4(coord / vec3(100., 100., 32.), 1.);",
             "}",
         ].join("\n"),
+
+        standard_frag_vars: [
+            "uniform vec3 diffuse;",
+            "uniform vec3 ambient;",
+            "uniform vec3 emissive;",
+            "uniform vec3 specular;",
+            "uniform float shininess;",
+
+            "uniform sampler2D colormap;",
+            "uniform float vmin[2];",
+            "uniform float vmax[2];",
+            "uniform float framemix;",
+
+            "uniform vec3 voxlineColor;",
+            "uniform float voxlineWidth;",
+            "uniform float dataAlpha;",
+
+            "uniform vec2 mosaic[2];",
+            "uniform vec2 dshape[2];",
+            "uniform sampler2D data[4];",
+        ].join("\n"),
     }
 
     var module = function() {
@@ -97,13 +118,109 @@ var Shaderlib = (function() {
     };
     module.prototype = {
         constructor: module,
-        main: function(sampler, raw, twod, voxline, volume, rois) {
+        main: function(sampler, raw, twod, voxline) {
             //Creates shader code with all the parameters
             //sampler: which sampler to use, IE nearest or trilinear
             //raw: whether the dataset is raw or not
             //voxline: whether to show the voxel lines
-            //volume: the number of volume samples to take
+            
+            var header = "";
+            if (voxline)
+                header += "#define VOXLINE\n";
+            if (raw)
+                header += "#define RAWCOLORS\n";
+            if (twod)
+                header += "#define TWOD\n";
 
+            var vertShade =  [
+            THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+
+            "uniform mat4 volxfm[2];",
+
+            "attribute vec4 auxdat;",
+
+            "varying vec3 vViewPosition;",
+            "varying vec3 vNormal;",
+
+            "varying vec3 vPos_x;",
+
+        "#ifdef TWOD",
+            "varying vec3 vPos_y;",
+        "#endif",
+
+            "void main() {",
+
+                "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
+                "vViewPosition = -mvPosition.xyz;",
+
+                //Find voxel positions with both transforms (2D colormap x and y datasets)
+                "vPos_x = (volxfm[0]*vec4(position,1.)).xyz;",
+        "#ifdef TWOD",
+                "vPos_y = (volxfm[1]*vec4(position,1.)).xyz;",
+        "#endif",
+
+                "vNormal = normalMatrix * normal;",
+                "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0);",
+
+            "}"
+            ].join("\n");
+
+            var fragShade = [
+            "#extension GL_OES_standard_derivatives: enable",
+            "#extension GL_OES_texture_float: enable",
+
+            "varying vec3 vPos_x;",
+            "varying vec3 vPos_y;",
+
+            THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
+            
+            utils.standard_frag_vars,
+            utils.rand,
+            utils.edge,
+            utils.colormap,
+            utils.samplers,
+
+            "void main() {",
+            "#ifdef RAWCOLORS",
+                "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
+            "#else",
+                "vec4 values = vec4(0.);",
+            "#endif",
+        
+        "#ifdef RAWCOLORS",
+                "color[0] += "+sampler+"_x(data[0], vPos_x);",
+                "color[1] += "+sampler+"_x(data[1], vPos_x);",
+        "#else",
+                "values.x += "+sampler+"_x(data[0], vPos_x).r;",
+                "values.y += "+sampler+"_x(data[1], vPos_x).r;",
+            "#ifdef TWOD",
+                "values.z += "+sampler+"_y(data[2], vPos_y).r;",
+                "values.w += "+sampler+"_y(data[3], vPos_y).r;",
+            "#endif",
+        "#endif",
+
+            "#ifdef RAWCOLORS",
+                "vec4 vColor = mix(color[0], color[1], framemix);",
+            "#else",
+                "vec4 vColor = colorlut(values);",
+            "#endif",
+                "vColor *= dataAlpha;",
+
+        "#ifdef VOXLINE",
+                "vec3 coord = vPos_x[0];",
+                "vec3 edge = abs(fract(coord) - vec3(0.5));",
+                "vColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge*1.001));",
+        "#endif",
+
+                "gl_FragColor = vColor;",
+
+                THREE.ShaderChunk[ "lights_phong_fragment" ],
+            "}"
+            ].join("\n");
+
+            return {vertex:header+vertShade, fragment:header+fragShade};
+        },
+        surface: function(sampler, raw, twod, voxline, morphs, volume, rois) {
             if (volume === undefined)
                 volume = 0;
 
@@ -119,30 +236,36 @@ var Shaderlib = (function() {
             if (rois)
                 header += "#define ROI_RENDER\n";
 
+
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
-        "#ifdef SUBJ_SURF",
-            THREE.ShaderChunk[ "map_pars_vertex" ], 
-            THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+            "uniform mat4 volxfm[2];",
+
+            "uniform float mix;",
+            "attribute vec3 mixSurfs["+morphs+"];",
+            "attribute vec3 mixNorms["+morphs+"];",
+
+            "uniform float thickmix;",
+            "attribute vec3 position2;",
+
+            "attribute vec4 auxdat;",
+            // "attribute vec3 wmnorm;",
+            // "attribute float dropout;",
             
+            "varying vec2 vUv;",
             "varying float vCurv;",
             // "varying float vDrop;",
             "varying float vMedial;",
-        "#endif",
-
-            "uniform float thickmix;",
-            "uniform mat4 volxfm[2];",
-
-            "attribute vec4 auxdat;",
-            "attribute vec3 wm;",
-            // "attribute vec3 wmnorm;",
-            // "attribute float dropout;",
 
             "varying vec3 vViewPosition;",
             "varying vec3 vNormal;",
 
             "varying vec3 vPos_x[2];",
             "varying vec3 vPos_y[2];",
+
+            "vec3 mixfunc(vec3 basepos) {",
+                "",
+            "}",
 
             "void main() {",
 
@@ -151,37 +274,31 @@ var Shaderlib = (function() {
 
                 //Find voxel positions with both transforms (2D colormap x and y datasets)
                 "vPos_x[0] = (volxfm[0]*vec4(position,1.)).xyz;",
+        "#ifdef TWOD",
                 "vPos_y[0] = (volxfm[1]*vec4(position,1.)).xyz;",
-                "#ifdef CORTSHEET",
-                "vPos_x[1] = (volxfm[0]*vec4(wm,1.)).xyz;",
-                "vPos_y[1] = (volxfm[1]*vec4(wm,1.)).xyz;",
-                "vec3 npos = mix(position, wm, thickmix);",
-                "#else",
+        "#endif",
+            "#ifdef CORTSHEET",
+                "vPos_x[1] = (volxfm[0]*vec4(position2,1.)).xyz;",
+        "#ifdef TWOD",
+                "vPos_y[1] = (volxfm[1]*vec4(position2,1.)).xyz;",
+        "#endif",
+                "vec3 npos = mix(position, position2, thickmix);",
+            "#else",
                 "vec3 npos = position;",
-                "#endif",
+            "#endif",
 
-        "#ifdef SUBJ_SURF",
-                THREE.ShaderChunk[ "map_vertex" ],
+            "#ifdef ROI_RENDER",
+                //Overlay
+                "vUv = uv;",
+            "#endif",
 
                 // "vDrop = dropout;",
                 "vMedial = auxdat.x;",
                 "vCurv = auxdat.y;",
 
-                THREE.ShaderChunk[ "morphnormal_vertex" ],
-                "vNormal = transformedNormal;",
 
-                "vec3 morphed = vec3( 0.0 );",
-                "morphed += ( morphTarget0 - npos ) * morphTargetInfluences[ 0 ];",
-                "morphed += ( morphTarget1 - npos ) * morphTargetInfluences[ 1 ];",
-                "morphed += ( morphTarget2 - npos ) * morphTargetInfluences[ 2 ];",
-                "morphed += ( morphTarget3 - npos ) * morphTargetInfluences[ 3 ];",
-                "morphed += npos;",
 
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( morphed, 1.0 );",
-        "#else",
-                "vNormal = normalMatrix * normal;",
-                "gl_Position = projectionMatrix * modelViewMatrix * vec4( npos, 1.0);",
-        "#endif",
 
             "}"
             ].join("\n");

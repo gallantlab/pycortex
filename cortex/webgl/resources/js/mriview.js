@@ -20,7 +20,6 @@ var mriview = (function(module) {
 
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
-
         this.canvas = $(this.object).find("#brain");
 
         // scene and camera
@@ -67,44 +66,6 @@ var mriview = (function(module) {
         this.renderer.context.getExtension("OES_texture_float_linear");
         this.renderer.context.getExtension("OES_standard_derivatives");
         this.renderer.setSize( this.canvas.width(), this.canvas.height() );
-
-        this.uniforms = THREE.UniformsUtils.merge( [
-            THREE.UniformsLib[ "lights" ],
-            {
-                diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
-                specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
-                emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
-                shininess:  { type:'f',  value:200},
-
-                thickmix:   { type:'f',  value:0.5},
-                framemix:   { type:'f',  value:0},
-                hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
-                offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
-                
-                //hatch:      { type:'t',  value:0, texture: module.makeHatch() },
-                colormap:   { type:'t',  value:0, texture: this.blanktex },
-                map:        { type:'t',  value:1, texture: this.blanktex },
-                data:       { type:'tv', value:2, texture: [this.blanktex, this.blanktex, this.blanktex, this.blanktex]},
-                mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
-                dshape:     { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
-                volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
-                nsamples:   { type:'i', value:0},
-
-                vmin:       { type:'fv1',value:[0,0]},
-                vmax:       { type:'fv1',value:[1,1]},
-
-                curvAlpha:  { type:'f', value:1.},
-                curvScale:  { type:'f', value:.5},
-                curvLim:    { type:'f', value:.2},
-                dataAlpha:  { type:'f', value:1.0},
-                hatchAlpha: { type:'f', value:1.},
-                hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
-                voxlineColor:{type:'v3', value:new THREE.Vector3( 0,0,0 )},
-                voxlineWidth:{type:'f', value:viewopts.voxline_width},
-
-                hide_mwall: { type:'i', value:0},
-            }
-        ]);
         
         this.state = "pause";
         this._startplay = null;
