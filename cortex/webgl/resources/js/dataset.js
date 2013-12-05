@@ -58,91 +58,99 @@ var dataset = (function(module) {
         this.filter = json.attrs.filter === undefined ? "nearest" : json.attrs.filter;
         if (json.attrs.stim !== undefined)
             this.stim = "stim/"+json.attrs.stim;
-
+        
         this.frames = this.data[0].frames
         this.length = this.frames / this.rate;
 
         this.uniforms = {
-            data:       { type:'tv', value:0, texture: [this.blanktex, this.blanktex, this.blanktex, this.blanktex]},
-            colormap:   { type:'t',  value:4, texture: this.blanktex },
+            framemix:   { type:'f',   value:0},
+            data:       { type:'tv',  value:0, texture: [null, null, null, null]},
             mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
             dshape:     { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
             volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
-            framemix:   { type:'f',  value:0},
-
-            vmin:       { type:'fv1',value:[0,0]},
-            vmax:       { type:'fv1',value:[1,1]},
 
             dataAlpha:  { type:'f', value:1.0},
-            voxlineColor:{type:'v3', value:new THREE.Vector3( 0,0,0 )},
-            voxlineWidth:{type:'f', value:viewopts.voxline_width},
         }
     }
-    module.DataView.prototype.get_shader = function(uniforms, shaderfunc) {
+    module.DataView.prototype.setVminmax = function(min, max, dim, idx) {
+        if (dim === undefined)
+            dim = 0;
+
+        if (idx === undefined) {
+            for (var i = 0; i < this.data.length; i++) {
+                this.vmin[i][dim] = min;
+                this.vmax[i][dim] = max;
+            }
+        } else {
+            this.vmin[idx][dim] = min;
+            this.vmax[idx][dim] = max;
+        }
+    }
+    module.DataView.prototype.setColormap = function(cmap, idx) {
+        if (idx === undefined) {
+            for (var i = 0; i < this.data.length; i++) {
+                this.cmap[i] = colormaps[cmap];
+            }
+        } else {
+            this.cmap[idx] = colormaps[cmap];
+        }
+    }
+    module.DataView.prototype.getShader = function(shaderfunc, uniforms, opts) {
         if (this.loaded.state() == "pending")
             $("#dataload").show();
 
-        if (this.shader !== undefined)
-            this.shader.dispose();
-        if (this.fastshader !== undefined)
-            this.fastshader.dispose();
+        var shaders = [];
+        for (var i = 0; i < this.data.length; i++) {
+            //Run a shallow merge on the uniform variables
+            var merge = {};
+            for (var name in uniforms)
+                merge[name] = uniforms[name];
+            for (var name in this.uniforms)
+                merge[name] = this.uniforms[name];
+            merge.cmap = this.cmaps[i];
+            merge.vmin = this.vmin[i];
+            merge.vmax = this.vmax[i];
 
-        var rois = uniforms.map.texture !== null;
-        var sampler = module.samplers[this.filter];
-        var shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, uniforms.nsamples.value, rois);
-        this.shader = new THREE.ShaderMaterial({ 
-            vertexShader:"#define SUBJ_SURF\n"+shaders.vertex,
-            fragmentShader:"#define SUBJ_SURF\n"+shaders.fragment,
-            uniforms: uniforms,
-            attributes: { wm:true, auxdat:true },
-            morphTargets:true, 
-            morphNormals:true, 
-            lights:true, 
-            blending:THREE.CustomBlending,
-        });
-        this.shader.map = true;
-        this.shader.metal = true;
-
-        if (uniforms.nsamples.value > 1) {
-            shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, 1, rois);
-            this.fastshader = new THREE.ShaderMaterial({
-                vertexShader:"#define SUBJ_SURF\n"+shaders.vertex,
-                fragmentShader:"#define SUBJ_SURF\n"+shaders.fragment,
-                uniforms: uniforms,
-                attributes: { wm:true, auxdat:true },
-                morphTargets:true, 
-                morphNormals:true, 
+            var sampler = module.samplers[this.filter];
+            var shadecode = shaderfunc(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, opts);
+            var shader = new THREE.ShaderMaterial({ 
+                vertexShader:shadecode.vertex,
+                fragmentShader:shadecode.fragment,
+                attributes: shadecode.attrs,
+                uniforms: merge,
                 lights:true, 
                 blending:THREE.CustomBlending,
             });
-            this.fastshader.map = true;
-            this.fastshader.metal = true;
-        } else {
-            this.fastshader = null;
+            shader.metal = true;
+            shaders.push(shader);
         }
 
+        //Run set up when the datasets are loaded
         var allready = [];
         for (var i = 0; i < this.data.length; i++) {
             allready.push(false);
         }
 
+        //Temporarily only support 2D dataviews
         var deferred = this.data.length == 1 ? 
             $.when(this.data[0].loaded) : 
             $.when(this.data[0].loaded, this.data[1].loaded);
         deferred.done(function() {
             this.loaded.resolve();
+
             for (var i = 0; i < this.data.length; i++) {
-                this.data[i].init(uniforms, i);
+                this.data[i].init(this.uniforms, i);
                 this.data[i].setFilter(this.filter);
-                this.data[i].set(uniforms, i, 0);
+                this.data[i].set(this.uniforms, i, 0);
             }
         }.bind(this)).progress(function() {
             for (var i = 0; i < this.data.length; i++) {
                 if (this.data[i].textures.length > this.delay && !allready[i]) {
                     this.data[i].setFilter(this.filter);
-                    this.data[i].set(uniforms, i, 0);
+                    this.data[i].set(this.uniforms, i, 0);
                     allready[i] = true;
 
+                    //Resolve this deferred if ALL the BrainData objects are loaded (for multiviews)
                     var test = true;
                     for (var i = 0; i < allready.length; i++)
                         test = test && allready[i];
@@ -151,14 +159,17 @@ var dataset = (function(module) {
                 }
             }
         }.bind(this));
-
-        return this.shader;
+        return shaders;
     }
+<<<<<<< HEAD
     module.DataView.prototype.set = function(uniforms, time) {
         var xfm;
+=======
+    module.DataView.prototype.set = function(time) {
+>>>>>>> shaders no longer require morphtargets, DataViews create shaders
         var frame = ((time + this.delay) * this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
-        uniforms.framemix.value = frame - fframe;
+        this.uniforms.framemix.value = frame - fframe;
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(uniforms, i, fframe);
             xfm = uniforms.volxfm.value[i];
@@ -252,7 +263,7 @@ var dataset = (function(module) {
         for (var i = 0; i < dataset.views.length; i++) {
             dataviews.push(new module.DataView(dataset.views[i]));
         }
-        return dataviews
+        return dataviews;
     }
 
     return module;
