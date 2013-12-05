@@ -115,14 +115,22 @@ var Shaderlib = (function() {
         mixer: function(morphs) {
             var glsl = [
             "uniform float mix;",
-            "attribute vec3 mixSurfs["+morphs+"];",
-            "attribute vec3 mixNorms["+morphs+"];",
-            "vec3 mixfunc(vec3 basepos) {",
-                "float smix = mix * "+morphs";",
-                "float clamp(1.-smix, 0., 1.);",
-            "}",
+            "attribute vec3 mixSurfs["+(morphs-1)+"];",
+            "attribute vec3 mixNorms["+(morphs-1)+"];",
+            "void mixfunc(vec3 basepos, vec3 pos, vec3 norm) {",
+                "float smix = mix * "+morphs+".;",
+                "float factor = clamp(1. - smix, 0., 1.);",
+                "pos = factor * basepos;",
+                "norm = factor * normal;",
+                "",
             ].join("\n");
-            return glsl;
+            for (var i = 1; i < morphs; i++) {
+                glsl += "factor = clamp("+(i+1)+". - smix, "+i+"., "+(i+1)+".) - "+i+".;\n";
+                glsl += "pos  += factor * mixSurfs["+i+"];\n";
+                glsl += "norm += factor * mixNorms["+i+"];\n";
+            }
+
+            return glsl+"}\n";
         }
     }
 
@@ -131,7 +139,7 @@ var Shaderlib = (function() {
     };
     module.prototype = {
         constructor: module,
-        main: function(sampler, raw, twod, voxline) {
+        main: function(sampler, raw, twod, voxline, opts) {
             //Creates shader code with all the parameters
             //sampler: which sampler to use, IE nearest or trilinear
             //raw: whether the dataset is raw or not
@@ -156,7 +164,6 @@ var Shaderlib = (function() {
             "varying vec3 vNormal;",
 
             "varying vec3 vPos_x;",
-
         "#ifdef TWOD",
             "varying vec3 vPos_y;",
         "#endif",
@@ -234,19 +241,20 @@ var Shaderlib = (function() {
 
             return {vertex:header+vertShade, fragment:header+fragShade};
         },
-        surface: function(sampler, raw, twod, voxline, morphs, volume, rois) {
-            if (volume === undefined)
-                volume = 0;
-
+        surface: function(sampler, raw, twod, voxline, opts) {
             var header = "";
             if (voxline)
                 header += "#define VOXLINE\n";
             if (raw)
                 header += "#define RAWCOLORS\n";
-            if (volume > 0)
-                header += "#define CORTSHEET\n";
             if (twod)
                 header += "#define TWOD\n";
+
+            var morphs = opts.morphs;
+            var volume = opts.volume || 0;
+            var rois = opts.rois;
+            if (volume > 0)
+                header += "#define CORTSHEET\n";
             if (rois)
                 header += "#define ROI_RENDER\n";
 
@@ -257,9 +265,9 @@ var Shaderlib = (function() {
 
             "uniform float thickmix;",
             "attribute vec3 position2;",
+            //"attribute vec3 normal2;",
 
             "attribute vec4 auxdat;",
-            // "attribute vec3 wmnorm;",
             // "attribute float dropout;",
             
             "varying vec2 vUv;",
@@ -271,7 +279,9 @@ var Shaderlib = (function() {
             "varying vec3 vNormal;",
 
             "varying vec3 vPos_x[2];",
+        "#ifdef TWOD",
             "varying vec3 vPos_y[2];",
+        "#endif",
 
             utils.mixer(morphs),
 
@@ -295,8 +305,8 @@ var Shaderlib = (function() {
                 "vec3 npos = position;",
         "#endif",
 
-            "#ifdef ROI_RENDER",
                 //Overlay
+            "#ifdef ROI_RENDER",
                 "vUv = uv;",
             "#endif",
 
@@ -304,9 +314,12 @@ var Shaderlib = (function() {
                 "vMedial = auxdat.x;",
                 "vCurv = auxdat.y;",
 
+                "vec3 pos = vec3(0.);",
+                "vec3 norm = vec3(0.);",
+                "mixfunc(npos, pos, norm);",
 
-
-                "gl_Position = projectionMatrix * modelViewMatrix * vec4( morphed, 1.0 );",
+                "vNormal = normalMatrix * norm;",
+                "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
             "}"
             ].join("\n");
@@ -315,10 +328,12 @@ var Shaderlib = (function() {
             "#extension GL_OES_standard_derivatives: enable",
             "#extension GL_OES_texture_float: enable",
 
-            THREE.ShaderChunk[ "map_pars_fragment" ],
             THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
-            utils.standard_frag_vars,
+        "#ifdef ROI_RENDER",
+            "varying vec2 vUv;",
+            "uniform sampler2D overlay;",
+        "#endif",
 
             "uniform int hide_mwall;",
             "uniform float curvAlpha;",
@@ -326,7 +341,6 @@ var Shaderlib = (function() {
             "uniform float curvLim;",
             "uniform float hatchAlpha;",
             "uniform vec3 hatchColor;",
-
             "uniform sampler2D hatch;",
             "uniform vec2 hatchrep;",
 
@@ -339,6 +353,7 @@ var Shaderlib = (function() {
             "varying vec3 vPos_x[2];",
             "varying vec3 vPos_y[2];",
 
+            utils.standard_frag_vars,
             utils.rand,
             utils.edge,
             utils.colormap,
@@ -493,44 +508,6 @@ var Shaderlib = (function() {
 
             return {vertex:vertShade, fragment:fragShades};
         },
-        data: function(thick) {
-            var vertex = [
-                "uniform mat4 volxfm;",
-
-                "attribute vec3 wm;",
-                "attribute vec3 flatpos;",
-                "attribute vec4 auxdat;",
-
-                "varying vec3 vPos[2];",
-                "varying float vMedial;",
-
-                "void main() {",
-                    "vMedial = auxdat.x;",
-                    "vPos[0] = (volxfm*vec4(position, 1.)).xyz;",
-                    "#ifdef CORTSHEET",
-                    "vPos[1] = (volxfm*vec4(wm, 1.)).xyz;",
-                    "#endif",
-                    "gl_Position = projectionMatrix * modelViewMatrix * vec4( flatpos, 1.0 );",
-                "}",
-            ].join("\n");
-            var fragment = [
-                "varying vec3 vPos[2];",
-                "varying float vMedial;",
-
-                "uniform vec2 mosaic[2];",
-                "uniform vec2 dshape[2];",
-                "uniform sampler2D data;",
-
-                utils.samplers,
-
-                "void main() {",
-                    "gl_FragColor = vec4(vPos[0] / vec3(100., 100., 32.), 1.);",
-                    "if (vMedial > .999) discard;",
-                    // "gl_FragColor = vec4(vec3(.5), 1.);",
-                "}",
-            ].join("\n");
-            return {vertex:vertex, fragment:fragment};
-        }
     };
 
     return module;

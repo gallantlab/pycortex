@@ -22,8 +22,7 @@ var mriview = (function(module) {
                 hatchAlpha: { type:'f', value:1.},
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
 
-                map:        { type:'t',  value:0, texture: this.blanktex },
-                nsamples:   { type:'i', value:0},
+                overlay:    { type:'t',  value:0, texture: this.blanktex },
                 hide_mwall: { type:'i', value:0},
 
                 curvAlpha:  { type:'f', value:1.},

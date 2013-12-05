@@ -10,16 +10,14 @@ var mriview = (function(module) {
         THREE.EventTarget.call( this );
         jsplot.Axes.call(this, figure);
 
-        var blanktex = document.createElement("canvas");
-        blanktex.width = 16;
-        blanktex.height = 16;
-        this.blanktex = new THREE.Texture(blanktex);
-        this.blanktex.magFilter = THREE.NearestFilter;
-        this.blanktex.minFilter = THREE.NearestFilter;
-        this.blanktex.needsUpdate = true;
-
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
+        $(this.object).find("#colormap option").each(function() {
+            var im = new Image();
+            im.src = $(this).data("imagesrc");
+            var tex = new THREE.Texture(im);
+            colormaps[$(this).text()] = tex;
+        })
         this.canvas = $(this.object).find("#brain");
 
         // scene and camera
@@ -88,12 +86,6 @@ var mriview = (function(module) {
 
         this.dataviews = {};
         this.active = null;
-
-        var cmapnames = {};
-        $(this.object).find("#colormap option").each(function(idx) {
-            cmapnames[$(this).text()] = idx;
-        });
-        this.cmapnames = cmapnames;
 
         this._bindUI();
 
