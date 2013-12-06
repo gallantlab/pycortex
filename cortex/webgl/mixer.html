@@ -1,7 +1,7 @@
 {% autoescape None %}
 {% extends template.html %}
 {% block jsinit %}
-    var viewers, subjects, datasets, figure, sock, viewopts;
+    var viewer, subjects, datasets, figure, sock, viewopts;
 {% end %}
 {% block onload %}
 		viewopts = {
@@ -14,7 +14,12 @@
 		dataviews = dataset.fromJSON({{data}});
 
 		figure = new jsplot.W2Figure();
-		viewers = figure.add(mriview.MultiView, "main", true, {{ layout[0] }}, {{ layout[1] }}, dataviews);
+		viewer = figure.add(mriview.Viewer, "main", true);
+		viewer.addData(dataviews);
+		for (var name in subjects) {
+			subjects[name] = new mriview.Surface(viewer, subjects[name]);
+			subjects[name].apply(viewer.active);
+		}
 
 		sock = new Websock();
 {% end %}
