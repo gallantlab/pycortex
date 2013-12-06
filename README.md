@@ -22,7 +22,7 @@ $ sudo pip install pycortex
 
 Demo
 ----
-Pycortex is best used with [IPython](http://www.ipython.org/). To run this demo, please download this [example dataset](http://gallantlab.org/pycortex/retinotopy_demo.hdf).
+Pycortex is best used with [IPython](http://www.ipython.org/). To run this demo, please download this [example dataset](http://gallantlab.org/pycortex/S1_retinotopy.hdf).
 
 ```
 $ ipython
