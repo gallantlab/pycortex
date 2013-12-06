@@ -50,7 +50,7 @@ var mriview = (function(module) {
 
             this.names = json.names;
             var gb0 = geometries[0].boundingBox, gb1 = geometries[1].boundingBox;
-            this.center = [
+            var center = [
                 ((gb1.max.x - gb0.min.x) / 2) + gb0.min.x,
                 (Math.max(gb0.max.y, gb1.max.y) - Math.min(gb0.min.y, gb1.min.y)) / 2 + Math.min(gb0.min.y, gb1.min.y),
                 (Math.max(gb0.max.z, gb1.max.z) - Math.min(gb0.min.z, gb1.min.z)) / 2 + Math.min(gb0.min.z, gb1.min.z),
@@ -75,6 +75,7 @@ var mriview = (function(module) {
                 hemi.dynamic = true;
 
                 var meshpiv = this._makeMesh(hemi, null);
+                meshpiv.pivots.front.position.set(center[0], center[1], center[2]);
                 this.meshes[name] = meshpiv.mesh;
                 this.pivot[name] = meshpiv.pivots;
                 this.object.add(meshpiv.pivots.front);
@@ -88,10 +89,12 @@ var mriview = (function(module) {
         var shader = dataview.getShader(Shaders.surface, this.uniforms, {morphs:, volume:, rois:});
         this.meshes.left.material = shader;
         this.meshes.right.material = shader;
+        this.viewer.schedule();
     };
 
     module.Surface.prototype.setMix = function(mix) {
         this.uniforms.mix.value = mix;
+        this.viewer.schedule();
     };
     module.Surface.prototype.setPivot = function (val) {
         this._pivot = val;

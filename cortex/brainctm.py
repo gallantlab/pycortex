@@ -41,7 +41,7 @@ class BrainCTM(object):
                 pleft, pright = surfs.getSurf(subject, "pia")
                 self.left = DecimatedHemi(left[0], left[1], fleft[1], pia=pleft[0])
                 self.right = DecimatedHemi(right[0], right[1], fright[1], pia=pright[0])
-                self.addSurf("wm", name="wm", addtype=False, renorm=False)
+                self.addSurf("wm", addtype=False, renorm=False)
             except IOError:
                 self.left = DecimatedHemi(left[0], left[1], fleft[1])
                 self.right = DecimatedHemi(right[0], right[1], fright[1])
@@ -51,7 +51,7 @@ class BrainCTM(object):
                 wleft, wright = surfs.getSurf(subject, "wm")
                 self.left = Hemi(pleft[0], left[1])
                 self.right = Hemi(pright[0], right[1])
-                self.addSurf("wm", name="wm", addtype=False, renorm=False)
+                self.addSurf("wm", addtype=False, renorm=False)
             except IOError:
                 self.left = Hemi(left[0], left[1])
                 self.right = Hemi(right[0], right[1])

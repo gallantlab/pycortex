@@ -26,7 +26,7 @@ var mriview = (function(module) {
 
         // scene and camera
         this.camera = new THREE.CombinedCamera( this.canvas.width(), this.canvas.height(), 45, 1.0, 1000, 1., 1000. );
-        this.camera.position.set(300, 300, 300);
+        this.camera.position.set(0, 0, 0);
         this.camera.up.set(0,0,1);
 
         this.scene = new THREE.Scene();
@@ -63,7 +63,7 @@ var mriview = (function(module) {
         this.dataviews = {};
         this.active = null;
 
-        this._bindUI();
+        //this._bindUI();
 
         this.figure.register("playsync", this, function(time) {
             if (this._startplay != null)
@@ -294,17 +294,14 @@ var mriview = (function(module) {
         if (this.active.data[0].raw) {
             $("#color_fieldset").fadeTo(0.15, 0);
         } else {
-            if (this.active.cmap !== undefined)
-                this.setColormap(this.active.cmap);
             $("#color_fieldset").fadeTo(0.15, 1);
         }
 
-        $.when(this.cmapload, this.loaded).done(function() {
+        this.loaded.done(function() {
             //this.active.init(this.uniforms, this.meshes);
             $(this.object).find("#vrange").slider("option", {min: this.active.data[0].min, max:this.active.data[0].max});
             if (this.active.data.length > 1) {
                 $(this.object).find("#vrange2").slider("option", {min: this.active.data[1].min, max:this.active.data[1].max});
-                this.setVminmax(this.active.vmin[0][1], this.active.vmax[0][1], 1);
                 $(this.object).find("#vminmax2").show();
             } else {
                 $(this.object).find("#vminmax2").hide();
@@ -319,10 +316,6 @@ var mriview = (function(module) {
                     $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
                 }.bind(this)).done(function() {
                     $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
-                }.bind(this));
-                
-                this.active.loaded.done(function() {
-                    this.setFrame(0);
                 }.bind(this));
 
                 if (this.active.stim && figure) {
