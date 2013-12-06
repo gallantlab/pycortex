@@ -300,8 +300,13 @@ var mriview = (function(module) {
     };
     module.Viewer.prototype.resize = function(width, height) {
         if (width !== undefined) {
-            $(this.object).find("#brain, #roilabels").css("width", width);
-            width = $(this.object).width();
+            if (width.width !== undefined) {
+                height = width.height;
+                width = width.width;
+            }
+            $(this.object).find("#brain").css("width", width);
+            this.canvas[0].width = width;
+            //width = $(this.object).width();
         }
         var w = width === undefined ? $(this.object).width()  : width;
         var h = height === undefined ? $(this.object).height()  : height;

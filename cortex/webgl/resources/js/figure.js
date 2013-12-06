@@ -60,7 +60,11 @@ var jsplot = (function (module) {
             }
         }
     }
-    module.Figure.prototype.resize = function() {
+    module.Figure.prototype.resize = function(width, height) {
+        if (width !== undefined)
+            $(this.object).width(width);
+        if (height !== undefined)
+            $(this.object).height(height);
         var w = $(this.object).width();
         var h = $(this.object).height();
         this.dispatchEvent({type:'resize', width:w, height:h});
