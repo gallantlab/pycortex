@@ -160,13 +160,9 @@ var dataset = (function(module) {
             }
         }.bind(this));
         return shaders;
-    }
-<<<<<<< HEAD
+    };
     module.DataView.prototype.set = function(uniforms, time) {
         var xfm;
-=======
-    module.DataView.prototype.set = function(time) {
->>>>>>> shaders no longer require morphtargets, DataViews create shaders
         var frame = ((time + this.delay) * this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
         this.uniforms.framemix.value = frame - fframe;

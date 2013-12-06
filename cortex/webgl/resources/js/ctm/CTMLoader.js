@@ -235,15 +235,7 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 				attrname = file.body.attrMaps[ i ].name;
 				array = file.body.attrMaps[ i ].attr;
 
-				if (attrname.slice(0, 11) == "morphTarget") {
-
-					morphTargets.push( { num:parseInt(attrname.slice(11)), itemSize:3, array:array, stride:4 } );
-
-				} else {
-
-					attributes[ attrname ] = { itemSize:4, array:array, numItems:array.length, stride:4 };
-
-				}
+				attributes[ attrname ] = { itemSize:4, array:array, numItems:array.length, stride:4 };
 
 			}
 
@@ -252,7 +244,6 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 		// attributes
 
 		scope.attributes = attributes;
-		scope.morphTargets = morphTargets.sort(function(a, b){ return a.num - b.num});
 		scope.offsets = [{ start: 0, count: attributes.index.array.length, index: 0 }];
 
 	}
@@ -266,12 +257,6 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 	if ( geometry.attributes[ "normal" ] === undefined ) {
 
 		geometry.computeVertexNormals();
-
-	}
-
-	if ( geometry.morphTargets.length > 0 ) {
-
-		geometry.computeMorphNormals();
 
 	}
 
