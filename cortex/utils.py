@@ -17,7 +17,7 @@ def get_mapper(*args, **kwargs):
     return get_mapper(*args, **kwargs)
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False):
-    ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
+    ctmcache = "%s_[{types}]_{method}_{level}_v2.json"%subject
     ctmform = os.path.join(surfs.getCache(subject), ctmcache)
     
     lvlstr = ("%dd" if decimate else "%d")%level

@@ -3,8 +3,6 @@
 var dpi_ratio = window.devicePixelRatio || 1;
 
 var mriview = (function(module) {
-    module.flatscale = .25;
-
     module.Viewer = function(figure) { 
         //Allow objects to listen for mix updates
         THREE.EventTarget.call( this );
@@ -12,12 +10,18 @@ var mriview = (function(module) {
 
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
+        //Catalog the available colormaps
         $(this.object).find("#colormap option").each(function() {
             var im = new Image();
             im.src = $(this).data("imagesrc");
             var tex = new THREE.Texture(im);
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.premultiplyAlpha = true;
+            tex.flipY = true;
+            tex.needsUpdate = true;
             colormaps[$(this).text()] = tex;
-        })
+        });
         this.canvas = $(this.object).find("#brain");
 
         // scene and camera
@@ -27,30 +31,10 @@ var mriview = (function(module) {
 
         this.scene = new THREE.Scene();
         this.scene.add( this.camera );
-        this.controls = new THREE.LandscapeControls( $(this.object).find("#braincover")[0], this.camera );
-        this.controls.addEventListener("change", this.schedule.bind(this));
-        this.addEventListener("resize", function(event) {
-            this.controls.resize(event.width, event.height);
-        }.bind(this));
-        this.controls.addEventListener("mousedown", function(event) {
-            if (this.active && this.active.fastshader) {
-                this.meshes.left.material = this.active.fastshader;
-                this.meshes.right.material = this.active.fastshader;
-            }
-        }.bind(this));
-        this.controls.addEventListener("mouseup", function(event) {
-            if (this.active && this.active.fastshader) {
-                this.meshes.left.material = this.active.shader;
-                this.meshes.right.material = this.active.shader;
-                this.schedule();
-            }
-        }.bind(this));
         
         this.light = new THREE.DirectionalLight( 0xffffff );
         this.light.position.set( -200, -200, 1000 ).normalize();
         this.camera.add( this.light );
-        this.flatmix = 0;
-        this.frame = 0;
 
         // renderer
         this.renderer = new THREE.WebGLRenderer({ 
@@ -73,33 +57,14 @@ var mriview = (function(module) {
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
         }.bind(this));
-        this.cmapload = $.Deferred();
         this.labelshow = true;
         this._pivot = 0;
-
-        this.planes = [new sliceplane.Plane(this, 0), 
-            new sliceplane.Plane(this, 1), 
-            new sliceplane.Plane(this, 2)]
-        this.planes[0].mesh.visible = false;
-        this.planes[1].mesh.visible = false;
-        this.planes[2].mesh.visible = false;
 
         this.dataviews = {};
         this.active = null;
 
         this._bindUI();
 
-        this.figure.register("setdepth", this, function(depth) { this.setState("depth", depth);}.bind(this));
-        this.figure.register("setmix", this, this.setMix.bind(this));
-        this.figure.register("setpivot", this, this.setPivot.bind(this));
-        this.figure.register("setshift", this, this.setShift.bind(this));
-        this.figure.register("setcamera", this, function(az, alt, rad, target) {
-            this.setState('azimuth', az);
-            this.setState('altitude', alt);
-            this.setState('radius', rad);
-            this.setState('target', target);
-            this.schedule();
-        }.bind(this));
         this.figure.register("playsync", this, function(time) {
             if (this._startplay != null)
                 this._startplay = (new Date()) - (time * 1000);
@@ -113,12 +78,6 @@ var mriview = (function(module) {
     module.Viewer.prototype.schedule = function() {
         if (!this._scheduled) {
             this._scheduled = true;
-            var target = this.getState('target');
-            var az = this.getState('azimuth'), 
-                alt = this.getState('altitude'),
-                rad = this.getState('radius');
-            this.figure.notify("setcamera", this, [az, alt, rad, target]);
-
             requestAnimationFrame( function() {
                 this.draw();
                 if (this.state == "play" || this._animation != null) {
@@ -140,123 +99,9 @@ var mriview = (function(module) {
                 delete this._animation;
             }
         }
-        this.controls.update(this.flatmix);
-        if (this.labelshow && this.roipack) {
-            this.roipack.labels.render(this, this.renderer);
-        } else {
-            this.renderer.render(this.scene, this.camera);
-        }
+        this.renderer.render(this.scene, this.camera);
         this._scheduled = false;
         this.dispatchEvent({type:"draw"});
-    };
-    module.Viewer.prototype.load = function(ctminfo, callback) {
-        var loader = new THREE.CTMLoader(false);
-        loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
-            geometries[0].computeBoundingBox();
-            geometries[1].computeBoundingBox();
-
-            this.meshes = {};
-            this.pivot = {};
-            this.flatlims = json.flatlims;
-            this.flatoff = [
-                Math.max(
-                    Math.abs(geometries[0].boundingBox.min.x),
-                    Math.abs(geometries[1].boundingBox.max.x)
-                ) / 3, Math.min(
-                    geometries[0].boundingBox.min.y, 
-                    geometries[1].boundingBox.min.y
-                )];
-            this._makeBtns(json.names);
-            //this.controls.flatsize = module.flatscale * this.flatlims[1][0];
-            this.controls.flatoff = this.flatoff[1];
-            var gb0 = geometries[0].boundingBox, gb1 = geometries[1].boundingBox;
-            this.surfcenter = [
-                ((gb1.max.x - gb0.min.x) / 2) + gb0.min.x,
-                (Math.max(gb0.max.y, gb1.max.y) - Math.min(gb0.min.y, gb1.min.y)) / 2 + Math.min(gb0.min.y, gb1.min.y),
-                (Math.max(gb0.max.z, gb1.max.z) - Math.min(gb0.min.z, gb1.min.z)) / 2 + Math.min(gb0.min.z, gb1.min.z),
-            ];
-
-            if (geometries[0].attributes.wm !== undefined) {
-                //We have a thickness volume!
-                this.uniforms.nsamples.value = 1;
-                $(this.object).find("#thickmapping").show();
-            }
-
-            var names = {left:0, right:1};
-            if (this.flatlims !== undefined) {
-                //Do not attempt to create flatmaps or load ROIs if there are no flats
-                var posdata = {left:[], right:[]};
-                for (var name in names) {
-                    var right = names[name];
-                    var flats = module.makeFlat(geometries[right].attributes.uv.array, json.flatlims, this.flatoff, right);
-                    geometries[right].morphTargets.push({itemSize:3, stride:3, array:flats.pos});
-                    geometries[right].morphNormals.push(flats.norms);
-                    posdata[name].push(geometries[right].attributes.position);
-                    for (var i = 0, il = geometries[right].morphTargets.length; i < il; i++) {
-                        posdata[name].push(geometries[right].morphTargets[i]);
-                    }
-                    geometries[right].reorderVertices();
-                    geometries[right].dynamic = true;
-
-                    //var geom = splitverts(geometries[right], name == "right" ? leftlen : 0);
-                    var meshpiv = this._makeMesh(geometries[right], this.shader);
-                    this.meshes[name] = meshpiv.mesh;
-                    this.pivot[name] = meshpiv.pivots;
-                    this.scene.add(meshpiv.pivots.front);
-                }
-
-                $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
-                    this.roipack = new ROIpack(svgdoc, this.renderer, posdata);
-                    this.addEventListener("mix", function(evt) {
-                         this.roipack.labels.setMix(evt.mix);
-                    }.bind(this));
-                    this.addEventListener("resize", function(event) {
-                        this.roipack.resize(event.width, event.height);
-                    }.bind(this));
-                    this.roipack.update(this.renderer).done(function(tex) {
-                        this.uniforms.map.texture = tex;
-                        this.schedule();
-                    }.bind(this));
-                }.bind(this));
-            } else {
-                for (var name in names) {
-                    var right = names[name];
-                    var len = geometries[right].attributes.position.array.length / 3;
-                    geometries[right].reorderVertices();
-                    geometries[right].dynamic = true;
-                    var meshpiv = this._makeMesh(geometries[right], this.shader);
-                    this.meshes[name] = meshpiv.mesh;
-                    this.pivot[name] = meshpiv.pivots;
-                    this.scene.add(meshpiv.pivots.front);
-                }
-            }
-            
-            this.picker = new FacePick(this, 
-                this.meshes.left.geometry.attributes.position.array, 
-                this.meshes.right.geometry.attributes.position.array);
-            this.addEventListener("mix", this.picker.setMix.bind(this.picker));
-            this.addEventListener("resize", function(event) {
-                this.picker.resize(event.width, event.height);
-            }.bind(this));
-            this.controls.addEventListener("change", function() {
-                this.picker._valid = false;
-            }.bind(this));
-            this.controls.addEventListener("pick", function(event) {
-                this.picker.pick(event.x, event.y, event.keep);
-            }.bind(this));
-            this.controls.addEventListener("dblpick", function(event) {
-                this.picker.dblpick(event.x, event.y, event.keep);
-            }.bind(this));
-            this.controls.addEventListener("undblpick", function(event) {
-                this.picker.undblpick();
-            }.bind(this));
-
-            this.setState("target", this.surfcenter);
-            
-            if (typeof(callback) == "function")
-                this.loaded.done(callback);
-            this.loaded.resolve();
-        }.bind(this), true, true );
     };
     module.Viewer.prototype.resize = function(width, height) {
         if (width !== undefined) {
@@ -271,7 +116,6 @@ var mriview = (function(module) {
         this.renderer.domElement.style.width = w + 'px'; 
         this.renderer.domElement.style.height = h + 'px'; 
 
-        // this.renderer.setSize(w, h);
         this.camera.setSize(aspect * 100, 100);
         this.camera.updateProjectionMatrix();
         this.dispatchEvent({ type:"resize", width:w, height:h});
@@ -403,99 +247,7 @@ var mriview = (function(module) {
                 return startval * (1-idx) + endval * idx;
         }
     };
-    module.Viewer.prototype.reset_view = function(center, height) {
-        var asp = this.flatlims[1][0] / this.flatlims[1][1];
-        var camasp = height !== undefined ? asp : this.camera.cameraP.aspect;
-        var size = [module.flatscale*this.flatlims[1][0], module.flatscale*this.flatlims[1][1]];
-        var min = [module.flatscale*this.flatlims[0][0], module.flatscale*this.flatlims[0][1]];
-        var xoff = center ? 0 : size[0] / 2 - min[0];
-        var zoff = center ? 0 : size[1] / 2 - min[1];
-        var h = size[0] / 2 / camasp;
-        h /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
-        this.controls.target.set(xoff, this.flatoff[1], zoff);
-        this.controls.setCamera(180, 90, h);
-        this.setMix(1);
-        this.setShift(0);
-    };
-    module.Viewer.prototype.toggle_view = function() {
-        this.meshes.left.visible = !this.meshes.left.visible;
-        this.meshes.right.visible = !this.meshes.right.visible;
-        for (var i = 0; i < 3; i++) {
-            this.planes[i].update();
-            this.planes[i].mesh.visible = !this.planes[i].mesh.visible;
-        }
-        this.schedule();
-    };
-    // module.Viewer.prototype.saveflat = function(height, posturl) {
-    //     var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
-    //     var roistate = $(this.object).find("#roishow").attr("checked");
-    //     this.screenshot(width, height, function() { 
-    //         this.reset_view(false, height); 
-    //         $(this.object).find("#roishow").attr("checked", false);
-    //         $(this.object).find("#roishow").change();
-    //     }.bind(this), function(png) {
-    //         $(this.object).find("#roishow").attr("checked", roistate);
-    //         $(this.object).find("#roishow").change();
-    //         this.controls.target.set(0,0,0);
-    //         this.roipack.saveSVG(png, posturl);
-    //     }.bind(this));
-    // }; 
-    module.Viewer.prototype.setMix = function(val) {
-        var num = this.meshes.left.geometry.morphTargets.length;
-        var flat = num - 1;
-        var n1 = Math.floor(val * num)-1;
-        var n2 = Math.ceil(val * num)-1;
-
-        for (var h in this.meshes) {
-            var hemi = this.meshes[h];
-            if (hemi !== undefined) {
-                for (var i=0; i < num; i++) {
-                    hemi.morphTargetInfluences[i] = 0;
-                }
-
-                if (this.flatlims !== undefined)
-                    this.uniforms.hide_mwall.value = (n2 == flat);
-
-                hemi.morphTargetInfluences[n2] = (val * num)%1;
-                if (n1 >= 0)
-                    hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
-            }
-        }
-        if (this.flatlims !== undefined) {
-            this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
-            this.setPivot(this.flatmix*180);
-            this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
-        }
-        $(this.object).find("#mix").slider("value", val);
-        
-        this.dispatchEvent({type:"mix", flat:this.flatmix, mix:val});
-        this.figure.notify("setmix", this, [val]);
-        this.schedule();
-    }; 
-    module.Viewer.prototype.setPivot = function (val) {
-        $(this.object).find("#pivot").slider("option", "value", val);
-        this._pivot = val;
-        var names = {left:1, right:-1}
-        if (val > 0) {
-            for (var name in names) {
-                this.pivot[name].front.rotation.z = 0;
-                this.pivot[name].back.rotation.z = val*Math.PI/180 * names[name]/ 2;
-            }
-        } else {
-            for (var name in names) {
-                this.pivot[name].back.rotation.z = 0;
-                this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
-            }
-        }
-        this.figure.notify("setpivot", this, [val]);
-        this.schedule();
-    };
-    module.Viewer.prototype.setShift = function(val) {
-        this.pivot.left.front.position.x = -val;
-        this.pivot.right.front.position.x = val;
-        this.figure.notify('setshift', this, [val]);
-        this.schedule();
-    };
+    
     module.Viewer.prototype.addData = function(data) {
         if (!(data instanceof Array))
             data = [data];
@@ -518,10 +270,8 @@ var mriview = (function(module) {
         
         this.setData(data[0].name);
     };
-    module.Viewer.prototype.setData = function(name) {
-        if (this.state == "play")
-            this.playpause();
 
+    module.Viewer.prototype.setData = function(name) {
         if (name instanceof Array) {
             if (name.length == 1) {
                 name = name[0];
@@ -550,10 +300,8 @@ var mriview = (function(module) {
         }
 
         $.when(this.cmapload, this.loaded).done(function() {
-            this.setVoxView(this.active.filter, viewopts.voxlines);
             //this.active.init(this.uniforms, this.meshes);
             $(this.object).find("#vrange").slider("option", {min: this.active.data[0].min, max:this.active.data[0].max});
-            this.setVminmax(this.active.vmin[0][0], this.active.vmax[0][0], 0);
             if (this.active.data.length > 1) {
                 $(this.object).find("#vrange2").slider("option", {min: this.active.data[1].min, max:this.active.data[1].max});
                 this.setVminmax(this.active.vmin[0][1], this.active.vmax[0][1], 1);
@@ -632,56 +380,9 @@ var mriview = (function(module) {
         })
     };
 
-    module.Viewer.prototype.setColormap = function(cmap) {
-        if (typeof(cmap) == 'string') {
-            if (this.cmapnames[cmap] !== undefined)
-                $(this.object).find("#colormap").ddslick('select', {index:this.cmapnames[cmap]});
-
-            return;
-        } else if (cmap instanceof Image || cmap instanceof Element) {
-            this.colormap = new THREE.Texture(cmap);
-        } else if (cmap instanceof NParray) {
-            var ncolors = cmap.shape[cmap.shape.length-1];
-            if (ncolors != 3 && ncolors != 4)
-                throw "Invalid colormap shape"
-            var height = cmap.shape.length > 2 ? cmap.shape[1] : 1;
-            var fmt = ncolors == 3 ? THREE.RGBFormat : THREE.RGBAFormat;
-            this.colormap = new THREE.DataTexture(cmap.data, cmap.shape[0], height, fmt);
-        }
-
-        if (this.active !== null)
-            this.active.cmap = $(this.object).find("#colormap .dd-selected label").text();
-
-        this.cmapload = $.Deferred();
-        this.cmapload.done(function() {
-            this.colormap.needsUpdate = true;
-            this.colormap.premultiplyAlpha = true;
-            this.colormap.flipY = true;
-            this.colormap.minFilter = THREE.LinearFilter;
-            this.colormap.magFilter = THREE.LinearFilter;
-            this.uniforms.colormap.texture = this.colormap;
-            this.loaded.done(this.schedule.bind(this));
-            
-            if (this.colormap.image.height > 8) {
-                $(this.object).find(".vcolorbar").show();
-            } else {
-                $(this.object).find(".vcolorbar").hide();
-            }
-        }.bind(this));
-
-        if ((cmap instanceof Image || cmap instanceof Element) && !cmap.complete) {
-            cmap.addEventListener("load", function() { this.cmapload.resolve(); }.bind(this));
-        } else {
-            this.cmapload.resolve();
-        }
-    };
-
     module.Viewer.prototype.setVminmax = function(vmin, vmax, dim) {
         if (dim === undefined)
             dim = 0;
-        this.uniforms.vmin.value[dim] = vmin;
-        this.uniforms.vmax.value[dim] = vmax;
-
         var range, min, max;
         if (dim == 0) {
             range = "#vrange"; min = "#vmin"; max = "#vmax";
@@ -699,9 +400,7 @@ var mriview = (function(module) {
         $(this.object).find(range).slider("values", [vmin, vmax]);
         $(this.object).find(min).val(vmin);
         $(this.object).find(max).val(vmax);
-        this.active.vmin[0][dim] = vmin;
-        this.active.vmax[0][dim] = vmax;
-
+        this.active.setVminmax(vmin, vmax, dim);
         this.schedule();
     };
 
@@ -716,16 +415,6 @@ var mriview = (function(module) {
         $(this.object).find("#movieprogress div").slider("value", frame);
         $(this.object).find("#movieframe").attr("value", frame);
         this.schedule();
-    };
-
-    module.Viewer.prototype.setVoxView = function(interp, lines) {
-        viewopts.voxlines = lines;
-        if (this.active.filter != interp) {
-            this.active.setFilter(interp);
-        }
-        this.active.init(this.uniforms, this.meshes, this.flatlims !== undefined);
-        $(this.object).find("#datainterp option").attr("selected", null);
-        $(this.object).find("#datainterp option[value="+interp+"]").attr("selected", "selected");
     };
 
     module.Viewer.prototype.playpause = function() {
@@ -775,6 +464,7 @@ var mriview = (function(module) {
             $.post(post, {png:img.toDataURL()});
         return img;
     };
+
     var _bound = false;
     module.Viewer.prototype._bindUI = function() {
         $(window).scrollTop(0);
@@ -1072,20 +762,6 @@ var mriview = (function(module) {
         }
 
         $(this.object).find("#mix, #pivot, #shifthemis").parent().attr("colspan", names.length+2);
-    };
-    module.Viewer.prototype._makeMesh = function(geom, shader) {
-        //Creates the pivots and the mesh object given the geometry and shader
-        var mesh = new THREE.Mesh(geom, shader);
-        mesh.doubleSided = true;
-        mesh.position.y = -this.flatoff[1];
-        mesh.updateMatrix();
-        var pivots = {back:new THREE.Object3D(), front:new THREE.Object3D()};
-        pivots.back.add(mesh);
-        pivots.front.add(pivots.back);
-        pivots.back.position.y = geom.boundingBox.min.y - geom.boundingBox.max.y;
-        pivots.front.position.y = geom.boundingBox.max.y - geom.boundingBox.min.y + this.flatoff[1];
-
-        return {mesh:mesh, pivots:pivots};
     };
 
     return module;

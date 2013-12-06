@@ -76,10 +76,9 @@ class BrainCTM(object):
 
     def addSurf(self, typename, addtype=True, **kwargs):
         left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
-        self.left.addSurf(left[0], **kwargs)
-        self.right.addSurf(right[0], **kwargs)
-        if addtype:
-            self.types.append(typename)
+        self.left.addSurf(left[0], name=typename, **kwargs)
+        self.right.addSurf(right[0], name=typename, **kwargs)
+        self.types.append(typename)
 
     def addCurvature(self, **kwargs):
         npz = surfs.getSurfInfo(self.subject, type='curvature', **kwargs)
@@ -157,11 +156,8 @@ class Hemi(object):
         self.surfs = {}
         self.aux = np.zeros((len(self.ctm), 4))
 
-    def addSurf(self, pts, name=None, renorm=True):
+    def addSurf(self, pts, name, renorm=True):
         '''Scales the in-between surfaces to be same scale as fiducial'''
-        if name is None:
-            name = 'morphTarget%d'%len(self.surfs)
-
         if renorm:
             norm = (pts - pts.min(0)) / (pts.max(0) - pts.min(0))
             rnorm = norm * (self.pts.max(0) - self.pts.min(0)) + self.pts.min(0)

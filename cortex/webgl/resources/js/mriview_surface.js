@@ -1,8 +1,10 @@
 var mriview = (function(module) {
+    var flatscale = 0.25;
+
     module.Surface = function(viewer, ctminfo) {
         this.viewer = viewer;
         this.loaded = $.Deferred();
-        this.object = THREE.Object3D();
+        this.object = new THREE.Object3D();
         this.meshes = {};
         this.pivot = {};
 
@@ -15,10 +17,10 @@ var mriview = (function(module) {
                 shininess:  { type:'f',  value:200},
 
                 thickmix:   { type:'f',  value:0.5},
+                mix:        { type:'f', value:0},
 
-                //hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
-                //offsetRepeat:{type:'v4', value:new THREE.Vector4( 0, 0, 1, 1 ) },
                 //hatch:      { type:'t',  value:0, texture: module.makeHatch() },
+                //hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
                 hatchAlpha: { type:'f', value:1.},
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
 
@@ -47,7 +49,6 @@ var mriview = (function(module) {
                 )];
 
             this.names = json.names;
-            //this.controls.flatsize = module.flatscale * this.flatlims[1][0];
             var gb0 = geometries[0].boundingBox, gb1 = geometries[1].boundingBox;
             this.center = [
                 ((gb1.max.x - gb0.min.x) / 2) + gb0.min.x,
@@ -73,7 +74,7 @@ var mriview = (function(module) {
                 hemi.reorderVertices();
                 hemi.dynamic = true;
 
-                var meshpiv = this._makeMesh(hemi, this.shader);
+                var meshpiv = this._makeMesh(hemi, null);
                 this.meshes[name] = meshpiv.mesh;
                 this.pivot[name] = meshpiv.pivots;
                 this.object.add(meshpiv.pivots.front);
@@ -82,7 +83,35 @@ var mriview = (function(module) {
             this.loaded.resolve();
 
         }.bind(this), true, true);
-    }
+    };
+    module.Surface.prototype.apply = function(dataview) {
+        var shader = dataview.getShader(Shaders.surface, this.uniforms, {morphs:, volume:, rois:});
+        this.meshes.left.material = shader;
+        this.meshes.right.material = shader;
+    };
+
+    module.Surface.prototype.setMix = function(mix) {
+        this.uniforms.mix.value = mix;
+    };
+    module.Surface.prototype.setPivot = function (val) {
+        this._pivot = val;
+        var names = {left:1, right:-1}
+        if (val > 0) {
+            for (var name in names) {
+                this.pivot[name].front.rotation.z = 0;
+                this.pivot[name].back.rotation.z = val*Math.PI/180 * names[name]/ 2;
+            }
+        } else {
+            for (var name in names) {
+                this.pivot[name].back.rotation.z = 0;
+                this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
+            }
+        }
+    };
+    module.Surface.prototype.setShift = function(val) {
+        this.pivot.left.front.position.x = -val;
+        this.pivot.right.front.position.x = val;
+    };
 
     module.Surface.prototype._makeMesh = function(geom, shader) {
         //Creates the pivots and the mesh object given the geometry and shader
@@ -105,13 +134,13 @@ var mriview = (function(module) {
         var norms = new Float32Array(uv.length / 2 * 3);
         for (var i = 0, il = uv.length / 2; i < il; i++) {
             if (right) {
-                flat[i*3+1] = module.flatscale*uv[i*2] + this.flatoff[1];
+                flat[i*3+1] = flatscale*uv[i*2] + this.flatoff[1];
                 norms[i*3] = 1;
             } else {
-                flat[i*3+1] = module.flatscale*-uv[i*2] + this.flatoff[1];
+                flat[i*3+1] = flatscale*-uv[i*2] + this.flatoff[1];
                 norms[i*3] = -1;
             }
-            flat[i*3+2] = module.flatscale*uv[i*2+1];
+            flat[i*3+2] = flatscale*uv[i*2+1];
             uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
             uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
         }
