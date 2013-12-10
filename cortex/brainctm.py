@@ -167,6 +167,7 @@ class Hemi(object):
         attrib = np.hstack([rnorm, np.zeros((len(rnorm),1))])
         self.surfs[name] = attrib
         self.ctm.addAttrib(attrib, name)
+        print name
 
     def setFlat(self, pts):
         self.ctm.addUV(pts[:,:2].astype(float), 'uv')

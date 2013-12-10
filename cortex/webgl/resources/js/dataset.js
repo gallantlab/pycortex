@@ -64,7 +64,7 @@ var dataset = (function(module) {
 
         this.uniforms = {
             framemix:   { type:'f',   value:0},
-            data:       { type:'tv',  value:0, texture: [null, null, null, null]},
+            data:       { type:'tv',  value:[null, null, null, null]},
             mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
             dshape:     { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
             volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
@@ -107,7 +107,7 @@ var dataset = (function(module) {
                 merge[name] = uniforms[name];
             for (var name in this.uniforms)
                 merge[name] = this.uniforms[name];
-            merge.cmap = this.cmaps[i];
+            merge.cmap = this.cmap[i];
             merge.vmin = this.vmin[i];
             merge.vmax = this.vmax[i];
 
@@ -242,12 +242,12 @@ var dataset = (function(module) {
         uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
     };
     module.BrainData.prototype.set = function(uniforms, dim, fframe) {
-        if (uniforms.data.texture[dim*2] !== this.textures[fframe]) {
-            uniforms.data.texture[dim*2] = this.textures[fframe];
+        if (uniforms.data.value[dim*2] !== this.textures[fframe]) {
+            uniforms.data.value[dim*2] = this.textures[fframe];
             if (this.frames > 1) {
-                uniforms.data.texture[dim*2+1] = this.textures[(fframe+1).mod(this.frames)];
+                uniforms.data.value[dim*2+1] = this.textures[(fframe+1).mod(this.frames)];
             } else {
-                uniforms.data.texture[dim*2+1] = null;
+                uniforms.data.value[dim*2+1] = null;
             }
         }
     }

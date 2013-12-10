@@ -4,6 +4,27 @@ cimport cython
 cimport openctm
 cimport numpy as np
 
+uvmaps = [
+	openctm.CTM_UV_MAP_1, 
+	openctm.CTM_UV_MAP_2,
+	openctm.CTM_UV_MAP_3,
+	openctm.CTM_UV_MAP_4,
+	openctm.CTM_UV_MAP_5,
+	openctm.CTM_UV_MAP_6,
+	openctm.CTM_UV_MAP_7,
+	openctm.CTM_UV_MAP_8,
+]
+attrmaps = [
+	openctm.CTM_ATTRIB_MAP_1,
+	openctm.CTM_ATTRIB_MAP_2,
+	openctm.CTM_ATTRIB_MAP_3,
+	openctm.CTM_ATTRIB_MAP_4,
+	openctm.CTM_ATTRIB_MAP_5,
+	openctm.CTM_ATTRIB_MAP_6,
+	openctm.CTM_ATTRIB_MAP_7,
+	openctm.CTM_ATTRIB_MAP_8,
+]
+
 cdef class CTMfile:
 	cdef CTMcontext ctx
 
@@ -14,11 +35,12 @@ cdef class CTMfile:
 	cdef object pts
 	cdef object polys
 	cdef object norms
-	cdef dict attribs
-	cdef dict uvs
+	cdef public dict attribs
+	cdef public dict uvs
 
 	def __cinit__(self, bytes filename, str mode='r'):
 		cdef openctm.CTMenum err
+		cdef char* name
 		self.filename = filename
 		self.mode = mode
 		self.attribs = {}
@@ -30,6 +52,16 @@ cdef class CTMfile:
 			err = ctmGetError(self.ctx)
 			if err != openctm.CTM_NONE:
 				raise IOError(openctm.ctmErrorString(err))
+
+			nuv = openctm.ctmGetInteger(self.ctx, openctm.CTM_UV_MAP_COUNT)
+			nattr = openctm.ctmGetInteger(self.ctx, openctm.CTM_ATTRIB_MAP_COUNT)
+			for i, uv in enumerate(uvmaps[:nuv]):
+				name = openctm.ctmGetUVMapString(self.ctx, uv, openctm.CTM_NAME)
+				self.uvs[i] = name
+
+			for i, attr in enumerate(attrmaps[:nattr]):
+				name = openctm.ctmGetAttribMapString(self.ctx, attr, openctm.CTM_NAME)
+				self.attribs[i] = name
 
 		elif mode == 'w':
 			self.ctx = openctm.ctmNewContext(openctm.CTM_EXPORT)

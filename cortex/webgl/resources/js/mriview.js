@@ -5,7 +5,6 @@ var dpi_ratio = window.devicePixelRatio || 1;
 var mriview = (function(module) {
     module.Viewer = function(figure) { 
         //Allow objects to listen for mix updates
-        THREE.EventTarget.call( this );
         jsplot.Axes.call(this, figure);
 
         //Initialize all the html
@@ -25,30 +24,34 @@ var mriview = (function(module) {
         this.canvas = $(this.object).find("#brain");
 
         // scene and camera
-        this.camera = new THREE.CombinedCamera( this.canvas.width(), this.canvas.height(), 45, 1.0, 1000, 1., 1000. );
-        this.camera.position.set(0, 0, 0);
-        this.camera.up.set(0,0,1);
-
         this.scene = new THREE.Scene();
-        this.scene.add( this.camera );
+        this.camera = new THREE.CombinedCamera( this.canvas.width(), this.canvas.height(), 45, 1.0, 1000, 1., 1000. );
+        this.camera.up.set(0,0,1);
+        this.camera.position.set(0, 200, 0);
+        this.camera.lookAt(new THREE.Vector3(0,0,0));
         
         this.light = new THREE.DirectionalLight( 0xffffff );
         this.light.position.set( -200, -200, 1000 ).normalize();
         this.camera.add( this.light );
 
+        //test cube
+        var cube = new THREE.CubeGeometry(100, 100, 100);
+        var mat = new THREE.MeshLambertMaterial({color:0xffffff});
+        this.test = new THREE.Mesh(cube, mat);
+        this.scene.add(this.test);
+
         // renderer
         this.renderer = new THREE.WebGLRenderer({ 
+            alpha:false,
             antialias: true, 
             preserveDrawingBuffer:true, 
             canvas:this.canvas[0],
         });
-        this.renderer.sortObjects = true;
-        this.renderer.setClearColorHex( 0x0, 1 );
-        this.renderer.context.getExtension("OES_texture_float");
-        this.renderer.context.getExtension("OES_texture_float_linear");
-        this.renderer.context.getExtension("OES_standard_derivatives");
+        this.renderer.setClearColor(new THREE.Color(0, 0, 0));
         this.renderer.setSize( this.canvas.width(), this.canvas.height() );
+        this.renderer.sortObjects = false;
         
+
         this.state = "pause";
         this._startplay = null;
         this._animation = null;
@@ -65,6 +68,7 @@ var mriview = (function(module) {
 
         //this._bindUI();
 
+        //Figure registrations
         this.figure.register("playsync", this, function(time) {
             if (this._startplay != null)
                 this._startplay = (new Date()) - (time * 1000);
@@ -73,6 +77,7 @@ var mriview = (function(module) {
         this.figure.register("setFrame", this, this.setFrame.bind(this));
     }
     module.Viewer.prototype = Object.create(jsplot.Axes.prototype);
+    THREE.EventDispatcher.prototype.apply(module.Viewer.prototype);
     module.Viewer.prototype.constructor = module.Viewer;
     
     module.Viewer.prototype.schedule = function() {
@@ -102,6 +107,7 @@ var mriview = (function(module) {
         this.renderer.render(this.scene, this.camera);
         this._scheduled = false;
         this.dispatchEvent({type:"draw"});
+        console.log("draw");
     };
     module.Viewer.prototype.resize = function(width, height) {
         if (width !== undefined) {
@@ -538,10 +544,10 @@ var mriview = (function(module) {
         this.camera.setSize(width, height);
         this.camera.updateProjectionMatrix();
         //this.renderer.setSize(width, height);
-        this.renderer.setClearColorHex(0x0, 0);
+        this.renderer.setClearColor(new THREE.Color(0,0,0), 0);
         this.renderer.render(this.scene, this.camera, renderbuf);
         //this.renderer.setSize(oldw, oldh);
-        this.renderer.setClearColorHex(clearColor, clearAlpha);
+        this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
         this.camera.setSize(oldw, oldh);
         this.camera.updateProjectionMatrix();
 
