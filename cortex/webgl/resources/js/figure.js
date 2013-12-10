@@ -21,8 +21,6 @@ var jsplot = (function (module) {
     }
 
     module.Figure = function(parent) {
-        THREE.EventTarget.call(this);
-
         this._notifying = false;
         this.axes = [];
         this.ax = null;
@@ -38,6 +36,8 @@ var jsplot = (function (module) {
             parent.addEventListener('resize', this.resize.bind(this));
         }
     }
+    THREE.EventDispatcher.prototype.apply(module.Figure.prototype);
+
     module.Figure.prototype.init = function() {}
     module.Figure.prototype.register = function(eventType, self, func) {
         if (this.parent && this.parent instanceof module.Figure) {
@@ -174,13 +174,13 @@ var jsplot = (function (module) {
 
 
     module.Axes = function(figure) {
-        THREE.EventTarget.call(this);
         this.figure = figure;
         this.object = document.createElement("div");
         this.object.className = "jsplot_axes";
 
         this.figure.addEventListener("resize", this.resize.bind(this));
     }
+    THREE.EventDispatcher.prototype.apply(module.Axes.prototype);
     module.Axes.prototype.resize = function() {}
 
 

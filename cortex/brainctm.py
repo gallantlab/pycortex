@@ -78,7 +78,8 @@ class BrainCTM(object):
         left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
         self.left.addSurf(left[0], name=typename, **kwargs)
         self.right.addSurf(right[0], name=typename, **kwargs)
-        self.types.append(typename)
+        if addtype:
+            self.types.append(typename)
 
     def addCurvature(self, **kwargs):
         npz = surfs.getSurfInfo(self.subject, type='curvature', **kwargs)
@@ -167,6 +168,7 @@ class Hemi(object):
         attrib = np.hstack([rnorm, np.zeros((len(rnorm),1))])
         self.surfs[name] = attrib
         self.ctm.addAttrib(attrib, name)
+        print name
 
     def setFlat(self, pts):
         self.ctm.addUV(pts[:,:2].astype(float), 'uv')

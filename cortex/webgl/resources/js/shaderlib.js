@@ -97,6 +97,7 @@ var Shaderlib = (function() {
             "uniform vec3 emissive;",
             "uniform vec3 specular;",
             "uniform float shininess;",
+            "uniform float specularStrength;",
 
             "uniform sampler2D colormap;",
             "uniform float vmin[2];",
@@ -113,21 +114,24 @@ var Shaderlib = (function() {
         ].join("\n"),
 
         mixer: function(morphs) {
-            var glsl = [
+            var glsl = "";
+            for (var i = 0; i < morphs-1; i++) {
+                glsl += "attribute vec3 mixSurfs"+i+";\n";
+                glsl += "attribute vec3 mixNorms"+i+";\n";
+            }
+            glsl += [
             "uniform float mix;",
-            "attribute vec3 mixSurfs["+(morphs-1)+"];",
-            "attribute vec3 mixNorms["+(morphs-1)+"];",
-            "void mixfunc(vec3 basepos, vec3 pos, vec3 norm) {",
+            "void mixfunc(vec3 basepos, vec3 basenorm, vec3 pos, vec3 norm) {",
                 "float smix = mix * "+morphs+".;",
                 "float factor = clamp(1. - smix, 0., 1.);",
                 "pos = factor * basepos;",
-                "norm = factor * normal;",
+                "norm = factor * basenorm;",
                 "",
             ].join("\n");
             for (var i = 1; i < morphs; i++) {
                 glsl += "factor = clamp("+(i+1)+". - smix, "+i+"., "+(i+1)+".) - "+i+".;\n";
-                glsl += "pos  += factor * mixSurfs["+i+"];\n";
-                glsl += "norm += factor * mixNorms["+i+"];\n";
+                glsl += "pos  += factor * mixSurfs"+(i-1)+";\n";
+                glsl += "norm += factor * mixNorms"+(i-1)+";\n";
             }
 
             return glsl+"}\n";
@@ -265,7 +269,7 @@ var Shaderlib = (function() {
 
             "uniform float thickmix;",
             "attribute vec3 position2;",
-            //"attribute vec3 normal2;",
+            "attribute vec3 normal2;",
 
             "attribute vec4 auxdat;",
             // "attribute float dropout;",
@@ -300,9 +304,11 @@ var Shaderlib = (function() {
             "#ifdef TWOD",
                 "vPos_y[1] = (volxfm[1]*vec4(position2,1.)).xyz;",
             "#endif",
-                "vec3 npos = mix(position, position2, thickmix);",
+                "vec3 mpos = mix(position, position2, thickmix);",
+                "vec3 mnorm = mix(normal, normal2, thickmix);",
         "#else",
                 "vec3 npos = position;",
+                "vec3 mnorm = normal;",
         "#endif",
 
                 //Overlay
@@ -316,7 +322,7 @@ var Shaderlib = (function() {
 
                 "vec3 pos = vec3(0.);",
                 "vec3 norm = vec3(0.);",
-                "mixfunc(npos, pos, norm);",
+                "mixfunc(mpos, mnorm, pos, norm);",
 
                 "vNormal = normalMatrix * norm;",
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
@@ -448,7 +454,7 @@ var Shaderlib = (function() {
 
                 //roi layer
             "#ifdef ROI_RENDER",
-                "vec4 rColor = texture2D(map, vUv);",
+                "vec4 rColor = texture2D(overlay, vUv);",
             "#endif",          
 
             "if (vMedial < .999) {",
@@ -468,8 +474,162 @@ var Shaderlib = (function() {
             "}"
             ].join("\n");
 
+            var attributes = {
+                position2: { type: 'v3', value:null },
+                auxdat: { type: 'v4', value:null },
+            };
+            for (var i = 0; i < morphs-1; i++) {
+                attributes['mixSurfs'+i] = { type:'v3', value:null};
+                attributes['mixNorms'+i] = { type:'v3', value:null};
+            }
 
-            return {vertex:header+vertShade, fragment:header+fragHead+fragMid+fragTail};
+            return {vertex:header+vertShade, fragment:header+fragHead+fragMid+fragTail, attrs:attributes};
+        },
+        surf_plain: function(raw, twod, voxline, morphs) {
+            var header = "#define ROI_RENDER\n";
+            if (voxline)
+                header += "#define VOXLINE\n";
+            if (raw)
+                header += "#define RAWCOLORS\n";
+            if (twod)
+                header += "#define TWOD\n";
+
+            var vertShade =  [
+            THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+
+            "uniform float thickmix;",
+            "attribute vec3 position2;",
+            "attribute vec3 normal2;",
+
+            "attribute vec4 auxdat;",
+            // "attribute float dropout;",
+            
+            "varying vec2 vUv;",
+            "varying float vCurv;",
+            // "varying float vDrop;",
+            "varying float vMedial;",
+
+            "varying vec3 vViewPosition;",
+            "varying vec3 vNormal;",
+
+            utils.mixer(morphs),
+
+            "void main() {",
+                "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
+                "vViewPosition = -mvPosition.xyz;",
+
+                //Overlay
+            "#ifdef ROI_RENDER",
+                "vUv = uv;",
+            "#endif",
+
+                // "vDrop = dropout;",
+                "vMedial = auxdat.x;",
+                "vCurv = auxdat.y;",
+
+                "vec3 pos = vec3(0.);",
+                "vec3 norm = vec3(0.);",
+                "mixfunc(position, normal, pos, norm);",
+
+                "vNormal = normalMatrix * norm;",
+                "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
+            "}"
+            ].join("\n");
+
+            var fragment = [
+            "#extension GL_OES_standard_derivatives: enable",
+            "#extension GL_OES_texture_float: enable",
+
+            THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
+
+        "#ifdef ROI_RENDER",
+            "varying vec2 vUv;",
+            "uniform sampler2D overlay;",
+        "#endif",
+
+            "uniform int hide_mwall;",
+            "uniform float curvAlpha;",
+            "uniform float curvScale;",
+            "uniform float curvLim;",
+            "uniform float hatchAlpha;",
+            "uniform vec3 hatchColor;",
+            "uniform sampler2D hatch;",
+            "uniform vec2 hatchrep;",
+
+            "varying float vCurv;",
+            // "varying float vDrop;",
+            "varying float vMedial;",
+
+            utils.standard_frag_vars,
+            utils.rand,
+            utils.edge,
+            utils.colormap,
+
+            "void main() {",
+                //Curvature Underlay
+                "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
+                "vec4 cColor = vec4(vec3(curv) * curvAlpha, curvAlpha);",
+
+            "#ifdef RAWCOLORS",
+                "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
+            "#else",
+                "vec4 values = vec4(0.);",
+            "#endif",
+            
+            "#ifdef RAWCOLORS",
+                "vec4 vColor = mix(color[0], color[1], framemix);",
+            "#else",
+                "vec4 vColor = colorlut(values);",
+            "#endif",
+                "vColor *= dataAlpha;",
+
+        "#ifdef VOXLINE",
+            "#ifdef CORTSHEET",
+                "vec3 coord = mix(vPos_x[0], vPos_x[1], 0.5);",
+            "#else",
+                "vec3 coord = vPos_x[0];",
+            "#endif",
+                "vec3 edge = abs(fract(coord) - vec3(0.5));",
+                "vColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge*1.001));",
+        "#endif",
+
+                //Cross hatch / dropout layer
+                // "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
+                // "vec4 hColor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
+
+                //roi layer
+            "#ifdef ROI_RENDER",
+                "vec4 rColor = texture2D(overlay, vUv);",
+            "#endif",          
+/*
+            "if (vMedial < .999) {",
+                "gl_FragColor = cColor;",
+                "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
+        "#ifdef ROI_RENDER",
+                "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
+        "#endif",
+            "} else if (hide_mwall == 1) {",
+                "discard;",
+            "} else {",
+                "gl_FragColor = cColor;",
+            "}",
+
+                THREE.ShaderChunk[ "lights_phong_fragment" ],
+                */
+                "gl_FragColor = vec4(1., 0., 0., 1.);",
+            "}"
+            ].join("\n");
+
+            var attributes = {
+                auxdat: { type: 'v4', value:null },
+            };
+            for (var i = 0; i < morphs-1; i++) {
+                attributes['mixSurfs'+i] = { type:'v3', value:null};
+                attributes['mixNorms'+i] = { type:'v3', value:null};
+            }
+
+            return {vertex:header+vertShade, fragment:header+fragment, attrs:attributes};
         },
         pick: function() {
             var vertShade = [

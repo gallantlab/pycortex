@@ -5,8 +5,12 @@ var mriview = (function(module) {
         this.viewer = viewer;
         this.loaded = $.Deferred();
         this.object = new THREE.Object3D();
+        this.viewer.scene.add(this.object);
+
         this.meshes = {};
         this.pivot = {};
+        this.volume = 0;
+        this._pivot = 0;
 
         this.uniforms = THREE.UniformsUtils.merge( [
             THREE.UniformsLib[ "lights" ],
@@ -15,6 +19,7 @@ var mriview = (function(module) {
                 specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
                 shininess:  { type:'f',  value:200},
+                specularStrength:{ type:'f',  value:1},
 
                 thickmix:   { type:'f',  value:0.5},
                 mix:        { type:'f', value:0},
@@ -24,7 +29,7 @@ var mriview = (function(module) {
                 hatchAlpha: { type:'f', value:1.},
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
 
-                overlay:    { type:'t',  value:0, texture: this.blanktex },
+                overlay:    { type:'t', value:0, texture: this.blanktex },
                 hide_mwall: { type:'i', value:0},
 
                 curvAlpha:  { type:'f', value:1.},
@@ -34,7 +39,7 @@ var mriview = (function(module) {
         ]);
 
         var loader = new THREE.CTMLoader(false);
-        loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
+        loader.loadParts( ctminfo, function( geometries, materials, json ) {
             geometries[0].computeBoundingBox();
             geometries[1].computeBoundingBox();
 
@@ -60,20 +65,34 @@ var mriview = (function(module) {
             var posdata = {left:[], right:[]};
             for (var name in names) {
                 var hemi = geometries[names[name]];
+                posdata[name].push(hemi.attributes.position);
+
+                //Put attributes in the correct locations for the shader
+                if (hemi.attributes['wm'] !== undefined) {
+                    this.volume = 1;
+                    hemi.attributes['position2'] = hemi.attributes['wm'];
+                    hemi.attributes['position2'].stride = 4;
+                    hemi.attributes['position2'].itemSize = 3;
+                    hemi.attributes['normal2'] = module.computeNormal(hemi.attributes['wm'], hemi.attributes.index, hemi.offsets);
+                    delete hemi.attributes['wm'];
+                }
+                for (var i = 0; i < json.names.length; i++ ) {
+                    hemi.attributes['mixSurfs'+i] = hemi.attributes[json.names[i]];
+                    hemi.attributes['mixSurfs'+i].stride = 4;
+                    hemi.attributes['mixSurfs'+i].itemSize = 3;
+                    hemi.attributes['mixNorms'+i] = module.computeNormal(hemi.attributes[json.names[i]], hemi.attributes.index, hemi.offsets);
+                    posdata[name].push(hemi.attributes['mixSurfs'+i]);
+                    delete hemi.attributes[json.names[i]];
+                }
 
                 if (this.flatlims !== undefined) {
                     var flats = this._makeFlat(hemi.attributes.uv.array, json.flatlims, names[name]);
-                    hemi.morphTargets.push({itemSize:3, stride:3, array:flats.pos});
-                    hemi.morphNormals.push(flats.norms);
-                    posdata[name].push(hemi.attributes.position);
-                    for (var i = 0, il = hemi.morphTargets.length; i < il; i++) {
-                        posdata[name].push(hemi.morphTargets[i]);
-                    }
+                    hemi.attributes['mixSurfs'+json.names.length] = {itemSize:3, array:flats.pos};
+                    hemi.attributes['mixNorms'+json.names.length] = {itemSize:3, array:flats.norms};
+                    posdata[name].push(hemi.attributes['mixSurfs'+json.names.length]);
                 }
 
-                hemi.reorderVertices();
                 hemi.dynamic = true;
-
                 var meshpiv = this._makeMesh(hemi, null);
                 meshpiv.pivots.front.position.set(center[0], center[1], center[2]);
                 this.meshes[name] = meshpiv.mesh;
@@ -81,14 +100,39 @@ var mriview = (function(module) {
                 this.object.add(meshpiv.pivots.front);
             }
 
+            //Add anatomical and flat names
+            this.names.unshift("anatomicals");
+            if (this.flatlims !== undefined) {
+                this.names.push("flat");
+            }
+
+            this.viewer.canvas[0].style.opacity = 1;
             this.loaded.resolve();
 
-        }.bind(this), true, true);
+        }.bind(this), {useWorker:true});
     };
     module.Surface.prototype.apply = function(dataview) {
-        var shader = dataview.getShader(Shaders.surface, this.uniforms, {morphs:, volume:, rois:});
-        this.meshes.left.material = shader;
-        this.meshes.right.material = shader;
+        if (dataview instanceof dataset.DataView) {
+            var shader = dataview.getShader(Shaders.surface, this.uniforms, {
+                morphs:this.names.length, 
+                volume:this.volume, 
+                rois:  this.flatlims !== undefined});
+            this.meshes.left.material = shader[0];
+            this.meshes.right.material = shader[0];
+        } else {
+            var shadecode = Shaders.surf_plain(false, false, viewopts.voxlines, this.names.length);
+            var shader = new THREE.ShaderMaterial({ 
+                vertexShader:shadecode.vertex,
+                fragmentShader:shadecode.fragment,
+                attributes: shadecode.attrs,
+                uniforms: this.uniforms,
+                lights:true, 
+                blending:THREE.CustomBlending,
+            });
+            shader.metal = true;
+            this.meshes.left.material = shader;
+            this.meshes.right.material = shader;
+        }
         this.viewer.schedule();
     };
 
