@@ -11,6 +11,7 @@ var mriview = (function(module) {
         this.pivot = {};
         this.volume = 0;
         this._pivot = 0;
+        this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
         this.uniforms = THREE.UniformsUtils.merge( [
             THREE.UniformsLib[ "lights" ],
@@ -18,20 +19,17 @@ var mriview = (function(module) {
                 diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
                 specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
-                shininess:  { type:'f',  value:200},
+                shininess:  { type:'f',  value:500},
                 specularStrength:{ type:'f',  value:1},
 
                 thickmix:   { type:'f',  value:0.5},
-                mix:        { type:'f', value:0},
+                surfmix:    { type:'f',  value:0},
 
                 //hatch:      { type:'t',  value:0, texture: module.makeHatch() },
                 //hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
                 hatchAlpha: { type:'f', value:1.},
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
-
-                overlay:    { type:'t', value:0, texture: this.blanktex },
-                hide_mwall: { type:'i', value:0},
-
+                overlay:    { type:'t', value:this.blanktex },
                 curvAlpha:  { type:'f', value:1.},
                 curvScale:  { type:'f', value:.5},
                 curvLim:    { type:'f', value:.2},
@@ -60,6 +58,8 @@ var mriview = (function(module) {
                 (Math.max(gb0.max.y, gb1.max.y) - Math.min(gb0.min.y, gb1.min.y)) / 2 + Math.min(gb0.min.y, gb1.min.y),
                 (Math.max(gb0.max.z, gb1.max.z) - Math.min(gb0.min.z, gb1.min.z)) / 2 + Math.min(gb0.min.z, gb1.min.z),
             ];
+            this.center = center;
+            this.object.position.set(0, -center[1], -center[2]);
 
             var names = {left:0, right:1};
             var posdata = {left:[], right:[]};
@@ -94,11 +94,12 @@ var mriview = (function(module) {
 
                 hemi.dynamic = true;
                 var meshpiv = this._makeMesh(hemi, null);
-                meshpiv.pivots.front.position.set(center[0], center[1], center[2]);
+
                 this.meshes[name] = meshpiv.mesh;
                 this.pivot[name] = meshpiv.pivots;
                 this.object.add(meshpiv.pivots.front);
             }
+
 
             //Add anatomical and flat names
             this.names.unshift("anatomicals");
@@ -116,7 +117,7 @@ var mriview = (function(module) {
             var shader = dataview.getShader(Shaders.surface, this.uniforms, {
                 morphs:this.names.length, 
                 volume:this.volume, 
-                rois:  this.flatlims !== undefined});
+                rois:  false});
             this.meshes.left.material = shader[0];
             this.meshes.right.material = shader[0];
         } else {
@@ -135,10 +136,30 @@ var mriview = (function(module) {
         }
         this.viewer.schedule();
     };
+    module.Surface.prototype.handleEvent = function(event) {
+
+    };
+
+    module.Surface.prototype.rotate = function(x, y) {
+        //Rotate the surface given the X and Y mouse displacement
+        this.rotation[0] += x;
+        this.rotation[1] += y;
+        this.rotation[0] = this.rotation[0] % 360;
+        this.rotation[1] = -90 < this.rotation[1] ? (this.rotation[1] < 90 ? this.rotation[1] : 90) : -90;
+        this.object.rotation.set(0,0,0, 'ZYX');
+        this.object.rotateX(this.rotation[1] * Math.PI / 180);
+        this.object.rotateZ(this.rotation[0] * Math.PI / 180);
+        this.viewer.schedule();
+    }
 
     module.Surface.prototype.setMix = function(mix) {
-        this.uniforms.mix.value = mix;
-        this.viewer.schedule();
+        this.uniforms.surfmix.value = mix;
+        var smix = mix * (this.names.length - 1);
+        var factor = 1 - Math.abs(smix - (this.names.length-1));
+        var clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
+        this.uniforms.specularStrength.value = 1-clipped;
+        this.setPivot( 180 * clipped);
+        //this.viewer.schedule();
     };
     module.Surface.prototype.setPivot = function (val) {
         this._pivot = val;
@@ -154,6 +175,7 @@ var mriview = (function(module) {
                 this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
             }
         }
+        this.viewer.schedule();
     };
     module.Surface.prototype.setShift = function(val) {
         this.pivot.left.front.position.x = -val;
@@ -163,7 +185,6 @@ var mriview = (function(module) {
     module.Surface.prototype._makeMesh = function(geom, shader) {
         //Creates the pivots and the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);
-        mesh.doubleSided = true;
         mesh.position.y = -this.flatoff[1];
         mesh.updateMatrix();
         var pivots = {back:new THREE.Object3D(), front:new THREE.Object3D()};

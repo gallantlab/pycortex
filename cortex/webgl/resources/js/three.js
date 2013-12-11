@@ -22149,7 +22149,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 									attributeStride = attributeItem.stride || attributeItem.itemSize;
 									_gl.bindBuffer( _gl.ARRAY_BUFFER, attributeItem.buffer );
 									enableAttribute( attributePointer );
-									_gl.vertexAttribPointer( attributePointer, attributeSize, _gl.FLOAT, false, attributeStride * 4, startIndex * attributeSize * 4 ); // 4 bytes per Float32
+									_gl.vertexAttribPointer( attributePointer, attributeSize, _gl.FLOAT, false, attributeStride * 4, startIndex * attributeStride * 4 ); // 4 bytes per Float32
 
 								} else if ( material.defaultAttributeValues ) {
 

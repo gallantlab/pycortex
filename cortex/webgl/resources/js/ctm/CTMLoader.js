@@ -245,10 +245,12 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback ) {
                 var sx = v * 3,
                     sy = v * 3 + 1,
                     sz = v * 3 + 2,
+                    sw,
 
                 dx = vt * 3,
                 dy = vt * 3 + 1,
-                dz = vt * 3 + 2;
+                dz = vt * 3 + 2,
+                dw;
 
                 newVertices[ dx ] = vertexPositionArray[ sx ];
                 newVertices[ dy ] = vertexPositionArray[ sy ];
@@ -260,16 +262,28 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback ) {
                     newNormals[ dz ] = vertexNormalArray[ sz ];
                 }
 
+                sx = v * 2;
+                sy = v * 2 + 1;
+                dx = vt * 2;
+                dy = vt * 2 + 1;
                 for (var i in vertexUvArrays) {
-                    newUvs[i][ vt * 2 ]     = vertexUvArrays[i][ v * 2 ];
-                    newUvs[i][ vt * 2 + 1 ] = vertexUvArrays[i][ v * 2 + 1 ];
+                    newUvs[i][ dx ]     = vertexUvArrays[i][ sx ];
+                    newUvs[i][ dy ] = vertexUvArrays[i][ sy ];
                 }
 
+                sx = v * 4;
+                sy = v * 4 + 1;
+                sz = v * 4 + 2;
+                sw = v * 4 + 3;
+                dx = vt * 4;
+                dy = vt * 4 + 1;
+                dz = vt * 4 + 2;
+                dw = vt * 4 + 3;
                 for (var i in vertexAttrArrays) {
-                    newAttrs[i][ vt * 4 ]     = vertexAttrArrays[i][ v * 4 ];
-                    newAttrs[i][ vt * 4 + 1 ] = vertexAttrArrays[i][ v * 4 + 1 ];
-                    newAttrs[i][ vt * 4 + 2 ] = vertexAttrArrays[i][ v * 4 + 2 ];
-                    newAttrs[i][ vt * 4 + 3 ] = vertexAttrArrays[i][ v * 4 + 3 ];
+                    newAttrs[i][ dx ]     = vertexAttrArrays[i][ sx ];
+                    newAttrs[i][ dy ] = vertexAttrArrays[i][ sy ];
+                    newAttrs[i][ dz ] = vertexAttrArrays[i][ sz ];
+                    newAttrs[i][ dw ] = vertexAttrArrays[i][ sw ];
                 }
 
             }

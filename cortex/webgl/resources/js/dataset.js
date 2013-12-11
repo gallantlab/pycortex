@@ -46,9 +46,6 @@ var dataset = (function(module) {
 
         //Still no multiviews!
         this.xfm = json.xfm[0];
-        this.cmap = json.cmap[0];
-        this.vmin = json.vmin[0];
-        this.vmax = json.vmax[0];
 
         this.attrs = json.attrs;
         this.state = json.state;
@@ -58,7 +55,19 @@ var dataset = (function(module) {
         this.filter = json.attrs.filter === undefined ? "nearest" : json.attrs.filter;
         if (json.attrs.stim !== undefined)
             this.stim = "stim/"+json.attrs.stim;
-        
+
+        var vmin = json.vmin[0];
+        var vmax = json.vmax[0];
+        var cmap = json.cmap[0];
+        this.cmap = [];
+        this.vmin = [];
+        this.vmax = [];
+        for (var i = 0; i < this.data.length; i++) {
+            this.cmap.push({ type:'t',   value:colormaps[cmap[i] || "RdBu_r"]});
+            this.vmin.push({ type:'fv1', value:[vmin[i][0],vmin[i][1] || 0] });
+            this.vmax.push({ type:'fv1', value:[vmax[i][0],vmax[i][1] || 0] });
+        }
+
         this.frames = this.data[0].frames
         this.length = this.frames / this.rate;
 
@@ -102,14 +111,15 @@ var dataset = (function(module) {
         var shaders = [];
         for (var i = 0; i < this.data.length; i++) {
             //Run a shallow merge on the uniform variables
-            var merge = {};
-            for (var name in uniforms)
-                merge[name] = uniforms[name];
+            var merge = {
+                colormap: this.cmap[i],
+                vmin:     this.vmin[i],
+                vmax:     this.vmax[i]
+            }
             for (var name in this.uniforms)
                 merge[name] = this.uniforms[name];
-            merge.cmap = this.cmap[i];
-            merge.vmin = this.vmin[i];
-            merge.vmax = this.vmax[i];
+            for (var name in uniforms)
+                merge[name] = uniforms[name];
 
             var sampler = module.samplers[this.filter];
             var shadecode = shaderfunc(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, opts);
@@ -122,6 +132,7 @@ var dataset = (function(module) {
                 blending:THREE.CustomBlending,
             });
             shader.metal = true;
+            shader.side = THREE.DoubleSide;
             shaders.push(shader);
         }
 

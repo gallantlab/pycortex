@@ -27,18 +27,29 @@ var mriview = (function(module) {
         this.scene = new THREE.Scene();
         this.camera = new THREE.CombinedCamera( this.canvas.width(), this.canvas.height(), 45, 1.0, 1000, 1., 1000. );
         this.camera.up.set(0,0,1);
-        this.camera.position.set(0, 200, 0);
+        this.camera.position.set(0, -400, 0);
         this.camera.lookAt(new THREE.Vector3(0,0,0));
+        this.scene.add(this.camera);
         
-        this.light = new THREE.DirectionalLight( 0xffffff );
-        this.light.position.set( -200, -200, 1000 ).normalize();
-        this.camera.add( this.light );
+        //These lights approximately match what's done by vtk
+        this.lights = [new THREE.DirectionalLight( 0xffffff ), new THREE.DirectionalLight(0xffffff), new THREE.DirectionalLight(0xffffff)];
+        this.lights[0].position.set( 1, -1, -1 ).normalize();
+        this.lights[1].position.set( -1, -.25, .75 ).normalize();
+        this.lights[2].position.set( 1, -.25, .75 ).normalize();
+        this.lights[0].intensity = .47;
+        this.lights[1].intensity = .29;
+        this.lights[2].intensity = .24;
+        this.camera.add( this.lights[0] );
+        this.camera.add( this.lights[1] );
+        this.camera.add( this.lights[2] );
 
-        //test cube
-        var cube = new THREE.CubeGeometry(100, 100, 100);
-        var mat = new THREE.MeshLambertMaterial({color:0xffffff});
-        this.test = new THREE.Mesh(cube, mat);
-        this.scene.add(this.test);
+        this.surfaces = [];
+
+        this.controls = new THREE.LandscapeControls($(this.object).find("#braincover")[0], this.camera);
+        this.addEventListener("resize", function(event) {
+            this.controls.resize(event.width, event.height);
+        });
+        this.controls.addEventListener("change", this.schedule.bind(this));
 
         // renderer
         this.renderer = new THREE.WebGLRenderer({ 
@@ -50,7 +61,6 @@ var mriview = (function(module) {
         this.renderer.setClearColor(new THREE.Color(0, 0, 0));
         this.renderer.setSize( this.canvas.width(), this.canvas.height() );
         this.renderer.sortObjects = false;
-        
 
         this.state = "pause";
         this._startplay = null;
@@ -104,10 +114,10 @@ var mriview = (function(module) {
                 delete this._animation;
             }
         }
+        this.controls.update(0);
         this.renderer.render(this.scene, this.camera);
         this._scheduled = false;
         this.dispatchEvent({type:"draw"});
-        console.log("draw");
     };
     module.Viewer.prototype.resize = function(width, height) {
         if (width !== undefined) {
