@@ -3,9 +3,6 @@
  */
 
 THREE.LandscapeControls = function ( cover, camera ) {
-
-    THREE.EventTarget.call( this );
-
     var _this = this;
     STATE = { NONE : -1, ROTATE : 0, PAN : 1, ZOOM : 2 };
     var statefunc = { 
@@ -57,7 +54,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
             _state = 0;
             mouseChange = _end;
         } else 
-            mouseChange = _end.clone().subSelf(_start);
+            mouseChange = _end.clone().sub(_start);
 
         if (mouseChange.length() > 0 && statefunc[_state]) {
             if (statefunc[_state])
@@ -186,7 +183,6 @@ THREE.LandscapeControls = function ( cover, camera ) {
     this.flatmix = 0;
     this.setCamera();
 };
-
 THREE.LandscapeControls.prototype = {
     _limitview: function( ) {
         var flatmix = this.flatmix;
@@ -263,7 +259,7 @@ THREE.LandscapeControls.prototype = {
             this._radius*Math.cos(altrad)
         );
 
-        this.camera.position.add( this._target, eye );
+        this.camera.position.addVectors( this._target, eye );
         this.camera.lookAt( this._target );
         if (changed)
             this.dispatchEvent( {type:'change'} );
@@ -293,14 +289,14 @@ THREE.LandscapeControls.prototype = {
     }, 
 
     pan: function( mouseChange ) {
-        var eye = this.camera.position.clone().subSelf(this.target);
-        var right = eye.clone().crossSelf( this.camera.up );
-        var up = right.clone().crossSelf(eye);
-        var pan = (new THREE.Vector3()).add(
+        var eye = this.camera.position.clone().sub(this.target);
+        var right = eye.clone().cross( this.camera.up );
+        var up = right.clone().cross(eye);
+        var pan = (new THREE.Vector3()).addVectors(
             right.setLength( this.panSpeed*mouseChange.x ), 
             up.setLength( this.panSpeed*mouseChange.y ));
-        this.camera.position.addSelf( pan );
-        this.target.addSelf( pan );
+        this.camera.position.add( pan );
+        this.target.add( pan );
     },
 
     zoom: function( mouseChange ) {
@@ -320,3 +316,4 @@ THREE.LandscapeControls.prototype = {
     }
 
 }
+THREE.EventDispatcher.prototype.apply(THREE.LandscapeControls.prototype);

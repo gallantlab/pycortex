@@ -114,27 +114,37 @@ var Shaderlib = (function() {
         ].join("\n"),
 
         mixer: function(morphs) {
-            var glsl = "";
+            var glsl = "uniform float surfmix;\n";
             for (var i = 0; i < morphs-1; i++) {
                 glsl += "attribute vec3 mixSurfs"+i+";\n";
                 glsl += "attribute vec3 mixNorms"+i+";\n";
             }
             glsl += [
-            "uniform float mix;",
-            "void mixfunc(vec3 basepos, vec3 basenorm, vec3 pos, vec3 norm) {",
-                "float smix = mix * "+morphs+".;",
+            "vec3 mixfunc_pos(vec3 basepos) {",
+                "float smix = surfmix * "+(morphs-1)+".;",
                 "float factor = clamp(1. - smix, 0., 1.);",
-                "pos = factor * basepos;",
-                "norm = factor * basenorm;",
+                "vec3 pos = factor * basepos;",
                 "",
             ].join("\n");
-            for (var i = 1; i < morphs; i++) {
-                glsl += "factor = clamp("+(i+1)+". - smix, "+i+"., "+(i+1)+".) - "+i+".;\n";
-                glsl += "pos  += factor * mixSurfs"+(i-1)+";\n";
-                glsl += "norm += factor * mixNorms"+(i-1)+";\n";
+            for (var i = 0; i < morphs-1; i++) {
+                glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
+                glsl += "pos  += factor * mixSurfs"+i+";\n";
+            }
+            glsl += "return pos;\n}\n";
+
+            glsl += [
+            "vec3 mixfunc_norm(vec3 basenorm) {",
+                "float smix = surfmix * "+(morphs-1)+".;",
+                "float factor = clamp(1. - smix, 0., 1.);",
+                "vec3 norm = factor * basenorm;",
+                "",
+            ].join("\n");
+            for (var i = 0; i < morphs-1; i++) {
+                glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
+                glsl += "norm  += factor * mixNorms"+i+";\n";
             }
 
-            return glsl+"}\n";
+            return glsl+"return norm;\n}\n";
         }
     }
 
@@ -320,9 +330,8 @@ var Shaderlib = (function() {
                 "vMedial = auxdat.x;",
                 "vCurv = auxdat.y;",
 
-                "vec3 pos = vec3(0.);",
-                "vec3 norm = vec3(0.);",
-                "mixfunc(mpos, mnorm, pos, norm);",
+                "vec3 pos = mixfunc_pos(mpos);",
+                "vec3 norm = mixfunc_norm(mnorm);",
 
                 "vNormal = normalMatrix * norm;",
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
@@ -341,7 +350,7 @@ var Shaderlib = (function() {
             "uniform sampler2D overlay;",
         "#endif",
 
-            "uniform int hide_mwall;",
+            "uniform float surfmix;",
             "uniform float curvAlpha;",
             "uniform float curvScale;",
             "uniform float curvLim;",
@@ -440,7 +449,7 @@ var Shaderlib = (function() {
 
         "#ifdef VOXLINE",
             "#ifdef CORTSHEET",
-                "vec3 coord = mix(vPos_x[0], vPos_x[1], 0.5);",
+                "vec3 coord = mix(vPos_x[0], vPos_x[1], thickmix);",
             "#else",
                 "vec3 coord = vPos_x[0];",
             "#endif",
@@ -457,25 +466,26 @@ var Shaderlib = (function() {
                 "vec4 rColor = texture2D(overlay, vUv);",
             "#endif",          
 
-            "if (vMedial < .999) {",
-                "gl_FragColor = cColor;",
-                "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
-                // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
-        "#ifdef ROI_RENDER",
-                "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
-        "#endif",
-            "} else if (hide_mwall == 1) {",
-                "discard;",
-            "} else {",
-                "gl_FragColor = cColor;",
-            "}",
-
+                "if (vMedial < .999) {",
+                    "gl_FragColor = cColor;",
+                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                    // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
+            "#ifdef ROI_RENDER",
+                    "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
+            "#endif",
+                "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
+                    "discard;",
+                "} else {",
+                    "gl_FragColor = cColor;",
+                "}",
+                //"gl_FragColor = vColor;",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
             "}"
             ].join("\n");
 
             var attributes = {
                 position2: { type: 'v3', value:null },
+                normal2: { type: 'v3', value:null },
                 auxdat: { type: 'v4', value:null },
             };
             for (var i = 0; i < morphs-1; i++) {
@@ -527,9 +537,8 @@ var Shaderlib = (function() {
                 "vMedial = auxdat.x;",
                 "vCurv = auxdat.y;",
 
-                "vec3 pos = vec3(0.);",
-                "vec3 norm = vec3(0.);",
-                "mixfunc(position, normal, pos, norm);",
+                "vec3 pos = mixfunc_pos(position);",
+                "vec3 norm = mixfunc_norm(normal);",
 
                 "vNormal = normalMatrix * norm;",
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
@@ -547,7 +556,7 @@ var Shaderlib = (function() {
             "uniform sampler2D overlay;",
         "#endif",
 
-            "uniform int hide_mwall;",
+            "uniform float surfmix;",
             "uniform float curvAlpha;",
             "uniform float curvScale;",
             "uniform float curvLim;",
@@ -601,7 +610,7 @@ var Shaderlib = (function() {
             "#ifdef ROI_RENDER",
                 "vec4 rColor = texture2D(overlay, vUv);",
             "#endif",          
-/*
+
             "if (vMedial < .999) {",
                 "gl_FragColor = cColor;",
                 "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
@@ -609,15 +618,15 @@ var Shaderlib = (function() {
         "#ifdef ROI_RENDER",
                 "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
         "#endif",
-            "} else if (hide_mwall == 1) {",
+            "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
                 "discard;",
             "} else {",
                 "gl_FragColor = cColor;",
             "}",
 
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
-                */
-                "gl_FragColor = vec4(1., 0., 0., 1.);",
+                
+                //"gl_FragColor = vec4(1., 0., 0., 1.);",
             "}"
             ].join("\n");
 
