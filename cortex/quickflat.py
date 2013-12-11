@@ -278,7 +278,7 @@ def make(braindata, height=1024, recache=False, **kwargs):
         badmask = np.array(pixmap.sum(1) > 0).ravel()
         img = (np.nan*np.ones(mask.shape)).astype(braindata.data.dtype)
         mimg = (np.nan*np.ones(badmask.shape)).astype(braindata.data.dtype)
-        mimg[badmask] = (pixmap*data.ravel())[badmask]
+        mimg[badmask] = (pixmap*data.ravel())[badmask].astype(mimg.dtype)
         img[mask] = mimg
 
         return img.T[::-1], extents
