@@ -1,7 +1,8 @@
-// make sure canvas size is set properly for high DPI displays
-// From: http://www.khronos.org/webgl/wiki/HandlingHighDPI
 var mriview = (function(module) {
+    // make sure canvas size is set properly for high DPI displays
+    // From: http://www.khronos.org/webgl/wiki/HandlingHighDPI
     var dpi_ratio = window.devicePixelRatio || 1;
+    
     var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
 
     module.Viewer = function(figure) { 

@@ -14,11 +14,11 @@
 		for (var name in subjects) {
 			subjects[name] = new mriview.Surface(subjects[name]);
 		}
-		
-		dataviews = dataset.fromJSON({{data}});
 
 		figure = new jsplot.W2Figure();
 		viewer = figure.add(mriview.Viewer, "main", true);
+
+		dataviews = dataset.fromJSON({{data}});
 		viewer.addData(dataviews);
 
 		sock = new Websock();

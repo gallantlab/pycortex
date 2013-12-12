@@ -492,7 +492,7 @@ var Shaderlib = (function() {
                 "} else {",
                     "gl_FragColor = cColor;",
                 "}",
-                //"gl_FragColor = vColor;",
+                //"gl_FragColor = vec4(vMedial, 0., 0., 1.);",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
             "}"
             ].join("\n");
