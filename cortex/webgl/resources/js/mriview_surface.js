@@ -4,11 +4,12 @@ var mriview = (function(module) {
     module.Surface = function(ctminfo) {
         this.loaded = $.Deferred();
 
-        this.meshes = {};
-        this.pivot = {};
+        this.meshes = [];
+        this.pivots = {};
+        this.hemis = {};
         this.volume = 0;
         this._pivot = 0;
-        this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
+        //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
         this.object = new THREE.Object3D();
         this.uniforms = THREE.UniformsUtils.merge( [
@@ -93,13 +94,15 @@ var mriview = (function(module) {
                 }
 
                 hemi.dynamic = true;
-                var meshpiv = this._makeMesh(hemi, null);
-
-                this.meshes[name] = meshpiv.mesh;
-                this.pivot[name] = meshpiv.pivots;
-                this.object.add(meshpiv.pivots.front);
+                var pivots = {back:new THREE.Object3D(), front:new THREE.Object3D()};
+                pivots.front.add(pivots.back);
+                pivots.back.position.y = hemi.boundingBox.min.y - hemi.boundingBox.max.y;
+                pivots.front.position.y = hemi.boundingBox.max.y - hemi.boundingBox.min.y + this.flatoff[1];
+                this.pivots[name] = pivots;
+                this.hemis[name] = hemi;
+                this.object.add(pivots.front);
             }
-
+            this.setHalo(1);
 
             //Add anatomical and flat names
             this.names.unshift("anatomicals");
@@ -112,6 +115,7 @@ var mriview = (function(module) {
     };
 
     module.Surface.prototype.init = function(dataview) {
+        this.shaders = [];
         this.loaded.done(function() {
             if (this._update.func !== undefined)
                 this._update.data.removeEventListener("update", this._update.func);
@@ -121,17 +125,50 @@ var mriview = (function(module) {
             this._update.data = dataview;
             dataview.addEventListener("update", this._update.func);
 
-            this.shaders = dataview.getShader(Shaders.surface, 
-                    this.uniforms, {
-                        morphs:this.names.length, 
-                        volume:this.volume, 
-                        rois:  false}
-                    );
+            for (var i = 0; i < this.meshes.length; i++) {
+                var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
+                            morphs:this.names.length, 
+                            volume:this.volume, 
+                            rois:  false});
+                if (this.meshes.length > 1) {
+                    for (var j = 0; j < shaders.length; j++) {
+                        //shaders[j].blending = THREE.AdditiveBlending;
+                        shaders[j].transparent = true;
+                        //shaders[j].depthTest = false;
+                        shaders[j].uniforms.thickmix = {type:'f', value: 1 - i / (this.meshes.length-1)};
+                    }
+                }
+                this.shaders.push(shaders);
+            }
         }.bind(this));
     };
     module.Surface.prototype.apply = function(idx) {
-        this.meshes.left.material = this.shaders[idx];
-        this.meshes.right.material = this.shaders[idx];
+        for (var i = 0; i < this.meshes.length; i++) {
+            this.meshes[i].left.material = this.shaders[i][idx];
+            this.meshes[i].right.material = this.shaders[i][idx];
+        }
+    };
+
+    module.Surface.prototype.setHalo = function(layers) {
+        var lmesh, rmesh;
+        layers = Math.max(layers, 1);
+        for (var i = 0; i < this.meshes.length; i++) {
+            this.pivots.left.back.remove(this.meshes[i].left);
+            this.pivots.right.back.remove(this.meshes[i].right);
+        }
+        this.meshes = [];
+        for (var i = 0; i < layers; i++) {
+            lmesh = this._makeMesh(this.hemis.left);
+            rmesh = this._makeMesh(this.hemis.right);
+            this.meshes.push({left:lmesh, right:rmesh});
+            this.pivots.left.back.add(lmesh);
+            this.pivots.right.back.add(rmesh);
+        }
+        if (this._update.func)
+            this._update.func();
+        if (layers > 1) {
+            this.uniforms.curvAlpha.value = 0;
+        }
     };
 
     module.Surface.prototype.rotate = function(x, y) {
@@ -158,33 +195,26 @@ var mriview = (function(module) {
         var names = {left:1, right:-1}
         if (val > 0) {
             for (var name in names) {
-                this.pivot[name].front.rotation.z = 0;
-                this.pivot[name].back.rotation.z = val*Math.PI/180 * names[name]/ 2;
+                this.pivots[name].front.rotation.z = 0;
+                this.pivots[name].back.rotation.z = val*Math.PI/180 * names[name]/ 2;
             }
         } else {
             for (var name in names) {
-                this.pivot[name].back.rotation.z = 0;
-                this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
+                this.pivots[name].back.rotation.z = 0;
+                this.pivots[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
             }
         }
     };
     module.Surface.prototype.setShift = function(val) {
-        this.pivot.left.front.position.x = -val;
-        this.pivot.right.front.position.x = val;
+        this.pivots.left.front.position.x = -val;
+        this.pivots.right.front.position.x = val;
     };
 
     module.Surface.prototype._makeMesh = function(geom, shader) {
-        //Creates the pivots and the mesh object given the geometry and shader
+        //Creates the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);
         mesh.position.y = -this.flatoff[1];
-        mesh.updateMatrix();
-        var pivots = {back:new THREE.Object3D(), front:new THREE.Object3D()};
-        pivots.back.add(mesh);
-        pivots.front.add(pivots.back);
-        pivots.back.position.y = geom.boundingBox.min.y - geom.boundingBox.max.y;
-        pivots.front.position.y = geom.boundingBox.max.y - geom.boundingBox.min.y + this.flatoff[1];
-
-        return {mesh:mesh, pivots:pivots};
+        return mesh;
     };
 
     module.Surface.prototype._makeFlat = function(uv, flatlims, right) {

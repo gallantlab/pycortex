@@ -502,7 +502,6 @@ var Shaderlib = (function() {
             "} else {",
                 "gl_FragColor = cColor;",
             "}",
-
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
             "}"
             ].join("\n");
