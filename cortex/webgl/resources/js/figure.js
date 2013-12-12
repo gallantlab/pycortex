@@ -175,10 +175,12 @@ var jsplot = (function (module) {
 
     module.Axes = function(figure) {
         this.figure = figure;
-        this.object = document.createElement("div");
-        this.object.className = "jsplot_axes";
+        if (this.object === undefined) {
+            this.object = document.createElement("div");
+            this.object.className = "jsplot_axes";
 
-        this.figure.addEventListener("resize", this.resize.bind(this));
+            this.figure.addEventListener("resize", this.resize.bind(this));
+        }
     }
     THREE.EventDispatcher.prototype.apply(module.Axes.prototype);
     module.Axes.prototype.resize = function() {}

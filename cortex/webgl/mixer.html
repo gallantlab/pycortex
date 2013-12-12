@@ -11,18 +11,15 @@
 		};
 		
 		subjects = {{subjects}};
-		figure = new jsplot.W2Figure();
-		viewer = figure.add(mriview.Viewer, "main", true);
-
+		for (var name in subjects) {
+			subjects[name] = new mriview.Surface(subjects[name]);
+		}
+		
 		dataviews = dataset.fromJSON({{data}});
 
+		figure = new jsplot.W2Figure();
+		viewer = figure.add(mriview.Viewer, "main", true);
 		viewer.addData(dataviews);
-		for (var name in subjects) {
-			subjects[name] = new mriview.Surface(viewer, subjects[name]);
-			subjects[name].loaded.done(function() {
-				subjects[name].apply(viewer.active);
-			});
-		}
 
 		sock = new Websock();
 {% end %}

@@ -2,7 +2,7 @@
  * @author Eberhard Graether / http://egraether.com/
  */
 
-THREE.LandscapeControls = function ( cover, camera ) {
+THREE.LandscapeControls = function ( element, camera ) {
     var _this = this;
     STATE = { NONE : -1, ROTATE : 0, PAN : 1, ZOOM : 2 };
     var statefunc = { 
@@ -12,8 +12,8 @@ THREE.LandscapeControls = function ( cover, camera ) {
     }
 
     this.keystate = null;
+    this.domElement = element;
     this.camera = camera;
-    this.domElement = cover;
 
     // API
     this.enabled = true;
@@ -25,7 +25,6 @@ THREE.LandscapeControls = function ( cover, camera ) {
     this.minRadius = function(mix){return 101*mix}; // limits zoom for flatmap, which disappears at r=100
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
-    
 
     // internals
     this.target = new THREE.Vector3();
@@ -179,7 +178,6 @@ THREE.LandscapeControls = function ( cover, camera ) {
     window.addEventListener( 'keydown', keydown.bind(this), false );
     window.addEventListener( 'keyup', keyup.bind(this), false );
 
-    this.resize($(cover).width(), $(cover).height() );
     this.flatmix = 0;
     this.setCamera();
 };
@@ -259,10 +257,11 @@ THREE.LandscapeControls.prototype = {
             this._radius*Math.cos(altrad)
         );
 
-        this.camera.position.addVectors( this._target, eye );
-        this.camera.lookAt( this._target );
-        if (changed)
-            this.dispatchEvent( {type:'change'} );
+        this.camera.position.addVectors(this._target, eye);
+        this.camera.lookAt(this._target);
+        if (changed) {
+            this.dispatchEvent( {type:'change' } );
+        }
     },
 
     rotate: function ( mouseChange ) {

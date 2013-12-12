@@ -1,11 +1,8 @@
 var mriview = (function(module) {
     var flatscale = 0.25;
 
-    module.Surface = function(viewer, ctminfo) {
-        this.viewer = viewer;
+    module.Surface = function(ctminfo) {
         this.loaded = $.Deferred();
-        this.object = new THREE.Object3D();
-        this.viewer.scene.add(this.object);
 
         this.meshes = {};
         this.pivot = {};
@@ -13,13 +10,14 @@ var mriview = (function(module) {
         this._pivot = 0;
         this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
+        this.object = new THREE.Object3D();
         this.uniforms = THREE.UniformsUtils.merge( [
             THREE.UniformsLib[ "lights" ],
             {
                 diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
                 specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
-                shininess:  { type:'f',  value:500},
+                shininess:  { type:'f',  value:250},
                 specularStrength:{ type:'f',  value:1},
 
                 thickmix:   { type:'f',  value:0.5},
@@ -35,6 +33,8 @@ var mriview = (function(module) {
                 curvLim:    { type:'f', value:.2},
             }
         ]);
+
+        this._update = {};
 
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, json ) {
@@ -106,38 +106,32 @@ var mriview = (function(module) {
             if (this.flatlims !== undefined) {
                 this.names.push("flat");
             }
-
-            this.viewer.canvas[0].style.opacity = 1;
             this.loaded.resolve();
 
         }.bind(this), {useWorker:true});
     };
-    module.Surface.prototype.apply = function(dataview) {
-        if (dataview instanceof dataset.DataView) {
-            var shader = dataview.getShader(Shaders.surface, this.uniforms, {
-                morphs:this.names.length, 
-                volume:this.volume, 
-                rois:  false});
-            this.meshes.left.material = shader[0];
-            this.meshes.right.material = shader[0];
-        } else {
-            var shadecode = Shaders.surf_plain(false, false, viewopts.voxlines, this.names.length);
-            var shader = new THREE.ShaderMaterial({ 
-                vertexShader:shadecode.vertex,
-                fragmentShader:shadecode.fragment,
-                attributes: shadecode.attrs,
-                uniforms: this.uniforms,
-                lights:true, 
-                blending:THREE.CustomBlending,
-            });
-            shader.metal = true;
-            this.meshes.left.material = shader;
-            this.meshes.right.material = shader;
-        }
-        this.viewer.schedule();
-    };
-    module.Surface.prototype.handleEvent = function(event) {
 
+    module.Surface.prototype.init = function(dataview) {
+        this.loaded.done(function() {
+            if (this._update.func !== undefined)
+                this._update.data.removeEventListener("update", this._update.func);
+            this._update.func = function() {
+                this.init(dataview);
+            }.bind(this);
+            this._update.data = dataview;
+            dataview.addEventListener("update", this._update.func);
+
+            this.shaders = dataview.getShader(Shaders.surface, 
+                    this.uniforms, {
+                        morphs:this.names.length, 
+                        volume:this.volume, 
+                        rois:  false}
+                    );
+        }.bind(this));
+    };
+    module.Surface.prototype.apply = function(idx) {
+        this.meshes.left.material = this.shaders[idx];
+        this.meshes.right.material = this.shaders[idx];
     };
 
     module.Surface.prototype.rotate = function(x, y) {
@@ -149,7 +143,6 @@ var mriview = (function(module) {
         this.object.rotation.set(0,0,0, 'ZYX');
         this.object.rotateX(this.rotation[1] * Math.PI / 180);
         this.object.rotateZ(this.rotation[0] * Math.PI / 180);
-        this.viewer.schedule();
     }
 
     module.Surface.prototype.setMix = function(mix) {
@@ -159,7 +152,6 @@ var mriview = (function(module) {
         var clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
         this.uniforms.specularStrength.value = 1-clipped;
         this.setPivot( 180 * clipped);
-        //this.viewer.schedule();
     };
     module.Surface.prototype.setPivot = function (val) {
         this._pivot = val;
@@ -175,7 +167,6 @@ var mriview = (function(module) {
                 this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
             }
         }
-        this.viewer.schedule();
     };
     module.Surface.prototype.setShift = function(val) {
         this.pivot.left.front.position.x = -val;

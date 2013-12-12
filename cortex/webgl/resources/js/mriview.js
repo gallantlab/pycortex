@@ -1,12 +1,11 @@
 // make sure canvas size is set properly for high DPI displays
 // From: http://www.khronos.org/webgl/wiki/HandlingHighDPI
-var dpi_ratio = window.devicePixelRatio || 1;
-
 var mriview = (function(module) {
-    module.Viewer = function(figure) { 
-        //Allow objects to listen for mix updates
-        jsplot.Axes.call(this, figure);
+    var dpi_ratio = window.devicePixelRatio || 1;
+    var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
 
+    module.Viewer = function(figure) { 
+        jsplot.Axes.call(this, figure);
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
         //Catalog the available colormaps
@@ -22,121 +21,38 @@ var mriview = (function(module) {
             colormaps[$(this).text()] = tex;
         });
         this.canvas = $(this.object).find("#brain");
+        jsplot.Axes3D.call(this, figure);
 
-        // scene and camera
-        this.scene = new THREE.Scene();
-        this.camera = new THREE.CombinedCamera( this.canvas.width(), this.canvas.height(), 45, 1.0, 1000, 1., 1000. );
-        this.camera.up.set(0,0,1);
-        this.camera.position.set(0, -400, 0);
-        this.camera.lookAt(new THREE.Vector3(0,0,0));
-        this.scene.add(this.camera);
-        
-        //These lights approximately match what's done by vtk
-        this.lights = [new THREE.DirectionalLight( 0xffffff ), new THREE.DirectionalLight(0xffffff), new THREE.DirectionalLight(0xffffff)];
-        this.lights[0].position.set( 1, -1, -1 ).normalize();
-        this.lights[1].position.set( -1, -.25, .75 ).normalize();
-        this.lights[2].position.set( 1, -.25, .75 ).normalize();
-        this.lights[0].intensity = .47;
-        this.lights[1].intensity = .29;
-        this.lights[2].intensity = .24;
-        this.camera.add( this.lights[0] );
-        this.camera.add( this.lights[1] );
-        this.camera.add( this.lights[2] );
-
-        this.surfaces = [];
-
-        this.controls = new THREE.LandscapeControls($(this.object).find("#braincover")[0], this.camera);
-        this.addEventListener("resize", function(event) {
-            this.controls.resize(event.width, event.height);
-        });
+        this.controls = new THREE.LandscapeControls(this.canvas[0], this.camera);
         this.controls.addEventListener("change", this.schedule.bind(this));
 
-        // renderer
-        this.renderer = new THREE.WebGLRenderer({ 
-            alpha:false,
-            antialias: true, 
-            preserveDrawingBuffer:true, 
-            canvas:this.canvas[0],
-        });
-        this.renderer.setClearColor(new THREE.Color(0, 0, 0));
-        this.renderer.setSize( this.canvas.width(), this.canvas.height() );
-        this.renderer.sortObjects = false;
+        this.dataviews = {};
+        this.active = null;
 
-        this.state = "pause";
-        this._startplay = null;
-        this._animation = null;
+        this.anatomical = true;
+        this.flatmix = 0;
+
         this.loaded = $.Deferred().done(function() {
             this.schedule();
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
         }.bind(this));
-        this.labelshow = true;
-        this._pivot = 0;
-
-        this.dataviews = {};
-        this.active = null;
 
         //this._bindUI();
-
-        //Figure registrations
-        this.figure.register("playsync", this, function(time) {
-            if (this._startplay != null)
-                this._startplay = (new Date()) - (time * 1000);
-        });
-        this.figure.register("playtoggle", this, this.playpause.bind(this));
-        this.figure.register("setFrame", this, this.setFrame.bind(this));
     }
-    module.Viewer.prototype = Object.create(jsplot.Axes.prototype);
+    module.Viewer.prototype = Object.create(jsplot.Axes3D.prototype);
     THREE.EventDispatcher.prototype.apply(module.Viewer.prototype);
     module.Viewer.prototype.constructor = module.Viewer;
+
+    module.Viewer.prototype.draw = function() {
+        this.controls.update(this.flatmix);
+        jsplot.Axes3D.prototype.draw.call(this);
+    }
+    module.Viewer.prototype.drawView = function(scene, idx) {
+        this.surfs[idx].apply(idx);
+        this.renderer.render(scene, this.camera);
+    }
     
-    module.Viewer.prototype.schedule = function() {
-        if (!this._scheduled) {
-            this._scheduled = true;
-            requestAnimationFrame( function() {
-                this.draw();
-                if (this.state == "play" || this._animation != null) {
-                    this.schedule();
-                }
-            }.bind(this));
-        }
-    };
-    module.Viewer.prototype.draw = function () {
-        if (this.state == "play") {
-            var sec = ((new Date()) - this._startplay) / 1000;
-            this.setFrame(sec);
-        } 
-        if (this._animation) {
-            var sec = ((new Date()) - this._animation.start) / 1000;
-            if (!this._animate(sec)) {
-                this.meshes.left.material = this.active.shader;
-                this.meshes.right.material = this.active.shader;
-                delete this._animation;
-            }
-        }
-        this.controls.update(0);
-        this.renderer.render(this.scene, this.camera);
-        this._scheduled = false;
-        this.dispatchEvent({type:"draw"});
-    };
-    module.Viewer.prototype.resize = function(width, height) {
-        if (width !== undefined) {
-            $(this.object).find("#brain, #roilabels").css("width", width);
-            width = $(this.object).width();
-        }
-        var w = width === undefined ? $(this.object).width()  : width;
-        var h = height === undefined ? $(this.object).height()  : height;
-        var aspect = w / h;
-
-        this.renderer.setSize( w * dpi_ratio, h * dpi_ratio );
-        this.renderer.domElement.style.width = w + 'px'; 
-        this.renderer.domElement.style.height = h + 'px'; 
-
-        this.camera.setSize(aspect * 100, 100);
-        this.camera.updateProjectionMatrix();
-        this.dispatchEvent({ type:"resize", width:w, height:h});
-        this.loaded.done(this.schedule.bind(this));
-    };
     module.Viewer.prototype.getState = function(state) {
         switch (state) {
             case 'mix':
@@ -179,89 +95,6 @@ var mriview = (function(module) {
             case 'depth':
                 return this.uniforms.thickmix.value = value;
         };
-    };
-    module.Viewer.prototype.animate = function(animation) {
-        var state = {};
-        var anim = [];
-        animation.sort(function(a, b) { return a.idx - b.idx});
-        for (var i = 0, il = animation.length; i < il; i++) {
-            var f = animation[i];
-            if (f.idx == 0) {
-                this.setState(f.state, f.value);
-                state[f.state] = {idx:0, val:f.value};
-            } else {
-                if (state[f.state] === undefined)
-                    state[f.state] = {idx:0, val:this.getState(f.state)};
-                var start = {idx:state[f.state].idx, state:f.state, value:state[f.state].val}
-                var end = {idx:f.idx, state:f.state, value:f.value};
-                state[f.state].idx = f.idx;
-                state[f.state].val = f.value;
-                if (start.value instanceof Array) {
-                    var test = true;
-                    for (var j = 0; test && j < start.value.length; j++)
-                        test = test && (start.value[j] == end.value[j]);
-                    if (!test)
-                        anim.push({start:start, end:end, ended:false});
-                } else if (start.value != end.value)
-                    anim.push({start:start, end:end, ended:false});
-            }
-        }
-        if (this.active.fastshader) {
-            this.meshes.left.material = this.active.fastshader;
-            this.meshes.right.material = this.active.fastshader;
-        }
-        this._animation = {anim:anim, start:new Date()};
-        this.schedule();
-    };
-    module.Viewer.prototype._animate = function(sec) {
-        var state = false;
-        var idx, val, f, i, j;
-        for (i = 0, il = this._animation.anim.length; i < il; i++) {
-            f = this._animation.anim[i];
-            if (!f.ended) {
-                if (f.start.idx <= sec && sec < f.end.idx) {
-                    idx = (sec - f.start.idx) / (f.end.idx - f.start.idx);
-                    if (f.start.value instanceof Array) {
-                        val = [];
-                        for (j = 0; j < f.start.value.length; j++) {
-                            //val.push(f.start.value[j]*(1-idx) + f.end.value[j]*idx);
-                            val.push(this._animInterp(f.start.state, f.start.value[j], f.end.value[j], idx));
-                        }
-                    } else {
-                        //val = f.start.value * (1-idx) + f.end.value * idx;
-                        val = this._animInterp(f.start.state, f.start.value, f.end.value, idx);
-                    }
-                    this.setState(f.start.state, val);
-                    state = true;
-                } else if (sec >= f.end.idx) {
-                    this.setState(f.end.state, f.end.value);
-                    f.ended = true;
-                } else if (sec < f.start.idx) {
-                    state = true;
-                }
-            }
-        }
-        return state;
-    };
-    module.Viewer.prototype._animInterp = function(state, startval, endval, idx) {
-        switch (state) {
-            case 'azimuth':
-                // Azimuth is an angle, so we need to choose which direction to interpolate
-                if (Math.abs(endval - startval) >= 180) { // wrap
-                    if (startval > endval) {
-                        return (startval * (1-idx) + (endval+360) * idx + 360) % 360;
-                    }
-                    else {
-                        return (startval * (1-idx) + (endval-360) * idx + 360) % 360;
-                    }
-                } 
-                else {
-                    return (startval * (1-idx) + endval * idx);
-                }
-            default:
-                // Everything else can be linearly interpolated
-                return startval * (1-idx) + endval * idx;
-        }
     };
     
     module.Viewer.prototype.addData = function(data) {
@@ -307,14 +140,30 @@ var mriview = (function(module) {
         this.active = this.dataviews[name];
         this.dispatchEvent({type:"setData", data:this.active});
 
+        var surf, scene, grid = grid_shapes[this.active.data.length];
+        this.surfs = [];
+        for (var i = 0; i < this.active.data.length; i++) {
+            surf = subjects[this.active.data[i].subject];
+            scene = this.setGrid(grid[0], grid[1], i);
+            scene.add(surf.object);
+            surf.init(this.active)
+            this.surfs.push(surf);
+        }
+
         if (this.active.data[0].raw) {
             $("#color_fieldset").fadeTo(0.15, 0);
         } else {
             $("#color_fieldset").fadeTo(0.15, 1);
         }
 
-        this.loaded.done(function() {
-            //this.active.init(this.uniforms, this.meshes);
+        var defers = [];
+        for (var i = 0; i < this.active.data.length; i++) {
+            defers.push(subjects[this.active.data[i].subject].loaded)
+        }
+        $.when.apply(null, defers).done(function() {
+            //unhide the main canvas object
+            this.canvas[0].style.opacity = 1;
+
             $(this.object).find("#vrange").slider("option", {min: this.active.data[0].min, max:this.active.data[0].max});
             if (this.active.data.length > 1) {
                 $(this.object).find("#vrange2").slider("option", {min: this.active.data[1].min, max:this.active.data[1].max});
@@ -388,6 +237,18 @@ var mriview = (function(module) {
                 $(this).remove();
         })
     };
+    module.Viewer.prototype.setMix = function(mix) {
+        for (var i = 0; i < this.surfs.length; i++) {
+            this.surfs[i].setMix(mix);
+        }
+        this.schedule();
+    };
+    module.Viewer.prototype.setPivot = function(pivot) {
+        for (var i = 0; i < this.surfs.length; i++) {
+            this.surfs[i].setPivot(pivot);
+        }
+        this.schedule();
+    }
 
     module.Viewer.prototype.setVminmax = function(vmin, vmax, dim) {
         if (dim === undefined)
@@ -426,19 +287,8 @@ var mriview = (function(module) {
         this.schedule();
     };
 
-    module.Viewer.prototype.playpause = function() {
-        if (this.state == "pause") {
-            //Start playing
-            this._startplay = (new Date()) - (this.frame * this.active.rate) * 1000;
-            this.state = "play";
-            this.schedule();
-            $(this.object).find("#moviecontrols img").attr("src", "resources/images/control-pause.png");
-        } else {
-            this.state = "pause";
-            $(this.object).find("#moviecontrols img").attr("src", "resources/images/control-play.png");
-        }
-        this.figure.notify("playtoggle", this);
-    };
+// $(this.object).find("#moviecontrols img").attr("src", "resources/images/control-pause.png");
+// $(this.object).find("#moviecontrols img").attr("src", "resources/images/control-play.png");
 
     module.Viewer.prototype.getImage = function(width, height, post) {
         if (width === undefined)
