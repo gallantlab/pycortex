@@ -266,11 +266,12 @@ var Shaderlib = (function() {
 
             var morphs = opts.morphs;
             var volume = opts.volume || 0;
-            var rois = opts.rois;
             if (volume > 0)
                 header += "#define CORTSHEET\n";
-            if (rois)
+            if (opts.rois)
                 header += "#define ROI_RENDER\n";
+            if (sampler !== null)
+                header += "#define VOLUME_SAMPLED\n";
 
 
             var vertShade =  [
@@ -305,6 +306,7 @@ var Shaderlib = (function() {
                 "vViewPosition = -mvPosition.xyz;",
 
                 //Find voxel positions with both transforms (2D colormap x and y datasets)
+    "#ifdef VOLUME_SAMPLED",
                 "vPos_x[0] = (volxfm[0]*vec4(position,1.)).xyz;",
             "#ifdef TWOD",
                 "vPos_y[0] = (volxfm[1]*vec4(position,1.)).xyz;",
@@ -314,6 +316,9 @@ var Shaderlib = (function() {
             "#ifdef TWOD",
                 "vPos_y[1] = (volxfm[1]*vec4(position2,1.)).xyz;",
             "#endif",
+        "#endif",
+    "#endif",
+        "#ifdef CORTSHEET",
                 "vec3 mpos = mix(position, position2, thickmix);",
                 "vec3 mnorm = mix(normal, normal2, thickmix);",
         "#else",
@@ -372,7 +377,10 @@ var Shaderlib = (function() {
             utils.rand,
             utils.edge,
             utils.colormap,
+
+        "#ifdef VOLUME_SAMPLED",
             utils.samplers,
+        "#endif",
 
             "void main() {",
                 //Curvature Underlay
@@ -388,64 +396,70 @@ var Shaderlib = (function() {
                 "",
             ].join("\n");
 
-            
-            var factor = volume > 1 ? (1/volume).toFixed(6) : "1.";
-            var sampling = [
-        "#ifdef RAWCOLORS",
-                "color[0] += "+factor+"*"+sampler+"_x(data[0], coord_x);",
-                "color[1] += "+factor+"*"+sampler+"_x(data[1], coord_x);",
-        "#else",
-                "values.x += "+factor+"*"+sampler+"_x(data[0], coord_x).r;",
-                "values.y += "+factor+"*"+sampler+"_x(data[1], coord_x).r;",
-            "#ifdef TWOD",
-                "values.z += "+factor+"*"+sampler+"_y(data[2], coord_y).r;",
-                "values.w += "+factor+"*"+sampler+"_y(data[3], coord_y).r;",
-            "#endif",
-        "#endif",
-            ].join("\n");
-
+            //Create samplers for texture volume sampling
             var fragMid = "";
-            if (volume == 0) {
-                fragMid += [
-                    "coord_x = vPos_x[0];",
+            if (sampler !== null) {            
+                var factor = volume > 1 ? (1/volume).toFixed(6) : "1.";
+                var sampling = [
+            "#ifdef RAWCOLORS",
+                    "color[0] += "+factor+"*"+sampler+"_x(data[0], coord_x);",
+                    "color[1] += "+factor+"*"+sampler+"_x(data[1], coord_x);",
+            "#else",
+                    "values.x += "+factor+"*"+sampler+"_x(data[0], coord_x).r;",
+                    "values.y += "+factor+"*"+sampler+"_x(data[1], coord_x).r;",
                 "#ifdef TWOD",
-                    "coord_y = vPos_y[0];",
+                    "values.z += "+factor+"*"+sampler+"_y(data[2], coord_y).r;",
+                    "values.w += "+factor+"*"+sampler+"_y(data[3], coord_y).r;",
                 "#endif",
-                    sampling,
-                    ""
+            "#endif",
                 ].join("\n");
-            } else if (volume == 1) {
-                fragMid += [
-                    "coord_x = mix(vPos_x[0], vPos_x[1], thickmix);",
-                "#ifdef TWOD",
-                    "coord_y = mix(vPos_y[0], vPos_y[1], thickmix);",
-                "#endif",
-                    sampling,
-                    "",
-                ].join("\n");
-            } else {
-                fragMid += "vec2 rseed;\nfloat randval;\n";
-                for (var i = 0; i < volume; i++) {
+
+                if (volume == 0) {
                     fragMid += [
-                        "rseed = gl_FragCoord.xy + vec2(2.34*"+i.toFixed(3)+", 3.14*"+i.toFixed(3)+");",
-                        "randval = rand(rseed);",
-                        "coord_x = mix(vPos_x[0], vPos_x[1], randval);",
+                        "coord_x = vPos_x[0];",
                     "#ifdef TWOD",
-                        "coord_y = mix(vPos_y[0], vPos_y[1], randval);",
+                        "coord_y = vPos_y[0];",
                     "#endif",
                         sampling,
-                        "", 
+                        ""
                     ].join("\n");
+                } else if (volume == 1) {
+                    fragMid += [
+                        "coord_x = mix(vPos_x[0], vPos_x[1], thickmix);",
+                    "#ifdef TWOD",
+                        "coord_y = mix(vPos_y[0], vPos_y[1], thickmix);",
+                    "#endif",
+                        sampling,
+                        "",
+                    ].join("\n");
+                } else {
+                    fragMid += "vec2 rseed;\nfloat randval;\n";
+                    for (var i = 0; i < volume; i++) {
+                        fragMid += [
+                            "rseed = gl_FragCoord.xy + vec2(2.34*"+i.toFixed(3)+", 3.14*"+i.toFixed(3)+");",
+                            "randval = rand(rseed);",
+                            "coord_x = mix(vPos_x[0], vPos_x[1], randval);",
+                        "#ifdef TWOD",
+                            "coord_y = mix(vPos_y[0], vPos_y[1], randval);",
+                        "#endif",
+                            sampling,
+                            "", 
+                        ].join("\n");
+                    }
                 }
             }
 
             var fragTail = [
+        "#ifdef VOLUME_SAMPLED",
             "#ifdef RAWCOLORS",
                 "vec4 vColor = mix(color[0], color[1], framemix);",
             "#else",
                 "vec4 vColor = colorlut(values);",
             "#endif",
                 "vColor *= dataAlpha;",
+        "#else",
+            "vec4 vColor = vec4(0.);",
+        "#endif",
 
         "#ifdef VOXLINE",
             "#ifdef CORTSHEET",
@@ -505,151 +519,7 @@ var Shaderlib = (function() {
 
             return {vertex:header+vertShade, fragment:header+fragHead+fragMid+fragTail, attrs:attributes};
         },
-        surf_plain: function(raw, twod, voxline, morphs) {
-            var header = "#define ROI_RENDER\n";
-            if (voxline)
-                header += "#define VOXLINE\n";
-            if (raw)
-                header += "#define RAWCOLORS\n";
-            if (twod)
-                header += "#define TWOD\n";
-
-            var vertShade =  [
-            THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
-
-            "uniform float thickmix;",
-            "attribute vec3 position2;",
-            "attribute vec3 normal2;",
-
-            "attribute vec4 auxdat;",
-            // "attribute float dropout;",
-            
-            "varying vec2 vUv;",
-            "varying float vCurv;",
-            // "varying float vDrop;",
-            "varying float vMedial;",
-
-            "varying vec3 vViewPosition;",
-            "varying vec3 vNormal;",
-
-            utils.mixer(morphs),
-
-            "void main() {",
-                "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
-                "vViewPosition = -mvPosition.xyz;",
-
-                //Overlay
-            "#ifdef ROI_RENDER",
-                "vUv = uv;",
-            "#endif",
-
-                // "vDrop = dropout;",
-                "vMedial = auxdat.x;",
-                "vCurv = auxdat.y;",
-
-                "vec3 pos = mixfunc_pos(position);",
-                "vec3 norm = mixfunc_norm(normal);",
-
-                "vNormal = normalMatrix * norm;",
-                "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
-            "}"
-            ].join("\n");
-
-            var fragment = [
-            "#extension GL_OES_standard_derivatives: enable",
-            "#extension GL_OES_texture_float: enable",
-
-            THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
-
-        "#ifdef ROI_RENDER",
-            "varying vec2 vUv;",
-            "uniform sampler2D overlay;",
-        "#endif",
-
-            "uniform float surfmix;",
-            "uniform float curvAlpha;",
-            "uniform float curvScale;",
-            "uniform float curvLim;",
-            "uniform float hatchAlpha;",
-            "uniform vec3 hatchColor;",
-            "uniform sampler2D hatch;",
-            "uniform vec2 hatchrep;",
-
-            "varying float vCurv;",
-            // "varying float vDrop;",
-            "varying float vMedial;",
-
-            utils.standard_frag_vars,
-            utils.rand,
-            utils.edge,
-            utils.colormap,
-
-            "void main() {",
-                //Curvature Underlay
-                "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
-                "vec4 cColor = vec4(vec3(curv) * curvAlpha, curvAlpha);",
-
-            "#ifdef RAWCOLORS",
-                "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
-            "#else",
-                "vec4 values = vec4(0.);",
-            "#endif",
-            
-            "#ifdef RAWCOLORS",
-                "vec4 vColor = mix(color[0], color[1], framemix);",
-            "#else",
-                "vec4 vColor = colorlut(values);",
-            "#endif",
-                "vColor *= dataAlpha;",
-
-        "#ifdef VOXLINE",
-            "#ifdef CORTSHEET",
-                "vec3 coord = mix(vPos_x[0], vPos_x[1], 0.5);",
-            "#else",
-                "vec3 coord = vPos_x[0];",
-            "#endif",
-                "vec3 edge = abs(fract(coord) - vec3(0.5));",
-                "vColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge*1.001));",
-        "#endif",
-
-                //Cross hatch / dropout layer
-                // "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",
-                // "vec4 hColor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
-
-                //roi layer
-            "#ifdef ROI_RENDER",
-                "vec4 rColor = texture2D(overlay, vUv);",
-            "#endif",          
-
-            "if (vMedial < .999) {",
-                "gl_FragColor = cColor;",
-                "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
-                // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
-        "#ifdef ROI_RENDER",
-                "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
-        "#endif",
-            "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
-                "discard;",
-            "} else {",
-                "gl_FragColor = cColor;",
-            "}",
-
-                THREE.ShaderChunk[ "lights_phong_fragment" ],
-                
-                //"gl_FragColor = vec4(1., 0., 0., 1.);",
-            "}"
-            ].join("\n");
-
-            var attributes = {
-                auxdat: { type: 'v4', value:null },
-            };
-            for (var i = 0; i < morphs-1; i++) {
-                attributes['mixSurfs'+i] = { type:'v3', value:null};
-                attributes['mixNorms'+i] = { type:'v3', value:null};
-            }
-
-            return {vertex:header+vertShade, fragment:header+fragment, attrs:attributes};
-        },
+        
         pick: function() {
             var vertShade = [
                 "attribute vec4 auxdat;",

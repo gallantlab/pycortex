@@ -81,6 +81,7 @@ var dataset = (function(module) {
             dataAlpha:  { type:'f', value:1.0},
         }
     }
+    THREE.EventDispatcher.prototype.apply(module.DataView.prototype);
     module.DataView.prototype.setVminmax = function(min, max, dim, idx) {
         if (dim === undefined)
             dim = 0;
@@ -187,6 +188,7 @@ var dataset = (function(module) {
         this.filter = interp;
         for (var i = 0; i < this.data.length; i++)
             this.data[i].setFilter(interp);
+        this.dispatchEvent({type:"update"});
     }
 
     module.BrainData = function(json, images) {
