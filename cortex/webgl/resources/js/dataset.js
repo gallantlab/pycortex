@@ -88,21 +88,21 @@ var dataset = (function(module) {
 
         if (idx === undefined) {
             for (var i = 0; i < this.data.length; i++) {
-                this.vmin[i][dim] = min;
-                this.vmax[i][dim] = max;
+                this.vmin[i].value[dim] = min;
+                this.vmax[i].value[dim] = max;
             }
         } else {
-            this.vmin[idx][dim] = min;
-            this.vmax[idx][dim] = max;
+            this.vmin[idx].value[dim] = min;
+            this.vmax[idx].value[dim] = max;
         }
     }
     module.DataView.prototype.setColormap = function(cmap, idx) {
         if (idx === undefined) {
             for (var i = 0; i < this.data.length; i++) {
-                this.cmap[i] = colormaps[cmap];
+                this.cmap[i].value = colormaps[cmap];
             }
         } else {
-            this.cmap[idx] = colormaps[cmap];
+            this.cmap[idx].value = colormaps[cmap];
         }
     }
     module.DataView.prototype.getShader = function(shaderfunc, uniforms, opts) {
@@ -131,8 +131,10 @@ var dataset = (function(module) {
                 uniforms: merge,
                 lights:true, 
                 blending:THREE.CustomBlending,
+                blendSrc:THREE.OneFactor,
+                blendDst:THREE.OneMinusSrcAlphaFactor
             });
-            shader.metal = true;
+            //shader.metal = true;
             shader.side = THREE.DoubleSide;
             shaders.push(shader);
         }

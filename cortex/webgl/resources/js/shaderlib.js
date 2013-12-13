@@ -120,31 +120,36 @@ var Shaderlib = (function() {
                 glsl += "attribute vec3 mixNorms"+i+";\n";
             }
             glsl += [
-            "vec3 mixfunc_pos(vec3 basepos) {",
+            "void mixfunc(vec3 basepos, vec3 basenorm, out vec3 pos, out vec3 norm) {",
                 "float smix = surfmix * "+(morphs-1)+".;",
                 "float factor = clamp(1. - smix, 0., 1.);",
-                "vec3 pos = factor * basepos;",
+                "pos = factor * basepos;",
+                "norm = factor * basenorm;",
                 "",
             ].join("\n");
             for (var i = 0; i < morphs-1; i++) {
                 glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
                 glsl += "pos  += factor * mixSurfs"+i+";\n";
+                glsl += "norm += factor * mixNorms"+i+";\n";
             }
-            glsl += "return pos;\n}\n";
-
-            glsl += [
-            "vec3 mixfunc_norm(vec3 basenorm) {",
-                "float smix = surfmix * "+(morphs-1)+".;",
-                "float factor = clamp(1. - smix, 0., 1.);",
-                "vec3 norm = factor * basenorm;",
-                "",
+            glsl += [ "",
+            "}",
             ].join("\n");
-            for (var i = 0; i < morphs-1; i++) {
-                glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
-                glsl += "norm  += factor * mixNorms"+i+";\n";
-            }
+            return glsl;
 
-            return glsl+"return norm;\n}\n";
+            // glsl += [
+            // "vec3 mixfunc_norm(vec3 basenorm) {",
+            //     "float smix = surfmix * "+(morphs-1)+".;",
+            //     "float factor = clamp(1. - smix, 0., 1.);",
+            //     "vec3 norm = factor * basenorm;",
+            //     "",
+            // ].join("\n");
+            // for (var i = 0; i < morphs-1; i++) {
+            //     glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
+            //     glsl += "norm  += factor * mixNorms"+i+";\n";
+            // }
+
+            // return glsl+"return norm;\n}\n";
         }
     }
 
@@ -335,8 +340,12 @@ var Shaderlib = (function() {
                 "vMedial = auxdat.x;",
                 "vCurv = auxdat.y;",
 
-                "vec3 pos = mixfunc_pos(mpos);",
-                "vec3 norm = mixfunc_norm(mnorm);",
+                "vec3 pos, norm;",
+                "mixfunc(mpos, mnorm, pos, norm);",
+
+            "#ifdef CORTSHEET",
+                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, position2) * mix(1., 0., thickmix);",
+            "#endif",
 
                 "vNormal = normalMatrix * norm;",
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
@@ -457,6 +466,7 @@ var Shaderlib = (function() {
                 "vec4 vColor = colorlut(values);",
             "#endif",
                 "vColor *= dataAlpha;",
+                //"vColor.a = (values.x - vmin[0]) / (vmax[0] - vmin[0]);",
         "#else",
             "vec4 vColor = vec4(0.);",
         "#endif",

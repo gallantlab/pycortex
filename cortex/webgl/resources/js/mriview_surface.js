@@ -132,10 +132,11 @@ var mriview = (function(module) {
                             rois:  false});
                 if (this.meshes.length > 1) {
                     for (var j = 0; j < shaders.length; j++) {
-                        //shaders[j].blending = THREE.AdditiveBlending;
                         shaders[j].transparent = true;
-                        //shaders[j].depthTest = false;
                         shaders[j].uniforms.thickmix = {type:'f', value: 1 - i / (this.meshes.length-1)};
+                        //shaders[j].uniforms.dataAlpha = {type:'f', value: 1 / this.meshes.length};
+                        shaders[j].uniforms.curvAlpha = {type:'f', value: i == 0 ? 1 : 0};
+                        shaders[j].uniforms.specularStrength = {type:'f', value: i == this.meshes.length-1 ? 1 : 0};
                     }
                 }
                 this.shaders.push(shaders);

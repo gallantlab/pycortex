@@ -39,7 +39,7 @@ var mriview = (function(module) {
             this.canvas.css("opacity", 1);
         }.bind(this));
 
-        //this._bindUI();
+        this._bindUI();
     }
     module.Viewer.prototype = Object.create(jsplot.Axes3D.prototype);
     THREE.EventDispatcher.prototype.apply(module.Viewer.prototype);
@@ -572,7 +572,10 @@ var mriview = (function(module) {
         if ($(this.object).find("#color_fieldset").length > 0) {
             $(this.object).find("#colormap").ddslick({ width:296, height:350, 
                 onSelected: function() { 
-                    this.setColormap($(this.object).find("#colormap .dd-selected-image")[0]);
+                    var name = $(this.object).find("#colormap .dd-selected-text").text();
+                    if (this.active)
+                        this.active.setColormap(name);
+                    this.schedule();
                 }.bind(this)
             });
             $(this.object).find("#cmapsearch").click(function() {
@@ -581,38 +584,53 @@ var mriview = (function(module) {
 
             $(this.object).find("#vrange").slider({ 
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1],
-                slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1]); }.bind(this)
+                slide: function(event, ui) { 
+                    $(this.object).find("#vmin").value(ui.values[0]);
+                    $(this.object).find("#vmax").value(ui.values[1]);
+                    this.active.setVminmax(ui.values[0], ui.values[1]);
+                    this.schedule();
+                }.bind(this)
             });
             $(this.object).find("#vmin").change(function() { 
-                this.setVminmax(
+                this.active.setVminmax(
                     parseFloat($(this.object).find("#vmin").val()), 
                     parseFloat($(this.object).find("#vmax").val())
                 ); 
+                this.schedule();
             }.bind(this));
             $(this.object).find("#vmax").change(function() { 
-                this.setVminmax(
+                this.active.setVminmax(
                     parseFloat($(this.object).find("#vmin").val()), 
                     parseFloat($(this.object).find("#vmax").val())
                     ); 
+                this.schedule();
             }.bind(this));
 
             $(this.object).find("#vrange2").slider({ 
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1], orientation:"vertical",
-                slide: function(event, ui) { this.setVminmax(ui.values[0], ui.values[1], 1); }.bind(this)
+                slide: function(event, ui) { 
+                    $(this.object).find("#vmin2").value(ui.values[0]);
+                    $(this.object).find("#vmax2").value(ui.values[1]);
+                    this.active.setVminmax(ui.values[0], ui.values[1], 1);
+                    this.schedule();
+                }.bind(this)
             });
             $(this.object).find("#vmin2").change(function() { 
-                this.setVminmax(
+                this.active.setVminmax(
                     parseFloat($(this.object).find("#vmin2").val()), 
                     parseFloat($(this.object).find("#vmax2").val()),
                     1);
+                this.schedule();
             }.bind(this));
             $(this.object).find("#vmax2").change(function() { 
-                this.setVminmax(
+                this.active.setVminmax(
                     parseFloat($(this.object).find("#vmin2").val()), 
                     parseFloat($(this.object).find("#vmax2").val()), 
                     1); 
+                this.schedule();
             }.bind(this));            
         }
+        /*
         var updateROIs = function() {
             this.roipack.update(this.renderer).done(function(tex){
                 this.uniforms.map.texture = tex;
@@ -765,7 +783,7 @@ var mriview = (function(module) {
         $(this.object).find("#movieframe").change(function() { 
             _this.setFrame(this.value); 
             _this.figure.notify("setFrame", _this, [this.value]);
-        });
+        });*/
     };
     module.Viewer.prototype._makeBtns = function(names) {
         var btnspeed = 0.5; // How long should folding/unfolding animations take?
