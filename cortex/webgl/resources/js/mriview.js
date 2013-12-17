@@ -50,6 +50,7 @@ var mriview = (function(module) {
         jsplot.Axes3D.prototype.draw.call(this);
     }
     module.Viewer.prototype.drawView = function(scene, idx) {
+        
         this.surfs[idx].apply(idx);
         this.renderer.render(scene, this.camera);
     }

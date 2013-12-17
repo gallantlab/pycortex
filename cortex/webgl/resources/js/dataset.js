@@ -132,9 +132,6 @@ var dataset = (function(module) {
                 attributes: shadecode.attrs,
                 uniforms: merge,
                 lights:true, 
-                blending:THREE.CustomBlending,
-                blendSrc:THREE.OneFactor,
-                blendDst:THREE.OneMinusSrcAlphaFactor
             });
             //shader.metal = true;
             shader.side = THREE.DoubleSide;
