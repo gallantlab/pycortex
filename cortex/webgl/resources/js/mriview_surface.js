@@ -124,19 +124,24 @@ var mriview = (function(module) {
             }.bind(this);
             this._update.data = dataview;
             dataview.addEventListener("update", this._update.func);
-
+            
             for (var i = 0; i < this.meshes.length; i++) {
                 var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
                             morphs:this.names.length, 
                             volume:this.volume, 
-                            rois:  false});
+                            rois:  false,
+                            halo: this.meshes.length > 1,
+                        });
                 if (this.meshes.length > 1) {
                     for (var j = 0; j < shaders.length; j++) {
-                        shaders[j].transparent = true;
+                        shaders[j].transparent = i != 0;
+                        shaders[j].depthTest = true;
+                        shaders[j].depthWrite = i == 0;
                         shaders[j].uniforms.thickmix = {type:'f', value: 1 - i / (this.meshes.length-1)};
+                        shaders[j].blending = THREE.AdditiveBlending;
                         //shaders[j].uniforms.dataAlpha = {type:'f', value: 1 / this.meshes.length};
-                        shaders[j].uniforms.curvAlpha = {type:'f', value: i == 0 ? 1 : 0};
-                        shaders[j].uniforms.specularStrength = {type:'f', value: i == this.meshes.length-1 ? 1 : 0};
+                        //shaders[j].uniforms.curvAlpha = {type:'f', value: i == 0 ? 1 : 0};
+                        //shaders[j].uniforms.specularStrength = {type:'f', value: i == this.meshes.length-1 ? 1 : 0};
                     }
                 }
                 this.shaders.push(shaders);

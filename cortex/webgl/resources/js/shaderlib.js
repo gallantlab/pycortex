@@ -136,20 +136,6 @@ var Shaderlib = (function() {
             "}",
             ].join("\n");
             return glsl;
-
-            // glsl += [
-            // "vec3 mixfunc_norm(vec3 basenorm) {",
-            //     "float smix = surfmix * "+(morphs-1)+".;",
-            //     "float factor = clamp(1. - smix, 0., 1.);",
-            //     "vec3 norm = factor * basenorm;",
-            //     "",
-            // ].join("\n");
-            // for (var i = 0; i < morphs-1; i++) {
-            //     glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
-            //     glsl += "norm  += factor * mixNorms"+i+";\n";
-            // }
-
-            // return glsl+"return norm;\n}\n";
         }
     }
 
@@ -277,7 +263,11 @@ var Shaderlib = (function() {
                 header += "#define ROI_RENDER\n";
             if (sampler !== null)
                 header += "#define VOLUME_SAMPLED\n";
-
+            if (opts.halo) {
+                if (twod)
+                    throw "Cannot use 2D colormaps with volume integration"
+                header += "#define HALO_RENDER\n";
+            }
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -459,6 +449,19 @@ var Shaderlib = (function() {
             }
 
             var fragTail = [
+    "#ifdef HALO_RENDER",
+                "float value = mix(values.x, values.y, framemix);",
+                "const vec3 bit_shift = vec3( 511./64., 511./8., 511.);", //3 bits per color
+                "const vec3 bit_mask  = vec3( 0., 8., 8.);",
+                "vec3 res = floor( value * bit_shift );",
+                "res -= res.xxy * bit_mask;",
+                "if (vMedial < .999) {",
+                    "gl_FragColor = vec4(res / 256., 32./256.) + 1. / 512.;",
+                    //"gl_FragColor = vec4(vec3(value / 32.), 1.);",
+                "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
+                    "discard;",
+                "}",
+    "#else",
         "#ifdef VOLUME_SAMPLED",
             "#ifdef RAWCOLORS",
                 "vec4 vColor = mix(color[0], color[1], framemix);",
@@ -513,6 +516,7 @@ var Shaderlib = (function() {
                 "gl_FragColor = cColor;",
             "}",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
+    "#endif",
             "}"
             ].join("\n");
 
@@ -527,6 +531,24 @@ var Shaderlib = (function() {
             }
 
             return {vertex:header+vertShade, fragment:header+fragHead+fragMid+fragTail, attrs:attributes};
+        },
+
+        cmap_quad: function() {
+            //Colormaps the full-scree quad, used for stage 2 of volume integration
+            var fragShade = [
+                "uniform sampler2D screen;",
+                "uniform sampler2D colormap;",
+                "void main() {",
+                    "vec4 value = texture2D(screen, gl_FragCoord);",
+                    "if (value.a > 0.) {",
+                        "const vec3 bit_shift = vec3(32.*32., 32., 1.);",
+                        "const float maxval = 32. * 32. + 32. + 1.",
+                        "dot(bit_shift, value) *",
+                    "} else {",
+                        "discard;",
+                    "}",
+                "}",
+            ].join("\n");
         },
         
         pick: function() {
