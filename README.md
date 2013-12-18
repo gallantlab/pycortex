@@ -16,7 +16,7 @@ $ sudo pip install pycortex
 If you are using [Ubuntu](http://ubuntu.com), using [Neurodebian](http://neuro.debian.net/) is highly recommended. The following command will install all python prerequisites:
 
 ```
-$ sudo apt-get install python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib
+$ sudo apt-get install python-pip python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib mayavi2 inkscape blender
 $ sudo pip install pycortex
 ```
 
