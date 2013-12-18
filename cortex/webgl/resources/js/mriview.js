@@ -27,6 +27,7 @@ var mriview = (function(module) {
         this.controls = new THREE.LandscapeControls(this.canvas[0], this.camera);
         this.controls.addEventListener("change", this.schedule.bind(this));
 
+        this.surfs = [];
         this.dataviews = {};
         this.active = null;
 
@@ -50,9 +51,14 @@ var mriview = (function(module) {
         jsplot.Axes3D.prototype.draw.call(this);
     }
     module.Viewer.prototype.drawView = function(scene, idx) {
-        
         this.surfs[idx].apply(idx);
-        this.renderer.render(scene, this.camera);
+        if (this.surfs[idx] instanceof mriview.Surface && 
+            this.surfs[idx].meshes.length > 1) {
+            this.renderer.render(scene, this.camera, this.surfs[idx].volumebuf);
+            
+        } else {
+            this.renderer.render(scene, this.camera);
+        }
     }
     
     module.Viewer.prototype.getState = function(state) {
@@ -266,13 +272,21 @@ var mriview = (function(module) {
         this.active = this.dataviews[name];
         this.dispatchEvent({type:"setData", data:this.active});
 
+        //Set up listeners for resizing
         var surf, scene, grid = grid_shapes[this.active.data.length];
+        for (var i = 0; i < this.surfs.length; i++) {
+            this.removeEventListener("resize", this.surfs[i]._resize);
+        }
         this.surfs = [];
         for (var i = 0; i < this.active.data.length; i++) {
             surf = subjects[this.active.data[i].subject];
             scene = this.setGrid(grid[0], grid[1], i);
             scene.add(surf.object);
             surf.init(this.active)
+            surf._resize = function(evt) { 
+                this.resize(evt.width, evt.height) 
+            }.bind(surf);
+            this.addEventListener("resize", surf._resize);
             this.surfs.push(surf);
         }
 

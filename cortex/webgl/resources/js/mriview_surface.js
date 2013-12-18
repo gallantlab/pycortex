@@ -34,7 +34,7 @@ var mriview = (function(module) {
                 curvLim:    { type:'f', value:.2},
             }
         ]);
-
+    
         this._update = {};
 
         var loader = new THREE.CTMLoader(false);
@@ -113,7 +113,14 @@ var mriview = (function(module) {
 
         }.bind(this), {useWorker:true});
     };
-
+    module.Surface.prototype.resize = function(width, height) {
+        this.volumebuf = new THREE.WebGLRenderTarget(width, height, {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter,
+            format:THREE.RGBAFormat,
+            stencilBuffer:false,
+        });
+    };
     module.Surface.prototype.init = function(dataview) {
         this.shaders = [];
         this.loaded.done(function() {

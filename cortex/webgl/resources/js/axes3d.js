@@ -11,6 +11,8 @@ var jsplot = (function (module) {
         this.camera.up.set(0,0,1);
         this.camera.position.set(0, -500, 0);
         this.camera.lookAt(new THREE.Vector3(0,0,0));
+        this.fsquad = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), null);
+        this.fsquad.position.z = -1.0001
         
         //These lights approximately match what's done by vtk
         this.lights = [new THREE.DirectionalLight( 0xffffff ), new THREE.DirectionalLight(0xffffff), new THREE.DirectionalLight(0xffffff)];
@@ -69,6 +71,7 @@ var jsplot = (function (module) {
 
         this.camera.setSize(aspect * 100, 100);
         this.camera.updateProjectionMatrix();
+
         this.dispatchEvent({ type:"resize", width:w, height:h});
         this.loaded.done(this.schedule.bind(this));
     };
