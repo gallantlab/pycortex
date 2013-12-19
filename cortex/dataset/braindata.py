@@ -175,7 +175,7 @@ class VolumeData(BrainData):
                 shape = shape[:-1]
             xfm = surfs.getXfm(self.subject, self.xfmname)
             if xfm.shape != shape:
-                raise ValueError("Volumetric data must be same shape as reference for transform")
+                raise ValueError("Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)" % (str(shape), str(xfm.shape)))
             self.shape = shape
 
     def map(self, projection="nearest"):
