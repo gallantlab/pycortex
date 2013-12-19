@@ -52,16 +52,31 @@ def add_vcolor(color, mesh=None, name='color'):
         mesh = D.meshes[mesh]
 
     bpy.ops.object.mode_set(mode='OBJECT')
-    loopidx = [0]*len(mesh.loops)
-    mesh.loops.foreach_get('vertex_index', loopidx)
 
     vcolor = mesh.vertex_colors.new(name)
-    if not isinstance(color[0], (list, tuple)):
-        for i, j in enumerate(loopidx):
-            vcolor.data[i].color = [color[j]]*3
-    else:
-        for i, j in enumerate(loopidx):
-            vcolor.data[i].color = color[j]
+    if hasattr(mesh, "loops"):
+        loopidx = [0]*len(mesh.loops)
+        mesh.loops.foreach_get('vertex_index', loopidx)
+
+        if not isinstance(color[0], (list, tuple)):
+            for i, j in enumerate(loopidx):
+                vcolor.data[i].color = [color[j]]*3
+        else:
+            for i, j in enumerate(loopidx):
+                vcolor.data[i].color = color[j]
+    else: #older blender version, need to iterate faces instead
+        if not isinstance(color[0], (list, tuple)):
+            for i in range(len(mesh.faces)):
+                v = mesh.faces[i].vertices
+                vcolor.data[i].color1 = [color[v[0]]] * 3
+                vcolor.data[i].color2 = [color[v[1]]] * 3
+                vcolor.data[i].color3 = [color[v[2]]] * 3
+        else:
+            for i in len(vcolor):
+                v = mesh.faces[i].vertices
+                vcolor.data[i].color1 = color[v[0]]
+                vcolor.data[i].color2 = color[v[1]]
+                vcolor.data[i].color3 = color[v[2]]
 
     print("Successfully added vcolor '%s'"%name)
     return vcolor
