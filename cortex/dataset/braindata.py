@@ -18,6 +18,10 @@ class BrainData(object):
             return self._data.value
         return self._data
 
+    @data.setter
+    def data(self, data):
+        self._data = data
+
     @property
     def name(self):
         '''Name of this BrainData, according to its hash'''
@@ -308,7 +312,7 @@ class VertexData(VolumeData):
             # Data for both hemispheres
             self.hem = "both"
         else:
-            raise ValueError('Invalid number of vertices for subject')
+            raise ValueError('Invalid number of vertices for subject (given %d, should be %d for left hem, %d for right hem, or %d for both)' % (self.nverts, self.llen, self.rlen, self.llen+self.rlen))
 
     def copy(self, data=None):
         """Copies this VertexData. Uses __new__ to avoid expensive initialization that
