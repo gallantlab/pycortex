@@ -11,8 +11,6 @@ var jsplot = (function (module) {
         this.camera.up.set(0,0,1);
         this.camera.position.set(0, -500, 0);
         this.camera.lookAt(new THREE.Vector3(0,0,0));
-        this.fsquad = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), null);
-        this.fsquad.position.z = -1.0001
         
         //These lights approximately match what's done by vtk
         this.lights = [new THREE.DirectionalLight( 0xffffff ), new THREE.DirectionalLight(0xffffff), new THREE.DirectionalLight(0xffffff)];
@@ -30,14 +28,14 @@ var jsplot = (function (module) {
 
         // renderer
         this.renderer = new THREE.WebGLRenderer({ 
-            alpha:false,
+            alpha:true,
             antialias: true, 
             preserveDrawingBuffer:true, 
             canvas:this.canvas[0],
         });
-        this.renderer.setClearColor(new THREE.Color(0, 0, 0));
+        this.renderer.setClearColor(new THREE.Color(0, 0, 0), 1);
         this.renderer.setSize( this.canvas.width(), this.canvas.height() );
-        this.renderer.sortObjects = false;
+        this.renderer.sortObjects = true;
 
         this.state = "pause";
         this._startplay = null;
@@ -229,6 +227,8 @@ var jsplot = (function (module) {
                     bottom = (n-i) / n;
                     scene = new THREE.Scene();
                     scene.add(this.camera);
+                    scene.fsquad = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), null);
+                    scene.fsquad.position.z = -1.0001;
                     this.views.push({left:left, bottom:bottom, width:width, height:height, scene:scene});
                 }
             }
