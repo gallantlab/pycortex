@@ -29,7 +29,7 @@ def _call_blender(filename, code):
         if not os.path.exists(filename):
             startcode += "blendlib.clear_all()\n"
             endcode = "\nbpy.ops.wm.save_mainfile(filepath='{fname}')".format(fname=filename)
-            cmd = "/home/james/blender -b -P {tfname}".format(tfname=tf.name)
+            cmd = "blender -b -P {tfname}".format(tfname=tf.name)
 
         tf.write(startcode+code+endcode)
         tf.flush()
