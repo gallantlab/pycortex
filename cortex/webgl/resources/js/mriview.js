@@ -51,14 +51,10 @@ var mriview = (function(module) {
         jsplot.Axes3D.prototype.draw.call(this);
     }
     module.Viewer.prototype.drawView = function(scene, idx) {
+        if (this.surfs[idx].prerender)
+            this.surfs[idx].prerender(idx, this.renderer, scene, this.camera);
         this.surfs[idx].apply(idx);
-        if (this.surfs[idx] instanceof mriview.Surface && 
-            this.surfs[idx].meshes.length > 1) {
-            this.renderer.render(scene, this.camera, this.surfs[idx].volumebuf);
-            
-        } else {
-            this.renderer.render(scene, this.camera);
-        }
+        this.renderer.render(scene, this.camera);
     }
     
     module.Viewer.prototype.getState = function(state) {

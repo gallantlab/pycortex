@@ -32,6 +32,9 @@ var mriview = (function(module) {
                 curvAlpha:  { type:'f', value:1.},
                 curvScale:  { type:'f', value:.5},
                 curvLim:    { type:'f', value:.2},
+
+                screen:     { type:'t', value:this.volumebuf},
+                screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
         ]);
     
@@ -120,8 +123,11 @@ var mriview = (function(module) {
             format:THREE.RGBAFormat,
             stencilBuffer:false,
         });
+        this.uniforms.screen.value = this.volumebuf;
+        this.uniforms.screen_size.value.set(width, height);
     };
     module.Surface.prototype.init = function(dataview) {
+        this.preshaders = [];
         this.shaders = [];
         this.loaded.done(function() {
             if (this._update.func !== undefined)
@@ -131,32 +137,75 @@ var mriview = (function(module) {
             }.bind(this);
             this._update.data = dataview;
             dataview.addEventListener("update", this._update.func);
-            
-            for (var i = 0; i < this.meshes.length; i++) {
-                var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
-                            morphs:this.names.length, 
-                            volume:this.volume, 
-                            rois:  false,
-                            halo: this.meshes.length > 1,
-                        });
-                if (this.meshes.length > 1) {
+
+            if (this.meshes.length > 1) {
+                for (var i = 0; i < this.meshes.length; i++) {
+                    var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
+                        morphs:this.names.length, volume:1, rois: false, halo: true });
                     for (var j = 0; j < shaders.length; j++) {
                         shaders[j].transparent = i != 0;
                         shaders[j].depthTest = true;
                         shaders[j].depthWrite = i == 0;
                         shaders[j].uniforms.thickmix = {type:'f', value: 1 - i / (this.meshes.length-1)};
-                        shaders[j].blending = THREE.AdditiveBlending;
-                        //shaders[j].uniforms.dataAlpha = {type:'f', value: 1 / this.meshes.length};
-                        //shaders[j].uniforms.curvAlpha = {type:'f', value: i == 0 ? 1 : 0};
-                        //shaders[j].uniforms.specularStrength = {type:'f', value: i == this.meshes.length-1 ? 1 : 0};
+                        shaders[j].blending = THREE.CustomBlending;
+                        shaders[j].blendSrc = THREE.OneFactor;
+                        shaders[j].blendDst = THREE.OneFactor;
                     }
+                    this.preshaders.push(shaders);
+                }
+                var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
+                    morphs:this.names.length, volume:1, rois:false, halo:false });
+                for (var j = 0; j < shaders.length; j++) {
+                    shaders[j].uniforms.thickmix = {type:'f', value:1};
+                    shaders[j].uniforms.dataAlpha = {type:'f', value:0};
                 }
                 this.shaders.push(shaders);
+
+                this.quadshade = dataview.getShader(Shaders.cmap_quad, this.uniforms);
+                this.quadshade.transparent = true;
+                this.quadshade.blending = THREE.CustomBlending
+                this.quadshade.blendSrc = THREE.OneFactor
+                this.quadshade.blendDst = THREE.OneMinusSrcAlphaFactor
+                this.quadshade.depthWrite = false;
+                this.prerender = this._prerender.bind(this);
+            } else {
+                var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
+                            morphs:this.names.length, 
+                            volume:this.volume, 
+                            rois:  false,
+                            halo: false,
+                        });
+                this.shaders.push(shaders);
+                if (this.prerender !== undefined)
+                    delete this.prerender;
             }
         }.bind(this));
     };
-    module.Surface.prototype.apply = function(idx) {
+    var oldcolor, black = new THREE.Color(0,0,0);
+    module.Surface.prototype._prerender = function(idx, renderer, scene, camera) {
+        camera.add(scene.fsquad);
+        scene.fsquad.material = this.quadshade[idx];
+        scene.fsquad.visible = false;
         for (var i = 0; i < this.meshes.length; i++) {
+            this.meshes[i].left.material = this.preshaders[i][idx];
+            this.meshes[i].right.material = this.preshaders[i][idx];
+            this.meshes[i].left.visible = true;
+            this.meshes[i].right.visible = true;
+        }
+        oldcolor = renderer.getClearColor()
+        renderer.setClearColor(black, 0);
+        //renderer.render(scene, camera);
+        renderer.render(scene, camera, this.volumebuf);
+        renderer.setClearColor(oldcolor, 1);
+        for (var i = 1; i < this.meshes.length; i++) {
+            this.meshes[i].left.visible = false;
+            this.meshes[i].right.visible = false;
+        }
+        scene.fsquad.visible = true;
+    };
+
+    module.Surface.prototype.apply = function(idx) {
+        for (var i = 0; i < this.shaders.length; i++) {
             this.meshes[i].left.material = this.shaders[i][idx];
             this.meshes[i].right.material = this.shaders[i][idx];
         }
@@ -179,9 +228,6 @@ var mriview = (function(module) {
         }
         if (this._update.func)
             this._update.func();
-        if (layers > 1) {
-            this.uniforms.curvAlpha.value = 0;
-        }
     };
 
     module.Surface.prototype.rotate = function(x, y) {

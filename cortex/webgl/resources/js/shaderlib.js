@@ -16,7 +16,7 @@ var Shaderlib = (function() {
         ].join("\n"),
 
         colormap: [
-            "vec4 colorlut(vec4 values) {",
+            "vec2 vnorm(vec4 values) {",
                 "float range = vmax[0] - vmin[0];",
                 "float norm0 = (values.x - vmin[0]) / range;",
                 "float norm1 = (values.y - vmin[0]) / range;",
@@ -30,7 +30,10 @@ var Shaderlib = (function() {
             "#else",
                 "vec2 cuv = vec2(clamp(fnorm0, 0., 1.), 0.);",
             "#endif",
-
+                "return cuv;",
+            "}",
+            "vec4 colorlut(vec4 values) {",
+                "vec2 cuv = vnorm(values);",
                 "vec4 vColor = texture2D(colormap, cuv);",
                 "bvec4 valid = notEqual(lessThanEqual(values, vec4(0.)), lessThan(vec4(0.), values));",
                 "return all(valid) ? vColor : vec4(0.);",
@@ -450,13 +453,14 @@ var Shaderlib = (function() {
 
             var fragTail = [
     "#ifdef HALO_RENDER",
-                "float value = mix(values.x, values.y, framemix);",
+                "float value = vnorm(values).x;",
                 "const vec3 bit_shift = vec3( 511./64., 511./8., 511.);", //3 bits per color
                 "const vec3 bit_mask  = vec3( 0., 8., 8.);",
                 "vec3 res = floor( value * bit_shift );",
                 "res -= res.xxy * bit_mask;",
                 "if (vMedial < .999) {",
-                    "gl_FragColor = vec4(res / 256., 32./256.) + 1. / 512.;",
+                    //"gl_FragColor = vec4(1. / 256., 0., 0., 1.);",
+                    "gl_FragColor = vec4(res / 256., 1. / 256.);",
                     //"gl_FragColor = vec4(vec3(value / 32.), 1.);",
                 "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
                     "discard;",
@@ -525,20 +529,30 @@ var Shaderlib = (function() {
         },
 
         cmap_quad: function() {
-            //Colormaps the full-scree quad, used for stage 2 of volume integration
+            //Colormaps the full-screen quad, used for stage 2 of volume integration
+            var vertShade = [
+                "void main() {",
+                    "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+                "}",
+            ].join("\n");
             var fragShade = [
+                "uniform vec2 screen_size;",
                 "uniform sampler2D screen;",
                 "uniform sampler2D colormap;",
                 "void main() {",
-                    "vec4 value = texture2D(screen, gl_FragCoord);",
-                    "if (value.a > 0.) {",
-                        "const vec3 bit_shift = vec3(256. * 64. / 511., 256.*8. / 511., 256. / 511.);",
-                        "gl_FragColor = texture2D(colormap, dot(bit_shift, value.rgb) / (value.a*256.));",
-                    "} else {",
-                        "discard;",
-                    "}",
+                    "vec4 value = texture2D(screen, gl_FragCoord.xy / screen_size);",
+                    "const vec3 bit_shift = vec3(256. * 64. / 511., 256.*8. / 511., 256. / 511.);",
+                    "float raw = dot(bit_shift, value.rgb) / (value.a*256.);",
+                    //"if (value.a > 0.) {",
+                       "gl_FragColor = texture2D(colormap, vec2(raw, 0.));",
+                    //"} else {",
+                    //   "discard;",
+                    //"}",
+                    //"gl_FragColor = vec4(vec3(raw), 1.);",
+                    //"gl_FragColor = vec4(value.rgb, 1.);",
                 "}",
             ].join("\n");
+            return {vertex:vertShade, fragment:fragShade, attrs:{}};
         },
         
         pick: function() {
