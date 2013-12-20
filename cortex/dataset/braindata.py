@@ -317,11 +317,10 @@ class VertexData(VolumeData):
         """
         newvd = self.__class__.__new__(self.__class__)
         newvd.subject = self.subject
-        newvd.attrs = self.attrs
         newvd.llen = self.llen
         newvd.rlen = self.rlen
         
-        if newdata is None:
+        if data is None:
             newvd._set_data(self.data)
         else:
             newvd._set_data(data)
