@@ -138,7 +138,7 @@ var mriview = (function(module) {
             this._update.data = dataview;
             dataview.addEventListener("update", this._update.func);
 
-            if (this.meshes.length > 1) {
+            if (this.meshes.length > 1 && !this.points) {
                 for (var i = 0; i < this.meshes.length; i++) {
                     var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
                         morphs:this.names.length, volume:1, rois: false, halo: true });
@@ -178,6 +178,31 @@ var mriview = (function(module) {
                 this.shaders.push(shaders);
                 if (this.prerender !== undefined)
                     delete this.prerender;
+            }
+            if (this.points !== undefined) {
+                for (var j = 0; j < this.shaders[0].length; j++) {
+                    this.shaders[0][j].uniforms.dataAlpha = {type:'f', value:0};
+                    this.shaders[0][j].uniforms.thickmix = {type:'f', value:1};
+                }
+                this.uniforms.curvAlpha.value = 1;
+                var shaders = dataview.getShader(Shaders.pointhalo, this.uniforms, {
+                        morphs:this.names.length, volume:1});
+                var inverse = {type:'m4', value:null};
+                for (var j = 0; j < shaders.length; j++) {
+                    shaders[j].transparent = true;
+                    shaders[j].uniforms.inverse = inverse;
+                    shaders[j].blending = THREE.CustomBlending;
+                    shaders[j].blendSrc = THREE.OneFactor;
+                    shaders[j].blendDst = THREE.OneMinusSrcAlphaFactor;
+                }
+                this.shaders.push(shaders);
+                this.prerender = function(idx, renderer, scene, camera) {
+                    camera.updateMatrix();
+                    var mv = (new THREE.Matrix4()).getInverse(camera.matrix);
+                    var proj = (new THREE.Matrix4()).getInverse(camera.projectionMatrix);
+                    inverse.value = mv.multiply(proj);
+                    console.log(inverse.value);
+                }
             }
         }.bind(this));
     };
@@ -229,6 +254,41 @@ var mriview = (function(module) {
         if (this._update.func)
             this._update.func();
     };
+
+    module.Surface.prototype.setPointHalo = function() {
+        var lparticles = new THREE.ParticleSystem(this.hemis.left, null);
+        var rparticles = new THREE.ParticleSystem(this.hemis.right, null);
+        lparticles.sortParticles = true;
+        rparticles.sortParticles = true;
+        lparticles.position.y = -this.flatoff[1];
+        rparticles.position.y = -this.flatoff[1];
+        this.points = true;
+        this.meshes.push({left:lparticles, right:rparticles});
+        this.pivots.left.back.add(lparticles);
+        this.pivots.right.back.add(rparticles);
+
+        if (this._update.func)
+            this._update.func();
+    };
+    var gen_sprites = function(geom, mat) {
+        var container = new THREE.Object3D();
+        var pos = geom.attributes.position.array, 
+            pos2 = geom.attributes.position2.array;
+        var npts = pos.length / 3;
+        var mesh, plane, p1 = new THREE.Vector3(), p2 = new THREE.Vector3(), s;
+        for (var i = 0; i < npts; i++) {
+            p1.set(pos[i*3], pos[i*3+1], pos[i*3+2]);
+            p2.set(pos2[i*3], pos2[i*3+1], pos2[i*3+2]);
+            s = p1.distanceTo(p2);
+            plane = new THREE.Plane(2*s, 2*s);
+            mesh = new THREE.Mesh(plane, mat);
+            container.add(mesh);
+            mesh.position.copy(p1);
+        }
+    }
+    module.Surface.prototype.setSpriteHalo = function() {
+        gen_sprites(this.hemis.left, )
+    }
 
     module.Surface.prototype.rotate = function(x, y) {
         //Rotate the surface given the X and Y mouse displacement
