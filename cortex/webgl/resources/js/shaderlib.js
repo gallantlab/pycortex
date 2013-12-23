@@ -137,6 +137,17 @@ var Shaderlib = (function() {
             }
             glsl += [ "",
             "}",
+            "void mixfunc_pos(vec3 basepos, out vec3 pos) {",
+                "float smix = surfmix * "+(morphs-1)+".;",
+                "float factor = clamp(1. - smix, 0., 1.);",
+                "pos = factor * basepos;",
+            ].join("\n");
+            for (var i = 0; i < morphs-1; i++) {
+                glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
+                glsl += "pos  += factor * mixSurfs"+i+";\n";
+            }
+            glsl += [ "",
+            "}",
             ].join("\n");
             return glsl;
         }
@@ -248,6 +259,131 @@ var Shaderlib = (function() {
             ].join("\n");
 
             return {vertex:header+vertShade, fragment:header+fragShade};
+        },
+        pointhalo: function(sampler, raw, twod, voxline, opts) {
+            var header = "#define CORTSHEET\n";
+            if (raw)
+                header += "#define RAWCOLORS\n";
+            if (twod)
+                header += "#define TWOD\n";
+
+            var morphs = opts.morphs;
+            var vertShade =  [
+            "uniform vec2 screen_size;",
+            "uniform mat4 volxfm[2];",
+            "attribute vec3 position2;",
+            "attribute vec4 auxdat;",
+            "varying float vMedial;",
+
+            "varying vec3 vPos_x;",
+        "#ifdef TWOD",
+            "varying vec3 vPos_y;",
+        "#endif",
+            "varying float vDist;",
+
+            utils.mixer(morphs),
+
+            "void main() {",
+                //Find voxel positions with both transforms (2D colormap x and y datasets)
+                "vPos_x = (volxfm[0]*vec4(position,1.)).xyz;",
+            "#ifdef TWOD",
+                "vPos_y = (volxfm[1]*vec4(position,1.)).xyz;",
+            "#endif",
+
+                "vMedial = auxdat.x;",
+
+                "vec3 pos;",
+                "mixfunc_pos(position2, pos);",
+
+                //compute the screen distance between pial and white matter surfaces
+                "vec4 spos1 = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
+                "vec4 spos2 = projectionMatrix * modelViewMatrix * vec4(position2, 1.0);",
+                //perspective divide
+                "vec2 snorm1 = screen_size * (spos1.xy / spos1.w);",
+                "vec2 snorm2 = screen_size * (spos2.xy / spos2.w);",
+
+                "vDist = distance(position, position2);",
+
+                //return pixel-sized pointsize
+                "gl_PointSize = distance(snorm1, snorm2);",
+                "gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);",
+
+            "}"
+            ].join("\n");
+
+            var sampling = [
+        "#ifdef RAWCOLORS",
+                "color[0] += "+sampler+"_x(data[0], coord_x);",
+                "color[1] += "+sampler+"_x(data[1], coord_x);",
+        "#else",
+                "values.x += "+sampler+"_x(data[0], coord_x).r;",
+                "values.y += "+sampler+"_x(data[1], coord_x).r;",
+            "#ifdef TWOD",
+                "values.z += "+sampler+"_y(data[2], coord_y).r;",
+                "values.w += "+sampler+"_y(data[3], coord_y).r;",
+            "#endif",
+        "#endif",
+            ].join("\n");
+
+            var fragShade = [
+            "#extension GL_OES_standard_derivatives: enable",
+            "#extension GL_OES_texture_float: enable",
+
+            "uniform float surfmix;",
+            "uniform mat4 inverse;",
+            "varying float vMedial;",
+
+            "varying vec3 vPos_x;",
+            "varying vec3 vPos_y;",
+            "varying float vDist;",
+
+            utils.standard_frag_vars,
+            utils.rand,
+            utils.colormap,
+
+            utils.samplers,
+
+            "void main() {",
+                "vec3 coord_x, coord_y;",
+            "#ifdef RAWCOLORS",
+                "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
+            "#else",
+                "vec4 values = vec4(0.);",
+            "#endif",
+                
+                "vec4 offset = inverse * vec4((vec2(2.)*gl_PointCoord - vec2(1.)) * vec2(vDist), 0., 1.);",
+                "coord_x = vPos_x + offset.xyz;",
+            "#ifdef TWOD",
+                "coord_y = vPos_y + offset.xyz;",
+            "#endif",
+
+                sampling,
+
+            "#ifdef RAWCOLORS",
+                "vec4 vColor = mix(color[0], color[1], framemix);",
+            "#else",
+                "vec4 vColor = colorlut(values);",
+            "#endif",
+                "vColor *= dataAlpha;",
+
+                "if (vMedial < .999) {",
+                    "gl_FragColor = vec4(offset.xyz, 1.);",
+                "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
+                    "discard;",
+                "}",
+            "}"
+            ].join("\n");
+
+            var attributes = {
+                position2: { type: 'v3', value:null },
+                auxdat: { type: 'v4', value:null },
+            };
+            for (var i = 0; i < morphs-1; i++) {
+                attributes['mixSurfs'+i] = { type:'v3', value:null};
+                attributes['mixNorms'+i] = { type:'v3', value:null};
+            }
+
+            return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
         },
         surface: function(sampler, raw, twod, voxline, opts) {
             var header = "";
