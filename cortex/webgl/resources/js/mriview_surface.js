@@ -116,6 +116,7 @@ var mriview = (function(module) {
 
         }.bind(this), {useWorker:true});
     };
+    THREE.EventDispatcher.prototype.apply(module.Surface.prototype);
     module.Surface.prototype.resize = function(width, height) {
         this.volumebuf = new THREE.WebGLRenderTarget(width, height, {
             minFilter: THREE.LinearFilter,
@@ -185,7 +186,7 @@ var mriview = (function(module) {
                     this.shaders[0][j].uniforms.thickmix = {type:'f', value:1};
                 }
                 this.uniforms.curvAlpha.value = 1;
-                var shaders = dataview.getShader(Shaders.pointhalo, this.uniforms, {
+                var shaders = dataview.getShader(Shaders.halopoint, this.uniforms, {
                         morphs:this.names.length, volume:1});
                 var inverse = {type:'m4', value:null};
                 for (var j = 0; j < shaders.length; j++) {
@@ -196,18 +197,14 @@ var mriview = (function(module) {
                     shaders[j].blendDst = THREE.OneMinusSrcAlphaFactor;
                 }
                 this.shaders.push(shaders);
-                this.prerender = function(idx, renderer, scene, camera) {
-                    camera.updateMatrix();
-                    var mv = (new THREE.Matrix4()).getInverse(camera.matrix);
-                    var proj = (new THREE.Matrix4()).getInverse(camera.projectionMatrix);
-                    inverse.value = mv.multiply(proj);
-                    console.log(inverse.value);
-                }
             }
         }.bind(this));
     };
+    module.Surface.prototype.prerender = function(idx, renderer, scene, camera) {
+        this.dispatchEvent({type:"prerender", idx:idx, renderer:renderer, scene:scene, camera:camera});
+    }
     var oldcolor, black = new THREE.Color(0,0,0);
-    module.Surface.prototype._prerender = function(idx, renderer, scene, camera) {
+    module.Surface.prototype._prerender_halosurf = function(idx, renderer, scene, camera) {
         camera.add(scene.fsquad);
         scene.fsquad.material = this.quadshade[idx];
         scene.fsquad.visible = false;
@@ -219,7 +216,6 @@ var mriview = (function(module) {
         }
         oldcolor = renderer.getClearColor()
         renderer.setClearColor(black, 0);
-        //renderer.render(scene, camera);
         renderer.render(scene, camera, this.volumebuf);
         renderer.setClearColor(oldcolor, 1);
         for (var i = 1; i < this.meshes.length; i++) {
@@ -227,6 +223,39 @@ var mriview = (function(module) {
             this.meshes[i].right.visible = false;
         }
         scene.fsquad.visible = true;
+    };
+
+    var __vec = new THREE.Vector3();
+    var __mat = new THREE.Matrix4();
+    module.Surface.prototype._prerender_halosprite = function(idx, renderer, scene, camera) {
+        var sortArray, pts, sprites, ptvec, dist;
+        for (var name in {left:null, right:null}) {
+            sprites = this.sprites[name];
+            pts = sprites.geometry.attributes.position.array;
+
+            __mat.copy(camera.projectionMatrix);
+            __mat.multiply(sprites.matrixWorld);
+            if (sprites.geometry.__sortArray === undefined) {
+                sprites.geometry.__sortArray = [];
+                for (var i = 0, il = sprites.geometry.ptvecs.length; i < il; i++) {
+                    sprites.geometry.__sortArray.push([]);
+                }
+            }
+            sortArray = sprites.geometry.__sortArray;
+
+            for (var i = 0, il = sprites.geometry.ptvecs.length; i < il; i++) {
+                __vec.copy(sprites.geometry.ptvecs[i][0]);
+                __vec.applyProjection(__mat);
+                sortArray[i] = [pt.z, i];
+            }
+            sortArray.sort(function ( a, b ) {return b[ 0 ] - a[ 0 ]});
+            for (var i = 0, il = sortArray.length; i < il; i++) {
+                ptvec = sprites.geometry.ptvecs[sortArray[i][1]];
+                __vec.copy(ptvec[1]);
+                __vec.applyProject(__mat);
+                pts[i*3*4 + 0] = ptvec[0].x - __vec;
+            }
+        }
     };
 
     module.Surface.prototype.apply = function(idx) {
@@ -270,24 +299,55 @@ var mriview = (function(module) {
         if (this._update.func)
             this._update.func();
     };
-    var gen_sprites = function(geom, mat) {
-        var container = new THREE.Object3D();
-        var pos = geom.attributes.position.array, 
-            pos2 = geom.attributes.position2.array;
-        var npts = pos.length / 3;
-        var mesh, plane, p1 = new THREE.Vector3(), p2 = new THREE.Vector3(), s;
+    function gen_sprites(hemi) {
+        var npts = hemi.attributes.position.numItems / 3;
+        var pia = hemi.attributes.position.array;
+        var wm = hemi.attributes.position2.array;
+
+        var geom = new THREE.BufferGeometry();
+        geom.dynamic = true;
+        geom.addAttribute("position", Float32Array, npts * 3 * 4, 3);
+        geom.addAttribute("surfnorm", Float32Array, npts * 3, 3);
+        geom.addAttribute("spriteidx", Float32Array, npts, 1);
+        geom.addAttribute("index", Uint16Array, npts*2*3, 3);
+        geom.ptvecs = [];
+        var size = geom.attributes.size.array;
+        var idx = geom.attributes.index.array;
+
+        var vec1 = new THREE.Vector3(),
+            vec2 = new THREE.Vector3();
         for (var i = 0; i < npts; i++) {
-            p1.set(pos[i*3], pos[i*3+1], pos[i*3+2]);
-            p2.set(pos2[i*3], pos2[i*3+1], pos2[i*3+2]);
-            s = p1.distanceTo(p2);
-            plane = new THREE.Plane(2*s, 2*s);
-            mesh = new THREE.Mesh(plane, mat);
-            container.add(mesh);
-            mesh.position.copy(p1);
+            vec1.set(pia[i*3], pia[i*3+1], pia[i*3+2]);
+            vec2.set( wm[i*4],  wm[i*4+1],  wm[i*4+2]);
+            geom.ptvecs.push([vec2.clone(), vec1.sub(vec2).clone()]);
         }
+
+        for (var i = 0, il = Math.ceil(npts / 32768); i < il; i++) {
+            for (var j = 0; j < 32768; j++) {
+                idx[i*32768+j*6+0] = j*2+0;
+                idx[i*32768+j*6+1] = j*2+1;
+                idx[i*32768+j*6+2] = j*2+2;
+                idx[i*32768+j*6+3] = j*2+1;
+                idx[i*32768+j*6+4] = j*2+3;
+                idx[i*32768+j*6+5] = j*2+2;
+            }
+            geom.offsets.push({start:i*32768, count:32768, index:i*32768});
+        }
+        if (this._update.func)
+            this._update.func();
+
+        this.addEventListener("prerender", this._prerender_halosprite.bind(this));
+        return geom;
     }
     module.Surface.prototype.setSpriteHalo = function() {
-        gen_sprites(this.hemis.left, )
+        var lgeom = gen_sprites(this.hemis.left);
+        var rgeom = gen_sprites(this.hemis.right);
+        var shader = new THREE.MeshPhongMaterial({color:"#FF0000"});
+        var lmesh = new THREE.Mesh(lgeom, shader);
+        var rmesh = new THREE.Mesh(rgeom, shader);
+        this.sprites = {left:lgeom, right:rgeom};
+        this.pivots.left.back.add(lmesh);
+        this.pivots.right.back.add(rmesh);
     }
 
     module.Surface.prototype.rotate = function(x, y) {
