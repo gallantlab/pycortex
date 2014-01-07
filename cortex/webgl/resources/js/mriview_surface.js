@@ -180,24 +180,6 @@ var mriview = (function(module) {
                 if (this.prerender !== undefined)
                     delete this.prerender;
             }
-            if (this.points !== undefined) {
-                for (var j = 0; j < this.shaders[0].length; j++) {
-                    this.shaders[0][j].uniforms.dataAlpha = {type:'f', value:0};
-                    this.shaders[0][j].uniforms.thickmix = {type:'f', value:1};
-                }
-                this.uniforms.curvAlpha.value = 1;
-                var shaders = dataview.getShader(Shaders.halopoint, this.uniforms, {
-                        morphs:this.names.length, volume:1});
-                var inverse = {type:'m4', value:null};
-                for (var j = 0; j < shaders.length; j++) {
-                    shaders[j].transparent = true;
-                    shaders[j].uniforms.inverse = inverse;
-                    shaders[j].blending = THREE.CustomBlending;
-                    shaders[j].blendSrc = THREE.OneFactor;
-                    shaders[j].blendDst = THREE.OneMinusSrcAlphaFactor;
-                }
-                this.shaders.push(shaders);
-            }
         }.bind(this));
     };
     module.Surface.prototype.prerender = function(idx, renderer, scene, camera) {
@@ -225,39 +207,6 @@ var mriview = (function(module) {
         scene.fsquad.visible = true;
     };
 
-    var __vec = new THREE.Vector3();
-    var __mat = new THREE.Matrix4();
-    module.Surface.prototype._prerender_halosprite = function(idx, renderer, scene, camera) {
-        var sortArray, pts, sprites, ptvec, dist;
-        for (var name in {left:null, right:null}) {
-            sprites = this.sprites[name];
-            pts = sprites.geometry.attributes.position.array;
-
-            __mat.copy(camera.projectionMatrix);
-            __mat.multiply(sprites.matrixWorld);
-            if (sprites.geometry.__sortArray === undefined) {
-                sprites.geometry.__sortArray = [];
-                for (var i = 0, il = sprites.geometry.ptvecs.length; i < il; i++) {
-                    sprites.geometry.__sortArray.push([]);
-                }
-            }
-            sortArray = sprites.geometry.__sortArray;
-
-            for (var i = 0, il = sprites.geometry.ptvecs.length; i < il; i++) {
-                __vec.copy(sprites.geometry.ptvecs[i][0]);
-                __vec.applyProjection(__mat);
-                sortArray[i] = [pt.z, i];
-            }
-            sortArray.sort(function ( a, b ) {return b[ 0 ] - a[ 0 ]});
-            for (var i = 0, il = sortArray.length; i < il; i++) {
-                ptvec = sprites.geometry.ptvecs[sortArray[i][1]];
-                __vec.copy(ptvec[1]);
-                __vec.applyProject(__mat);
-                pts[i*3*4 + 0] = ptvec[0].x - __vec;
-            }
-        }
-    };
-
     module.Surface.prototype.apply = function(idx) {
         for (var i = 0; i < this.shaders.length; i++) {
             this.meshes[i].left.material = this.shaders[i][idx];
@@ -283,72 +232,6 @@ var mriview = (function(module) {
         if (this._update.func)
             this._update.func();
     };
-
-    module.Surface.prototype.setPointHalo = function() {
-        var lparticles = new THREE.ParticleSystem(this.hemis.left, null);
-        var rparticles = new THREE.ParticleSystem(this.hemis.right, null);
-        lparticles.sortParticles = true;
-        rparticles.sortParticles = true;
-        lparticles.position.y = -this.flatoff[1];
-        rparticles.position.y = -this.flatoff[1];
-        this.points = true;
-        this.meshes.push({left:lparticles, right:rparticles});
-        this.pivots.left.back.add(lparticles);
-        this.pivots.right.back.add(rparticles);
-
-        if (this._update.func)
-            this._update.func();
-    };
-    function gen_sprites(hemi) {
-        var npts = hemi.attributes.position.numItems / 3;
-        var pia = hemi.attributes.position.array;
-        var wm = hemi.attributes.position2.array;
-
-        var geom = new THREE.BufferGeometry();
-        geom.dynamic = true;
-        geom.addAttribute("position", Float32Array, npts * 3 * 4, 3);
-        geom.addAttribute("surfnorm", Float32Array, npts * 3, 3);
-        geom.addAttribute("spriteidx", Float32Array, npts, 1);
-        geom.addAttribute("index", Uint16Array, npts*2*3, 3);
-        geom.ptvecs = [];
-        var size = geom.attributes.size.array;
-        var idx = geom.attributes.index.array;
-
-        var vec1 = new THREE.Vector3(),
-            vec2 = new THREE.Vector3();
-        for (var i = 0; i < npts; i++) {
-            vec1.set(pia[i*3], pia[i*3+1], pia[i*3+2]);
-            vec2.set( wm[i*4],  wm[i*4+1],  wm[i*4+2]);
-            geom.ptvecs.push([vec2.clone(), vec1.sub(vec2).clone()]);
-        }
-
-        for (var i = 0, il = Math.ceil(npts / 32768); i < il; i++) {
-            for (var j = 0; j < 32768; j++) {
-                idx[i*32768+j*6+0] = j*2+0;
-                idx[i*32768+j*6+1] = j*2+1;
-                idx[i*32768+j*6+2] = j*2+2;
-                idx[i*32768+j*6+3] = j*2+1;
-                idx[i*32768+j*6+4] = j*2+3;
-                idx[i*32768+j*6+5] = j*2+2;
-            }
-            geom.offsets.push({start:i*32768, count:32768, index:i*32768});
-        }
-        if (this._update.func)
-            this._update.func();
-
-        this.addEventListener("prerender", this._prerender_halosprite.bind(this));
-        return geom;
-    }
-    module.Surface.prototype.setSpriteHalo = function() {
-        var lgeom = gen_sprites(this.hemis.left);
-        var rgeom = gen_sprites(this.hemis.right);
-        var shader = new THREE.MeshPhongMaterial({color:"#FF0000"});
-        var lmesh = new THREE.Mesh(lgeom, shader);
-        var rmesh = new THREE.Mesh(rgeom, shader);
-        this.sprites = {left:lgeom, right:rgeom};
-        this.pivots.left.back.add(lmesh);
-        this.pivots.right.back.add(rmesh);
-    }
 
     module.Surface.prototype.rotate = function(x, y) {
         //Rotate the surface given the X and Y mouse displacement
