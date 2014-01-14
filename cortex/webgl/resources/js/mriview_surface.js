@@ -139,7 +139,7 @@ var mriview = (function(module) {
             this._update.data = dataview;
             dataview.addEventListener("update", this._update.func);
 
-            if (this.meshes.length > 1 && !this.points) {
+            if (this.meshes.length > 1) {
                 for (var i = 0; i < this.meshes.length; i++) {
                     var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
                         morphs:this.names.length, volume:1, rois: false, halo: true });
@@ -168,7 +168,7 @@ var mriview = (function(module) {
                 this.quadshade.blendSrc = THREE.OneFactor
                 this.quadshade.blendDst = THREE.OneMinusSrcAlphaFactor
                 this.quadshade.depthWrite = false;
-                this.prerender = this._prerender.bind(this);
+                this.addEventListener("prerender", this._prerender_halosurf.bind(this));
             } else {
                 var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
                             morphs:this.names.length, 
@@ -177,8 +177,7 @@ var mriview = (function(module) {
                             halo: false,
                         });
                 this.shaders.push(shaders);
-                if (this.prerender !== undefined)
-                    delete this.prerender;
+                this.removeEventListener("prerender", this._prerender_halosurf.bind(this));
             }
         }.bind(this));
     };
@@ -186,7 +185,8 @@ var mriview = (function(module) {
         this.dispatchEvent({type:"prerender", idx:idx, renderer:renderer, scene:scene, camera:camera});
     }
     var oldcolor, black = new THREE.Color(0,0,0);
-    module.Surface.prototype._prerender_halosurf = function(idx, renderer, scene, camera) {
+    module.Surface.prototype._prerender_halosurf = function(evt) {
+        var idx = evt.idx, renderer = evt.renderer, scene = evt.scene, camera = evt.camera;
         camera.add(scene.fsquad);
         scene.fsquad.material = this.quadshade[idx];
         scene.fsquad.visible = false;
@@ -198,6 +198,7 @@ var mriview = (function(module) {
         }
         oldcolor = renderer.getClearColor()
         renderer.setClearColor(black, 0);
+        //renderer.render(scene, camera);
         renderer.render(scene, camera, this.volumebuf);
         renderer.setClearColor(oldcolor, 1);
         for (var i = 1; i < this.meshes.length; i++) {

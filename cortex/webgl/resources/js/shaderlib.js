@@ -41,12 +41,37 @@ var Shaderlib = (function() {
         ].join("\n"),
 
         pack: [
-            "vec4 pack_float( const in float depth ) {",
-                "const vec4 bit_shift = vec4( 256.0 * 256.0 * 256.0, 256.0 * 256.0, 256.0, 1.0 );",
-                "const vec4 bit_mask  = vec4( 0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0 );",
+            //Stores float into 32 bits, 4 bytes
+            "vec4 encode_float32( const in float depth ) {",
+                "const vec4 bit_shift = vec4( 1.0, 255.0, 65025.0, 160581375.0 );",
+                "const vec4 bit_mask  = vec4( 1.0 / 255.0, 1.0 / 255.0, 1.0 / 255.0, 0.0);",
                 "vec4 res = fract( depth * bit_shift );",
-                "res -= res.xxyz * bit_mask;",
-                "return floor(res * 256.) / 256. + 1./512.;",
+                "res -= res.yzww * bit_mask;",
+                "return res;",
+            "}",
+            //stores float into 16 bits, 2 bytes
+            "vec2 encode_float16( const in float depth ) {",
+                "const vec2 bit_shift = vec2( 1.0, 255.0);",
+                "const vec2 bit_mask  = vec2( 1.0 / 255.0, 0.0);",
+                "vec2 res = fract( depth * bit_shift );",
+                "res -= res.yy * bit_mask;",
+                "return res;",
+            "}",
+            //stores float into 8 bits, 4bits/4bits in each
+            "vec2 encode_float8_(const in float value) {",
+                "const vec2 bit_shift = vec2(1., 15.);",
+                "const vec2 bit_mask = vec2(15./255., 0.);",
+                "vec2 res = fract(value * bit_shift);",
+                "res -= res.yy * bit_mask;",
+                "return res * bit_mask.xx;",
+            "}",
+            "float decode_float_vec4(vec4 rgba) {",
+                "const vec4 shift = vec4(1.0, 1. / 255., 1. / 65025., 1./160581375.0);",
+                "return dot(rgba, shift);",
+            "}",
+            "float decode_float_vec2(vec2 rg) {",
+                "const vec2 shift = vec2(1.0, 1. / 255.);",
+                "return dot(rg, shift);",
             "}",
         ].join("\n"),
 
@@ -260,257 +285,6 @@ var Shaderlib = (function() {
 
             return {vertex:header+vertShade, fragment:header+fragShade};
         },
-        halopoint: function(sampler, raw, twod, voxline, opts) {
-            var header = "#define CORTSHEET\n";
-            if (raw)
-                header += "#define RAWCOLORS\n";
-            if (twod)
-                header += "#define TWOD\n";
-
-            var morphs = opts.morphs;
-            var vertShade =  [
-            "uniform vec2 screen_size;",
-            "uniform mat4 volxfm[2];",
-            "attribute vec3 position2;",
-            "attribute vec4 auxdat;",
-            "varying float vMedial;",
-
-            "varying vec3 vPos_x;",
-        "#ifdef TWOD",
-            "varying vec3 vPos_y;",
-        "#endif",
-            "varying float vDist;",
-
-            utils.mixer(morphs),
-
-            "void main() {",
-                //Find voxel positions with both transforms (2D colormap x and y datasets)
-                "vPos_x = (volxfm[0]*vec4(position,1.)).xyz;",
-            "#ifdef TWOD",
-                "vPos_y = (volxfm[1]*vec4(position,1.)).xyz;",
-            "#endif",
-
-                "vMedial = auxdat.x;",
-
-                "vec3 pos;",
-                "mixfunc_pos(position2, pos);",
-
-                //compute the screen distance between pial and white matter surfaces
-                "vec4 spos1 = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
-                "vec4 spos2 = projectionMatrix * modelViewMatrix * vec4(position2, 1.0);",
-                //perspective divide
-                "vec2 snorm1 = screen_size * (spos1.xy / spos1.w);",
-                "vec2 snorm2 = screen_size * (spos2.xy / spos2.w);",
-
-                "vDist = distance(position, position2);",
-
-                //return pixel-sized pointsize
-                "gl_PointSize = distance(snorm1, snorm2);",
-                "gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);",
-
-            "}"
-            ].join("\n");
-
-            var sampling = [
-        "#ifdef RAWCOLORS",
-                "color[0] += "+sampler+"_x(data[0], coord_x);",
-                "color[1] += "+sampler+"_x(data[1], coord_x);",
-        "#else",
-                "values.x += "+sampler+"_x(data[0], coord_x).r;",
-                "values.y += "+sampler+"_x(data[1], coord_x).r;",
-            "#ifdef TWOD",
-                "values.z += "+sampler+"_y(data[2], coord_y).r;",
-                "values.w += "+sampler+"_y(data[3], coord_y).r;",
-            "#endif",
-        "#endif",
-            ].join("\n");
-
-            var fragShade = [
-            "#extension GL_OES_standard_derivatives: enable",
-            "#extension GL_OES_texture_float: enable",
-
-            "uniform float surfmix;",
-            "uniform mat4 inverse;",
-            "varying float vMedial;",
-
-            "varying vec3 vPos_x;",
-            "varying vec3 vPos_y;",
-            "varying float vDist;",
-
-            utils.standard_frag_vars,
-            utils.rand,
-            utils.colormap,
-
-            utils.samplers,
-
-            "void main() {",
-                "vec3 coord_x, coord_y;",
-            "#ifdef RAWCOLORS",
-                "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
-            "#else",
-                "vec4 values = vec4(0.);",
-            "#endif",
-                
-                "vec4 offset = inverse * vec4((vec2(2.)*gl_PointCoord - vec2(1.)) * vec2(vDist), 0., 1.);",
-                "coord_x = vPos_x + offset.xyz;",
-            "#ifdef TWOD",
-                "coord_y = vPos_y + offset.xyz;",
-            "#endif",
-
-                sampling,
-
-            "#ifdef RAWCOLORS",
-                "vec4 vColor = mix(color[0], color[1], framemix);",
-            "#else",
-                "vec4 vColor = colorlut(values);",
-            "#endif",
-                "vColor *= dataAlpha;",
-
-                "if (vMedial < .999) {",
-                    "gl_FragColor = vec4(offset.xyz, 1.);",
-                "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
-                    "discard;",
-                "}",
-            "}"
-            ].join("\n");
-
-            var attributes = {
-                position2: { type: 'v3', value:null },
-                auxdat: { type: 'v4', value:null },
-            };
-            for (var i = 0; i < morphs-1; i++) {
-                attributes['mixSurfs'+i] = { type:'v3', value:null};
-                attributes['mixNorms'+i] = { type:'v3', value:null};
-            }
-
-            return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
-        },
-
-        halosprite: function(sampler, raw, twod, voxline, opts) {
-            var header = "#define CORTSHEET\n";
-            if (raw)
-                header += "#define RAWCOLORS\n";
-            if (twod)
-                header += "#define TWOD\n";
-
-            var morphs = opts.morphs;
-            var vertShade =  [
-            "uniform vec2 screen_size;",
-            "uniform mat4 volxfm[2];",
-            "attribute vec3 position2;",
-            "attribute vec4 auxdat;",
-            "varying float vMedial;",
-
-            "varying vec3 vPos_x;",
-        "#ifdef TWOD",
-            "varying vec3 vPos_y;",
-        "#endif",
-            "varying float vDist;",
-
-            utils.mixer(morphs),
-
-            "void main() {",
-                //Find voxel positions with both transforms (2D colormap x and y datasets)
-                "vPos_x = (volxfm[0]*vec4(position,1.)).xyz;",
-            "#ifdef TWOD",
-                "vPos_y = (volxfm[1]*vec4(position,1.)).xyz;",
-            "#endif",
-
-                "vMedial = auxdat.x;",
-
-                "vec3 pos;",
-                "mixfunc_pos(position2, pos);",
-
-                //compute the screen distance between pial and white matter surfaces
-                "vec4 spos1 = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
-                "vec4 spos2 = projectionMatrix * modelViewMatrix * vec4(position2, 1.0);",
-                //perspective divide
-                "vec2 snorm1 = screen_size * (spos1.xy / spos1.w);",
-                "vec2 snorm2 = screen_size * (spos2.xy / spos2.w);",
-
-                "vDist = distance(position, position2);",
-
-                //return pixel-sized pointsize
-                "gl_PointSize = distance(snorm1, snorm2);",
-                "gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);",
-
-            "}"
-            ].join("\n");
-
-            var sampling = [
-        "#ifdef RAWCOLORS",
-                "color[0] += "+sampler+"_x(data[0], coord_x);",
-                "color[1] += "+sampler+"_x(data[1], coord_x);",
-        "#else",
-                "values.x += "+sampler+"_x(data[0], coord_x).r;",
-                "values.y += "+sampler+"_x(data[1], coord_x).r;",
-            "#ifdef TWOD",
-                "values.z += "+sampler+"_y(data[2], coord_y).r;",
-                "values.w += "+sampler+"_y(data[3], coord_y).r;",
-            "#endif",
-        "#endif",
-            ].join("\n");
-
-            var fragShade = [
-            "#extension GL_OES_standard_derivatives: enable",
-            "#extension GL_OES_texture_float: enable",
-
-            "uniform float surfmix;",
-            "uniform mat4 inverse;",
-            "varying float vMedial;",
-
-            "varying vec3 vPos_x;",
-            "varying vec3 vPos_y;",
-            "varying float vDist;",
-
-            utils.standard_frag_vars,
-            utils.rand,
-            utils.colormap,
-
-            utils.samplers,
-
-            "void main() {",
-                "vec3 coord_x, coord_y;",
-            "#ifdef RAWCOLORS",
-                "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
-            "#else",
-                "vec4 values = vec4(0.);",
-            "#endif",
-                
-                "vec4 offset = inverse * vec4((vec2(2.)*gl_PointCoord - vec2(1.)) * vec2(vDist), 0., 1.);",
-                "coord_x = vPos_x + offset.xyz;",
-            "#ifdef TWOD",
-                "coord_y = vPos_y + offset.xyz;",
-            "#endif",
-
-                sampling,
-
-            "#ifdef RAWCOLORS",
-                "vec4 vColor = mix(color[0], color[1], framemix);",
-            "#else",
-                "vec4 vColor = colorlut(values);",
-            "#endif",
-                "vColor *= dataAlpha;",
-
-                "if (vMedial < .999) {",
-                    "gl_FragColor = vec4(offset.xyz, 1.);",
-                "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
-                    "discard;",
-                "}",
-            "}"
-            ].join("\n");
-
-            var attributes = {
-                position2: { type: 'v3', value:null },
-                auxdat: { type: 'v4', value:null },
-            };
-            for (var i = 0; i < morphs-1; i++) {
-                attributes['mixSurfs'+i] = { type:'v3', value:null};
-                attributes['mixNorms'+i] = { type:'v3', value:null};
-            }
-
-            return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
-        },
 
         surface: function(sampler, raw, twod, voxline, opts) {
             var header = "";
@@ -642,6 +416,7 @@ var Shaderlib = (function() {
             utils.rand,
             utils.edge,
             utils.colormap,
+            utils.pack,
 
         "#ifdef VOLUME_SAMPLED",
             utils.samplers,
@@ -716,15 +491,14 @@ var Shaderlib = (function() {
 
             var fragTail = [
     "#ifdef HALO_RENDER",
-                "float value = vnorm(values).x;",
-                "const vec3 bit_shift = vec3( 511./64., 511./8., 511.);", //3 bits per color
-                "const vec3 bit_mask  = vec3( 0., 8., 8.);",
-                "vec3 res = floor( value * bit_shift );",
-                "res -= res.xxy * bit_mask;",
                 "if (vMedial < .999) {",
-                    //"gl_FragColor = vec4(1. / 256., 0., 0., 1.);",
-                    "gl_FragColor = vec4(res / 256., 1. / 256.);",
-                    //"gl_FragColor = vec4(vec3(value / 32.), 1.);",
+                    "float dweight = gl_FragCoord.w;",
+                    "float value = dweight * vnorm(values).x;",
+
+                    "gl_FragColor.rg = encode_float_vec2(value);",
+                    "gl_FragColor.ba = encode_float_vec2(dweight);",
+                    //"gl_FragColor = vec4(res / 256., 1. / 256.);",
+                    //"gl_FragColor = vec4(vec3(gl_FragCoord.w), 1.);",
                 "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
                     "discard;",
                 "}",
@@ -799,13 +573,14 @@ var Shaderlib = (function() {
                 "}",
             ].join("\n");
             var fragShade = [
+                utils.pack,
                 "uniform vec2 screen_size;",
                 "uniform sampler2D screen;",
                 "uniform sampler2D colormap;",
                 "void main() {",
-                    "vec4 value = texture2D(screen, gl_FragCoord.xy / screen_size);",
-                    "const vec3 bit_shift = vec3(256. * 64. / 511., 256.*8. / 511., 256. / 511.);",
-                    "float raw = dot(bit_shift, value.rgb) / (value.a*256.);",
+                    "vec4 data = texture2D(screen, gl_FragCoord.xy / screen_size);",
+                    "float value = decode_float_vec2(data.rg);",
+                    "float raw = value / decode_float_vec2(data.ba);",
                     //"if (value.a > 0.) {",
                        "gl_FragColor = texture2D(colormap, vec2(raw, 0.));",
                     //"} else {",
