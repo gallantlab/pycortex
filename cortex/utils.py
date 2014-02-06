@@ -134,8 +134,31 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
         return sp.call(["inkscape", '-f', rois.svgfile])
 
 def get_roi_verts(subject, roi=None):
-    '''Return vertices for the given ROIs'''
+    """Return vertices for the given ROIs, or all ROIs if none are given.
+
+    Parameters
+    ----------
+    subject : str
+        Name of the subject
+    roi : str, list or None, optional
+        ROIs to fetch. Can be ROI name (string), a list of ROI names, or
+        None, in which case all ROIs will be fetched.
+
+    Returns
+    -------
+    roidict : dict
+        Dictionary of {roi name : roi verts}. ROI verts are for both
+        hemispheres, with right hemisphere vertex numbers sequential
+        after left hemisphere vertex numbers.
+    """
+    # Get ROIpack
     rois = surfs.getOverlay(subject)
+
+    # Get flat surface so we can figure out which verts are in medial wall
+    # or in cuts
+    # This assumes subject has flat surface, which they must to have ROIs..
+    pts, polys = surfs.getSurf(subject, "flat", merge=True)
+    goodpts = np.unique(polys)
 
     if roi is None:
         roi = rois.names
@@ -145,7 +168,7 @@ def get_roi_verts(subject, roi=None):
         roi = [roi]
 
     for name in roi:
-        roidict[name] = rois.get_roi(name)
+        roidict[name] = np.intersect1d(rois.get_roi(name), goodpts)
 
     return roidict
 
