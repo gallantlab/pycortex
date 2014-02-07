@@ -8,6 +8,7 @@ dict(
 )
 """
 import os
+import cStringIO
 import json
 import numpy as np
 
@@ -32,11 +33,18 @@ class Package(object):
             else:
                 voldata = voldata.astype(np.float32)
                 self.brains[name]['raw'] = False
-            self.images[name] = [volume.mosaic(vol, show=False) for vol in voldata]
-            if len(set([shape for m, shape in self.images[name]])) != 1:
-                raise ValueError('Internal error in mosaic')
-            self.brains[name]['mosaic'] = self.images[name][0][1]
-            self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
+
+            if isinstance(brain, dataset.Vertex):
+                npyform = cStringIO.StringIO()
+                np.save(npyform, voldata)
+                npyform.seek(0)
+                self.images[name] = npyform.read()
+            else:
+                self.images[name] = [volume.mosaic(vol, show=False) for vol in voldata]
+                if len(set([shape for m, shape in self.images[name]])) != 1:
+                    raise ValueError('Internal error in mosaic')
+                self.brains[name]['mosaic'] = self.images[name][0][1]
+                self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
 
     @property
     def views(self):
