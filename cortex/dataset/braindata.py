@@ -353,6 +353,16 @@ class VertexData(VolumeData):
         #return VertexData(self.data[idx], self.subject, **self.attrs)
         return self.copy(self.data[idx])
 
+    def to_json(self):
+        return dict(
+            data=self.name,
+            subject=self.subject,
+            movie=self.movie,
+            raw=self.raw,
+            min=float(self.data.min()),
+            max=float(self.data.max()),
+        )
+
     @property
     def vertices(self):
         if self.raw and self.data.shape[-1] < 4:

@@ -7,6 +7,7 @@ dict(
     images=(__braindata_name=["img1.png", "img2.png"]),
 )
 """
+import cStringIO
 import json
 import numpy as np
 
@@ -24,18 +25,27 @@ class Package(object):
         for brain in self.uniques:
             name = brain.name
             self.brains[name] = brain.to_json()
-            voldata = brain.volume
+            if isinstance(brain, dataset.VertexData):
+                voldata = brain.data
+            else:
+                voldata = brain.volume
             if not brain.movie:
                 voldata = voldata[np.newaxis]
             if brain.raw:
                 voldata = voldata.astype(np.uint8)
             else:
                 voldata = voldata.astype(np.float32)
-            self.images[name] = [volume.mosaic(vol, show=False) for vol in voldata]
-            if len(set([shape for m, shape in self.images[name]])) != 1:
-                raise ValueError('Internal error in mosaic')
-            self.brains[name]['mosaic'] = self.images[name][0][1]
-            self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
+            if isinstance(brain, dataset.VertexData):
+                npyform = cStringIO.StringIO()
+                np.save(npyform, voldata)
+                npyform.seek(0)
+                self.images[name] = npyform.read()
+            else:
+                self.images[name] = [volume.mosaic(vol, show=False) for vol in voldata]
+                if len(set([shape for m, shape in self.images[name]])) != 1:
+                    raise ValueError('Internal error in mosaic')
+                self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
+                self.brains[name]['mosaic'] = self.images[name][0][1]
 
     @property
     def views(self):

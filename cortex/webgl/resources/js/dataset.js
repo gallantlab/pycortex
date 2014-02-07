@@ -239,7 +239,15 @@ var dataset = (function(module) {
             img.src = this.data[this.textures.length];
         }.bind(this);
 
-        loadmosaic(0);
+        if (this.xfm === undefined) {
+            NParray.fromURL(this.data[0], function(array) {
+                this.verts = array;
+                this.verts.loaded.done(function() {
+                    this.loaded.resolve()
+                }.bind(this));
+            }.bind(this));
+        } else 
+            loadmosaic(0);
         module.brains[json.data] = this;
     };
     module.BrainData.prototype.setFilter = function(interp) {
