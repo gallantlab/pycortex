@@ -172,7 +172,7 @@ class Database(object):
         if len(kwargs) > 0:
             opts = "[%s]"%','.join(["%s=%s"%i for i in kwargs.items()])
         anatform = self.getFiles(subject)['anats']
-        anatfile = anatform.format(type=type, opts=opts)
+        anatfile = anatform.format(type=type, opts=opts, ext="nii.gz")
 
         if not os.path.exists(anatfile) or recache:
             print("Generating %s anatomical..."%type)
@@ -495,7 +495,7 @@ class Database(object):
             surfs=surfs,
             xfms=os.listdir(os.path.join(filestore, subject, "transforms")),
             xfmdir=os.path.join(filestore, subject, "transforms", "{xfmname}", "matrices.xfm"),
-            anats=os.path.join(filestore, subject, "anatomicals", '{type}{opts}.nii.gz'), 
+            anats=os.path.join(filestore, subject, "anatomicals", '{type}{opts}.{ext}'), 
             surfinfo=os.path.join(filestore, subject, "surface-info", '{type}{opts}.npz'),
             masks=os.path.join(filestore, subject, 'transforms', '{xfmname}', 'mask_{type}.nii.gz'),
             cachedir=os.path.join(filestore, subject, "cache"),

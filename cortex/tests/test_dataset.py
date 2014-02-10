@@ -4,7 +4,7 @@ import numpy as np
 
 from cortex import surfs, dataset
 
-subj, xfmname = "S1", "fullhead"
+subj, xfmname, nverts = "S1", "fullhead", 304380
 
 def test_braindata():
 	vol = np.random.randn(31, 100, 100)
@@ -123,3 +123,14 @@ def test_pack():
 def test_convertraw():
 	ds = cortex.Dataset(test=(np.random.randn(31, 100, 100), subj, xfmname))
 	ds.test.raw
+
+def test_vertexdata_copy():
+	vd = cortex.VertexData(np.random.randn(nverts), subj)
+	vdcopy = vd.copy()
+	assert np.allclose(vd.data, vdcopy.data)
+
+def test_vertexdata_set():
+	vd = cortex.VertexData(np.random.randn(nverts), subj)
+	newdata = np.random.randn(nverts)
+	vd.data = newdata
+	assert np.allclose(newdata, vd.data)

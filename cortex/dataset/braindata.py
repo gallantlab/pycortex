@@ -18,6 +18,10 @@ class BrainData(object):
             return self._data.value
         return self._data
 
+    @data.setter
+    def data(self, data):
+        self._data = data
+
     @property
     def name(self):
         '''Name of this BrainData, according to its hash'''
@@ -175,7 +179,7 @@ class VolumeData(BrainData):
                 shape = shape[:-1]
             xfm = surfs.getXfm(self.subject, self.xfmname)
             if xfm.shape != shape:
-                raise ValueError("Volumetric data must be same shape as reference for transform")
+                raise ValueError("Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)" % (str(shape), str(xfm.shape)))
             self.shape = shape
 
     def map(self, projection="nearest"):
@@ -308,7 +312,7 @@ class VertexData(VolumeData):
             # Data for both hemispheres
             self.hem = "both"
         else:
-            raise ValueError('Invalid number of vertices for subject')
+            raise ValueError('Invalid number of vertices for subject (given %d, should be %d for left hem, %d for right hem, or %d for both)' % (self.nverts, self.llen, self.rlen, self.llen+self.rlen))
 
     def copy(self, data=None):
         """Copies this VertexData. Uses __new__ to avoid expensive initialization that
@@ -317,11 +321,10 @@ class VertexData(VolumeData):
         """
         newvd = self.__class__.__new__(self.__class__)
         newvd.subject = self.subject
-        newvd.attrs = self.attrs
         newvd.llen = self.llen
         newvd.rlen = self.rlen
         
-        if newdata is None:
+        if data is None:
             newvd._set_data(self.data)
         else:
             newvd._set_data(data)

@@ -861,6 +861,8 @@ var mriview = (function(module) {
             } else if (e.keyCode == 109 || e.keyCode == 189) { //-
                 this.nextData(-1);
             } else if (e.keyCode == 76) { //l
+                var box = $(this.object).find("#labelshow");
+                box.attr("checked", box.attr("checked") == "checked" ? null : "checked");
                 this.labelshow = !this.labelshow;
                 this.schedule();
                 e.stopPropagation();
@@ -967,7 +969,7 @@ var mriview = (function(module) {
             if (this.checked) 
                 updateROIs();
             else {
-                _this.uniforms.map.texture = this.blanktex;
+                _this.uniforms.map.texture = _this.blanktex;
                 _this.schedule();
             }
         });
