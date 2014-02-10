@@ -136,10 +136,12 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         cbar = fig.add_axes((.4, .07, .2, .04))
         fig.colorbar(cimg, cax=cbar, orientation='horizontal')
 
-    if with_dropout:
+    if with_dropout is not False:
+        if with_dropout is True: with_dropout = 20
         dax = fig.add_axes((0,0,1,1))
-        dmap, ee = make(utils.get_dropout(dataview.data.subject, dataview.data.xfmname),
-                    height=height, sampler=sampler)
+        dmap, ee = make(utils.get_dropout(dataview.data.subject, dataview.data.xfmname,
+                                          power=with_dropout),
+                        height=height, sampler=sampler)
         hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
         hatchspace = 4
         hatchpat = (hx+hy)%(2*hatchspace) < 2
@@ -174,7 +176,6 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             extent=extents, 
             zorder=3,
             origin='lower')
-
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,

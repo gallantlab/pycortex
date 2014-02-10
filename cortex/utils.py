@@ -266,6 +266,7 @@ def get_dropout(subject, xfmname, power=20):
     if rawdata.ndim > 3:
         rawdata = rawdata.mean(0)
 
+    rawdata[rawdata==0] = np.mean(rawdata[rawdata!=0])
     normdata = (rawdata - rawdata.min()) / (rawdata.max() - rawdata.min())
     normdata = (1 - normdata) ** power
 
