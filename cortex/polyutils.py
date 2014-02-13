@@ -950,3 +950,9 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True)
         layers = map(func, range(shape[2]))
 
     return np.array(layers).T
+
+def measure_volume(pts, polys):
+    from tvtk.api import tvtk
+    pd = tvtk.PolyData(points=pts, polys=polys)
+    mp = tvtk.MassProperties(input=pd)
+    return mp.volume
