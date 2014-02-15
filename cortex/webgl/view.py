@@ -19,12 +19,19 @@ from ..db import surfs
 
 from . import serve
 from .data import Package
+from ConfigParser import NoOptionError
 
 name_parse = re.compile(r".*/(\w+).png")
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
-except:
+    if not os.path.exists(cmapdir):
+        raise Exception("Colormap directory (%s) does not exits"%cmapdir)
+except NoOptionError:
     cmapdir = os.path.join(options.config.get("basic", "filestore"), "colormaps")
+    if not os.path.exists(cmapdir):
+        raise Exception("Colormap directory was not defined in the config file and the default (%s) does not exits"%cmapdir)
+
+
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
