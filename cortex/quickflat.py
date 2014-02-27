@@ -15,7 +15,7 @@ from .options import config
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100, depth=0.5,
                 with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, with_curvature=False,
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
-                cutout=None,**kwargs):
+                cutout=None,cvmin=None,cvmax=None,cvthr=None,fig=None,**kwargs):
     """Show a VolumeData or VertexData on a flatmap with matplotlib. Additional kwargs are passed on to
     matplotlib's imshow command.
 
@@ -53,6 +53,12 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Font size for the label, e.g. "16pt"
     labelcolor : tuple of float, optional
         (R, G, B, A) specification for the label color
+    cvmin : float,optional
+        Minimum value for curvature colormap. Defaults to config file value.
+    cvmax : float, optional
+        Maximum value for background curvature colormap. Defaults to config file value.
+    cvthr : bool,optional
+        Apply threshold to background curvature
     """
     from matplotlib import cm, pyplot as plt
     from matplotlib.collections import LineCollection
@@ -95,15 +101,18 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         iy,ix = ((y.min(),y.max()),(x.min(),x.max()))
     else:
         iy,ix = ((0,-1),(0,-1))
-
-    fig = plt.figure()
+    
+    if fig is None:
+        fig = plt.figure()
+    else:
+        fig = plt.figure(fig.number)
 
     if with_curvature:
         curv,ee = make(surfs.getSurfInfo(dataview.data.subject))
         if cutout: curv[co==0] = np.nan
         axcv = fig.add_axes((0,0,1,1))
         # Option to use thresholded curvature
-        use_threshold_curvature = config.get('curvature','threshold').lower() in ('true','t','1','y','yes')
+        use_threshold_curvature = config.get('curvature','threshold').lower() in ('true','t','1','y','yes') if cvthr is None else cvthr
         if use_threshold_curvature:
             curvT = (curv>0).astype(np.float32)
             curvT[np.isnan(curv)] = np.nan
@@ -112,8 +121,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 aspect='equal', 
                 extent=extents, 
                 cmap=plt.cm.gray,
-                vmin=float(config.get('curvature','min')),
-                vmax=float(config.get('curvature','max')),
+                vmin=float(config.get('curvature','min')) if cvmin is None else cvmin,
+                vmax=float(config.get('curvature','max')) if cvmax is None else cvmax,
                 origin='lower')
         axcv.axis('off')
         axcv.set_xlim(extents[0], extents[1])

@@ -36,7 +36,7 @@ class DataView(View):
             #validate if the input is of a recognizable form
             if len(data) != 1 or len(data[0]) != 2:
                 raise TypeError("Sorry, multi views are currently not supported...")
-            xdim, ydim = map(DataView.normalize, data[0])
+            xdim, ydim = map(normalize, data[0])
             if xdim.subject != ydim.subject:
                 raise TypeError("2D data views require the same subject")
             if xdim.raw or ydim.raw:
