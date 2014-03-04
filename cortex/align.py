@@ -93,6 +93,7 @@ def automatic(subject, xfmname, reference, noclean=False):
         String identifying the transform to be created.
     reference : str
         Path to a nibabel-readable image that will be used as the reference for this transform.
+        Usually, this is a single (3D) functional data volume.
     noclean : bool, optional
         If True intermediate files will not be removed from /tmp (this is useful for debugging things),
         and the returned value will be the name of the temp directory. Default False.
@@ -118,7 +119,7 @@ def automatic(subject, xfmname, reference, noclean=False):
         wmseg = surfs.getAnat(subject, type='whitematter').get_filename()
         # Compute anatomical-to-epi transform
         print('FLIRT pre-alignment')
-        cmd = 'fsl5.0-flirt -ref {bet} -in {epi} -dof 6 -omat {cache}/init.mat'.format(cache=cache, epi=absreference, bet=bet)
+        cmd = 'fsl5.0-flirt  -in {epi} -ref {bet} -dof 6 -omat {cache}/init.mat'.format(cache=cache, epi=absreference, bet=bet)
         if sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling initial FLIRT')
         print('Running BBR')
@@ -129,9 +130,12 @@ def automatic(subject, xfmname, reference, noclean=False):
             raise IOError('Error calling BBR flirt')
 
         x = np.loadtxt(os.path.join(cache, "out.mat"))
-        # Invert transform back to anat-to-epi, pycortex standard direction, and save as pycortextransform
-        inv = np.linalg.inv
-        Transform.from_fsl(inv(x),raw,absreference).save(subject,xfmname,'coord')
+        # Pass transform as FROM epi TO anat; transform will be inverted 
+        # back to anat-to-epi, standard direction for pycortex internal 
+        # storage by from_fsl 
+        xfm = Transform.from_fsl(x,absreference,raw)
+        # Save as pycortex 'coord' transform
+        xfm.save(subject,xfmname,'coord')
         print('Success')
 
     finally:
@@ -173,12 +177,15 @@ def autotweak(subject, xfmname):
         with open(os.path.join(cache, 'init.mat'), 'w') as fp:
             np.savetxt(fp, initmat, fmt='%f')
         print('Running BBR')
-        cmd = 'fsl5.0-flirt -ref {raw} -in {epi} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
+        cmd = 'fsl5.0-flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
         cmd = cmd.format(cache=cache, raw=raw, wmseg=wmseg, epi=epifile)
         if sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling BBR flirt')
 
         x = np.loadtxt(os.path.join(cache, "out.mat"))
+        # Pass transform as FROM epi TO anat; transform will be inverted 
+        # back to anat-to-epi, standard direction for pycortex internal 
+        # storage by from_fsl 
         Transform.from_fsl(x, epifile, raw).save(subject, xfmname+"_auto", 'coord')
         print('Saved transform as (%s, %s)'%(subject, xfmname+'_auto'))
     finally:
