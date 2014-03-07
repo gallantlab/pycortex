@@ -289,18 +289,110 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
             return Proxy(json)
 
     class JSMixer(serve.JSProxy):
+        def _setView(self,**kwargs):
+            """Low-level command: sets one view parameter at a time.
+
+            Settable keyword args: 
+            altitude, azimuth, target, mix, radius
+
+            NOTE: args must be lists instead of scalars, e.g. `azimuth`=[90]
+            Could be resolved, but this is a hidden function, called by 
+            higher-level functions that load .json files, which have the parameters
+            in lists by default. So it's annoying either way.
+            """
+            props = ['altitude','azimuth','target','mix','radius']
+            for k in kwargs.keys():
+                if not k in props:
+                    print('Unknown parameter %s!'%k)
+                    continue
+                self.setState(k,kwargs[k][0])
+        def _getView(self):
+            """Low-level command: returns a dict of current view parameters"""
+            props = ['altitude','azimuth','target','mix','radius']
+            # surfs.saveView()
+            view = {}
+            for p in props:
+                view[p] = self.getState(p)[0]
+            return view
+
+        def saveView(self,subject,name):
+            """Saves current view parameters to a .json file
+
+            Parameters
+            ----------
+            fName : string
+                name for view to store
+
+            Notes
+            -----
+            Equivalent to call to cortex.surfs.saveView(subject,vw,name)
+            
+            To adjust view in javascript console:
+            # Set BG to alpha:
+            viewers.<subject>.renderer.setClearColor(0,0)
+
+            # One hemisphere off:
+            viewers.<subject>.meshes.left.visible = false
+
+            See Also
+            --------
+            methods loadView, _setView, _getView
+            """
+            # Check for existence of view? 
+            surfs.saveView(self,subject,name)
+
+        def loadView(self,subject,name):
+            """Sets current view parameters to those stored in a .json file
+
+            Parameters
+            ----------
+            subject : pycortex subject ID
+            name : string
+                name of saved view to re-load
+
+            Notes
+            -----
+            Equivalent to call to cortex.surfs.loadView(subject,vw,name)
+
+            Further modifications possible in JavaScript console:
+            # Set BG to alpha:
+            viewers.<subject>.renderer.setClearColor(0,0)
+
+            # One hemisphere off:
+            viewers.<subject>.meshes.left.visible = false
+
+            See Also
+            --------
+            methods saveView, _setView, _getView
+            """
+            view = surfs.loadView(self,subject,name)
+            
+
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewers.addData")
             metadata, images = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
             queue.put(images)
             return Proxy(metadata)
 
-        def saveIMG(self, filename):
+        def saveIMG(self, filename,size=None):
+            """Saves currently displayed view to a .png image file
+
+            Parameters
+            ----------
+            filename : string
+                duh.
+            size : tuple (x,y) 
+                size (in pixels) of image to save. Resizes whole window.
+            """
+            if not size is None:
+                self.resize(*size)
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
             saveimg.value = filename
             return Proxy("mixer.html")
 
         def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, shape=(1920, 1080), mix="linear"):
+            """Renders movie frames for animation of mesh movement"""
+
             state = dict()
             anim = []
             for f in sorted(animation, key=lambda x:x['idx']):
