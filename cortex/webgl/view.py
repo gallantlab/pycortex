@@ -390,8 +390,51 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
             saveimg.value = filename
             return Proxy("mixer.html")
 
-        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, shape=(1920, 1080), mix="linear"):
-            """Renders movie frames for animation of mesh movement"""
+        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, size=(1920, 1080), interpolation="linear"):
+            """Renders movie frames for animation of mesh movement
+
+            Makes an animation (for example, a transition between inflated and 
+            flattened brain or a rotating brain) of a cortical surface. Takes a 
+            list of dictionaries (`animation`) as input, and uses the values in
+            the dictionaries as keyframes for the animation.
+
+            Mesh display parameters that can be animated include 'elevation',
+            'azimuth','mix','radius','target' (more?)
+
+
+            Parameters
+            ----------
+            animation : list of dicts
+                Each dict should have keys `idx`, `state`, and `value`.
+                `idx` is the time (in seconds) at which you want to set `state` to `value`
+                `state` is the parameter to animate (e.g. 'altitude','azimuth')
+                `value` is the value to set for `state`
+            filename : string path name
+                Must contain '%d' (or some variant thereof) to account for frame
+                number, e.g. '/some/directory/brainmovie%07d.png'
+            offset : int
+                Frame number for first frame rendered. Useful for concatenating
+                animations.
+            fps : int
+                Frame rate of resultant movie
+            size : tuple (x,y)
+                Size (in pixels) of resulting movie
+            interpolation : {"linear","smoothstep","smootherstep"}
+                Interpolation method for values between keyframes.
+
+            Example
+            -------
+            # Called after a call of the form: js_handle = cortex.webgl.show(DataViewObject)
+            # Start with left hemisphere view
+            js_handle._setView(azimuth=[90],altitude=[90.5],mix=[0])
+            # Initialize list
+            animation = []
+            # Append 5 key frames for a simple rotation
+            for az,idx in zip([90,180,270,360,450],[0,.5,1.0,1.5,2.0]):
+                animation.append({'state':'azimuth','idx':idx,'value':[az]})
+            # Animate! (use default settings)
+            js_handle.makeMovie(animation)
+            """
 
             state = dict()
             anim = []
@@ -410,17 +453,21 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
                         anim.append((start, end))
 
             print(anim)
-            self.resize(*shape)
-            for i, sec in enumerate(np.arange(0, anim[-1][1]['idx'], 1./fps)):
+            #import ipdb
+            #ipdb.set_trace()
+            self.resize(*size)
+            for i, sec in enumerate(np.arange(0, anim[-1][1]['idx']+1./fps, 1./fps)):
                 for start, end in anim:
-                    if start['idx'] < sec < end['idx']:
+                    if start['idx'] < sec <= end['idx']:
                         idx = (sec - start['idx']) / (end['idx'] - start['idx'])
                         if start['state'] == 'frame':
                             func = mixes['linear']
                         else:
-                            func = mixes[mix]
+                            func = mixes[interpolation]
                             
                         val = func(np.array(start['value']), np.array(end['value']), idx)
+                        #import ipdb
+                        #ipdb.set_trace()
                         if isinstance(val, np.ndarray):
                             self.setState(start['state'], val.ravel().tolist())
                         else:
