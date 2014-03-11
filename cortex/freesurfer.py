@@ -65,15 +65,15 @@ def import_subj(subject, sname=None):
     fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
     curvs = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'surf', '{hemi}.{name}')
 
-    if not os.path.exists(curvs.format(hemi="lh", name="fiducial")):
-        make_fiducial(subject)
-
     #import anatomicals
     for fsname, name in dict(T1="raw", aseg="aseg").items():
         path = os.path.join(fspath, "{fsname}.mgz").format(fsname=fsname)
         out = anats.format(subj=sname, name=name)
         cmd = "mri_convert {path} {out}".format(path=path, out=out)
         sp.call(shlex.split(cmd))
+
+    if not os.path.exists(curvs.format(hemi="lh", name="fiducial")):
+        make_fiducial(subject)
 
     #Freesurfer uses FOV/2 for center, let's set the surfaces to use the magnet isocenter
     trans = nibabel.load(out).get_affine()[:3, -1]

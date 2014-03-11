@@ -642,7 +642,7 @@ class Align(HasTraits):
     # The position of the view
     position = Array(shape=(3,))
 
-    brightness = Range(-1., 1., value=0.)
+    brightness = Range(-2., 2., value=0.)
     contrast = Range(0., 3., value=1.)
     opacity = Range(0., 1., value=.1)
     colormap = Enum(*lut_manager.lut_mode_list())

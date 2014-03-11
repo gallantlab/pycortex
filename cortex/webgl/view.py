@@ -92,11 +92,13 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         ctms[subj] = newfname+".json"
 
         for ext in ['json','ctm', 'svg']:
+            srcfile = os.path.join(oldpath, "%s.%s"%(fname, ext))
             newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
             if os.path.exists(newfile):
                 os.unlink(newfile)
             
-            shutil.copy2(os.path.join(oldpath, "%s.%s"%(fname, ext)), newfile)
+            if os.path.exists(srcfile):
+                shutil.copy2(srcfile, newfile)
 
             if ext == "json" and anonymize:
                 ## change filenames in json
