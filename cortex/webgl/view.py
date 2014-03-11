@@ -19,12 +19,19 @@ from ..db import surfs
 
 from . import serve
 from .data import Package
+from ConfigParser import NoOptionError
 
 name_parse = re.compile(r".*/(\w+).png")
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
-except:
+    if not os.path.exists(cmapdir):
+        raise Exception("Colormap directory (%s) does not exits"%cmapdir)
+except NoOptionError:
     cmapdir = os.path.join(options.config.get("basic", "filestore"), "colormaps")
+    if not os.path.exists(cmapdir):
+        raise Exception("Colormap directory was not defined in the config file and the default (%s) does not exits"%cmapdir)
+
+
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
 
@@ -284,18 +291,153 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
             return Proxy(json)
 
     class JSMixer(serve.JSProxy):
+        def _setView(self,**kwargs):
+            """Low-level command: sets one view parameter at a time.
+
+            Settable keyword args: 
+            altitude, azimuth, target, mix, radius
+
+            NOTE: args must be lists instead of scalars, e.g. `azimuth`=[90]
+            Could be resolved, but this is a hidden function, called by 
+            higher-level functions that load .json files, which have the parameters
+            in lists by default. So it's annoying either way.
+            """
+            props = ['altitude','azimuth','target','mix','radius']
+            for k in kwargs.keys():
+                if not k in props:
+                    print('Unknown parameter %s!'%k)
+                    continue
+                self.setState(k,kwargs[k][0])
+        def _getView(self):
+            """Low-level command: returns a dict of current view parameters"""
+            props = ['altitude','azimuth','target','mix','radius']
+            # surfs.saveView()
+            view = {}
+            for p in props:
+                view[p] = self.getState(p)[0]
+            return view
+
+        def saveView(self,subject,name):
+            """Saves current view parameters to a .json file
+
+            Parameters
+            ----------
+            fName : string
+                name for view to store
+
+            Notes
+            -----
+            Equivalent to call to cortex.surfs.saveView(subject,vw,name)
+            
+            To adjust view in javascript console:
+            # Set BG to alpha:
+            viewers.<subject>.renderer.setClearColor(0,0)
+
+            # One hemisphere off:
+            viewers.<subject>.meshes.left.visible = false
+
+            See Also
+            --------
+            methods loadView, _setView, _getView
+            """
+            # Check for existence of view? 
+            surfs.saveView(self,subject,name)
+
+        def loadView(self,subject,name):
+            """Sets current view parameters to those stored in a .json file
+
+            Parameters
+            ----------
+            subject : pycortex subject ID
+            name : string
+                name of saved view to re-load
+
+            Notes
+            -----
+            Equivalent to call to cortex.surfs.loadView(subject,vw,name)
+
+            Further modifications possible in JavaScript console:
+            # Set BG to alpha:
+            viewers.<subject>.renderer.setClearColor(0,0)
+
+            # One hemisphere off:
+            viewers.<subject>.meshes.left.visible = false
+
+            See Also
+            --------
+            methods saveView, _setView, _getView
+            """
+            view = surfs.loadView(self,subject,name)
+            
+
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewers.addData")
             metadata, images = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
             queue.put(images)
             return Proxy(metadata)
 
-        def saveIMG(self, filename):
+        def saveIMG(self, filename,size=None):
+            """Saves currently displayed view to a .png image file
+
+            Parameters
+            ----------
+            filename : string
+                duh.
+            size : tuple (x,y) 
+                size (in pixels) of image to save. Resizes whole window.
+            """
+            if not size is None:
+                self.resize(*size)
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
             saveimg.value = filename
             return Proxy("mixer.html")
 
-        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, shape=(1920, 1080), mix="linear"):
+        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, size=(1920, 1080), interpolation="linear"):
+            """Renders movie frames for animation of mesh movement
+
+            Makes an animation (for example, a transition between inflated and 
+            flattened brain or a rotating brain) of a cortical surface. Takes a 
+            list of dictionaries (`animation`) as input, and uses the values in
+            the dictionaries as keyframes for the animation.
+
+            Mesh display parameters that can be animated include 'elevation',
+            'azimuth','mix','radius','target' (more?)
+
+
+            Parameters
+            ----------
+            animation : list of dicts
+                Each dict should have keys `idx`, `state`, and `value`.
+                `idx` is the time (in seconds) at which you want to set `state` to `value`
+                `state` is the parameter to animate (e.g. 'altitude','azimuth')
+                `value` is the value to set for `state`
+            filename : string path name
+                Must contain '%d' (or some variant thereof) to account for frame
+                number, e.g. '/some/directory/brainmovie%07d.png'
+            offset : int
+                Frame number for first frame rendered. Useful for concatenating
+                animations.
+            fps : int
+                Frame rate of resultant movie
+            size : tuple (x,y)
+                Size (in pixels) of resulting movie
+            interpolation : {"linear","smoothstep","smootherstep"}
+                Interpolation method for values between keyframes.
+
+            Example
+            -------
+            # Called after a call of the form: js_handle = cortex.webgl.show(DataViewObject)
+            # Start with left hemisphere view
+            js_handle._setView(azimuth=[90],altitude=[90.5],mix=[0])
+            # Initialize list
+            animation = []
+            # Append 5 key frames for a simple rotation
+            for az,idx in zip([90,180,270,360,450],[0,.5,1.0,1.5,2.0]):
+                animation.append({'state':'azimuth','idx':idx,'value':[az]})
+            # Animate! (use default settings)
+            js_handle.makeMovie(animation)
+            """
+
             state = dict()
             anim = []
             for f in sorted(animation, key=lambda x:x['idx']):
@@ -313,17 +455,21 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
                         anim.append((start, end))
 
             print(anim)
-            self.resize(*shape)
-            for i, sec in enumerate(np.arange(0, anim[-1][1]['idx'], 1./fps)):
+            #import ipdb
+            #ipdb.set_trace()
+            self.resize(*size)
+            for i, sec in enumerate(np.arange(0, anim[-1][1]['idx']+1./fps, 1./fps)):
                 for start, end in anim:
-                    if start['idx'] < sec < end['idx']:
+                    if start['idx'] < sec <= end['idx']:
                         idx = (sec - start['idx']) / (end['idx'] - start['idx'])
                         if start['state'] == 'frame':
                             func = mixes['linear']
                         else:
-                            func = mixes[mix]
+                            func = mixes[interpolation]
                             
                         val = func(np.array(start['value']), np.array(end['value']), idx)
+                        #import ipdb
+                        #ipdb.set_trace()
                         if isinstance(val, np.ndarray):
                             self.setState(start['state'], val.ravel().tolist())
                         else:

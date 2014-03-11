@@ -147,7 +147,7 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["loadXfm","getXfm", "getSurf", "getAnat", "getSurfInfo", "getMask", "getOverlay"] + list(self.subjects.keys())
+        return ["loadXfm","getXfm", "getSurf", "getAnat", "getSurfInfo", "getMask", "getOverlay","loadView","saveView"] + list(self.subjects.keys())
 
     def getAnat(self, subject, type='raw', recache=False, **kwargs):
         """Return anatomical information from the filestore. Anatomical information is defined as
@@ -493,13 +493,14 @@ class Database(object):
 
         filenames = dict(
             surfs=surfs,
-            xfms=os.listdir(os.path.join(filestore, subject, "transforms")),
+            xfms=sorted(os.listdir(os.path.join(filestore, subject, "transforms"))),
             xfmdir=os.path.join(filestore, subject, "transforms", "{xfmname}", "matrices.xfm"),
             anats=os.path.join(filestore, subject, "anatomicals", '{type}{opts}.{ext}'), 
             surfinfo=os.path.join(filestore, subject, "surface-info", '{type}{opts}.npz'),
             masks=os.path.join(filestore, subject, 'transforms', '{xfmname}', 'mask_{type}.nii.gz'),
             cachedir=os.path.join(filestore, subject, "cache"),
             rois=os.path.join(filestore, subject, "rois.svg").format(subj=subject),
+            views=sorted([os.path.splitext(f)[0] for f in os.listdir(os.path.join(filestore, subject, "views"))]),
         )
 
         return filenames
@@ -509,11 +510,65 @@ class Database(object):
             if raw_input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
                 shutil.rmtree(os.path.join(filestore, subject))
 
-        for dirname in ['transforms', 'anatomicals', 'cache', 'surfaces', 'surface-info']:
+        for dirname in ['transforms', 'anatomicals', 'cache', 'surfaces', 'surface-info','views']:
             try:
                 path = os.path.join(filestore, subject, dirname)
                 os.makedirs(path)
             except OSError:
                 print("Error making directory %s"%path)
+    
+    def saveView(self,vw,subject,name,is_overwrite=False):
+        """Set the view for an open webshow instance from a saved view
+
+        Sets the view in a currently-open cortex.webshow instance (with handle `vw`)
+        to the saved view named `name`
+
+        Parameters
+        ----------
+        vw : handle for cortex.webshow
+            Handle for open webshow session (returned by cortex.webshow)
+        subject : string, subject name
+        name : string
+            Name of stored view to re-load
+
+        See Also
+        --------
+        vw._setView,vw._getView, surfs.saveView
+        """
+        view = vw._getView()
+        sName = os.path.join(filestore, subject, "views", name+'.json')
+        if os.path.exists(sName):
+            if not is_overwrite:
+                raise IOError('Refusing to over-write extant view!')
+        json.dump(view,open(sName,'w'))
+
+    def loadView(self,vw,subject,name):
+        """Set the view for an open webshow instance from a saved view
+
+        Sets the view in a currently-open cortex.webshow instance (with handle `vw`)
+        to the saved view named `name`
+
+        Parameters
+        ----------
+        vw : handle for cortex.webshow
+            Handle for open webshow session (returned by cortex.webshow)
+        subject : string, subject name
+        name : string
+            Name of stored view to re-load
+
+        Notes
+        -----
+        Currently INCONSISTENT with other uses of "load" in this class!!
+        TO DO: Somebody needs to set this shit straight. It is much more 
+        sensible to have "load" refer to bringing something into memory 
+        rather than saving it to disk...
+
+        See Also
+        --------
+        vw._setView,vw._getView, surfs.saveView
+        """
+        sName = os.path.join(filestore, subject, "views", name+'.json')
+        view = json.load(open(sName))
+        vw._setView(**view)
 
 surfs = Database()

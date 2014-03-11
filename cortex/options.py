@@ -16,3 +16,10 @@ if len(config.read(usercfg)) == 0:
 	os.makedirs(userdir)
 	with open(usercfg, 'w') as fp:
 		config.write(fp)
+		
+#set default path in case the module is imported from the source code directory
+if not config.has_option("basic", "filestore"):
+	config.set("basic", "filestore", os.path.join(cwd, os.pardir, "filestore/db"))
+
+if not config.has_option("basic", "filestore"):
+	config.set("webgl", "colormaps", os.path.join(cwd, os.pardir, "filestore/colormaps"))
