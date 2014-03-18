@@ -39,17 +39,20 @@ def add_cutdata(fname, dataview, name="retinotopy", projection="nearest", mesh="
     from matplotlib import cm
     dataview = dataset.normalize(dataview)
     mapped = dataview.data.map(projection)
-    vcolor = mapped.data
+    left = mapped.left
+    right = mapped.right
 
     cmap = cm.get_cmap(dataview.cmap)
     vmin = dataview.vmin
     vmax = dataview.vmax
-    vcolor = cmap((vcolor - vmin) / (vmax - vmin))[:,:3]
+    lcolor = cmap((left - vmin) / (vmax - vmin))[:,:3]
+    rcolor = cmap((right - vmin) / (vmax - vmin))[:,:3]
 
     p = xdrlib.Packer()
     p.pack_string(mesh)
     p.pack_string(name)
-    p.pack_array(vcolor.ravel(), p.pack_double)
+    p.pack_array(lcolor.ravel(), p.pack_double)
+    p.pack_array(rcolor.ravel(), p.pack_double)
     with tempfile.NamedTemporaryFile() as tf:
         tf.write(p.get_buffer())
         tf.flush()
@@ -57,8 +60,12 @@ def add_cutdata(fname, dataview, name="retinotopy", projection="nearest", mesh="
             u = xdrlib.Unpacker(fp.read())
             mesh = u.unpack_string().decode('utf-8')
             name = u.unpack_string().decode('utf-8')
-            color = u.unpack_array(u.unpack_double)
-            blendlib.add_vcolor(blendlib._repack(color), mesh, name)
+            left = u.unpack_array(u.unpack_double)
+            right = u.unpack_array(u.unpack_double)
+            lcolor = blendlib._repack(left)
+            rcolor = blendlib._repack(right)
+            print(len(lcolor), len(rcolor))
+            blendlib.add_vcolor((lcolor, rcolor), mesh, name)
         """.format(tfname=tf.name)
         _call_blender(fname, code)
 

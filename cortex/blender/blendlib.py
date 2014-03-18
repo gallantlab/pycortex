@@ -45,13 +45,19 @@ def get_ptpoly(name):
     faces.foreach_get('vertices', polys.ravel())
     return pts, polys
 
-def add_vcolor(color, mesh=None, name='color'):
+def add_vcolor(hemis, mesh=None, name='color'):
     if mesh is None:
         mesh = C.scene.objects.active.data
     elif isinstance(mesh, str):
         mesh = D.meshes[mesh]
 
     bpy.ops.object.mode_set(mode='OBJECT')
+
+    color = hemis
+    if len(hemis) == 2:
+        color = hemis[0]
+        if len(mesh.vertices) == len(hemis[1]):
+            color = hemis[1]
 
     vcolor = mesh.vertex_colors.new(name)
     if hasattr(mesh, "loops"):
