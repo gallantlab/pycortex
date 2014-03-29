@@ -16,9 +16,12 @@ def brainmask(outfile, subject):
     cmd = 'fsl5.0-bet {raw} {bet} -B -v'.format(raw=raw, bet=outfile)
     assert sp.call(cmd, shell=True) == 0, "Error calling fsl-bet"
 
-def whitematter(outfile, subject):
+def whitematter(outfile, subject, do_voxelize=False):
     try:
-        voxelize(outfile, subject, surf="wm")
+        if not do_voxelize:
+            raise IOError
+        else:
+            voxelize(outfile, subject, surf="wm")
     except IOError:
         bet = surfs.getAnat(subject, type='brainmask').get_filename()
         try:
