@@ -58,7 +58,7 @@ class ROIpack(object):
     def add_roi(self, name, pngdata, add_path=True):
         """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
         #self.svg deletes the images -- we want to save those, so let's load it again
-        svg = etree.parse(self.svgfile)
+        svg = etree.parse(self.svgfile, parser=parser)
         imglayer = _find_layer(svg, "data")
         if add_path:
             _make_layer(_find_layer(svg, "rois"), name)
