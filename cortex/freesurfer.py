@@ -1,4 +1,5 @@
 import os
+import shutil
 import struct
 import tempfile
 import warnings
@@ -96,6 +97,7 @@ def import_flat(subject, patch, sname=None):
     if sname is None:
         sname = subject
     surfs = os.path.join(db.filestore, sname, "surfaces", "flat_{hemi}.gii")
+
     from . import formats
     for hemi in ['lh', 'rh']:
         pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat")
@@ -104,6 +106,11 @@ def import_flat(subject, patch, sname=None):
         fname = surfs.format(hemi=hemi)
         print("saving to %s"%fname)
         formats.write_gii(fname, pts=flat, polys=polys)
+
+    #clear the cache, per #81
+    cache = os.path.join(db.filestore, sname, "cache")
+    shutil.rmtree(cache)
+    os.makedirs(cache)
 
 def make_fiducial(subject):
     for hemi in ['lh', 'rh']:
