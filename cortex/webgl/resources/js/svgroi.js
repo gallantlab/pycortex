@@ -86,7 +86,9 @@ var roilabel_fshader = [
 function ROIpack(svgdoc, renderer, positions) {
     this.svgroi = svgdoc.getElementsByTagName("svg")[0];
     this.svgroi.id = "svgroi";
-    this.rois = $(this.svgroi).find("path");
+    // read only ROI layer; jquery selector; 
+    //for (var disp_layer in ["rois","display","sulci"]) {
+    this.rois = $(this.svgroi).find("#rois").find("path"); // This shit is going to break.
     this.rois.each(function() { this.removeAttribute("filter"); });
 
     var names = {};

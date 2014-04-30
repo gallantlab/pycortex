@@ -303,21 +303,23 @@ class Database(object):
             return VertexData(verts, subject)
         return npz
 
-    def get_overlay(self, subject, type='rois', **kwargs):
-        if type in ["rois","cutouts"]:
+    def get_overlay(self, subject, otype='rois', **kwargs):
+        if otype in ["rois","cutouts","disp","disp2","sulci"]:
             from . import svgroi
             pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
-            try:
-                tf = self.auxfile.get_overlay(subject, type)
-                svgfile = tf.name
-            except (AttributeError, IOError):
-                svgfile = self.get_paths(subject)["rois"]
-                    
+            svgfile = self.get_paths(subject)["rois"]
+            if self.auxfile is not None:
+                try:
+                    tf = self.auxfile.getOverlay(subject, otype)
+                    svgfile = tf.name
+                except (AttributeError, IOError):
+                    # Layer type does not exist or has been temporarily removed
+                    pass
             if 'pts' in kwargs:
                 pts = kwargs['pts']
                 del kwargs['pts']
-            return svgroi.get_roipack(svgfile, pts, polys, layer=type,**kwargs)
-        if type == "external":
+            return svgroi.get_roipack(svgfile, pts, polys, layer=otype,**kwargs)
+        if otype == "external":
             from . import svgroi
             pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
             svgfile = kwargs["svgfile"]
