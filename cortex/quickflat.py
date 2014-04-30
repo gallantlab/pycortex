@@ -72,7 +72,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
     
     if cutout:
-        roi = db.get_overlay(dataview.subject, type='cutouts',
+        roi = surfs.getOverlay(dataview.data.subject, otype='cutouts',
             roifill=(0.,0.,0.,0.),linecolor=(0.,0.,0.,0.),linewidth=0.)
         # Set ONLY desired cutout to be white
         roi.rois[cutout].set(roifill=(1.,1.,1.,1.),linewidth=2.,linecolor=(1.,1.,1.,1.))

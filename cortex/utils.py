@@ -29,7 +29,7 @@ def get_roipack(*args, **kwargs):
 
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
-def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False):
+def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False,disp_layers=['rois']):
     ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
     ctmform = os.path.join(db.get_cache(subject), ctmcache)
     
@@ -40,7 +40,8 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
 
     print("Generating new ctm file...")
     from . import brainctm
-    ptmap = brainctm.make_pack(ctmfile, subject, types=types, method=method, level=level, decimate=decimate)
+    ptmap = brainctm.make_pack(ctmfile, subject, types=types, method=method, 
+        level=level, decimate=decimate,disp_layers=disp_layers)
     return ctmfile
 
 def get_ctmmap(subject, **kwargs):

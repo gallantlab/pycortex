@@ -89,7 +89,7 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
-    def save(self, path, method='mg2', **kwargs):
+    def save(self, path, method='mg2',disp_layers=['rois'], **kwargs): # ['rois','sulci','disp']
         ctmname = path+".ctm"
         svgname = path+".svg"
         jsname = path+".json"
@@ -125,22 +125,23 @@ class BrainCTM(object):
         else:
             ptmap = inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
-        ##### Save the SVG with remapped indices
+        ##### Save the SVG with remapped indices (map 2D flatmap locations to vertices)
         if self.left.flat is not None:
+            ## -- New code 2014.05: add sulci & display layers -- ##
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            roipack = db.get_overlay(self.subject, pts=flatpts)
-            layer = roipack.setup_labels()
-            with open(svgname, "w") as fp:
-                for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
-                    idx = int(element.attrib["data-ptidx"])
-                    if idx < len(inverse[0]):
-                        idx = inverse[0][idx]
-                    else:
-                        idx -= len(inverse[0])
-                        idx = inverse[1][idx] + len(inverse[0])
-                    element.attrib["data-ptidx"] = str(idx)
-                fp.write(roipack.toxml())
-
+            for disp_layer in disp_layers: 
+                roipack = db.get_overlay(self.subject, pts=flatpts,otype=disp_layer)
+                layer = roipack.setup_labels()
+                with open(svgname, "w") as fp:
+                    for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
+                        idx = int(element.attrib["data-ptidx"])
+                        if idx < len(inverse[0]):
+                            idx = inverse[0][idx]
+                        else:
+                            idx -= len(inverse[0])
+                            idx = inverse[1][idx] + len(inverse[0])
+                        element.attrib["data-ptidx"] = str(idx)
+                    fp.write(roipack.toxml())
         return ptmap
 
 class Hemi(object):
@@ -216,7 +217,9 @@ class DecimatedHemi(Hemi):
     def addSurf(self, pts, **kwargs):
         super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
 
-def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimate=False):
+def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimate=False,disp_layers=['rois']):
+    """Generates a cached CTM file"""
+
     ctm = BrainCTM(subj, decimate=decimate)
     ctm.addCurvature()
     for name in types:
@@ -225,7 +228,7 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimat
     if not os.path.exists(os.path.split(outfile)[0]):
         os.makedirs(os.path.split(outfile)[0])
 
-    return ctm.save(os.path.splitext(outfile)[0], method=method, level=level)
+    return ctm.save(os.path.splitext(outfile)[0], method=method, level=level,disp_layers=disp_layers)
 
 def read_pack(ctmfile):
     fname = os.path.splitext(ctmfile)[0]

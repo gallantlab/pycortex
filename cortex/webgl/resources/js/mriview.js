@@ -72,7 +72,7 @@ var mriview = (function(module) {
             THREE.UniformsLib[ "lights" ],
             {
                 diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
-                specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
+                specular:   { type:'v3', value:new THREE.Vector3( .1,.1,.1 )}, //1,1,1
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
                 shininess:  { type:'f',  value:200},
 
@@ -251,7 +251,8 @@ var mriview = (function(module) {
                     this.pivot[name] = meshpiv.pivots;
                     this.scene.add(meshpiv.pivots.front);
                 }
-
+                //Load in whole SVG file (if we are going to add a sulcal layer, we need to then
+                //choose which elements within ROIpack to display.)
                 $.get(loader.extractUrlBase(ctminfo)+json.rois, null, function(svgdoc) {
                     this.roipack = new ROIpack(svgdoc, this.renderer, posdata);
                     this.addEventListener("mix", function(evt) {
@@ -261,7 +262,7 @@ var mriview = (function(module) {
                         this.roipack.resize(event.width, event.height);
                     }.bind(this));
                     this.roipack.update(this.renderer).done(function(tex) {
-                        this.uniforms.map.texture = tex;
+                        this.uniforms.map.texture = tex; // New texture gotten here.
                         this.schedule();
                     }.bind(this));
                 }.bind(this));
