@@ -304,7 +304,7 @@ class Database(object):
         return npz
 
     def get_overlay(self, subject, otype='rois', **kwargs):
-        if otype in ["rois","cutouts","disp","sulci"]:
+        if otype in ["rois","cutouts","disp","disp2","sulci"]:
             from . import svgroi
             pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
             svgfile = self.get_paths(subject)["rois"]

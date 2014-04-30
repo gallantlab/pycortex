@@ -374,6 +374,9 @@ class ROI(object):
 
         for path in self.paths:
             ## Deal with dashed lines
+            #print('self.dashoffset=...')
+            #print(self.dashoffset)
+            #print(" /\ dashoffset /\ ")
             if self.dashtype is None:
                 dashstr = ""
             elif self.dashtype=='fromsvg':
