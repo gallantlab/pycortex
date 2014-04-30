@@ -90,7 +90,7 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
-    def save(self, path, method='mg2', **kwargs):
+    def save(self, path, method='mg2',disp_layers=['rois'], **kwargs): # ['rois','sulci','disp']
         ctmname = path+".ctm"
         svgname = path+".svg"
         jsname = path+".json"
@@ -126,21 +126,53 @@ class BrainCTM(object):
         else:
             ptmap = inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
-        ##### Save the SVG with remapped indices
+        ##### Save the SVG with remapped indices (map 2D flatmap locations to vertices)
         if self.left.flat is not None:
+            ## -- New code 2014.05: add sulci & display layers -- ##
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            roipack = surfs.getOverlay(self.subject, pts=flatpts)
-            layer = roipack.setup_labels()
-            with open(svgname, "w") as fp:
-                for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
-                    idx = int(element.attrib["data-ptidx"])
-                    if idx < len(inverse[0]):
-                        idx = inverse[0][idx]
-                    else:
-                        idx -= len(inverse[0])
-                        idx = inverse[1][idx] + len(inverse[0])
-                    element.attrib["data-ptidx"] = str(idx)
-                fp.write(roipack.toxml())
+            for disp_layer in disp_layers: 
+                roipack = surfs.getOverlay(self.subject, pts=flatpts,otype=disp_layer)
+                layer = roipack.setup_labels()
+                with open(svgname, "w") as fp:
+                    for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
+                        idx = int(element.attrib["data-ptidx"])
+                        if idx < len(inverse[0]):
+                            idx = inverse[0][idx]
+                        else:
+                            idx -= len(inverse[0])
+                            idx = inverse[1][idx] + len(inverse[0])
+                        element.attrib["data-ptidx"] = str(idx)
+                    fp.write(roipack.toxml())
+
+        # ##### ADDITION OF SULCI/OTHER DISPLAY SVG (NEW 2014.05)        
+        # roi = surfs.getOverlay(dataview.data.subject, type='cutouts',
+        #     roifill=(0.,0.,0.,0.),linecolor=(0.,0.,0.,0.),linewidth=0.)
+        # # Set ONLY desired cutout to be white
+        # roi.rois[cutout].set(roifill=(1.,1.,1.,1.),linewidth=2.,linecolor=(1.,1.,1.,1.))
+        # roitex = roi.get_texture(height, labels=False)
+        # roitex.seek(0)
+        # co = plt.imread(roitex)[:,:,0] # Cutout image
+        # # STUPID BULLSHIT 1-PIXEL CHECK:
+        # if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,co.shape)]):
+        #     from scipy.misc import imresize
+        #     co = imresize(co,im.shape[:2]).astype(np.float32)/255.
+        # # Alpha
+        # if im.dtype == np.uint8:
+        #     im[:,:,3]*=co
+        #     h,w,cdim = [float(v) for v in im.shape]
+        # else:
+        #     im[co==0] = np.nan
+        #     h,w = [float(v) for v in im.shape]
+        # # set extents
+        # y,x = np.nonzero(co)
+        # l,r,t,b = extents
+        # extents = [x.min()/w * (l-r)+l,
+        #             x.max()/w * (l-r)+l,
+        #             y.min()/h * (t-b)+b,
+        #             y.max()/h * (t-b)+b]
+        # # bounding box indices
+        # iy,ix = ((y.min(),y.max()),(x.min(),x.max()))
+        # ##### END NEW CODE
 
         return ptmap
 
@@ -217,7 +249,9 @@ class DecimatedHemi(Hemi):
     def addSurf(self, pts, **kwargs):
         super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
 
-def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimate=False):
+def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimate=False,disp_layers=['rois']):
+    """Generates a cached CTM file"""
+
     ctm = BrainCTM(subj, decimate=decimate)
     ctm.addCurvature()
     for name in types:
@@ -226,4 +260,4 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimat
     if not os.path.exists(os.path.split(outfile)[0]):
         os.makedirs(os.path.split(outfile)[0])
 
-    return ctm.save(os.path.splitext(outfile)[0], method=method, level=level)
+    return ctm.save(os.path.splitext(outfile)[0], method=method, level=level,disp_layers=disp_layers)
