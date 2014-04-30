@@ -161,7 +161,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
 
-def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
+def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
+    autoclose=True, open_browser=True, port=None, pickerfun=None,disp_layers=['rois'], **kwargs):
     """Display a dynamic viewer using the given dataset
     """
     data = dataset.normalize(data)
@@ -183,7 +184,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
             stims[sname] = view.attrs['stim']
     
     kwargs.update(dict(method='mg2', level=9, recache=recache))
-    ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
+    ctms = dict((subj, utils.get_ctmpack(subj, types, disp_layers=disp_layers, **kwargs)) for subj in subjects)
     subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))
     db.auxfile = None
 

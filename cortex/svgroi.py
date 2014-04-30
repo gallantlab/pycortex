@@ -1,4 +1,5 @@
 import os
+import re
 import copy
 import shlex
 import tempfile
@@ -22,7 +23,15 @@ cwd = os.path.abspath(os.path.split(__file__)[0])
 class ROIpack(object):
     def __init__(self, tcoords, svgfile, callback=None, 
         linewidth=None, linecolor=None, roifill=None, shadow=None,
-        labelsize=None, labelcolor=None,layer='rois'):
+        labelsize=None, labelcolor=None, dashtype='fromsvg', dashoffset='fromsvg',
+        layer='rois'):
+        """Contains ROI data in ___ form (???) 
+
+        Parameters
+        ----------
+
+
+        """
         if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
             tcoords -= tcoords.min(0)
             tcoords /= tcoords.max(0)
@@ -37,6 +46,10 @@ class ROIpack(object):
         self.linecolor = tuple(map(float, config.get(self.layer, "line_color").split(','))) if linecolor is None else linecolor
         self.roifill = tuple(map(float, config.get(self.layer, "fill_color").split(','))) if roifill is None else roifill
         self.shadow = float(config.get(self.layer, "shadow")) if shadow is None else shadow
+        # For dashed lines, default to WYSIWIG from rois.svg
+        self.dashtype = dashtype
+        self.dashoffset = dashoffset
+
         self.reload(size=labelsize, color=labelcolor)
 
     def reload(self, **kwargs):
@@ -78,7 +91,8 @@ class ROIpack(object):
         with open(self.svgfile, "w") as xml:
             xml.write(etree.tostring(svg, pretty_print=True))
 
-    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None):
+    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None,
+        dashtype=None, dashoffset=None):
         if linewidth is not None:
             self.linewidth = linewidth
         if linecolor is not None:
@@ -88,9 +102,14 @@ class ROIpack(object):
         if shadow is not None:
             self.shadow = shadow
             self.svg.find("//{%s}feGaussianBlur"%svgns).attrib["stdDeviation"] = str(shadow)
+        if dashtype is not None:
+            self.dashtype = dashtype
+        if dashoffset is not None:
+            self.dashoffset = dashoffset
 
         for roi in list(self.rois.values()):
-            roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill, shadow=shadow)
+            roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill, 
+                shadow=shadow,dashtype=dashtype,dashoffset=dashoffset)
 
         try:
             if self.callback is not None:
@@ -213,6 +232,7 @@ class ROIpack(object):
         return self.rois[name]
 
     def setup_labels(self, size=None, color=None, shadow=None):
+        """Sets up coordinates for labels wrt SVG file (2D flatmap)"""
         if size is None:
             size = config.get("rois", "labelsize")
         if color is None:
@@ -274,8 +294,9 @@ class ROI(object):
         self.name = xml.get("{%s}label"%inkns)
         self.paths = xml.findall(".//{%s}path"%svgns)
         self.hide = "style" in xml.attrib and "display:none" in xml.get("style")
-        self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
-    
+        self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill,
+            dashtype=self.parent.dashtype,dashoffset=self.parent.dashoffset)
+
     def _parse_svg_pts(self, datastr):
         data = list(_tokenize_path(datastr))
         #data = data.replace(",", " ").split()
@@ -323,7 +344,8 @@ class ROI(object):
         pts[:,1] = 1-pts[:,1]
         return pts
     
-    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None, hide=None):
+    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None, hide=None, 
+        dashtype=None, dashoffset=None):
         if linewidth is not None:
             self.linewidth = linewidth
         if linecolor is not None:
@@ -332,7 +354,13 @@ class ROI(object):
             self.roifill = roifill
         if hide is not None:
             self.hide = hide
+        if dashtype is not None:
+            self.dashtype = dashtype
+        if dashoffset is not None:
+            self.dashoffset = dashoffset
 
+        #stroke-dasharray:4,1;stroke-dashoffset:0
+        # Establish line styles
         style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
                     "stroke-linecap:butt;stroke-linejoin:miter;"+\
                     "stroke:{lc};stroke-opacity:{lo};{hide}"
@@ -345,7 +373,24 @@ class ROI(object):
             lw=self.linewidth, hide=hide)
 
         for path in self.paths:
-            path.attrib["style"] = style
+            ## Deal with dashed lines
+            #print('self.dashoffset=...')
+            #print(self.dashoffset)
+            #print(" /\ dashoffset /\ ")
+            if self.dashtype is None:
+                dashstr = ""
+            elif self.dashtype=='fromsvg':
+                dt = re.search('(?<=stroke-dasharray:)[^;]*',path.attrib['style'])
+                if dt is None:
+                    dashstr=""
+                else:
+                    do = re.search('(?<=stroke-dashoffset:)[^;]*',path.attrib['style'])
+                    #ml = re.search('(?<=stroke-miterlimit:)[^;]*',paths.attrib['style']))
+                    dashstr = "stroke-dasharray:%s;stroke-dashoffset:%s;"%(dt.group(),do.group())
+            else:
+                dashstr = "stroke-dasharray:%d,%d;stroke-dashoffset:%d;"%(self.dashtype+(self.dashoffset))
+            #print('for ID %s, style is:\n%s'%(path.attrib['id'],style+dashstr))
+            path.attrib["style"] = style+dashstr
             if self.parent.shadow > 0:
                 path.attrib["filter"] = "url(#dropshadow)"
             elif "filter" in path.attrib:
