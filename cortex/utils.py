@@ -17,11 +17,19 @@ def get_mapper(*args, **kwargs):
     return get_mapper(*args, **kwargs)
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False,disp_layers=['rois']):
-    ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
-    ctmform = os.path.join(db.get_cache(subject), ctmcache)
     
     lvlstr = ("%dd" if decimate else "%d")%level
-    ctmfile = ctmform.format(types=','.join(types), method=method, level=lvlstr)
+    # Temporary code to play nice with other branches:
+    if disp_layers==['rois']:
+        ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
+        ctmcache = ctmcache.format(types=','.join(types), method=method, level=lvlstr)
+    else:
+        # This is only temporary, while Mark is too lazy to write other 
+        # display layers into the main ctm file(s)
+        ctmcache = "%s_[{types}]_{method}_{level}_{layers}.json"%subject
+        ctmcache = ctmcache.format(types=','.join(types), method=method, level=lvlstr,layers=disp_layers)
+    ctmfile = os.path.join(db.get_cache(subject), ctmcache)
+
     if os.path.exists(ctmfile) and not recache:
         return ctmfile
 

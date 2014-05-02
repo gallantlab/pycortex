@@ -374,9 +374,6 @@ class ROI(object):
 
         for path in self.paths:
             ## Deal with dashed lines
-            #print('self.dashoffset=...')
-            #print(self.dashoffset)
-            #print(" /\ dashoffset /\ ")
             if self.dashtype is None:
                 dashstr = ""
             elif self.dashtype=='fromsvg':
@@ -395,6 +392,7 @@ class ROI(object):
                 path.attrib["filter"] = "url(#dropshadow)"
             elif "filter" in path.attrib:
                 del path.attrib['filter']
+            # Set layer id to "rois" (or whatever). 
     
     def get_labelpos(self, pts=None, norms=None, fancy=True):
         if not hasattr(self, "coords"):
@@ -446,8 +444,13 @@ def _make_layer(parent, name):
 
 def _strip_top_layers(svg,layer):
     """Remove all top-level layers except <layer> from lxml svg object"""
-    tokeep = _find_layer(svg,layer) # will throw an error if not present
-    tostrip = [l for l in svg.getroot().getchildren() if l.get('{%s}label'%inkns) and not l.get('{%s}label'%inkns)==layer
+    if not isinstance(layer,(tuple,list)):
+        layer = (layer,)
+    # Make sure desired layer(s) exist:
+    for l in layer:
+        tokeep = _find_layer(svg,l) # will throw an error if not present
+        tokeep.set('id',l)
+    tostrip = [l for l in svg.getroot().getchildren() if l.get('{%s}label'%inkns) and not l.get('{%s}label'%inkns) in layer
         and not l.get('{%s}label'%inkns)=='roilabels']
     for s in tostrip:
         s.getparent().remove(s)

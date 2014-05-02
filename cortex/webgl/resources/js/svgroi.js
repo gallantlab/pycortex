@@ -86,10 +86,21 @@ var roilabel_fshader = [
 function ROIpack(svgdoc, renderer, positions) {
     this.svgroi = svgdoc.getElementsByTagName("svg")[0];
     this.svgroi.id = "svgroi";
-    // read only ROI layer; jquery selector; 
-    //for (var disp_layer in ["rois","display","sulci"]) {
-    this.rois = $(this.svgroi).find("#rois").find("path"); // This shit is going to break.
+    
+    // FOR NOW: Handle three display layers separately. 
+    // Should be done in a loop / more elegantly; maybe something like: 
+    //for (var disp_layer in ["#rois","#display","#sulci"]) {...blah...}
+    
+    // ROI layer
+    //this.rois = $(this.svgroi).find("#rois").find("path"); 
+    this.rois = $(this.svgroi).find("#rois").find("path"); 
     this.rois.each(function() { this.removeAttribute("filter"); });
+    // Sulcal layer
+    this.sulci = $(this.svgroi).find("#sulci").find("path"); 
+    this.sulci.each(function() { this.removeAttribute("filter"); });
+    // Display layer
+    this.miscdisp = $(this.svgroi).find("#disp").find("path"); 
+    this.miscdisp.each(function() { this.removeAttribute("filter"); });
 
     var names = {};
     $(this.svgroi).find("#roilabels").children().each(function() {
@@ -142,12 +153,17 @@ ROIpack.prototype = {
         sw = parseInt(sw);
 
         this.rois.attr("style", [fo, lo, fc, lc, lw].join(";"));
+        this.sulci.attr("style", [fo, lo, fc, lc, lw].join(";"));
+        this.miscdisp.attr("style", [fo, lo, fc, lc, lw].join(";"));
         var svg_xml = (new XMLSerializer()).serializeToString(this.svgroi);
 
         if (sw > 0) {
             var sc = $("#roi_shadowcolor").length > 0 ? $("#roi_shadowcolor").val() : "#000";
             sc = "stroke:" + sc;
             this.rois.attr("style", [sc, fc, fo, lo, lw].join(";"));
+            this.sulci.attr("style", [fo, lo, fc, lc, lw].join(";"));
+            this.miscdisp.attr("style", [fo, lo, fc, lc, lw].join(";"));
+
             var shadow_xml = (new XMLSerializer()).serializeToString(this.svgroi);
 
             canvg(this.canvas, shadow_xml, {
