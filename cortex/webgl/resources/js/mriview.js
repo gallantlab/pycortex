@@ -72,7 +72,7 @@ var mriview = (function(module) {
             THREE.UniformsLib[ "lights" ],
             {
                 diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
-                specular:   { type:'v3', value:new THREE.Vector3( .1,.1,.1 )}, //1,1,1
+                specular:   { type:'v3', value:new THREE.Vector3( 0,0,0 )}, //1,1,1
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
                 shininess:  { type:'f',  value:200},
 
@@ -350,6 +350,18 @@ var mriview = (function(module) {
                 return [t.x, t.y, t.z];
             case 'depth':
                 return this.uniforms.thickmix.value;
+            case 'visL':
+                return this.meshes.left.visible;
+            case 'visR':
+                return this.meshes.right.visible;
+            case 'rotationL':
+                var rot = this.meshes.left.rotation
+                return [rot.x,rot.y,rot.z];
+            case 'rotationR':
+                var rot = this.meshes.right.rotation
+                return [rot.x,rot.y,rot.z];
+            case 'alpha':
+                return this.renderer.getClearAlpha;
         };
     };
     module.Viewer.prototype.setState = function(state, value) {
@@ -371,6 +383,20 @@ var mriview = (function(module) {
                 return this.controls.target.set(value[0], value[1], value[2]);
             case 'depth':
                 return this.uniforms.thickmix.value = value;
+            case 'visL':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.left.visible = value;
+            case 'visR':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.right.visible = value;
+            case 'rotationL':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.left.rotation.set(value[0], value[1], value[2]);
+            case 'rotationR':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.right.rotation.set(value[0], value[1], value[2]);
+            case 'alpha':
+                return this.renderer.setClearColor(0,value);
         };
     };
     module.Viewer.prototype.animate = function(animation) {
@@ -517,7 +543,7 @@ var mriview = (function(module) {
         if (this.flatlims !== undefined) {
             this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
             this.setPivot(this.flatmix*180);
-            this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
+            //this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
         }
         $(this.object).find("#mix").slider("value", val);
         

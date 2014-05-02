@@ -303,7 +303,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             higher-level functions that load .json files, which have the parameters
             in lists by default. So it's annoying either way.
             """
-            props = ['altitude','azimuth','target','mix','radius']
+            props = ['altitude','azimuth','target','mix','radius','visL','visR','alpha','rotationR','rotationL']
             for k in kwargs.keys():
                 if not k in props:
                     print('Unknown parameter %s!'%k)
@@ -311,7 +311,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 self.setState(k,kwargs[k][0])
         def _getView(self):
             """Low-level command: returns a dict of current view parameters"""
-            props = ['altitude','azimuth','target','mix','radius']
+            props = ['altitude','azimuth','target','mix','radius','visL','visR','alpha','rotationR','rotationL']
             # surfs.saveView()
             view = {}
             for p in props:
