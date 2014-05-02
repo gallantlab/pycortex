@@ -144,6 +144,8 @@ class BrainCTM(object):
                     fp.write(roipack.toxml())
 
         # ##### ADDITION OF SULCI/OTHER DISPLAY SVG (NEW 2014.05)        
+        # ##### Currently NOT adding multiple layers, just saving different
+        # ##### cache files for different display layers.
         # roi = surfs.getOverlay(dataview.data.subject, type='cutouts',
         #     roifill=(0.,0.,0.,0.),linecolor=(0.,0.,0.,0.),linewidth=0.)
         # # Set ONLY desired cutout to be white
