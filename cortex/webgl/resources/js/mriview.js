@@ -362,11 +362,14 @@ var mriview = (function(module) {
                 return [rot.x,rot.y,rot.z];
             case 'alpha':
                 return this.renderer.getClearAlpha;
+<<<<<<< HEAD
             case 'projection':
                 if (this.camera.inOrthographicMode) {
                     return 'orthographic'}
                 else if (this.camera.inPerspectiveMode) {
                     return 'perspective'}
+=======
+>>>>>>> Can save sulcal layers as separate ctm (so you choose whether to display sucli / rois). Need to implement multi-layer ROIpack objects
         };
     };
     module.Viewer.prototype.setState = function(state, value) {
@@ -402,6 +405,7 @@ var mriview = (function(module) {
                 return this.meshes.right.rotation.set(value[0], value[1], value[2]);
             case 'alpha':
                 return this.renderer.setClearColor(0,value);
+<<<<<<< HEAD
             case 'data':
                 return this.setData(value)
             case 'labels':
@@ -411,6 +415,8 @@ var mriview = (function(module) {
                     return this.controls.camera.toPerspective()}
                 else if (value=='orthographic'){
                     return this.controls.camera.toOrthographic()}
+=======
+>>>>>>> Can save sulcal layers as separate ctm (so you choose whether to display sucli / rois). Need to implement multi-layer ROIpack objects
         };
     };
     module.Viewer.prototype.animate = function(animation) {

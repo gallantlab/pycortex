@@ -30,8 +30,7 @@ def get_roipack(*args, **kwargs):
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False,disp_layers=['rois']):
-    ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
-    ctmform = os.path.join(db.get_cache(subject), ctmcache)
+    """Get ctmpack. [most useless help message ever]"""   
     lvlstr = ("%dd" if decimate else "%d")%level
     # Temporary code to play nice with other branches:
     if disp_layers==['rois']:
@@ -42,7 +41,7 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
         # display layers into the main ctm file(s)
         ctmcache = "%s_[{types}]_{method}_{level}_{layers}.json"%subject
         ctmcache = ctmcache.format(types=','.join(types), method=method, level=lvlstr,layers=disp_layers)
-    ctmfile = os.path.join(surfs.getCache(subject), ctmcache)
+    ctmfile = os.path.join(surfs.get_cache(subject), ctmcache)
 
     if os.path.exists(ctmfile) and not recache:
         return ctmfile
