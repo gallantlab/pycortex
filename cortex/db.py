@@ -13,6 +13,7 @@ import time
 import json
 import shutil
 import warnings
+import tempfile
 import numpy as np
 
 from . import options
@@ -208,11 +209,14 @@ class Database(object):
         opts = ""
         if len(kwargs) > 0:
             opts = "[%s]"%','.join(["%s=%s"%i for i in kwargs.items()])
-        surfiform = self.getFiles(subject)['surfinfo']
-        surfifile = surfiform.format(type=type, opts=opts)
+        if self.auxfile is not None:
+            surfifile = os.path.join(self.getCache(subject),"%s%s.npz"%(type, opts)) 
+        else:
+            surfiform = self.getFiles(subject)['surfinfo']
+            surfifile = surfiform.format(type=type, opts=opts)
 
-        if not os.path.exists(os.path.join(filestore, subject, "surface-info")):
-            os.makedirs(os.path.join(filestore, subject, "surface-info"))
+            if not os.path.exists(os.path.join(filestore, subject, "surface-info")):
+                os.makedirs(os.path.join(filestore, subject, "surface-info"))
 
         if not os.path.exists(surfifile) or recache:
             print ("Generating %s surface info..."%type)
@@ -231,13 +235,11 @@ class Database(object):
         if type in ["rois","cutouts"]:
             from . import svgroi
             pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
-            svgfile = self.getFiles(subject)["rois"]
-            if self.auxfile is not None:
-                try:
-                    tf = self.auxfile.getOverlay(subject, type)
-                    svgfile = tf.name
-                except (AttributeError, IOError):
-                    pass
+            try:
+                tf = self.auxfile.getOverlay(subject, type)
+                svgfile = tf.name
+            except (AttributeError, IOError):
+                svgfile = self.getFiles(subject)["rois"]
                     
             if 'pts' in kwargs:
                 pts = kwargs['pts']
@@ -246,7 +248,6 @@ class Database(object):
         if type == "external":
             from . import svgroi
             pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
-            #svgfile = self.getFiles(subject)['rois']
             svgfile = kwargs["svgfile"]
             del kwargs["svgfile"]
             if 'pts' in kwargs:
@@ -405,7 +406,14 @@ class Database(object):
             raise IOError
 
     def getCache(self, subject):
-        cachedir = self.getFiles(subject)['cachedir']
+        if self.auxfile is not None:
+            #generate the hashed name of the filename and subject as the directory name
+            import hashlib
+            hashname = "pycx_%s"%hashlib.md5(self.auxfile.h5.filename).hexdigest()[-8:]
+            cachedir = os.path.join(tempfile.gettempdir(), hashname, subject)
+        else:
+            cachedir = self.getFiles(subject)['cachedir']
+
         if not os.path.exists(cachedir):
             os.makedirs(cachedir)
         return cachedir

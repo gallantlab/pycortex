@@ -79,6 +79,8 @@ class Dataset(object):
         ds.h5 = h5py.File(filename)
         loaded = set()
 
+        surfs.auxfile = ds
+
         #detect stray datasets which were not written by pycortex
         for name, node in ds.h5.items():
             if name in ("data", "subjects", "views"):
@@ -101,6 +103,8 @@ class Dataset(object):
                     ds.views[name] = DataView(BrainData.from_hdf(ds, node))
                 except KeyError:
                     print('No metadata found for "%s", skipping...'%name)
+
+        surfs.auxfile = None
 
         return ds
         
@@ -142,8 +146,8 @@ class Dataset(object):
 
     def getSurf(self, subject, type, hemi='both', merge=False, nudge=False):
         if hemi == 'both':
-            left = self.getSurf(subject, type, "lh")
-            right = self.getSurf(subject, type, "rh")
+            left = self.getSurf(subject, type, "lh", nudge=nudge)
+            right = self.getSurf(subject, type, "rh", nudge=nudge)
             if merge:
                 pts = np.vstack([left[0], right[0]])
                 polys = np.vstack([left[1], right[1]+len(left[0])])
@@ -157,12 +161,12 @@ class Dataset(object):
                 return (wpts + ppts) / 2, polys
 
             group = self.h5['subjects'][subject]['surfaces'][type][hemi]
-            pts, polys = group['pts'].value, group['polys'].value
+            pts, polys = group['pts'].value.copy(), group['polys'].value.copy()
             if nudge:
                 if hemi == 'lh':
-                    pts[:,0] -= pts[:,0].min()
-                else:
                     pts[:,0] -= pts[:,0].max()
+                else:
+                    pts[:,0] -= pts[:,0].min()
             return pts, polys
         except (KeyError, TypeError):
             raise IOError('Subject not found in package')
@@ -170,7 +174,7 @@ class Dataset(object):
     def getXfm(self, subject, xfmname):
         try:
             group = self.h5['subjects'][subject]['transforms'][xfmname]
-            return Transform(group['xfm'].value, group['xfm'].attrs['shape'])
+            return Transform(group['xfm'].value, tuple(group['xfm'].attrs['shape']))
         except (KeyError, TypeError):
             raise IOError('Transform not found in package')
 
@@ -188,10 +192,7 @@ class Dataset(object):
                 tf = tempfile.NamedTemporaryFile()
                 tf.write(group['rois'][0])
                 tf.seek(0)
-
-                from .. import svgroi
-                pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
-                return svgroi.get_roipack(tf.name, pts, polys, **kwargs)
+                return tf
         except (KeyError, TypeError):
             raise IOError('Overlay not found in package')
 

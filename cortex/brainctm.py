@@ -27,7 +27,6 @@ from openctm import CTMfile
 class BrainCTM(object):
     def __init__(self, subject, decimate=False):
         self.subject = subject
-        self.files = surfs.getFiles(subject)
         self.types = []
 
         left, right = surfs.getSurf(subject, "fiducial")
