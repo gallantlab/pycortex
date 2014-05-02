@@ -16,7 +16,8 @@ def get_mapper(*args, **kwargs):
     from .mapper import get_mapper
     return get_mapper(*args, **kwargs)
 
-def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False,disp_layers=['rois']):    
+def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False,disp_layers=['rois']):
+    """Get ctmpack. [most useless help message ever]"""   
     lvlstr = ("%dd" if decimate else "%d")%level
     # Temporary code to play nice with other branches:
     if disp_layers==['rois']:

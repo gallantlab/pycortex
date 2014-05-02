@@ -85,7 +85,8 @@ var roilabel_fshader = [
 
 function ROIpack(svgdoc, renderer, positions) {
     this.svgroi = svgdoc.getElementsByTagName("svg")[0];
-    this.svgroi.id = "svgroi";    
+    this.svgroi.id = "svgroi";
+    
     // FOR NOW: Handle three display layers separately. 
     // Should be done in a loop / more elegantly; maybe something like: 
     //for (var disp_layer in ["#rois","#display","#sulci"]) {...blah...}
