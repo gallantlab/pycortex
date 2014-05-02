@@ -308,7 +308,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             """
             props = ['altitude','azimuth','target','mix','radius',
                 'visL','visR','alpha','rotationR','rotationL','projection']
-            # surfs.saveView()
             view = {}
             for p in props:
                 view[p] = self.getState(p)[0]
