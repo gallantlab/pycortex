@@ -1,5 +1,4 @@
 import os
-import re
 import glob
 import json
 import shutil
@@ -21,7 +20,6 @@ from . import serve
 from .data import Package
 from ConfigParser import NoOptionError
 
-name_parse = re.compile(r".*/(\w+).png")
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
     if not os.path.exists(cmapdir):
@@ -33,7 +31,7 @@ except NoOptionError:
 
 
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
+colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm)) for cm in sorted(colormaps)]
 
 viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
 
