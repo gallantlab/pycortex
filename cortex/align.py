@@ -109,6 +109,10 @@ def automatic(subject, xfmname, reference, noclean=False):
 
     from .db import surfs
     from .xfm import Transform
+    from .options import config
+
+    fsl_prefix = config.get("basic", "fsl_prefix")
+    schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
 
     retval = None
     try:
@@ -119,13 +123,14 @@ def automatic(subject, xfmname, reference, noclean=False):
         wmseg = surfs.getAnat(subject, type='whitematter').get_filename()
         # Compute anatomical-to-epi transform
         print('FLIRT pre-alignment')
-        cmd = 'fsl5.0-flirt  -in {epi} -ref {bet} -dof 6 -omat {cache}/init.mat'.format(cache=cache, epi=absreference, bet=bet)
+        cmd = '{fslpre}flirt  -in {epi} -ref {bet} -dof 6 -omat {cache}/init.mat'.format(
+            fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet)
         if sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling initial FLIRT')
         print('Running BBR')
         # Run epi-to-anat transform (this is more stable than anat-to-epi in FSL!)
-        cmd = 'fsl5.0-flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
-        cmd = cmd.format(cache=cache, raw=raw, wmseg=wmseg, epi=absreference)
+        cmd = '{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile}'
+        cmd = cmd.format(fslpre=fsl_prefix, cache=cache, raw=raw, wmseg=wmseg, epi=absreference, schfile=schfile)
         if sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling BBR flirt')
 
