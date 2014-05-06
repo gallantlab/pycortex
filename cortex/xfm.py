@@ -160,7 +160,7 @@ class Transform(object):
         ## -- Internal notes -- ## 
         # pycortex transforms are internally stored as anatomical space -> functional data space
         # transforms. Thus the anatomical file is the "infile" in FSL-speak.
-        anat_nii = infile
+        infile = anat_nii
 
         try:
             inIm = nibabel.load(infile)
