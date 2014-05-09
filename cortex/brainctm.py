@@ -226,3 +226,25 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimat
         os.makedirs(os.path.split(outfile)[0])
 
     return ctm.save(os.path.splitext(outfile)[0], method=method, level=level)
+
+def read_pack(ctmfile):
+    fname = os.path.splitext(ctmfile)[0]
+    jsfile = json.load(open(fname+".json"))
+    offset = jsfile['offsets']
+
+    meshes = []
+
+    with open(ctmfile, 'r') as ctmfp:
+        ctmfp.seek(0, 2)
+        offset.append(ctmfp.tell())
+
+        for start, end in zip(offset[:-1], offset[1:]):
+            ctmfp.seek(start)
+            tf = tempfile.NamedTemporaryFile()
+            tf.write(ctmfp.read(end-start))
+            tf.seek(0)
+            ctm = CTMfile(tf.name, "r")
+            pts, polys, norms = ctm.getMesh()
+            meshes.append((pts, polys))
+
+    return meshes

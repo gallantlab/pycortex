@@ -30,6 +30,23 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     ptmap = brainctm.make_pack(ctmfile, subject, types=types, method=method, level=level, decimate=decimate)
     return ctmfile
 
+def get_ctmmap(subject, **kwargs):
+    from scipy.spatial import cKDTree
+    from . import brainctm
+    jsfile = get_ctmpack(subject, **kwargs)
+    ctmfile = os.path.splitext(jsfile)[0]+".ctm"
+    
+    try:
+        left, right = surfs.getSurf(subject, "pia")
+    except IOError:
+        left, right = surfs.getSurf(subject, "fiducial")
+    
+    lmap, rmap = cKDTree(left[0]), cKDTree(right[0])
+    left, right = brainctm.read_pack(ctmfile)
+    lnew = lmap.query(left[0])[1]
+    rnew = rmap.query(right[0])[1]
+    return lnew, rnew
+
 def get_cortical_mask(subject, xfmname, type='nearest'):
     from .db import surfs
     if type == 'cortical':
