@@ -117,7 +117,7 @@ def cut_surface(subject, hemi, name='flatten', data=None):
         A data view object to display on the surface as a cutting guide.
     """
     opts = "[hemi=%s,name=%s]"%(hemi, name)
-    fname = surfs.getFiles(subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
+    fname = surfs.get_paths(subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
 
     if not os.path.exists(fname):
         blender.fs_cut(fname, subject, hemi)

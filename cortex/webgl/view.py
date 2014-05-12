@@ -309,13 +309,13 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
         def _getView(self):
             """Low-level command: returns a dict of current view parameters"""
             props = ['altitude','azimuth','target','mix','radius']
-            # surfs.saveView()
+            # surfs.save_view()
             view = {}
             for p in props:
                 view[p] = self.getState(p)[0]
             return view
 
-        def saveView(self,subject,name):
+        def save_view(self,subject,name):
             """Saves current view parameters to a .json file
 
             Parameters
@@ -325,7 +325,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
             Notes
             -----
-            Equivalent to call to cortex.surfs.saveView(subject,vw,name)
+            Equivalent to call to cortex.surfs.save_view(subject,vw,name)
             
             To adjust view in javascript console:
             # Set BG to alpha:
@@ -336,12 +336,12 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
             See Also
             --------
-            methods loadView, _setView, _getView
+            methods get_view, _setView, _getView
             """
             # Check for existence of view? 
-            surfs.saveView(self,subject,name)
+            surfs.save_view(self,subject,name)
 
-        def loadView(self,subject,name):
+        def get_view(self,subject,name):
             """Sets current view parameters to those stored in a .json file
 
             Parameters
@@ -352,7 +352,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
             Notes
             -----
-            Equivalent to call to cortex.surfs.loadView(subject,vw,name)
+            Equivalent to call to cortex.surfs.get_view(subject,vw,name)
 
             Further modifications possible in JavaScript console:
             # Set BG to alpha:
@@ -363,9 +363,9 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
             See Also
             --------
-            methods saveView, _setView, _getView
+            methods save_view, _setView, _getView
             """
-            view = surfs.loadView(self,subject,name)
+            view = surfs.get_view(self,subject,name)
             
 
         def addData(self, **kwargs):

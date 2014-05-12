@@ -30,8 +30,8 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
 
     fname = "{xfmname}_{projection}.npz".format(xfmname=xfmname, projection=ptype)
 
-    xfmfile = surfs.getFiles(subject)['xfmdir'].format(xfmname=xfmname)
-    cachefile = os.path.join(surfs.getCache(subject), fname)
+    xfmfile = surfs.get_paths(subject)['xfmdir'].format(xfmname=xfmname)
+    cachefile = os.path.join(surfs.get_cache(subject), fname)
 
     try:
         if not recache and xfmname == "identity" or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
@@ -164,9 +164,9 @@ class Mapper(object):
         print('Caching mapper...')
         from ..db import surfs
         masks = []
-        xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        fid = surfs.getSurf(subject, 'fiducial', merge=False, nudge=False)
-        flat = surfs.getSurf(subject, 'flat', merge=False, nudge=False)
+        xfm = surfs.get_xfm(subject, xfmname, xfmtype='coord')
+        fid = surfs.get_surf(subject, 'fiducial', merge=False, nudge=False)
+        flat = surfs.get_surf(subject, 'flat', merge=False, nudge=False)
 
         for (pts, _), (_, polys) in zip(fid, flat):
             masks.append(cls._getmask(xfm(pts), polys, xfm.shape, **kwargs))

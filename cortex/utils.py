@@ -9,8 +9,8 @@ from .volume import mosaic, unmask
 
 def get_roipack(*args, **kwargs):
     import warnings
-    warnings.warn('Please use surfs.getOverlay instead', DeprecationWarning)
-    return surfs.getOverlay(*args, **kwargs)
+    warnings.warn('Please use surfs.get_overlay instead', DeprecationWarning)
+    return surfs.get_overlay(*args, **kwargs)
 
 def get_mapper(*args, **kwargs):
     from .mapper import get_mapper
@@ -18,7 +18,7 @@ def get_mapper(*args, **kwargs):
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False):
     ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
-    ctmform = os.path.join(surfs.getCache(subject), ctmcache)
+    ctmform = os.path.join(surfs.get_cache(subject), ctmcache)
     
     lvlstr = ("%dd" if decimate else "%d")%level
     ctmfile = ctmform.format(types=','.join(types), method=method, level=lvlstr)
@@ -37,9 +37,9 @@ def get_ctmmap(subject, **kwargs):
     ctmfile = os.path.splitext(jsfile)[0]+".ctm"
     
     try:
-        left, right = surfs.getSurf(subject, "pia")
+        left, right = surfs.get_surf(subject, "pia")
     except IOError:
-        left, right = surfs.getSurf(subject, "fiducial")
+        left, right = surfs.get_surf(subject, "fiducial")
     
     lmap, rmap = cKDTree(left[0]), cKDTree(right[0])
     left, right = brainctm.read_pack(ctmfile)
@@ -50,8 +50,8 @@ def get_ctmmap(subject, **kwargs):
 def get_cortical_mask(subject, xfmname, type='nearest'):
     from .db import surfs
     if type == 'cortical':
-        ppts, polys = surfs.getSurf(subject, "pia", merge=True, nudge=False)
-        wpts, polys = surfs.getSurf(subject, "wm", merge=True, nudge=False)
+        ppts, polys = surfs.get_surf(subject, "pia", merge=True, nudge=False)
+        wpts, polys = surfs.get_surf(subject, "wm", merge=True, nudge=False)
         thickness = np.sqrt(((ppts - wpts)**2).sum(1))
 
         dist, idx = get_vox_dist(subject, xfmname)
@@ -94,8 +94,8 @@ def get_vox_dist(subject, xfmname, surface="fiducial"):
     import nibabel
     from scipy.spatial import cKDTree
 
-    fiducial, polys = surfs.getSurf(subject, surface, merge=True)
-    xfm = surfs.getXfm(subject, xfmname)
+    fiducial, polys = surfs.get_surf(subject, surface, merge=True)
+    xfm = surfs.get_xfm(subject, xfmname)
     z, y, x = xfm.shape
     idx = np.mgrid[:x, :y, :z].reshape(3, -1).T
     mm = xfm.inv(idx)
@@ -169,12 +169,12 @@ def get_roi_verts(subject, roi=None):
         after left hemisphere vertex numbers.
     """
     # Get ROIpack
-    rois = surfs.getOverlay(subject)
+    rois = surfs.get_overlay(subject)
 
     # Get flat surface so we can figure out which verts are in medial wall
     # or in cuts
     # This assumes subject has flat surface, which they must to have ROIs..
-    pts, polys = surfs.getSurf(subject, "flat", merge=True)
+    pts, polys = surfs.get_surf(subject, "flat", merge=True)
     goodpts = np.unique(polys)
 
     if roi is None:
@@ -211,10 +211,10 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
 
     # Retrieve shape from the reference
     import nibabel
-    shape = surfs.getXfm(subject, xfmname).shape
+    shape = surfs.get_xfm(subject, xfmname).shape
     
     # Get 3D coords
-    coords = np.vstack(surfs.getCoords(subject, xfmname))
+    coords = np.vstack(surfs.get_coords(subject, xfmname))
     nVerts = np.max(coords.shape)
     coords = coords[vertIdx]
     nValidVerts = np.max(coords.shape)
@@ -222,14 +222,14 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     voxDst,voxIdx = get_vox_dist(subject,xfmname)
     voxIdxF = voxIdx.flatten()
     # Get L,R hem separately
-    L,R = surfs.getSurf(subject, "flat", merge=False, nudge=True)
+    L,R = surfs.get_surf(subject, "flat", merge=False, nudge=True)
     nL = len(np.unique(L[1]))
     #nVerts = len(idxL)+len(idxR)
     # mask for left hemisphere
     Lmask = (voxIdx < nL).flatten()
     Rmask = np.logical_not(Lmask)
     if type(Dst) in (str,unicode) and Dst.lower()=='cortical':
-        CxMask = surfs.getMask(subject,xfmname,'cortical').flatten()
+        CxMask = surfs.get_mask(subject,xfmname,'cortical').flatten()
     else:
         CxMask = (voxDst < Dst).flatten()
     
@@ -299,7 +299,7 @@ def get_dropout(subject, xfmname, power=20):
     """Create a dropout VolumeData showing where EPI signal
     is very low.
     """
-    xfm = surfs.getXfm(subject, xfmname)
+    xfm = surfs.get_xfm(subject, xfmname)
     rawdata = xfm.reference.get_data().T
 
     ## Collapse epi across time if it's 4D

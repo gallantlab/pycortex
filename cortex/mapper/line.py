@@ -9,9 +9,9 @@ class LineMapper(Mapper):
     def _cache(cls, filename, subject, xfmname, **kwargs):
         from .. import surfs
         masks = []
-        xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        pia = surfs.getSurf(subject, "pia", merge=False, nudge=False)
-        wm = surfs.getSurf(subject, "wm", merge=False, nudge=False)
+        xfm = surfs.get_xfm(subject, xfmname, xfmtype='coord')
+        pia = surfs.get_surf(subject, "pia", merge=False, nudge=False)
+        wm = surfs.get_surf(subject, "wm", merge=False, nudge=False)
         
         #iterate over hemispheres
         for (wpts, polys), (ppts, _) in zip(pia, wm):

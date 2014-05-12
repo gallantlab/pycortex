@@ -9,8 +9,8 @@ def test_cube():
 
 def test_surfpatch():
     from cortex import surfs
-    wm, polys = surfs.getSurf("S1", "wm", "lh")
-    pia, _ = surfs.getSurf("S1", "pia", "lh")
+    wm, polys = surfs.get_surf("S1", "wm", "lh")
+    pia, _ = surfs.get_surf("S1", "pia", "lh")
     surf = polyutils.Surface(wm, polys)
     subwm, subpia, subpolys = surf.extract_chunk(auxpts=pia)
     subsurf = polyutils.Surface(subwm, subpolys)

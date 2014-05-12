@@ -57,7 +57,7 @@ def flatten(subject, hemi, patch):
 def import_subj(subject, sname=None):
     if sname is None:
         sname = subject
-    db.surfs.makeSubj(sname)
+    db.surfs.make_subj(sname)
 
     import nibabel
     surfs = os.path.join(db.filestore, sname, "surfaces", "{name}_{hemi}.gii")

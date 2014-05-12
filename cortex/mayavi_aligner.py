@@ -961,19 +961,19 @@ def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", deci
 
     dbxfm = None
     try:
-        db = surfs.getXfm(subject, xfmname, xfmtype='magnet')
+        db = surfs.get_xfm(subject, xfmname, xfmtype='magnet')
         epifile = db.reference.get_filename()
         dbxfm = db.xfm
     except IOError:
         pass
 
     try:
-        wpts, wpolys = surfs.getSurf(subject, 'wm', merge=True, nudge=False)
-        ppts, ppolys = surfs.getSurf(subject, 'pia', merge=True, nudge=False)
+        wpts, wpolys = surfs.get_surf(subject, 'wm', merge=True, nudge=False)
+        ppts, ppolys = surfs.get_surf(subject, 'pia', merge=True, nudge=False)
         pts = np.vstack([wpts, ppts])
         polys = np.vstack([wpolys, ppolys+len(wpts)])
     except IOError:
-        pts, polys = surfs.getSurf(subject, 'fiducial', merge=True, nudge=False)
+        pts, polys = surfs.get_surf(subject, 'fiducial', merge=True, nudge=False)
 
     if decimate:
         pts, polys = polyutils.decimate(pts, polys)
