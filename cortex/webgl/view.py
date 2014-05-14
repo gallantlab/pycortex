@@ -36,7 +36,7 @@ colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm)) 
 
 viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
 
-def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", layout=None, anonymize=False, **kwargs):
+def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", layout=None, anonymize=False, disp_layers=['rois'],**kwargs):
     """Creates a static instance of the webGL MRI viewer that can easily be posted 
     or shared. 
 
@@ -79,9 +79,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     subjects = list(package.subjects)
 
     ctmargs = dict(method='mg2', level=9, recache=recache)
-    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs)) for subj in subjects)
+    ctms = dict((subj, utils.get_ctmpack(subj, types, disp_layers=disp_layers, **ctmargs)) for subj in subjects)
     db.auxfile = None
-
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
 
@@ -357,6 +356,12 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             metadata.update(new_meta)
             images.update(new_ims)
             return Proxy(metadata)
+        
+        # Would like this to be here instead of in setState, but did
+        # not know how to make that work...
+        #def setData(self,name):
+        #    Proxy = serve.JSProxy(self.send, "window.viewers.setData")
+        #    return Proxy(name)
 
         def saveIMG(self, filename,size=None):
             """Saves currently displayed view to a .png image file
@@ -437,10 +442,9 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                     if start['value'] != end['value']:
                         anim.append((start, end))
 
-            print(anim)
-            #import ipdb
-            #ipdb.set_trace()
-            self.resize(*size)
+            if not size is None:
+                # Warning: UNRELIABLE!
+                self.resize(*size)
             for i, sec in enumerate(np.arange(0, anim[-1][1]['idx']+1./fps, 1./fps)):
                 for start, end in anim:
                     if start['idx'] < sec <= end['idx']:
