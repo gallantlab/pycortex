@@ -397,6 +397,11 @@ var mriview = (function(module) {
                 return this.meshes.right.rotation.set(value[0], value[1], value[2]);
             case 'alpha':
                 return this.renderer.setClearColor(0,value);
+            case 'data':
+                return this.setData(value)
+            case 'labels':
+                return this.labelshow = value;
+
         };
     };
     module.Viewer.prototype.animate = function(animation) {
