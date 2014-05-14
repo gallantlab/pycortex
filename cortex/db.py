@@ -209,9 +209,10 @@ class Database(object):
         opts = ""
         if len(kwargs) > 0:
             opts = "[%s]"%','.join(["%s=%s"%i for i in kwargs.items()])
-        if self.auxfile is not None:
+        try:
+            self.auxfile.getSurf(subject, "fiducial")
             surfifile = os.path.join(self.getCache(subject),"%s%s.npz"%(type, opts)) 
-        else:
+        except (AttributeError, IOError):
             surfiform = self.getFiles(subject)['surfinfo']
             surfifile = surfiform.format(type=type, opts=opts)
 
@@ -406,12 +407,13 @@ class Database(object):
             raise IOError
 
     def getCache(self, subject):
-        if self.auxfile is not None:
+        try:
+            self.auxfile.getSurf(subject, "fiducial")
             #generate the hashed name of the filename and subject as the directory name
             import hashlib
             hashname = "pycx_%s"%hashlib.md5(self.auxfile.h5.filename).hexdigest()[-8:]
             cachedir = os.path.join(tempfile.gettempdir(), hashname, subject)
-        else:
+        except (AttributeError, IOError):
             cachedir = self.getFiles(subject)['cachedir']
 
         if not os.path.exists(cachedir):
