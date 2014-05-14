@@ -233,7 +233,8 @@ class Surface(object):
     def avg_edge_length(self):
         """Average length of all edges in the surface.
         """
-        adj = self.laplace_operator[1] # use laplace operator as adjacency matrix
+        #adj = self.laplace_operator[1] # use laplace operator as adjacency matrix
+        adj = self.adj
         tadj = sparse.triu(adj, 1) # only entries above main diagonal, in coo format
         edgelens = np.sqrt(((self.pts[tadj.row] - self.pts[tadj.col])**2).sum(1))
         return edgelens.mean()
@@ -412,7 +413,7 @@ class Surface(object):
         fe31 = np.cross(fnorms, ppts[:,0] - ppts[:,2])
         return fe12, fe23, fe31
 
-    def geodesic_distance(self, verts, m=1.0, fem=False):
+    def geodesic_distance(self, verts, m=2.0, fem=False):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
         vertex in the collection `verts`.
 
