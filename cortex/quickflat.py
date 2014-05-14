@@ -13,12 +13,8 @@ from .database import db
 from .options import config
 
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100, depth=0.5,
-<<<<<<< HEAD
                 with_rois=True, with_sulci=False, with_labels=True, with_colorbar=True, with_borders=False, 
                 with_dropout=False, with_curvature=False,extra_disp=None, 
-=======
-                with_rois=True, with_sulci=False, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, with_curvature=False,
->>>>>>> Updates to extra_layers. Also playing with animation stuff in view.py; inconclusive.
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
                 cutout=None,cvmin=None,cvmax=None,cvthr=None,fig=None,**kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
@@ -226,7 +222,6 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             extent=extents, 
             zorder=3,
             origin='lower')
-
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,

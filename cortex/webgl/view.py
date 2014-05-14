@@ -81,7 +81,6 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     ctmargs = dict(method='mg2', level=9, recache=recache)
     ctms = dict((subj, utils.get_ctmpack(subj, types, disp_layers=disp_layers, **ctmargs)) for subj in subjects)
     db.auxfile = None
-
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
 
