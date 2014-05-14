@@ -13,7 +13,7 @@ from .database import db
 from .options import config
 
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100, depth=0.5,
-                with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, with_curvature=False,
+                with_rois=True, with_sulci=False, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, with_curvature=False,
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
                 cutout=None,cvmin=None,cvmax=None,cvthr=None,fig=None,**kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
@@ -79,7 +79,9 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         roitex = roi.get_texture(height, labels=False)
         roitex.seek(0)
         co = plt.imread(roitex)[:,:,0] # Cutout image
-        # STUPID BULLSHIT 1-PIXEL CHECK:
+        if not np.any(co):
+            raise Exception('No pixels in cutout region %s!'%cutout)
+        # STUPID BUT NECESSARY 1-PIXEL CHECK:
         if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,co.shape)]):
             from scipy.misc import imresize
             co = imresize(co,im.shape[:2]).astype(np.float32)/255.
@@ -176,7 +178,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         oax = fig.add_axes((0,0,1,1))
         roi_im = plt.imread(roitex)
         if cutout: 
-            # STUPID BULLSHIT 1-PIXEL CHECK:
+            # STUPID BUT NECESSARY 1-PIXEL CHECK:
             if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,roi_im.shape)]):
                 from scipy.misc import imresize
                 co = imresize(co,roi_im.shape[:2]).astype(np.float32)/255.
@@ -187,6 +189,25 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             extent=extents, 
             zorder=3,
             origin='lower')
+    if with_sulci:
+        roi = surfs.getOverlay(dataview.data.subject,otype='sulci',linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
+        roitex = roi.get_texture(height, labels=with_labels)
+        roitex.seek(0)
+        oax = fig.add_axes((0,0,1,1))
+        roi_im = plt.imread(roitex)
+        if cutout: 
+            # STUPID BUT NECESSARY 1-PIXEL CHECK:
+            if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,roi_im.shape)]):
+                from scipy.misc import imresize
+                co = imresize(co,roi_im.shape[:2]).astype(np.float32)/255.
+            roi_im[:,:,3]*=co
+        oimg = oax.imshow(roi_im[iy[1]:iy[0]:-1,ix[0]:ix[1]],
+            aspect='equal', 
+            interpolation='bicubic', 
+            extent=extents, 
+            zorder=3,
+            origin='lower')
+
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
