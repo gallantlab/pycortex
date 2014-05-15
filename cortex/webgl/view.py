@@ -514,3 +514,4 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
         client = server.get_client()
         client.server = server
         return client
+    return server
