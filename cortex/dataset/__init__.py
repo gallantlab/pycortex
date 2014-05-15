@@ -19,7 +19,7 @@ import tempfile
 import numpy as np
 import h5py
 
-from ..db import surfs
+from ..database import db
 from ..xfm import Transform
 
 from .braindata import BrainData, VertexData, VolumeData, _hdf_write
@@ -79,7 +79,7 @@ class Dataset(object):
         ds.h5 = h5py.File(filename)
         loaded = set()
 
-        surfs.auxfile = ds
+        db.auxfile = ds
 
         #detect stray datasets which were not written by pycortex
         for name, node in ds.h5.items():
@@ -104,7 +104,7 @@ class Dataset(object):
                 except KeyError:
                     print('No metadata found for "%s", skipping...'%name)
 
-        surfs.auxfile = None
+        db.auxfile = None
 
         return ds
         
@@ -226,28 +226,28 @@ def normalize(data):
 
 def _pack_subjs(h5, subjects):
     for subject in subjects:
-        rois = surfs.get_overlay(subject, type='rois')
+        rois = db.get_overlay(subject, type='rois')
         rnode = h5.require_dataset("/subjects/%s/rois"%subject, (1,),
             dtype=h5py.special_dtype(vlen=str))
         rnode[0] = rois.toxml(pretty=False)
 
-        surfaces = surfs.get_paths(subject)['surfs']
+        surfaces = db.get_paths(subject)['surfs']
         for surf in surfaces.keys():
             for hemi in ("lh", "rh"):
-                pts, polys = surfs.get_surf(subject, surf, hemi)
+                pts, polys = db.get_surf(subject, surf, hemi)
                 group = "/subjects/%s/surfaces/%s/%s"%(subject, surf, hemi)
                 _hdf_write(h5, pts, "pts", group)
                 _hdf_write(h5, polys, "polys", group)
 
 def _pack_xfms(h5, xfms):
     for subj, xfmname in xfms:
-        xfm = surfs.get_xfm(subj, xfmname, 'coord')
+        xfm = db.get_xfm(subj, xfmname, 'coord')
         group = "/subjects/%s/transforms/%s"%(subj, xfmname)
         node = _hdf_write(h5, np.array(xfm.xfm), "xfm", group)
         node.attrs['shape'] = xfm.shape
 
 def _pack_masks(h5, masks):
     for subj, xfm, maskname in masks:
-        mask = surfs.get_mask(subj, xfm, maskname)
+        mask = db.get_mask(subj, xfm, maskname)
         group = "/subjects/%s/transforms/%s/masks"%(subj, xfm)
         _hdf_write(h5, mask, maskname, group)

@@ -9,7 +9,7 @@ import numpy as np
 
 from . import utils
 from . import dataset
-from .db import surfs
+from .database import db
 from .options import config
 
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100, depth=0.5,
@@ -72,7 +72,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
     
     if cutout:
-        roi = surfs.get_overlay(dataview.data.subject, type='cutouts',
+        roi = db.get_overlay(dataview.data.subject, type='cutouts',
             roifill=(0.,0.,0.,0.),linecolor=(0.,0.,0.,0.),linewidth=0.)
         # Set ONLY desired cutout to be white
         roi.rois[cutout].set(roifill=(1.,1.,1.,1.),linewidth=2.,linecolor=(1.,1.,1.,1.))
@@ -108,7 +108,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         fig = plt.figure(fig.number)
 
     if with_curvature:
-        curv,ee = make(surfs.get_surfinfo(dataview.data.subject))
+        curv,ee = make(db.get_surfinfo(dataview.data.subject))
         if cutout: curv[co==0] = np.nan
         axcv = fig.add_axes((0,0,1,1))
         # Option to use thresholded curvature
@@ -168,7 +168,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         bax.add_collection(blc)
     
     if with_rois:
-        roi = surfs.get_overlay(dataview.data.subject,linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
+        roi = db.get_overlay(dataview.data.subject,linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
         roitex = roi.get_texture(height, labels=with_labels)
         roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
@@ -367,7 +367,7 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024, sampler
         shutil.rmtree(path)
 
 def get_flatmask(subject, height=1024, recache=False):
-    cachedir = surfs.get_cache(subject)
+    cachedir = db.get_cache(subject)
     cachefile = os.path.join(cachedir, "flatmask_{h}.npz".format(h=height))
 
     if not os.path.exists(cachefile) or recache:
@@ -381,7 +381,7 @@ def get_flatmask(subject, height=1024, recache=False):
     return mask, extents
 
 def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest', recache=False, height=1024, depth=0.5):
-    cachedir = surfs.get_cache(subject)
+    cachedir = db.get_cache(subject)
     cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
     if pixelwise and xfmname is not None:
         cachefile = os.path.join(cachedir, "flatpixel_{xfmname}_{height}_{sampler}_{extra}.npz")
@@ -413,7 +413,7 @@ def _make_flatmask(subject, height=1024):
     from . import polyutils
     import Image
     import ImageDraw
-    pts, polys = surfs.get_surf(subject, "flat", merge=True, nudge=True)
+    pts, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
     left, right = bounds.next(), bounds.next()
     aspect = (height / (pts.max(0) - pts.min(0))[1])
@@ -431,7 +431,7 @@ def _make_flatmask(subject, height=1024):
 def _make_vertex_cache(subject, height=1024):
     from scipy import sparse
     from scipy.spatial import cKDTree
-    flat, polys = surfs.get_surf(subject, "flat", merge=True, nudge=True)
+    flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
     fmax, fmin = flat.max(0), flat.min(0)
     size = fmax - fmin
@@ -450,7 +450,7 @@ def _make_vertex_cache(subject, height=1024):
 def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sampler='nearest'):
     from scipy import sparse
     from scipy.spatial import cKDTree, Delaunay
-    flat, polys = surfs.get_surf(subject, "flat", merge=True, nudge=True)
+    flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
     fmax, fmin = flat.max(0), flat.min(0)
     size = fmax - fmin
@@ -473,13 +473,13 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
     ll[:,missing] = 0
 
     from cortex.mapper import samplers
-    xfm = surfs.get_xfm(subject, xfmname, xfmtype='coord')
+    xfm = db.get_xfm(subject, xfmname, xfmtype='coord')
     sampclass = getattr(samplers, sampler)
 
     ## Transform fiducial vertex locations to pixel locations using barycentric xfm
     try:
-        pia, polys = surfs.get_surf(subject, "pia", merge=True, nudge=False)
-        wm, polys = surfs.get_surf(subject, "wm", merge=True, nudge=False)
+        pia, polys = db.get_surf(subject, "pia", merge=True, nudge=False)
+        wm, polys = db.get_surf(subject, "wm", merge=True, nudge=False)
         piacoords = xfm((pia[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
         wmcoords = xfm((wm[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
 
@@ -506,7 +506,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
         return mapper
 
     except IOError:
-        fid, polys = surfs.get_surf(subject, "fiducial", merge=True)
+        fid, polys = db.get_surf(subject, "fiducial", merge=True)
         fidcoords = xfm((fid[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
 
         valid = reduce(np.logical_and, [reduce(np.logical_and, (0 <= fidcoords).T),

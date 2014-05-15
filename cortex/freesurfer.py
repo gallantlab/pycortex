@@ -8,7 +8,7 @@ import subprocess as sp
 
 import numpy as np
 
-from . import db
+from . import database
 from . import anat
 
 def get_paths(subject, hemi, type="patch"):
@@ -57,12 +57,12 @@ def flatten(subject, hemi, patch):
 def import_subj(subject, sname=None):
     if sname is None:
         sname = subject
-    db.surfs.make_subj(sname)
+    database.db.make_subj(sname)
 
     import nibabel
-    surfs = os.path.join(db.filestore, sname, "surfaces", "{name}_{hemi}.gii")
-    anats = os.path.join(db.filestore, sname, "anatomicals", "{name}.nii.gz")
-    surfinfo = os.path.join(db.filestore, sname, "surface-info", "{name}.npz")
+    surfs = os.path.join(database.default_filestore, sname, "surfaces", "{name}_{hemi}.gii")
+    anats = os.path.join(database.default_filestore, sname, "anatomicals", "{name}.nii.gz")
+    surfinfo = os.path.join(database.default_filestore, sname, "surface-info", "{name}.npz")
     fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
     curvs = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'surf', '{hemi}.{name}')
 
@@ -96,7 +96,7 @@ def import_subj(subject, sname=None):
 def import_flat(subject, patch, sname=None):
     if sname is None:
         sname = subject
-    surfs = os.path.join(db.filestore, sname, "surfaces", "flat_{hemi}.gii")
+    surfs = os.path.join(database.default_filestore, sname, "surfaces", "flat_{hemi}.gii")
 
     from . import formats
     for hemi in ['lh', 'rh']:
@@ -108,7 +108,7 @@ def import_flat(subject, patch, sname=None):
         formats.write_gii(fname, pts=flat, polys=polys)
 
     #clear the cache, per #81
-    cache = os.path.join(db.filestore, sname, "cache")
+    cache = os.path.join(database.default_filestore, sname, "cache")
     shutil.rmtree(cache)
     os.makedirs(cache)
 

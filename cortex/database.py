@@ -18,14 +18,15 @@ import numpy as np
 
 from . import options
 
-filestore = options.config.get('basic', 'filestore')
+default_filestore = options.config.get('basic', 'filestore')
 
 class SubjectDB(object):
-    def __init__(self, subj):
+    def __init__(self, subj, filestore=default_filestore):
         self.subject = subj
         self._warning = None
         self._transforms = None
         self._surfaces = None
+        self.filestore = filestore
 
         try:
             with open(os.path.join(filestore, subj, "warning.txt")) as fp:
@@ -37,22 +38,23 @@ class SubjectDB(object):
     def transforms(self):
         if self._transforms is not None:
             return self._transforms
-        self._transforms = XfmDB(self.subject)
+        self._transforms = XfmDB(self.subject, filestore=self.filestore)
         return self._transforms
 
     @property
     def surfaces(self):
         if self._surfaces is not None:
             return self._surfaces
-        self._surfaces = SurfaceDB(self.subject)
+        self._surfaces = SurfaceDB(self.subject, filestore=self.filestore)
         return self._surfaces
 
 class SurfaceDB(object):
-    def __init__(self, subj):
+    def __init__(self, subj, filestore=default_filestore):
         self.subject = subj
         self.types = {}
-        for name in surfs.get_paths(subj)['surfs'].keys():
-            self.types[name] = Surf(subj, name)
+        db = Database(filestore)
+        for name in db.get_paths(subj)['surfs'].keys():
+            self.types[name] = Surf(subj, name, filestore=filestore)
                 
     def __repr__(self):
         return "Surfaces: [{surfs}]".format(surfs=', '.join(list(self.types.keys())))
@@ -66,51 +68,55 @@ class SurfaceDB(object):
         raise AttributeError(attr)
 
 class Surf(object):
-    def __init__(self, subject, surftype):
+    def __init__(self, subject, surftype, filestore=default_filestore):
         self.subject, self.surftype = subject, surftype
+        self.db = Database(filestore)
 
     def get(self, hemisphere="both"):
-        return surfs.get_surf(self.subject, self.surftype, hemisphere)
+        return self.db.get_surf(self.subject, self.surftype, hemisphere)
     
     def show(self, hemisphere="both"):
         from mayavi import mlab
-        pts, polys = surfs.get_surf(self.subject, self.surftype, hemisphere, merge=True, nudge=True)
+        pts, polys = self.db.get_surf(self.subject, self.surftype, hemisphere, merge=True, nudge=True)
         return mlab.triangular_mesh(pts[:,0], pts[:,1], pts[:,2], polys)
 
 class XfmDB(object):
-    def __init__(self, subj):
+    def __init__(self, subj, filestore=default_filestore):
         self.subject = subj
-        self.xfms = surfs.get_paths(subj)['xfms']
+        self.filestore = filestore
+        self.xfms = Database(self.filestore).get_paths(subj)['xfms']
 
     def __getitem__(self, name):
         if name in self.xfms:
-            return XfmSet(self.subject, name)
+            return XfmSet(self.subject, name, filestore=self.filestore)
         raise AttributeError
     
     def __repr__(self):
         return "Transforms: [{xfms}]".format(xfms=",".join(self.xfms))
 
 class XfmSet(object):
-    def __init__(self, subj, name):
+    def __init__(self, subj, name, filestore=default_filestore):
         self.subject = subj
         self.name = name
         jspath = os.path.join(filestore, subj, 'transforms', name, 'matrices.xfm')
         self._jsdat = json.load(open(jspath))
-        self.masks = MaskSet(subj, name)
+        self.masks = MaskSet(subj, name, filestore=filestore)
+        self.db = Database(filestore)
     
     def __getattr__(self, attr):
         if attr in self._jsdat:
-            return surfs.get_xfm(self.subject, self.name, attr)
+            return self.db.get_xfm(self.subject, self.name, attr)
         raise AttributeError
     
     def __repr__(self):
         return "Types: {types}".format(types=", ".join(self._jsdat.keys()))
 
 class MaskSet(object):
-    def __init__(self, subj, name):
+    def __init__(self, subj, name, filestore=default_filestore):
         self.subject = subj
         self.xfmname = name
-        maskpath = surfs.get_paths(subj)['masks'].format(xfmname=name, type='*')
+        maskform = Database(filestore).get_paths(subj)['masks']
+        maskpath = maskform.format(xfmname=name, type='*')
         self._masks = dict((os.path.split(path)[1][5:-7], path) for path in glob.glob(maskpath))
 
     def __getitem__(self, item):
@@ -130,9 +136,9 @@ class Database(object):
     ----------
     This database object dynamically generates handles to all subjects within the filestore.
     """
-    def __init__(self):
-        subjs = os.listdir(os.path.join(filestore))
-        self.subjects = dict([(sname, SubjectDB(sname)) for sname in subjs])
+    def __init__(self, filestore=default_filestore):
+        self.filestore = filestore
+        self._subjects = None
         self.auxfile = None
     
     def __repr__(self):
@@ -149,6 +155,14 @@ class Database(object):
     
     def __dir__(self):
         return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "get_mask", "get_overlay","get_view","save_view"] + list(self.subjects.keys())
+
+    @property
+    def subjects(self):
+        if self._subjects is not None:
+            return self._subjects
+        subjs = os.listdir(os.path.join(self.filestore))
+        self._subjects = dict([(sname, SubjectDB(sname, filestore=self.filestore)) for sname in subjs])
+        return self._subjects
 
     def get_anat(self, subject, type='raw', recache=False, **kwargs):
         """Return anatomical information from the filestore. Anatomical information is defined as
@@ -215,8 +229,8 @@ class Database(object):
             surfiform = self.get_paths(subject)['surfinfo']
             surfifile = surfiform.format(type=type, opts=opts)
 
-            if not os.path.exists(os.path.join(filestore, subject, "surface-info")):
-                os.makedirs(os.path.join(filestore, subject, "surface-info"))
+            if not os.path.exists(os.path.join(self.filestore, subject, "surface-info")):
+                os.makedirs(os.path.join(self.filestore, subject, "surface-info"))
 
         if not os.path.exists(surfifile) or recache:
             print ("Generating %s surface info..."%type)
@@ -280,7 +294,7 @@ class Database(object):
 
         import nibabel
 
-        path = os.path.join(filestore, subject, "transforms", name)
+        path = os.path.join(self.filestore, subject, "transforms", name)
         fname = os.path.join(path, "matrices.xfm")
         if os.path.exists(fname):
             jsdict = json.load(open(fname))
@@ -338,8 +352,8 @@ class Database(object):
             nib = self.get_anat(subject, 'raw')
             return Transform(np.linalg.inv(nib.get_affine()), nib)
 
-        fname = os.path.join(filestore, subject, "transforms", name, "matrices.xfm")
-        reference = os.path.join(filestore, subject, "transforms", name, "reference.nii.gz")
+        fname = os.path.join(self.filestore, subject, "transforms", name, "matrices.xfm")
+        reference = os.path.join(self.filestore, subject, "transforms", name, "reference.nii.gz")
         xfmdict = json.load(open(fname))
         return Transform(xfmdict[xfmtype], reference)
 
@@ -484,7 +498,7 @@ class Database(object):
         """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
         """
         surfparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).*')
-        surfpath = os.path.join(filestore, subject, "surfaces")
+        surfpath = os.path.join(self.filestore, subject, "surfaces")
 
         if self.subjects[subject]._warning is not None:
             warnings.warn(self.subjects[subject]._warning)
@@ -499,28 +513,31 @@ class Database(object):
                 surfs[name] = dict()
             surfs[name][hemi] = os.path.abspath(os.path.join(surfpath,surf))
 
+
+        views = os.listdir(os.path.join(self.filestore, subject, "views"))
+
         filenames = dict(
             surfs=surfs,
             xfms=sorted(os.listdir(os.path.join(filestore, subject, "transforms"))),
-            xfmdir=os.path.join(filestore, subject, "transforms", "{xfmname}", "matrices.xfm"),
-            anats=os.path.join(filestore, subject, "anatomicals", '{type}{opts}.{ext}'), 
-            surfinfo=os.path.join(filestore, subject, "surface-info", '{type}{opts}.npz'),
-            masks=os.path.join(filestore, subject, 'transforms', '{xfmname}', 'mask_{type}.nii.gz'),
-            cachedir=os.path.join(filestore, subject, "cache"),
-            rois=os.path.join(filestore, subject, "rois.svg").format(subj=subject),
-            views=sorted([os.path.splitext(f)[0] for f in os.listdir(os.path.join(filestore, subject, "views"))]),
+            xfmdir=os.path.join(self.filestore, subject, "transforms", "{xfmname}", "matrices.xfm"),
+            anats=os.path.join(self.filestore, subject, "anatomicals", '{type}{opts}.{ext}'), 
+            surfinfo=os.path.join(self.filestore, subject, "surface-info", '{type}{opts}.npz'),
+            masks=os.path.join(self.filestore, subject, 'transforms', '{xfmname}', 'mask_{type}.nii.gz'),
+            cachedir=os.path.join(self.filestore, subject, "cache"),
+            rois=os.path.join(self.filestore, subject, "rois.svg").format(subj=subject),
+            views=sorted([os.path.splitext(f)[0] for f in views]),
         )
 
         return filenames
 
     def make_subj(self, subject):
-        if os.path.exists(os.path.join(filestore, subject)):
+        if os.path.exists(os.path.join(self.filestore, subject)):
             if raw_input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
-                shutil.rmtree(os.path.join(filestore, subject))
+                shutil.rmtree(os.path.join(self.filestore, subject))
 
         for dirname in ['transforms', 'anatomicals', 'cache', 'surfaces', 'surface-info','views']:
             try:
-                path = os.path.join(filestore, subject, dirname)
+                path = os.path.join(self.filestore, subject, dirname)
                 os.makedirs(path)
             except OSError:
                 print("Error making directory %s"%path)
@@ -544,7 +561,7 @@ class Database(object):
         vw._setView,vw._getView, surfs.save_view
         """
         view = vw._getView()
-        sName = os.path.join(filestore, subject, "views", name+'.json')
+        sName = os.path.join(self.filestore, subject, "views", name+'.json')
         if os.path.exists(sName):
             if not is_overwrite:
                 raise IOError('Refusing to over-write extant view!')
@@ -573,10 +590,10 @@ class Database(object):
 
         See Also
         --------
-        vw._setView,vw._getView, surfs.save_view
+        vw._setView,vw._getView, db.save_view
         """
-        sName = os.path.join(filestore, subject, "views", name+'.json')
+        sName = os.path.join(self.filestore, subject, "views", name+'.json')
         view = json.load(open(sName))
         vw._setView(**view)
 
-surfs = Database()
+db = Database()
