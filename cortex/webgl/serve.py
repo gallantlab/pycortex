@@ -220,9 +220,14 @@ class WebApp(mp.Process):
 
     def run(self):
         self.sockets = []
+        tornado.ioloop.IOLoop.clear_current()
+        try:
+            tornado.ioloop.IOLoop.clear_instance()
+        except AttributeError:
+            del tornado.ioloop.IOLoop._instance
+        self.ioloop = tornado.ioloop.IOLoop.instance()
         application = tornado.web.Application(self.handlers, gzip=True)
         application.listen(self.port)
-        self.ioloop = tornado.ioloop.IOLoop.instance()
         self.ioloop.add_handler(self._pipe, self._send, self.ioloop.READ)
         self.ioloop.start()
 
