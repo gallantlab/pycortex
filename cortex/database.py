@@ -154,7 +154,7 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "get_mask", "get_overlay","get_view","save_view"] + list(self.subjects.keys())
+        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "get_mask", "get_overlay","get_cache", "get_view","save_view"] + list(self.subjects.keys())
 
     def loadXfm(self, *args, **kwargs):
         warnings.warn("loadXfm is deprecated, use save_xfm instead", Warning)
@@ -183,6 +183,10 @@ class Database(object):
     def getOverlay(self, *args, **kwargs):
         warnings.warn("getOverlay is deprecated, use get_overlay instead", Warning)
         return self.get_overlay(*args, **kwargs)
+
+    def get_cache(self, *args, **kwargs):
+        warnings.warn("getCache is deprecated, use get_cache instead", Warning)
+        return self.get_cache(*args, **kwargs)
 
     def loadView(self, *args, **kwargs):
         warnings.warn("loadView is deprecated, use save_view instead", Warning)
@@ -456,30 +460,6 @@ class Database(object):
         except KeyError:
             raise IOError
 
-<<<<<<< HEAD:cortex/db.py
-    def getCache(self, subject):
-        try:
-            self.auxfile.getSurf(subject, "fiducial")
-=======
-    def get_cache(self, subject):
-        if self.auxfile is not None:
->>>>>>> dbrename:cortex/database.py
-            #generate the hashed name of the filename and subject as the directory name
-            import hashlib
-            hashname = "pycx_%s"%hashlib.md5(self.auxfile.h5.filename).hexdigest()[-8:]
-            cachedir = os.path.join(tempfile.gettempdir(), hashname, subject)
-<<<<<<< HEAD:cortex/db.py
-        except (AttributeError, IOError):
-            cachedir = self.getFiles(subject)['cachedir']
-=======
-        else:
-            cachedir = self.get_paths(subject)['cachedir']
->>>>>>> dbrename:cortex/database.py
-
-        if not os.path.exists(cachedir):
-            os.makedirs(cachedir)
-        return cachedir
-
     def save_mask(self, subject, xfmname, type, mask):
         fname = self.get_paths(subject)['masks'].format(xfmname=xfmname, type=type)
         if os.path.exists(fname):
@@ -542,6 +522,20 @@ class Database(object):
 
         return coords
 
+    def get_cache(self, subject):
+        try:
+            self.auxfile.get_surf(subject, "fiducial")
+            #generate the hashed name of the filename and subject as the directory name
+            import hashlib
+            hashname = "pycx_%s"%hashlib.md5(self.auxfile.h5.filename).hexdigest()[-8:]
+            cachedir = os.path.join(tempfile.gettempdir(), hashname, subject)
+        except (AttributeError, IOError):
+            cachedir = os.path.join(self.filestore, subject, "cache")
+            
+        if not os.path.exists(cachedir):
+            os.makedirs(cachedir)
+        return cachedir
+
     def get_paths(self, subject):
         """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
         """
@@ -561,17 +555,18 @@ class Database(object):
                 surfs[name] = dict()
             surfs[name][hemi] = os.path.abspath(os.path.join(surfpath,surf))
 
+        viewsdir = os.path.join(self.filestore, subject, "views")
+        if not os.path.exists(viewsdir):
+            os.makedirs(viewsdir)
+        views = os.listdir(viewsdir)
 
-        views = os.listdir(os.path.join(self.filestore, subject, "views"))
-        filestore = self.filestore
         filenames = dict(
             surfs=surfs,
-            xfms=sorted(os.listdir(os.path.join(filestore, subject, "transforms"))),
+            xfms=sorted(os.listdir(os.path.join(self.filestore, subject, "transforms"))),
             xfmdir=os.path.join(self.filestore, subject, "transforms", "{xfmname}", "matrices.xfm"),
             anats=os.path.join(self.filestore, subject, "anatomicals", '{type}{opts}.{ext}'), 
             surfinfo=os.path.join(self.filestore, subject, "surface-info", '{type}{opts}.npz'),
             masks=os.path.join(self.filestore, subject, 'transforms', '{xfmname}', 'mask_{type}.nii.gz'),
-            cachedir=os.path.join(self.filestore, subject, "cache"),
             rois=os.path.join(self.filestore, subject, "rois.svg").format(subj=subject),
             views=sorted([os.path.splitext(f)[0] for f in views]),
         )
