@@ -20,9 +20,9 @@ except ImportError:
 # Create deprecated interface for database
 import warnings
 class dep(object):
-	def __getattr__(self, *args, **kwargs):
+	def __getattr__(self, name):
 		warnings.warn("cortex.surfs is deprecated, use cortex.db instead", Warning)
-		return db.__getattr__(*args, **kwargs)
+		return getattr(db, name)
 	def __dir__(self):
 		warnings.warn("cortex.surfs is deprecated, use cortex.db instead", Warning)
 		return db.__dir__()
