@@ -156,6 +156,42 @@ class Database(object):
     def __dir__(self):
         return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "get_mask", "get_overlay","get_view","save_view"] + list(self.subjects.keys())
 
+    def loadXfm(self, *args, **kwargs):
+        warnings.warn("loadXfm is deprecated, use save_xfm instead", Warning)
+        return self.save_xfm(*args, **kwargs)
+
+    def getXfm(self, *args, **kwargs):
+        warnings.warn("getXfm is deprecated, use get_xfm instead", Warning)
+        return self.get_xfm(*args, **kwargs)
+
+    def getSurf(self, *args, **kwargs):
+        warnings.warn("getSurf is deprecated, use get_surf instead", Warning)
+        return self.get_surf(*args, **kwargs)
+
+    def getAnat(self, *args, **kwargs):
+        warnings.warn("getAnat is deprecated, use get_anat instead", Warning)
+        return self.get_anat(*args, **kwargs)
+
+    def getSurfInfo(self, *args, **kwargs):
+        warnings.warn("getSurfInfo is deprecated, use get_surfinfo instead", Warning)
+        return self.get_surfinfo(*args, **kwargs)
+
+    def getMask(self, *args, **kwargs):
+        warnings.warn("getMask is deprecated, use get_mask instead", Warning)
+        return self.get_mask(*args, **kwargs)
+
+    def getOverlay(self, *args, **kwargs):
+        warnings.warn("getOverlay is deprecated, use get_overlay instead", Warning)
+        return self.get_overlay(*args, **kwargs)
+
+    def loadView(self, *args, **kwargs):
+        warnings.warn("loadView is deprecated, use save_view instead", Warning)
+        return self.save_view(*args, **kwargs)
+
+    def setView(self, *args, **kwargs):
+        warnings.warn("setView is deprecated, use get_view instead", Warning)
+        return self.get_view(*args, **kwargs)
+
     @property
     def subjects(self):
         if self._subjects is not None:
