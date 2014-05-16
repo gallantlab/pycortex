@@ -19,7 +19,7 @@ import tempfile
 import numpy as np
 from scipy.spatial import cKDTree
 
-from .db import surfs
+from .database import db
 from .utils import get_cortical_mask, get_mapper, get_dropout
 from . import polyutils
 from openctm import CTMfile
@@ -29,15 +29,15 @@ class BrainCTM(object):
         self.subject = subject
         self.types = []
 
-        left, right = surfs.getSurf(subject, "fiducial")
+        left, right = db.get_surf(subject, "fiducial")
         try:
-            fleft, fright = surfs.getSurf(subject, "flat", nudge=True, merge=False)
+            fleft, fright = db.get_surf(subject, "flat", nudge=True, merge=False)
         except IOError:
             fleft = None
 
         if decimate:
             try:
-                pleft, pright = surfs.getSurf(subject, "pia")
+                pleft, pright = db.get_surf(subject, "pia")
                 self.left = DecimatedHemi(left[0], left[1], fleft[1], pia=pleft[0])
                 self.right = DecimatedHemi(right[0], right[1], fright[1], pia=pright[0])
                 self.addSurf("wm", name="wm", addtype=False, renorm=False)
@@ -46,8 +46,8 @@ class BrainCTM(object):
                 self.right = DecimatedHemi(right[0], right[1], fright[1])
         else:
             try:
-                pleft, pright = surfs.getSurf(subject, "pia")
-                wleft, wright = surfs.getSurf(subject, "wm")
+                pleft, pright = db.get_surf(subject, "pia")
+                wleft, wright = db.get_surf(subject, "wm")
                 self.left = Hemi(pleft[0], left[1])
                 self.right = Hemi(pright[0], right[1])
                 self.addSurf("wm", name="wm", addtype=False, renorm=False)
@@ -74,14 +74,14 @@ class BrainCTM(object):
             self.flatlims = None
 
     def addSurf(self, typename, addtype=True, **kwargs):
-        left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
+        left, right = db.get_surf(self.subject, typename, nudge=False, merge=False)
         self.left.addSurf(left[0], **kwargs)
         self.right.addSurf(right[0], **kwargs)
         if addtype:
             self.types.append(typename)
 
     def addCurvature(self, **kwargs):
-        npz = surfs.getSurfInfo(self.subject, type='curvature', **kwargs)
+        npz = db.get_surfinfo(self.subject, type='curvature', **kwargs)
         try:
             self.left.aux[:,1] = npz.left[self.left.mask]
             self.right.aux[:,1] = npz.right[self.right.mask]
@@ -128,7 +128,7 @@ class BrainCTM(object):
         ##### Save the SVG with remapped indices
         if self.left.flat is not None:
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            roipack = surfs.getOverlay(self.subject, pts=flatpts)
+            roipack = db.get_overlay(self.subject, pts=flatpts)
             layer = roipack.setup_labels()
             with open(svgname, "w") as fp:
                 for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):

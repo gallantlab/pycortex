@@ -14,7 +14,7 @@ from tornado import web
 from .FallbackLoader import FallbackLoader
 
 from .. import utils, options, volume, dataset
-from ..db import surfs
+from ..database import db
 
 from . import serve
 from .data import Package
@@ -72,14 +72,14 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
 
-    surfs.auxfile = data
+    db.auxfile = data
 
     package = Package(data)
     subjects = list(package.subjects)
 
     ctmargs = dict(method='mg2', level=9, recache=recache)
     ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs)) for subj in subjects)
-    surfs.auxfile = None
+    db.auxfile = None
 
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
@@ -159,7 +159,6 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         subjects=json.dumps(ctms),
         **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
-    surfs.auxfile = None
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
     """Display a dynamic viewer using the given dataset
@@ -169,7 +168,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
         data = dataset.Dataset(data=data)
 
     html = FallbackLoader([serve.cwd]).load("mixer.html")
-    surfs.auxfile = data
+    db.auxfile = data
 
     package = Package(data)
     metadata = json.dumps(package.metadata())
@@ -185,7 +184,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj, types, **kwargs)) for subj in subjects)
     subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))
-    surfs.auxfile = None
+    db.auxfile = None
 
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
@@ -309,13 +308,13 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
         def _getView(self):
             """Low-level command: returns a dict of current view parameters"""
             props = ['altitude','azimuth','target','mix','radius']
-            # surfs.saveView()
+            # db.save_view()
             view = {}
             for p in props:
                 view[p] = self.getState(p)[0]
             return view
 
-        def saveView(self,subject,name):
+        def save_view(self,subject,name):
             """Saves current view parameters to a .json file
 
             Parameters
@@ -325,7 +324,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
             Notes
             -----
-            Equivalent to call to cortex.surfs.saveView(subject,vw,name)
+            Equivalent to call to cortex.db.save_view(subject,vw,name)
             
             To adjust view in javascript console:
             # Set BG to alpha:
@@ -336,12 +335,12 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
             See Also
             --------
-            methods loadView, _setView, _getView
+            methods get_view, _setView, _getView
             """
             # Check for existence of view? 
-            surfs.saveView(self,subject,name)
+            db.save_view(self,subject,name)
 
-        def loadView(self,subject,name):
+        def get_view(self,subject,name):
             """Sets current view parameters to those stored in a .json file
 
             Parameters
@@ -352,7 +351,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
             Notes
             -----
-            Equivalent to call to cortex.surfs.loadView(subject,vw,name)
+            Equivalent to call to cortex.db.get_view(subject,vw,name)
 
             Further modifications possible in JavaScript console:
             # Set BG to alpha:
@@ -363,9 +362,9 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
             See Also
             --------
-            methods saveView, _setView, _getView
+            methods save_view, _setView, _getView
             """
-            view = surfs.loadView(self,subject,name)
+            view = db.get_view(self,subject,name)
             
 
         def addData(self, **kwargs):

@@ -2,7 +2,7 @@ import hashlib
 import numpy as np
 import h5py
 
-from ..db import surfs
+from ..database import db
 
 class BrainData(object):
     def __init__(self, data):
@@ -59,10 +59,10 @@ class BrainData(object):
             mask = None
             if "mask" in node.attrs:
                 try:
-                    surfs.getMask(subj, xfmname, node.attrs['mask'])
+                    db.get_mask(subj, xfmname, node.attrs['mask'])
                     mask = node.attrs['mask']
                 except IOError:
-                    mask = dataset.getMask(subj, xfmname, node.attrs['mask'])
+                    mask = dataset.get_mask(subj, xfmname, node.attrs['mask'])
             return VolumeData(node, subj, xfmname, mask=mask)
         else:
             return VertexData(node, subj)
@@ -122,7 +122,7 @@ class VolumeData(BrainData):
         return VolumeData(data, self.subject, self.xfmname, mask=self._mask)
 
     def to_json(self):
-        xfm = surfs.getXfm(self.subject, self.xfmname, 'coord').xfm
+        xfm = db.get_xfm(self.subject, self.xfmname, 'coord').xfm
         return dict(
             data=self.name,
             subject=self.subject, 
@@ -163,7 +163,7 @@ class VolumeData(BrainData):
                     nvox = self.data.shape[-2]
                 self._mask, self.mask = _find_mask(nvox, self.subject, self.xfmname)
             elif isinstance(mask, str):
-                self.mask = surfs.getMask(self.subject, self.xfmname, mask)
+                self.mask = db.get_mask(self.subject, self.xfmname, mask)
                 self._mask = mask
             elif isinstance(mask, np.ndarray):
                 self.mask = mask
@@ -177,7 +177,7 @@ class VolumeData(BrainData):
                 shape = shape[1:]
             if self.raw:
                 shape = shape[:-1]
-            xfm = surfs.getXfm(self.subject, self.xfmname)
+            xfm = db.get_xfm(self.subject, self.xfmname)
             if xfm.shape != shape:
                 raise ValueError("Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)" % (str(shape), str(xfm.shape)))
             self.shape = shape
@@ -275,7 +275,7 @@ class VertexData(VolumeData):
             subject = subject if isinstance(subject, str) else subject.decode('utf-8')
         self.subject = subject
 
-        left, right = surfs.getSurf(self.subject, "fiducial")
+        left, right = db.get_surf(self.subject, "fiducial")
         self.llen = len(left[0])
         self.rlen = len(right[0])
         self._set_data(data)
@@ -382,7 +382,7 @@ def _find_mask(nvox, subject, xfmname):
     import re
     import glob
     import nibabel
-    files = surfs.getFiles(subject)['masks'].format(xfmname=xfmname, type="*")
+    files = db.get_paths(subject)['masks'].format(xfmname=xfmname, type="*")
     for fname in glob.glob(files):
         nib = nibabel.load(fname)
         mask = nib.get_data().T != 0
@@ -404,7 +404,7 @@ class _masker(object):
 
     def __getitem__(self, masktype):
         s, x = self.ds.subject, self.ds.xfmname
-        mask = surfs.getMask(s, x, masktype)
+        mask = db.get_mask(s, x, masktype)
         if self.ds.movie:
             return VolumeData(self.ds.volume[:,mask], s, x, mask=masktype)
         return VolumeData(self.ds.volume[mask], s, x, mask=masktype)

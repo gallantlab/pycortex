@@ -7,11 +7,11 @@ from . import samplers
 class LineMapper(Mapper):
     @classmethod
     def _cache(cls, filename, subject, xfmname, **kwargs):
-        from .. import surfs
+        from .. import db
         masks = []
-        xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        pia = surfs.getSurf(subject, "pia", merge=False, nudge=False)
-        wm = surfs.getSurf(subject, "wm", merge=False, nudge=False)
+        xfm = db.get_xfm(subject, xfmname, xfmtype='coord')
+        pia = db.get_surf(subject, "pia", merge=False, nudge=False)
+        wm = db.get_surf(subject, "wm", merge=False, nudge=False)
         
         #iterate over hemispheres
         for (wpts, polys), (ppts, _) in zip(pia, wm):

@@ -1,5 +1,6 @@
 from .dataset import Dataset, VolumeData, VertexData, DataView, View
 from . import align, volume, quickflat, webgl, segment, options
+from .database import db
 from .utils import *
 from .quickflat import make_figure as quickshow
 
@@ -16,3 +17,13 @@ try:
 except ImportError:
 	pass
 
+# Create deprecated interface for database
+import warnings
+class dep(object):
+	def __getattr__(self, name):
+		warnings.warn("cortex.surfs is deprecated, use cortex.db instead", Warning)
+		return getattr(db, name)
+	def __dir__(self):
+		warnings.warn("cortex.surfs is deprecated, use cortex.db instead", Warning)
+		return db.__dir__()
+surfs = dep()

@@ -497,8 +497,6 @@ def make_svg(pts, polys):
     return svg
 
 def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
-    from .db import surfs
-    
     cullpts = pts[:,:2]
     if remove_medial:
         valid = np.unique(polys)

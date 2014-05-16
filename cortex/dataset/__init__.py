@@ -19,7 +19,7 @@ import tempfile
 import numpy as np
 import h5py
 
-from ..db import surfs
+from ..database import db
 from ..xfm import Transform
 
 from .braindata import BrainData, VertexData, VolumeData, _hdf_write
@@ -79,7 +79,7 @@ class Dataset(object):
         ds.h5 = h5py.File(filename)
         loaded = set()
 
-        surfs.auxfile = ds
+        db.auxfile = ds
 
         #detect stray datasets which were not written by pycortex
         for name, node in ds.h5.items():
@@ -104,7 +104,7 @@ class Dataset(object):
                 except KeyError:
                     print('No metadata found for "%s", skipping...'%name)
 
-        surfs.auxfile = None
+        db.auxfile = None
 
         return ds
         
@@ -144,10 +144,10 @@ class Dataset(object):
 
         self.h5.flush()
 
-    def getSurf(self, subject, type, hemi='both', merge=False, nudge=False):
+    def get_surf(self, subject, type, hemi='both', merge=False, nudge=False):
         if hemi == 'both':
-            left = self.getSurf(subject, type, "lh", nudge=nudge)
-            right = self.getSurf(subject, type, "rh", nudge=nudge)
+            left = self.get_surf(subject, type, "lh", nudge=nudge)
+            right = self.get_surf(subject, type, "rh", nudge=nudge)
             if merge:
                 pts = np.vstack([left[0], right[0]])
                 polys = np.vstack([left[1], right[1]+len(left[0])])
@@ -156,8 +156,8 @@ class Dataset(object):
             return left, right
         try:
             if type == 'fiducial':
-                wpts, polys = self.getSurf(subject, 'wm', hemi)
-                ppts, _     = self.getSurf(subject, 'pia', hemi)
+                wpts, polys = self.get_surf(subject, 'wm', hemi)
+                ppts, _     = self.get_surf(subject, 'pia', hemi)
                 return (wpts + ppts) / 2, polys
 
             group = self.h5['subjects'][subject]['surfaces'][type][hemi]
@@ -171,21 +171,21 @@ class Dataset(object):
         except (KeyError, TypeError):
             raise IOError('Subject not found in package')
 
-    def getXfm(self, subject, xfmname):
+    def get_xfm(self, subject, xfmname):
         try:
             group = self.h5['subjects'][subject]['transforms'][xfmname]
             return Transform(group['xfm'].value, tuple(group['xfm'].attrs['shape']))
         except (KeyError, TypeError):
             raise IOError('Transform not found in package')
 
-    def getMask(self, subject, xfmname, maskname):
+    def get_mask(self, subject, xfmname, maskname):
         try:
             group = self.h5['subjects'][subject]['transforms'][xfmname]['masks']
             return group[maskname]
         except (KeyError, TypeError):
             raise IOError('Mask not found in package')
 
-    def getOverlay(self, subject, type='rois', **kwargs):
+    def get_overlay(self, subject, type='rois', **kwargs):
         try:
             group = self.h5['subjects'][subject]
             if type == "rois":
@@ -226,28 +226,28 @@ def normalize(data):
 
 def _pack_subjs(h5, subjects):
     for subject in subjects:
-        rois = surfs.getOverlay(subject, type='rois')
+        rois = db.get_overlay(subject, type='rois')
         rnode = h5.require_dataset("/subjects/%s/rois"%subject, (1,),
             dtype=h5py.special_dtype(vlen=str))
         rnode[0] = rois.toxml(pretty=False)
 
-        surfaces = surfs.getFiles(subject)['surfs']
+        surfaces = db.get_paths(subject)['surfs']
         for surf in surfaces.keys():
             for hemi in ("lh", "rh"):
-                pts, polys = surfs.getSurf(subject, surf, hemi)
+                pts, polys = db.get_surf(subject, surf, hemi)
                 group = "/subjects/%s/surfaces/%s/%s"%(subject, surf, hemi)
                 _hdf_write(h5, pts, "pts", group)
                 _hdf_write(h5, polys, "polys", group)
 
 def _pack_xfms(h5, xfms):
     for subj, xfmname in xfms:
-        xfm = surfs.getXfm(subj, xfmname, 'coord')
+        xfm = db.get_xfm(subj, xfmname, 'coord')
         group = "/subjects/%s/transforms/%s"%(subj, xfmname)
         node = _hdf_write(h5, np.array(xfm.xfm), "xfm", group)
         node.attrs['shape'] = xfm.shape
 
 def _pack_masks(h5, masks):
     for subj, xfm, maskname in masks:
-        mask = surfs.getMask(subj, xfm, maskname)
+        mask = db.get_mask(subj, xfm, maskname)
         group = "/subjects/%s/transforms/%s/masks"%(subj, xfm)
         _hdf_write(h5, mask, maskname, group)

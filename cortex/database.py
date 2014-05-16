@@ -18,14 +18,15 @@ import numpy as np
 
 from . import options
 
-filestore = options.config.get('basic', 'filestore')
+default_filestore = options.config.get('basic', 'filestore')
 
 class SubjectDB(object):
-    def __init__(self, subj):
+    def __init__(self, subj, filestore=default_filestore):
         self.subject = subj
         self._warning = None
         self._transforms = None
         self._surfaces = None
+        self.filestore = filestore
 
         try:
             with open(os.path.join(filestore, subj, "warning.txt")) as fp:
@@ -37,22 +38,23 @@ class SubjectDB(object):
     def transforms(self):
         if self._transforms is not None:
             return self._transforms
-        self._transforms = XfmDB(self.subject)
+        self._transforms = XfmDB(self.subject, filestore=self.filestore)
         return self._transforms
 
     @property
     def surfaces(self):
         if self._surfaces is not None:
             return self._surfaces
-        self._surfaces = SurfaceDB(self.subject)
+        self._surfaces = SurfaceDB(self.subject, filestore=self.filestore)
         return self._surfaces
 
 class SurfaceDB(object):
-    def __init__(self, subj):
+    def __init__(self, subj, filestore=default_filestore):
         self.subject = subj
         self.types = {}
-        for name in surfs.getFiles(subj)['surfs'].keys():
-            self.types[name] = Surf(subj, name)
+        db = Database(filestore)
+        for name in db.get_paths(subj)['surfs'].keys():
+            self.types[name] = Surf(subj, name, filestore=filestore)
                 
     def __repr__(self):
         return "Surfaces: [{surfs}]".format(surfs=', '.join(list(self.types.keys())))
@@ -66,51 +68,55 @@ class SurfaceDB(object):
         raise AttributeError(attr)
 
 class Surf(object):
-    def __init__(self, subject, surftype):
+    def __init__(self, subject, surftype, filestore=default_filestore):
         self.subject, self.surftype = subject, surftype
+        self.db = Database(filestore)
 
     def get(self, hemisphere="both"):
-        return surfs.getSurf(self.subject, self.surftype, hemisphere)
+        return self.db.get_surf(self.subject, self.surftype, hemisphere)
     
     def show(self, hemisphere="both"):
         from mayavi import mlab
-        pts, polys = surfs.getSurf(self.subject, self.surftype, hemisphere, merge=True, nudge=True)
+        pts, polys = self.db.get_surf(self.subject, self.surftype, hemisphere, merge=True, nudge=True)
         return mlab.triangular_mesh(pts[:,0], pts[:,1], pts[:,2], polys)
 
 class XfmDB(object):
-    def __init__(self, subj):
+    def __init__(self, subj, filestore=default_filestore):
         self.subject = subj
-        self.xfms = surfs.getFiles(subj)['xfms']
+        self.filestore = filestore
+        self.xfms = Database(self.filestore).get_paths(subj)['xfms']
 
     def __getitem__(self, name):
         if name in self.xfms:
-            return XfmSet(self.subject, name)
+            return XfmSet(self.subject, name, filestore=self.filestore)
         raise AttributeError
     
     def __repr__(self):
         return "Transforms: [{xfms}]".format(xfms=",".join(self.xfms))
 
 class XfmSet(object):
-    def __init__(self, subj, name):
+    def __init__(self, subj, name, filestore=default_filestore):
         self.subject = subj
         self.name = name
         jspath = os.path.join(filestore, subj, 'transforms', name, 'matrices.xfm')
         self._jsdat = json.load(open(jspath))
-        self.masks = MaskSet(subj, name)
+        self.masks = MaskSet(subj, name, filestore=filestore)
+        self.db = Database(filestore)
     
     def __getattr__(self, attr):
         if attr in self._jsdat:
-            return surfs.getXfm(self.subject, self.name, attr)
+            return self.db.get_xfm(self.subject, self.name, attr)
         raise AttributeError
     
     def __repr__(self):
         return "Types: {types}".format(types=", ".join(self._jsdat.keys()))
 
 class MaskSet(object):
-    def __init__(self, subj, name):
+    def __init__(self, subj, name, filestore=default_filestore):
         self.subject = subj
         self.xfmname = name
-        maskpath = surfs.getFiles(subj)['masks'].format(xfmname=name, type='*')
+        maskform = Database(filestore).get_paths(subj)['masks']
+        maskpath = maskform.format(xfmname=name, type='*')
         self._masks = dict((os.path.split(path)[1][5:-7], path) for path in glob.glob(maskpath))
 
     def __getitem__(self, item):
@@ -130,9 +136,9 @@ class Database(object):
     ----------
     This database object dynamically generates handles to all subjects within the filestore.
     """
-    def __init__(self):
-        subjs = os.listdir(os.path.join(filestore))
-        self.subjects = dict([(sname, SubjectDB(sname)) for sname in subjs])
+    def __init__(self, filestore=default_filestore):
+        self.filestore = filestore
+        self._subjects = None
         self.auxfile = None
     
     def __repr__(self):
@@ -148,9 +154,53 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["loadXfm","getXfm", "getSurf", "getAnat", "getSurfInfo", "getMask", "getOverlay","loadView","saveView"] + list(self.subjects.keys())
+        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "get_mask", "get_overlay","get_view","save_view"] + list(self.subjects.keys())
 
-    def getAnat(self, subject, type='raw', recache=False, **kwargs):
+    def loadXfm(self, *args, **kwargs):
+        warnings.warn("loadXfm is deprecated, use save_xfm instead", Warning)
+        return self.save_xfm(*args, **kwargs)
+
+    def getXfm(self, *args, **kwargs):
+        warnings.warn("getXfm is deprecated, use get_xfm instead", Warning)
+        return self.get_xfm(*args, **kwargs)
+
+    def getSurf(self, *args, **kwargs):
+        warnings.warn("getSurf is deprecated, use get_surf instead", Warning)
+        return self.get_surf(*args, **kwargs)
+
+    def getAnat(self, *args, **kwargs):
+        warnings.warn("getAnat is deprecated, use get_anat instead", Warning)
+        return self.get_anat(*args, **kwargs)
+
+    def getSurfInfo(self, *args, **kwargs):
+        warnings.warn("getSurfInfo is deprecated, use get_surfinfo instead", Warning)
+        return self.get_surfinfo(*args, **kwargs)
+
+    def getMask(self, *args, **kwargs):
+        warnings.warn("getMask is deprecated, use get_mask instead", Warning)
+        return self.get_mask(*args, **kwargs)
+
+    def getOverlay(self, *args, **kwargs):
+        warnings.warn("getOverlay is deprecated, use get_overlay instead", Warning)
+        return self.get_overlay(*args, **kwargs)
+
+    def loadView(self, *args, **kwargs):
+        warnings.warn("loadView is deprecated, use save_view instead", Warning)
+        return self.save_view(*args, **kwargs)
+
+    def setView(self, *args, **kwargs):
+        warnings.warn("setView is deprecated, use get_view instead", Warning)
+        return self.get_view(*args, **kwargs)
+
+    @property
+    def subjects(self):
+        if self._subjects is not None:
+            return self._subjects
+        subjs = os.listdir(os.path.join(self.filestore))
+        self._subjects = dict([(sname, SubjectDB(sname, filestore=self.filestore)) for sname in subjs])
+        return self._subjects
+
+    def get_anat(self, subject, type='raw', recache=False, **kwargs):
         """Return anatomical information from the filestore. Anatomical information is defined as
         any volume-space anatomical information pertaining to the subject, such as T1 image,
         white matter masks, etc. Volumes not found in the database will be automatically generated.
@@ -172,7 +222,7 @@ class Database(object):
         opts = ""
         if len(kwargs) > 0:
             opts = "[%s]"%','.join(["%s=%s"%i for i in kwargs.items()])
-        anatform = self.getFiles(subject)['anats']
+        anatform = self.get_paths(subject)['anats']
         anatfile = anatform.format(type=type, opts=opts, ext="nii.gz")
 
         if not os.path.exists(anatfile) or recache:
@@ -183,7 +233,7 @@ class Database(object):
         import nibabel
         return nibabel.load(anatfile)
 
-    def getSurfInfo(self, subject, type="curvature", recache=False, **kwargs):
+    def get_surfinfo(self, subject, type="curvature", recache=False, **kwargs):
         """Return auxillary surface information from the filestore. Surface info is defined as 
         anatomical information specific to a subject in surface space. A VertexData will be returned
         as necessary. Info not found in the filestore will be automatically generated.
@@ -216,8 +266,8 @@ class Database(object):
             surfiform = self.getFiles(subject)['surfinfo']
             surfifile = surfiform.format(type=type, opts=opts)
 
-            if not os.path.exists(os.path.join(filestore, subject, "surface-info")):
-                os.makedirs(os.path.join(filestore, subject, "surface-info"))
+            if not os.path.exists(os.path.join(self.filestore, subject, "surface-info")):
+                os.makedirs(os.path.join(self.filestore, subject, "surface-info"))
 
         if not os.path.exists(surfifile) or recache:
             print ("Generating %s surface info..."%type)
@@ -232,15 +282,15 @@ class Database(object):
             return VertexData(verts, subject)
         return npz
 
-    def getOverlay(self, subject, type='rois', **kwargs):
+    def get_overlay(self, subject, type='rois', **kwargs):
         if type in ["rois","cutouts"]:
             from . import svgroi
-            pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
+            pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
             try:
-                tf = self.auxfile.getOverlay(subject, type)
+                tf = self.auxfile.get_overlay(subject, type)
                 svgfile = tf.name
             except (AttributeError, IOError):
-                svgfile = self.getFiles(subject)["rois"]
+                svgfile = self.get_paths(subject)["rois"]
                     
             if 'pts' in kwargs:
                 pts = kwargs['pts']
@@ -248,7 +298,7 @@ class Database(object):
             return svgroi.get_roipack(svgfile, pts, polys, layer=type,**kwargs)
         if type == "external":
             from . import svgroi
-            pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
+            pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
             svgfile = kwargs["svgfile"]
             del kwargs["svgfile"]
             if 'pts' in kwargs:
@@ -258,7 +308,7 @@ class Database(object):
 
         raise TypeError('Invalid overlay type')
     
-    def loadXfm(self, subject, name, xfm, xfmtype="magnet", reference=None):
+    def save_xfm(self, subject, name, xfm, xfmtype="magnet", reference=None):
         """
         Load a transform into the surface database. If the transform exists already, update it
         If it does not exist, copy the reference epi into the filestore and insert.
@@ -281,7 +331,7 @@ class Database(object):
 
         import nibabel
 
-        path = os.path.join(filestore, subject, "transforms", name)
+        path = os.path.join(self.filestore, subject, "transforms", name)
         fname = os.path.join(path, "matrices.xfm")
         if os.path.exists(fname):
             jsdict = json.load(open(fname))
@@ -309,13 +359,13 @@ class Database(object):
             jsdict['coord'] = xfm.tolist()
             jsdict['magnet'] = np.dot(nib.get_affine(), xfm).tolist()
         
-        files = self.getFiles(subject)
+        files = self.get_paths(subject)
         if len(glob.glob(files['masks'].format(xfmname=name, type="*"))) > 0:
             raise ValueError('Refusing to change a transform with masks')
             
         json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
     
-    def getXfm(self, subject, name, xfmtype="coord"):
+    def get_xfm(self, subject, name, xfmtype="coord"):
         """Retrieves a transform from the filestore
 
         Parameters
@@ -330,21 +380,21 @@ class Database(object):
         from .xfm import Transform
         if xfmtype == 'coord':
             try:
-                return self.auxfile.getXfm(subject, name)
+                return self.auxfile.get_xfm(subject, name)
             except (AttributeError, IOError):
                 pass
 
         if name == "identity":
             import nibabel
-            nib = self.getAnat(subject, 'raw')
+            nib = self.get_anat(subject, 'raw')
             return Transform(np.linalg.inv(nib.get_affine()), nib)
 
-        fname = os.path.join(filestore, subject, "transforms", name, "matrices.xfm")
-        reference = os.path.join(filestore, subject, "transforms", name, "reference.nii.gz")
+        fname = os.path.join(self.filestore, subject, "transforms", name, "matrices.xfm")
+        reference = os.path.join(self.filestore, subject, "transforms", name, "reference.nii.gz")
         xfmdict = json.load(open(fname))
         return Transform(xfmdict[xfmtype], reference)
 
-    def getSurf(self, subject, type, hemisphere="both", merge=False, nudge=False):
+    def get_surf(self, subject, type, hemisphere="both", merge=False, nudge=False):
         '''Return the surface pair for the given subject, surface type, and hemisphere.
 
         Parameters
@@ -370,14 +420,14 @@ class Database(object):
             For single hemisphere
         '''
         try:
-            return self.auxfile.getSurf(subject, type, hemisphere, merge=merge, nudge=nudge)
+            return self.auxfile.get_surf(subject, type, hemisphere, merge=merge, nudge=nudge)
         except (AttributeError, IOError):
             pass
 
-        files = self.getFiles(subject)['surfs']
+        files = self.get_paths(subject)['surfs']
 
         if hemisphere.lower() == "both":
-            left, right = [ self.getSurf(subject, type, hemisphere=h) for h in ["lh", "rh"]]
+            left, right = [ self.get_surf(subject, type, hemisphere=h) for h in ["lh", "rh"]]
             if type != "fiducial" and nudge:
                 left[0][:,0] -= left[0].max(0)[0]
                 right[0][:,0] -= right[0].min(0)[0]
@@ -396,8 +446,8 @@ class Database(object):
             raise TypeError("Not a valid hemisphere name")
         
         if type == 'fiducial' and 'fiducial' not in files:
-            wpts, polys = self.getSurf(subject, 'wm', hemi)
-            ppts, _     = self.getSurf(subject, 'pia', hemi)
+            wpts, polys = self.get_surf(subject, 'wm', hemi)
+            ppts, _     = self.get_surf(subject, 'pia', hemi)
             return (wpts + ppts) / 2, polys
 
         try:
@@ -406,40 +456,50 @@ class Database(object):
         except KeyError:
             raise IOError
 
+<<<<<<< HEAD:cortex/db.py
     def getCache(self, subject):
         try:
             self.auxfile.getSurf(subject, "fiducial")
+=======
+    def get_cache(self, subject):
+        if self.auxfile is not None:
+>>>>>>> dbrename:cortex/database.py
             #generate the hashed name of the filename and subject as the directory name
             import hashlib
             hashname = "pycx_%s"%hashlib.md5(self.auxfile.h5.filename).hexdigest()[-8:]
             cachedir = os.path.join(tempfile.gettempdir(), hashname, subject)
+<<<<<<< HEAD:cortex/db.py
         except (AttributeError, IOError):
             cachedir = self.getFiles(subject)['cachedir']
+=======
+        else:
+            cachedir = self.get_paths(subject)['cachedir']
+>>>>>>> dbrename:cortex/database.py
 
         if not os.path.exists(cachedir):
             os.makedirs(cachedir)
         return cachedir
 
-    def loadMask(self, subject, xfmname, type, mask):
-        fname = self.getFiles(subject)['masks'].format(xfmname=xfmname, type=type)
+    def save_mask(self, subject, xfmname, type, mask):
+        fname = self.get_paths(subject)['masks'].format(xfmname=xfmname, type=type)
         if os.path.exists(fname):
             raise IOError('Refusing to overwrite existing mask')
 
         import nibabel
-        xfm = self.getXfm(subject, xfmname)
+        xfm = self.get_xfm(subject, xfmname)
         if xfm.shape != mask.shape:
             raise ValueError("Invalid mask shape: must match shape of reference image")
         affine = xfm.reference.get_affine()
         nib = nibabel.Nifti1Image(mask.astype(np.uint8).T, affine)
         nib.to_filename(fname)
 
-    def getMask(self, subject, xfmname, type='thick'):
+    def get_mask(self, subject, xfmname, type='thick'):
         try:
-            self.auxfile.getMask(subject, xfmname, type)
+            self.auxfile.get_mask(subject, xfmname, type)
         except (AttributeError, IOError):
             pass
 
-        fname = self.getFiles(subject)['masks'].format(xfmname=xfmname, type=type)
+        fname = self.get_paths(subject)['masks'].format(xfmname=xfmname, type=type)
         try:
             import nibabel
             nib = nibabel.load(fname)
@@ -448,10 +508,10 @@ class Database(object):
             print('Mask not found, generating...')
             from .utils import get_cortical_mask
             mask = get_cortical_mask(subject, xfmname, type)
-            self.loadMask(subject, xfmname, type, mask)
+            self.save_mask(subject, xfmname, type, mask)
             return mask
 
-    def getCoords(self, subject, xfmname, hemisphere="both", magnet=None):
+    def get_coords(self, subject, xfmname, hemisphere="both", magnet=None):
         """Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space
 
         Parameters
@@ -467,13 +527,13 @@ class Database(object):
         warnings.warn('Please use a Mapper object instead', DeprecationWarning)
 
         if magnet is None:
-            xfm = self.getXfm(subject, xfmname, xfmtype="coord")
+            xfm = self.get_xfm(subject, xfmname, xfmtype="coord")
         else:
-            xfm = self.getXfm(subject, xfmname, xfmtype="magnet")
+            xfm = self.get_xfm(subject, xfmname, xfmtype="magnet")
             xfm = np.linalg.inv(magnet) * xfm
 
         coords = []
-        vtkTmp = self.getSurf(subject, "fiducial", hemisphere=hemisphere, nudge=False)
+        vtkTmp = self.get_surf(subject, "fiducial", hemisphere=hemisphere, nudge=False)
         if not isinstance(vtkTmp,(tuple,list)):
             vtkTmp = [vtkTmp]
         for pts, polys in vtkTmp:
@@ -482,11 +542,11 @@ class Database(object):
 
         return coords
 
-    def getFiles(self, subject):
+    def get_paths(self, subject):
         """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
         """
         surfparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).*')
-        surfpath = os.path.join(filestore, subject, "surfaces")
+        surfpath = os.path.join(self.filestore, subject, "surfaces")
 
         if self.subjects[subject]._warning is not None:
             warnings.warn(self.subjects[subject]._warning)
@@ -501,33 +561,36 @@ class Database(object):
                 surfs[name] = dict()
             surfs[name][hemi] = os.path.abspath(os.path.join(surfpath,surf))
 
+
+        views = os.listdir(os.path.join(self.filestore, subject, "views"))
+        filestore = self.filestore
         filenames = dict(
             surfs=surfs,
             xfms=sorted(os.listdir(os.path.join(filestore, subject, "transforms"))),
-            xfmdir=os.path.join(filestore, subject, "transforms", "{xfmname}", "matrices.xfm"),
-            anats=os.path.join(filestore, subject, "anatomicals", '{type}{opts}.{ext}'), 
-            surfinfo=os.path.join(filestore, subject, "surface-info", '{type}{opts}.npz'),
-            masks=os.path.join(filestore, subject, 'transforms', '{xfmname}', 'mask_{type}.nii.gz'),
-            cachedir=os.path.join(filestore, subject, "cache"),
-            rois=os.path.join(filestore, subject, "rois.svg").format(subj=subject),
-            views=sorted([os.path.splitext(f)[0] for f in os.listdir(os.path.join(filestore, subject, "views"))]),
+            xfmdir=os.path.join(self.filestore, subject, "transforms", "{xfmname}", "matrices.xfm"),
+            anats=os.path.join(self.filestore, subject, "anatomicals", '{type}{opts}.{ext}'), 
+            surfinfo=os.path.join(self.filestore, subject, "surface-info", '{type}{opts}.npz'),
+            masks=os.path.join(self.filestore, subject, 'transforms', '{xfmname}', 'mask_{type}.nii.gz'),
+            cachedir=os.path.join(self.filestore, subject, "cache"),
+            rois=os.path.join(self.filestore, subject, "rois.svg").format(subj=subject),
+            views=sorted([os.path.splitext(f)[0] for f in views]),
         )
 
         return filenames
 
-    def makeSubj(self, subject):
-        if os.path.exists(os.path.join(filestore, subject)):
+    def make_subj(self, subject):
+        if os.path.exists(os.path.join(self.filestore, subject)):
             if raw_input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
-                shutil.rmtree(os.path.join(filestore, subject))
+                shutil.rmtree(os.path.join(self.filestore, subject))
 
         for dirname in ['transforms', 'anatomicals', 'cache', 'surfaces', 'surface-info','views']:
             try:
-                path = os.path.join(filestore, subject, dirname)
+                path = os.path.join(self.filestore, subject, dirname)
                 os.makedirs(path)
             except OSError:
                 print("Error making directory %s"%path)
     
-    def saveView(self,vw,subject,name,is_overwrite=False):
+    def save_view(self,vw,subject,name,is_overwrite=False):
         """Set the view for an open webshow instance from a saved view
 
         Sets the view in a currently-open cortex.webshow instance (with handle `vw`)
@@ -543,16 +606,16 @@ class Database(object):
 
         See Also
         --------
-        vw._setView,vw._getView, surfs.saveView
+        vw._setView,vw._getView, surfs.save_view
         """
         view = vw._getView()
-        sName = os.path.join(filestore, subject, "views", name+'.json')
+        sName = os.path.join(self.filestore, subject, "views", name+'.json')
         if os.path.exists(sName):
             if not is_overwrite:
                 raise IOError('Refusing to over-write extant view!')
         json.dump(view,open(sName,'w'))
 
-    def loadView(self,vw,subject,name):
+    def get_view(self,vw,subject,name):
         """Set the view for an open webshow instance from a saved view
 
         Sets the view in a currently-open cortex.webshow instance (with handle `vw`)
@@ -575,10 +638,10 @@ class Database(object):
 
         See Also
         --------
-        vw._setView,vw._getView, surfs.saveView
+        vw._setView,vw._getView, db.save_view
         """
-        sName = os.path.join(filestore, subject, "views", name+'.json')
+        sName = os.path.join(self.filestore, subject, "views", name+'.json')
         view = json.load(open(sName))
         vw._setView(**view)
 
-surfs = Database()
+db = Database()

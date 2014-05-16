@@ -59,8 +59,8 @@ class Transform(object):
     def save(self, subject, name, xfmtype="magnet"):
         if self.reference is None:
             raise ValueError('Cannot save reference-free transforms into the database')
-        from .db import surfs
-        surfs.loadXfm(subject, name, self.xfm, xfmtype=xfmtype, reference=self.reference.get_filename())
+        from .database import db
+        db.save_xfm(subject, name, self.xfm, xfmtype=xfmtype, reference=self.reference.get_filename())
 
     @classmethod
     def from_fsl(cls, xfm, func_nii, anat_nii):
@@ -151,7 +151,7 @@ class Transform(object):
         Notes
         -----
         This function will only work for "coord" transform objects, (those retrieved with 
-        cortex.surfs.getXfm(xfmtype='coord',...)). It will fail hard for "magnet" transforms!
+        cortex.db.get_xfm(xfmtype='coord',...)). It will fail hard for "magnet" transforms!
 
         """
         import nibabel
