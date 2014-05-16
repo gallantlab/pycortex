@@ -233,7 +233,6 @@ class Surface(object):
     def avg_edge_length(self):
         """Average length of all edges in the surface.
         """
-        #adj = self.laplace_operator[1] # use laplace operator as adjacency matrix
         adj = self.adj
         tadj = sparse.triu(adj, 1) # only entries above main diagonal, in coo format
         edgelens = np.sqrt(((self.pts[tadj.row] - self.pts[tadj.col])**2).sum(1))
@@ -326,10 +325,10 @@ class Surface(object):
         
         lhs = (V-W).dot(L) # construct left side, almost squared L-B operator
         lhsfac = cholesky(lhs[notboundary][:,notboundary]) # factorize
-        #raise Exception
+        
         return lhs, D, Dinv, lhsfac, notboundary
 
-    def _create_interp(self, verts, bhsolver=None, newinterp=True):
+    def _create_interp(self, verts, bhsolver=None):
         """Creates interpolator that will interpolate values at the given `verts` using
         biharmonic interpolation.
 
