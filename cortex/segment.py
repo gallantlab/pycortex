@@ -6,7 +6,7 @@ import multiprocessing as mp
 
 from . import blender
 from . import freesurfer
-from .db import surfs
+from .database import db
 
 def init_subject(subject, filename):
     """Run the first initial segmentation for a subject's anatomy. This function runs 
@@ -117,7 +117,7 @@ def cut_surface(subject, hemi, name='flatten', data=None):
         A data view object to display on the surface as a cutting guide.
     """
     opts = "[hemi=%s,name=%s]"%(hemi, name)
-    fname = surfs.get_paths(subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
+    fname = db.get_paths(subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
 
     if not os.path.exists(fname):
         blender.fs_cut(fname, subject, hemi)
