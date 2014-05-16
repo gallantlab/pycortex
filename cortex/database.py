@@ -515,7 +515,7 @@ class Database(object):
 
 
         views = os.listdir(os.path.join(self.filestore, subject, "views"))
-
+        filestore = self.filestore
         filenames = dict(
             surfs=surfs,
             xfms=sorted(os.listdir(os.path.join(filestore, subject, "transforms"))),
