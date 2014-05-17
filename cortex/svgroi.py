@@ -378,7 +378,7 @@ class ROI(object):
                 dashstr = ""
             elif self.dashtype=='fromsvg':
                 dt = re.search('(?<=stroke-dasharray:)[^;]*',path.attrib['style'])
-                if dt is None:
+                if dt is None or dt.group()=='none':
                     dashstr=""
                 else:
                     do = re.search('(?<=stroke-dashoffset:)[^;]*',path.attrib['style'])
