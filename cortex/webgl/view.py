@@ -237,7 +237,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
                 self.set_status(404)
                 self.write_error(404)
 
-    class StimHandler(serve.StaticFileHandler):
+    class StimHandler(web.StaticFileHandler):
         def initialize(self):
             pass
 
@@ -485,8 +485,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
         def get_client(self):
-            self.c_evt.wait()
-            self.c_evt.clear()
+            self.connect.wait()
+            self.connect.clear()
             return JSMixer(self.send, "window.viewers")
 
         def get_local_client(self):
