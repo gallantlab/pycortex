@@ -485,7 +485,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
         def get_client(self):
-            self.connect.wait()
+            self.connect.wait(5)
             self.connect.clear()
             return JSMixer(self.send, "window.viewers")
 
@@ -509,8 +509,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     print("Started server on port %d"%server.port)
     if open_browser:
         webbrowser.open("http://%s:%d/mixer.html"%(serve.hostname, server.port))
+        #client = server.get_client()
+        #client.server = server
+        #return client
 
-        client = server.get_client()
-        client.server = server
-        return client
     return server

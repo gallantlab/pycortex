@@ -101,6 +101,7 @@ class WebApp(threading.Thread):
 
         ioloop = tornado.ioloop.IOLoop.instance()
         if not ioloop._running:
+            print("Started IOLoop")
             ioloop.start()
 
     def start(self):
@@ -126,15 +127,24 @@ class WebApp(threading.Thread):
         return [json.loads(self.response.get()) for _ in range(self.n_clients)]
 
     def get_client(self):
-        self.connect.wait()
+        self.connect.wait(5)
         self.connect.clear()
+        print("Got client")
         return JSProxy(self.send)
 
 class JSProxy(object):
     def __init__(self, sendfunc, name="window"):
         self.send = sendfunc
         self.name = name
-        self.attrs = self.send(method='query', params=[name])[0]
+        self._attrs = None
+    
+    @property
+    def attrs(self):
+        if self._attrs is not None:
+            return self._attrs
+        print("Querying")
+        self._attrs = self.send(method='query', params=[self.name])[0]
+        return self._attrs
     
     def __getattr__(self, attr):
         assert attr in self.attrs
