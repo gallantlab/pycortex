@@ -224,7 +224,8 @@ class WebApp(mp.Process):
         try:
             tornado.ioloop.IOLoop.clear_instance()
         except AttributeError:
-            del tornado.ioloop.IOLoop._instance
+            if hasattr(tornado.ioloop.IOLoop, '_instance'):
+                del tornado.ioloop.IOLoop._instance
         self.ioloop = tornado.ioloop.IOLoop.instance()
         application = tornado.web.Application(self.handlers, gzip=True)
         application.listen(self.port)
