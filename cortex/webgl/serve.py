@@ -88,20 +88,9 @@ class WebApp(threading.Thread):
         return num
 
     def run(self):
-<<<<<<< HEAD
-        self.sockets = []
-        tornado.ioloop.IOLoop.clear_current()
-        try:
-            tornado.ioloop.IOLoop.clear_instance()
-        except AttributeError:
-            if hasattr(tornado.ioloop.IOLoop, '_instance'):
-                del tornado.ioloop.IOLoop._instance
-        self.ioloop = tornado.ioloop.IOLoop.instance()
-=======
         ioloop = tornado.ioloop.IOLoop()
         ioloop.clear_current()
         ioloop.make_current()
->>>>>>> nofork
         application = tornado.web.Application(self.handlers, gzip=True)
         self.server = tornado.httpserver.HTTPServer(application, io_loop=ioloop)
         self.server.listen(self.port)
