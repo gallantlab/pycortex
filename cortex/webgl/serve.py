@@ -54,14 +54,10 @@ class ClientSocket(websocket.WebSocketHandler):
         self.parent = parent
 
     def open(self):
-        self.parent.sock_lock.acquire()
         self.parent.sockets.append(self)
-        self.parent.sock_lock.release()
 
     def on_close(self):
-        self.parent.sock_lock.acquire()
         self.parent.sockets.remove(self)
-        self.parent.sock_lock.release()
         if self.parent.n_clients == 0 and self.parent.disconnect_on_close:
             self.parent.stop()
 
@@ -84,67 +80,45 @@ class WebApp(threading.Thread):
         self.port = port
         self.response = Queue.Queue()
         self.connect = threading.Event()
-        self.sock_lock = threading.Lock()
         self.sockets = []
 
     @property
     def n_clients(self):
-        self.sock_lock.acquire()
         num = len(self.sockets)
-        self.sock_lock.release()
         return num
 
     def run(self):
+        ioloop = tornado.ioloop.IOLoop()
+        ioloop.clear_current()
+        ioloop.make_current()
         application = tornado.web.Application(self.handlers, gzip=True)
-        self.server = tornado.httpserver.HTTPServer(application)
+        self.server = tornado.httpserver.HTTPServer(application, io_loop=ioloop)
         self.server.listen(self.port)
-
-        ioloop = tornado.ioloop.IOLoop.instance()
-        if not ioloop._running:
-            print("Started IOLoop")
-            ioloop.start()
-
-    def start(self):
-        #only start the IOLoop as a thread if there isn't already a running IOLoop
-        ioloop = tornado.ioloop.IOLoop.instance()
-        if ioloop._running:
-            self.run()
-        else:
-            super(WebApp, self).start()
+        ioloop.start()
 
     def stop(self):
         print("Stopping server")
         self.server.stop()
+        tornado.ioloop.IOLoop.current().stop()
 
     def send(self, **msg):
         if not isinstance(msg, str):
             msg = json.dumps(msg, cls=NPEncode)
 
-        self.sock_lock.acquire()
         for sock in self.sockets:
             sock.write_message(msg)
-        self.sock_lock.release()
         return [json.loads(self.response.get()) for _ in range(self.n_clients)]
 
     def get_client(self):
         self.connect.wait(5)
         self.connect.clear()
-        print("Got client")
         return JSProxy(self.send)
 
 class JSProxy(object):
     def __init__(self, sendfunc, name="window"):
         self.send = sendfunc
         self.name = name
-        self._attrs = None
-    
-    @property
-    def attrs(self):
-        if self._attrs is not None:
-            return self._attrs
-        print("Querying")
-        self._attrs = self.send(method='query', params=[self.name])[0]
-        return self._attrs
+        self.attrs = self.send(method='query', params=[self.name])[0]
     
     def __getattr__(self, attr):
         assert attr in self.attrs
@@ -184,14 +158,6 @@ class JSProxy(object):
             raise Exception(resp[0]['error'])
         else:
             return resp
-
-class JSLocal(JSProxy):
-    def __init__(self, sendfunc, getfunc, **kwargs):
-        import time
-        def sendget(**msg):
-            sendfunc(**msg)
-            return getfunc()
-        super(JSLocal, self).__init__(sendget, **kwargs)
 
 if __name__ == "__main__":
     app = WebApp([], 8888)

@@ -6,8 +6,8 @@ import random
 import functools
 import binascii
 import mimetypes
+import threading
 import webbrowser
-import multiprocessing as mp
 import numpy as np
 
 from tornado import web
@@ -189,16 +189,18 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
 
-    saveevt = mp.Event()
-    saveimg = mp.Array('c', 8192)
-    queue = mp.Queue()
-
     linear = lambda x, y, m: (1.-m)*x + m*y
     mixes = dict(
         linear=linear,
         smoothstep=(lambda x, y, m: linear(x,y,3*m**2 - 2*m**3)), 
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
+
+    post_lock = threading.Lock()
+    post_name = None
+
+    if pickerfun is None:
+        pickerfun = lambda a,b: None
 
     class CTMHandler(web.RequestHandler):
         def get(self, path):
@@ -217,13 +219,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     class DataHandler(web.RequestHandler):
         def get(self, path):
             path = path.strip("/")
-            try:
-                d = queue.get(True, 0.1)
-                print("Got new data: %r"%list(d.keys()))
-                images.update(d)
-            except:
-                pass
-
             try:
                 dataname, frame = path.split('/')
             except ValueError:
@@ -263,10 +258,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
             self.write(generated)
 
         def post(self):
-            print("saving file to %s"%saveimg.value)
             data = self.get_argument("svg", default=None)
             png = self.get_argument("png", default=None)
-            with open(saveimg.value, "wb") as svgfile:
+            post_lock.acquire()
+            with open(post_name, "wb") as svgfile:
                 if png is not None:
                     data = png[22:].strip()
                     try:
@@ -275,17 +270,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
                         print("Error writing image!")
                         data = png
                 svgfile.write(data)
-            saveevt.set()
-
-    if pickerfun is None:
-        pickerfun = lambda a,b: None
-
-    class JSLocalMixer(serve.JSLocal):
-        def addData(self, **kwargs):
-            Proxy = serve.JSProxy(self.send, "window.viewers.addData")
-            json, data = _make_bindat(_normalize_data(kwargs, pfunc), fmt='data/%s/')
-            queue.put(data)
-            return Proxy(json)
+            post_lock.release()
 
     class JSMixer(serve.JSProxy):
         def _setView(self,**kwargs):
@@ -369,8 +354,9 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
 
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewers.addData")
-            metadata, images = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
-            queue.put(images)
+            new_meta, new_ims = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
+            metadata.update(new_meta)
+            images.update(new_ims)
             return Proxy(metadata)
 
         def saveIMG(self, filename,size=None):
@@ -385,8 +371,11 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
             """
             if not size is None:
                 self.resize(*size)
+            post_lock.acquire()
+            post_name = filename
+            post_lock.release()
+
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
-            saveimg.value = filename
             return Proxy("mixer.html")
 
         def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, size=(1920, 1080), interpolation="linear"):
@@ -476,11 +465,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
                 saveevt.wait()
 
     class PickerHandler(web.RequestHandler):
-        def initialize(self, server):
-            self.client = JSLocalMixer(server.srvsend, server.srvresp)
-
         def get(self):
-            pickerfun(self.client, int(self.get_argument("voxel")), int(self.get_argument("vertex")))
+            pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
 
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
@@ -495,22 +481,20 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     if port is None:
         port = random.randint(1024, 65536)
         
-    srvdict = dict()
     server = WebApp([
             (r'/ctm/(.*)', CTMHandler),
             (r'/data/(.*)', DataHandler),
             (r'/stim/(.*)', StimHandler),
             (r'/mixer.html', MixerHandler),
-            (r'/picker', PickerHandler, srvdict),
+            (r'/picker', PickerHandler),
             (r'/', MixerHandler),
         ], port)
-    srvdict['server'] = server
     server.start()
     print("Started server on port %d"%server.port)
     if open_browser:
         webbrowser.open("http://%s:%d/mixer.html"%(serve.hostname, server.port))
-        #client = server.get_client()
-        #client.server = server
-        #return client
+        client = server.get_client()
+        client.server = server
+        return client
 
     return server
