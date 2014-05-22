@@ -26,8 +26,50 @@ class View(object):
     def priority(self, value):
         self.attrs['priority'] = value
 
-    def __call__(self, data, description=""):
-        return DataView(data, description, cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state)
+class MultiView(View):
+    def __init__(self, views, description=""):
+        for view in views:
+            if not isinstance(view, View):
+                raise TypeError("Must be a View object!")
+        raise NotImplementedError
+
+class Volume(View, VolumeData):
+    def __init__(self, data, subject, xfmname, cmap=None, vmin=None, vmax=None, description="", **kwargs):
+        VolumeData.__init__(self, data, subject, xfmname, mask=kwargs['mask'] if 'mask' in kwargs else None)
+        View.__init__(self, cmap=cmap, vmin=vmin, vmax=vmax, description=description, **kwargs)
+
+class Vertex(View, VertexData):
+    def __init__(self, data, subject, description="", **kwargs):
+        super(TwoDView, self).__init__(description=description, **kwargs)
+
+class RGBVolume(View):
+    def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description="", **kwargs):
+        if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
+            raise TypeError("RGBViews does not have colormap options")
+        super(TwoDView, self).__init__(description=description, **kwargs)
+
+class RGBVertex(View):
+    def __init__(self, red, green, blue, subject=None, alpha=None, description="", **kwargs):
+        if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
+            raise TypeError("RGBViews does not have colormap options")
+        super(TwoDView, self).__init__(description=description, **kwargs)
+
+class TwoDVolume(View):
+    def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", vmin2=None, vmax2=None, **kwargs):
+        self.dim1 = normalize(dim1)
+        self.dim2 = normalize(dim2)
+        self.vmin2 = vmin2
+        self.vmax2 = vmax2
+        super(TwoDView, self).__init__(description=description, **kwargs)
+
+class TwoDVertex(View):
+    def __init__(self, dim1, dim2, subject=None, description="", vmin2=None, vmax2=None, **kwargs):
+        self.dim1 = normalize(dim1)
+        self.dim2 = normalize(dim2)
+        self.vmin2 = vmin2
+        self.vmax2 = vmax2
+        super(TwoDView, self).__init__(description=description, **kwargs)
+
 
 class DataView(View):
     def __init__(self, data, description="", **kwargs):

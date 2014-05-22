@@ -93,14 +93,10 @@ BrainData.add_numpy_methods()
 class VolumeData(BrainData):
     def __init__(self, data, subject, xfmname, mask=None):
         """Three possible variables: raw, volume, movie, vertex. Enumerated with size:
-        raw volume movie: (t, z, y, x, c)
-        raw volume image: (z, y, x, c)
-        reg volume movie: (t, z, y, x)
-        reg volume image: (z, y, x)
-        raw linear movie: (t, v, c)
-        reg linear movie: (t, v)
-        raw linear image: (v, c)
-        reg linear image: (v,)
+        volume movie: (t, z, y, x)
+        volume image: (z, y, x)
+        linear movie: (t, v)
+        linear image: (v,)
         """
         super(VolumeData, self).__init__(data)
         try:
@@ -119,7 +115,7 @@ class VolumeData(BrainData):
         """
         if data is None:
             data = self.data
-        return VolumeData(data, self.subject, self.xfmname, mask=self._mask)
+        return self.__class__(data, self.subject, self.xfmname, mask=self._mask)
 
     def to_json(self):
         xfm = db.get_xfm(self.subject, self.xfmname, 'coord').xfm
@@ -128,39 +124,24 @@ class VolumeData(BrainData):
             subject=self.subject, 
             xfm=list(np.array(xfm).ravel()),
             movie=self.movie,
-            raw=self.raw,
             shape=self.shape,
             min=float(self.data.min()),
             max=float(self.data.max()),
         )
 
     def _check_size(self, mask):
-        self.raw = self.data.dtype == np.uint8
-        if self.data.ndim == 5:
-            if not self.raw:
-                raise ValueError("Invalid data shape")
-            self.linear = False
-            self.movie = True
-        elif self.data.ndim == 4:
-            self.linear = False
-            self.movie = not self.raw
-        elif self.data.ndim == 3:
-            self.linear = self.movie = self.raw
-        elif self.data.ndim == 2:
-            self.linear = True
-            self.movie = not self.raw
-        elif self.data.ndim == 1:
-            self.linear = True
-            self.movie = False
-        else:
+        if self.data.ndim not in (1, 2, 3, 4):
             raise ValueError("Invalid data shape")
+        
+        self.linear = self.data.ndim in (1, 2)
+        self.movie = self.data.ndim in (2, 4)
+        if self.data.ndim in (1, 3):
+            self.data = self.data[np.newaxis]
 
         if self.linear:
+            #Guess the mask
             if mask is None:
-                #try to guess mask type
-                nvox = self.data.shape[-2 if self.raw else -1]
-                if self.raw:
-                    nvox = self.data.shape[-2]
+                nvox = self.data.shape[-1]
                 self._mask, self.mask = _find_mask(nvox, self.subject, self.xfmname)
             elif isinstance(mask, str):
                 self.mask = db.get_mask(self.subject, self.xfmname, mask)
@@ -175,8 +156,6 @@ class VolumeData(BrainData):
             shape = self.data.shape
             if self.movie:
                 shape = shape[1:]
-            if self.raw:
-                shape = shape[:-1]
             xfm = db.get_xfm(self.subject, self.xfmname)
             if xfm.shape != shape:
                 raise ValueError("Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)" % (str(shape), str(xfm.shape)))
@@ -197,8 +176,6 @@ class VolumeData(BrainData):
             if isinstance(self._mask, np.ndarray):
                 name = "custom"
             maskstr = "%s masked"%name
-        if self.raw:
-            maskstr += " raw"
         if self.movie:
             maskstr += " movie"
         maskstr = maskstr[0].upper()+maskstr[1:]
@@ -256,14 +233,12 @@ class VolumeData(BrainData):
         return node
 
 
-class VertexData(VolumeData):
+class VertexData(BrainData):
     def __init__(self, data, subject):
         """Represents `data` at each vertex on a `subject`s cortex.
         `data` shape possibilities:
 
-        raw linear movie: (t, v, c)
         reg linear movie: (t, v)
-        raw linear image: (v, c)
         reg linear image: (v,)
 
         where t is the number of time points, c is colors (i.e. RGB), and v is the
