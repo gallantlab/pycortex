@@ -35,12 +35,13 @@ class MultiView(View):
 
 class Volume(View, VolumeData):
     def __init__(self, data, subject, xfmname, cmap=None, vmin=None, vmax=None, description="", **kwargs):
-        VolumeData.__init__(self, data, subject, xfmname, mask=kwargs['mask'] if 'mask' in kwargs else None)
-        View.__init__(self, cmap=cmap, vmin=vmin, vmax=vmax, description=description, **kwargs)
+        super(Volume, self).__init__(data, subject, xfmname, cmap=cmap, vmin=vmin, vmax=vmax, 
+            description=description, **kwargs)
 
 class Vertex(View, VertexData):
-    def __init__(self, data, subject, description="", **kwargs):
-        super(TwoDView, self).__init__(description=description, **kwargs)
+    def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
+        super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
+            description=description, **kwargs)
 
 class RGBVolume(View):
     def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description="", **kwargs):
