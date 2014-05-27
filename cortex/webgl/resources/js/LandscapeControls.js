@@ -28,7 +28,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
     this.minRadius = function(mix){return 101*mix}; // limits zoom for flatmap, which disappears at r=100
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
-    this.friction = 0.5;
+    this.friction = 0.05; // velocity lost per milisecond
     
 
     // internals
@@ -47,6 +47,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
     var _clicktime = 0; // Time of last click (mouseup event)
     var _indblpick = false; // In double-click and hold?
     var _picktimer = false; // timer that runs pick event
+    this._momentumtimer = false; // time that glide has been going on post mouse-release
 
     // events
 
@@ -117,7 +118,9 @@ THREE.LandscapeControls = function ( cover, camera ) {
 
     function mouseup( event ) {
         if ( ! this.enabled ) return;
+        this.dispatchEvent( changeEvent );
 
+        this._momentumtimer = new Date().getTime();
         this.schedule( true );
 
         event.preventDefault();
@@ -276,8 +279,8 @@ THREE.LandscapeControls.prototype = {
     },
 
     rotate: function ( mouseChange ) {
-        this.azvel = -1 * this.rotateSpeed * mouseChange.x;
-        var az = this.azimuth + this.azvel;
+        this.azvel_init = -this.rotateSpeed * mouseChange.x;
+        var az = this.azimuth + this.azvel_init;
         if ( this.azlim > 0 ) {
             if ( this.azlim > az || az > (360-this.azlim)) {
                 this.azimuth = azdiff < 0 ? this.azlim : 360-this.azlim;
@@ -288,22 +291,23 @@ THREE.LandscapeControls.prototype = {
             this.azimuth = az - 360*Math.floor(az / 360);
         }
 
-
         //this.altitude -= this.rotateSpeed*mouseChange.y;
-        this.altvel = -1 * this.rotateSpeed * mouseChange.y;
-        this.altitude += this.altvel;
-        this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
+        this.altvel_init = -this.rotateSpeed * mouseChange.y;
+        this.altitude += this.altvel_init;
+        //this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
 
         // Add panning depending on flatmix
-        var panMouseChange = new Object;
-        panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
-        panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
-        this.pan(panMouseChange);
+        if ( this.flatmix > 0 ) {
+            var panMouseChange = new Object;
+            panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
+            panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
+            this.pan(panMouseChange);
+        }
     }, 
 
     pan: function( mouseChange ) {
-        this.panxvel = this.panSpeed * mouseChange.x;
-        this.panyvel = this.panSpeed * mouseChange.y;
+        this.panxvel_init = this.panSpeed * mouseChange.x;
+        this.panyvel_init = this.panSpeed * mouseChange.y;
         this.setpan( this.panSpeed * mouseChange.x, this.panSpeed * mouseChange.y );
     },
 
@@ -343,41 +347,58 @@ THREE.LandscapeControls.prototype = {
     },
 
     unschedule: function() {
+        // console.log("unscheduling");
         this.resetvel();
         this._in_anim = false;
     },
 
     resetvel: function() {
-        this.altvel = 0;
-        this.azvel = 0;
-        this.panxvel = 0;
-        this.panyvel = 0;
+        this.altvel_init = 0;
+        this.azvel_init = 0;
+        this.panxvel_init = 0;
+        this.panyvel_init = 0;
     },
  
     anim: function() {
-        if ( Math.abs(this.azvel) > 0 || Math.abs(this.altvel) > 0 ) {
+        var now = new Date().getTime();
+        if ( Math.abs(this.azvel_init) > 0 || Math.abs(this.altvel_init) > 0 ) {
             // console.log("Animating", this.azvel, this.altvel);
-            this.azvel *= 1 - this.friction;
+            //this.azvel *= 1 - this.friction;
+            this.azvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.azvel_init;
             this.azimuth += this.azvel;
             this.azimuth = ((this.azimuth % 360) + 360) % 360;
 
-            this.altvel *= 1 - this.friction;
+            //this.altvel *= 1 - this.friction;
+            this.altvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.altvel_init;
             this.altitude += this.altvel;
-            this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
+            // this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
+
+            // console.log("Animating", this.azvel, this.altvel);
+        }
+        else {
+            this.azvel = 0;
+            this.altvel = 0;
         }
 
-        if ( Math.abs(this.panxvel) > 0 || Math.abs(this.panyvel) > 0 ) {
+        if ( Math.abs(this.panxvel_init) > 0 || Math.abs(this.panyvel_init) > 0 ) {
             // console.log("Animating", this.panxvel, this.panyvel);
-            this.panxvel *= 1 - this.friction;
-            this.panyvel *= 1 - this.friction;
+            this.panxvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.panxvel_init;
+            this.panyvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.panyvel_init;
+            //this.panxvel *= 1 - this.friction;
+            //this.panyvel *= 1 - this.friction;
 
             this.setpan(this.panxvel, this.panyvel);
+        }
+        else {
+            this.panxvel = 0;
+            this.panyvel = 0;
         }
      
         this.dispatchEvent( {type:'change'} );
 
+        // console.log("velocities: ", this.altvel, this.azvel, this.panxvel, this.panyvel);
         if (Math.abs(this.altvel)<0.01 && Math.abs(this.azvel)<0.01 && Math.abs(this.panxvel)<0.01 && Math.abs(this.panyvel)<0.01) {
-            this.resetvel();
+            this.unschedule();
         } else {
             this.schedule();
         }
