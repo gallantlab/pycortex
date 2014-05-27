@@ -5,7 +5,8 @@ import h5py
 from ..database import db
 
 class BrainData(object):
-    def __init__(self, data):
+    def __init__(self, data, **kwargs):
+        super(BrainData, self).__init__(**kwargs)
         if isinstance(data, str):
             import nibabel
             nib = nibabel.load(data)
@@ -91,14 +92,14 @@ class BrainData(object):
 BrainData.add_numpy_methods()
 
 class VolumeData(BrainData):
-    def __init__(self, data, subject, xfmname, mask=None):
+    def __init__(self, data, subject, xfmname, mask=None, **kwargs):
         """Three possible variables: raw, volume, movie, vertex. Enumerated with size:
         volume movie: (t, z, y, x)
         volume image: (z, y, x)
         linear movie: (t, v)
         linear image: (v,)
         """
-        super(VolumeData, self).__init__(data)
+        super(VolumeData, self).__init__(data, **kwargs)
         try:
             basestring
         except NameError:
@@ -191,12 +192,7 @@ class VolumeData(BrainData):
             data = self.data[:]
 
         if self.raw and data.shape[-1] == 3:
-            #stack the alpha dimension
-            shape = data.shape[:3]+(1,)
-            if self.movie:
-                shape = data.shape[:4]+(1,)
-            alpha = 255*np.ones(shape).astype(np.uint8)
-            data = np.concatenate([data, alpha], axis=-1)
+
 
         return data
 
@@ -234,7 +230,7 @@ class VolumeData(BrainData):
 
 
 class VertexData(BrainData):
-    def __init__(self, data, subject):
+    def __init__(self, data, subject, **kwargs):
         """Represents `data` at each vertex on a `subject`s cortex.
         `data` shape possibilities:
 
@@ -244,6 +240,7 @@ class VertexData(BrainData):
         where t is the number of time points, c is colors (i.e. RGB), and v is the
         number of vertices (either in both hemispheres or one hemisphere).
         """
+        super(VertexData, self).__init__(**kwargs)
         try:
             basestring
         except NameError:
