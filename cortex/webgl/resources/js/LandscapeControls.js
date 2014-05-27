@@ -357,19 +357,19 @@ THREE.LandscapeControls.prototype = {
     anim: function() {
         if ( Math.abs(this.azvel) > 0 || Math.abs(this.altvel) > 0 ) {
             // console.log("Animating", this.azvel, this.altvel);
-            this.azvel *= this.friction;
+            this.azvel *= 1 - this.friction;
             this.azimuth += this.azvel;
             this.azimuth = ((this.azimuth % 360) + 360) % 360;
 
-            this.altvel *= this.friction;
+            this.altvel *= 1 - this.friction;
             this.altitude += this.altvel;
             this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
         }
 
         if ( Math.abs(this.panxvel) > 0 || Math.abs(this.panyvel) > 0 ) {
             // console.log("Animating", this.panxvel, this.panyvel);
-            this.panxvel *= this.friction;
-            this.panyvel *= this.friction;
+            this.panxvel *= 1 - this.friction;
+            this.panyvel *= 1 - this.friction;
 
             this.setpan(this.panxvel, this.panyvel);
         }
