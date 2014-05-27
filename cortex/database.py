@@ -264,10 +264,10 @@ class Database(object):
         if len(kwargs) > 0:
             opts = "[%s]"%','.join(["%s=%s"%i for i in kwargs.items()])
         try:
-            self.auxfile.getSurf(subject, "fiducial")
-            surfifile = os.path.join(self.getCache(subject),"%s%s.npz"%(type, opts)) 
+            self.auxfile.get_surf(subject, "fiducial")
+            surfifile = os.path.join(self.get_cache(subject),"%s%s.npz"%(type, opts)) 
         except (AttributeError, IOError):
-            surfiform = self.getFiles(subject)['surfinfo']
+            surfiform = self.get_paths(subject)['surfinfo']
             surfifile = surfiform.format(type=type, opts=opts)
 
             if not os.path.exists(os.path.join(self.filestore, subject, "surface-info")):
