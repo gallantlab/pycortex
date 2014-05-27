@@ -28,9 +28,6 @@ class BrainData(object):
         '''Name of this BrainData, according to its hash'''
         return "__%s"%_hash(self.data)[:16]
 
-    def copy(self):
-        raise NotImplementedError("Copy not supported for BrainData, use VolumeData or VertexData")
-
     def exp(self):
         """Copy of this object with data exponentiated.
         """
@@ -110,6 +107,9 @@ class VolumeData(BrainData):
 
         self._check_size(mask)
         self.masked = _masker(self)
+
+        if self.__class__ == VolumeData:
+            raise TypeError('Cannot directly instantiate VolumeData objects')
 
     def copy(self, data=None):
         """Copies this VolumeData.
@@ -191,9 +191,6 @@ class VolumeData(BrainData):
         else:
             data = self.data[:]
 
-        if self.raw and data.shape[-1] == 3:
-
-
         return data
 
     def save(self, filename, name=None):
@@ -251,6 +248,9 @@ class VertexData(BrainData):
         self.llen = len(left[0])
         self.rlen = len(right[0])
         self._set_data(data)
+
+        if self.__class__ == VertexData:
+            raise TypeError('Cannot directly instantiate VertexData objects')
 
     def _set_data(self, data):
         """Stores data for this VertexData. Also sets flags if `data` appears to
