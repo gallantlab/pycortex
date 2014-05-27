@@ -8,6 +8,19 @@ from . import BrainData, VolumeData, VertexData
 
 default_cmap = options.config.get("basic", "default_cmap")
 
+def normalize(data):
+    if isinstance(data, tuple):
+        if len(data) == 3:
+            return Volume(*data)
+        elif len(data) == 2:
+            return Vertex(*data)
+        else:
+            raise TypeError("Invalid input for DataView")
+    elif isinstance(data, DataView):
+        return data
+    else:
+        raise TypeError("Invalid input for DataView")
+
 class View(object):
     def __init__(self, cmap=None, vmin=None, vmax=None, state=None, **kwargs):
         self.cmap = cmap if cmap is not None else default_cmap
@@ -26,90 +39,12 @@ class View(object):
     def priority(self, value):
         self.attrs['priority'] = value
 
-class MultiView(View):
-    def __init__(self, views, description=""):
-        for view in views:
-            if not isinstance(view, View):
-                raise TypeError("Must be a View object!")
-        raise NotImplementedError
-
-class Volume(View, VolumeData):
-    def __init__(self, data, subject, xfmname, cmap=None, vmin=None, vmax=None, description="", **kwargs):
-        super(Volume, self).__init__(data, subject, xfmname, cmap=cmap, vmin=vmin, vmax=vmax, 
-            description=description, **kwargs)
-
-class Vertex(View, VertexData):
-    def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
-        super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
-            description=description, **kwargs)
-
-class RGBVolume(View):
-    def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description="", **kwargs):
-        if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
-            raise TypeError("RGBViews does not have colormap options")
-        super(TwoDView, self).__init__(description=description, **kwargs)
-
-class RGBVertex(View):
-    def __init__(self, red, green, blue, subject=None, alpha=None, description="", **kwargs):
-        if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
-            raise TypeError("RGBViews does not have colormap options")
-        super(TwoDView, self).__init__(description=description, **kwargs)
-
-class TwoDVolume(View):
-    def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", vmin2=None, vmax2=None, **kwargs):
-        self.dim1 = normalize(dim1)
-        self.dim2 = normalize(dim2)
-        self.vmin2 = vmin2
-        self.vmax2 = vmax2
-        super(TwoDView, self).__init__(description=description, **kwargs)
-
-class TwoDVertex(View):
-    def __init__(self, dim1, dim2, subject=None, description="", vmin2=None, vmax2=None, **kwargs):
-        self.dim1 = normalize(dim1)
-        self.dim2 = normalize(dim2)
-        self.vmin2 = vmin2
-        self.vmax2 = vmax2
-        super(TwoDView, self).__init__(description=description, **kwargs)
-
+    def to_json(self):
+        return dict()
 
 class DataView(View):
-    def __init__(self, data, description="", **kwargs):
+    def __init__(self, description="", **kwargs):
         super(DataView, self).__init__(**kwargs)
-        if isinstance(data, list):
-            #validate if the input is of a recognizable form
-            if len(data) != 1 or len(data[0]) != 2:
-                raise TypeError("Sorry, multi views are currently not supported...")
-            xdim, ydim = map(normalize, data[0])
-            if xdim.subject != ydim.subject:
-                raise TypeError("2D data views require the same subject")
-            if xdim.raw or ydim.raw:
-                raise TypeError("2D data views cannot be raw")
-            #this awful bit of logic checks validity of movies
-            if xdim.movie ^ ydim.movie or (
-                xdim.movie and 
-                len(xdim.data) != len(ydim.data)):
-                raise TypeError('2D movies must be same length')
-
-            no_nan_x = xdim.data[~np.isnan(xdim.data)]
-            no_nan_y = ydim.data[~np.isnan(ydim.data)]
-            if self.vmin is None:
-                self.vmin = [(
-                    float(np.percentile(no_nan_x, 1)), 
-                    float(np.percentile(no_nan_y, 1)))]
-            if self.vmax is None:
-                self.vmax = [(
-                    float(np.percentile(no_nan_x, 99)), 
-                    float(np.percentile(no_nan_y, 99)))]
-            self.data = [(xdim, ydim)]
-        else:
-            self.data = normalize(data)
-            no_nan = self.data.data[~np.isnan(self.data.data)]
-
-            if self.vmin is None:
-                self.vmin = float(np.percentile(no_nan, 1))
-            if self.vmax is None:
-                self.vmax = float(np.percentile(no_nan, 99))
-
         self.description = description
 
     @classmethod
@@ -136,48 +71,17 @@ class DataView(View):
         return cls(data, cmap=cmap, vmin=vmin, vmax=vmax, description=desc, **attrs)
 
     def to_json(self):
-        dnames = []
-        if isinstance(self.data, BrainData):
-            dnames.append(self.data.name)
-        elif isinstance(self.data, list):
-            for data in self.data:
-                if isinstance(data, BrainData):
-                    dnames.append(data.name)
-                else:
-                    dnames.append([d.name for d in data])
+        sdict = super(DataView, self).to_json(self)
 
-        return dict(
+        sdict.update(dict(
             data=dnames, 
             cmap=self.cmap, 
             vmin=self.vmin, 
             vmax=self.vmax, 
             desc=self.description, 
             state=self.state, 
-            attrs=self.attrs)
-
-    def copy(self, data=None):
-        if data is None:
-            data = self.data
-        return DataView(data, 
-            self.description, vmin=self.vmin, vmax=self.vmax, cmap=self.cmap, state=self.state, **self.attrs)
-
-    @property
-    def raw(self):
-        if not isinstance(self.data, BrainData):
-            raise ValueError('Can only colormap single data views')
-        if self.data.raw:
-            raise ValueError('Data is already colormapped')
-        from matplotlib import cm, colors
-        cmap = cm.get_cmap(self.cmap)
-        norm = colors.Normalize(vmin=self.vmin, vmax=self.vmax, clip=True)
-        raw = (cmap(norm(self.data.data)) * 255).astype(np.uint8)
-        return self.copy(self.data.copy(raw))
-
-    def map(self, sampler="nearest"):
-        if not isinstance(self.data, VolumeData):
-            raise ValueError("Can only map volumedata views")
-
-        return self.copy(self.data.map(sampler))
+            attrs=self.attrs))
+        return sdict
 
     def __iter__(self):
         if isinstance(self.data, BrainData):
@@ -233,17 +137,131 @@ class DataView(View):
         view[6] = json.dumps(self.attrs)
         return view
 
-def normalize(data):
-    if isinstance(data, tuple):
-        if len(data) == 3:
-            return VolumeData(*data)
-        elif len(data) == 2:
-            return VertexData(*data)
+class MultiView(View):
+    def __init__(self, views, description=""):
+        for view in views:
+            if not isinstance(view, View):
+                raise TypeError("Must be a View object!")
+        raise NotImplementedError
+
+class Volume(DataView, VolumeData):
+    def __init__(self, data, subject, xfmname, cmap=None, vmin=None, vmax=None, description="", **kwargs):
+        super(Volume, self).__init__(data, subject, xfmname, cmap=cmap, vmin=vmin, vmax=vmax, 
+            description=description, **kwargs)
+
+class Vertex(DataView, VertexData):
+    def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
+        super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
+            description=description, **kwargs)
+
+class RGBVolume(DataView):
+    def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description="", **kwargs):
+        if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
+            raise TypeError("RGBViews does not have colormap options")
+
+        if isinstance(red, VolumeData):
+            if not isinstance(green, VolumeData) or red.subject != green.subject:
+                raise TypeError("Invalid data for green channel")
+            if not isinstance(blue, VolumeData) or red.subject != blue.subject:
+                raise TypeError("Invalid data for blue channel")
+            self.red = red
+            self.green = green
+            self.blue = blue
         else:
-            raise TypeError("Invalid input for DataView")
-    elif isinstance(data, BrainData):
-        return data
-    elif isinstance(data, DataView) and isinstance(data.data, BrainData):
-        return data.data
-    else:
-        raise TypeError("Invalid input for DataView")
+            if subject is None or xfmname is None:
+                raise TypeError("Subject and xfmname are required")
+            self.red = Volume(red, subject, xfmname)
+            self.green = Volume(green, subject, xfmname)
+            self.blue = Volume(blue, subject, xfmname)
+
+        self.alpha = alpha
+
+        super(RGBVolume, self).__init__(description=description, **kwargs)
+
+    @property
+    def volume(self):
+        alpha = self.alpha
+        if self.alpha is None:
+            alpha = np.ones_like(red)
+
+        volume = []
+        for dv in (self.red, self.green, self.blue, alpha)
+            vol = dv.volume
+            if vol.dtype != np.uint8:
+                if vol.min() < 0:
+                    vol -= vol.min()
+                if vol.max() > 1:
+                    vol /= vol.max()
+                vol = (vol * 255).astype(np.uint8)
+            volume.append(vol)
+
+        return np.array(volume).transpose([1, 2, 3, 4, 0])
+
+class RGBVertex(DataView):
+    def __init__(self, red, green, blue, subject=None, alpha=None, description="", **kwargs):
+        if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
+            raise TypeError("RGBViews does not have colormap options")
+                if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
+            raise TypeError("RGBViews does not have colormap options")
+
+        if isinstance(red, VertexData):
+            if not isinstance(green, VertexData) or red.subject != green.subject:
+                raise TypeError("Invalid data for green channel")
+            if not isinstance(blue, VertexData) or red.subject != blue.subject:
+                raise TypeError("Invalid data for blue channel")
+            self.red = red
+            self.green = green
+            self.blue = blue
+        else:
+            if subject is None:
+                raise TypeError("Subject name is required")
+            self.red = VertexData(red, xfmname)
+            self.green = VertexData(green, xfmname)
+            self.blue = VertexData(blue, xfmname)
+
+        if alpha is None:
+            self.alpha = VertexData()
+
+        #Normalize the RGB channels to be between 0 and 255
+        for dv in (self.red, self.green, self.blue, self.alpha):
+            if self.red.data.dtype != np.uint8:
+                if dv.min() < 0:
+                    dv -= dv.min()
+                if dv.max() > 1:
+                    dv /= dv.max()
+
+        super(RGBVertex, self).__init__(description=description, **kwargs)
+
+    @property
+    def volume(self):
+        alpha = self.alpha
+        if self.alpha is None:
+            alpha = np.ones_like(red)
+
+        volume = []
+        for dv in (self.red, self.green, self.blue, alpha)
+            vol = dv.volume
+            if vol.dtype != np.uint8:
+                if vol.min() < 0:
+                    vol -= vol.min()
+                if vol.max() > 1:
+                    vol /= vol.max()
+                vol = (vol * 255).astype(np.uint8)
+            volume.append(vol)
+
+        return np.array(volume).transpose([1, 2, 0])
+
+class TwoDVolume(View):
+    def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", vmin2=None, vmax2=None, **kwargs):
+        self.vmin2 = vmin2
+        self.vmax2 = vmax2
+
+        super(TwoDVolume, self).__init__(description=description, **kwargs)
+
+class TwoDVertex(View):
+    def __init__(self, dim1, dim2, subject=None, description="", vmin2=None, vmax2=None, **kwargs):
+        self.dim1 = normalize(dim1)
+        self.dim2 = normalize(dim2)
+        self.vmin2 = vmin2
+        self.vmax2 = vmax2
+        super(TwoDVertex, self).__init__(description=description, **kwargs)
