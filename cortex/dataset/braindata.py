@@ -191,6 +191,9 @@ class VolumeData(BrainData):
         else:
             data = self.data[:]
 
+        if not self.movie:
+            data = data[np.newaxis]
+
         return data
 
     def save(self, filename, name=None):
