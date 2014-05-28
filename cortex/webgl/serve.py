@@ -110,7 +110,7 @@ class WebApp(threading.Thread):
         return [json.loads(self.response.get()) for _ in range(self.n_clients)]
 
     def get_client(self):
-        self.connect.wait(5)
+        self.connect.wait()
         self.connect.clear()
         return JSProxy(self.send)
 

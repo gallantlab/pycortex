@@ -471,7 +471,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
         def get_client(self):
-            self.connect.wait(5)
+            self.connect.wait()
             self.connect.clear()
             return JSMixer(self.send, "window.viewers")
 
