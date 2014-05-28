@@ -185,7 +185,7 @@ class RGBVolume(DataView):
             alpha = np.ones_like(red)
 
         volume = []
-        for dv in (self.red, self.green, self.blue, alpha)
+        for dv in (self.red, self.green, self.blue, alpha):
             vol = dv.volume
             if vol.dtype != np.uint8:
                 if vol.min() < 0:
@@ -200,8 +200,6 @@ class RGBVolume(DataView):
 class RGBVertex(DataView):
     def __init__(self, red, green, blue, subject=None, alpha=None, description="", **kwargs):
         if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
-            raise TypeError("RGBViews does not have colormap options")
-                if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
             raise TypeError("RGBViews does not have colormap options")
 
         if isinstance(red, VertexData):
@@ -223,7 +221,7 @@ class RGBVertex(DataView):
             self.alpha = VertexData()
 
         #Normalize the RGB channels to be between 0 and 255
-        for dv in (self.red, self.green, self.blue, self.alpha):
+        for dv in (self.red, self.green, self.blue, alpha):
             if self.red.data.dtype != np.uint8:
                 if dv.min() < 0:
                     dv -= dv.min()
@@ -239,7 +237,7 @@ class RGBVertex(DataView):
             alpha = np.ones_like(red)
 
         volume = []
-        for dv in (self.red, self.green, self.blue, alpha)
+        for dv in (self.red, self.green, self.blue, alpha):
             vol = dv.volume
             if vol.dtype != np.uint8:
                 if vol.min() < 0:
