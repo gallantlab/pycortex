@@ -180,7 +180,7 @@ class ROIpack(object):
         return dict([(name, roi.get_ptidx()) for name, roi in list(self.rois.items())])
 
     def get_roi(self, roiname):
-        import Image
+        from PIL import Image
         shadow = self.shadow
         self.set(shadow=0)
 

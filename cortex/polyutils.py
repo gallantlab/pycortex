@@ -900,7 +900,7 @@ def rasterize(poly, shape=(256, 256)):
     import subprocess as sp
     import cStringIO
     import shlex
-    import Image
+    from PIL import Image
     
     polygon = " ".join(["%0.3f,%0.3f"%tuple(p[::-1]) for p in np.array(poly)-(.5, .5)])
     cmd = 'convert -size %dx%d xc:black -fill white -stroke none -draw "polygon %s" PNG32:-'%(shape[0], shape[1], polygon)
@@ -919,8 +919,7 @@ def rasterize(poly, shape=(256, 256)):
 
 def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True):
     from tvtk.api import tvtk
-    import Image
-    import ImageDraw
+    from PIL import Image, ImageDraw
     
     pd = tvtk.PolyData(points=pts + center + (0, 0, 0), polys=polys)
     plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])

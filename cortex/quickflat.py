@@ -411,8 +411,7 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
 
 def _make_flatmask(subject, height=1024):
     from . import polyutils
-    import Image
-    import ImageDraw
+    from PIL import Image, ImageDraw
     pts, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
     left, right = bounds.next(), bounds.next()
