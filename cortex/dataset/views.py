@@ -23,6 +23,7 @@ def normalize(data):
 
 class View(object):
     def __init__(self, cmap=None, vmin=None, vmax=None, state=None, **kwargs):
+        super(View, self).__init__(**kwargs)
         self.cmap = cmap if cmap is not None else default_cmap
         self.vmin = vmin
         self.vmax = vmax
@@ -40,12 +41,15 @@ class View(object):
         self.attrs['priority'] = value
 
     def to_json(self):
-        return dict()
+        return dict(cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state, attrs=self.attrs)
 
 class DataView(View):
-    def __init__(self, description="", **kwargs):
-        super(DataView, self).__init__(**kwargs)
+    def __init__(self, description="", *args, **kwargs):
+        super(DataView, self).__init__(*args, **kwargs)
         self.description = description
+
+        if self.__class__ == DataView:
+            raise TypeError('Cannot directly instantiate DataView objects')
 
     @classmethod
     def from_hdf(cls, ds, node):
@@ -72,15 +76,7 @@ class DataView(View):
 
     def to_json(self):
         sdict = super(DataView, self).to_json(self)
-
-        sdict.update(dict(
-            data=dnames, 
-            cmap=self.cmap, 
-            vmin=self.vmin, 
-            vmax=self.vmax, 
-            desc=self.description, 
-            state=self.state, 
-            attrs=self.attrs))
+        sdict.update(dict(desc=self.description))
         return sdict
 
     def __iter__(self):
@@ -110,22 +106,6 @@ class DataView(View):
 
     def _write_hdf(self, h5, name="data"):
         #Must support 3 optional layers of stacking
-        if isinstance(self.data, BrainData):
-            dnode = self.data._write_hdf(h5)
-            nname = [dnode.name]
-        else:
-            nname = []
-            for data in self.data:
-                if isinstance(data, BrainData):
-                    dnode = data._write_hdf(h5)
-                    nname.append(dnode.name)
-                else:
-                    dnames = []
-                    for d in data:
-                        dnode = d._write_hdf(h5)
-                        dnames.append(dnode.name)
-                    nname.append(dnames)
-
         views = h5.require_group("/views")
         view = views.require_dataset(name, (8,), h5py.special_dtype(vlen=str))
         view[0] = json.dumps(nname)
@@ -145,9 +125,10 @@ class MultiView(View):
         raise NotImplementedError
 
 class Volume(DataView, VolumeData):
-    def __init__(self, data, subject, xfmname, cmap=None, vmin=None, vmax=None, description="", **kwargs):
-        super(Volume, self).__init__(data, subject, xfmname, cmap=cmap, vmin=vmin, vmax=vmax, 
-            description=description, **kwargs)
+    def __init__(self, data, subject, xfmname, mask=None, 
+        cmap=None, vmin=None, vmax=None, description="", **kwargs):
+        super(Volume, self).__init__(data, subject, xfmname, mask=mask, 
+            cmap=cmap, vmin=vmin, vmax=vmax, description=description, **kwargs)
 
 class Vertex(DataView, VertexData):
     def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
@@ -155,10 +136,7 @@ class Vertex(DataView, VertexData):
             description=description, **kwargs)
 
 class RGBVolume(DataView):
-    def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description="", **kwargs):
-        if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
-            raise TypeError("RGBViews does not have colormap options")
-
+    def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description=""):
         if isinstance(red, VolumeData):
             if not isinstance(green, VolumeData) or red.subject != green.subject:
                 raise TypeError("Invalid data for green channel")
@@ -175,14 +153,14 @@ class RGBVolume(DataView):
             self.blue = Volume(blue, subject, xfmname)
 
         self.alpha = alpha
-
-        super(RGBVolume, self).__init__(description=description, **kwargs)
+        self.description = self.description
 
     @property
     def volume(self):
-        alpha = self.alpha
         if self.alpha is None:
             alpha = np.ones_like(red)
+        if not isinstance(self.alpha, Volume):
+            alpha = Volume(alpha, self.subject, self.xfmname)
 
         volume = []
         for dv in (self.red, self.green, self.blue, alpha):
@@ -198,10 +176,7 @@ class RGBVolume(DataView):
         return np.array(volume).transpose([1, 2, 3, 4, 0])
 
 class RGBVertex(DataView):
-    def __init__(self, red, green, blue, subject=None, alpha=None, description="", **kwargs):
-        if "cmap" in kwargs or "vmin" in kwargs or "vmax" in kwargs:
-            raise TypeError("RGBViews does not have colormap options")
-
+    def __init__(self, red, green, blue, subject=None, alpha=None, description=""):
         if isinstance(red, VertexData):
             if not isinstance(green, VertexData) or red.subject != green.subject:
                 raise TypeError("Invalid data for green channel")
@@ -213,32 +188,23 @@ class RGBVertex(DataView):
         else:
             if subject is None:
                 raise TypeError("Subject name is required")
-            self.red = VertexData(red, xfmname)
-            self.green = VertexData(green, xfmname)
-            self.blue = VertexData(blue, xfmname)
+            self.red = Vertex(red, subject)
+            self.green = Vertex(green, subject)
+            self.blue = Vertex(blue, subject)
 
-        if alpha is None:
-            self.alpha = VertexData()
-
-        #Normalize the RGB channels to be between 0 and 255
-        for dv in (self.red, self.green, self.blue, alpha):
-            if self.red.data.dtype != np.uint8:
-                if dv.min() < 0:
-                    dv -= dv.min()
-                if dv.max() > 1:
-                    dv /= dv.max()
-
-        super(RGBVertex, self).__init__(description=description, **kwargs)
+        self.alpha = alpha
+        self.description = description
 
     @property
-    def volume(self):
-        alpha = self.alpha
+    def vertices(self):
         if self.alpha is None:
             alpha = np.ones_like(red)
+        if not isinstance(self.alpha, Vertex):
+            alpha = Vertex(self.alpha, self.subject)
 
         volume = []
         for dv in (self.red, self.green, self.blue, alpha):
-            vol = dv.volume
+            vol = np.atleast_2d(dv.data)
             if vol.dtype != np.uint8:
                 if vol.min() < 0:
                     vol -= vol.min()
@@ -250,16 +216,38 @@ class RGBVertex(DataView):
         return np.array(volume).transpose([1, 2, 0])
 
 class TwoDVolume(View):
-    def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", vmin2=None, vmax2=None, **kwargs):
-        self.vmin2 = vmin2
-        self.vmax2 = vmax2
+    def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", cmap=None,
+        vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
+        if isinstance(dim1, VolumeData):
+            if subject is not None or xfmname is not None:
+                raise TypeError("Subject and xfmname cannot be specified with Volumes")
+            if not isinstance(dim2, VolumeData) or dim2.subject != dim1.subject:
+                raise TypeError("Invalid data for second dimension")
+            self.dim1 = dim1
+            self.dim2 = dim2
+        else:
+            self.dim1 = Volume(dim1, subject, xfmname)
+            self.dim2 = Volume(dim2, subject, xfmname)
 
-        super(TwoDVolume, self).__init__(description=description, **kwargs)
+        self.vmin2 = vmin2 if vmin2 is not None else vmin
+        self.vmax2 = vmax2 if vmax2 is not None else vmax
+
+        super(TwoDVolume, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
 
 class TwoDVertex(View):
-    def __init__(self, dim1, dim2, subject=None, description="", vmin2=None, vmax2=None, **kwargs):
-        self.dim1 = normalize(dim1)
-        self.dim2 = normalize(dim2)
+    def __init__(self, dim1, dim2, subject=None, description="", cmap=None,
+        vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
+        if isinstance(dim1, VertexData):
+            if subject is not None:
+                raise TypeError("Subject cannot be specified with Volumes")
+            if not isinstance(dim2, VertexData) or dim2.subject != dim1.subject:
+                raise TypeError("Invalid data for second dimension")
+            self.dim1 = dim1
+            self.dim2 = dim2
+        else:
+            self.dim1 = Vertex(dim1, subject)
+            self.dim2 = Vertex(dim2, subject)
+
         self.vmin2 = vmin2
         self.vmax2 = vmax2
-        super(TwoDVertex, self).__init__(description=description, **kwargs)
+        super(TwoDVertex, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)

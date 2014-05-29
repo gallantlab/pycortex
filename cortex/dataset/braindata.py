@@ -6,7 +6,6 @@ from ..database import db
 
 class BrainData(object):
     def __init__(self, data, **kwargs):
-        super(BrainData, self).__init__(**kwargs)
         if isinstance(data, str):
             import nibabel
             nib = nibabel.load(data)
@@ -260,17 +259,8 @@ class VertexData(BrainData):
         be in 'movie' or 'raw' format. See __init__ for `data` shape possibilities.
         """
         self._data = data
-        
-        self.movie = False
-        self.raw = data.dtype == np.uint8
-        if data.ndim == 3:
-            self.movie = True
-            if not self.raw:
-                raise ValueError('Invalid data shape')
-        elif data.ndim == 2:
-            self.movie = not self.raw
-
-        self.nverts = self.data.shape[-2 if self.raw else -1]
+        self.movie = data.ndims > 1
+        self.nverts = self.data.shape[-1]
         if self.llen == self.nverts:
             # Just data for left hemisphere
             self.hem = "left"
@@ -306,9 +296,6 @@ class VertexData(BrainData):
 
         return newvd
 
-    def _check_size(self):
-        raise NotImplementedError
-
     def volume(self, xfmname, projection='nearest', **kwargs):
         import warnings
         warnings.warn('Inverse mapping cannot be accurate')
@@ -332,25 +319,18 @@ class VertexData(BrainData):
         return self.copy(self.data[idx])
 
     @property
-    def vertices(self):
-        if self.raw and self.data.shape[-1] < 4:
-            shape = (1,)+self.data.shape[::-1][1:]
-            return np.vstack([self.data.T, 255*np.ones(shape, dtype=np.uint8)]).T
-        return self.data
-
-    @property
     def left(self):
         if self.movie:
-            return self.vertices[:,:self.llen]
+            return self.data[:,:self.llen]
         else:
-            return self.vertices[:self.llen]
+            return self.data[:self.llen]
 
     @property
     def right(self):
         if self.movie:
-            return self.vertices[:,self.llen:]
+            return self.data[:,self.llen:]
         else:
-            return self.vertices[self.llen:]
+            return self.data[self.llen:]
 
 def _find_mask(nvox, subject, xfmname):
     import os
