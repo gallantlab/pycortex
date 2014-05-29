@@ -1,6 +1,7 @@
 import os
 import glob
 import json
+import Queue
 import shutil
 import random
 import functools
@@ -196,8 +197,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
 
-    post_lock = threading.Lock()
-    post_name = None
+    post_name = Queue.Queue()
 
     if pickerfun is None:
         pickerfun = lambda a,b: None
@@ -260,8 +260,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
         def post(self):
             data = self.get_argument("svg", default=None)
             png = self.get_argument("png", default=None)
-            post_lock.acquire()
-            with open(post_name, "wb") as svgfile:
+            with open(post_name.get(), "wb") as svgfile:
                 if png is not None:
                     data = png[22:].strip()
                     try:
@@ -270,7 +269,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
                         print("Error writing image!")
                         data = png
                 svgfile.write(data)
-            post_lock.release()
 
     class JSMixer(serve.JSProxy):
         def _setView(self,**kwargs):
@@ -371,9 +369,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
             """
             if not size is None:
                 self.resize(*size)
-            post_lock.acquire()
-            post_name = filename
-            post_lock.release()
+            post_name.put(filename)
 
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
             return Proxy("mixer.html")
