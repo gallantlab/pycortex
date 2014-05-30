@@ -44,10 +44,9 @@ class View(object):
         return dict(cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state, attrs=self.attrs)
 
 class DataView(View):
-    def __init__(self, description="", *args, **kwargs):
-        super(DataView, self).__init__(*args, **kwargs)
+    def __init__(self, description="", **kwargs):
+        super(DataView, self).__init__(**kwargs)
         self.description = description
-
         if self.__class__ == DataView:
             raise TypeError('Cannot directly instantiate DataView objects')
 
@@ -124,13 +123,13 @@ class MultiView(View):
                 raise TypeError("Must be a View object!")
         raise NotImplementedError
 
-class Volume(DataView, VolumeData):
+class Volume(VolumeData, DataView):
     def __init__(self, data, subject, xfmname, mask=None, 
         cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Volume, self).__init__(data, subject, xfmname, mask=mask, 
             cmap=cmap, vmin=vmin, vmax=vmax, description=description, **kwargs)
 
-class Vertex(DataView, VertexData):
+class Vertex(VertexData, DataView):
     def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
             description=description, **kwargs)
@@ -215,7 +214,7 @@ class RGBVertex(DataView):
 
         return np.array(volume).transpose([1, 2, 0])
 
-class TwoDVolume(View):
+class TwoDVolume(DataView):
     def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", cmap=None,
         vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
         if isinstance(dim1, VolumeData):
@@ -234,7 +233,7 @@ class TwoDVolume(View):
 
         super(TwoDVolume, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
 
-class TwoDVertex(View):
+class TwoDVertex(DataView):
     def __init__(self, dim1, dim2, subject=None, description="", cmap=None,
         vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
         if isinstance(dim1, VertexData):
