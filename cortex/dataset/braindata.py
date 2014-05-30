@@ -315,6 +315,13 @@ class VertexData(BrainData):
         return self.copy(self.data[idx])
 
     @property
+    def vertices(self):
+        verts = self.data
+        if not self.movie:
+            verts = verts[np.newaxis]
+        return verts
+
+    @property
     def left(self):
         if self.movie:
             return self.data[:,:self.llen]

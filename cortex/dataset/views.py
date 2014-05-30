@@ -201,18 +201,18 @@ class RGBVertex(DataView):
         if not isinstance(self.alpha, Vertex):
             alpha = Vertex(self.alpha, self.subject)
 
-        volume = []
+        verts = []
         for dv in (self.red, self.green, self.blue, alpha):
-            vol = np.atleast_2d(dv.data)
-            if vol.dtype != np.uint8:
-                if vol.min() < 0:
-                    vol -= vol.min()
-                if vol.max() > 1:
-                    vol /= vol.max()
-                vol = (vol * 255).astype(np.uint8)
-            volume.append(vol)
+            vert = dv.vertices
+            if vert.dtype != np.uint8:
+                if vert.min() < 0:
+                    vert -= vert.min()
+                if vert.max() > 1:
+                    vert /= vert.max()
+                vert = (vert * 255).astype(np.uint8)
+            verts.append(vert)
 
-        return np.array(volume).transpose([1, 2, 0])
+        return np.array(verts).transpose([1, 2, 0])
 
 class TwoDVolume(DataView):
     def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", cmap=None,
