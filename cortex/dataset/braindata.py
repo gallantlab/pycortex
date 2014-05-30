@@ -5,12 +5,18 @@ import h5py
 from ..database import db
 
 class BrainData(object):
-    def __init__(self, data, **kwargs):
+    def __init__(self, data, subject, **kwargs):
         if isinstance(data, str):
             import nibabel
             nib = nibabel.load(data)
             data = nib.get_data().T
         self._data = data
+        try:
+            basestring
+        except NameError:
+            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
+        self.subject = subject
+        super(BrainData, self).__init__(**kwargs)
 
     @property
     def data(self):
@@ -48,21 +54,14 @@ class BrainData(object):
         node.attrs['subject'] = self.subject
         return node
 
-    @staticmethod
-    def from_hdf(dataset, node):
-        subj = node.attrs['subject']
-        if "xfmname" in node.attrs:
-            xfmname = node.attrs['xfmname']
-            mask = None
-            if "mask" in node.attrs:
-                try:
-                    db.get_mask(subj, xfmname, node.attrs['mask'])
-                    mask = node.attrs['mask']
-                except IOError:
-                    mask = dataset.get_mask(subj, xfmname, node.attrs['mask'])
-            return VolumeData(node, subj, xfmname, mask=mask)
-        else:
-            return VertexData(node, subj)
+    def to_json(self):
+        sdict = dict(name=self.name, 
+                subject=self.subject,
+                min=float(self.data.min()), 
+                max=float(self.data.max()),
+                shape=self.shape)
+        sdict.update(super(BrainData, self).to_json())
+        return sdict
 
     @classmethod
     def add_numpy_methods(cls):
@@ -95,39 +94,23 @@ class VolumeData(BrainData):
         linear movie: (t, v)
         linear image: (v,)
         """
-        super(VolumeData, self).__init__(data, **kwargs)
+        if self.__class__ == VolumeData:
+            raise TypeError('Cannot directly instantiate VolumeData objects')
+        super(VolumeData, self).__init__(data, subject, **kwargs)
         try:
             basestring
         except NameError:
-            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
             xfmname = xfmname if isinstance(xfmname, str) else xfmname.decode('utf-8')
-        self.subject = subject
         self.xfmname = xfmname
 
         self._check_size(mask)
         self.masked = _masker(self)
 
-        if self.__class__ == VolumeData:
-            raise TypeError('Cannot directly instantiate VolumeData objects')
-
-    def copy(self, data=None):
-        """Copies this VolumeData.
-        """
-        if data is None:
-            data = self.data
-        return self.__class__(data, self.subject, self.xfmname, mask=self._mask)
-
     def to_json(self):
         xfm = db.get_xfm(self.subject, self.xfmname, 'coord').xfm
-        return dict(
-            data=self.name,
-            subject=self.subject, 
-            xfm=list(np.array(xfm).ravel()),
-            movie=self.movie,
-            shape=self.shape,
-            min=float(self.data.min()),
-            max=float(self.data.max()),
-        )
+        sdict = dict(xfm=list(np.array(xfm).ravel()))
+        sdict.update(super(VolumeData, self).to_json())
+        return sdict
 
     def _check_size(self, mask):
         if self.data.ndim not in (1, 2, 3, 4):
@@ -178,6 +161,9 @@ class VolumeData(BrainData):
             maskstr += " movie"
         maskstr = maskstr[0].upper()+maskstr[1:]
         return "<%s data for (%s, %s)>"%(maskstr, self.subject, self.xfmname)
+
+    def copy(self, data):
+        return super(VolumeData, self).copy(data, self.subject, self.xfmname)
 
     @property
     def volume(self):
@@ -237,20 +223,18 @@ class VertexData(BrainData):
         where t is the number of time points, c is colors (i.e. RGB), and v is the
         number of vertices (either in both hemispheres or one hemisphere).
         """
-        super(VertexData, self).__init__(**kwargs)
-        try:
-            basestring
-        except NameError:
-            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
-        self.subject = subject
+        if self.__class__ == VertexData:
+            raise TypeError('Cannot directly instantiate VertexData objects')
 
         left, right = db.get_surf(self.subject, "fiducial")
         self.llen = len(left[0])
         self.rlen = len(right[0])
         self._set_data(data)
-
-        if self.__class__ == VertexData:
-            raise TypeError('Cannot directly instantiate VertexData objects')
+        try:
+            basestring
+        except NameError:
+            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
+        self.subject = subject
 
     def _set_data(self, data):
         """Stores data for this VertexData. Also sets flags if `data` appears to
@@ -353,19 +337,19 @@ def _find_mask(nvox, subject, xfmname):
 
 
 class _masker(object):
-    def __init__(self, ds):
-        self.ds = ds
+    def __init__(self, dv):
+        self.dv = dv
 
         self.data = None
-        if ds.linear:
-            self.data = ds.data
+        if dv.linear:
+            self.data = dv.data
 
     def __getitem__(self, masktype):
-        s, x = self.ds.subject, self.ds.xfmname
+        s, x = self.dv.subject, self.dv.xfmname
         mask = db.get_mask(s, x, masktype)
-        if self.ds.movie:
-            return VolumeData(self.ds.volume[:,mask], s, x, mask=masktype)
-        return VolumeData(self.ds.volume[mask], s, x, mask=masktype)
+        if self.dv.movie:
+            return self.dv.copy(self.dv.volume[:,mask], s, x, mask=masktype)
+        return self.dv.copy(self.dv.volume[mask], s, x, mask=masktype)
 
 def _hash(array):
     '''A simple numpy hash function'''

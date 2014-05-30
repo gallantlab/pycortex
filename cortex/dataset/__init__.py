@@ -23,7 +23,7 @@ from ..database import db
 from ..xfm import Transform
 
 from .braindata import BrainData, VertexData, VolumeData, _hdf_write
-from .views import View, Volume, Vertex, RGBVolume, RGBVertex, TwoDVolume, TwoDVertex
+from .views import Volume, Vertex, RGBVolume, RGBVertex, TwoDVolume, TwoDVertex
 
 class Dataset(object):
     def __init__(self, **kwargs):
@@ -36,7 +36,7 @@ class Dataset(object):
         for name, data in kwargs.items():
             norm = normalize(data)
 
-            if isinstance(norm, View):
+            if isinstance(norm, DataView):
                 self.views[name] = norm
             elif isinstance(norm, BrainData):
                 self.views[name] = DataView(norm)

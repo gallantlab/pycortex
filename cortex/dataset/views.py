@@ -21,9 +21,11 @@ def normalize(data):
     else:
         raise TypeError("Invalid input for DataView")
 
-class View(object):
-    def __init__(self, cmap=None, vmin=None, vmax=None, state=None, **kwargs):
-        super(View, self).__init__(**kwargs)
+class DataView(object):
+    def __init__(self, cmap=None, vmin=None, vmax=None, description="", state=None, **kwargs):
+        if self.__class__ == DataView:
+            raise TypeError('Cannot directly instantiate DataView objects')
+
         self.cmap = cmap if cmap is not None else default_cmap
         self.vmin = vmin
         self.vmax = vmax
@@ -31,6 +33,16 @@ class View(object):
         self.attrs = kwargs
         if 'priority' not in self.attrs:
             self.attrs['priority'] = 1
+        self.description = description
+
+    def copy(self, *args):
+        return self.__class__(*args, 
+            cmap=self.cmap, 
+            vmin=self.vmin, 
+            vmax=self.vmax, 
+            description=self.description, 
+            state=self.state, 
+            **self.attrs)
 
     @property
     def priority(self):
@@ -39,16 +51,6 @@ class View(object):
     @priority.setter
     def priority(self, value):
         self.attrs['priority'] = value
-
-    def to_json(self):
-        return dict(cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state, attrs=self.attrs)
-
-class DataView(View):
-    def __init__(self, description="", **kwargs):
-        super(DataView, self).__init__(**kwargs)
-        self.description = description
-        if self.__class__ == DataView:
-            raise TypeError('Cannot directly instantiate DataView objects')
 
     @classmethod
     def from_hdf(cls, ds, node):
@@ -74,9 +76,13 @@ class DataView(View):
         return cls(data, cmap=cmap, vmin=vmin, vmax=vmax, description=desc, **attrs)
 
     def to_json(self):
-        sdict = super(DataView, self).to_json(self)
-        sdict.update(dict(desc=self.description))
-        return sdict
+        return dict(
+            cmap=self.cmap, 
+            vmin=self.vmin, 
+            vmax=self.vmax, 
+            state=self.state, 
+            attrs=self.attrs, 
+            desc=self.description)
 
     def __iter__(self):
         if isinstance(self.data, BrainData):
@@ -89,19 +95,22 @@ class DataView(View):
                     for d in data:
                         yield d
 
-    def view(self, cmap=None, vmin=None, vmax=None, state=None, **kwargs):
-        """Generate a new view on the contained data. Any variable that is not 
-        None will be updated"""
-        cmap = self.cmap if cmap is None else cmap
-        vmin = self.vmin if vmin is None else vmin
-        vmax = self.vmax if vmax is None else vmax
-        state = self.state if state is None else state
+    @staticmethod
+    def from_hdf(dataset, node):
+        subj = node.attrs['subject']
+        if "xfmname" in node.attrs:
+            xfmname = node.attrs['xfmname']
+            mask = None
+            if "mask" in node.attrs:
+                try:
+                    db.get_mask(subj, xfmname, node.attrs['mask'])
+                    mask = node.attrs['mask']
+                except IOError:
+                    mask = dataset.get_mask(subj, xfmname, node.attrs['mask'])
+            return Volume(node, subj, xfmname, mask=mask)
+        else:
+            return Vertex(node, subj)
 
-        for key, value in self.attrs.items():
-            if key not in kwargs:
-                kwargs[key] = value
-
-        return DataView(self.data, cmap=cmap, vmin=vmin, vmax=vmax, state=state, **kwargs)
 
     def _write_hdf(self, h5, name="data"):
         #Must support 3 optional layers of stacking
@@ -116,10 +125,10 @@ class DataView(View):
         view[6] = json.dumps(self.attrs)
         return view
 
-class MultiView(View):
+class MultiView(DataView):
     def __init__(self, views, description=""):
         for view in views:
-            if not isinstance(view, View):
+            if not isinstance(view, DataView):
                 raise TypeError("Must be a View object!")
         raise NotImplementedError
 
