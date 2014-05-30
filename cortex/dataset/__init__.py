@@ -23,7 +23,7 @@ from ..database import db
 from ..xfm import Transform
 
 from .braindata import BrainData, VertexData, VolumeData, _hdf_write
-from .views import View, Volume, Vertex, RGBVolume, RGBVertex
+from .views import View, Volume, Vertex, RGBVolume, RGBVertex, TwoDVolume, TwoDVertex
 
 class Dataset(object):
     def __init__(self, **kwargs):

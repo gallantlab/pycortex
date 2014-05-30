@@ -89,7 +89,7 @@ BrainData.add_numpy_methods()
 
 class VolumeData(BrainData):
     def __init__(self, data, subject, xfmname, mask=None, **kwargs):
-        """Three possible variables: raw, volume, movie, vertex. Enumerated with size:
+        """Three possible variables: volume, movie, vertex. Enumerated with size:
         volume movie: (t, z, y, x)
         volume image: (z, y, x)
         linear movie: (t, v)
@@ -135,8 +135,6 @@ class VolumeData(BrainData):
         
         self.linear = self.data.ndim in (1, 2)
         self.movie = self.data.ndim in (2, 4)
-        if self.data.ndim in (1, 3):
-            self.data = self.data[np.newaxis]
 
         if self.linear:
             #Guess the mask
@@ -305,8 +303,6 @@ class VertexData(BrainData):
 
     def __repr__(self):
         maskstr = ''
-        if self.raw:
-            maskstr += " raw"
         if self.movie:
             maskstr += " movie"
         return "<%s vertex data for %s>"%(maskstr, self.subject)

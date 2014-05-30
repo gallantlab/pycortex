@@ -1,4 +1,4 @@
-from .dataset import Dataset, Volume, Vertex, RGBVolume, RGBVertex, View
+from .dataset import Dataset, Volume, Vertex, RGBVolume, RGBVertex, TwoDVolume, TwoDVertex, View
 from . import align, volume, quickflat, webgl, segment, options
 from .database import db
 from .utils import *
