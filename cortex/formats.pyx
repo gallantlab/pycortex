@@ -36,7 +36,9 @@ def read_off(str filename):
 
 def read_npz(str filename):
     npz = np.load(filename)
-    return npz['pts'], npz['polys']
+    pts, polys = npz['pts'], npz['polys']
+    npz.close()
+    return pts, polys
 
 def read_gii(str filename):
     from nibabel import gifti
