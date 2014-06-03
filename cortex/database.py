@@ -14,11 +14,27 @@ import json
 import shutil
 import warnings
 import tempfile
+import functools
 import numpy as np
+from hashlib import sha1
 
 from . import options
 
 default_filestore = options.config.get('basic', 'filestore')
+
+def _memo(fn):
+    @functools.wraps(fn)
+    def memofn(self, *args, **kwargs):
+        if not hasattr(self, "_memocache"):
+            #self._memocache = dict()
+            setattr(self, "_memocache", dict())
+        #h = sha1(str((id(fn), args, kwargs))).hexdigest()
+        h = str((id(fn), args, kwargs))
+        if h not in self._memocache:
+            self._memocache[h] = fn(self, *args, **kwargs)
+        return self._memocache[h]
+
+    return memofn
 
 class SubjectDB(object):
     def __init__(self, subj, filestore=default_filestore):
@@ -398,6 +414,7 @@ class Database(object):
         xfmdict = json.load(open(fname))
         return Transform(xfmdict[xfmtype], reference)
 
+    @_memo
     def get_surf(self, subject, type, hemisphere="both", merge=False, nudge=False):
         '''Return the surface pair for the given subject, surface type, and hemisphere.
 

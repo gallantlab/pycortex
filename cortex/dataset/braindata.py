@@ -255,6 +255,15 @@ class VolumeData(BrainData):
 
         return node
 
+    def save_nii(self, filename):
+        """Save as a nifti file at the given filename. Nifti headers are
+        copied from the reference nifti file.
+        """
+        xfm = db.get_xfm(self.subject, self.xfmname)
+        affine = xfm.reference.get_affine()
+        import nibabel
+        new_nii = nibabel.Nifti1Image(self.volume.T, affine)
+        nibabel.save(new_nii, filename)
 
 class VertexData(VolumeData):
     def __init__(self, data, subject):
@@ -265,6 +274,7 @@ class VertexData(VolumeData):
         reg linear movie: (t, v)
         raw linear image: (v, c)
         reg linear image: (v,)
+        None: creates zero-filled VertexData
 
         where t is the number of time points, c is colors (i.e. RGB), and v is the
         number of vertices (either in both hemispheres or one hemisphere).
@@ -284,6 +294,9 @@ class VertexData(VolumeData):
         """Stores data for this VertexData. Also sets flags if `data` appears to
         be in 'movie' or 'raw' format. See __init__ for `data` shape possibilities.
         """
+        if data is None:
+            data = np.zeros((self.llen + self.rlen,))
+        
         self._data = data
         
         self.movie = False

@@ -12,7 +12,7 @@ def _memo(fn):
     dozens of times.
     """
     @functools.wraps(fn)
-    def memofn(self):
+    def memofn(self, *args, **kwargs):
         if id(fn) not in self._cache:
             self._cache[id(fn)] = fn(self)
         return self._cache[id(fn)]
