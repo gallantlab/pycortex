@@ -46,8 +46,8 @@ class BrainData(object):
             name = self.name
 
         dgrp = h5.require_group("/data")
-        if name in dgrp:
-            #don't need to update anything, since it's saved already
+        if name in dgrp and "__%s"%_hash(dgrp[name].value)[:16] == name:
+            #don't need to update anything, since it's the same data
             return h5.get("/data/%s"%name)
 
         node = _hdf_write(h5, self.data, name=name)
@@ -195,8 +195,7 @@ class VolumeData(BrainData):
 
     def _write_hdf(self, h5, name=None):
         node = super(VolumeData, self)._write_hdf(h5, name=name)
-        node.attrs['xfmname'] = self.xfmname
-
+        
         #write the mask into the file, as necessary
         if self._mask is not None:
             mask = self._mask

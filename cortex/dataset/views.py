@@ -52,29 +52,6 @@ class DataView(object):
     def priority(self, value):
         self.attrs['priority'] = value
 
-    @classmethod
-    def from_hdf(cls, ds, node):
-        data = []
-        for name in json.loads(node[0]):
-            if isinstance(name, list):
-                d = []
-                for n in name:
-                    bd = BrainData.from_hdf(ds, node.file.get(n))
-                    d.append(bd)
-                data.append(d)
-            else:
-                bd = BrainData.from_hdf(ds, node.file.get(name))
-                data.append(bd)
-        if len(data) < 2 and isinstance(data[0], BrainData):
-            data = data[0]
-        desc = node[1]
-        cmap = node[2]
-        vmin = json.loads(node[3])
-        vmax = json.loads(node[4])
-        state = json.loads(node[5])
-        attrs = json.loads(node[6])
-        return cls(data, cmap=cmap, vmin=vmin, vmax=vmax, description=desc, **attrs)
-
     def to_json(self):
         return dict(
             cmap=self.cmap, 
@@ -94,9 +71,14 @@ class DataView(object):
                 else:
                     for d in data:
                         yield d
-
     @staticmethod
-    def from_hdf(dataset, node):
+    def from_hdf(ds, node):
+        data, desc, cmap = node[:3]
+        vmin = json.loads(node[3])
+        vmax = json.loads(node[4])
+        state = json.loads(node[5])
+        attrs = json.loads(node[6])
+
         subj = node.attrs['subject']
         if "xfmname" in node.attrs:
             xfmname = node.attrs['xfmname']
@@ -111,19 +93,19 @@ class DataView(object):
         else:
             return Vertex(node, subj)
 
-
-    def _write_hdf(self, h5, name="data"):
-        #Must support 3 optional layers of stacking
-        views = h5.require_group("/views")
-        view = views.require_dataset(name, (8,), h5py.special_dtype(vlen=str))
-        view[0] = json.dumps(nname)
-        view[1] = self.description
-        view[2] = self.cmap
-        view[3] = json.dumps(self.vmin)
-        view[4] = json.dumps(self.vmax)
-        view[5] = json.dumps(self.state)
-        view[6] = json.dumps(self.attrs)
-        return view
+    def _write_hdf(self, h5, name="data", writeview=True):
+        datanode = super(DataView, self)._write_hdf(h5)
+        if writeview:
+            views = h5.require_group("/views")
+            view = views.require_dataset(name, (8,), h5py.special_dtype(vlen=str))
+            view[1] = self.description
+            view[2] = self.cmap
+            view[3] = json.dumps(self.vmin)
+            view[4] = json.dumps(self.vmax)
+            view[5] = json.dumps(self.state)
+            view[6] = json.dumps(self.attrs)
+            return view
+        return datanode
 
 class MultiView(DataView):
     def __init__(self, views, description=""):
@@ -137,11 +119,18 @@ class Volume(VolumeData, DataView):
         cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Volume, self).__init__(data, subject, xfmname, mask=mask, 
             cmap=cmap, vmin=vmin, vmax=vmax, description=description, **kwargs)
+        self.attrs['xfmname'] = xfmname
+
+    def copy(self, data):
+        return super(Volume, self).copy(data, self.subject, self.xfmname)
 
 class Vertex(VertexData, DataView):
     def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
             description=description, **kwargs)
+
+    def copy(self, data):
+        return super(Vertex, self).copy(data, self.subject)
 
 class RGBVolume(DataView):
     def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description=""):
@@ -252,6 +241,7 @@ class TwoDVertex(DataView):
                 raise TypeError("Invalid data for second dimension")
             self.dim1 = dim1
             self.dim2 = dim2
+            
         else:
             self.dim1 = Vertex(dim1, subject)
             self.dim2 = Vertex(dim2, subject)
