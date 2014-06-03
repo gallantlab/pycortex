@@ -112,6 +112,18 @@ class VolumeData(BrainData):
         sdict.update(super(VolumeData, self).to_json())
         return sdict
 
+    @classmethod
+    def empty(cls, subject, xfmname, **kwargs):
+        xfm = db.get_xfm(subject, xfmname)
+        shape = xfm.shape
+        return cls(np.zeros(shape), subject, xfmname, **kwargs)
+
+    @classmethod
+    def random(cls, subject, xfmname, **kwargs):
+        xfm = db.get_xfm(subject, xfmname)
+        shape = xfm.shape
+        return cls(np.random.randn(*shape), subject, xfmname, **kwargs)
+
     def _check_size(self, mask):
         if self.data.ndim not in (1, 2, 3, 4):
             raise ValueError("Invalid data shape")
@@ -259,6 +271,9 @@ class VertexData(BrainData):
             self.hem = "both"
         else:
             raise ValueError('Invalid number of vertices for subject (given %d, should be %d for left hem, %d for right hem, or %d for both)' % (self.nverts, self.llen, self.rlen, self.llen+self.rlen))
+
+    def copy(self, data):
+        return super(Vertex, self).copy(data, self.subject)
 
     def copy(self, data=None):
         """Copies this VertexData. Uses __new__ to avoid expensive initialization that

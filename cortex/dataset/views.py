@@ -11,6 +11,8 @@ default_cmap = options.config.get("basic", "default_cmap")
 def normalize(data):
     if isinstance(data, tuple):
         if len(data) == 3:
+            if data[0].dtype == np.uint8:
+                return RGBVolume(data[0][...,0], data[0][...,1], data[0][...,2], *data[1:])
             return Volume(*data)
         elif len(data) == 2:
             return Vertex(*data)
@@ -119,18 +121,11 @@ class Volume(VolumeData, DataView):
         cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Volume, self).__init__(data, subject, xfmname, mask=mask, 
             cmap=cmap, vmin=vmin, vmax=vmax, description=description, **kwargs)
-        self.attrs['xfmname'] = xfmname
-
-    def copy(self, data):
-        return super(Volume, self).copy(data, self.subject, self.xfmname)
 
 class Vertex(VertexData, DataView):
     def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
             description=description, **kwargs)
-
-    def copy(self, data):
-        return super(Vertex, self).copy(data, self.subject)
 
 class RGBVolume(DataView):
     def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description=""):
@@ -163,10 +158,17 @@ class RGBVolume(DataView):
         for dv in (self.red, self.green, self.blue, alpha):
             vol = dv.volume
             if vol.dtype != np.uint8:
-                if vol.min() < 0:
-                    vol -= vol.min()
-                if vol.max() > 1:
-                    vol /= vol.max()
+                if dv.vmin is None:
+                    if vol.min() < 0:
+                        vol -= vol.min()
+                else:
+                    vol -= dv.vmin()
+
+                if dv.vmax is None:
+                    if vol.max() > 1:
+                        vol /= vol.max()
+                else:
+                    vol /= dv.vmax
                 vol = (vol * 255).astype(np.uint8)
             volume.append(vol)
 
