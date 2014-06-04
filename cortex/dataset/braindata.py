@@ -275,23 +275,6 @@ class VertexData(BrainData):
     def copy(self, data):
         return super(Vertex, self).copy(data, self.subject)
 
-    def copy(self, data=None):
-        """Copies this VertexData. Uses __new__ to avoid expensive initialization that
-        involves loading the surface from disk. Can also be used to cheaply create a
-        new VertexData object for a subject with new `data`, if supplied.
-        """
-        newvd = self.__class__.__new__(self.__class__)
-        newvd.subject = self.subject
-        newvd.llen = self.llen
-        newvd.rlen = self.rlen
-        
-        if data is None:
-            newvd._set_data(self.data)
-        else:
-            newvd._set_data(data)
-
-        return newvd
-
     def volume(self, xfmname, projection='nearest', **kwargs):
         import warnings
         warnings.warn('Inverse mapping cannot be accurate')
@@ -300,9 +283,9 @@ class VertexData(BrainData):
         return mapper.backwards(self, **kwargs)
 
     def __repr__(self):
-        maskstr = ''
+        maskstr = ""
         if self.movie:
-            maskstr += " movie"
+            maskstr = "movie"
         return "<%s vertex data for %s>"%(maskstr, self.subject)
 
     def __getitem__(self, idx):
@@ -362,8 +345,8 @@ class _masker(object):
         s, x = self.dv.subject, self.dv.xfmname
         mask = db.get_mask(s, x, masktype)
         if self.dv.movie:
-            return self.dv.copy(self.dv.volume[:,mask], s, x, mask=masktype)
-        return self.dv.copy(self.dv.volume[mask], s, x, mask=masktype)
+            return self.dv.copy(self.dv.volume[:,mask])
+        return self.dv.copy(self.dv.volume[mask])
 
 def _hash(array):
     '''A simple numpy hash function'''
