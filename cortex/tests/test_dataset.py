@@ -11,11 +11,11 @@ def test_braindata():
 	tf = tempfile.TemporaryFile(suffix='.png')
 	mask = db.get_mask(subj, xfmname, "thick")
 
-	data = dataset.DataView((vol, subj, xfmname), cmap='RdBu_r', vmin=0, vmax=1)
+	data = dataset.Volume(vol, subj, xfmname, cmap='RdBu_r', vmin=0, vmax=1)
 	# quickflat.make_png(tf, data)
-	mdata = data.copy(data.data.masked['thick'])
-	assert len(mdata.data.data) == mask.sum()
-	assert np.allclose(mdata.data.volume[mask], mdata.data.data)
+	mdata = data.masked['thick']
+	assert len(mdata.data) == mask.sum()
+	assert np.allclose(mdata.volume[:, mask], mdata.data)
 
 def test_dataset():
 	vol = np.random.randn(31, 100, 100)

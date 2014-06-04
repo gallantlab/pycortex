@@ -23,7 +23,7 @@ from ..database import db
 from ..xfm import Transform
 
 from .braindata import BrainData, VertexData, VolumeData, _hdf_write
-from .views import Volume, Vertex, RGBVolume, RGBVertex, TwoDVolume, TwoDVertex
+from .views import Volume, Vertex, VolumeRGB, VertexRGB, Volume2D, Vertex2D
 
 class Dataset(object):
     def __init__(self, **kwargs):
@@ -112,8 +112,11 @@ class Dataset(object):
         """Return the set of unique BrainData objects contained by this dataset"""
         uniques = set()
         for name, view in self:
-            for data in view:
-                uniques.add(data)
+            if isinstance(view, (Vertex2D, Volume2D)):
+                uniques.add(view.dim1)
+                uniques.add(view.dim2)
+            else:
+                uniques.add(view)
 
         return uniques
 
@@ -125,7 +128,7 @@ class Dataset(object):
 
         for name, view in self.views.items():
             view._write_hdf(self.h5, name=name)
-
+            
         if pack:
             subjs = set()
             xfms = set()

@@ -344,9 +344,7 @@ class _masker(object):
     def __getitem__(self, masktype):
         s, x = self.dv.subject, self.dv.xfmname
         mask = db.get_mask(s, x, masktype)
-        if self.dv.movie:
-            return self.dv.copy(self.dv.volume[:,mask])
-        return self.dv.copy(self.dv.volume[mask])
+        return self.dv.copy(self.dv.volume[:,mask].squeeze())
 
 def _hash(array):
     '''A simple numpy hash function'''
