@@ -188,7 +188,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             zorder=3,
             origin='lower')
     if with_sulci:
-        roi = surfs.getOverlay(dataview.data.subject,otype='sulci',linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
+        roi = db.get_overlay(dataview.data.subject,otype='sulci',linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
         roitex = roi.get_texture(height, labels=with_labels)
         roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
