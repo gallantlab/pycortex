@@ -301,32 +301,34 @@ class Database(object):
             npz.close()
             return VertexData(verts, subject)
         return npz
-
-<<<<<<< HEAD:cortex/database.py
-    def get_overlay(self, subject, type='rois', **kwargs):
-        if type in ["rois","cutouts"]:
-            from . import svgroi
-            pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
-            try:
-                tf = self.auxfile.get_overlay(subject, type)
-                svgfile = tf.name
-            except (AttributeError, IOError):
-                svgfile = self.get_paths(subject)["rois"]
-                    
-=======
-    def getOverlay(self, subject, otype='rois', **kwargs):
+    # Version that WAS on master: (what happened to svgfile variable?)
+    ## -- Alternative start -- ##
+    # def get_overlay(self, subject, type='rois', **kwargs):
+    #     if type in ["rois","cutouts"]:
+    #         from . import svgroi
+    #         pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
+    #         try:
+    #             tf = self.auxfile.get_overlay(subject, type)
+    #             svgfile = tf.name
+    #         except (AttributeError, IOError):
+    #             svgfile = self.get_paths(subject)["rois"]
+    def get_overlay(self, subject, otype='rois', **kwargs):
         if otype in ["rois","cutouts","disp","sulci"]:
             from . import svgroi
-            pts, polys = self.getSurf(subject, "flat", merge=True, nudge=True)
-            svgfile = self.getFiles(subject)["rois"]
+            pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
+            svgfile = self.get_paths(subject)["rois"]
             if self.auxfile is not None:
                 try:
-                    tf = self.auxfile.getOverlay(subject, otype)
+                    tf = self.auxfile.get_overlay(subject, otype)
                     svgfile = tf.name
                 except (AttributeError, IOError):
+                    # NOTE: This is better error handling, but does not account for
+                    # case in which self.auxfile is None - when is that?? I (ML) think
+                    # it only comes up with new svg layer variants in extra_layers branch...
+                    # svgfile = self.get_paths(subject)["rois"]
                     # Layer type does not exist or has been temporarily removed
                     pass
->>>>>>> First steps to making sulcal / display layers on webgl viewer.:cortex/db.py
+            ## -- And alternative start -- ##
             if 'pts' in kwargs:
                 pts = kwargs['pts']
                 del kwargs['pts']
