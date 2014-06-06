@@ -4,6 +4,7 @@ import shlex
 import tempfile
 import subprocess as sp
 
+from pylab import *
 import numpy as np
 from scipy.spatial import cKDTree
 
@@ -11,6 +12,8 @@ from lxml import etree
 from lxml.builder import E
 
 from cortex.options import config
+
+from svgsplines import *
 
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
@@ -20,34 +23,35 @@ parser = etree.XMLParser(remove_blank_text=True, huge_tree=True)
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
 class ROIpack(object):
-    def __init__(self, tcoords, svgfile, valid, callback=None, 
+    def __init__(self, tcoords, svgfile, callback=None, 
         linewidth=None, linecolor=None, roifill=None, shadow=None,
-        labelsize=None, labelcolor=None):
+        labelsize=None, labelcolor=None,layer='rois'):
         if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
             tcoords -= tcoords.min(0)
             tcoords /= tcoords.max(0)
 
         self.tcoords = tcoords
         self.svgfile = svgfile
-        self.valid = valid
         self.callback = callback
         self.kdt = cKDTree(tcoords)
+        self.layer = layer 
 
-        self.linewidth = float(config.get("rois", "line_width")) if linewidth is None else linewidth
-        self.linecolor = tuple(map(float, config.get("rois", "line_color").split(','))) if linecolor is None else linecolor
-        self.roifill = tuple(map(float, config.get("rois", "fill_color").split(','))) if roifill is None else roifill
-        self.shadow = float(config.get("rois", "shadow")) if shadow is None else shadow
+        self.linewidth = float(config.get(self.layer, "line_width")) if linewidth is None else linewidth
+        self.linecolor = tuple(map(float, config.get(self.layer, "line_color").split(','))) if linecolor is None else linecolor
+        self.roifill = tuple(map(float, config.get(self.layer, "fill_color").split(','))) if roifill is None else roifill
+        self.shadow = float(config.get(self.layer, "shadow")) if shadow is None else shadow
         self.reload(size=labelsize, color=labelcolor)
 
     def reload(self, **kwargs):
         self.svg = scrub(self.svgfile)
+        self.svg = _strip_top_layers(self.svg,self.layer)
         w = float(self.svg.getroot().get("width"))
         h = float(self.svg.getroot().get("height"))
         self.svgshape = w, h
 
         #Set up the ROI dict
         self.rois = {}
-        for r in _find_layer(self.svg, "rois").findall("{%s}g"%svgns):
+        for r in _find_layer(self.svg, self.layer).findall("{%s}g"%svgns):
             roi = ROI(self, r)
             self.rois[roi.name] = roi
 
@@ -55,6 +59,7 @@ class ROIpack(object):
         #self.setup_labels(**kwargs)
 
     def add_roi(self, name, pngdata, add_path=True):
+        """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
         #self.svg deletes the images -- we want to save those, so let's load it again
         svg = etree.parse(self.svgfile)
         imglayer = _find_layer(svg, "data")
@@ -96,7 +101,7 @@ class ROIpack(object):
         except:
             print("cannot callback")
 
-    def get_svg(self, filename=None, labels=True, with_ims=None):
+    def get_svg(self, filename=None, labels=True, with_ims=None, **kwargs):
         """Returns an SVG with the included images."""
         if labels:
             if hasattr(self, "labels"):
@@ -110,10 +115,10 @@ class ROIpack(object):
         outsvg = copy.deepcopy(self.svg)
         if with_ims is not None:
             if isinstance(with_ims, (list, tuple)):
-                with_ims = enumerate(with_ims)
+                with_ims = zip(range(len(with_ims)), with_ims)
 
             datalayer = _make_layer(outsvg.getroot(), "data")
-            for name,im in reversed(with_ims):
+            for imnum,im in reversed(with_ims):
                 imlayer = _make_layer(datalayer, "image_%d" % imnum)
                 img = E.image(
                     {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%im},
@@ -176,8 +181,296 @@ class ROIpack(object):
 
     def get_ptidx(self):
         return dict([(name, roi.get_ptidx()) for name, roi in list(self.rois.items())])
+        
+    def get_roi(self, roiname, vinds):
+        import svgsplines
 
-    def get_roi(self, roiname):
+        path_strs = [list(_tokenize_path(path.attrib['d'])) 
+                     for path in self.rois[roiname].paths]
+        vts = (self.tcoords*self.svgshape).astype(float)
+        vts = vts[vinds,:] #temp, to delete
+        all_splines = []
+        COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
+        UPPERCASE = set('MZLHVCSQTA')
+
+        print 'started get_roi'
+
+        for path in path_strs:
+            path_splines = []
+            first_coord = array([0,0])
+            prev_coord = array([0,0])
+            
+            for path_ind in range(len(path)):
+                #if len(COMMANDS.intersection(path[path_ind])) > 0:
+                    #print path[path_ind].lower()
+
+                if path_ind == 0 and path[path_ind].lower() != 'm':
+                    raise ValueError('Unknown path format!')
+                
+                elif path[path_ind].lower() == 'm': 
+                    param_len = 2
+                    p_j = path_ind + 1 # temp index
+                    
+                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
+                        if path[path_ind] == 'M':
+                            prev_coord = array([float(path[p_j]),float(path[p_j+1])])
+                        else:
+                            prev_coord = prev_coord + array([float(path[p_j]),float(path[p_j+1])])
+
+                        if path_ind == 0:
+                            first_coord = prev_coord
+
+                        p_j += param_len
+                        
+                elif path[path_ind].lower() == 'z':
+                    #print first_coord
+                    path_splines.append(LineSpline(prev_coord, first_coord))
+                    #print path_splines[len(path_splines)-1].getSplineHash()
+                    #path_splines[len(path_splines)-1].plotSpline()
+                    show()
+                    prev_coord = first_coord
+                    
+                elif path[path_ind].lower() == 'l':
+                    param_len = 2
+                    p_j = path_ind + 1
+                    next_coord = array([0,0])
+                                       
+                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
+                        if path[path_ind] == 'L':
+                            next_coord = array([float(path[p_j]),float(path[p_j+1])])
+                        else:
+                            next_coord = prev_coord + array([float(path[p_j]),float(path[p_j+1])])
+                                       
+                        path_splines.append(LineSpline(prev_coord, next_coord))
+                        #print path_splines[len(path_splines)-1].getSplineHash()
+                        #path_splines[len(path_splines)-1].plotSpline()
+                        show()
+                        prev_coord = next_coord
+                        p_j += param_len
+
+                elif path[path_ind].lower() == 'h':
+                    param_len = 1
+                    p_j = path_ind + 1
+                    next_coord = array([0,0])
+                                       
+                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
+                        if path[path_ind] == 'H':
+                            next_coord = array([float(path[p_j]), prev_coord[1]])
+                        else:
+                            next_coord = prev_coord + array([float(path[p_j]), 0])
+                        
+                        path_splines.append(LineSpline(prev_coord, next_coord))
+                        #print path_splines[len(path_splines)-1].getSplineHash()
+                        #path_splines[len(path_splines)-1].plotSpline()
+                        show()
+                        prev_coord = next_coord
+                        p_j += param_len
+                
+                elif path[path_ind].lower() == 'v':
+                    param_len = 1
+                    p_j = path_ind + 1
+                    next_coord = array([0,0])
+
+                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
+                        if path[path_ind] == 'V':
+                            next_coord = array([prev_coord[0], float(path[p_j])])
+                        else:
+                            next_coord = prev_coord + array([0, float(path[p_j])]) 
+                        
+                        path_splines.append(LineSpline(prev_coord, next_coord))
+                        #print path_splines[len(path_splines)-1].getSplineHash()
+                        #path_splines[len(path_splines)-1].plotSpline()
+                        show()
+                        prev_coord = next_coord
+                        p_j += param_len
+                
+                elif path[path_ind].lower() == 'c':
+                    param_len = 6
+                    p_j = path_ind + 1
+                    ctl1_coord = array([0,0])
+                    ctl2_coord = array([0,0])
+                    end_coord = array([0,0])
+
+                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
+                        if path[path_ind] == 'C':
+                            ctl1_coord = array([float(path[p_j]), float(path[p_j+1])])
+                            ctl2_coord = array([float(path[p_j+2]), float(path[p_j+3])])
+                            end_coord = array([float(path[p_j+4]), float(path[p_j+5])])
+                        else:
+                            ctl1_coord = prev_coord + array([float(path[p_j]), float(path[p_j+1])])
+                            ctl2_coord = ctl1_coord + array([float(path[p_j+2]), float(path[p_j+3])])
+                            end_coord = ctl2_coord + array([float(path[p_j+4]), float(path[p_j+5])])
+
+                        path_splines.append(CubBezSpline(prev_coord, ctl1_coord, ctl2_coord, end_coord))
+                        #print path_splines[len(path_splines)-1].getSplineHash()
+                        #path_splines[len(path_splines)-1].plotSpline()
+                        show()
+                        prev_coord = end_coord
+                        p_j += param_len
+                
+                elif path[path_ind].lower() == 's':
+                    param_len = 4
+                    p_j = path_ind + 1
+                    ctl1_coord = array([0,0])
+                    ctl2_coord = array([0,0])
+                    end_coord = array([0,0])
+
+                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
+                        ctl1_coord = prev_coord - path_splines[len(path_splines)-1].c2 + prev_coord
+
+                        if path[path_ind] == 'S':
+                            ctl2_coord = array([float(path[p_j]), float(path[p_j+1])])
+                            end_coord = array([float(path[p_j+2]), float(path[p_j+3])])
+                        else:
+                            ctl2_coord = ctl1_coord + array([float(path[p_j]), float(path[p_j+1])])
+                            end_coord = ctl2_coord + array([float(path[p_j+2]), float(path[p_j+3])])
+                        
+                        path_splines.append(CubBezSpline(prev_coord, ctl1_coord, ctl2_coord, end_coord))
+                        #print path_splines[len(path_splines)-1].getSplineHash()
+                        #path_splines[len(path_splines)-1].plotSpline()
+                        show()
+                        prev_coord = end_coord
+                        p_j += param_len
+
+                elif path[path_ind].lower() == 'q':
+                    param_len = 4
+                    p_j = path_ind + 1
+                    ctl_coord = array([0,0])
+                    end_coord = array([0,0])
+
+                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
+                        if path[path_ind] == 'Q':
+                            ctl_coord = array([float(path[p_j]), float(path[p_j+1])])
+                            end_coord = array([float(path[p_j+2]), float(path[p_j+3])])
+                        else:
+                            ctl_coord = prev_coord + array([float(path[p_j]), float(path[p_j+1])])
+                            end_coord = ctl_coord + array([float(path[p_j+2]), float(path[p_j+3])])
+                    
+                        path_splines.append(QuadBezSpline(prev_coord, ctl_coord, end_coord))
+                        #print path_splines[len(path_splines)-1].getSplineHash()
+                        #path_splines[len(path_splines)-1].plotSpline()
+                        show()
+                        prev_coord = end_coord
+                        p_j += param_len
+                
+                elif path[path_ind].lower() == 't':
+                    param_len = 2
+                    p_j = path_ind + 1
+                    ctl_coord = array([0,0])
+                    end_coord = array([0,0])
+
+                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
+                        ctl_coord = prev_coord - path_splines[len(path_splines)-1].c + prev_coord
+
+                        if path[path_ind] == 'T':
+                            end_coord = array([float(path[p_j]), float(path[p_j+1])])
+                        else:
+                            end_coord = ctl_coord + array([float(path[p_j]), float(path[p_j+1])])
+
+                        path_splines.append(QuadBezSpline(prev_coord, ctl_coord, end_coord))
+                        #print path_splines[len(path_splines)-1].getSplineHash()
+                        #path_splines[len(path_splines)-1].plotSpline()
+                        show()
+                        prev_coord = end_coord
+                        p_j += param_len
+                        
+                elif path[path_ind].lower() == 'a':
+                    param_len = 7
+                    p_j = path_ind + 1
+                    end_coord = array([0,0])
+
+                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
+                        rx = float(path[p_j])
+                        ry = float(path[p_j+1])
+                        x_rot = float(path[p_j+2])
+                        large_arc_flag = int(path[p_j+3])
+                        sweep_flag = int(path[p_j+4])
+
+                        if path[path_ind] == 'A':
+                            end_coord = array([float(path[p_j+5]), float(path[p_j+6])])
+                        else:
+                            end_coord = prev_coord + array([float(path[p_j+5]), float(path[p_j+6])])
+
+                        path_splines.append(ArcSpline(prev_coord, rx, ry, x_rot, large_arc_flag, sweep_flag, end_coord))
+                        prev_coord = end_coord
+                        p_j += param_len
+
+                #print [sp.getSplineHash() for sp in path_splines]
+
+            all_splines.append(path_splines)
+
+        print 'region num: ' + str(len(all_splines))
+
+       
+        vts_inside_region = array([False]*len(vts))
+
+        for splines in all_splines: #retrieves splines for each path separately
+            print 'checking a region'
+            x0s = array([min([float(sp_i.smallestX()) for sp_i in splines]) - 1]*(len(vts))).astype(float)
+            y0s = vts[:,1]
+            vt_is = array([x0s,y0s]).T #coords
+            
+            vt_ish = array(['.']*len(vts)).astype(str_) #starting hashcodes, used to gaurantee no conflicts
+
+            found_vtxs = array([False]*len(vts)).astype(bool_)
+            print 'starting to find' 
+            while sum(found_vtxs) != len(found_vtxs):
+                print 'num found: ' + str(sum(found_vtxs))
+                closest_xs = array([Inf]*len(vts)).astype(float)
+                closest_xsh = array(['.']*len(vts)).astype(str_)
+                for s in splines:
+                    xvals = s.closestXGivenY(vt_is, vt_ish)
+                    vt_ixs = xvals[0]
+                    vt_ixsh = xvals[1]
+                    
+                    isValid = vt_ixsh!=array(['.']*len(vts))
+                    isSmaller = vt_ixs<closest_xs
+                    
+                    closest_xs[isValid*isSmaller] = vt_ixs[isValid*isSmaller]
+                    closest_xsh[isValid*isSmaller] = vt_ixsh[isValid*isSmaller]
+                    print 'printing closest xs'
+                    print vt_ixs
+                    print [isValid, isSmaller]
+                    print closest_xs
+
+                for s in splines:
+                    s.plotSpline()
+                    plot(vt_ixs, y0s, 'b+')
+                plot(vts[:,0], y0s, 'r+')
+                show()
+
+                found_vtxs = vts[:,0]<closest_xs
+                print 'printing vts'
+                print vts[:,0]
+                print ~found_vtxs
+                vts_inside_region[~found_vtxs] = ones((len(vts)))[~found_vtxs] - vts_inside_region[~found_vtxs]
+                vt_is[~found_vtxs] = array([closest_xs[~found_vtxs], y0s[~found_vtxs]]).T
+                vt_ish[~found_vtxs] = closest_xsh[~found_vtxs]
+                print vt_is
+
+            if sum(vts_inside_region) == len(vts_inside_region):
+                break
+        print 'found all'
+
+        for i in range(len(vts)):
+            vt = vts[i,:]
+            if vts_inside_region[i]:
+                print vt
+                plt.axis('equal')
+                for splines in all_splines:
+                    for sp in splines:
+                        sp.plotSpline()
+
+                plt.plot(vt[0], vt[1], 'r+')
+                plt.xlim([min(vt[0],min([float(sp_i.smallestX()) for sp_i in splines])) - 5,
+                          max(vt[0],max([float(sp_i.biggestX()) for sp_i in splines])) + 5])
+                plt.ylim([min(vt[1],min([float(sp_i.smallestY()) for sp_i in splines])) - 5,
+                          max(vt[1],max([float(sp_i.biggestY()) for sp_i in splines])) + 5])
+                plt.show()
+    
+        return vts_inside_region ## final return value
+        
+        '''
         import Image
         shadow = self.shadow
         self.set(shadow=0)
@@ -195,14 +488,14 @@ class ROIpack(object):
         imdat = np.array(Image.open(im))[::-1]
         idx = (self.tcoords*(np.array(self.svgshape)-1)).round().astype(int)[:,::-1]
         roiidx = np.nonzero(imdat[tuple(idx.T)] == 1)[0]
-        validroiidx = np.intersect1d(roiidx, self.valid)
 
         #restore the old roi settings
         for name, roi in list(self.rois.items()):
             roi.set(**state[name])
 
         self.set(shadow=shadow)
-        return validroiidx
+        return roiidx
+        '''
     
     @property
     def names(self):
@@ -386,7 +679,8 @@ class ROI(object):
 ###################################################################################
 def _find_layer(svg, label):
     layers = [l for l in svg.findall("//{%s}g[@{%s}label]"%(svgns, inkns)) if l.get("{%s}label"%inkns) == label]
-    assert len(layers) > 0, "Cannot find layer %s"%label
+    if len(layers) < 1:
+        raise ValueError("Cannot find layer %s"%label)
     return layers[0]
 
 def _make_layer(parent, name):
@@ -397,6 +691,15 @@ def _make_layer(parent, name):
     layer.attrib["{%s}groupmode"%inkns] = "layer"
     return layer
 
+def _strip_top_layers(svg,layer):
+    """Remove all top-level layers except <layer> from lxml svg object"""
+    tokeep = _find_layer(svg,layer) # will throw an error if not present
+    tostrip = [l for l in svg.getroot().getchildren() if l.get('{%s}label'%inkns) and not l.get('{%s}label'%inkns)==layer
+        and not l.get('{%s}label'%inkns)=='roilabels']
+    for s in tostrip:
+        s.getparent().remove(s)
+    return svg
+    
 try:
     from shapely.geometry import Polygon
     def _center_pts(pts):
@@ -405,6 +708,10 @@ try:
         pts -= min
         max = pts.max(0)
         pts /= max
+
+        #probably don't need more than 20 points, reduce detail of the polys
+        if len(pts) > 20:
+            pts = pts[::len(pts)/20]
 
         poly = Polygon([tuple(p) for p in pts])
         for i in np.linspace(0,1,100):
@@ -438,10 +745,15 @@ def _labelpos(pts):
     pt = np.dot(np.dot(np.array([x,y,0]), sp), v)
     return pt + pts.mean(0)
 
+
 def scrub(svgfile):
+    """Remove data layers from an svg object prior to rendering"""
     svg = etree.parse(svgfile, parser=parser)
-    rmnode = _find_layer(svg, "data")
-    rmnode.getparent().remove(rmnode)
+    try:
+        rmnode = _find_layer(svg, "data")
+        rmnode.getparent().remove(rmnode)
+    except ValueError:
+        pass
     svgtag = svg.getroot()
     svgtag.attrib['id'] = "svgroi"
     inkver = "{%s}version"%inkns
@@ -464,7 +776,8 @@ def make_svg(pts, polys):
     pts *= 1024 / pts.max(0)[1]
     pts[:,1] = 1024 - pts[:,1]
     path = ""
-    for poly in trace_poly(boundary_edges(polys)):
+    polyiter = trace_poly(boundary_edges(polys))
+    for poly in [polyiter.next(), polyiter.next()]:
         path +="M%f %f L"%tuple(pts[poly.pop(0), :2])
         path += ', '.join(['%f %f'%tuple(pts[p, :2]) for p in poly])
         path += 'Z '
@@ -479,15 +792,15 @@ def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
     from .db import surfs
     
     cullpts = pts[:,:2]
-    valid = np.unique(polys)
     if remove_medial:
+        valid = np.unique(polys)
         cullpts = cullpts[valid]
 
     if not os.path.exists(svgfile):
         with open(svgfile, "w") as fp:
             fp.write(make_svg(pts.copy(), polys))
 
-    rois = ROIpack(cullpts, svgfile, valid, **kwargs)
+    rois = ROIpack(cullpts, svgfile, **kwargs)
     if remove_medial:
         return rois, valid
         
@@ -508,3 +821,4 @@ def _tokenize_path(pathdef):
             yield x
         for token in FLOAT_RE.findall(x):
             yield token
+ 
