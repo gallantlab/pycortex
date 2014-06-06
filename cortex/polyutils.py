@@ -36,7 +36,7 @@ class Surface(object):
         polys : 2D ndarray, shape (total_polys, 3)
             Indices of the vertices in each triangle in the surface.
         """
-        self.pts = pts
+        self.pts = pts.astype(np.double)
         self.polys = polys
 
         self._cache = dict()
@@ -196,7 +196,7 @@ class Surface(object):
         curv = (L.dot(self.pts) * self.vertex_normals).sum(1)
         return curv
 
-    def smooth(self, scalars, factor=1.0):
+    def smooth(self, scalars, factor=1.0, iterations=1):
         """Smooth vertex-wise function given by `scalars` across the surface using
         mean curvature flow method (see http://brickisland.net/cs177fa12/?p=302).
 
@@ -209,6 +209,8 @@ class Surface(object):
             supplied by mean_curvature.
         factor : float, optional
             Amount of smoothing to perform, larger values smooth more.
+        iterations : int, optional
+            Number of times to repeat smoothing, larger values smooths more.
 
         Returns
         -------
@@ -223,9 +225,12 @@ class Surface(object):
         lfac = sparse.dia_matrix((D,[0]), (npt,npt)) - factor * (W-V)
         goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
         lfac_solver = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
-        goodsmscalars = lfac_solver((D * scalars)[goodrows])
+        to_smooth = scalars
+        for _ in range(iterations):
+            from_smooth = lfac_solver((D * to_smooth)[goodrows])
+            to_smooth[goodrows] = from_smooth
         smscalars = np.zeros(scalars.shape)
-        smscalars[goodrows] = goodsmscalars
+        smscalars[goodrows] = from_smooth
         return smscalars
         
     @property
