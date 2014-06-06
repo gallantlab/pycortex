@@ -313,6 +313,10 @@ class Database(object):
                     tf = self.auxfile.get_overlay(subject, otype)
                     svgfile = tf.name
                 except (AttributeError, IOError):
+                    # NOTE: This is better error handling, but does not account for
+                    # case in which self.auxfile is None - when is that?? I (ML) think
+                    # it only comes up with new svg layer variants in extra_layers branch...
+                    # svgfile = self.get_paths(subject)["rois"]
                     # Layer type does not exist or has been temporarily removed
                     pass                    
             if 'pts' in kwargs:
