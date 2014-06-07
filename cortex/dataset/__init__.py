@@ -99,11 +99,8 @@ class Dataset(object):
         """Return the set of unique BrainData objects contained by this dataset"""
         uniques = set()
         for name, view in self:
-            if isinstance(view, (Vertex2D, Volume2D)):
-                uniques.add(view.dim1)
-                uniques.add(view.dim2)
-            else:
-                uniques.add(view)
+            for sv in view.uniques():
+                uniques.add(sv)
 
         return uniques
 
@@ -121,12 +118,15 @@ class Dataset(object):
             xfms = set()
             masks = set()
             for view in self.views.values():
-                subjs.add(view.subject)
-                xfms.add((view.subject, data.xfmname))
-                #custom masks are already packaged by default
-                #only string masks need to be packed
-                if isinstance(data._mask, str):
-                    masks.add((data.subject, data.xfmname, data._mask))
+                for data in view.uniques():
+                    subjs.add(data.subject)
+                    if isinstance(data, Volume):
+                        xfms.add((data.subject, data.xfmname))
+                        #custom masks are already packaged by default
+                        #only string masks need to be packed
+                        if isinstance(data._mask, str):
+                            masks.add((data.subject, data.xfmname, data._mask))
+
             _pack_subjs(self.h5, subjs)
             _pack_xfms(self.h5, xfms)
             _pack_masks(self.h5, masks)

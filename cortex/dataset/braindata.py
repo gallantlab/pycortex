@@ -38,6 +38,9 @@ class BrainData(object):
         """
         return self.copy(np.exp(self.data))
 
+    def uniques(self):
+        yield self
+
     def __hash__(self):
         return hash(_hash(self.data))
 
@@ -236,23 +239,31 @@ class VertexData(BrainData):
         """
         if self.__class__ == VertexData:
             raise TypeError('Cannot directly instantiate VertexData objects')
+        super(VertexData, self).__init__(data, subject, **kwargs)
 
         left, right = db.get_surf(self.subject, "fiducial")
         self.llen = len(left[0])
         self.rlen = len(right[0])
         self._set_data(data)
-        try:
-            basestring
-        except NameError:
-            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
-        self.subject = subject
+
+    @classmethod
+    def empty(cls, subject, **kwargs):
+        left, right = db.get_surf(subject, "fiducial")
+        nverts = len(left[0]) + len(right[0])
+        return cls(np.zeros((nverts,)), subject, **kwargs)
+
+    @classmethod
+    def random(cls, subject, **kwargs):
+        left, right = db.get_surf(subject, "fiducial")
+        nverts = len(left[0]) + len(right[0])
+        return cls(np.random.randn(nverts), subject, **kwargs)
 
     def _set_data(self, data):
         """Stores data for this VertexData. Also sets flags if `data` appears to
         be in 'movie' or 'raw' format. See __init__ for `data` shape possibilities.
         """
         self._data = data
-        self.movie = data.ndims > 1
+        self.movie = self.data.ndim > 1
         self.nverts = self.data.shape[-1]
         if self.llen == self.nverts:
             # Just data for left hemisphere
@@ -285,8 +296,8 @@ class VertexData(BrainData):
     def __repr__(self):
         maskstr = ""
         if self.movie:
-            maskstr = "movie"
-        return "<%s vertex data for %s>"%(maskstr, self.subject)
+            maskstr = "movie "
+        return "<Vertex %sdata for %s>"%(maskstr, self.subject)
 
     def __getitem__(self, idx):
         if not self.movie:

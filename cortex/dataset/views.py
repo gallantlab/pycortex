@@ -32,42 +32,59 @@ def _from_hdf_data(h5, name, xfmname=None, **kwargs):
         dnode = h5.get(name)
 
     subj = dnode.attrs['subject']
+    #support old style xfmname saving as attribute
     if xfmname is None and 'xfmname' in dnode.attrs:
         xfmname = dnode.attrs['xfmname']
-    if xfmname is not None:
-        mask = None
-        if "mask" in dnode.attrs:
-            try:
-                db.get_mask(subj, xfmname, dnode.attrs['mask'])
-                mask = dnode.attrs['mask']
-            except IOError:
-                mask = dataset.get_mask(subj, xfmname, dnode.attrs['mask'])
-        return Volume(dnode, subj, xfmname, mask=mask, **kwargs)
-    else:
+
+    mask = None
+    if "mask" in dnode.attrs:
+        mask = db.get_mask(subj, xfmname, dnode.attrs['mask'])
+
+    #support old style RGB volumes
+    if dnode.dtype == np.uint8 and dnode.shape[-1] in (3, 4):
+        alpha = None
+        if dnode.shape[-1] == 4:
+            alpha = dnode[..., 3]
+
+        if xfmname is None:
+            return VertexRGB(dnode[...,0], dnode[...,1], dnode[...,2], subj, 
+                alpha=alpha, **kwargs)
+
+        return VolumeRGB(dnode[...,0], dnode[...,1], dnode[...,2], subj, xfmname, 
+            alpha=alpha, mask=mask, **kwargs)
+
+    if xfmname is None:
         return Vertex(dnode, subj, **kwargs)
+    
+    return Volume(dnode, subj, xfmname, mask=mask, **kwargs)
+        
 
 def _from_hdf_view(h5, data, xfmname=None, vmin=None, vmax=None,  **kwargs):
     try:
-        # If data is just a string, directly unpack it
-        data.encode
-        return _from_hdf_data(h5, data, xfmname=xfmname, vmin=vmin, vmax=vmax, **kwargs)
-    except AttributeError:
-        if len(data) == 2:
-            dim1 = _from_hdf_data(h5, data[0], xfmname=xfmname[0])
-            dim2 = _from_hdf_data(h5, data[1], xfmname=xfmname[1])
-            cls = Vertex2D if isinstance(dim1, Vertex) else Volume2D
-            return cls(dim1, dim2, vmin=vmin, vmax=vmax, **kwargs)
-        elif len(data) == 4:
-            red, green, blue = [_from_hdf_data(h5, d, xfmname=xfmname) for d in data[:3]]
-            alpha = None 
-            if data[3] is not None:
-                alpha = _from_hdf_data(h5, data[3], xfmname=xfmname)
+        basestring
+        strcls = (unicode, str)
+    except NameError:
+        strcls = str
 
-            cls = VertexRGB if isinstance(red, Vertex) else VolumeRGB
-            return cls(red, green, blue, alpha=alpha, vmin=vmin[0], vmin2=vmin[1], 
-                vmax=vmax[0], vmax2=vmax[1], **kwargs)
-        else:
-            raise ValueError("Invalid Dataview specification")
+    if isinstance(data, strcls):
+        return _from_hdf_data(h5, data, xfmname=xfmname, vmin=vmin, vmax=vmax, **kwargs)
+        
+    if len(data) == 2:
+        dim1 = _from_hdf_data(h5, data[0], xfmname=xfmname[0])
+        dim2 = _from_hdf_data(h5, data[1], xfmname=xfmname[1])
+        cls = Vertex2D if isinstance(dim1, Vertex) else Volume2D
+        return cls(dim1, dim2, vmin=vmin[0], vmin2=vmin[1], 
+            vmax=vmax[0], vmax2=vmax[1], **kwargs)
+    elif len(data) == 4:
+        red, green, blue = [_from_hdf_data(h5, d, xfmname=xfmname) for d in data[:3]]
+        alpha = None 
+        if data[3] is not None:
+            alpha = _from_hdf_data(h5, data[3], xfmname=xfmname)
+
+        cls = VertexRGB if isinstance(red, Vertex) else VolumeRGB
+        return cls(red, green, blue, alpha=alpha, **kwargs)
+    else:
+        raise ValueError("Invalid Dataview specification")
 
 class Dataview(object):
     def __init__(self, cmap=None, vmin=None, vmax=None, description="", state=None, **kwargs):
@@ -126,7 +143,7 @@ class Dataview(object):
             return _from_hdf_view(node.file, data[0], xfmname=xfmname, cmap=cmap, description=desc, 
                 vmin=vmin, vmax=vmax, state=state, **attrs)
         else:
-            views = [_from_hdf_view(node.file, d) for d in data]
+            views = [_from_hdf_view(node.file, d, xfmname=xfmname) for d in data]
             raise NotImplementedError
 
     def _write_hdf(self, h5, name="data", data=None, xfmname=None):
@@ -140,7 +157,8 @@ class Dataview(object):
             view[4] = json.dumps(self.vmax)
         except AttributeError:
             #For VolumeRGB/Vertex, there is no cmap/vmin/vmax
-            pass
+            view[2] = None
+            view[3:5] = "null"
         view[5] = json.dumps(self.state)
         view[6] = json.dumps(self.attrs)
         view[7] = json.dumps(xfmname)
@@ -152,6 +170,12 @@ class Multiview(Dataview):
             if not isinstance(view, Dataview):
                 raise TypeError("Must be a View object!")
         raise NotImplementedError
+        self.views = views
+
+    def uniques(self):
+        for view in self.views:
+            for sv in view.uniques():
+                yield sv
 
 class Volume(VolumeData, Dataview):
     def __init__(self, data, subject, xfmname, mask=None, 
@@ -171,7 +195,7 @@ class Vertex(VertexData, Dataview):
             description=description, **kwargs)
 
     def _write_hdf(self, h5, name="data"):
-        datanode = VolumeData._write_hdf(self, h5)
+        datanode = VertexData._write_hdf(self, h5)
         viewnode = Dataview._write_hdf(self, h5, name=name, data=[self.name])
         return viewnode
 
@@ -231,6 +255,13 @@ class VolumeRGB(Dataview):
 
         return np.array(volume).transpose([1, 2, 3, 4, 0])
 
+    def uniques(self):
+        yield self.red
+        yield self.green
+        yield self.blue
+        if self.alpha is not None:
+            yield self.alpha
+
     def _write_hdf(self, h5, name="data"):
         VolumeData._write_hdf(self.red, h5)
         VolumeData._write_hdf(self.green, h5)
@@ -271,6 +302,7 @@ class VertexRGB(Dataview):
 
         self.alpha = alpha
         self.description = description
+        self.subject = subject
 
     @property
     def vertices(self):
@@ -292,6 +324,13 @@ class VertexRGB(Dataview):
 
         return np.array(verts).transpose([1, 2, 0])
 
+    def uniques(self):
+        yield self.red
+        yield self.green
+        yield self.blue
+        if self.alpha is not None:
+            yield self.alpha
+
     def _write_hdf(self, h5, name="data"):
         VertexData._write_hdf(self.red, h5)
         VertexData._write_hdf(self.green, h5)
@@ -302,7 +341,7 @@ class VertexRGB(Dataview):
             VertexData._write_hdf(self.alpha, h5)
             alpha = self.alpha.name
 
-        data = [self.red.name, self.green.name, self.blue.name, alpha]
+        data = [[self.red.name, self.green.name, self.blue.name, alpha]]
         viewnode = Dataview._write_hdf(self, h5, name=name, 
             data=data)
         return viewnode
@@ -335,14 +374,19 @@ class Volume2D(Dataview):
         super(Volume2D, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
         self.attrs['xfmnames'] = [self.dim1.xfmname, self.dim2.xfmname]
 
+    def uniques(self):
+        yield self.dim1
+        yield self.dim2
+
     def _write_hdf(self, h5, name="data"):
         VolumeData._write_hdf(self.dim1, h5)
         VolumeData._write_hdf(self.dim2, h5)
 
         viewnode = Dataview._write_hdf(self, h5, name=name)
-        viewnode[0] = json.dumps([self.dim1.name, self.dim2.name])
-        viewnode[3] = json.dumps([float(self.vmin), float(self.vmin2)])
-        viewnode[4] = json.dumps([float(self.vmax), float(self.vmax2)])
+        viewnode[0] = json.dumps([[self.dim1.name, self.dim2.name]])
+        viewnode[3] = json.dumps([self.vmin, self.vmin2])
+        viewnode[4] = json.dumps([self.vmax, self.vmax2])
+        viewnode[7] = json.dumps([self.dim1.xfmname, self.dim2.xfmname])
         return viewnode
 
     def __repr__(self):
@@ -368,12 +412,16 @@ class Vertex2D(Dataview):
         self.vmax2 = vmax2 if vmax2 is not None else vmax
         super(Vertex2D, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
 
+    def uniques(self):
+        yield self.dim1
+        yield self.dim2
+
     def _write_hdf(self, h5, name="data"):
         VertexData._write_hdf(self.dim1, h5)
         VertexData._write_hdf(self.dim2, h5)
 
         viewnode = Dataview._write_hdf(self, h5, name=name)
-        viewnode[0] = json.dumps([self.dim1.name, self.dim2.name])
+        viewnode[0] = json.dumps([[self.dim1.name, self.dim2.name]])
         viewnode[3] = json.dumps([float(self.vmin), float(self.vmin2)])
         viewnode[4] = json.dumps([float(self.vmax), float(self.vmax2)])
         return viewnode
