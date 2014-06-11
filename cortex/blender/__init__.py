@@ -38,7 +38,7 @@ def _call_blender(filename, code):
 def add_cutdata(fname, dataview, name="retinotopy", projection="nearest", mesh="hemi"):
     from matplotlib import cm
     dataview = dataset.normalize(dataview)
-    mapped = dataview.data.map(projection)
+    mapped = dataview.map(projection)
     left = mapped.left
     right = mapped.right
 

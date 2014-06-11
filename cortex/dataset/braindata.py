@@ -38,7 +38,7 @@ class BrainData(object):
         """
         return self.copy(np.exp(self.data))
 
-    def uniques(self):
+    def uniques(self, collapse=False):
         yield self
 
     def __hash__(self):
@@ -57,13 +57,14 @@ class BrainData(object):
         node.attrs['subject'] = self.subject
         return node
 
-    def to_json(self):
-        sdict = dict(name=self.name, 
+    def to_json(self, simple=False):
+        sdict = super(BrainData, self).to_json(simple=simple)
+        if simple:
+            sdict.update(dict(name=self.name,
                 subject=self.subject,
-                min=float(self.data.min()), 
-                max=float(self.data.max()),
-                shape=self.shape)
-        sdict.update(super(BrainData, self).to_json())
+                min=float(np.nan_to_num(self.data).min()), 
+                max=float(np.nan_to_num(self.data).max()),
+                shape=self.shape))
         return sdict
 
     @classmethod
@@ -109,9 +110,12 @@ class VolumeData(BrainData):
         self._check_size(mask)
         self.masked = _masker(self)
 
-    def to_json(self):
+    def to_json(self, simple=False):
+        if simple:
+            return super(VolumeData, self).to_json(simple=simple)
+        
         xfm = db.get_xfm(self.subject, self.xfmname, 'coord').xfm
-        sdict = dict(xfm=list(np.array(xfm).ravel()))
+        sdict = dict(xfm=list(np.array(xfm).ravel()), data=[self.name])
         sdict.update(super(VolumeData, self).to_json())
         return sdict
 

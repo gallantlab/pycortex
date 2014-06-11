@@ -114,6 +114,10 @@ def test_pack():
     xfm = cortex.db.get_xfm(subj, xfmname)
     assert np.allclose(xfm.xfm, ds.get_xfm(subj, xfmname).xfm)
 
+def test_map():
+    dv = cortex.Volume.random(subj, xfmname)
+    dv.map("nearest")
+
 """
 def test_convertraw():
     ds = cortex.Dataset(test=(np.random.randn(31, 100, 100), subj, xfmname))

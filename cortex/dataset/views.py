@@ -117,7 +117,10 @@ class Dataview(object):
     def priority(self, value):
         self.attrs['priority'] = value
 
-    def to_json(self):
+    def to_json(self, simple=False):
+        if simple:
+            return dict()
+            
         return dict(
             cmap=self.cmap, 
             vmin=self.vmin, 
@@ -172,9 +175,9 @@ class Multiview(Dataview):
         raise NotImplementedError
         self.views = views
 
-    def uniques(self):
+    def uniques(self, collapse=False):
         for view in self.views:
-            for sv in view.uniques():
+            for sv in view.uniques(collapse=collapse):
                 yield sv
 
 class Volume(VolumeData, Dataview):
@@ -255,12 +258,15 @@ class VolumeRGB(Dataview):
 
         return np.array(volume).transpose([1, 2, 3, 4, 0])
 
-    def uniques(self):
-        yield self.red
-        yield self.green
-        yield self.blue
-        if self.alpha is not None:
-            yield self.alpha
+    def uniques(self, collapse=False):
+        if collapse:
+            yield self
+        else:
+            yield self.red
+            yield self.green
+            yield self.blue
+            if self.alpha is not None:
+                yield self.alpha
 
     def _write_hdf(self, h5, name="data"):
         VolumeData._write_hdf(self.red, h5)
@@ -324,12 +330,15 @@ class VertexRGB(Dataview):
 
         return np.array(verts).transpose([1, 2, 0])
 
-    def uniques(self):
-        yield self.red
-        yield self.green
-        yield self.blue
-        if self.alpha is not None:
-            yield self.alpha
+    def uniques(self, collapse=False):
+        if collapse:
+            yield self
+        else:
+            yield self.red
+            yield self.green
+            yield self.blue
+            if self.alpha is not None:
+                yield self.alpha
 
     def _write_hdf(self, h5, name="data"):
         VertexData._write_hdf(self.red, h5)
@@ -374,7 +383,7 @@ class Volume2D(Dataview):
         super(Volume2D, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
         self.attrs['xfmnames'] = [self.dim1.xfmname, self.dim2.xfmname]
 
-    def uniques(self):
+    def uniques(self, collapse=False):
         yield self.dim1
         yield self.dim2
 
@@ -412,7 +421,7 @@ class Vertex2D(Dataview):
         self.vmax2 = vmax2 if vmax2 is not None else vmax
         super(Vertex2D, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
 
-    def uniques(self):
+    def uniques(self, collapse=False):
         yield self.dim1
         yield self.dim2
 

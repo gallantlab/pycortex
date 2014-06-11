@@ -95,11 +95,11 @@ class Dataset(object):
 
         return ds
         
-    def uniques(self):
+    def uniques(self, collapse=False):
         """Return the set of unique BrainData objects contained by this dataset"""
         uniques = set()
         for name, view in self:
-            for sv in view.uniques():
+            for sv in view.uniques(collapse=collapse):
                 uniques.add(sv)
 
         return uniques

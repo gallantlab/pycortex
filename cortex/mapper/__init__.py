@@ -85,9 +85,9 @@ class Mapper(object):
 
     def __call__(self, data):
         if isinstance(data, tuple):
-            data = dataset.VolumeData(*data)
+            data = dataset.Volume(*data)
 
-        if isinstance(data, dataset.VertexData):
+        if isinstance(data, dataset.Vertex):
             llen = self.masks[0].shape[0]
             if data.raw:
                 left, right = data.data[..., :llen,:], data.data[..., llen:,:]
@@ -101,12 +101,7 @@ class Mapper(object):
                     right = right[..., self.idxmap[1]]
             return left, right
 
-        if data.raw:
-            raise ValueError('Mapping raw data is unsupported')
-
         volume = data.volume
-        if not data.movie:
-            volume = volume[np.newaxis]
         volume.shape = len(volume), -1
         volume = volume.T
 
@@ -118,7 +113,7 @@ class Mapper(object):
             mapped[0] = mapped[0][:, self.idxmap[0]]
             mapped[1] = mapped[1][:, self.idxmap[1]]
 
-        return dataset.VertexData(np.hstack(mapped).squeeze(), data.subject)
+        return dataset.Vertex(np.hstack(mapped).squeeze(), data.subject)
         
     def backwards(self, verts, fast=True):
         '''Projects vertex data back into volume space

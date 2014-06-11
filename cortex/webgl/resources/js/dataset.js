@@ -42,6 +42,7 @@ var dataset = (function(module) {
         }
         this.name = json.name;
         this.description = json.desc;
+        this.xfm = json.xfm;
         this.cmap = json.cmap;
         this.vmin = json.vmin;
         this.vmax = json.vmax;
@@ -159,8 +160,8 @@ var dataset = (function(module) {
         this.mosaic = json.mosaic;
         this.name = json.data;
 
-        this.data = images[json.data];
-        this.frames = images[json.data].length;
+        this.data = images[json.name];
+        this.frames = images[json.name].length;
 
         this.textures = [];
         var loadmosaic = function(idx) {
@@ -199,7 +200,6 @@ var dataset = (function(module) {
         }.bind(this);
 
         loadmosaic(0);
-        module.brains[json.data] = this;
     };
     module.BrainData.prototype.setFilter = function(interp) {
         //this.filter = interp;
@@ -227,7 +227,7 @@ var dataset = (function(module) {
     }
     module.fromJSON = function(dataset) {
         for (var name in dataset.data) {
-            new module.BrainData(dataset.data[name], dataset.images);
+            module.brains[name] = new module.BrainData(dataset.data[name], dataset.images);
         }
         var dataviews = [];
         for (var i = 0; i < dataset.views.length; i++) {
