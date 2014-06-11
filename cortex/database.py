@@ -8,6 +8,7 @@ This module creates a singleton object surfs_ which allows easy access to surfac
 """
 import os
 import re
+import copy
 import glob
 import time
 import json
@@ -22,17 +23,17 @@ from . import options
 
 default_filestore = options.config.get('basic', 'filestore')
 
+
 def _memo(fn):
     @functools.wraps(fn)
     def memofn(self, *args, **kwargs):
         if not hasattr(self, "_memocache"):
-            #self._memocache = dict()
             setattr(self, "_memocache", dict())
         #h = sha1(str((id(fn), args, kwargs))).hexdigest()
         h = str((id(fn), args, kwargs))
         if h not in self._memocache:
             self._memocache[h] = fn(self, *args, **kwargs)
-        return self._memocache[h]
+        return copy.deepcopy(self._memocache[h])
 
     return memofn
 
