@@ -178,7 +178,6 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if with_rois:
         roi = surfs.getOverlay(dataview.data.subject,linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
         overlays.append(roi)
-        print("WTF??")
     if with_sulci:
         sulc = surfs.getOverlay(dataview.data.subject,otype='sulci',linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
         overlays.append(sulc)
@@ -191,6 +190,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
         roi_im = plt.imread(roitex)
+        plt.matshow(roi_im)
         if cutout: 
             # STUPID BUT NECESSARY 1-PIXEL CHECK:
             if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,roi_im.shape)]):
