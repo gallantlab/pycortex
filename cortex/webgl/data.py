@@ -27,8 +27,10 @@ class Package(object):
             voldata = brain.volume
             if isinstance(brain, (dataset.VolumeRGB, dataset.VertexRGB)):
                 voldata = voldata.astype(np.uint8)
+                self.brains[name]['raw'] = True
             else:
                 voldata = voldata.astype(np.float32)
+                self.brains[name]['raw'] = False
             self.images[name] = [volume.mosaic(vol, show=False) for vol in voldata]
             if len(set([shape for m, shape in self.images[name]])) != 1:
                 raise ValueError('Internal error in mosaic')

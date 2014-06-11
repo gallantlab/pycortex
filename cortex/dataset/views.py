@@ -5,7 +5,7 @@ import numpy as np
 
 from .. import options
 from ..database import db
-from .braindata import BrainData, VolumeData, VertexData
+from .braindata import BrainData, VolumeData, VertexData, _hash
 
 default_cmap = options.config.get("basic", "default_cmap")
 
@@ -121,13 +121,18 @@ class Dataview(object):
         if simple:
             return dict()
             
-        return dict(
-            cmap=self.cmap, 
-            vmin=self.vmin, 
-            vmax=self.vmax, 
+        sdict = dict(
             state=self.state, 
             attrs=self.attrs, 
             desc=self.description)
+        try:
+            sdict.update(dict(
+                cmap=self.cmap, 
+                vmin=self.vmin, 
+                vmax=self.vmax, ))
+        except AttributeError:
+            pass
+        return sdict
 
     @staticmethod
     def from_hdf(node):
@@ -167,6 +172,13 @@ class Dataview(object):
         view[7] = json.dumps(xfmname)
         return view
 
+    @property
+    def raw(self):
+        from matplotlib import cm, colors
+        cmap = cm.get_cmap(self.cmap)
+        norm = colors.Normalize(self.vmin, self.vmax)
+        return np.rollaxis(cmap(self.data), -1)
+
 class Multiview(Dataview):
     def __init__(self, views, description=""):
         for view in views:
@@ -192,6 +204,12 @@ class Volume(VolumeData, Dataview):
             data=[self.name], xfmname=self.xfmname)
         return viewnode
 
+    @property
+    def raw(self):
+        r, g, b, a = super(Volume, self).raw
+        return VolumeRGB(r, g, b, self.subject, self.xfmname, a, 
+            description=self.description, state=self.state, **self.attrs)
+
 class Vertex(VertexData, Dataview):
     def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
@@ -201,6 +219,12 @@ class Vertex(VertexData, Dataview):
         datanode = VertexData._write_hdf(self, h5)
         viewnode = Dataview._write_hdf(self, h5, name=name, data=[self.name])
         return viewnode
+
+    @property
+    def raw(self):
+        r, g, b, a = super(Vertex, self).raw
+        return VertexRGB(r, g, b, self.subject, self.xfmname, a, 
+            description=self.description, state=self.state, **self.attrs)
 
 class VolumeRGB(Dataview):
     def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description="", 
@@ -288,6 +312,10 @@ class VolumeRGB(Dataview):
 
     def __hash__(self):
         return hash(_hash(self.volume))
+
+    @property
+    def name(self):
+        return "__%s"%_hash(self.volume)[:16]
 
 class VertexRGB(Dataview):
     def __init__(self, red, green, blue, subject=None, alpha=None, description=""):

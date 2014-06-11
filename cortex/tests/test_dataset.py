@@ -49,6 +49,10 @@ def test_rgb():
     rgba = dataset.VolumeRGB(red, green, blue, subj, xfmname, alpha=alpha)
     assert rgba.volume.shape == (1, 31, 100, 100, 4)
 
+    data = dataset.Volume.random(subj, xfmname)
+    assert data.raw.volume.shape == (1, 31, 100, 100, 4)
+    data.raw.to_json()
+
 def test_2D():
     d1 = cortex.Volume.random(subj, xfmname)
     d2 = cortex.Volume.random(subj, xfmname).masked['thick']
@@ -69,7 +73,7 @@ def test_dataset_save():
     ds.append(vert=cortex.Vertex.random(subj))
     ds.save(tf.name)
     
-    ds = cortex.openFile(tf.name)
+    ds = cortex.load(tf.name)
     assert isinstance(ds.test, cortex.Volume)
     assert ds.test.data.shape == mrand.shape
     assert isinstance(ds.twod, cortex.Volume2D)
@@ -85,7 +89,7 @@ def test_mask_save():
     data = ds.masked.data
     ds.save(tf.name)
 
-    ds = cortex.openFile(tf.name)
+    ds = cortex.load(tf.name)
     assert ds.masked.shape == (31, 100, 100)
     assert np.allclose(ds.masked.data, data)
 
@@ -102,7 +106,7 @@ def test_pack():
     ds = cortex.Dataset(test=(np.random.randn(31, 100, 100), subj, xfmname))
     ds.save(tf.name, pack=True)
 
-    ds = cortex.openFile(tf.name)
+    ds = cortex.load(tf.name)
     pts, polys = cortex.db.get_surf(subj, "fiducial", "lh")
     dpts, dpolys = ds.get_surf(subj, "fiducial", "lh")
     assert np.allclose(pts, dpts)

@@ -136,11 +136,14 @@ var dataset = (function(module) {
         }.bind(this));
     }
     module.DataView.prototype.set = function(uniforms, time) {
+        var xfm;
         var frame = ((time + this.delay) * this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
         uniforms.framemix.value = frame - fframe;
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(uniforms, i, fframe);
+            xfm = uniforms.volxfm.value[i];
+            xfm.set.apply(xfm, this.xfm);
         }
     };
     module.DataView.prototype.setFilter = function(interp) {
@@ -151,14 +154,13 @@ var dataset = (function(module) {
 
     module.BrainData = function(json, images) {
         this.loaded = $.Deferred();
-        this.xfm = json.xfm;
         this.subject = json.subject;
-        this.movie = json.movie;
+        this.movie = images[json.name].length > 1;
         this.raw = json.raw;
         this.min = json.min;
         this.max = json.max;
         this.mosaic = json.mosaic;
-        this.name = json.data;
+        this.name = json.name;
 
         this.data = images[json.name];
         this.frames = images[json.name].length;
@@ -210,8 +212,6 @@ var dataset = (function(module) {
         }
     };
     module.BrainData.prototype.init = function(uniforms, dim) {
-        var xfm = uniforms.volxfm.value[dim];
-        xfm.set.apply(xfm, this.xfm);
         uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
         uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
     };
