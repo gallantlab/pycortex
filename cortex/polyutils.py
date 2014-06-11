@@ -383,7 +383,7 @@ class Surface(object):
 
         Using this function directly is unnecessarily expensive if you want to interpolate
         many different values between the same knot points. Instead, you should directly
-        create and interpolator function using _create_interp, and then call that function.
+        create an interpolator function using _create_interp, and then call that function.
         In fact, that's exactly what this function does.
 
         See _create_biharmonic_solver for math details.
