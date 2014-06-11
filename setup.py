@@ -84,7 +84,8 @@ setup(name='pycortex',
       package_data={
             'cortex':[ 
                 'svgbase.xml',
-                'defaults.cfg'
+                'defaults.cfg',
+                'bbr.sch'
             ],
             'cortex.webgl': [
                 '*.html', 
