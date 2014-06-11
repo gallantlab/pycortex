@@ -28,7 +28,7 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
         # display layers into the main ctm file(s)
         ctmcache = "%s_[{types}]_{method}_{level}_{layers}.json"%subject
         ctmcache = ctmcache.format(types=','.join(types), method=method, level=lvlstr,layers=disp_layers)
-    ctmfile = os.path.join(surfs.get_cache(subject), ctmcache)
+    ctmfile = os.path.join(db.get_cache(subject), ctmcache)
 
     if os.path.exists(ctmfile) and not recache:
         return ctmfile
@@ -121,18 +121,29 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
     return get_mapper(subject, xfmname, type=type).hemimasks
 
 def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
-    """Add new overlay data to the ROI file for a subject.
+    """Add new flatmap image to the ROI file for a subject.
+
+    (The subject is specified in creation of the data object)
+
+    Creates a flatmap image from the `data` input, and adds that image as
+    a sub-layer to the data layer in the rois.svg file stored for 
+    the subject  in the pycortex database. Most often, this is data to be 
+    used for defining a region (or several regions) of interest, such as a 
+    localizer contrast (e.g. a t map of Faces > Houses). 
+
+    Use the **kwargs inputs to specify 
 
     Parameters
     ----------
     data : DataView
-        The data that will be overlaid on the ROI file.
+        The data used to generate the flatmap image. 
     name : str, optional
-        Name that will be assigned to the new dataset. <<IS THIS NECESSARY ANYMORE?>>
+        Name that will be assigned to the `data` sub-layer in the rois.svg file
+            (e.g. "Faces > Houses, t map, p<.005" or "Retinotopy - Rotating Wedge")
     open_inkscape : bool, optional
         If True, Inkscape will automatically open the ROI file.
     add_path : bool, optional
-        If True, a new SVG layer will automatically be created in the ROI group
+        If True, also adds a sub-layer to the `rois` new SVG layer will automatically be created in the ROI group
         with the same `name` as the overlay.
     kwargs : dict
         Passed to cortex.quickflat.make_png
