@@ -19,7 +19,7 @@ import tempfile
 import numpy as np
 from scipy.spatial import cKDTree
 
-from .db import surfs
+from .database import db
 from .utils import get_cortical_mask, get_mapper, get_dropout
 from . import polyutils
 from openctm import CTMfile
@@ -27,18 +27,17 @@ from openctm import CTMfile
 class BrainCTM(object):
     def __init__(self, subject, decimate=False):
         self.subject = subject
-        self.files = surfs.getFiles(subject)
         self.types = []
 
-        left, right = surfs.getSurf(subject, "fiducial")
+        left, right = db.get_surf(subject, "fiducial")
         try:
-            fleft, fright = surfs.getSurf(subject, "flat", nudge=True, merge=False)
+            fleft, fright = db.get_surf(subject, "flat", nudge=True, merge=False)
         except IOError:
             fleft = None
 
         if decimate:
             try:
-                pleft, pright = surfs.getSurf(subject, "pia")
+                pleft, pright = db.get_surf(subject, "pia")
                 self.left = DecimatedHemi(left[0], left[1], fleft[1], pia=pleft[0])
                 self.right = DecimatedHemi(right[0], right[1], fright[1], pia=pright[0])
                 self.addSurf("wm", name="wm", addtype=False, renorm=False)
@@ -47,8 +46,8 @@ class BrainCTM(object):
                 self.right = DecimatedHemi(right[0], right[1], fright[1])
         else:
             try:
-                pleft, pright = surfs.getSurf(subject, "pia")
-                wleft, wright = surfs.getSurf(subject, "wm")
+                pleft, pright = db.get_surf(subject, "pia")
+                wleft, wright = db.get_surf(subject, "wm")
                 self.left = Hemi(pleft[0], left[1])
                 self.right = Hemi(pright[0], right[1])
                 self.addSurf("wm", name="wm", addtype=False, renorm=False)
@@ -75,14 +74,14 @@ class BrainCTM(object):
             self.flatlims = None
 
     def addSurf(self, typename, addtype=True, **kwargs):
-        left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
+        left, right = db.get_surf(self.subject, typename, nudge=False, merge=False)
         self.left.addSurf(left[0], **kwargs)
         self.right.addSurf(right[0], **kwargs)
         if addtype:
             self.types.append(typename)
 
     def addCurvature(self, **kwargs):
-        npz = surfs.getSurfInfo(self.subject, type='curvature', **kwargs)
+        npz = db.get_surfinfo(self.subject, type='curvature', **kwargs)
         try:
             self.left.aux[:,1] = npz.left[self.left.mask]
             self.right.aux[:,1] = npz.right[self.right.mask]
@@ -131,7 +130,7 @@ class BrainCTM(object):
             ## -- New code 2014.05: add sulci & display layers -- ##
             flatpts = np.vstack([self.left.flat, self.right.flat])
             for disp_layer in disp_layers: 
-                roipack = surfs.getOverlay(self.subject, pts=flatpts,otype=disp_layer)
+                roipack = db.get_overlay(self.subject, pts=flatpts,otype=disp_layer)
                 layer = roipack.setup_labels()
                 with open(svgname, "w") as fp:
                     for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
@@ -263,3 +262,25 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimat
         os.makedirs(os.path.split(outfile)[0])
 
     return ctm.save(os.path.splitext(outfile)[0], method=method, level=level,disp_layers=disp_layers)
+
+def read_pack(ctmfile):
+    fname = os.path.splitext(ctmfile)[0]
+    jsfile = json.load(open(fname+".json"))
+    offset = jsfile['offsets']
+
+    meshes = []
+
+    with open(ctmfile, 'r') as ctmfp:
+        ctmfp.seek(0, 2)
+        offset.append(ctmfp.tell())
+
+        for start, end in zip(offset[:-1], offset[1:]):
+            ctmfp.seek(start)
+            tf = tempfile.NamedTemporaryFile()
+            tf.write(ctmfp.read(end-start))
+            tf.seek(0)
+            ctm = CTMfile(tf.name, "r")
+            pts, polys, norms = ctm.getMesh()
+            meshes.append((pts, polys))
+
+    return meshes

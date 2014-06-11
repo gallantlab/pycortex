@@ -1,27 +1,26 @@
 import os
-import re
 import glob
 import json
+import Queue
 import shutil
 import random
 import functools
 import binascii
 import mimetypes
+import threading
 import webbrowser
-import multiprocessing as mp
 import numpy as np
 
 from tornado import web
 from .FallbackLoader import FallbackLoader
 
 from .. import utils, options, volume, dataset
-from ..db import surfs
+from ..database import db
 
 from . import serve
 from .data import Package
 from ConfigParser import NoOptionError
 
-name_parse = re.compile(r".*/(\w+).png")
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
     if not os.path.exists(cmapdir):
@@ -33,7 +32,7 @@ except NoOptionError:
 
 
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-colormaps = [(name_parse.match(cm).group(1), serve.make_base64(cm)) for cm in sorted(colormaps)]
+colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm)) for cm in sorted(colormaps)]
 
 viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
 
@@ -74,14 +73,14 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
 
-    surfs.auxfile = data
+    db.auxfile = data
 
     package = Package(data)
     subjects = list(package.subjects)
 
     ctmargs = dict(method='mg2', level=9, recache=recache)
     ctms = dict((subj, utils.get_ctmpack(subj, types, disp_layers=disp_layers, **ctmargs)) for subj in subjects)
-    surfs.auxfile = None
+    db.auxfile = None
 
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
@@ -161,7 +160,6 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         subjects=json.dumps(ctms),
         **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
-    surfs.auxfile = None
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     autoclose=True, open_browser=True, port=None, pickerfun=None,disp_layers=['rois'], **kwargs):
@@ -172,7 +170,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         data = dataset.Dataset(data=data)
 
     html = FallbackLoader([serve.cwd]).load("mixer.html")
-    surfs.auxfile = data
+    db.auxfile = data
 
     package = Package(data)
     metadata = json.dumps(package.metadata())
@@ -188,14 +186,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj, types, disp_layers=disp_layers, **kwargs)) for subj in subjects)
     subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))
-    surfs.auxfile = None
+    db.auxfile = None
 
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
-
-    saveevt = mp.Event()
-    saveimg = mp.Array('c', 8192)
-    queue = mp.Queue()
 
     linear = lambda x, y, m: (1.-m)*x + m*y
     mixes = dict(
@@ -203,6 +197,11 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         smoothstep=(lambda x, y, m: linear(x,y,3*m**2 - 2*m**3)), 
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
+
+    post_name = Queue.Queue()
+
+    if pickerfun is None:
+        pickerfun = lambda a,b: None
 
     class CTMHandler(web.RequestHandler):
         def get(self, path):
@@ -222,13 +221,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         def get(self, path):
             path = path.strip("/")
             try:
-                d = queue.get(True, 0.1)
-                print("Got new data: %r"%list(d.keys()))
-                images.update(d)
-            except:
-                pass
-
-            try:
                 dataname, frame = path.split('/')
             except ValueError:
                 dataname = path
@@ -241,7 +233,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 self.set_status(404)
                 self.write_error(404)
 
-    class StimHandler(serve.StaticFileHandler):
+    class StimHandler(web.StaticFileHandler):
         def initialize(self):
             pass
 
@@ -267,10 +259,9 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             self.write(generated)
 
         def post(self):
-            print("saving file to %s"%saveimg.value)
             data = self.get_argument("svg", default=None)
             png = self.get_argument("png", default=None)
-            with open(saveimg.value, "wb") as svgfile:
+            with open(post_name.get(), "wb") as svgfile:
                 if png is not None:
                     data = png[22:].strip()
                     try:
@@ -279,17 +270,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                         print("Error writing image!")
                         data = png
                 svgfile.write(data)
-            saveevt.set()
-
-    if pickerfun is None:
-        pickerfun = lambda a,b: None
-
-    class JSLocalMixer(serve.JSLocal):
-        def addData(self, **kwargs):
-            Proxy = serve.JSProxy(self.send, "window.viewers.addData")
-            json, data = _make_bindat(_normalize_data(kwargs, pfunc), fmt='data/%s/')
-            queue.put(data)
-            return Proxy(json)
 
     class JSMixer(serve.JSProxy):
         def _setView(self,**kwargs):
@@ -318,7 +298,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 view[p] = self.getState(p)[0]
             return view
 
-        def saveView(self,subject,name):
+        def save_view(self,subject,name):
             """Saves current view parameters to a .json file
 
             Parameters
@@ -328,7 +308,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
             Notes
             -----
-            Equivalent to call to cortex.surfs.saveView(subject,vw,name)
+            Equivalent to call to cortex.db.save_view(subject,vw,name)
             
             To adjust view in javascript console:
             # Set BG to alpha:
@@ -339,12 +319,12 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
             See Also
             --------
-            methods loadView, _setView, _getView
+            methods get_view, _setView, _getView
             """
             # Check for existence of view? 
-            surfs.saveView(self,subject,name)
+            db.save_view(self,subject,name)
 
-        def loadView(self,subject,name):
+        def get_view(self,subject,name):
             """Sets current view parameters to those stored in a .json file
 
             Parameters
@@ -355,7 +335,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
             Notes
             -----
-            Equivalent to call to cortex.surfs.loadView(subject,vw,name)
+            Equivalent to call to cortex.db.get_view(subject,vw,name)
 
             Further modifications possible in JavaScript console:
             # Set BG to alpha:
@@ -366,15 +346,16 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
             See Also
             --------
-            methods saveView, _setView, _getView
+            methods save_view, _setView, _getView
             """
-            view = surfs.loadView(self,subject,name)
+            view = db.get_view(self,subject,name)
             
 
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewers.addData")
-            metadata, images = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
-            queue.put(images)
+            new_meta, new_ims = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
+            metadata.update(new_meta)
+            images.update(new_ims)
             return Proxy(metadata)
         
         # Would like this to be here instead of in setState, but did
@@ -395,8 +376,9 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             """
             if not size is None:
                 self.resize(*size)
+            post_name.put(filename)
+
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
-            saveimg.value = filename
             return Proxy("mixer.html")
 
         def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, size=(1920, 1080), interpolation="linear"):
@@ -485,17 +467,14 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 saveevt.wait()
 
     class PickerHandler(web.RequestHandler):
-        def initialize(self, server):
-            self.client = JSLocalMixer(server.srvsend, server.srvresp)
-
         def get(self):
-            pickerfun(self.client, int(self.get_argument("voxel")), int(self.get_argument("vertex")))
+            pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
 
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
         def get_client(self):
-            self.c_evt.wait()
-            self.c_evt.clear()
+            self.connect.wait()
+            self.connect.clear()
             return JSMixer(self.send, "window.viewers")
 
         def get_local_client(self):
@@ -504,21 +483,20 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     if port is None:
         port = random.randint(1024, 65536)
         
-    srvdict = dict()
     server = WebApp([
             (r'/ctm/(.*)', CTMHandler),
             (r'/data/(.*)', DataHandler),
             (r'/stim/(.*)', StimHandler),
             (r'/mixer.html', MixerHandler),
-            (r'/picker', PickerHandler, srvdict),
+            (r'/picker', PickerHandler),
             (r'/', MixerHandler),
         ], port)
-    srvdict['server'] = server
     server.start()
     print("Started server on port %d"%server.port)
     if open_browser:
         webbrowser.open("http://%s:%d/mixer.html"%(serve.hostname, server.port))
-
         client = server.get_client()
         client.server = server
         return client
+
+    return server

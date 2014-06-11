@@ -60,7 +60,7 @@ class Package(object):
         return names
 
 def _pack_png(mosaic):
-    import Image
+    from PIL import Image
     import cStringIO
     buf = cStringIO.StringIO()
     if mosaic.dtype not in (np.float32, np.uint8):

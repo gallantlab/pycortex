@@ -199,7 +199,7 @@ class ROIpack(object):
         return dict([(name, roi.get_ptidx()) for name, roi in list(self.rois.items())])
 
     def get_roi(self, roiname):
-        import Image
+        from PIL import Image
         shadow = self.shadow
         self.set(shadow=0)
 
@@ -545,8 +545,6 @@ def make_svg(pts, polys):
     return svg
 
 def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
-    from .db import surfs
-    
     cullpts = pts[:,:2]
     if remove_medial:
         valid = np.unique(polys)

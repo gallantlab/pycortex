@@ -28,6 +28,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
     this.minRadius = function(mix){return 101*mix}; // limits zoom for flatmap, which disappears at r=100
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
+    this.friction = 0.05; // velocity lost per milisecond
     
 
     // internals
@@ -35,6 +36,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
     this.azimuth = 45;
     this.altitude = 75;
     this.radius = 250;
+    this._scheduled = false;
 
     var _state = STATE.NONE,
         _start = new THREE.Vector3(),
@@ -45,6 +47,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
     var _clicktime = 0; // Time of last click (mouseup event)
     var _indblpick = false; // In double-click and hold?
     var _picktimer = false; // timer that runs pick event
+    this._momentumtimer = false; // time that glide has been going on post mouse-release
 
     // events
 
@@ -90,6 +93,8 @@ THREE.LandscapeControls = function ( cover, camera ) {
     };
 
     function mousedown( event ) {
+        this.unschedule();
+
         event.preventDefault();
         event.stopPropagation();
 
@@ -113,6 +118,10 @@ THREE.LandscapeControls = function ( cover, camera ) {
 
     function mouseup( event ) {
         if ( ! this.enabled ) return;
+        this.dispatchEvent( changeEvent );
+
+        this._momentumtimer = new Date().getTime();
+        this.schedule( true );
 
         event.preventDefault();
         event.stopPropagation();
@@ -270,8 +279,8 @@ THREE.LandscapeControls.prototype = {
     },
 
     rotate: function ( mouseChange ) {
-        var azdiff = -this.rotateSpeed*mouseChange.x;
-        var az = this.azimuth + azdiff;
+        this.azvel_init = -this.rotateSpeed * mouseChange.x;
+        var az = this.azimuth + this.azvel_init;
         if ( this.azlim > 0 ) {
             if ( this.azlim > az || az > (360-this.azlim)) {
                 this.azimuth = azdiff < 0 ? this.azlim : 360-this.azlim;
@@ -282,27 +291,37 @@ THREE.LandscapeControls.prototype = {
             this.azimuth = az - 360*Math.floor(az / 360);
         }
 
+        //this.altitude -= this.rotateSpeed*mouseChange.y;
+        this.altvel_init = -this.rotateSpeed * mouseChange.y;
+        this.altitude += this.altvel_init;
+        //this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
 
-        this.altitude -= this.rotateSpeed*mouseChange.y;
-
-    // Add panning depending on flatmix
-    var panMouseChange = new Object;
-    panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
-    panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
-    this.pan(panMouseChange);
+        // Add panning depending on flatmix
+        if ( this.flatmix > 0 ) {
+            var panMouseChange = new Object;
+            panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
+            panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
+            this.pan(panMouseChange);
+        }
     }, 
 
     pan: function( mouseChange ) {
+        this.panxvel_init = this.panSpeed * mouseChange.x;
+        this.panyvel_init = this.panSpeed * mouseChange.y;
+        this.setpan( this.panSpeed * mouseChange.x, this.panSpeed * mouseChange.y );
+    },
+
+    setpan: function( x, y ) {
         var eye = this.camera.position.clone().subSelf(this.target);
         var right = eye.clone().crossSelf( this.camera.up );
         var up = right.clone().crossSelf(eye);
         var pan = (new THREE.Vector3()).add(
-            right.setLength( this.panSpeed*mouseChange.x ), 
-            up.setLength( this.panSpeed*mouseChange.y ));
+            right.setLength( x ), 
+            up.setLength( y ));
         this.camera.position.addSelf( pan );
         this.target.addSelf( pan );
     },
-
+ 
     zoom: function( mouseChange ) {
         var factor = 1.0 + mouseChange.y*this.zoomSpeed;
         this.radius *= factor;
@@ -317,6 +336,73 @@ THREE.LandscapeControls.prototype = {
     wheelzoom: function( wheelEvent ) {
         var factor = 1.0 + this.zoomSpeed * -1 * wheelEvent.wheelDelta/10.0;
         this.radius *= factor;
+    },
+
+    schedule: function( force ) {
+        // console.log("Scheduling");
+        if (this._in_anim || force) {
+            this._in_anim = true;
+            requestAnimationFrame( this.anim.bind(this) );
+        }
+    },
+
+    unschedule: function() {
+        // console.log("unscheduling");
+        this.resetvel();
+        this._in_anim = false;
+    },
+
+    resetvel: function() {
+        this.altvel_init = 0;
+        this.azvel_init = 0;
+        this.panxvel_init = 0;
+        this.panyvel_init = 0;
+    },
+ 
+    anim: function() {
+        var now = new Date().getTime();
+        if ( Math.abs(this.azvel_init) > 0 || Math.abs(this.altvel_init) > 0 ) {
+            // console.log("Animating", this.azvel, this.altvel);
+            //this.azvel *= 1 - this.friction;
+            this.azvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.azvel_init;
+            this.azimuth += this.azvel;
+            this.azimuth = ((this.azimuth % 360) + 360) % 360;
+
+            //this.altvel *= 1 - this.friction;
+            this.altvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.altvel_init;
+            this.altitude += this.altvel;
+            // this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
+
+            // console.log("Animating", this.azvel, this.altvel);
+        }
+        else {
+            this.azvel = 0;
+            this.altvel = 0;
+        }
+
+        if ( Math.abs(this.panxvel_init) > 0 || Math.abs(this.panyvel_init) > 0 ) {
+            // console.log("Animating", this.panxvel, this.panyvel);
+            this.panxvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.panxvel_init;
+            this.panyvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.panyvel_init;
+            //this.panxvel *= 1 - this.friction;
+            //this.panyvel *= 1 - this.friction;
+
+            this.setpan(this.panxvel, this.panyvel);
+        }
+        else {
+            this.panxvel = 0;
+            this.panyvel = 0;
+        }
+     
+        this.dispatchEvent( {type:'change'} );
+
+        // console.log("velocities: ", this.altvel, this.azvel, this.panxvel, this.panyvel);
+        if (Math.abs(this.altvel)<0.01 && Math.abs(this.azvel)<0.01 && Math.abs(this.panxvel)<0.01 && Math.abs(this.panyvel)<0.01) {
+            this.unschedule();
+        } else {
+            this.schedule();
+        }
+
     }
 
 }

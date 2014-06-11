@@ -4,20 +4,20 @@ import sys
 import binascii
 import numpy as np
 
-from .db import surfs
+from .database import db
 from .volume import mosaic, unmask
 
 def get_roipack(*args, **kwargs):
     import warnings
-    warnings.warn('Please use surfs.getOverlay instead', DeprecationWarning)
-    return surfs.getOverlay(*args, **kwargs)
+    warnings.warn('Please use db.get_overlay instead', DeprecationWarning)
+    return db.get_overlay(*args, **kwargs)
 
 def get_mapper(*args, **kwargs):
     from .mapper import get_mapper
     return get_mapper(*args, **kwargs)
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False,disp_layers=['rois']):
-    
+    """Get ctmpack. [most useless help message ever]"""   
     lvlstr = ("%dd" if decimate else "%d")%level
     # Temporary code to play nice with other branches:
     if disp_layers==['rois']:
@@ -28,7 +28,7 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
         # display layers into the main ctm file(s)
         ctmcache = "%s_[{types}]_{method}_{level}_{layers}.json"%subject
         ctmcache = ctmcache.format(types=','.join(types), method=method, level=lvlstr,layers=disp_layers)
-    ctmfile = os.path.join(surfs.getCache(subject), ctmcache)
+    ctmfile = os.path.join(db.get_cache(subject), ctmcache)
 
     if os.path.exists(ctmfile) and not recache:
         return ctmfile
@@ -39,11 +39,27 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
         level=level, decimate=decimate,disp_layers=disp_layers)
     return ctmfile
 
+def get_ctmmap(subject, **kwargs):
+    from scipy.spatial import cKDTree
+    from . import brainctm
+    jsfile = get_ctmpack(subject, **kwargs)
+    ctmfile = os.path.splitext(jsfile)[0]+".ctm"
+    
+    try:
+        left, right = db.get_surf(subject, "pia")
+    except IOError:
+        left, right = db.get_surf(subject, "fiducial")
+    
+    lmap, rmap = cKDTree(left[0]), cKDTree(right[0])
+    left, right = brainctm.read_pack(ctmfile)
+    lnew = lmap.query(left[0])[1]
+    rnew = rmap.query(right[0])[1]
+    return lnew, rnew
+
 def get_cortical_mask(subject, xfmname, type='nearest'):
-    from .db import surfs
     if type == 'cortical':
-        ppts, polys = surfs.getSurf(subject, "pia", merge=True, nudge=False)
-        wpts, polys = surfs.getSurf(subject, "wm", merge=True, nudge=False)
+        ppts, polys = db.get_surf(subject, "pia", merge=True, nudge=False)
+        wpts, polys = db.get_surf(subject, "wm", merge=True, nudge=False)
         thickness = np.sqrt(((ppts - wpts)**2).sum(1))
 
         dist, idx = get_vox_dist(subject, xfmname)
@@ -86,8 +102,8 @@ def get_vox_dist(subject, xfmname, surface="fiducial"):
     import nibabel
     from scipy.spatial import cKDTree
 
-    fiducial, polys = surfs.getSurf(subject, surface, merge=True)
-    xfm = surfs.getXfm(subject, xfmname)
+    fiducial, polys = db.get_surf(subject, surface, merge=True)
+    xfm = db.get_xfm(subject, xfmname)
     z, y, x = xfm.shape
     idx = np.mgrid[:x, :y, :z].reshape(3, -1).T
     mm = xfm.inv(idx)
@@ -105,18 +121,29 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
     return get_mapper(subject, xfmname, type=type).hemimasks
 
 def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
-    """Add new overlay data to the ROI file for a subject.
+    """Add new flatmap image to the ROI file for a subject.
+
+    (The subject is specified in creation of the data object)
+
+    Creates a flatmap image from the `data` input, and adds that image as
+    a sub-layer to the data layer in the rois.svg file stored for 
+    the subject  in the pycortex database. Most often, this is data to be 
+    used for defining a region (or several regions) of interest, such as a 
+    localizer contrast (e.g. a t map of Faces > Houses). 
+
+    Use the **kwargs inputs to specify 
 
     Parameters
     ----------
     data : DataView
-        The data that will be overlaid on the ROI file.
+        The data used to generate the flatmap image. 
     name : str, optional
-        Name that will be assigned to the new dataset. <<IS THIS NECESSARY ANYMORE?>>
+        Name that will be assigned to the `data` sub-layer in the rois.svg file
+            (e.g. "Faces > Houses, t map, p<.005" or "Retinotopy - Rotating Wedge")
     open_inkscape : bool, optional
         If True, Inkscape will automatically open the ROI file.
     add_path : bool, optional
-        If True, a new SVG layer will automatically be created in the ROI group
+        If True, also adds a sub-layer to the `rois` new SVG layer will automatically be created in the ROI group
         with the same `name` as the overlay.
     kwargs : dict
         Passed to cortex.quickflat.make_png
@@ -161,12 +188,12 @@ def get_roi_verts(subject, roi=None):
         after left hemisphere vertex numbers.
     """
     # Get ROIpack
-    rois = surfs.getOverlay(subject)
+    rois = db.get_overlay(subject)
 
     # Get flat surface so we can figure out which verts are in medial wall
     # or in cuts
     # This assumes subject has flat surface, which they must to have ROIs..
-    pts, polys = surfs.getSurf(subject, "flat", merge=True)
+    pts, polys = db.get_surf(subject, "flat", merge=True)
     goodpts = np.unique(polys)
 
     if roi is None:
@@ -203,10 +230,10 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
 
     # Retrieve shape from the reference
     import nibabel
-    shape = surfs.getXfm(subject, xfmname).shape
+    shape = db.get_xfm(subject, xfmname).shape
     
     # Get 3D coords
-    coords = np.vstack(surfs.getCoords(subject, xfmname))
+    coords = np.vstack(db.get_coords(subject, xfmname))
     nVerts = np.max(coords.shape)
     coords = coords[vertIdx]
     nValidVerts = np.max(coords.shape)
@@ -214,14 +241,14 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     voxDst,voxIdx = get_vox_dist(subject,xfmname)
     voxIdxF = voxIdx.flatten()
     # Get L,R hem separately
-    L,R = surfs.getSurf(subject, "flat", merge=False, nudge=True)
+    L,R = db.get_surf(subject, "flat", merge=False, nudge=True)
     nL = len(np.unique(L[1]))
     #nVerts = len(idxL)+len(idxR)
     # mask for left hemisphere
     Lmask = (voxIdx < nL).flatten()
     Rmask = np.logical_not(Lmask)
     if type(Dst) in (str,unicode) and Dst.lower()=='cortical':
-        CxMask = surfs.getMask(subject,xfmname,'cortical').flatten()
+        CxMask = db.get_mask(subject,xfmname,'cortical').flatten()
     else:
         CxMask = (voxDst < Dst).flatten()
     
@@ -291,7 +318,7 @@ def get_dropout(subject, xfmname, power=20):
     """Create a dropout VolumeData showing where EPI signal
     is very low.
     """
-    xfm = surfs.getXfm(subject, xfmname)
+    xfm = db.get_xfm(subject, xfmname)
     rawdata = xfm.reference.get_data().T
 
     ## Collapse epi across time if it's 4D

@@ -32,15 +32,15 @@ def manual(subject, xfmname, reference=None, **kwargs):
     m : 2D ndarray, shape (4, 4)
         Transformation matrix.
     """
-    from .db import surfs
+    from .database import db
     from .mayavi_aligner import get_aligner
     def save_callback(aligner):
-        surfs.loadXfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', reference=reference)
+        db.save_xfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', reference=reference)
         print("saved xfm")
 
     # Check whether transform w/ this xfmname already exists
     try:
-        surfs.getXfm(subject, xfmname)
+        db.get_xfm(subject, xfmname)
         # Transform exists, make sure that reference is None
         if reference is not None:
             raise ValueError('Refusing to overwrite reference for existing transform %s, use reference=None to load stored reference' % xfmname)
@@ -64,7 +64,7 @@ def manual(subject, xfmname, reference=None, **kwargs):
             if resp in ["y", "yes"]:
                 print("Saving...")
                 try:
-                    surfs.loadXfm(subject, xfmname, magnet, xfmtype='magnet', reference=reference)
+                    db.save_xfm(subject, xfmname, magnet, xfmtype='magnet', reference=reference)
                 except Exception as e:
                     print("AN ERROR OCCURRED, THE TRANSFORM WAS NOT SAVED: %s"%e)
                 print("Complete!")
@@ -107,25 +107,30 @@ def automatic(subject, xfmname, reference, noclean=False):
     import tempfile
     import subprocess as sp
 
-    from .db import surfs
+    from .database import db
     from .xfm import Transform
+    from .options import config
+
+    fsl_prefix = config.get("basic", "fsl_prefix")
+    schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
 
     retval = None
     try:
         cache = tempfile.mkdtemp()
         absreference = os.path.abspath(reference)
-        raw = surfs.getAnat(subject, type='raw').get_filename()
-        bet = surfs.getAnat(subject, type='brainmask').get_filename()
-        wmseg = surfs.getAnat(subject, type='whitematter').get_filename()
+        raw = db.get_anat(subject, type='raw').get_filename()
+        bet = db.get_anat(subject, type='brainmask').get_filename()
+        wmseg = db.get_anat(subject, type='whitematter').get_filename()
         # Compute anatomical-to-epi transform
         print('FLIRT pre-alignment')
-        cmd = 'fsl5.0-flirt  -in {epi} -ref {bet} -dof 6 -omat {cache}/init.mat'.format(cache=cache, epi=absreference, bet=bet)
+        cmd = '{fslpre}flirt  -in {epi} -ref {bet} -dof 6 -omat {cache}/init.mat'.format(
+            fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet)
         if sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling initial FLIRT')
         print('Running BBR')
         # Run epi-to-anat transform (this is more stable than anat-to-epi in FSL!)
-        cmd = 'fsl5.0-flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
-        cmd = cmd.format(cache=cache, raw=raw, wmseg=wmseg, epi=absreference)
+        cmd = '{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile}'
+        cmd = cmd.format(fslpre=fsl_prefix, cache=cache, raw=raw, wmseg=wmseg, epi=absreference, schfile=schfile)
         if sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling BBR flirt')
 
@@ -163,17 +168,17 @@ def autotweak(subject, xfmname):
     import tempfile
     import subprocess as sp
 
-    from .db import surfs
+    from .database import db
     from .xfm import Transform
 
-    magnet = surfs.getXfm(subject, xfmname, xfmtype='magnet')
+    magnet = db.get_xfm(subject, xfmname, xfmtype='magnet')
     try:
         cache = tempfile.mkdtemp()
         epifile = magnet.reference.get_filename()
-        raw = surfs.getAnat(subject, type='raw').get_filename()
-        bet = surfs.getAnat(subject, type='brainmask').get_filename()
-        wmseg = surfs.getAnat(subject, type='whitematter').get_filename()
-        initmat = magnet.to_fsl(surfs.getAnat(subject, 'raw').get_filename())
+        raw = db.get_anat(subject, type='raw').get_filename()
+        bet = db.get_anat(subject, type='brainmask').get_filename()
+        wmseg = db.get_anat(subject, type='whitematter').get_filename()
+        initmat = magnet.to_fsl(db.get_anat(subject, 'raw').get_filename())
         with open(os.path.join(cache, 'init.mat'), 'w') as fp:
             np.savetxt(fp, initmat, fmt='%f')
         print('Running BBR')

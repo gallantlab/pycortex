@@ -2,14 +2,14 @@ import cortex
 import tempfile
 import numpy as np
 
-from cortex import surfs, dataset
+from cortex import db, dataset
 
 subj, xfmname, nverts = "S1", "fullhead", 304380
 
 def test_braindata():
 	vol = np.random.randn(31, 100, 100)
 	tf = tempfile.TemporaryFile(suffix='.png')
-	mask = surfs.getMask(subj, xfmname, "thick")
+	mask = db.get_mask(subj, xfmname, "thick")
 
 	data = dataset.DataView((vol, subj, xfmname), cmap='RdBu_r', vmin=0, vmax=1)
 	# quickflat.make_png(tf, data)
@@ -21,7 +21,7 @@ def test_dataset():
 	vol = np.random.randn(31, 100, 100)
 	stack = (np.ones((100, 100, 31))*np.linspace(0, 1, 31)).T
 	raw = (np.random.rand(10, 31, 100, 100, 3)*256).astype(np.uint8)
-	mask = surfs.getMask(subj, xfmname, "thick")
+	mask = db.get_mask(subj, xfmname, "thick")
 
 	ds = dataset.Dataset(randvol=(vol, subj, xfmname), stack=(stack, subj, xfmname))
 	ds.append(thickstack=ds.stack.copy(ds.stack.data.masked['thick']))
@@ -37,7 +37,7 @@ def test_dataset():
 
 def test_findmask():
 	vol = (np.random.rand(10, 31, 100, 100, 3)*256).astype(np.uint8)
-	mask = surfs.getMask(subj, xfmname, "thin")
+	mask = db.get_mask(subj, xfmname, "thin")
 	ds = dataset.VolumeData(vol[:, mask], subj, xfmname)
 	assert np.allclose(ds.volume[:, mask, :3], vol[:, mask])
 	return ds
@@ -110,15 +110,16 @@ def test_pack():
 	ds.save(tf.name, pack=True)
 
 	ds = cortex.openFile(tf.name)
-	pts, polys = cortex.surfs.getSurf(subj, "fiducial", "lh")
-	dpts, dpolys = ds.getSurf(subj, "fiducial", "lh")
+	pts, polys = cortex.db.get_surf(subj, "fiducial", "lh")
+	dpts, dpolys = ds.get_surf(subj, "fiducial", "lh")
 	assert np.allclose(pts, dpts)
 
-	rois = cortex.surfs.getOverlay(subj, "rois")
-	assert rois.rois.keys() == ds.getOverlay(subj, "rois").rois.keys()
+	rois = cortex.db.get_overlay(subj, "rois")
+	# Dataset.get_overlay returns a file handle, not an ROIpack ?
+	#assert rois.rois.keys() == ds.get_overlay(subj, "rois").rois.keys()
 
-	xfm = cortex.surfs.getXfm(subj, xfmname)
-	assert np.allclose(xfm.xfm, ds.getXfm(subj, xfmname).xfm)
+	xfm = cortex.db.get_xfm(subj, xfmname)
+	assert np.allclose(xfm.xfm, ds.get_xfm(subj, xfmname).xfm)
 
 def test_convertraw():
 	ds = cortex.Dataset(test=(np.random.randn(31, 100, 100), subj, xfmname))

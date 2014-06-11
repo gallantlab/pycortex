@@ -7,11 +7,11 @@ import subprocess as sp
 import numpy as np
 
 from . import utils
-from .db import surfs
+from .database import db
 from .xfm import Transform
 
 def brainmask(outfile, subject):
-    raw = surfs.getAnat(subject, type='raw').get_filename()
+    raw = db.get_anat(subject, type='raw').get_filename()
     print('Brain masking anatomical...')
     cmd = 'fsl5.0-bet {raw} {bet} -B -v'.format(raw=raw, bet=outfile)
     assert sp.call(cmd, shell=True) == 0, "Error calling fsl-bet"
@@ -23,7 +23,7 @@ def whitematter(outfile, subject, do_voxelize=False):
         else:
             voxelize(outfile, subject, surf="wm")
     except IOError:
-        bet = surfs.getAnat(subject, type='brainmask').get_filename()
+        bet = db.get_anat(subject, type='brainmask').get_filename()
         try:
             cache = tempfile.mkdtemp()
             print("Segmenting the brain...")
@@ -37,10 +37,10 @@ def whitematter(outfile, subject, do_voxelize=False):
 def voxelize(outfile, subject, surf='wm', mp=True):
     '''Voxelize the whitematter surface to generate the white matter mask'''
     from . import polyutils
-    nib = surfs.getAnat(subject, "raw")
+    nib = db.get_anat(subject, "raw")
     shape = nib.get_shape()
     vox = np.zeros(shape, dtype=bool)
-    for pts, polys in surfs.getSurf(subject, surf, nudge=False):
+    for pts, polys in db.get_surf(subject, surf, nudge=False):
         xfm = Transform(np.linalg.inv(nib.get_affine()), nib)
         vox += polyutils.voxelize(xfm(pts), polys, shape=shape, center=(0,0,0), mp=mp)
         

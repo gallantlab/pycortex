@@ -12,7 +12,7 @@ def _memo(fn):
     dozens of times.
     """
     @functools.wraps(fn)
-    def memofn(self):
+    def memofn(self, *args, **kwargs):
         if id(fn) not in self._cache:
             self._cache[id(fn)] = fn(self)
         return self._cache[id(fn)]
@@ -36,7 +36,7 @@ class Surface(object):
         polys : 2D ndarray, shape (total_polys, 3)
             Indices of the vertices in each triangle in the surface.
         """
-        self.pts = pts
+        self.pts = pts.astype(np.double)
         self.polys = polys
 
         self._cache = dict()
@@ -196,7 +196,7 @@ class Surface(object):
         curv = (L.dot(self.pts) * self.vertex_normals).sum(1)
         return curv
 
-    def smooth(self, scalars, factor=1.0):
+    def smooth(self, scalars, factor=1.0, iterations=1):
         """Smooth vertex-wise function given by `scalars` across the surface using
         mean curvature flow method (see http://brickisland.net/cs177fa12/?p=302).
 
@@ -209,6 +209,8 @@ class Surface(object):
             supplied by mean_curvature.
         factor : float, optional
             Amount of smoothing to perform, larger values smooth more.
+        iterations : int, optional
+            Number of times to repeat smoothing, larger values smooths more.
 
         Returns
         -------
@@ -223,9 +225,12 @@ class Surface(object):
         lfac = sparse.dia_matrix((D,[0]), (npt,npt)) - factor * (W-V)
         goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
         lfac_solver = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
-        goodsmscalars = lfac_solver((D * scalars)[goodrows])
+        to_smooth = scalars
+        for _ in range(iterations):
+            from_smooth = lfac_solver((D * to_smooth)[goodrows])
+            to_smooth[goodrows] = from_smooth
         smscalars = np.zeros(scalars.shape)
-        smscalars[goodrows] = goodsmscalars
+        smscalars[goodrows] = from_smooth
         return smscalars
         
     @property
@@ -233,7 +238,7 @@ class Surface(object):
     def avg_edge_length(self):
         """Average length of all edges in the surface.
         """
-        adj = self.laplace_operator[1] # use laplace operator as adjacency matrix
+        adj = self.adj
         tadj = sparse.triu(adj, 1) # only entries above main diagonal, in coo format
         edgelens = np.sqrt(((self.pts[tadj.row] - self.pts[tadj.col])**2).sum(1))
         return edgelens.mean()
@@ -325,10 +330,10 @@ class Surface(object):
         
         lhs = (V-W).dot(L) # construct left side, almost squared L-B operator
         lhsfac = cholesky(lhs[notboundary][:,notboundary]) # factorize
-        #raise Exception
+        
         return lhs, D, Dinv, lhsfac, notboundary
 
-    def _create_interp(self, verts, bhsolver=None, newinterp=True):
+    def _create_interp(self, verts, bhsolver=None):
         """Creates interpolator that will interpolate values at the given `verts` using
         biharmonic interpolation.
 
@@ -412,7 +417,7 @@ class Surface(object):
         fe31 = np.cross(fnorms, ppts[:,0] - ppts[:,2])
         return fe12, fe23, fe31
 
-    def geodesic_distance(self, verts, m=1.0, fem=False):
+    def geodesic_distance(self, verts, m=2.0, fem=False):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
         vertex in the collection `verts`.
 
@@ -900,7 +905,7 @@ def rasterize(poly, shape=(256, 256)):
     import subprocess as sp
     import cStringIO
     import shlex
-    import Image
+    from PIL import Image
     
     polygon = " ".join(["%0.3f,%0.3f"%tuple(p[::-1]) for p in np.array(poly)-(.5, .5)])
     cmd = 'convert -size %dx%d xc:black -fill white -stroke none -draw "polygon %s" PNG32:-'%(shape[0], shape[1], polygon)
@@ -919,8 +924,7 @@ def rasterize(poly, shape=(256, 256)):
 
 def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True):
     from tvtk.api import tvtk
-    import Image
-    import ImageDraw
+    from PIL import Image, ImageDraw
     
     pd = tvtk.PolyData(points=pts + center + (0, 0, 0), polys=polys)
     plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
