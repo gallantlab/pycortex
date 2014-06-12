@@ -226,7 +226,53 @@ class Vertex(VertexData, Dataview):
         return VertexRGB(r, g, b, self.subject, self.xfmname, a, 
             description=self.description, state=self.state, **self.attrs)
 
-class VolumeRGB(Dataview):
+class DataviewRGB(Dataview):
+    def __init__(self, subject=None, alpha=None, description="", state=None, **kwargs):
+        self.alpha = alpha
+        self.subject = self.red.subject
+        self.description = description
+        self.state = state
+        self.attrs = kwargs
+        if 'priority' not in self.attrs:
+            self.attrs['priority'] = 1
+
+    def uniques(self, collapse=False):
+        if collapse:
+            yield self
+        else:
+            yield self.red
+            yield self.green
+            yield self.blue
+            if self.alpha is not None:
+                yield self.alpha
+
+    def _write_hdf(self, h5, name="data"):
+        self._cls._write_hdf(self.red, h5)
+        self._cls._write_hdf(self.green, h5)
+        self._cls._write_hdf(self.blue, h5)
+
+        alpha = None
+        if self.alpha is not None:
+            self._cls._write_hdf(self.alpha, h5)
+            alpha = self.alpha.name
+
+        data = [[self.red.name, self.green.name, self.blue.name, alpha]]
+        viewnode = Dataview._write_hdf(self, h5, name=name, 
+            data=data, xfmname=self.xfmname)
+        return viewnode
+
+    def to_json(self, simple=False):
+        sdict = super(DataviewRGB, self).to_json(simple=simple)
+
+        if simple:
+            sdict['name'] = self.name
+        else:
+            sdict['data'] = [self.name]
+
+        return sdict
+
+class VolumeRGB(DataviewRGB):
+    _cls = VolumeData
     def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description="", 
         state=None, **kwargs):
         if isinstance(red, VolumeData):
@@ -244,14 +290,8 @@ class VolumeRGB(Dataview):
             self.green = Volume(green, subject, xfmname)
             self.blue = Volume(blue, subject, xfmname)
 
-        self.alpha = alpha
-        self.subject = self.red.subject
         self.xfmname = self.red.xfmname
-        self.description = description
-        self.state = state
-        self.attrs = kwargs
-        if 'priority' not in self.attrs:
-            self.attrs['priority'] = 1
+        super(VolumeRGB, self).__init__(subject, alpha, description=description, state=state, **kwargs)
 
     @property
     def volume(self):
@@ -282,31 +322,6 @@ class VolumeRGB(Dataview):
 
         return np.array(volume).transpose([1, 2, 3, 4, 0])
 
-    def uniques(self, collapse=False):
-        if collapse:
-            yield self
-        else:
-            yield self.red
-            yield self.green
-            yield self.blue
-            if self.alpha is not None:
-                yield self.alpha
-
-    def _write_hdf(self, h5, name="data"):
-        VolumeData._write_hdf(self.red, h5)
-        VolumeData._write_hdf(self.green, h5)
-        VolumeData._write_hdf(self.blue, h5)
-
-        alpha = None
-        if self.alpha is not None:
-            VolumeData._write_hdf(self.alpha, h5)
-            alpha = self.alpha.name
-
-        data = [[self.red.name, self.green.name, self.blue.name, alpha]]
-        viewnode = Dataview._write_hdf(self, h5, name=name, 
-            data=data, xfmname=self.xfmname)
-        return viewnode
-
     def __repr__(self):
         return "<RGB volumetric data for (%s, %s)>"%(self.red.subject, self.red.xfmname)
 
@@ -317,7 +332,8 @@ class VolumeRGB(Dataview):
     def name(self):
         return "__%s"%_hash(self.volume)[:16]
 
-class VertexRGB(Dataview):
+class VertexRGB(DataviewRGB):
+    _cls = VertexData
     def __init__(self, red, green, blue, subject=None, alpha=None, description=""):
         if isinstance(red, VertexData):
             if not isinstance(green, VertexData) or red.subject != green.subject:
@@ -334,9 +350,7 @@ class VertexRGB(Dataview):
             self.green = Vertex(green, subject)
             self.blue = Vertex(blue, subject)
 
-        self.alpha = alpha
-        self.description = description
-        self.subject = subject
+        super(VolumeRGB, self).__init__(subject, alpha, description=description, state=state, **kwargs)
 
     @property
     def vertices(self):
@@ -358,44 +372,51 @@ class VertexRGB(Dataview):
 
         return np.array(verts).transpose([1, 2, 0])
 
-    def uniques(self, collapse=False):
-        if collapse:
-            yield self
-        else:
-            yield self.red
-            yield self.green
-            yield self.blue
-            if self.alpha is not None:
-                yield self.alpha
-
-    def _write_hdf(self, h5, name="data"):
-        VertexData._write_hdf(self.red, h5)
-        VertexData._write_hdf(self.green, h5)
-        VertexData._write_hdf(self.blue, h5)
-
-        alpha = None
-        if self.alpha is not None:
-            VertexData._write_hdf(self.alpha, h5)
-            alpha = self.alpha.name
-
-        data = [[self.red.name, self.green.name, self.blue.name, alpha]]
-        viewnode = Dataview._write_hdf(self, h5, name=name, 
-            data=data)
-        return viewnode
-
     def __repr__(self):
         return "<RGB vertex data for (%s)>"%(self.subject)
 
     def __hash__(self):
         return hash(_hash(self.vertices))
 
-class Volume2D(Dataview):
+    @property
+    def name(self):
+        return "__%s"%_hash(self.vertices)[:16]
+
+
+class Dataview2D(Dataview):
+    def __init__(self, description="", cmap=None, vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
+        self.vmin2 = vmin2 if vmin2 is not None else vmin
+        self.vmax2 = vmax2 if vmax2 is not None else vmax
+
+        super(Dataview2D, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
+
+    def uniques(self, collapse=False):
+        yield self.dim1
+        yield self.dim2
+
+    def _write_hdf(self, h5, name="data"):
+        self._cls._write_hdf(self.dim1, h5)
+        self._cls._write_hdf(self.dim2, h5)
+
+        viewnode = Dataview._write_hdf(self, h5, name=name)
+        viewnode[0] = json.dumps([[self.dim1.name, self.dim2.name]])
+        viewnode[3] = json.dumps([self.vmin, self.vmin2])
+        viewnode[4] = json.dumps([self.vmax, self.vmax2])
+        return viewnode
+
+    def to_json(self, simple=False):
+        sdict = super(Volume2D, self).to_json(simple=simple)
+        sdict['data'] = [[self.dim1.name, self.dim2.name]]
+        return sdict
+
+class Volume2D(Dataview2D):
+    _cls = VolumeData
     def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", cmap=None,
         vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
-        if isinstance(dim1, VolumeData):
+        if isinstance(dim1, self._cls):
             if subject is not None or xfmname is not None:
                 raise TypeError("Subject and xfmname cannot be specified with Volumes")
-            if not isinstance(dim2, VolumeData) or dim2.subject != dim1.subject:
+            if not isinstance(dim2, self._cls) or dim2.subject != dim1.subject:
                 raise TypeError("Invalid data for second dimension")
             self.dim1 = dim1
             self.dim2 = dim2
@@ -405,31 +426,18 @@ class Volume2D(Dataview):
             self.dim1 = Volume(dim1, subject, xfmname)
             self.dim2 = Volume(dim2, subject, xfmname)
 
-        self.vmin2 = vmin2 if vmin2 is not None else vmin
-        self.vmax2 = vmax2 if vmax2 is not None else vmax
-
         super(Volume2D, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
-        self.attrs['xfmnames'] = [self.dim1.xfmname, self.dim2.xfmname]
-
-    def uniques(self, collapse=False):
-        yield self.dim1
-        yield self.dim2
-
-    def _write_hdf(self, h5, name="data"):
-        VolumeData._write_hdf(self.dim1, h5)
-        VolumeData._write_hdf(self.dim2, h5)
-
-        viewnode = Dataview._write_hdf(self, h5, name=name)
-        viewnode[0] = json.dumps([[self.dim1.name, self.dim2.name]])
-        viewnode[3] = json.dumps([self.vmin, self.vmin2])
-        viewnode[4] = json.dumps([self.vmax, self.vmax2])
-        viewnode[7] = json.dumps([self.dim1.xfmname, self.dim2.xfmname])
-        return viewnode
 
     def __repr__(self):
         return "<2D volumetric data for (%s, %s)>"%(self.dim1.subject, self.dim1.xfmname)
 
+    def _write_hdf(self, h5, name="data"):
+        viewnode = super(Volume2D, self)._write_hdf(h5, name)
+        viewnode[7] = json.dumps([[self.dim1.xfmname, self.dim2.xfmname]])
+        return viewnode
+
 class Vertex2D(Dataview):
+    _cls = VertexData
     def __init__(self, dim1, dim2, subject=None, description="", cmap=None,
         vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
         if isinstance(dim1, VertexData):
@@ -445,23 +453,7 @@ class Vertex2D(Dataview):
             self.dim1 = Vertex(dim1, subject)
             self.dim2 = Vertex(dim2, subject)
 
-        self.vmin2 = vmin2 if vmin2 is not None else vmin
-        self.vmax2 = vmax2 if vmax2 is not None else vmax
         super(Vertex2D, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
-
-    def uniques(self, collapse=False):
-        yield self.dim1
-        yield self.dim2
-
-    def _write_hdf(self, h5, name="data"):
-        VertexData._write_hdf(self.dim1, h5)
-        VertexData._write_hdf(self.dim2, h5)
-
-        viewnode = Dataview._write_hdf(self, h5, name=name)
-        viewnode[0] = json.dumps([[self.dim1.name, self.dim2.name]])
-        viewnode[3] = json.dumps([float(self.vmin), float(self.vmin2)])
-        viewnode[4] = json.dumps([float(self.vmax), float(self.vmax2)])
-        return viewnode
 
     def __repr__(self):
         return "<2D vertex data for (%s)>"%self.dim1.subject
