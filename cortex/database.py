@@ -206,11 +206,11 @@ class Database(object):
         return self.get_cache(*args, **kwargs)
 
     def loadView(self, *args, **kwargs):
-        warnings.warn("loadView is deprecated, use save_view instead", Warning)
+        warnings.warn("loadView is deprecated, use get_view instead", Warning)
         return self.save_view(*args, **kwargs)
 
     def setView(self, *args, **kwargs):
-        warnings.warn("setView is deprecated, use get_view instead", Warning)
+        warnings.warn("setView is deprecated, use save_view instead", Warning)
         return self.get_view(*args, **kwargs)
 
     @property
@@ -617,21 +617,28 @@ class Database(object):
 
         Parameters
         ----------
-        vw : handle for cortex.webshow
-            Handle for open webshow session (returned by cortex.webshow)
-        subject : string, subject name
+        vw : handle for pycortex webgl viewer
+            Handle for open webgl session (returned by cortex.webshow)
+        subject : string
+            pycortex subject id
         name : string
             Name of stored view to re-load
-
+        
+        Notes
+        -----
+        Equivalent to call to vw.save_view(subject,name)
+        For a list of the view parameters saved, see viewer._capture_view
+        
         See Also
         --------
-        vw._setView,vw._getView, surfs.save_view
+        viewer methods save_view, get_view, _set_view, _capture_view
+        database method get_view
         """
-        view = vw._getView()
+        view = vw._capture_view()
         sName = os.path.join(self.filestore, subject, "views", name+'.json')
         if os.path.exists(sName):
             if not is_overwrite:
-                raise IOError('Refusing to over-write extant view!')
+                raise IOError('Refusing to over-write extant view If you want to do this, set is_overwrite=True!')
         json.dump(view,open(sName,'w'))
 
     def get_view(self,vw,subject,name):
@@ -650,17 +657,16 @@ class Database(object):
 
         Notes
         -----
-        Currently INCONSISTENT with other uses of "load" in this class!!
-        TO DO: Somebody needs to set this shit straight. It is much more 
-        sensible to have "load" refer to bringing something into memory 
-        rather than saving it to disk...
+        Equivalent to call to vw.get_view(subject,name)
+        For a list of the view parameters saved, see viewer._capture_view
 
         See Also
         --------
-        vw._setView,vw._getView, db.save_view
+        viewer methods save_view, get_view, _set_view, _capture_view
+        database method save_view
         """
         sName = os.path.join(self.filestore, subject, "views", name+'.json')
         view = json.load(open(sName))
-        vw._setView(**view)
+        vw._set_view(**view)
 
 db = Database()

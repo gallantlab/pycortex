@@ -149,7 +149,6 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
         Passed to cortex.quickflat.make_png
     """
     import subprocess as sp
-    from .utils import get_roipack
     from . import quickflat
     from . import dataset
 
@@ -157,7 +156,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     if isinstance(dv, dataset.Dataset):
         raise TypeError("Please specify a data view")
 
-    rois = get_roipack(dv.data.subject)
+    rois = db.get_overlay(dv.data.subject)
     try:
         import cStringIO
         fp = cStringIO.StringIO()
@@ -226,14 +225,14 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     roiList is a list of ROIs (which should be defined in the .svg file)
     '''
     # Get ROIs from inkscape SVGs
-    rois, vertIdx = get_roipack(subject, remove_medial=True)
+    rois, vertIdx = db.get_overlay(subject, remove_medial=True)
 
     # Retrieve shape from the reference
     import nibabel
     shape = db.get_xfm(subject, xfmname).shape
     
     # Get 3D coords
-    coords = np.vstack(db.get_coords(subject, xfmname))
+    coords = np.vstack(db.get_coords(subject, xfmname)) # UGH. RElace with a mapper object, wtf that is.
     nVerts = np.max(coords.shape)
     coords = coords[vertIdx]
     nValidVerts = np.max(coords.shape)

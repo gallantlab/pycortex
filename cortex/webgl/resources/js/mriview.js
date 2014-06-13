@@ -362,6 +362,11 @@ var mriview = (function(module) {
                 return [rot.x,rot.y,rot.z];
             case 'alpha':
                 return this.renderer.getClearAlpha;
+            case 'projection':
+                if (this.camera.inOrthographicMode) {
+                    return 'orthographic'}
+                else if (this.camera.inPerspectiveMode) {
+                    return 'perspective'}
         };
     };
     module.Viewer.prototype.setState = function(state, value) {
@@ -401,6 +406,11 @@ var mriview = (function(module) {
                 return this.setData(value)
             case 'labels':
                 return this.labelshow = value;
+            case 'projection':
+                if (value=='perspective'){
+                    return this.controls.camera.toPerspective()}
+                else if (value=='orthographic'){
+                    return this.controls.camera.toOrthographic()}
 
         };
     };
