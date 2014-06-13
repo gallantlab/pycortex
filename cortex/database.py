@@ -206,11 +206,11 @@ class Database(object):
         return self.get_cache(*args, **kwargs)
 
     def loadView(self, *args, **kwargs):
-        warnings.warn("loadView is deprecated, use save_view instead", Warning)
+        warnings.warn("loadView is deprecated, use get_view instead", Warning)
         return self.save_view(*args, **kwargs)
 
     def setView(self, *args, **kwargs):
-        warnings.warn("setView is deprecated, use get_view instead", Warning)
+        warnings.warn("setView is deprecated, use save_view instead", Warning)
         return self.get_view(*args, **kwargs)
 
     @property
