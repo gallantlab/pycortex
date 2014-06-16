@@ -4,10 +4,10 @@ import numpy as np
 
 from cortex import db, dataset
 
-subj, xfmname, nverts = "S1", "fullhead", 304380
+subj, xfmname, nverts, volshape = "S1", "fullhead", 304380, (31,100,100)
 
 def test_braindata():
-    vol = np.random.randn(31, 100, 100)
+    vol = np.random.randn(*volshape)
     tf = tempfile.TemporaryFile(suffix='.png')
     mask = db.get_mask(subj, xfmname, "thick")
 
@@ -18,8 +18,8 @@ def test_braindata():
     assert np.allclose(mdata.volume[:, mask], mdata.data)
 
 def test_dataset():
-    vol = np.random.randn(31, 100, 100)
-    stack = (np.ones((100, 100, 31))*np.linspace(0, 1, 31)).T
+    vol = np.random.randn(*volshape)
+    stack = (np.ones(volshape[::-1])*np.linspace(0, 1, volshape[0])).T
     mask = db.get_mask(subj, xfmname, "thick")
 
     ds = dataset.Dataset(randvol=(vol, subj, xfmname), stack=(stack, subj, xfmname))
@@ -33,24 +33,24 @@ def test_dataset():
     return ds
 
 def test_findmask():
-    vol = np.random.rand(10, 31, 100, 100)
+    vol = np.random.rand(10, *volshape)
     mask = db.get_mask(subj, xfmname, "thin")
     ds = dataset.Volume(vol[:, mask], subj, xfmname)
     assert np.allclose(ds.volume[:, mask], vol[:, mask])
     return ds
 
 def test_rgb():
-    red, green, blue, alpha = [np.random.randn(31, 100, 100) for _ in range(4)]
+    red, green, blue, alpha = [np.random.randn(*volshape) for _ in range(4)]
 
     rgb = dataset.VolumeRGB(red, green, blue, subj, xfmname)
-    assert rgb.volume.shape == (1, 31, 100, 100, 4)
+    assert rgb.volume.shape == tuple([1] + list(volshape) + [4])
     assert rgb.volume.dtype == np.uint8
 
     rgba = dataset.VolumeRGB(red, green, blue, subj, xfmname, alpha=alpha)
-    assert rgba.volume.shape == (1, 31, 100, 100, 4)
+    assert rgba.volume.shape == tuple([1] + list(volshape) + [4])
 
     data = dataset.Volume.random(subj, xfmname)
-    assert data.raw.volume.shape == (1, 31, 100, 100, 4)
+    assert data.raw.volume.shape == tuple([1] + list(volshape) + [4])
     data.raw.to_json()
 
     red, green, blue, alpha = [np.random.randn(nverts) for _ in range(4)]
@@ -78,8 +78,8 @@ def test_braindata_hash():
 
 def test_dataset_save():
     tf = tempfile.NamedTemporaryFile(suffix=".hdf")
-    mrand = np.random.randn(2, 31, 100, 100)
-    rand = np.random.randn(31, 100, 100)
+    mrand = np.random.randn(2, *volshape)
+    rand = np.random.randn(*volshape)
     ds = cortex.Dataset(test=(mrand, subj, xfmname))
     ds.append(twod=cortex.Volume2D(rand, rand, subj, xfmname))
     ds.append(rgb =cortex.VolumeRGB(rand, rand, rand, subj, xfmname))
@@ -92,31 +92,31 @@ def test_dataset_save():
     assert isinstance(ds.twod, cortex.Volume2D)
     assert ds.twod.dim1.data.shape == rand.shape
     assert ds.twod.dim2.data.shape == rand.shape
-    assert ds.rgb.volume.shape == (1, 31, 100, 100, 4)
+    assert ds.rgb.volume.shape == tuple([1] + list(volshape) + [4])
     assert isinstance(ds.vert, cortex.Vertex)
 
 def test_mask_save():
     tf = tempfile.NamedTemporaryFile(suffix=".hdf")
-    ds = cortex.Dataset(test=(np.random.randn(31, 100, 100), subj, xfmname))
+    ds = cortex.Dataset(test=(np.random.randn(*volshape), subj, xfmname))
     ds.append(masked=ds.test.masked['thin'])
     data = ds.masked.data
     ds.save(tf.name)
 
     ds = cortex.load(tf.name)
-    assert ds.masked.shape == (31, 100, 100)
+    assert ds.masked.shape == volshape
     assert np.allclose(ds.masked.data, data)
 
 def test_overwrite():
     tf = tempfile.NamedTemporaryFile(suffix=".hdf")
-    ds = cortex.Dataset(test=(np.random.randn(31, 100, 100), subj, xfmname))
+    ds = cortex.Dataset(test=(np.random.randn(*volshape), subj, xfmname))
     ds.save(tf.name)
     
     ds.save()
-    assert ds.test.data.shape == (31, 100, 100)
+    assert ds.test.data.shape == volshape
 
 def test_pack():
     tf = tempfile.NamedTemporaryFile(suffix=".hdf")
-    ds = cortex.Dataset(test=(np.random.randn(31, 100, 100), subj, xfmname))
+    ds = cortex.Dataset(test=(np.random.randn(*volshape), subj, xfmname))
     ds.save(tf.name, pack=True)
 
     ds = cortex.load(tf.name)
@@ -137,7 +137,7 @@ def test_map():
 
 
 def test_convertraw():
-    ds = cortex.Dataset(test=(np.random.randn(31, 100, 100), subj, xfmname))
+    ds = cortex.Dataset(test=(np.random.randn(*volshape), subj, xfmname))
     ds.test.raw
 
 def test_vertexdata_copy():
@@ -154,9 +154,15 @@ def test_vertexdata_set():
 def test_vertexdata_index():
     vd = cortex.Vertex(np.random.randn(10, nverts), subj)
     assert np.allclose(vd[0].data, vd.data[0])
+
+
+def test_vertex_rgb_movie():
+    r = g = b = np.random.randn(nverts)
+    rgb = cortex.VertexRGB(r, g, b, subj)
+
     
 def test_volumedata_copy():
-    v = cortex.Volume(np.random.randn(31,100,100), subj, xfmname)
+    v = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     vc = v.copy(v.data)
     assert np.allclose(v.data, vc.data)
 
