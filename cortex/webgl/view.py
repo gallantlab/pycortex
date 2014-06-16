@@ -271,84 +271,92 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None, a
                 svgfile.write(data)
 
     class JSMixer(serve.JSProxy):
-        def _setView(self,**kwargs):
-            """Low-level command: sets one view parameter at a time.
+        def _set_view(self,**kwargs):
+            """Low-level command: sets view parameters in the current viewer
 
-            Settable keyword args: 
-            altitude, azimuth, target, mix, radius
-
-            NOTE: args must be lists instead of scalars, e.g. `azimuth`=[90]
-            Could be resolved, but this is a hidden function, called by 
-            higher-level functions that load .json files, which have the parameters
-            in lists by default. So it's annoying either way.
+            Sets each the state of each keyword argument provided. View parameters
+            that can be set include:
+            
+            altitude, azimuth, target, mix, radius, visL, visR 
+            (L/R hemisphere visibility), alpha (background alpha), 
+            rotationL, rotationR (L/R hemisphere rotation, [x,y,z])
+            
+            Notes
+            -----
+            Args must be lists instead of scalars, e.g. `azimuth`=[90]
+            This could be changed, but this is a hidden function, called by 
+            higher-level functions that load .json files, which have the 
+            parameters in lists by default. So it's annoying either way.
             """
-            props = ['altitude','azimuth','target','mix','radius']
+            props = ['altitude','azimuth','target','mix','radius',
+                'visL','visR','alpha','rotationR','rotationL','projection']
             for k in kwargs.keys():
                 if not k in props:
                     print('Unknown parameter %s!'%k)
                     continue
                 self.setState(k,kwargs[k][0])
-        def _getView(self):
-            """Low-level command: returns a dict of current view parameters"""
-            props = ['altitude','azimuth','target','mix','radius']
-            # db.save_view()
+
+        def _capture_view(self):
+            """Low-level command: returns a dict of current view parameters
+
+            Retrieves the following view parameters from current viewer:
+
+            altitude, azimuth, target, mix, radius, visL, visR, alpha, 
+            rotationR, rotationL, projection
+
+            """
+            props = ['altitude','azimuth','target','mix','radius',
+                'visL','visR','alpha','rotationR','rotationL','projection']
+            # surfs.saveView()
             view = {}
             for p in props:
                 view[p] = self.getState(p)[0]
             return view
 
         def save_view(self,subject,name):
-            """Saves current view parameters to a .json file
+            """Saves current view parameters to pycortex database
 
             Parameters
             ----------
-            fName : string
+            subject : string
+                pycortex subject id
+            name : string
                 name for view to store
 
             Notes
             -----
             Equivalent to call to cortex.db.save_view(subject,vw,name)
-            
-            To adjust view in javascript console:
-            # Set BG to alpha:
-            viewers.<subject>.renderer.setClearColor(0,0)
-
-            # One hemisphere off:
-            viewers.<subject>.meshes.left.visible = false
+            For a list of the view parameters saved, see viewer._capture_view
 
             See Also
             --------
-            methods get_view, _setView, _getView
+            viewer methods get_view, _set_view, _capture_view
             """
-            # Check for existence of view? 
             db.save_view(self,subject,name)
 
         def get_view(self,subject,name):
-            """Sets current view parameters to those stored in a .json file
+            """Get saved view from pycortex database.
+
+            Retrieves named view from pycortex database and sets current 
+            viewer parameters to retrieved values.
 
             Parameters
             ----------
-            subject : pycortex subject ID
+            subject : string
+                pycortex subject ID
             name : string
                 name of saved view to re-load
 
             Notes
             -----
             Equivalent to call to cortex.db.get_view(subject,vw,name)
-
-            Further modifications possible in JavaScript console:
-            # Set BG to alpha:
-            viewers.<subject>.renderer.setClearColor(0,0)
-
-            # One hemisphere off:
-            viewers.<subject>.meshes.left.visible = false
+            For a list of the view parameters set, see viewer._capture_view
 
             See Also
             --------
-            methods save_view, _setView, _getView
+            viewer methods save_view, _set_view, _capture_view
             """
             view = db.get_view(self,subject,name)
-            
 
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewers.addData")

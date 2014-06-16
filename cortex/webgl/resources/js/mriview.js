@@ -349,6 +349,23 @@ var mriview = (function(module) {
                 return [t.x, t.y, t.z];
             case 'depth':
                 return this.uniforms.thickmix.value;
+            case 'visL':
+                return this.meshes.left.visible;
+            case 'visR':
+                return this.meshes.right.visible;
+            case 'rotationL':
+                var rot = this.meshes.left.rotation
+                return [rot.x,rot.y,rot.z];
+            case 'rotationR':
+                var rot = this.meshes.right.rotation
+                return [rot.x,rot.y,rot.z];
+            case 'alpha':
+                return this.renderer.getClearAlpha;
+            case 'projection':
+                if (this.camera.inOrthographicMode) {
+                    return 'orthographic'}
+                else if (this.camera.inPerspectiveMode) {
+                    return 'perspective'}
         };
     };
     module.Viewer.prototype.setState = function(state, value) {
@@ -370,6 +387,29 @@ var mriview = (function(module) {
                 return this.controls.target.set(value[0], value[1], value[2]);
             case 'depth':
                 return this.uniforms.thickmix.value = value;
+            case 'visL':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.left.visible = value;
+            case 'visR':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.right.visible = value;
+            case 'rotationL':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.left.rotation.set(value[0], value[1], value[2]);
+            case 'rotationR':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.right.rotation.set(value[0], value[1], value[2]);
+            case 'alpha':
+                return this.renderer.setClearColor(0,value);
+            case 'data':
+                return this.setData(value)
+            case 'labels':
+                return this.labelshow = value;
+            case 'projection':
+                if (value=='perspective'){
+                    return this.controls.camera.toPerspective()}
+                else if (value=='orthographic'){
+                    return this.controls.camera.toOrthographic()}
         };
     };
     module.Viewer.prototype.animate = function(animation) {
