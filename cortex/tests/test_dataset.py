@@ -135,14 +135,14 @@ def test_map():
     dv = cortex.Volume.random(subj, xfmname)
     dv.map("nearest")
 
-"""
+
 def test_convertraw():
     ds = cortex.Dataset(test=(np.random.randn(31, 100, 100), subj, xfmname))
     ds.test.raw
 
 def test_vertexdata_copy():
     vd = cortex.Vertex(np.random.randn(nverts), subj)
-    vdcopy = vd.copy()
+    vdcopy = vd.copy(vd.data)
     assert np.allclose(vd.data, vdcopy.data)
 
 def test_vertexdata_set():
@@ -150,4 +150,21 @@ def test_vertexdata_set():
     newdata = np.random.randn(nverts)
     vd.data = newdata
     assert np.allclose(newdata, vd.data)
-"""
+
+def test_vertexdata_index():
+    vd = cortex.Vertex(np.random.randn(10, nverts), subj)
+    assert np.allclose(vd[0].data, vd.data[0])
+    
+def test_volumedata_copy():
+    v = cortex.Volume(np.random.randn(31,100,100), subj, xfmname)
+    vc = v.copy(v.data)
+    assert np.allclose(v.data, vc.data)
+
+def test_volumedata_copy_with_custom_mask():
+    mask = cortex.get_cortical_mask(subj, xfmname, "thick")
+    mask[16] = True
+    nmask = mask.sum()
+    data = np.random.randn(nmask)
+    v = cortex.Volume(data, subj, xfmname, mask=mask)
+    vc = v.copy(v.data)
+    assert np.allclose(v.data, vc.data)
