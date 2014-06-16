@@ -16,12 +16,12 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, with_curvature=False,
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
                 cutout=None,cvmin=None,cvmax=None,cvthr=None,fig=None,**kwargs):
-    """Show a VolumeData or VertexData on a flatmap with matplotlib. Additional kwargs are passed on to
+    """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
     matplotlib's imshow command.
 
     Parameters
     ----------
-    braindata : DataView
+    braindata : Dataview
         the data you would like to plot on a flatmap
     recache : bool
         If True, recache the flatmap cache. Useful if you've made changes to the alignment
@@ -201,7 +201,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     ----------
     fname : str
         Filename for where to save the PNG file
-    braindata : DataView
+    braindata : Dataview
         the data you would like to plot on a flatmap
     recache : bool
         If True, recache the flatmap cache. Useful if you've made changes to the alignment
@@ -245,8 +245,8 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
 
 def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024, thick=32, depth=0.5, **kwargs):
     dataview = dataset.normalize(braindata)
-    if not isinstance(dataview, dataset.DataView):
-        raise TypeError('Please provide a DataView, not a Dataset')
+    if not isinstance(dataview, dataset.Dataview):
+        raise TypeError('Please provide a Dataview, not a Dataset')
     if dataview.movie:
         raise ValueError('Cannot flatten movie volumes')
     ## Create quickflat image array

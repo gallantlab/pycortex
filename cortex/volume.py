@@ -140,18 +140,16 @@ def show_slice(dataview, **kwargs):
     import matplotlib.pyplot as plt
 
     dataview = dataset.normalize(dataview)
-    if not isinstance(dataview.data, dataset.BrainData):
-        raise TypeError('Only simple views supported by matplotlib')
-    if not isinstance(dataview.data, dataset.VolumeData):
+    if not isinstance(dataview, dataset.Volume):
         raise TypeError('Only volumetric data may be visualized in show_slice')
 
-    subject = dataview.data.subject
-    xfmname = dataview.data.xfmname
+    subject = dataview.subject
+    xfmname = dataview.xfmname
     imshow_kw = dict(vmin=dataview.vmin, vmax=dataview.vmax, cmap=dataview.cmap)
     imshow_kw.update(kwargs)
 
     anat = db.get_anat(subject, 'raw').get_data().T
-    data = epi2anatspace(dataview.data)
+    data = epi2anatspace(dataview.volume.squeeze())
 
     data[data < dataview.vmin] = np.nan
 
