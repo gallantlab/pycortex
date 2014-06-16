@@ -182,7 +182,7 @@ class VolumeData(BrainData):
         return "<%s data for (%s, %s)>"%(maskstr, self.subject, self.xfmname)
 
     def copy(self, data):
-        return super(VolumeData, self).copy(data, self.subject, self.xfmname)
+        return super(VolumeData, self).copy(data, self.subject, self.xfmname, mask=self._mask)
 
     @property
     def volume(self):

@@ -100,14 +100,15 @@ class Dataview(object):
             self.attrs['priority'] = 1
         self.description = description
 
-    def copy(self, *args):
+    def copy(self, *args, **kwargs):
+        kwargs.update(self.attrs)
         return self.__class__(*args, 
             cmap=self.cmap, 
             vmin=self.vmin, 
             vmax=self.vmax, 
             description=self.description, 
             state=self.state, 
-            **self.attrs)
+            **kwargs)
 
     @property
     def priority(self):
