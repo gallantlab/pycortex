@@ -234,11 +234,17 @@ class DataviewRGB(Dataview):
     def __init__(self, subject=None, alpha=None, description="", state=None, **kwargs):
         self.alpha = alpha
         self.subject = self.red.subject
+        self.movie = self.red.movie
         self.description = description
         self.state = state
         self.attrs = kwargs
         if 'priority' not in self.attrs:
             self.attrs['priority'] = 1
+
+        # If movie, make sure each channel has the same number of time points
+        if self.red.movie:
+            if not self.red.data.shape[0] == self.green.data.shape[0] == self.blue.data.shape[0]:
+                raise ValueError("For movie data, all three channels have to be the same length")
 
     def uniques(self, collapse=False):
         if collapse:
@@ -383,6 +389,14 @@ class VertexRGB(DataviewRGB):
             verts.append(vert)
 
         return np.array(verts).transpose([1, 2, 0])
+
+    @property
+    def left(self):
+        return self.vertices[:,:self.red.llen]
+
+    @property
+    def right(self):
+        return self.vertices[:,self.red.llen:]
 
     def __repr__(self):
         return "<RGB vertex data for (%s)>"%(self.subject)
