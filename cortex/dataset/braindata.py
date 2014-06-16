@@ -255,18 +255,18 @@ class VertexData(BrainData):
     @classmethod
     def empty(cls, subject, **kwargs):
         try:
-            left, right = db.get_surf(self.subject, "wm")
+            left, right = db.get_surf(subject, "wm")
         except IOError:
-            left, right = db.get_surf(self.subject, "fiducial")
+            left, right = db.get_surf(subject, "fiducial")
         nverts = len(left[0]) + len(right[0])
         return cls(np.zeros((nverts,)), subject, **kwargs)
 
     @classmethod
     def random(cls, subject, **kwargs):
         try:
-            left, right = db.get_surf(self.subject, "wm")
+            left, right = db.get_surf(subject, "wm")
         except IOError:
-            left, right = db.get_surf(self.subject, "fiducial")
+            left, right = db.get_surf(subject, "fiducial")
         nverts = len(left[0]) + len(right[0])
         return cls(np.random.randn(nverts), subject, **kwargs)
 
