@@ -18,28 +18,29 @@ To create a dataset manually::
 
 To generate a data view and save it::
 
-    dv = cortex.DataView((np.random.randn(31, 100, 100), "S1", "fullhead"), cmap="RdBu_r", vmin=-3, vmax=3)
+    dv = cortex.Volume(np.random.randn(31, 100, 100), "S1", "fullhead", cmap="RdBu_r", vmin=-3, vmax=3)
     ds = cortex.Dataset(name=dv)
     ds.save("test_data.hdf")
 
 Loading data::
 
-    ds = cortex.openFile("test_data.hdf")
+    ds = cortex.load("test_data.hdf")
 
 If you already have a Nifti file with the alignment written into the header::
 
-    dv = cortex.DataView(("path/to/nifti_file.nii.gz", "S1", "identity"))
+    dv = cortex.Volume("path/to/nifti_file.nii.gz", "S1", "identity")
     cortex.quickshow(dv)
 
 Overview
 --------
-Pycortex's main data structures consists of the :class:`Dataset`, the :class:`DataView`, and the :class:`BrainData` objects. These three objects serve different roles:
+Pycortex's main data structures consists of the :class:`Dataset`, and the Dataview classes :class:`Volume`, :class:`Vertex`, :class:`VolumeRGB`, :class:`VertexRGB`, :class:`Volume2d`, :class:`Vertex2D`.
 
-    * :class:`BrainData` objects store brain data together with the subject information. Most pycortex data structures will automatically cast a tuple into the appropriate :class:`VolumeData` and :class:`VertexData` objects.
-    * :class:`DataView` objects store :class:`BrainData` objects along with view attributes such as the colormap, minimum, and maximum. The stored :class:`BrainData` object is only a reference.
-    * :class:`Dataset` objects store a collection of :class:`DataView` objects with associated names. It provides additional functionality to store and load the DataViews as HDF files.
+    * :class:`Dataset` objects store a collection of :class:`Dataview` objects with associated names. It provides additional functionality to store and load the DataViews as HDF files.
 
-These data structures can typically be cast from simpler structures such as tuples or dictionaries.
+    * :class:`Volume` is a :class:`Dataview` object that holds either a single or a time series of volumetric data (IE the data is in the original volume space).
+    * :class:`Vertex` is a :class:`Dataview` object that holds either a single or a time series of vertex data (IE the data has been projected onto the surface vertices).
+    * :class:`VolumeRGB` is a :class:`Dataview` object that contains 3 or 4 :class:`Volume` objects corresponding to the red, green, blue, and optionally alpha channels of a raw dataview.
+    * :class:`Volume2D` is a :class:`Dataview` object that holds a pair of volumetric data, to be displayed using a 2D colormap.
 
 BrainData
 ---------
