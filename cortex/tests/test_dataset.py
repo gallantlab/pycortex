@@ -53,6 +53,19 @@ def test_rgb():
     assert data.raw.volume.shape == (1, 31, 100, 100, 4)
     data.raw.to_json()
 
+    red, green, blue, alpha = [np.random.randn(nverts) for _ in range(4)]
+
+    rgb = dataset.VertexRGB(red, green, blue, subj)
+    assert rgb.vertices.shape == (1, nverts, 4)
+    assert rgb.vertices.dtype == np.uint8
+
+    rgba = dataset.VertexRGB(red, green, blue, subj, alpha=alpha)
+    assert rgba.vertices.shape == (1, nverts, 4)
+
+    data = dataset.Vertex.random(subj)
+    assert data.raw.vertices.shape == (1, nverts, 4)
+    data.raw.to_json()
+
 def test_2D():
     d1 = cortex.Volume.random(subj, xfmname)
     d2 = cortex.Volume.random(subj, xfmname).masked['thick']

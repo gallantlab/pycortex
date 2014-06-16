@@ -637,6 +637,7 @@ var mriview = (function(module) {
             } else {
                 $(this.object).find("#moviecontrols").hide();
                 $(this.object).find("#bottombar").removeClass("bbar_controls");
+                this.active.set(this.uniforms, 0);
             }
             $(this.object).find("#datasets li").each(function() {
                 if ($(this).text() == name)

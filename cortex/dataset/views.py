@@ -118,6 +118,7 @@ class Dataview(object):
         self.attrs['priority'] = value
 
     def to_json(self, simple=False):
+        from scipy.stats import scoreatpercentile
         if simple:
             return dict()
             
@@ -128,8 +129,9 @@ class Dataview(object):
         try:
             sdict.update(dict(
                 cmap=self.cmap, 
-                vmin=self.vmin, 
-                vmax=self.vmax, ))
+                vmin=self.vmin or scoreatpercentile(np.nan_to_num(self.data), 1), 
+                vmax=self.vmax or scoreatpercentile(np.nan_to_num(self.data), 99)
+                ))
         except AttributeError:
             pass
         return sdict
@@ -148,10 +150,11 @@ class Dataview(object):
             xfmname = None
 
         if len(data) == 1:
-            return _from_hdf_view(node.file, data[0], xfmname=xfmname, cmap=cmap, description=desc, 
+            xfm = None if xfmname is None else xfmname[0]
+            return _from_hdf_view(node.file, data[0], xfmname=xfm, cmap=cmap, description=desc, 
                 vmin=vmin, vmax=vmax, state=state, **attrs)
         else:
-            views = [_from_hdf_view(node.file, d, xfmname=xfmname) for d in data]
+            views = [_from_hdf_view(node.file, d, xfmname=x) for d, x in zip(data, xfname)]
             raise NotImplementedError
 
     def _write_hdf(self, h5, name="data", data=None, xfmname=None):
@@ -201,7 +204,7 @@ class Volume(VolumeData, Dataview):
     def _write_hdf(self, h5, name="data"):
         datanode = VolumeData._write_hdf(self, h5)
         viewnode = Dataview._write_hdf(self, h5, name=name,
-            data=[self.name], xfmname=self.xfmname)
+            data=[self.name], xfmname=[self.xfmname])
         return viewnode
 
     @property
@@ -223,7 +226,7 @@ class Vertex(VertexData, Dataview):
     @property
     def raw(self):
         r, g, b, a = super(Vertex, self).raw
-        return VertexRGB(r, g, b, self.subject, self.xfmname, a, 
+        return VertexRGB(r, g, b, self.subject, a, 
             description=self.description, state=self.state, **self.attrs)
 
 class DataviewRGB(Dataview):
@@ -246,7 +249,7 @@ class DataviewRGB(Dataview):
             if self.alpha is not None:
                 yield self.alpha
 
-    def _write_hdf(self, h5, name="data"):
+    def _write_hdf(self, h5, name="data", xfmname=None):
         self._cls._write_hdf(self.red, h5)
         self._cls._write_hdf(self.green, h5)
         self._cls._write_hdf(self.blue, h5)
@@ -256,9 +259,10 @@ class DataviewRGB(Dataview):
             self._cls._write_hdf(self.alpha, h5)
             alpha = self.alpha.name
 
-        data = [[self.red.name, self.green.name, self.blue.name, alpha]]
+        data = [self.red.name, self.green.name, self.blue.name, alpha]
         viewnode = Dataview._write_hdf(self, h5, name=name, 
-            data=data, xfmname=self.xfmname)
+            data=[data], xfmname=xfmname)
+
         return viewnode
 
     def to_json(self, simple=False):
@@ -332,9 +336,14 @@ class VolumeRGB(DataviewRGB):
     def name(self):
         return "__%s"%_hash(self.volume)[:16]
 
+    def _write_hdf(self, h5, name="data"):
+        return super(VolumeRGB, self)._write_hdf(h5, name=name, xfmname=[self.xfmname])
+
 class VertexRGB(DataviewRGB):
     _cls = VertexData
-    def __init__(self, red, green, blue, subject=None, alpha=None, description=""):
+    def __init__(self, red, green, blue, subject=None, alpha=None, description="", 
+        state=None, **kwargs):
+
         if isinstance(red, VertexData):
             if not isinstance(green, VertexData) or red.subject != green.subject:
                 raise TypeError("Invalid data for green channel")
@@ -350,14 +359,16 @@ class VertexRGB(DataviewRGB):
             self.green = Vertex(green, subject)
             self.blue = Vertex(blue, subject)
 
-        super(VolumeRGB, self).__init__(subject, alpha, description=description, state=state, **kwargs)
+        super(VertexRGB, self).__init__(subject, alpha, description=description, 
+            state=state, **kwargs)
 
     @property
     def vertices(self):
-        if self.alpha is None:
-            alpha = np.ones_like(red)
-        if not isinstance(self.alpha, Vertex):
-            alpha = Vertex(self.alpha, self.subject)
+        alpha = self.alpha
+        if alpha is None:
+            alpha = np.ones_like(self.red.data)
+        if not isinstance(alpha, Vertex):
+            alpha = Vertex(alpha, self.subject)
 
         verts = []
         for dv in (self.red, self.green, self.blue, alpha):
