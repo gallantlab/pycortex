@@ -288,7 +288,7 @@ class VertexData(BrainData):
             raise ValueError('Invalid number of vertices for subject (given %d, should be %d for left hem, %d for right hem, or %d for both)' % (self.nverts, self.llen, self.rlen, self.llen+self.rlen))
 
     def copy(self, data):
-        return super(Vertex, self).copy(data, self.subject)
+        return super(VertexData, self).copy(data, self.subject)
 
     def volume(self, xfmname, projection='nearest', **kwargs):
         import warnings
