@@ -244,21 +244,29 @@ class VertexData(BrainData):
         if self.__class__ == VertexData:
             raise TypeError('Cannot directly instantiate VertexData objects')
         super(VertexData, self).__init__(data, subject, **kwargs)
-
-        left, right = db.get_surf(self.subject, "fiducial")
+        try:
+            left, right = db.get_surf(self.subject, "wm")
+        except IOError:
+            left, right = db.get_surf(self.subject, "fiducial")
         self.llen = len(left[0])
         self.rlen = len(right[0])
         self._set_data(data)
 
     @classmethod
     def empty(cls, subject, **kwargs):
-        left, right = db.get_surf(subject, "fiducial")
+        try:
+            left, right = db.get_surf(self.subject, "wm")
+        except IOError:
+            left, right = db.get_surf(self.subject, "fiducial")
         nverts = len(left[0]) + len(right[0])
         return cls(np.zeros((nverts,)), subject, **kwargs)
 
     @classmethod
     def random(cls, subject, **kwargs):
-        left, right = db.get_surf(subject, "fiducial")
+        try:
+            left, right = db.get_surf(self.subject, "wm")
+        except IOError:
+            left, right = db.get_surf(self.subject, "fiducial")
         nverts = len(left[0]) + len(right[0])
         return cls(np.random.randn(nverts), subject, **kwargs)
 
