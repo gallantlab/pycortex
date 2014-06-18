@@ -567,16 +567,25 @@ var mriview = (function(module) {
     module.Viewer.prototype.setPivot = function (val) {
         $(this.object).find("#pivot").slider("option", "value", val);
         this._pivot = val;
-        var names = {left:1, right:-1}
+        var names = {left:1, right:-1};
+        var frac = Math.abs(val/180);
         if (val > 0) {
             for (var name in names) {
                 this.pivot[name].front.rotation.z = 0;
                 this.pivot[name].back.rotation.z = val*Math.PI/180 * names[name]/ 2;
+                // Move hemispheres so that focus stays at center
+                this.pivot[name].back.position.y = frac * this.meshes.right.geometry.boundingBox.min.y + ((1-frac) * this.pivot[name].back.orig_position.y);
+
             }
         } else {
             for (var name in names) {
                 this.pivot[name].back.rotation.z = 0;
+                // Make sure back position is reset before front pivoting
+                this.pivot[name].back.position.y = this.pivot[name].back.orig_position.y;
                 this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
+
+                // Move hemispheres so that focus stays at center
+                this.pivot[name].front.position.y = frac * (this.meshes.right.geometry.boundingBox.max.y - this.pivot[name].front.orig_position.y) + ((1-frac) * this.pivot[name].front.orig_position.y);
             }
         }
         this.figure.notify("setpivot", this, [val]);
@@ -1178,6 +1187,8 @@ var mriview = (function(module) {
         pivots.front.add(pivots.back);
         pivots.back.position.y = geom.boundingBox.min.y - geom.boundingBox.max.y;
         pivots.front.position.y = geom.boundingBox.max.y - geom.boundingBox.min.y + this.flatoff[1];
+        pivots.back.orig_position = pivots.back.position.clone();
+        pivots.front.orig_position = pivots.front.position.clone();
 
         return {mesh:mesh, pivots:pivots};
     };
