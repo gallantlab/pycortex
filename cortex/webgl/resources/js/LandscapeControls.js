@@ -48,6 +48,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
     var _indblpick = false; // In double-click and hold?
     var _picktimer = false; // timer that runs pick event
     this._momentumtimer = false; // time that glide has been going on post mouse-release
+    var _nomove_timer;
 
     // events
 
@@ -62,7 +63,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
         } else 
             mouseChange = _end.clone().subSelf(_start);
 
-        if (mouseChange.length() > 0 && statefunc[_state]) {
+        if (statefunc[_state]) {
             if (statefunc[_state])
                 statefunc[_state](mouseChange);
         }
@@ -152,6 +153,18 @@ THREE.LandscapeControls = function ( cover, camera ) {
         } else {
             _end = this.getMouse(event);
         }
+
+        var nomove_evt = function() {
+            if ( _state === STATE.NONE ) {
+                return;
+            } else {
+                _end = _start.clone();
+                this.update(this.flatmix);
+            }
+        };
+        clearTimeout(_nomove_timer);
+        _nomove_timer = setTimeout(nomove_evt.bind(this), 100);
+
         this.dispatchEvent( changeEvent );
     };
 
