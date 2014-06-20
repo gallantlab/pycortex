@@ -3,7 +3,7 @@
 var dpi_ratio = window.devicePixelRatio || 1;
 
 var mriview = (function(module) {
-    module.flatscale = .25;
+    module.flatscale = .35;
 
     module.Viewer = function(figure) { 
         //Allow objects to listen for mix updates
@@ -555,7 +555,7 @@ var mriview = (function(module) {
         }
         if (this.flatlims !== undefined) {
             this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
-            this.setPivot(this.flatmix*180);
+            this.setPivot(this._pivot);
             this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
         }
         $(this.object).find("#mix").slider("value", val);
@@ -564,11 +564,12 @@ var mriview = (function(module) {
         this.figure.notify("setmix", this, [val]);
         this.schedule();
     }; 
-    module.Viewer.prototype.setPivot = function (val) {
-        $(this.object).find("#pivot").slider("option", "value", val);
+    module.Viewer.prototype.setPivot = function (val, fromuser) {
         this._pivot = val;
+        val = this.flatmix * 180 + (1-this.flatmix) * this._pivot;
+        $(this.object).find("#pivot").slider("option", "value", val);
         var names = {left:1, right:-1};
-        var frac = Math.abs(val/180);
+        var frac = Math.abs(val/180) * (1-this.flatmix);
         if (val > 0) {
             for (var name in names) {
                 this.pivot[name].front.rotation.z = 0;
