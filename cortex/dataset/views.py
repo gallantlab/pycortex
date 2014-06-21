@@ -128,9 +128,9 @@ class Dataview(object):
             desc=self.description)
         try:
             sdict.update(dict(
-                cmap=self.cmap, 
-                vmin=self.vmin or np.percentile(np.nan_to_num(self.data), 1), 
-                vmax=self.vmax or np.percentile(np.nan_to_num(self.data), 99)
+                cmap=[[self.cmap]], 
+                vmin=[[self.vmin or np.percentile(np.nan_to_num(self.data), 1)]], 
+                vmax=[[self.vmax or np.percentile(np.nan_to_num(self.data), 99)]]
                 ))
         except AttributeError:
             pass
@@ -139,7 +139,11 @@ class Dataview(object):
     @staticmethod
     def from_hdf(node):
         data = json.loads(node[0])
-        desc, cmap = node[1:3]
+        desc = node[1]
+        try:
+            cmap = json.loads(node[2])
+        except:
+            cmap = node[2]
         vmin = json.loads(node[3])
         vmax = json.loads(node[4])
         state = json.loads(node[5])
@@ -149,10 +153,17 @@ class Dataview(object):
         except ValueError:
             xfmname = None
 
+        if not isinstance(vmin, list):
+            vmin = [vmin]
+        if not isinstance(vmax, list):
+            vmax = [vmax]
+        if not isinstance(cmap, list):
+            cmap = [cmap]
+
         if len(data) == 1:
             xfm = None if xfmname is None else xfmname[0]
-            return _from_hdf_view(node.file, data[0], xfmname=xfm, cmap=cmap, description=desc, 
-                vmin=vmin, vmax=vmax, state=state, **attrs)
+            return _from_hdf_view(node.file, data[0], xfmname=xfm, cmap=cmap[0], description=desc, 
+                vmin=vmin[0], vmax=vmax[0], state=state, **attrs)
         else:
             views = [_from_hdf_view(node.file, d, xfmname=x) for d, x in zip(data, xfname)]
             raise NotImplementedError
@@ -163,9 +174,9 @@ class Dataview(object):
         view[0] = json.dumps(data)
         view[1] = self.description
         try:
-            view[2] = self.cmap
-            view[3] = json.dumps(self.vmin)
-            view[4] = json.dumps(self.vmax)
+            view[2] = json.dumps([self.cmap])
+            view[3] = json.dumps([self.vmin])
+            view[4] = json.dumps([self.vmax])
         except AttributeError:
             #For VolumeRGB/Vertex, there is no cmap/vmin/vmax
             view[2] = None

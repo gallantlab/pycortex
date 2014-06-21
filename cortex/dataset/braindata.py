@@ -115,7 +115,7 @@ class VolumeData(BrainData):
             return super(VolumeData, self).to_json(simple=simple)
         
         xfm = db.get_xfm(self.subject, self.xfmname, 'coord').xfm
-        sdict = dict(xfm=list(np.array(xfm).ravel()), data=[self.name])
+        sdict = dict(xfm=[list(np.array(xfm).ravel())], data=[self.name])
         sdict.update(super(VolumeData, self).to_json())
         return sdict
 

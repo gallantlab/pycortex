@@ -30,30 +30,26 @@ class Dataview2D(Dataview):
 
         viewnode = Dataview._write_hdf(self, h5, name=name)
         viewnode[0] = json.dumps([[self.dim1.name, self.dim2.name]])
-        viewnode[3] = json.dumps([self.vmin, self.vmin2])
-        viewnode[4] = json.dumps([self.vmax, self.vmax2])
+        viewnode[3] = json.dumps([[self.vmin, self.vmin2]])
+        viewnode[4] = json.dumps([[self.vmax, self.vmax2]])
         return viewnode
 
     def to_json(self, simple=False):
-        sdict = dict(data=[[self.dim1.name, self.dim2.name]])
-        if simple:
-            return sdict
-            
-        sdict.update(dict(
+        sdict = dict(data=[[self.dim1.name, self.dim2.name]],
             state=self.state, 
             attrs=self.attrs, 
             desc=self.description,
-            cmap=self.cmap ))
+            cmap=self.cmap )
 
         d1js = self.dim1.to_json()
         d2js = self.dim2.to_json()
         sdict.update(dict(
-            vmin = [[self.vmin or d1js['vmin'], self.vmin2 or d2js['vmin']]],
-            vmax = [[self.vmax or d1js['vmax'], self.vmax2 or d2js['vmax']]],
+            vmin = [[self.vmin or d1js['vmin'][0], self.vmin2 or d2js['vmin'][0]]],
+            vmax = [[self.vmax or d1js['vmax'][0], self.vmax2 or d2js['vmax'][0]]],
             ))
 
         if "xfm" in d1js:
-            sdict['xfm'] = [[d1js['xfm'], d2js['xfm']]]
+            sdict['xfm'] = [d1js['xfm'][0], d2js['xfm'][0]]
 
         return sdict
 

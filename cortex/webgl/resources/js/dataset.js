@@ -26,6 +26,7 @@ var dataset = (function(module) {
         json.vmax = [[dvx.vmax[0][0], dvy.vmax[0][0]]];
         json.attrs = dvx.attrs;
         json.state = dvx.state;
+        json.xfm = [[dvx.xfm, dvy.xfm]];
         return new module.DataView(json);
     };
 
@@ -59,6 +60,8 @@ var dataset = (function(module) {
             this.vmin = [[json.vmin]]
         if (!(json.vmax instanceof Array))
             this.vmax = [[json.vmax]]
+        if (!(json.xfm instanceof Array))
+            this.xfm = [[json.xfm]]
 
         this.frames = this.data[0].frames
         this.length = this.frames / this.rate;
@@ -143,10 +146,7 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(uniforms, i, fframe);
             xfm = uniforms.volxfm.value[i];
-            if (this.xfm[0] instanceof Array)
-                xfm.set.apply(xfm, this.xfm[0]);
-            else
-                xfm.set.apply(xfm, this.xfm);
+            xfm.set.apply(xfm, this.xfm[i]);
         }
     };
     module.DataView.prototype.setFilter = function(interp) {
