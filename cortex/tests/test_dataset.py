@@ -69,8 +69,10 @@ def test_rgb():
 def test_2D():
     d1 = cortex.Volume.random(subj, xfmname)
     d2 = cortex.Volume.random(subj, xfmname).masked['thick']
-    cortex.Volume2D(d1, d2)
+    twod = cortex.Volume2D(d1, d2)
     cortex.Volume2D(d1.data, d2.data, subject=subj, xfmname=xfmname, vmin=0, vmax=2, vmin2=1)
+    twod.to_json()
+    return twod
 
 def test_braindata_hash():
     d = cortex.Volume.random(subj, xfmname)

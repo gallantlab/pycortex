@@ -143,7 +143,10 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(uniforms, i, fframe);
             xfm = uniforms.volxfm.value[i];
-            xfm.set.apply(xfm, this.xfm);
+            if (this.xfm[0] instanceof Array)
+                xfm.set.apply(xfm, this.xfm[0]);
+            else
+                xfm.set.apply(xfm, this.xfm);
         }
     };
     module.DataView.prototype.setFilter = function(interp) {
