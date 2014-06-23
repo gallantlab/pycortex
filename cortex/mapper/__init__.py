@@ -34,7 +34,7 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     cachefile = os.path.join(db.get_cache(subject), fname)
 
     try:
-        if not recache and xfmname == "identity" or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
+        if not recache and (xfmname == "identity" or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime):
            return mapcls[type].from_cache(cachefile) 
         raise Exception
     except Exception as e:
