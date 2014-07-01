@@ -49,7 +49,7 @@ class Dataview2D(Dataview):
             ))
 
         if "xfm" in d1js:
-            sdict['xfm'] = [[d1js['xfm'][0], d2js['xfm'][0]]
+            sdict['xfm'] = [[d1js['xfm'][0], d2js['xfm'][0]]]
 
         return sdict
 
