@@ -128,9 +128,9 @@ class Dataview(object):
             desc=self.description)
         try:
             sdict.update(dict(
-                cmap=[[self.cmap]], 
-                vmin=[[self.vmin or np.percentile(np.nan_to_num(self.data), 1)]], 
-                vmax=[[self.vmax or np.percentile(np.nan_to_num(self.data), 99)]]
+                cmap=[self.cmap], 
+                vmin=[self.vmin or np.percentile(np.nan_to_num(self.data), 1)], 
+                vmax=[self.vmax or np.percentile(np.nan_to_num(self.data), 99)]
                 ))
         except AttributeError:
             pass

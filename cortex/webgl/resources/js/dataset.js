@@ -21,9 +21,9 @@ var dataset = (function(module) {
         json.name = dvx.name + " vs. "+ dvy.name;
         json.data = [[dvx.data[0].name, dvy.data[0].name]];
         json.description = "2D colormap for "+dvx.name+" and "+dvy.name;
-        json.cmap = viewopts.default_2Dcmap;
-        json.vmin = [[dvx.vmin[0][0], dvy.vmin[0][0]]];
-        json.vmax = [[dvx.vmax[0][0], dvy.vmax[0][0]]];
+        json.cmap = [viewopts.default_2Dcmap];
+        json.vmin = [[dvx.vmin, dvy.vmin]];
+        json.vmax = [[dvx.vmax, dvy.vmax]];
         json.attrs = dvx.attrs;
         json.state = dvx.state;
         json.xfm = [[dvx.xfm, dvy.xfm]];
@@ -32,7 +32,7 @@ var dataset = (function(module) {
 
     module.DataView = function(json) {
         this.data = [];
-        //Only handle 2D case for now -- muliviews are difficult to handle in this framework
+        //Do not handle muliviews for now!
         for (var i = 0; i < json.data.length; i++) {
             if (json.data[i] instanceof Array) {
                 this.data.push(module.brains[json.data[i][0]]);
@@ -43,10 +43,13 @@ var dataset = (function(module) {
         }
         this.name = json.name;
         this.description = json.desc;
-        this.xfm = json.xfm;
-        this.cmap = json.cmap;
-        this.vmin = json.vmin;
-        this.vmax = json.vmax;
+
+        //Still no multiviews!
+        this.xfm = json.xfm[0];
+        this.cmap = json.cmap[0];
+        this.vmin = json.vmin[0];
+        this.vmax = json.vmax[0];
+
         this.attrs = json.attrs;
         this.state = json.state;
         this.loaded = $.Deferred().done(function() { $("#dataload").hide(); });
@@ -55,13 +58,6 @@ var dataset = (function(module) {
         this.filter = json.attrs.filter === undefined ? "nearest" : json.attrs.filter;
         if (json.attrs.stim !== undefined)
             this.stim = "stim/"+json.attrs.stim;
-
-        if (!(json.vmin instanceof Array))
-            this.vmin = [[json.vmin]]
-        if (!(json.vmax instanceof Array))
-            this.vmax = [[json.vmax]]
-        if (!(json.xfm instanceof Array))
-            this.xfm = [[json.xfm]]
 
         this.frames = this.data[0].frames
         this.length = this.frames / this.rate;
@@ -146,7 +142,7 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(uniforms, i, fframe);
             xfm = uniforms.volxfm.value[i];
-            xfm.set.apply(xfm, this.xfm[i]);
+            xfm.set.apply(xfm, this.xfm.length != 16 ? this.xfm[i] : this.xfm);
         }
     };
     module.DataView.prototype.setFilter = function(interp) {

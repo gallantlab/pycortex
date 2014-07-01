@@ -605,13 +605,14 @@ var mriview = (function(module) {
             this.setVoxView(this.active.filter, viewopts.voxlines);
             //this.active.init(this.uniforms, this.meshes);
             $(this.object).find("#vrange").slider("option", {min: this.active.data[0].min, max:this.active.data[0].max});
-            this.setVminmax(this.active.vmin[0][0], this.active.vmax[0][0], 0);
             if (this.active.data.length > 1) {
                 $(this.object).find("#vrange2").slider("option", {min: this.active.data[1].min, max:this.active.data[1].max});
-                this.setVminmax(this.active.vmin[0][1], this.active.vmax[0][1], 1);
+                this.setVminmax(this.active.vmin[0], this.active.vmax[0], 0);
+                this.setVminmax(this.active.vmin[1], this.active.vmax[1], 1);
                 $(this.object).find("#vminmax2").show();
             } else {
                 $(this.object).find("#vminmax2").hide();
+                this.setVminmax(this.active.vmin, this.active.vmax, 0);
             }
 
             if (this.active.data[0].movie) {
@@ -752,8 +753,13 @@ var mriview = (function(module) {
         $(this.object).find(range).slider("values", [vmin, vmax]);
         $(this.object).find(min).val(vmin);
         $(this.object).find(max).val(vmax);
-        this.active.vmin[0][dim] = vmin;
-        this.active.vmax[0][dim] = vmax;
+        if (this.active.vmin instanceof Array) {
+            this.active.vmin[dim] = vmin;
+            this.active.vmax[dim] = vmax;
+        } else {
+            this.active.vmin = vmin;
+            this.active.vmax = vmax;
+        }
 
         this.schedule();
     };

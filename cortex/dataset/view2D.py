@@ -39,7 +39,7 @@ class Dataview2D(Dataview):
             state=self.state, 
             attrs=self.attrs, 
             desc=self.description,
-            cmap=self.cmap )
+            cmap=[self.cmap] )
 
         d1js = self.dim1.to_json()
         d2js = self.dim2.to_json()
@@ -49,7 +49,7 @@ class Dataview2D(Dataview):
             ))
 
         if "xfm" in d1js:
-            sdict['xfm'] = [d1js['xfm'][0], d2js['xfm'][0]]
+            sdict['xfm'] = [[d1js['xfm'][0], d2js['xfm'][0]]
 
         return sdict
 
