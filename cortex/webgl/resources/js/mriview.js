@@ -671,12 +671,8 @@ var mriview = (function(module) {
         });
         if (dir === undefined)
             dir = 1
-        if (this.colormap.image.height > 8) {
-            var idx = (i + dir * 2).mod(datasets.length);
-            this.setData(datasets.slice(idx, idx+2));
-        } else {
-            this.setData([datasets[(i+dir).mod(datasets.length)]]);
-        }
+
+        this.setData([datasets[(i+dir).mod(datasets.length)]]);
     };
     module.Viewer.prototype.rmData = function(name) {
         delete this.datasets[name];
