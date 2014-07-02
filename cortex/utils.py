@@ -3,18 +3,31 @@ import os
 import sys
 import binascii
 import numpy as np
+from importlib import import_module
 
 from .database import db
 from .volume import mosaic, unmask
+
+class DocLoader(object):
+    def __init__(self, func, mod, package):
+        self._load = lambda: getattr(import_module(mod, package), func)
+
+    def __call__(self, *args, **kwargs):
+        return self._load()(*args, **kwargs)
+
+    def __getattribute__(self, name):
+        if name != "_load":
+            return getattr(self._load(), name)
+        else:
+            return object.__getattribute__(self, name)
+
 
 def get_roipack(*args, **kwargs):
     import warnings
     warnings.warn('Please use db.get_overlay instead', DeprecationWarning)
     return db.get_overlay(*args, **kwargs)
 
-def get_mapper(*args, **kwargs):
-    from .mapper import get_mapper
-    return get_mapper(*args, **kwargs)
+get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False):
     ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
