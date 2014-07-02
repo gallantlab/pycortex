@@ -16,12 +16,12 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, with_curvature=False,
                 linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
                 cutout=None,cvmin=None,cvmax=None,cvthr=None,fig=None,**kwargs):
-    """Show a VolumeData or VertexData on a flatmap with matplotlib. Additional kwargs are passed on to
+    """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
     matplotlib's imshow command.
 
     Parameters
     ----------
-    braindata : DataView
+    braindata : Dataview
         the data you would like to plot on a flatmap
     recache : bool
         If True, recache the flatmap cache. Useful if you've made changes to the alignment
@@ -64,15 +64,15 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     from matplotlib.collections import LineCollection
 
     dataview = dataset.normalize(braindata)
-    if not isinstance(dataview, dataset.DataView):
-        raise TypeError('Please provide a DataView, not a Dataset')
-    if dataview.data.movie:
+    if not isinstance(dataview, dataset.Dataview):
+        raise TypeError('Please provide a Dataview, not a Dataset')
+    if dataview.movie:
         raise ValueError('Cannot flatten movie volumes')
     
-    im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
+    im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
     
     if cutout:
-        roi = db.get_overlay(dataview.data.subject, type='cutouts',
+        roi = db.get_overlay(dataview.subject, type='cutouts',
             roifill=(0.,0.,0.,0.),linecolor=(0.,0.,0.,0.),linewidth=0.)
         # Set ONLY desired cutout to be white
         roi.rois[cutout].set(roifill=(1.,1.,1.,1.),linewidth=2.,linecolor=(1.,1.,1.,1.))
@@ -108,7 +108,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         fig = plt.figure(fig.number)
 
     if with_curvature:
-        curv,ee = make(db.get_surfinfo(dataview.data.subject))
+        curv,ee = make(db.get_surfinfo(dataview.subject))
         if cutout: curv[co==0] = np.nan
         axcv = fig.add_axes((0,0,1,1))
         # Option to use thresholded curvature
@@ -148,7 +148,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if with_dropout is not False:
         if with_dropout is True: with_dropout = 20
         dax = fig.add_axes((0,0,1,1))
-        dmap, ee = make(utils.get_dropout(dataview.data.subject, dataview.data.xfmname,
+        dmap, ee = make(utils.get_dropout(dataview.subject, dataview.xfmname,
                                           power=with_dropout),
                         height=height, sampler=sampler)
         hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
@@ -161,14 +161,14 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal", interpolation="nearest", extent=extents, origin='lower')
     
     if with_borders:
-        border = _gen_flat_border(dataview.data.subject, im.shape[0])
+        border = _gen_flat_border(dataview.subject, im.shape[0])
         bax = fig.add_axes((0,0,1,1))
         blc = LineCollection(border[0], linewidths=3.0,
                              colors=[['r','b'][mw] for mw in border[1]])
         bax.add_collection(blc)
     
     if with_rois:
-        roi = db.get_overlay(dataview.data.subject,linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
+        roi = db.get_overlay(dataview.subject,linewidth=linewidth, linecolor=linecolor, roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
         roitex = roi.get_texture(height, labels=with_labels)
         roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
@@ -201,7 +201,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     ----------
     fname : str
         Filename for where to save the PNG file
-    braindata : DataView
+    braindata : Dataview
         the data you would like to plot on a flatmap
     recache : bool
         If True, recache the flatmap cache. Useful if you've made changes to the alignment
@@ -245,12 +245,12 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
 
 def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024, thick=32, depth=0.5, **kwargs):
     dataview = dataset.normalize(braindata)
-    if not isinstance(dataview, dataset.DataView):
-        raise TypeError('Please provide a DataView, not a Dataset')
-    if dataview.data.movie:
+    if not isinstance(dataview, dataset.Dataview):
+        raise TypeError('Please provide a Dataview, not a Dataset')
+    if dataview.movie:
         raise ValueError('Cannot flatten movie volumes')
     ## Create quickflat image array
-    im, extents = make(dataview.data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
+    im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
     ## Convert to PNG
     try:
         import cStringIO
@@ -262,25 +262,25 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     fp.seek(0)
     pngdata = binascii.b2a_base64(fp.read())
     ## Create and save SVG file
-    roipack = utils.get_roipack(dataview.data.subject)
+    roipack = utils.get_roipack(dataview.subject)
     roipack.get_svg(fname, labels=True, with_ims=[pngdata])
 
 def make(braindata, height=1024, recache=False, **kwargs):
-    if not isinstance(braindata, dataset.BrainData):
+    if not isinstance(braindata, (dataset.Volume, dataset.Vertex, dataset.VolumeRGB, dataset.VertexRGB)):
         raise TypeError('Invalid type for quickflat')
     if braindata.movie:
         raise ValueError('Cannot flatten multiple volumes')
 
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
 
-    if isinstance(braindata, dataset.VertexData):
+    if not hasattr(braindata, "xfmname"):
         pixmap = get_flatcache(braindata.subject, None, height=height, recache=recache, **kwargs)
         data = braindata.vertices
     else:
         pixmap = get_flatcache(braindata.subject, braindata.xfmname, height=height, recache=recache, **kwargs)
         data = braindata.volume
 
-    if braindata.raw:
+    if data.dtype == np.uint8:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
         img[mask] = pixmap * data.reshape(-1, 4)
         return img.transpose(1,0,2)[::-1], extents

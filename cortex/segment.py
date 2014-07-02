@@ -113,7 +113,7 @@ def cut_surface(subject, hemi, name='flatten', data=None):
         Which hemisphere to flatten. Should be "lh" or "rh"
     name : str, optional
         String name of the current flatten attempt. Defaults to "flatten"
-    data : DataView
+    data : Dataview
         A data view object to display on the surface as a cutting guide.
     """
     opts = "[hemi=%s,name=%s]"%(hemi, name)

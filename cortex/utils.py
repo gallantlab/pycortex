@@ -116,7 +116,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
 
     Parameters
     ----------
-    data : DataView
+    data : Dataview
         The data that will be overlaid on the ROI file.
     name : str, optional
         Name that will be assigned to the new dataset. <<IS THIS NECESSARY ANYMORE?>>
@@ -137,7 +137,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     if isinstance(dv, dataset.Dataset):
         raise TypeError("Please specify a data view")
 
-    rois = get_roipack(dv.data.subject)
+    rois = get_roipack(dv.subject)
     try:
         import cStringIO
         fp = cStringIO.StringIO()
@@ -295,7 +295,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     return mask,roiIdx
 
 def get_dropout(subject, xfmname, power=20):
-    """Create a dropout VolumeData showing where EPI signal
+    """Create a dropout Volume showing where EPI signal
     is very low.
     """
     xfm = db.get_xfm(subject, xfmname)
@@ -309,8 +309,8 @@ def get_dropout(subject, xfmname, power=20):
     normdata = (rawdata - rawdata.min()) / (rawdata.max() - rawdata.min())
     normdata = (1 - normdata) ** power
 
-    from .dataset import VolumeData
-    return VolumeData(normdata, subject, xfmname)
+    from .dataset import Volume
+    return Volume(normdata, subject, xfmname)
 
 def make_movie(stim, outfile, fps=15, size="640x480"):
     import shlex

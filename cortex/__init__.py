@@ -1,10 +1,10 @@
-from .dataset import Dataset, VolumeData, VertexData, DataView, View
+from .dataset import Dataset, Volume, Vertex, VolumeRGB, VertexRGB, Volume2D, Vertex2D
 from . import align, volume, quickflat, webgl, segment, options
 from .database import db
 from .utils import *
 from .quickflat import make_figure as quickshow
 
-openFile = Dataset.from_file
+load = Dataset.from_file
 
 try:
 	from . import webgl
