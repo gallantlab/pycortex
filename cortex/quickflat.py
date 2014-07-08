@@ -128,14 +128,16 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         axcv.set_xlim(extents[0], extents[1])
         axcv.set_ylim(extents[2], extents[3])
 
-    ax = fig.add_axes((0,0,1,1))
-    cimg = ax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]], 
-        aspect='equal', 
+    kwargs = dict(aspect='equal', 
         extent=extents, 
-        cmap=dataview.cmap, 
-        vmin=dataview.vmin, 
-        vmax=dataview.vmax,
         origin='lower')
+    if not isinstance(dataview, (dataset.VolumeRGB, dataset.VertexRGB)):
+        kwargs.update(
+            cmap=dataview.cmap, 
+            vmin=dataview.vmin, 
+            vmax=dataview.vmax)
+    ax = fig.add_axes((0,0,1,1))
+    cimg = ax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]], **kwargs)
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
     ax.set_ylim(extents[2], extents[3])
