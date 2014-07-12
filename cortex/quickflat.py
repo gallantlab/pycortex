@@ -494,16 +494,15 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
             wmcoords[:,2] < xfm.shape[0]])
         valid = np.logical_and(valid_p, valid_w)
         vidx = np.nonzero(valid)[0]
-
         mapper = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
         if thick == 1:
             i, j, data = sampclass(piacoords[valid]*depth + wmcoords[valid]*(1-depth), xfm.shape)
-            mapper = mapper + sparse.csr_matrix((data / thick, (vidx[i], j)), shape=mapper.shape)
+            mapper = mapper + sparse.csr_matrix((data / float(thick), (vidx[i], j)), shape=mapper.shape)
             return mapper
 
         for t in np.linspace(0, 1, thick+2)[1:-1]:
             i, j, data = sampclass(piacoords[valid]*t + wmcoords[valid]*(1-t), xfm.shape)
-            mapper = mapper + sparse.csr_matrix((data / thick, (vidx[i], j)), shape=mapper.shape)
+            mapper = mapper + sparse.csr_matrix((data / float(thick), (vidx[i], j)), shape=mapper.shape)
         return mapper
 
     except IOError:
