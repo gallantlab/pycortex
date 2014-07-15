@@ -27,7 +27,7 @@ Pycortex is best used with [IPython](http://www.ipython.org/). To run this demo,
 ```
 $ ipython
 In [1]: import cortex
-In [2]: ds = cortex.openFile("S1_retinotopy.hdf")
+In [2]: ds = cortex.load("S1_retinotopy.hdf")
 In [3]: cortex.webshow(ds)
 ```
 
