@@ -91,8 +91,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             from scipy.misc import imresize
             co = imresize(co,im.shape[:2]).astype(np.float32)/255.
         # Alpha
-        if im.dtype == np.uint8:
-            #im = np.cast['float32'](im)
+        if im.dtype == np.uint8: # T
+            #import pdb
+            #pdb.set_trace()
+            im = np.cast['float32'](im)/255.
             im[:,:,3]*=co
             h,w,cdim = [float(v) for v in im.shape]
         else:
