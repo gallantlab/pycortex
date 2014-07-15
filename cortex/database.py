@@ -256,7 +256,7 @@ class Database(object):
 
     def get_surfinfo(self, subject, type="curvature", recache=False, **kwargs):
         """Return auxillary surface information from the filestore. Surface info is defined as 
-        anatomical information specific to a subject in surface space. A VertexData will be returned
+        anatomical information specific to a subject in surface space. A Vertex class will be returned
         as necessary. Info not found in the filestore will be automatically generated.
 
         See documentation in cortex.surfinfo for auto-generation code
@@ -272,8 +272,8 @@ class Database(object):
 
         Returns
         -------
-        verts : VertexData
-            If the surface information has "left" and "right" entries, a VertexData is returned
+        verts : Vertex class
+            If the surface information has "left" and "right" entries, a Vertex class is returned
         npz : npzfile
             Otherwise, an npz object is returned. Remember to close it!
         """
@@ -297,10 +297,10 @@ class Database(object):
 
         npz = np.load(surfifile)
         if "left" in npz and "right" in npz:
-            from .dataset import VertexData
+            from .dataset import Vertex
             verts = np.hstack([npz['left'], npz['right']])
             npz.close()
-            return VertexData(verts, subject)
+            return Vertex(verts, subject)
         return npz
 
     def get_overlay(self, subject, type='rois', **kwargs):
