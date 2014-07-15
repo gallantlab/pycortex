@@ -292,7 +292,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         if not np.any(tmpMask[:,ir]):
             dropROI += [ir]
     # Cull rois with no voxels
-    keepROI = np.array([not ir in dropROI for ir in range(len(roiList))])
+    keepROI = np.array([not ir in dropROI for ir in range(len(roiList))],dtype=np.bool)
     # Cull rois requested, but not avialable in pycortex
     roiListL = [r for ir,r in enumerate(roiList) if not ir in dropROI]
     tmpMask = tmpMask[:,keepROI,:]
