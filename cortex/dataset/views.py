@@ -124,7 +124,7 @@ class Dataview(object):
             
         sdict = dict(
             state=self.state, 
-            attrs=self.attrs, 
+            attrs=self.attrs.copy(), 
             desc=self.description)
         try:
             sdict.update(dict(

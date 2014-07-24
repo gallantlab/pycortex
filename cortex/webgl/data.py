@@ -7,6 +7,7 @@ dict(
     images=(__braindata_name=["img1.png", "img2.png"]),
 )
 """
+import os
 import json
 import numpy as np
 
@@ -43,6 +44,8 @@ class Package(object):
         for name, view in self.dataset:
             meta = view.to_json(simple=False)
             meta['name'] = name
+            if 'stim' in meta['attrs']:
+                meta['attrs']['stim'] = os.path.split(meta['attrs']['stim'])[1] 
             metadata.append(meta)
         return metadata
 
