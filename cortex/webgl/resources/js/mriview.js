@@ -557,7 +557,6 @@ var mriview = (function(module) {
         if (this.flatlims !== undefined) {
             this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
             this.setPivot(this._pivot);
-            //this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
             //OlD:
             //this.setPivot(this.flatmix*180);
             //this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
