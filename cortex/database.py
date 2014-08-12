@@ -302,9 +302,19 @@ class Database(object):
             npz.close()
             return VertexData(verts, subject)
         return npz
-
+    # Version that WAS on master: (what happened to svgfile variable?)
+    ## -- Alternative start -- ##
+    # def get_overlay(self, subject, type='rois', **kwargs):
+    #     if type in ["rois","cutouts"]:
+    #         from . import svgroi
+    #         pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
+    #         try:
+    #             tf = self.auxfile.get_overlay(subject, type)
+    #             svgfile = tf.name
+    #         except (AttributeError, IOError):
+    #             svgfile = self.get_paths(subject)["rois"]
     def get_overlay(self, subject, otype='rois', **kwargs):
-        if otype in ["rois","cutouts","disp","disp2","sulci"]:
+        if otype in ["rois","cutouts","disp","sulci"]:
             from . import svgroi
             pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
             svgfile = self.get_paths(subject)["rois"]
@@ -319,6 +329,7 @@ class Database(object):
                     # svgfile = self.get_paths(subject)["rois"]
                     # Layer type does not exist or has been temporarily removed
                     pass
+           ## -- And alternative start -- ##
             if 'pts' in kwargs:
                 pts = kwargs['pts']
                 del kwargs['pts']

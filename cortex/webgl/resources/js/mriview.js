@@ -411,7 +411,6 @@ var mriview = (function(module) {
                     return this.controls.camera.toPerspective()}
                 else if (value=='orthographic'){
                     return this.controls.camera.toOrthographic()}
-
         };
     };
     module.Viewer.prototype.animate = function(animation) {

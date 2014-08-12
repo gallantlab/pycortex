@@ -295,7 +295,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                     print('Unknown parameter %s!'%k)
                     continue
                 self.setState(k,kwargs[k][0])
-
         def _capture_view(self):
             """Low-level command: returns a dict of current view parameters
 
@@ -307,7 +306,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             """
             props = ['altitude','azimuth','target','mix','radius',
                 'visL','visR','alpha','rotationR','rotationL','projection']
-            # surfs.saveView()
             view = {}
             for p in props:
                 view[p] = self.getState(p)[0]

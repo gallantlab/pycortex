@@ -193,25 +193,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
         roi_im = plt.imread(roitex)
-        #plt.matshow(roi_im)
-        if cutout: 
-            # STUPID BUT NECESSARY 1-PIXEL CHECK:
-            if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,roi_im.shape)]):
-                from scipy.misc import imresize
-                co = imresize(co,roi_im.shape[:2]).astype(np.float32)/255.
-            roi_im[:,:,3]*=co
-        oimg = oax.imshow(roi_im[iy[1]:iy[0]:-1,ix[0]:ix[1]],
-            aspect='equal', 
-            interpolation='bicubic', 
-            extent=extents, 
-            zorder=3,
-            origin='lower')
-    if with_sulci:
-        roi = db.get_overlay(dataview.data.subject,otype='sulci',linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor)
-        roitex = roi.get_texture(height, labels=with_labels)
-        roitex.seek(0)
-        oax = fig.add_axes((0,0,1,1))
-        roi_im = plt.imread(roitex)
+        plt.matshow(roi_im)
         if cutout: 
             # STUPID BUT NECESSARY 1-PIXEL CHECK:
             if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,roi_im.shape)]):
