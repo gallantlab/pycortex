@@ -59,6 +59,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     anonymize : bool, optional
         Whether to rename CTM and SVG files generically, for public distribution.
         Default False
+    disp_layers : list of strings | ['rois']
+        Which layers to include from rois.svg file. Slightly WIP; EITHER ['rois'] (default)
+        OR ['sulci'] should work. 
     **kwargs : dict, optional
         All additional keyword arguments are passed to the template renderer.
 
