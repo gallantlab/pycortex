@@ -95,7 +95,7 @@ class VolumeRGB(DataviewRGB):
                     if vol.min() < 0:
                         vol -= vol.min()
                 else:
-                    vol -= dv.vmin()
+                    vol -= dv.vmin
 
                 if dv.vmax is None:
                     if vol.max() > 1:
