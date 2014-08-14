@@ -126,7 +126,7 @@ class VolumeRGB(DataviewRGB):
                     if vol.max() > 1:
                         vol /= vol.max()
                 else:
-                    vol /= dv.vmax
+                    vol /= dv.vmax - dv.vmin
                 vol = (vol * 255).astype(np.uint8)
             volume.append(vol)
 
