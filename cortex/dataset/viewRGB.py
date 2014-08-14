@@ -127,7 +127,8 @@ class VolumeRGB(DataviewRGB):
                         vol /= vol.max()
                 else:
                     vol /= dv.vmax - dv.vmin
-                vol = (vol * 255).astype(np.uint8)
+
+                vol = (np.clip(vol, 0, 1) * 255).astype(np.uint8)
             volume.append(vol)
 
         return np.array(volume).transpose([1, 2, 3, 4, 0])
