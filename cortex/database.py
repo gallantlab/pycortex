@@ -304,13 +304,15 @@ class Database(object):
         return npz
 
     def get_overlay(self, subject, otype='rois', **kwargs):
-        if otype in ["rois","cutouts","disp","disp2","sulci"]:
-            from . import svgroi
-            pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
+        from . import svgroi
+        pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
+        if otype in ["rois","cutouts","sulci"] or isinstance(otype,(list,tuple)):
+            # Assumes that all lists or tuples will only consist of "rois","cutouts",and "sulci"...
+            # Prevents combining external files with sulci, e.g. 
             svgfile = self.get_paths(subject)["rois"]
             if self.auxfile is not None:
                 try:
-                    tf = self.auxfile.get_overlay(subject, otype)
+                    tf = self.auxfile.get_overlay(subject, otype) # kwargs??
                     svgfile = tf.name
                 except (AttributeError, IOError):
                     # NOTE: This is better error handling, but does not account for
@@ -324,8 +326,6 @@ class Database(object):
                 del kwargs['pts']
             return svgroi.get_roipack(svgfile, pts, polys, layer=otype,**kwargs)
         if otype == "external":
-            from . import svgroi
-            pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
             svgfile = kwargs["svgfile"]
             del kwargs["svgfile"]
             if 'pts' in kwargs:

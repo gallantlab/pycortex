@@ -466,8 +466,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                             func = mixes[interpolation]
                             
                         val = func(np.array(start['value']), np.array(end['value']), idx)
-                        #import ipdb
-                        #ipdb.set_trace()
                         if isinstance(val, np.ndarray):
                             self.setState(start['state'], val.ravel().tolist())
                         else:

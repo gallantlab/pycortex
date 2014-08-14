@@ -129,11 +129,15 @@ class BrainCTM(object):
         if self.left.flat is not None:
             ## -- New code 2014.05: add sulci & display layers -- ##
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            for disp_layer in disp_layers: 
-                roipack = db.get_overlay(self.subject, pts=flatpts,otype=disp_layer)
-                layer = roipack.setup_labels()
-                with open(svgname, "w") as fp:
-                    for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
+            #for disp_layer in disp_layers: 
+            roipack = db.get_overlay(self.subject, pts=flatpts,otype=disp_layers)
+            layer = roipack.setup_labels()
+            # assign coordinates in left hemisphere negative values
+            with open(svgname, "w") as fp:
+                if not isinstance(layer,(tuple,list)):
+                    layer = (layer,)
+                for LL in layer:
+                    for element in LL.findall(".//{http://www.w3.org/2000/svg}text"):
                         idx = int(element.attrib["data-ptidx"])
                         if idx < len(inverse[0]):
                             idx = inverse[0][idx]
@@ -141,40 +145,7 @@ class BrainCTM(object):
                             idx -= len(inverse[0])
                             idx = inverse[1][idx] + len(inverse[0])
                         element.attrib["data-ptidx"] = str(idx)
-                    fp.write(roipack.toxml())
-
-        # ##### ADDITION OF SULCI/OTHER DISPLAY SVG (NEW 2014.05)        
-        # ##### Currently NOT adding multiple layers, just saving different
-        # ##### cache files for different display layers.
-        # roi = surfs.getOverlay(dataview.data.subject, type='cutouts',
-        #     roifill=(0.,0.,0.,0.),linecolor=(0.,0.,0.,0.),linewidth=0.)
-        # # Set ONLY desired cutout to be white
-        # roi.rois[cutout].set(roifill=(1.,1.,1.,1.),linewidth=2.,linecolor=(1.,1.,1.,1.))
-        # roitex = roi.get_texture(height, labels=False)
-        # roitex.seek(0)
-        # co = plt.imread(roitex)[:,:,0] # Cutout image
-        # # STUPID BULLSHIT 1-PIXEL CHECK:
-        # if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,co.shape)]):
-        #     from scipy.misc import imresize
-        #     co = imresize(co,im.shape[:2]).astype(np.float32)/255.
-        # # Alpha
-        # if im.dtype == np.uint8:
-        #     im[:,:,3]*=co
-        #     h,w,cdim = [float(v) for v in im.shape]
-        # else:
-        #     im[co==0] = np.nan
-        #     h,w = [float(v) for v in im.shape]
-        # # set extents
-        # y,x = np.nonzero(co)
-        # l,r,t,b = extents
-        # extents = [x.min()/w * (l-r)+l,
-        #             x.max()/w * (l-r)+l,
-        #             y.min()/h * (t-b)+b,
-        #             y.max()/h * (t-b)+b]
-        # # bounding box indices
-        # iy,ix = ((y.min(),y.max()),(x.min(),x.max()))
-        # ##### END NEW CODE
-
+                fp.write(roipack.toxml())
         return ptmap
 
 class Hemi(object):
