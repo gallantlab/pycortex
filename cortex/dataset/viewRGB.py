@@ -90,7 +90,7 @@ class VolumeRGB(DataviewRGB):
             alpha = np.ones(self.red.volume.shape)
 
         if not isinstance(alpha, Volume):
-            alpha = Volume(alpha, self.subject, self.red.xfmname)
+            alpha = Volume(alpha, self.red.subject, self.red.xfmname)
 
         self.alpha = alpha
 
