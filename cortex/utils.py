@@ -30,22 +30,19 @@ def get_roipack(*args, **kwargs):
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False,disp_layers=['rois']):
-    """Get ctmpack. [most useless help message ever]"""   
-    lvlstr = ("%dd" if decimate else "%d")%level
-    # Temporary code to play nice with other branches:
-    if disp_layers==['rois']:
-        ctmcache = "%s_[{types}]_{method}_{level}.json"%subject
-        ctmcache = ctmcache.format(types=','.join(types), method=method, level=lvlstr)
-    else:
-        # This is only temporary, while Mark is too lazy to write other 
-        # display layers into the main ctm file(s)
-        ctmcache = "%s_[{types}]_{method}_{level}_{layers}.json"%subject
-        ctmcache = ctmcache.format(types=','.join(types), method=method, level=lvlstr,layers=disp_layers)
-    ctmfile = os.path.join(db.get_cache(subject), ctmcache)
+    """Creates ctm file for the specified input arguments.
 
+    This is a cached file that specifies (1) the surfaces between which
+    to interpolate (`types` argument), (2) the `method` to interpolate 
+    between surfaces, (3) the display layers to include (rois, sulci, etc)
+    """   
+    lvlstr = ("%dd" if decimate else "%d")%level
+    # Generates different cache files for each combination of disp_layers
+    ctmcache = "%s_[{types}]_{method}_{level}_{layers}.json"%subject
+    ctmcache = ctmcache.format(types=','.join(types), method=method, level=lvlstr,layers=repr(sorted(disp_layers)))
+    ctmfile = os.path.join(db.get_cache(subject), ctmcache)
     if os.path.exists(ctmfile) and not recache:
         return ctmfile
-
     print("Generating new ctm file...")
     from . import brainctm
     ptmap = brainctm.make_pack(ctmfile, subject, types=types, method=method, 
