@@ -3,6 +3,10 @@ import numpy as np
 
 from .views import Dataview, Volume, Vertex
 from .braindata import VolumeData, VertexData, _hash
+from ..database import db
+
+from .. import options
+default_cmap = options.config.get("basic", "default_cmap")
 
 class DataviewRGB(Dataview):
     def __init__(self, subject=None, alpha=None, description="", state=None, **kwargs):
@@ -51,9 +55,15 @@ class DataviewRGB(Dataview):
 
         if simple:
             sdict['name'] = self.name
+            sdict['subject'] = self.subject
+            sdict['min'] = 0
+            sdict['max'] = 255
+            sdict['shape'] = self.red.shape
         else:
             sdict['data'] = [self.name]
-
+            sdict['cmap'] = [default_cmap]
+            sdict['vmin'] = [0]
+            sdict['vmax'] = [255]
         return sdict
 
 class VolumeRGB(DataviewRGB):
@@ -75,20 +85,35 @@ class VolumeRGB(DataviewRGB):
             self.green = Volume(green, subject, xfmname)
             self.blue = Volume(blue, subject, xfmname)
 
-        self.xfmname = self.red.xfmname
+
+        if alpha is None:
+            alpha = np.ones(self.red.volume.shape)
+
+        if not isinstance(alpha, Volume):
+            alpha = Volume(alpha, self.subject, self.red.xfmname)
+
+        self.alpha = alpha
+
+        if self.red.xfmname == self.green.xfmname == self.blue.xfmname == self.alpha.xfmname:
+            self.xfmname = self.red.xfmname
+        else:
+            raise ValueError('Cannot handle different transforms per volume')
+
         super(VolumeRGB, self).__init__(subject, alpha, description=description, state=state, **kwargs)
+
+
+    def to_json(self, simple=False):
+        sdict = super(VolumeRGB, self).to_json(simple=simple)
+        if not simple:
+            sdict['xfm'] = [list(np.array(db.get_xfm(self.subject, self.xfmname, 'coord').xfm).ravel())]
+
+        return sdict
 
     @property
     def volume(self):
-        alpha = self.alpha
-        if self.alpha is None:
-            alpha = np.ones_like(self.red.volume)
-
-        if not isinstance(alpha, Volume):
-            alpha = Volume(alpha, self.subject, self.xfmname)
 
         volume = []
-        for dv in (self.red, self.green, self.blue, alpha):
+        for dv in (self.red, self.green, self.blue, self.alpha):
             vol = dv.volume
             if vol.dtype != np.uint8:
                 if dv.vmin is None:
