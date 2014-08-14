@@ -47,21 +47,34 @@ class ROIpack(object):
 
         """
         if isinstance(layer,(list,tuple)):
-            self.layers = {}
-            # Recursive call to create multiple layers
-            for iL,L in enumerate(layer):
-                self.layers[iL] = ROIpack(tcoords, svgfile, callback, linewidth, linecolor, 
-                    roifill, shadow, labelsize, labelcolor, dashtype, dashoffset,
-                    layer=L)
-            self.tcoords = self.layers[0].tcoords
+            # More elegant would be to have ROIpack be a fundamentally multi-layer
+            # object, but for backward compatibility and for not breaking other
+            # other parts of the code (e.g. finding roi indices, etc) I have kept 
+            # it this way ML 2014.08.12
             self.svgfile = svgfile
             self.callback = callback
             self.kdt = cKDTree(tcoords)
             self.layer = 'multi_layer'
+            self.layers = {}
+            self.rois = {}
+            self.layer_names = layer
+            layer1 = layer[0]
+            # Recursive call to create multiple layers
+            for iL,L in enumerate(layer):
+                self.layers[L] = ROIpack(tcoords, svgfile, callback, linewidth, linecolor, 
+                    roifill, shadow, labelsize, labelcolor, dashtype, dashoffset,
+                    layer=L)
+                # Necessary?
+                self.rois.update(self.layers[L].rois)
+                # # Create combined svg out of individual layer svgs
+                if iL == 0:
+                    self.tcoords = self.layers[layer1].tcoords
+                    svg_fin = copy.copy(self.layers[layer1].svg)
+                elif iL>0:
+                    to_add = _find_layer(self.layers[L].svg, L)
+                    svg_fin.getroot().insert(0, to_add)
             # linewidth, etc not set - set in individual layers
-            self.svg = scrub(self.svgfile)
-            self.svg = _strip_top_layers(self.svg,[v.layer for v in self.layers.values()])
-
+            self.svg = svg_fin
         else:
             # Normalize coordinates 0-1
             if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
@@ -84,6 +97,7 @@ class ROIpack(object):
             self.reload(size=labelsize, color=labelcolor)
 
     def reload(self, **kwargs):
+        """Change display properties of sub-elements of one-layer ROIpack"""
         self.svg = scrub(self.svgfile)
         self.svg = _strip_top_layers(self.svg,self.layer)
         w = float(self.svg.getroot().get("width"))
@@ -92,18 +106,9 @@ class ROIpack(object):
 
         #Set up the ROI dict 
         self.rois = {}
-        if not isinstance(self.layer,(tuple,list)):
-            LL = (self.layer,)
-        else:
-            LL = self.layer
-        for layer in LL:
-            # For multiple layers, this creates "rois" out of whatever 
-            # display elements are in the other layers. This *should not*
-            # cause problems. Perhaps there should be a more general class 
-            # than ROI (display_element?), of which ROI is a sub-class?
-            for r in _find_layer(self.svg, layer).findall("{%s}g"%svgns):
-                roi = ROI(self, r)
-                self.rois[roi.name] = roi
+        for r in _find_layer(self.svg, self.layer).findall("{%s}g"%svgns):
+            roi = ROI(self, r)
+            self.rois[roi.name] = roi
         self.set()
         #self.setup_labels(**kwargs)
 
@@ -276,10 +281,17 @@ class ROIpack(object):
 
     def setup_labels(self, size=None, color=None, shadow=None):
         """Sets up coordinates for labels wrt SVG file (2D flatmap)"""
+        # Recursive call for multiple layers
+        if self.layer == 'multi_layer':
+            label_layers = []
+            for L in self.layer_names:
+                label_layers.append(self.layers[L].setup_labels())
+                self.svg.getroot().insert(0, label_layers[-1])
+            return label_layers
         if size is None:
-            size = config.get("rois", "labelsize")
+            size = config.get(self.layer, "labelsize")
         if color is None:
-            color = tuple(map(float, config.get("rois", "labelcolor").split(",")))
+            color = tuple(map(float, config.get(self.layer, "labelcolor").split(",")))
         if shadow is None:
             shadow = self.shadow
 
@@ -287,9 +299,9 @@ class ROIpack(object):
         color = "rgb(%d, %d, %d)"%(color[0]*255, color[1]*255, color[2]*255)
 
         try:
-            layer = _find_layer(self.svg, "roilabels")
-        except AssertionError:
-            layer = _make_layer(self.svg.getroot(), "roilabels")
+            layer = _find_layer(self.svg, "%s_labels"%self.layer)
+        except ValueError: # Changed in _find_layer below... AssertionError: # Why assertion error? 
+            layer = _make_layer(self.svg.getroot(), "%s_labels"%self.layer)
 
         labelpos, candidates = [], []
         for roi in list(self.rois.values()):

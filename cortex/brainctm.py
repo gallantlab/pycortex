@@ -132,18 +132,19 @@ class BrainCTM(object):
             #for disp_layer in disp_layers: 
             roipack = db.get_overlay(self.subject, pts=flatpts,otype=disp_layers)
             layer = roipack.setup_labels()
-            #import ipdb
-            #ipdb.set_trace()
             # assign coordinates in left hemisphere negative values
             with open(svgname, "w") as fp:
-                for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
-                    idx = int(element.attrib["data-ptidx"])
-                    if idx < len(inverse[0]):
-                        idx = inverse[0][idx]
-                    else:
-                        idx -= len(inverse[0])
-                        idx = inverse[1][idx] + len(inverse[0])
-                    element.attrib["data-ptidx"] = str(idx)
+                if not isinstance(layer,(tuple,list)):
+                    layer = (layer,)
+                for LL in layer:
+                    for element in LL.findall(".//{http://www.w3.org/2000/svg}text"):
+                        idx = int(element.attrib["data-ptidx"])
+                        if idx < len(inverse[0]):
+                            idx = inverse[0][idx]
+                        else:
+                            idx -= len(inverse[0])
+                            idx = inverse[1][idx] + len(inverse[0])
+                        element.attrib["data-ptidx"] = str(idx)
                 fp.write(roipack.toxml())
         return ptmap
 
