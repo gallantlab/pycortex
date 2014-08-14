@@ -174,16 +174,17 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     html = FallbackLoader([serve.cwd]).load("mixer.html")
     db.auxfile = data
 
-    package = Package(data)
-    metadata = json.dumps(package.metadata())
-    images = package.images
-    subjects = list(package.subjects)
     #Extract the list of stimuli, for special-casing
     stims = dict()
     for name, view in data:
         if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
             sname = os.path.split(view.attrs['stim'])[1]
             stims[sname] = view.attrs['stim']
+    
+    package = Package(data)
+    metadata = json.dumps(package.metadata())
+    images = package.images
+    subjects = list(package.subjects)
     
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj, types, disp_layers=disp_layers, **kwargs)) for subj in subjects)

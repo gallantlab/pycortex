@@ -12,8 +12,8 @@ class Dataview2D(Dataview):
         self.cmap = cmap or default_cmap2D
         self.vmin = vmin
         self.vmax = vmax
-        self.vmin2 = vmin2 or vmin
-        self.vmax2 = vmax2 or vmax
+        self.vmin2 = vmin if vmin2 is None else vmin2
+        self.vmax2 = vmax if vmax2 is None else vmax2
         self.state = state
         self.attrs = kwargs
         if 'priority' not in self.attrs:
@@ -70,7 +70,8 @@ class Volume2D(Dataview2D):
             self.dim1 = Volume(dim1, subject, xfmname)
             self.dim2 = Volume(dim2, subject, xfmname)
 
-        super(Volume2D, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
+        super(Volume2D, self).__init__(description=description, cmap=cmap, vmin=vmin,
+                                       vmax=vmax, vmin2=vmin2, vmax2=vmax2, **kwargs)
 
     def __repr__(self):
         return "<2D volumetric data for (%s, %s)>"%(self.dim1.subject, self.dim1.xfmname)
