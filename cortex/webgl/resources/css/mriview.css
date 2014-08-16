@@ -222,6 +222,14 @@ p#zlocklabel {
     margin-right:5px;
 }
 
+#projopts {
+    float:left;
+}
+p#projlabel {
+    float:left;
+    margin-right:5px;
+}
+
 /* datasets */
 ul#datasets { 
     width: 200px; 

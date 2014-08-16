@@ -53,6 +53,7 @@ var mriview = (function(module) {
         this.light.position.set( -200, -200, 1000 ).normalize();
         this.camera.add( this.light );
         this.flatmix = 0;
+        this.specular = 0.5;
         this.frame = 0;
 
         // renderer
@@ -72,7 +73,7 @@ var mriview = (function(module) {
             THREE.UniformsLib[ "lights" ],
             {
                 diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
-                specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
+                specular:   { type:'v3', value:new THREE.Vector3( this.specular, this.specular, this.specular )},
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
                 shininess:  { type:'f',  value:200},
 
@@ -509,12 +510,26 @@ var mriview = (function(module) {
         this.setMix(1);
         this.setShift(0);
     };
-    module.Viewer.prototype.toggle_view = function() {
-        this.meshes.left.visible = !this.meshes.left.visible;
-        this.meshes.right.visible = !this.meshes.right.visible;
+    module.Viewer.prototype.update_volvis = function() {
         for (var i = 0; i < 3; i++) {
             this.planes[i].update();
-            this.planes[i].mesh.visible = !this.planes[i].mesh.visible;
+            this.planes[i].mesh.visible = $("#volvis").prop("checked");
+        }
+        this.schedule();
+    };
+    module.Viewer.prototype.update_leftvis = function() {
+        this.meshes.left.visible = $("#leftvis").prop("checked");
+        this.schedule();
+    };
+    module.Viewer.prototype.update_rightvis = function() {
+        this.meshes.right.visible = $("#rightvis").prop("checked");
+        this.schedule();
+    };
+    module.Viewer.prototype.update_projection = function() {
+        if ($("#projpersp").prop("checked")) {
+            this.setState("projection", "perspective");
+        } else {
+            this.setState("projection", "orthographic");
         }
         this.schedule();
     };
@@ -556,7 +571,17 @@ var mriview = (function(module) {
         if (this.flatlims !== undefined) {
             this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
             this.setPivot(this._pivot);
-            this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
+            this.update_spec();
+            if (n2 == flat) {
+                for (var i = 0; i < 3; i++) {
+                    this.planes[i].update();
+                    this.planes[i].mesh.visible = false;
+                }
+                $("#volvis").attr("disabled", true);
+            } else {
+                $("#volvis").removeAttr("disabled");
+                this.update_volvis();
+            }
         }
         $(this.object).find("#mix").slider("value", val);
         
@@ -597,6 +622,10 @@ var mriview = (function(module) {
         this.pivot.right.front.position.x = val;
         this.figure.notify('setshift', this, [val]);
         this.schedule();
+    };
+    module.Viewer.prototype.update_spec = function() {
+        var s = this.specular * (1 - this.flatmix);
+        this.uniforms.specular.value.set(s, s, s);
     };
     module.Viewer.prototype.addData = function(data) {
         if (!(data instanceof Array))
@@ -1012,7 +1041,11 @@ var mriview = (function(module) {
             min:0, max:20, step:1, value:4,
             change: updateROIs,
         });
-        $(this.object).find("#volview").change(this.toggle_view.bind(this));
+        $(this.object).find("#volvis").change(this.update_volvis.bind(this));
+        $(this.object).find("#leftvis").change(this.update_leftvis.bind(this));
+        $(this.object).find("#rightvis").change(this.update_rightvis.bind(this));
+        $(this.object).find("#projpersp").change(this.update_projection.bind(this));
+        $(this.object).find("#projortho").change(this.update_projection.bind(this));
         $(this.object).find("#roi_linecolor").miniColors({close: updateROIs});
         $(this.object).find("#roi_fillcolor").miniColors({close: updateROIs});
         $(this.object).find("#roi_shadowcolor").miniColors({close: updateROIs});
@@ -1046,6 +1079,11 @@ var mriview = (function(module) {
         }.bind(this)})
         $(this.object).find("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:1.0, slide:function(event, ui) {
             this.uniforms.dataAlpha.value = ui.value;
+            this.schedule();
+        }.bind(this)})
+        $(this.object).find("#layer_specularity").slider({ min:0, max:1, step:.001, value:this.specular, slide:function(event, ui) {
+            this.specular = ui.value;
+            this.update_spec();
             this.schedule();
         }.bind(this)})
         $(this.object).find("#layer_hatchalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {

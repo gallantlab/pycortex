@@ -121,7 +121,15 @@
 				</div>
 			</fieldset>
 			<fieldset id="layers_fieldset" class='subtable'>
-				<legend>Layer Alpha</legend>
+				<legend>Surface Display</legend>
+				<div class='display_opt'>
+					<table id='layerSpec'>
+						<tr>
+							<td><label for='layer_specularity'>Specularity</label></td>
+							<td><div id='layer_specularity'></div></td>
+						</tr>
+					</table>
+				</div>
 				<div class='display_opt'>
 					<table id='layerCurv'>
 						<tr>
@@ -164,9 +172,24 @@
 				<fieldset id="viewopt_fieldset" class='subtable'>
 					<legend>View</legend>
 					<div class='display_opt'>
-						<input id='volview' type='checkbox'><label for='volview'>Toggle view</label>
+						<input id='volvis' type='checkbox'><label for='volvis'>Volume slices visibile</label>
 					</div>
 					<div class='display_opt'>
+						<input id='leftvis' type='checkbox' checked><label for='leftvis'>Left hem. visibile</label>
+					</div>
+					<div class='display_opt'>
+						<input id='rightvis' type='checkbox' checked><label for='rightvis'>Right hem. visibile</label>
+					</div>
+					<div class='display_opt'>
+						<p id='projlabel'>Projection:</p>
+						<div id='projopts'>
+							<input id='projpersp' type='radio' name='projtype' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='persp' checked>
+						    <label for='projpersp'>Perspective</label><br>
+						    <input id='projortho' type='radio' name='projtype' value='ortho'>
+						    <label for='projortho'>Orthographic</label><br>
+						</div>
+					</div>
+					<!--<div class='display_opt'>
 						<p id='zlocklabel'>Zoom lock:</p>
 						<div id='zlockopts'>
 							<input id='zlocknone' type='radio' name='zoomlock' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='None' checked>
@@ -178,7 +201,7 @@
 						    <input id='zlockwhole' type='radio' name='zoomlock' value='whole'>
 						    <label for='zlockwhole'>whole</label><br>
 						</div>
-					</div>
+					</div>-->
 				</fieldset>
 				<fieldset id='voxopt_fieldset' class='subtable'>
 					<legend>Voxels</legend>
