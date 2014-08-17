@@ -184,12 +184,37 @@ a:visited { color:white; }
 }
 
 /* Colorbar */
-.dd-selected-text, .dd-option-text { display:none; }
+.dd-selected-text, .dd-option-text {
+    font-size:8px;
+    line-height:8px;
+    color:#888;
+    float:left;
+    width:36px;
+    /*overflow:auto;*/
+}
 .dd-option-image, .dd-selected-image { 
+    float:right;
+    padding-right: 10px;
     min-height:8px; 
-    width:256px; 
+    /*width:256px; 
     max-width:256px; 
-    max-height:256px; 
+    max-height:256px; */
+    width:220px;
+    max-width:220px;
+    max-height:220px;
+}
+#cmapsearchbox {
+    position:absolute;
+    z-index:6;
+}
+#cmapsearchresults {
+    z-index:5;
+    margin-top:30px;
+    position:absolute;
+    max-height:320px;
+}
+.selected_sr {
+    background:#ddf;
 }
 
 .vcolorbar { 

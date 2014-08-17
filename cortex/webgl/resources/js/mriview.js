@@ -839,6 +839,44 @@ var mriview = (function(module) {
         this.schedule();
     };
 
+    module.Viewer.prototype.startCmapSearch = function() {
+        var sr = $(this.object).find("#cmapsearchresults"),
+        cm = $(this.object).find("#colormap"),
+        sb = $(this.object).find("#cmapsearchbox");
+
+        sb.val("");
+        sb.css("width", cm.css("width"));
+        sb.css("height", cm.css("height"));
+        sr.show();
+        sb.keyup(function(e) {
+            if (e.keyCode == 13) { // enter
+                try {this.setColormap($(sr[0]).find(".selected_sr input")[0].value);}
+                finally {this.stopCmapSearch();}
+            } if (e.keyCode == 27) { // escape
+                this.stopCmapSearch();
+            }
+            var value = sb[0].value.trim();
+            sr.empty();
+            if (value.length > 0) {
+                for (var k in this.cmapnames) {
+                    if (k.indexOf(value) > -1) {
+                        sr.append($($(this.object).find("#colormap li")[this.cmapnames[k]]).clone());
+                    }
+                }
+                $(sr[0].firstChild).addClass("selected_sr");
+            }
+        }.bind(this)).show();
+        sb.focus();
+        sb.blur(function() {this.stopCmapSearch();}.bind(this));
+    };
+
+    module.Viewer.prototype.stopCmapSearch = function() {
+        var sr = $(this.object).find("#cmapsearchresults"),
+        sb = $(this.object).find("#cmapsearchbox");
+        sr.hide().empty();
+        sb.hide();
+    };
+
     module.Viewer.prototype.setFrame = function(frame) {
         if (frame > this.active.length) {
             frame -= this.active.length;
@@ -919,6 +957,8 @@ var mriview = (function(module) {
             _bound = true;
             window.addEventListener( 'keydown', function(e) {
                 btnspeed = 0.5;
+                if (e.target.tagName == "INPUT")
+                    return;
                 if (e.keyCode == 32) {         //space
                     if (this.active.data[0].movie)
                         this.playpause();
@@ -984,6 +1024,9 @@ var mriview = (function(module) {
                     this.setColormap($(this.object).find("#colormap .dd-selected-image")[0]);
                 }.bind(this)
             });
+            $(this.object).find("#cmapsearch").click(function() {
+                this.startCmapSearch();
+            }.bind(this));
 
             $(this.object).find("#vrange").slider({ 
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1],

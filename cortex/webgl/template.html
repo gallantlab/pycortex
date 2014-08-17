@@ -56,11 +56,15 @@
 							<div class='clear'></div>
 						</div>
 					</td><td>
+						<input id='cmapsearchbox' type='text' name='cmapsearchbox' style='display:none'>
+						<ul id='cmapsearchresults' style='display:none' class='dd-options'></ul>
 						<select id='colormap'>
 							{% for name, img in colormaps %}
 							<option data-imagesrc='{{img}}' {% if name == default_cmap %}selected='selected'{%end%}>{{name}}</option>
 							{% end %}
 						</select>
+					</td><td>
+						<div id='cmapsearch'><img src='resources/images/magnifying_glass.png'></div>
 					</td></tr>
 					<tr><td class='vcolorbar'></td><td>
 						<div id='vminmax'>
@@ -69,7 +73,7 @@
 							<input type='text' id='vmax' class='vlim' />
 							<div class='clear'></div>
 						</div>
-					</td></tr>
+					</td><td></td></tr>
 				</table>
 			</fieldset>
 			<div class='opt_category'>
