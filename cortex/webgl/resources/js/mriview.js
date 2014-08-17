@@ -842,7 +842,8 @@ var mriview = (function(module) {
     module.Viewer.prototype.startCmapSearch = function() {
         var sr = $(this.object).find("#cmapsearchresults"),
         cm = $(this.object).find("#colormap"),
-        sb = $(this.object).find("#cmapsearchbox");
+        sb = $(this.object).find("#cmapsearchbox"),
+        v = this;
 
         sb.val("");
         sb.css("width", cm.css("width"));
@@ -864,6 +865,10 @@ var mriview = (function(module) {
                     }
                 }
                 $(sr[0].firstChild).addClass("selected_sr");
+                sr.children().mousedown(function() {
+                    try {v.setColormap($(this).find("input")[0].value);}
+                    finally {v.stopCmapSearch();}
+                });
             }
         }.bind(this)).show();
         sb.focus();
