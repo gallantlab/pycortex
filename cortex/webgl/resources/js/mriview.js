@@ -957,7 +957,7 @@ var mriview = (function(module) {
             _bound = true;
             window.addEventListener( 'keydown', function(e) {
                 btnspeed = 0.5;
-                if (e.target.tagName == "INPUT")
+                if (e.target.tagName == "INPUT" && e.target.type == "text")
                     return;
                 if (e.keyCode == 32) {         //space
                     if (this.active.data[0].movie)
@@ -976,7 +976,7 @@ var mriview = (function(module) {
             }.bind(this));
         }
         window.addEventListener( 'keydown', function(e) {
-            if (e.target.tagName == "INPUT")
+            if (e.target.tagName == "INPUT" && e.target.type == "text")
                 return;
             if (e.keyCode == 107 || e.keyCode == 187) { //+
                 this.nextData(1);
@@ -1221,7 +1221,7 @@ var mriview = (function(module) {
         var td, btn, name;
         td = document.createElement("td");
         btn = document.createElement("button");
-        btn.setAttribute("title", "Reset to fiducial view of the brain");
+        btn.setAttribute("title", "Reset to fiducial view of the brain (Hotkey: R)");
         btn.innerHTML = "Fiducial";
         td.setAttribute("style", "text-align:left;width:150px;");
         btn.addEventListener("click", function() {
@@ -1250,7 +1250,7 @@ var mriview = (function(module) {
             td = document.createElement("td");
             btn = document.createElement("button");
             btn.innerHTML = "Flat";
-            btn.setAttribute("title", "Switch to the flattened view of the brain");
+            btn.setAttribute("title", "Switch to the flattened view of the brain (Hotkey: F)");
             td.setAttribute("style", "text-align:right;width:150px;");
             btn.addEventListener("click", function() {
                 this.animate([{idx:btnspeed, state:"mix", value:1.0}]);
