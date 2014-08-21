@@ -1,13 +1,20 @@
-import tempfile
-import numpy as np
-import subprocess
+import os
 import nibabel
+import tempfile
+import subprocess
+import numpy as np
 
-import cortex
 from . import options
 from . import db
 
 fslprefix = options.config.get("basic", "fsl_prefix")
+fsldir = os.getenv("FSLDIR")
+if fsldir is None:
+    import warnings
+    warnings.warn("Can't find FSLDIR environment variable, assuming default FSL location..")
+    fsldir = "/usr/share/fsl/5.0"
+
+default_template = os.path.join(fsldir, "data", "standard", "MNI152_T1_1mm_brain.nii.gz")
 
 def _save_fsl_xfm(filename, xfm):
     np.savetxt(filename, xfm, "%0.10f")
@@ -16,7 +23,7 @@ def _load_fsl_xfm(filename):
     return np.loadtxt(filename)
 
 def compute_mni_transform(subject, xfm,
-                          template="/usr/share/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz"):
+                          template=default_template):
     """Compute transform from the space specified by `xfm` to MNI standard space.
 
     Parameters
@@ -57,7 +64,7 @@ def compute_mni_transform(subject, xfm,
     return func_to_mni
 
 def transform_to_mni(volumedata, func_to_mni, 
-                     template="/usr/share/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz"):
+                     template=default_template):
     """Transform data in `volumedata` to MNI space, resample at 1mm resolution.
 
     Parameters
@@ -95,7 +102,7 @@ def transform_to_mni(volumedata, func_to_mni,
     return nibabel.load(func_in_mni)
 
 def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
-                             template="/usr/share/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz"):
+                             template=default_template):
     """Transform data in `volarray` from MNI space to functional space specified by `xfm`.
 
     Parameters
