@@ -4,9 +4,10 @@ import subprocess
 import nibabel
 
 import cortex
-from cortex.options import config
+from . import options
+from . import db
 
-fslprefix = config.get("basic", "fsl_prefix")
+fslprefix = options.config.get("basic", "fsl_prefix")
 
 def _save_fsl_xfm(filename, xfm):
     np.savetxt(filename, xfm, "%0.10f")
@@ -36,7 +37,7 @@ def compute_mni_transform(subject, xfm,
     anat_to_mni_xfm = tempfile.mktemp()
 
     # Get anatomical image
-    anat_filename = cortex.db.get_anat(subject, "brainmask").get_filename()
+    anat_filename = db.get_anat(subject, "brainmask").get_filename()
     
     # First use flirt to align masked subject anatomical to MNI template
     subprocess.call(["{fslprefix}flirt".format(fslprefix=fslprefix),
@@ -49,7 +50,7 @@ def compute_mni_transform(subject, xfm,
 
     # Then load that transform and concatenate it with the functional to anatomical transform
     anat_to_mni = np.loadtxt(anat_to_mni_xfm)
-    func_to_anat = cortex.db.get_xfm(subject, xfm).to_fsl(anat_filename)
+    func_to_anat = db.get_xfm(subject, xfm).to_fsl(anat_filename)
     
     func_to_mni = np.dot(anat_to_mni, func_to_anat)
 
@@ -127,7 +128,7 @@ def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
     _save_fsl_xfm(mni_to_func_xfm, np.linalg.inv(func_to_mni))
 
     # Use flirt to resample data to functional space
-    ref_filename = cortex.db.get_xfm(subject, xfm).reference.get_filename()
+    ref_filename = db.get_xfm(subject, xfm).reference.get_filename()
     
     subprocess.call(["{fslprefix}flirt".format(fslprefix=fslprefix),
                      "-in", mnispace_func_nii,
