@@ -101,12 +101,51 @@ def transform_to_mni(volumedata, func_to_mni,
 
     return nibabel.load(func_in_mni)
 
+def transform_surface_to_mni(subject, surfname):
+    """Transform the surface named `surfname` for subject called `subject` into
+    MNI coordinates. Returns [(lpts, lpolys), (rpts, rpolys)].
+
+    Parameters
+    ----------
+    subject : str
+        Subject identifier
+    surfname : str
+        Surface identifier
+
+    Returns
+    -------
+    mni_surface : [(ndarray, ndarray), (ndarray, ndarray)]
+        MNI-transformed surface in same format returned by db.get_surf.
+    """
+    # Get MNI affine transform
+    mni_affine = nibabel.load(default_template).get_affine()
+
+    # Get subject anatomical-to-MNI transform
+    mni_xfm = np.dot(mni_affine, db.get_mnixfm(subject, "identity"))
+
+    # Get transform from surface points to anatomical space
+    ident_xfm = db.get_xfm(subject, "identity", xfmtype="coord")
+
+    # Get surfaces
+    (lpts, lpolys), (rpts, rpolys) = db.get_surf(subject, surfname)
+
+    # Transform surface points into anatomical space
+    anat_lpts, anat_rpts = ident_xfm(lpts), ident_xfm(rpts)
+
+    # Transform anatomical space points to MNI space
+    mni_lpts, mni_rpts = [np.dot(mni_xfm, np.hstack([p, np.ones((p.shape[0],1))]).T).T[:,:3]
+                          for p in anat_lpts, anat_rpts]
+
+    return [(mni_lpts, lpolys), (mni_rpts, rpolys)]
+
 def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
                              template=default_template):
     """Transform data in `volarray` from MNI space to functional space specified by `xfm`.
 
     Parameters
     ----------
+    subject : str
+        Subject identifier
     xfm : str
         Name of functional space that data will be transformed into.
     volarray : numpy.ndarray
