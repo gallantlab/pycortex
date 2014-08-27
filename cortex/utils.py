@@ -31,7 +31,7 @@ get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False):
     ctmcache = "%s_[{types}]_{method}_{level}_v2.json"%subject
-    ctmform = os.path.join(surfs.getCache(subject), ctmcache)
+    ctmform = os.path.join(db.get_cache(subject), ctmcache)
         
     lvlstr = ("%dd" if decimate else "%d")%level
     ctmfile = ctmform.format(types=','.join(types), method=method, level=lvlstr)
