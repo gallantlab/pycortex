@@ -3,6 +3,7 @@ import re
 import copy
 import shlex
 import tempfile
+import itertools
 import subprocess as sp
 
 import numpy as np
@@ -450,9 +451,10 @@ class ROI(object):
                 del path.attrib['filter']
             # Set layer id to "rois" (or whatever). 
     
-    def get_labelpos(self, pts=None, norms=None, fancy=True):
+    def get_labelpos(self, pts=None, norms=None, fancy=False):
         if not hasattr(self, "coords"):
-            cpts = [self._parse_svg_pts(path.get("d")) for path in self.paths]
+            allpaths = itertools.chain(*[_split_multipath(path.get("d")) for path in self.paths])
+            cpts = [self._parse_svg_pts(p) for p in allpaths]
             self.coords = [ self.parent.kdt.query(p)[1] for p in cpts ]
         
         if pts is None:
@@ -566,6 +568,14 @@ def _labelpos(pts):
     pt = np.dot(np.dot(np.array([x,y,0]), sp), v)
     return pt + pts.mean(0)
 
+def _split_multipath(pathstr):
+    """Appropriately splits an SVG path with multiple sub-paths.
+    """
+    if pathstr[0] != "m":
+        raise ValueError("Bad path format: %s" % pathstr)
+    
+    for subpath in pathstr[1:].split("m"):
+        yield ("m" + subpath).strip()
 
 def scrub(svgfile):
     """Remove data layers from an svg object prior to rendering
