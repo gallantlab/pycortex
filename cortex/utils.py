@@ -82,7 +82,7 @@ def get_cortical_mask(subject, xfmname, type='nearest'):
         return get_mapper(subject, xfmname, type=type).mask
 
 
-def get_vox_dist(subject, xfmname, surface="fiducial"):
+def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
     """Get the distance (in mm) from each functional voxel to the closest
     point on the surface.
 
@@ -94,6 +94,10 @@ def get_vox_dist(subject, xfmname, surface="fiducial"):
         Name of the transform
     shape : tuple
         Output shape for the mask
+    max_dist : nonnegative float, optional
+        Limit computation to only voxels within `max_dist` mm of the surface.
+        Makes computation orders of magnitude faster for high-resolution 
+        volumes.
 
     Returns
     -------
@@ -113,7 +117,7 @@ def get_vox_dist(subject, xfmname, surface="fiducial"):
     mm = xfm.inv(idx)
 
     tree = cKDTree(fiducial)
-    dist, argdist = tree.query(mm)
+    dist, argdist = tree.query(mm, distance_upper_bound=max_dist)
     dist.shape = (x,y,z)
     argdist.shape = (x,y,z)
     return dist.T, argdist.T
@@ -331,3 +335,24 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     cmd = "ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv"
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
+
+def vertex_to_voxel(subject):
+    max_thickness = db.get_surfinfo(subject, "thickness").data.max()
+
+    # Get distance from each voxel to each vertex on each surface
+    fid_dist, fid_verts = get_vox_dist(subject, "identity", "fiducial", max_thickness)
+    wm_dist, wm_verts = get_vox_dist(subject, "identity", "wm", max_thickness)
+    pia_dist, pia_verts = get_vox_dist(subject, "identity", "pia", max_thickness)
+
+    # Get nearest vertex on any surface for each voxel
+    all_dist, all_verts = fid_dist, fid_verts
+    
+    wm_closer = wm_dist < all_dist
+    all_dist[wm_closer] = wm_dist[wm_closer]
+    all_verts[wm_closer] = wm_verts[wm_closer]
+
+    pia_closer = pia_dist < all_dist
+    all_dist[pia_closer] = pia_dist[pia_closer]
+    all_verts[pia_closer] = pia_verts[pia_closer]
+
+    return all_verts

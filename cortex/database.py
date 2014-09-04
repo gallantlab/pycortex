@@ -669,4 +669,54 @@ class Database(object):
         view = json.load(open(sName))
         vw._set_view(**view)
 
+    def get_mnixfm(self, subject, xfm, template=None):
+        """Get transform from the space specified by `xfm` to MNI space.
+
+        Parameters
+        ----------
+        subject : str
+            Subject identifier
+        xfm : str
+            Name of functional space transform. Can be 'identity' for anat space.
+        template : str or None, optional
+            Path to MNI template volume. If None, uses default specified in cortex.mni
+
+        Returns
+        -------
+        mnixfm : numpy.ndarray
+            Transformation matrix from the space specified by `xfm` to MNI space.
+
+        Notes
+        -----
+        Equivalent to cortex.mni.compute_mni_transform, but this function also caches
+        the result (which is nice because computing it can be slow).
+
+        See Also
+        --------
+        compute_mni_transform, transform_to_mni, and transform_mni_to_subject in
+        cortex.mni
+        """
+        from . import mni
+
+        if template is None:
+            templatehash = "default"
+        else:
+            templatehash = sha1(template).hexdigest()
+
+        # Check cache first
+        mnixfmfile = os.path.join(self.get_cache(subject), "mni_xfm-%s-%s.txt"%(xfm, templatehash))
+        if os.path.exists(mnixfmfile):
+            mnixfm = np.loadtxt(mnixfmfile)
+        else:
+            # Run the transform
+            if template is None:
+                mnixfm = mni.compute_mni_transform(subject, xfm)
+            else:
+                mnixfm = mni.compute_mni_transform(subject, xfm, template)
+
+            # Cache the result
+            mni._save_fsl_xfm(mnixfmfile, mnixfm)
+
+        return mnixfm
+
 db = Database()
