@@ -53,6 +53,7 @@ var mriview = (function(module) {
         this.light.position.set( -200, -200, 1000 ).normalize();
         this.camera.add( this.light );
         this.flatmix = 0;
+        this.specular = 0.5;
         this.frame = 0;
 
         // renderer
@@ -72,7 +73,11 @@ var mriview = (function(module) {
             THREE.UniformsLib[ "lights" ],
             {
                 diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
+<<<<<<< HEAD
                 specular:   { type:'v3', value:new THREE.Vector3( 0,0,0 )}, //1,1,1
+=======
+                specular:   { type:'v3', value:new THREE.Vector3( this.specular, this.specular, this.specular )},
+>>>>>>> master
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
                 shininess:  { type:'f',  value:200},
 
@@ -510,12 +515,26 @@ var mriview = (function(module) {
         this.setMix(1);
         this.setShift(0);
     };
-    module.Viewer.prototype.toggle_view = function() {
-        this.meshes.left.visible = !this.meshes.left.visible;
-        this.meshes.right.visible = !this.meshes.right.visible;
+    module.Viewer.prototype.update_volvis = function() {
         for (var i = 0; i < 3; i++) {
             this.planes[i].update();
-            this.planes[i].mesh.visible = !this.planes[i].mesh.visible;
+            this.planes[i].mesh.visible = $("#volvis").prop("checked");
+        }
+        this.schedule();
+    };
+    module.Viewer.prototype.update_leftvis = function() {
+        this.meshes.left.visible = $("#leftvis").prop("checked");
+        this.schedule();
+    };
+    module.Viewer.prototype.update_rightvis = function() {
+        this.meshes.right.visible = $("#rightvis").prop("checked");
+        this.schedule();
+    };
+    module.Viewer.prototype.update_projection = function() {
+        if ($("#projpersp").prop("checked")) {
+            this.setState("projection", "perspective");
+        } else {
+            this.setState("projection", "orthographic");
         }
         this.schedule();
     };
@@ -557,9 +576,23 @@ var mriview = (function(module) {
         if (this.flatlims !== undefined) {
             this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
             this.setPivot(this._pivot);
+<<<<<<< HEAD
             //OlD:
             //this.setPivot(this.flatmix*180);
             //this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
+=======
+            this.update_spec();
+            if (n2 == flat) {
+                for (var i = 0; i < 3; i++) {
+                    this.planes[i].update();
+                    this.planes[i].mesh.visible = false;
+                }
+                $("#volvis").attr("disabled", true);
+            } else {
+                $("#volvis").removeAttr("disabled");
+                this.update_volvis();
+            }
+>>>>>>> master
         }
         $(this.object).find("#mix").slider("value", val);
         
@@ -600,6 +633,10 @@ var mriview = (function(module) {
         this.pivot.right.front.position.x = val;
         this.figure.notify('setshift', this, [val]);
         this.schedule();
+    };
+    module.Viewer.prototype.update_spec = function() {
+        var s = this.specular * (1 - this.flatmix);
+        this.uniforms.specular.value.set(s, s, s);
     };
     module.Viewer.prototype.addData = function(data) {
         if (!(data instanceof Array))
@@ -813,6 +850,49 @@ var mriview = (function(module) {
         this.schedule();
     };
 
+    module.Viewer.prototype.startCmapSearch = function() {
+        var sr = $(this.object).find("#cmapsearchresults"),
+        cm = $(this.object).find("#colormap"),
+        sb = $(this.object).find("#cmapsearchbox"),
+        v = this;
+
+        sb.val("");
+        sb.css("width", cm.css("width"));
+        sb.css("height", cm.css("height"));
+        sr.show();
+        sb.keyup(function(e) {
+            if (e.keyCode == 13) { // enter
+                try {this.setColormap($(sr[0]).find(".selected_sr input")[0].value);}
+                finally {this.stopCmapSearch();}
+            } if (e.keyCode == 27) { // escape
+                this.stopCmapSearch();
+            }
+            var value = sb[0].value.trim();
+            sr.empty();
+            if (value.length > 0) {
+                for (var k in this.cmapnames) {
+                    if (k.indexOf(value) > -1) {
+                        sr.append($($(this.object).find("#colormap li")[this.cmapnames[k]]).clone());
+                    }
+                }
+                $(sr[0].firstChild).addClass("selected_sr");
+                sr.children().mousedown(function() {
+                    try {v.setColormap($(this).find("input")[0].value);}
+                    finally {v.stopCmapSearch();}
+                });
+            }
+        }.bind(this)).show();
+        sb.focus();
+        sb.blur(function() {this.stopCmapSearch();}.bind(this));
+    };
+
+    module.Viewer.prototype.stopCmapSearch = function() {
+        var sr = $(this.object).find("#cmapsearchresults"),
+        sb = $(this.object).find("#cmapsearchbox");
+        sr.hide().empty();
+        sb.hide();
+    };
+
     module.Viewer.prototype.setFrame = function(frame) {
         if (frame > this.active.length) {
             frame -= this.active.length;
@@ -893,6 +973,8 @@ var mriview = (function(module) {
             _bound = true;
             window.addEventListener( 'keydown', function(e) {
                 btnspeed = 0.5;
+                if (e.target.tagName == "INPUT" && e.target.type == "text")
+                    return;
                 if (e.keyCode == 32) {         //space
                     if (this.active.data[0].movie)
                         this.playpause();
@@ -910,7 +992,7 @@ var mriview = (function(module) {
             }.bind(this));
         }
         window.addEventListener( 'keydown', function(e) {
-            if (e.target.tagName == "INPUT")
+            if (e.target.tagName == "INPUT" && e.target.type == "text")
                 return;
             if (e.keyCode == 107 || e.keyCode == 187) { //+
                 this.nextData(1);
@@ -958,6 +1040,9 @@ var mriview = (function(module) {
                     this.setColormap($(this.object).find("#colormap .dd-selected-image")[0]);
                 }.bind(this)
             });
+            $(this.object).find("#cmapsearch").click(function() {
+                this.startCmapSearch();
+            }.bind(this));
 
             $(this.object).find("#vrange").slider({ 
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1],
@@ -1015,7 +1100,11 @@ var mriview = (function(module) {
             min:0, max:20, step:1, value:4,
             change: updateROIs,
         });
-        $(this.object).find("#volview").change(this.toggle_view.bind(this));
+        $(this.object).find("#volvis").change(this.update_volvis.bind(this));
+        $(this.object).find("#leftvis").change(this.update_leftvis.bind(this));
+        $(this.object).find("#rightvis").change(this.update_rightvis.bind(this));
+        $(this.object).find("#projpersp").change(this.update_projection.bind(this));
+        $(this.object).find("#projortho").change(this.update_projection.bind(this));
         $(this.object).find("#roi_linecolor").miniColors({close: updateROIs});
         $(this.object).find("#roi_fillcolor").miniColors({close: updateROIs});
         $(this.object).find("#roi_shadowcolor").miniColors({close: updateROIs});
@@ -1049,6 +1138,11 @@ var mriview = (function(module) {
         }.bind(this)})
         $(this.object).find("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:1.0, slide:function(event, ui) {
             this.uniforms.dataAlpha.value = ui.value;
+            this.schedule();
+        }.bind(this)})
+        $(this.object).find("#layer_specularity").slider({ min:0, max:1, step:.001, value:this.specular, slide:function(event, ui) {
+            this.specular = ui.value;
+            this.update_spec();
             this.schedule();
         }.bind(this)})
         $(this.object).find("#layer_hatchalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
@@ -1143,7 +1237,7 @@ var mriview = (function(module) {
         var td, btn, name;
         td = document.createElement("td");
         btn = document.createElement("button");
-        btn.setAttribute("title", "Reset to fiducial view of the brain");
+        btn.setAttribute("title", "Reset to fiducial view of the brain (Hotkey: R)");
         btn.innerHTML = "Fiducial";
         td.setAttribute("style", "text-align:left;width:150px;");
         btn.addEventListener("click", function() {
@@ -1172,7 +1266,7 @@ var mriview = (function(module) {
             td = document.createElement("td");
             btn = document.createElement("button");
             btn.innerHTML = "Flat";
-            btn.setAttribute("title", "Switch to the flattened view of the brain");
+            btn.setAttribute("title", "Switch to the flattened view of the brain (Hotkey: F)");
             td.setAttribute("style", "text-align:right;width:150px;");
             btn.addEventListener("click", function() {
                 this.animate([{idx:btnspeed, state:"mix", value:1.0}]);

@@ -336,19 +336,30 @@ THREE.LandscapeControls.prototype = {
     },
  
     zoom: function( mouseChange ) {
-        var factor = 1.0 + mouseChange.y*this.zoomSpeed;
-        this.radius *= factor;
-        if (this.radius > this.maxRadius) { 
-            this.radius = this.maxRadius; 
-        }
-        if (this.radius < this.minRadius(this.flatmix)) { 
-            this.radius = this.minRadius(this.flatmix); 
-        }
+        this._zoom(1.0 + mouseChange.y*this.zoomSpeed);
     },
     
     wheelzoom: function( wheelEvent ) {
-        var factor = 1.0 + this.zoomSpeed * -1 * wheelEvent.wheelDelta/10.0;
-        this.radius *= factor;
+        this._zoom(1.0 + this.zoomSpeed * -1 * wheelEvent.wheelDelta/10.0);
+    },
+
+    _zoom: function( factor ) {
+        if (this.camera.inPerspectiveMode) {
+            this.radius *= factor;
+            if (this.radius > this.maxRadius) { 
+                this.radius = this.maxRadius; 
+            }
+            if (this.radius < this.minRadius(this.flatmix)) { 
+                this.radius = this.minRadius(this.flatmix); 
+            }
+        } else {
+            // Orthographic mode, zoom by changing frustrum limits
+            this.camera.cameraO.top *= factor;
+            this.camera.cameraO.bottom *= factor;
+            this.camera.cameraO.right *= factor;
+            this.camera.cameraO.left *= factor;
+            this.camera.cameraO.updateProjectionMatrix();
+        }
     },
 
     schedule: function( force ) {

@@ -56,11 +56,15 @@
 							<div class='clear'></div>
 						</div>
 					</td><td>
+						<input id='cmapsearchbox' type='text' name='cmapsearchbox' style='display:none'>
+						<ul id='cmapsearchresults' style='display:none' class='dd-options'></ul>
 						<select id='colormap'>
 							{% for name, img in colormaps %}
 							<option data-imagesrc='{{img}}' {% if name == default_cmap %}selected='selected'{%end%}>{{name}}</option>
 							{% end %}
 						</select>
+					</td><td>
+						<span title="Click to search for colormap by name"><div id='cmapsearch'><img src='resources/images/magnifying_glass.png'></div></span>
 					</td></tr>
 					<tr><td class='vcolorbar'></td><td>
 						<div id='vminmax'>
@@ -69,39 +73,39 @@
 							<input type='text' id='vmax' class='vlim' />
 							<div class='clear'></div>
 						</div>
-					</td></tr>
+					</td><td></td></tr>
 				</table>
 			</fieldset>
 			<div class='opt_category'>
 			<fieldset id="roi_fieldset" class='subtable'>
 				<legend>ROIs</legend>
 				<div class='display_opt'>
-					<input id='roishow' type='checkbox' checked='checked'><label for='roishow'>Show</label>
-					<input id='labelshow' type='checkbox' checked='checked'><label for='labelshow'>Labels</label>
+					<span title="Enable to draw ROIs on the surface"><input id='roishow' type='checkbox' checked='checked'><label for='roishow'>Show</label></span>
+					<span title="Enable to show names of ROIs (hotkey: L)"><input id='labelshow' type='checkbox' checked='checked'><label for='labelshow'>Labels</label></span>
 				</div>
 				<div class='display_opt'>
 					<table id='roilines'>
-						<tr>
+						<tr title="Select color of ROI outlines">
 							<td><label for='roi_linecolor'>Line color</label></td>
 							<td><input type='hidden' id='roi_linecolor' value='#FFFFFF' /></td>
 						</tr>
-						<tr>
+						<tr title="Set alpha of ROI outlines">
 							<td><label for="roi_linealpha">Alpha</label></td>
 							<td><div id='roi_linealpha'></div></td>
 						</tr>
-						<tr>
-							<td><label for="roi_linealpha">Width</label></td>
+						<tr title="Set width of ROI outlines">
+							<td><label for="roi_linewidth">Width</label></td>
 							<td><div id='roi_linewidth'></div></td>
 						</tr>
 					</table>
 				</div>
 				<div class='display_opt'>
 					<table id='roifill'>
-						<tr>
+						<tr title="Select color of ROI fill">
 							<td><label for='roi_fillcolor'>Fill color</label></td>
 							<td><input type='hidden' id='roi_fillcolor' value='#000000' /></td>
 						</tr>
-						<tr>
+						<tr title="Set alpha of ROI fill">
 							<td><label for="roi_fillalpha">Alpha</label></td>
 							<td><div id='roi_fillalpha'></div></td>
 						</tr>
@@ -109,11 +113,11 @@
 				</div>
 				<div class='display_opt'>
 					<table id='roishadow'>
-						<tr>
+						<tr title="Select color of ROI shadow">
 							<td><label for='roi_shadowcolor'>Shadow</label></td>
 							<td><input type='hidden' id='roi_shadowcolor' value='#000000' /></td>
 						</tr>
-						<tr>
+						<tr title="Set radius of ROI shadow">
 							<td><label for="roi_shadowalpha">Radius</label></td>
 							<td><div id='roi_shadowalpha'></div></td>
 						</tr>
@@ -121,40 +125,40 @@
 				</div>
 			</fieldset>
 			<fieldset id="layers_fieldset" class='subtable'>
-				<legend>Layer Alpha</legend>
+				<legend>Display Layers</legend>
 				<div class='display_opt'>
-					<table id='layerCurv'>
-						<tr>
-							<td><label for='layer_curvalpha'>Curvature</label></td>
-							<td><div id='layer_curvalpha'></div></td>
+					<table id='layerHatch'>
+						<tr title="Set alpha of dropout display">
+							<td><label for='layer_hatchalpha'>Dropout</label></td>
+							<td><div id='layer_hatchalpha'></div></td>
 						</tr>
-						<tr>
-							<td><label for="layer_curvmult">Threshold</label></td>
-							<td><div id='layer_curvmult'></div></td>
-						</tr>
-						<tr>
-							<td><label for="layer_curvlim">Contrast</label></td>
-							<td><div id='layer_curvlim'></div></td>
+						<tr title="Select color of dropout display">
+							<td><label for='layer_hatchcolor'>Color</label></td>
+							<td><input type='hidden' id='layer_hatchcolor' value='#000000' /></td>
 						</tr>
 					</table>
 				</div>
 				<div class='display_opt'>
 					<table id='layerData'>
-						<tr>
+						<tr title="Set alpha of data display (lower to show curvature)">
 							<td><label for='layer_dataalpha'>Data</label></td>
 							<td><div id='layer_dataalpha'></div></td>
 						</tr>
 					</table>
 				</div>
 				<div class='display_opt'>
-					<table id='layerHatch'>
-						<tr>
-							<td><label for='layer_hatchalpha'>Dropout</label></td>
-							<td><div id='layer_hatchalpha'></div></td>
+					<table id='layerCurv'>
+						<tr title="Set alpha of curvature display">
+							<td><label for='layer_curvalpha'>Curvature</label></td>
+							<td><div id='layer_curvalpha'></div></td>
 						</tr>
-						<tr>
-							<td><label for='layer_hatchcolor'>Color</label></td>
-							<td><input type='hidden' id='layer_hatchcolor' value='#000000' /></td>
+						<tr title="Set hardness of curvature thresholding">
+							<td><label for="layer_curvmult">Threshold</label></td>
+							<td><div id='layer_curvmult'></div></td>
+						</tr>
+						<tr title="Set contrast of curvature display">
+							<td><label for="layer_curvlim">Contrast</label></td>
+							<td><div id='layer_curvlim'></div></td>
 						</tr>
 					</table>
 				</div>
@@ -163,10 +167,33 @@
 			<div class='opt_category'>
 				<fieldset id="viewopt_fieldset" class='subtable'>
 					<legend>View</legend>
-					<div class='display_opt'>
-						<input id='volview' type='checkbox'><label for='volview'>Toggle view</label>
+					<div class='display_opt' title="Enable to show slice planes. Not available in flat view. (Hotkeys: Q/W move saggital plane, A/S move coronal plane, Z/X move axial plane)">
+						<input id='volvis' type='checkbox'><label for='volvis'>Volume slices visible</label>
+					</div>
+					<div class='display_opt' title="Enable to show left hemisphere surface">
+						<input id='leftvis' type='checkbox' checked><label for='leftvis'>Left hem. visible</label>
+					</div>
+					<div class='display_opt' title="Enable to show right hemisphere surface">
+						<input id='rightvis' type='checkbox' checked><label for='rightvis'>Right hem. visible</label>
 					</div>
 					<div class='display_opt'>
+						<p id='projlabel'>Projection:</p>
+						<div id='projopts'>
+							<span title="Select to use perspective projection (objects get smaller as they get farther away)"><input id='projpersp' type='radio' name='projtype' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='persp' checked>
+						    <label for='projpersp'>Perspective</label><br></span>
+						    <span title="Select to use orthographic projection"><input id='projortho' type='radio' name='projtype' value='ortho'>
+						    <label for='projortho'>Orthographic</label><br></span>
+						</div>
+					</div>
+					<div class='display_opt'>
+						<table id='layerSpec'>
+							<tr title="Set surface specularity (shininess)">
+								<td><label for='layer_specularity'>Specularity</label></td>
+								<td><div id='layer_specularity'></div></td>
+							</tr>
+						</table>
+					</div>
+					<!--<div class='display_opt'>
 						<p id='zlocklabel'>Zoom lock:</p>
 						<div id='zlockopts'>
 							<input id='zlocknone' type='radio' name='zoomlock' ​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​value='None' checked>
@@ -178,29 +205,29 @@
 						    <input id='zlockwhole' type='radio' name='zoomlock' value='whole'>
 						    <label for='zlockwhole'>whole</label><br>
 						</div>
-					</div>
+					</div>-->
 				</fieldset>
 				<fieldset id='voxopt_fieldset' class='subtable'>
 					<legend>Voxels</legend>
 					<div class='display_opt'>
 						<table id='voxline'>
-							<tr>
+							<tr title="Enable to draw voxel outlines on surface">
 								<td><label for='voxline_show'>Voxel lines</label></td>
 								<td><input id='voxline_show' type='checkbox' /></td>
 							</tr>
-							<tr>
+							<tr title="Set color of voxel outlines">
 								<td><label for='voxline_color'>Color</label></td>
 								<td><input type='hidden' id='voxline_color' value='{{voxline_color}}' /></td>
 							</tr>
-							<tr>
-								<td><label for='voxline_color'>Width</label></td>
+							<tr title="Set width of voxel outlines">
+								<td><label for='voxline_width'>Width</label></td>
 								<td><div id='voxline_width'></div></td>
 							</tr>
 						</table>
 					</div>
 					<div class='display_opt'>
 						<table>
-							<tr>
+							<tr title="Select method used to interpolate voxel data onto surface. Nearest: each point on the surface is mapped to the containing voxel. Trilinear: linear interpolation is used in all three dimensions. Bilinear/nearest: linear interpolation is used within a slice and nearest interpolation is used between slices.">
 								<td><label for='datainterp'>Interpolation</label></td>
 								<td>
 									<select id='datainterp'>
@@ -214,11 +241,11 @@
 					</div>
 					<div class='display_opt' id='thickmapping'>
 						<table>
-							<tr>
+							<tr title="Set number of samples through cortical thickness. Display average of samples.">
 								<td><label for='thicklayers'>Layers</label></td>
 								<td><div id='thicklayers'></div></td>
 							</tr>
-							<tr id='thickmix_row'>
+							<tr id='thickmix_row' title="Set depth of rendered surface. Lower to show pial surface, increase to show white matter surface.">
 								<td><label for='thickmix'>Depth</label></td>
 								<td><div id='thickmix'></div></td>
 							</tr>
@@ -255,15 +282,15 @@
 			<tr id='mixbtns'>
 				<td></td>
 			</tr>
-			<tr>
+			<tr title="Drag to interpolate between surface types">
 				<td><label for='mix'>Mix</label></td>
 				<td><div id="mix"></div></td>
 			</tr>
-			<tr>
+			<tr title="Drag to pivot hemispheres away from each other">
 				<td><label for='pivot'>Pivot</label></td>
 				<td><div id="pivot"></div></td>
 			</tr>
-			<tr>
+			<tr title="Drag to shift hemispheres away from each other">
 				<td><label for='shifthemis'>Shift</label></td>
 				<td><div id="shifthemis"></div></td>
 			</tr>
@@ -342,3 +369,4 @@
 
 </body>
 </html>
+	
