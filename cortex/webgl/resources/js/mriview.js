@@ -73,11 +73,7 @@ var mriview = (function(module) {
             THREE.UniformsLib[ "lights" ],
             {
                 diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
-<<<<<<< HEAD
-                specular:   { type:'v3', value:new THREE.Vector3( 0,0,0 )}, //1,1,1
-=======
                 specular:   { type:'v3', value:new THREE.Vector3( this.specular, this.specular, this.specular )},
->>>>>>> master
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
                 shininess:  { type:'f',  value:200},
 
@@ -576,11 +572,6 @@ var mriview = (function(module) {
         if (this.flatlims !== undefined) {
             this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
             this.setPivot(this._pivot);
-<<<<<<< HEAD
-            //OlD:
-            //this.setPivot(this.flatmix*180);
-            //this.uniforms.specular.value.set(1-this.flatmix, 1-this.flatmix, 1-this.flatmix);
-=======
             this.update_spec();
             if (n2 == flat) {
                 for (var i = 0; i < 3; i++) {
@@ -592,7 +583,6 @@ var mriview = (function(module) {
                 $("#volvis").removeAttr("disabled");
                 this.update_volvis();
             }
->>>>>>> master
         }
         $(this.object).find("#mix").slider("value", val);
         
