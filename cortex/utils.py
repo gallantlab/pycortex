@@ -6,7 +6,7 @@ import numpy as np
 from importlib import import_module
 
 from .database import db
-from .volume import mosaic, unmask
+from .volume import mosaic, unmask, anat2epispace
 
 class DocLoader(object):
     def __init__(self, func, mod, package):
@@ -216,6 +216,21 @@ def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
         output[name] = left + right
         
     return output
+
+def get_aseg_mask(subject, xfmname, aseg_id, **kwargs):
+    """Return an epi space mask of the given ID from freesurfer's automatic segmentation
+
+    For aseg_id's, see https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
+    """
+    aseg = db.get_anat(subject, type="aseg").get_data().T
+
+    if isinstance(aseg_id, (list, tuple)):
+        mask = np.zeros(aseg.shape)
+        for idx in aseg_id:
+            mask = np.logical_or(mask, aseg == idx)
+    else:
+        mask = aseg == aseg_id
+    return anat2epispace(mask.astype(float), subject, xfmname, **kwargs)
 
 def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     '''
