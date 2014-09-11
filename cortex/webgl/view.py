@@ -164,7 +164,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
-    autoclose=True, open_browser=True, port=None, pickerfun=None,disp_layers=['rois'], **kwargs):
+    autoclose=True, open_browser=True, port=None, pickerfun=None, disp_layers=['rois'], **kwargs):
     """Display a dynamic viewer using the given dataset
     """
     data = dataset.normalize(data)
@@ -258,6 +258,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 python_interface=True, 
                 layout=layout,
                 subjects=subjectjs,
+                disp_layers=disp_layers,
                 **viewopts)
             self.write(generated)
 

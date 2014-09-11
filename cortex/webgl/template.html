@@ -9,7 +9,8 @@
 <link rel="stylesheet" href="resources/css/w2ui-1.2.min.css" type='text/css' />
 
 <script type='text/javascript' src='resources/js/jquery-1.8.0.min.js'></script>
-<script type='text/javascript' src='resources/js/jquery-ui-1.8.23.custom.min.js'></script>
+<!-- <script type='text/javascript' src='resources/js/jquery-ui-1.8.23.custom.min.js'></script> -->
+<script type='text/javascript' src='resources/js/jquery-ui-1.8.23.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.miniColors.js'></script>
 
@@ -40,6 +41,10 @@
 {% end %}
 {% block javascripts %}
 {% end %}
+
+<script type="text/javascript">
+var disp_layers = [{% for layer in disp_layers %}"{{layer}}", {%end%}];
+</script>
 
 <script type='text/html' id='mriview_html'>
 <div id='topbar' class='infobar'>
@@ -77,52 +82,63 @@
 				</table>
 			</fieldset>
 			<div class='opt_category'>
-			<fieldset id="roi_fieldset" class='subtable'>
-				<legend>ROIs</legend>
-				<div class='display_opt'>
-					<span title="Enable to draw ROIs on the surface"><input id='roishow' type='checkbox' checked='checked'><label for='roishow'>Show</label></span>
-					<span title="Enable to show names of ROIs (hotkey: L)"><input id='labelshow' type='checkbox' checked='checked'><label for='labelshow'>Labels</label></span>
-				</div>
-				<div class='display_opt'>
-					<table id='roilines'>
-						<tr title="Select color of ROI outlines">
-							<td><label for='roi_linecolor'>Line color</label></td>
-							<td><input type='hidden' id='roi_linecolor' value='#FFFFFF' /></td>
-						</tr>
-						<tr title="Set alpha of ROI outlines">
-							<td><label for="roi_linealpha">Alpha</label></td>
-							<td><div id='roi_linealpha'></div></td>
-						</tr>
-						<tr title="Set width of ROI outlines">
-							<td><label for="roi_linewidth">Width</label></td>
-							<td><div id='roi_linewidth'></div></td>
-						</tr>
-					</table>
-				</div>
-				<div class='display_opt'>
-					<table id='roifill'>
-						<tr title="Select color of ROI fill">
-							<td><label for='roi_fillcolor'>Fill color</label></td>
-							<td><input type='hidden' id='roi_fillcolor' value='#000000' /></td>
-						</tr>
-						<tr title="Set alpha of ROI fill">
-							<td><label for="roi_fillalpha">Alpha</label></td>
-							<td><div id='roi_fillalpha'></div></td>
-						</tr>
-					</table>
-				</div>
-				<div class='display_opt'>
-					<table id='roishadow'>
-						<tr title="Select color of ROI shadow">
-							<td><label for='roi_shadowcolor'>Shadow</label></td>
-							<td><input type='hidden' id='roi_shadowcolor' value='#000000' /></td>
-						</tr>
-						<tr title="Set radius of ROI shadow">
-							<td><label for="roi_shadowalpha">Radius</label></td>
-							<td><div id='roi_shadowalpha'></div></td>
-						</tr>
-					</table>
-				</div>
+			<fieldset id="overlay_fieldset" class='subtable'>
+				<legend>&nbsp;</legend>
+				<!--<div id="overlays_tabs">-->
+					<ul>
+						{% for layer in disp_layers %}
+						<li><a href="#{{layer}}_tab">{{layer}}</a></li>
+						{% end %}
+					</ul>
+					{% for layer in disp_layers %}
+					<div id="{{layer}}_tab">
+						<div class='display_opt'>
+							<span title="Enable to draw {{layer}} on the surface"><input id='{{layer}}show' type='checkbox' checked='checked'><label for='{{layer}}show'>Show</label></span>
+							<span title="Enable to show names of {{layer}} (hotkey: L)"><input id='{{layer}}labelshow' type='checkbox' checked='checked'><label for='{{layer}}labelshow'>Labels</label></span>
+						</div>
+						<div class='display_opt'>
+							<table id='{{layer}}lines'>
+								<tr title="Select color of {{layer}} outlines">
+									<td><label for='{{layer}}_linecolor'>Line color</label></td>
+									<td><input type='hidden' id='{{layer}}_linecolor' value='#FFFFFF' /></td>
+								</tr>
+								<tr title="Set alpha of {{layer}} outlines">
+									<td><label for="{{layer}}_linealpha">Alpha</label></td>
+									<td><div id='{{layer}}_linealpha'></div></td>
+								</tr>
+								<tr title="Set width of {{layer}} outlines">
+									<td><label for="{{layer}}_linewidth">Width</label></td>
+									<td><div id='{{layer}}_linewidth'></div></td>
+								</tr>
+							</table>
+						</div>
+						<div class='display_opt'>
+							<table id='{{layer}}fill'>
+								<tr title="Select color of {{layer}} fill">
+									<td><label for='{{layer}}_fillcolor'>Fill color</label></td>
+									<td><input type='hidden' id='{{layer}}_fillcolor' value='#000000' /></td>
+								</tr>
+								<tr title="Set alpha of {{layer}} fill">
+									<td><label for="{{layer}}_fillalpha">Alpha</label></td>
+									<td><div id='{{layer}}_fillalpha'></div></td>
+								</tr>
+							</table>
+						</div>
+						<div class='display_opt'>
+							<table id='{{layer}}shadow'>
+								<tr title="Select color of {{layer}} shadow">
+									<td><label for='{{layer}}_shadowcolor'>Shadow</label></td>
+									<td><input type='hidden' id='{{layer}}_shadowcolor' value='#000000' /></td>
+								</tr>
+								<tr title="Set radius of {{layer}} shadow">
+									<td><label for="{{layer}}_shadowalpha">Radius</label></td>
+									<td><div id='{{layer}}_shadowalpha'></div></td>
+								</tr>
+							</table>
+						</div>
+					</div>
+					{% end %}
+				<!--</div>-->
 			</fieldset>
 			<fieldset id="layers_fieldset" class='subtable'>
 				<legend>Display Layers</legend>

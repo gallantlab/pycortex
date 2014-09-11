@@ -173,6 +173,8 @@ var mriview = (function(module) {
                     this.schedule();
                 }
             }.bind(this));
+            // THIS NEXT LINE IS SUPER HACK BUT IT DON'T WORK ELSEWHERE FUCK ME
+            $("#overlay_fieldset legend").css("width", $("#overlay_fieldset ul").width()+"px");
         }
     };
     module.Viewer.prototype.draw = function () {
@@ -1068,51 +1070,59 @@ var mriview = (function(module) {
                     1); 
             }.bind(this));            
         }
-        var updateROIs = function() {
+
+        // Setup controls for multiple overlays
+        var updateOverlays = function() {
             this.roipack.update(this.renderer).done(function(tex){
                 this.uniforms.map.texture = tex;
                 this.schedule();
             }.bind(this));
         }.bind(this);
-        $(this.object).find("#roi_linewidth").slider({
-            min:.5, max:10, step:.1, value:3,
-            change: updateROIs,
-        });
-        $(this.object).find("#roi_linealpha").slider({
-            min:0, max:1, step:.001, value:1,
-            change: updateROIs,
-        });
-        $(this.object).find("#roi_fillalpha").slider({
-            min:0, max:1, step:.001, value:0,
-            change: updateROIs,
-        });
-        $(this.object).find("#roi_shadowalpha").slider({
-            min:0, max:20, step:1, value:4,
-            change: updateROIs,
-        });
-        $(this.object).find("#volvis").change(this.update_volvis.bind(this));
-        $(this.object).find("#leftvis").change(this.update_leftvis.bind(this));
-        $(this.object).find("#rightvis").change(this.update_rightvis.bind(this));
-        $(this.object).find("#projpersp").change(this.update_projection.bind(this));
-        $(this.object).find("#projortho").change(this.update_projection.bind(this));
-        $(this.object).find("#roi_linecolor").miniColors({close: updateROIs});
-        $(this.object).find("#roi_fillcolor").miniColors({close: updateROIs});
-        $(this.object).find("#roi_shadowcolor").miniColors({close: updateROIs});
 
-        var _this = this;
-        $(this.object).find("#roishow").change(function() {
-            if (this.checked) 
-                updateROIs();
-            else {
-                _this.uniforms.map.texture = _this.blanktex;
+        for (var li=0; li<disp_layers.length; li++) {
+            var layername = disp_layers[li];
+
+            $(this.object).find("#"+layername+"_linewidth").slider({
+                min:.5, max:10, step:.1, value:3,
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_linealpha").slider({
+                min:0, max:1, step:.001, value:1,
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_fillalpha").slider({
+                min:0, max:1, step:.001, value:0,
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_shadowalpha").slider({
+                min:0, max:20, step:1, value:4,
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_linecolor").miniColors({close: updateOverlays});
+            $(this.object).find("#"+layername+"_fillcolor").miniColors({close: updateOverlays});
+            $(this.object).find("#"+layername+"_shadowcolor").miniColors({close: updateOverlays});
+
+            var _this = this;
+            $(this.object).find("#"+layername+"show").change(function() {
+                console.log("Toggling: " + "#"+$(this).attr("layername"));
+                var el = $(_this.roipack.svgroi).find("#"+$(this).attr("layername"));
+                if (this.checked)
+                    el.css('display','inline');
+                else
+                    el.css('display','none');
+
+                updateOverlays();
+            }).attr("layername", layername);
+
+            $(this.object).find("#"+layername+"labelshow").change(function() {
+                // this.labelshow = !this.labelshow;
+                _this.roipack.layer_label_visibility[$(this).attr("layername")] = this.checked;
+                _this.roipack.update_labels();
+                _this.roipack.labels.setMix(_this.flatmix);
                 _this.schedule();
-            }
-        });
-
-        $(this.object).find("#labelshow").change(function() {
-            this.labelshow = !this.labelshow;
-            this.schedule();
-        }.bind(this));
+            }).attr("layername", layername);
+        }
+        $(this.object).find("#overlay_fieldset").tabs();
 
         $(this.object).find("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
             this.uniforms.curvAlpha.value = ui.value;
@@ -1143,6 +1153,12 @@ var mriview = (function(module) {
             this.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
             this.schedule();
         }.bind(this)});
+
+        $(this.object).find("#volvis").change(this.update_volvis.bind(this));
+        $(this.object).find("#leftvis").change(this.update_leftvis.bind(this));
+        $(this.object).find("#rightvis").change(this.update_rightvis.bind(this));
+        $(this.object).find("#projpersp").change(this.update_projection.bind(this));
+        $(this.object).find("#projortho").change(this.update_projection.bind(this));
 
         $(this.object).find("#voxline_show").change(function() {
             viewopts.voxlines = $(this.object).find("#voxline_show")[0].checked;
