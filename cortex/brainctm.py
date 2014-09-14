@@ -148,7 +148,7 @@ class Hemi(object):
         self.tf = tempfile.NamedTemporaryFile()
         self.ctm = CTMfile(self.tf.name, "w")
 
-        self.ctm.setMesh(pts.astype(np.float32), polys, norms=norms)
+        self.ctm.setMesh(pts.astype(np.float32), polys.astype(np.uint32), norms=norms)
 
         self.pts = pts
         self.polys = polys
