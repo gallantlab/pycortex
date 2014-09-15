@@ -376,7 +376,8 @@ var mriview = (function(module) {
             case 'pivot':
                 return this.setPivot(value);
             case 'frame':
-                return this.setFrame(value);
+                this.setFrame(value);
+                return this.figure.notify("setFrame", this, [value]);
             case 'azimuth':
                 return this.controls.setCamera(value);
             case 'altitude':
