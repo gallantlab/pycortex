@@ -988,6 +988,12 @@ var mriview = (function(module) {
                 this.nextData(1);
             } else if (e.keyCode == 109 || e.keyCode == 189) { //-
                 this.nextData(-1);
+            } else if (e.keyCode == 68) { //d
+                if (this.uniforms.dataAlpha.value < 1)
+                    this.uniforms.dataAlpha.value = 1;
+                else
+                    this.uniforms.dataAlpha.value = 0;
+                this.schedule();
             } else if (e.keyCode == 76) { //l
                 var box = $(this.object).find("#labelshow");
                 box.attr("checked", box.attr("checked") == "checked" ? null : "checked");
