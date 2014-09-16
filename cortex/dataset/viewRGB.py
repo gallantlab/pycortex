@@ -114,7 +114,7 @@ class VolumeRGB(DataviewRGB):
 
         volume = []
         for dv in (self.red, self.green, self.blue, self.alpha):
-            vol = dv.volume
+            vol = dv.volume.copy()
             if vol.dtype != np.uint8:
                 if dv.vmin is None:
                     if vol.min() < 0:
