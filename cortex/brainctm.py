@@ -89,13 +89,12 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
-    def save(self, path, method='mg2',disp_layers=['rois'], **kwargs): # ['rois','sulci','disp']
+    def save(self, path, method='mg2', disp_layers=['rois'], **kwargs):
         ctmname = path+".ctm"
         svgname = path+".svg"
         jsname = path+".json"
-        #ptmapname = path+".npz"
 
-        ##### Save CTM concatenation
+        # Save CTM concatenation
         (lpts, _, _), lbin = self.left.save(method=method, **kwargs)
         (rpts, _, _), rbin = self.right.save(method=method, **kwargs)
 
@@ -105,14 +104,17 @@ class BrainCTM(object):
             offsets.append(fp.tell())
             fp.write(rbin)
 
-        ##### Save the JSON descriptor
-        jsdict = dict(rois=os.path.split(svgname)[1], data=os.path.split(ctmname)[1], names=self.types, 
-            materials=[], offsets=offsets)
+        # Save the JSON descriptor
+        jsdict = dict(rois=os.path.split(svgname)[1],
+                      data=os.path.split(ctmname)[1],
+                      names=self.types, 
+                      materials=[],
+                      offsets=offsets)
         if self.flatlims is not None:
             jsdict['flatlims'] = self.flatlims
         json.dump(jsdict, open(jsname, 'w'))
 
-        ##### Compute and save the index map
+        # Compute and save the index map
         if method != 'raw':
             ptmap, inverse = [], []
             for hemi, pts in zip([self.left, self.right], [lpts, rpts]):
@@ -120,24 +122,23 @@ class BrainCTM(object):
                 diff, idx = kdt.query(pts)
                 ptmap.append(idx)
                 inverse.append(idx.argsort())
-
-            # np.savez(ptmapname, left=ptmap[0], right=ptmap[1])
         else:
             ptmap = inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
-        ##### Save the SVG with remapped indices (map 2D flatmap locations to vertices)
+        # Save the SVG with remapped indices (map 2D flatmap locations to vertices)
         if self.left.flat is not None:
-            ## -- New code 2014.05: add sulci & display layers -- ##
+            # add sulci & display layers
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            #for disp_layer in disp_layers: 
-            roipack = db.get_overlay(self.subject, pts=flatpts,otype=disp_layers)
-            layer = roipack.setup_labels()
+            roipack = db.get_overlay(self.subject, pts=flatpts, otype=disp_layers)
+            layers = roipack.setup_labels()
+
+            if not isinstance(layers, (tuple, list)):
+                layers = (layers,)
+            
             # assign coordinates in left hemisphere negative values
             with open(svgname, "w") as fp:
-                if not isinstance(layer,(tuple,list)):
-                    layer = (layer,)
-                for LL in layer:
-                    for element in LL.findall(".//{http://www.w3.org/2000/svg}text"):
+                for layer in layers:
+                    for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
                         idx = int(element.attrib["data-ptidx"])
                         if idx < len(inverse[0]):
                             idx = inverse[0][idx]
@@ -221,7 +222,8 @@ class DecimatedHemi(Hemi):
     def addSurf(self, pts, **kwargs):
         super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
 
-def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimate=False,disp_layers=['rois']):
+def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
+              decimate=False, disp_layers=['rois']):
     """Generates a cached CTM file"""
 
     ctm = BrainCTM(subj, decimate=decimate)
@@ -232,7 +234,10 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimat
     if not os.path.exists(os.path.split(outfile)[0]):
         os.makedirs(os.path.split(outfile)[0])
 
-    return ctm.save(os.path.splitext(outfile)[0], method=method, level=level,disp_layers=disp_layers)
+    return ctm.save(os.path.splitext(outfile)[0],
+                    method=method,
+                    level=level,
+                    disp_layers=disp_layers)
 
 def read_pack(ctmfile):
     fname = os.path.splitext(ctmfile)[0]

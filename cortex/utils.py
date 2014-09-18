@@ -29,7 +29,8 @@ def get_roipack(*args, **kwargs):
 
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
-def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False,disp_layers=['rois']):
+def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False,
+                decimate=False, disp_layers=['rois']):
     """Creates ctm file for the specified input arguments.
 
     This is a cached file that specifies (1) the surfaces between which
@@ -39,14 +40,24 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     lvlstr = ("%dd" if decimate else "%d")%level
     # Generates different cache files for each combination of disp_layers
     ctmcache = "%s_[{types}]_{method}_{level}_{layers}.json"%subject
-    ctmcache = ctmcache.format(types=','.join(types), method=method, level=lvlstr,layers=repr(sorted(disp_layers)))
+    ctmcache = ctmcache.format(types=','.join(types),
+                               method=method,
+                               level=lvlstr,
+                               layers=repr(sorted(disp_layers)))
     ctmfile = os.path.join(db.get_cache(subject), ctmcache)
+
     if os.path.exists(ctmfile) and not recache:
         return ctmfile
+
     print("Generating new ctm file...")
     from . import brainctm
-    ptmap = brainctm.make_pack(ctmfile, subject, types=types, method=method, 
-        level=level, decimate=decimate,disp_layers=disp_layers)
+    ptmap = brainctm.make_pack(ctmfile,
+                               subject,
+                               types=types,
+                               method=method, 
+                               level=level,
+                               decimate=decimate,
+                               disp_layers=disp_layers)
     return ctmfile
 
 def get_ctmmap(subject, **kwargs):
@@ -153,12 +164,12 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
         The data used to generate the flatmap image. 
     name : str, optional
         Name that will be assigned to the `data` sub-layer in the rois.svg file
-            (e.g. "Faces > Houses, t map, p<.005" or "Retinotopy - Rotating Wedge")
+            (e.g. 'Faces > Houses, t map, p<.005' or 'Retinotopy - Rotating Wedge')
     open_inkscape : bool, optional
         If True, Inkscape will automatically open the ROI file.
     add_path : bool, optional
-        If True, also adds a sub-layer to the `rois` new SVG layer will automatically be created in the ROI group
-        with the same `name` as the overlay.
+        If True, also adds a sub-layer to the `rois` new SVG layer will automatically
+        be created in the ROI group with the same `name` as the overlay.
     kwargs : dict
         Passed to cortex.quickflat.make_png
     """
@@ -176,9 +187,11 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
         fp = cStringIO.StringIO()
     except:
         fp = io.StringIO()
+
     quickflat.make_png(fp, dv, height=1024, with_rois=False, with_labels=False, **kwargs)
     fp.seek(0)
     rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
+    
     if open_inkscape:
         return sp.call(["inkscape", '-f', rois.svgfile])
 

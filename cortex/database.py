@@ -171,7 +171,8 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "get_mask", "get_overlay","get_cache", "get_view","save_view"] + list(self.subjects.keys())
+        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo",
+                "get_mask", "get_overlay","get_cache", "get_view","save_view"] + list(self.subjects.keys())
 
     def loadXfm(self, *args, **kwargs):
         warnings.warn("loadXfm is deprecated, use save_xfm instead", Warning)
@@ -306,7 +307,7 @@ class Database(object):
     def get_overlay(self, subject, otype='rois', **kwargs):
         from . import svgroi
         pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
-        if otype in ["rois","cutouts","sulci"] or isinstance(otype,(list,tuple)):
+        if otype in ["rois", "cutouts", "sulci"] or isinstance(otype, (list,tuple)):
             # Assumes that all lists or tuples will only consist of "rois","cutouts",and "sulci"...
             # Prevents combining external files with sulci, e.g. 
             svgfile = self.get_paths(subject)["rois"]
@@ -324,7 +325,7 @@ class Database(object):
             if 'pts' in kwargs:
                 pts = kwargs['pts']
                 del kwargs['pts']
-            return svgroi.get_roipack(svgfile, pts, polys, layer=otype,**kwargs)
+            return svgroi.get_roipack(svgfile, pts, polys, layer=otype, **kwargs)
         if otype == "external":
             svgfile = kwargs["svgfile"]
             del kwargs["svgfile"]
@@ -349,9 +350,11 @@ class Database(object):
         xfm : (4,4) array
             The affine transformation matrix
         xfmtype : str, optional
-            Type of the provided transform, either magnet space or coord space. Defaults to magnet.
+            Type of the provided transform, either magnet space or coord space.
+            Defaults to 'magnet'.
         reference : str, optional
-            The nibabel-compatible reference image associated with this transform. Required if name not in database
+            The nibabel-compatible reference image associated with this transform.
+            Required if name not in database
         """
         if xfmtype not in ["magnet", "coord"]:
             raise TypeError("Unknown transform type")

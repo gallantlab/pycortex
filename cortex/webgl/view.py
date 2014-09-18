@@ -32,11 +32,14 @@ except NoOptionError:
 
 
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm)) for cm in sorted(colormaps)]
+colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
+             for cm in sorted(colormaps)]
 
 viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
 
-def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r", template="static.html", layout=None, anonymize=False, disp_layers=['rois'],**kwargs):
+def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
+                template="static.html", layout=None, anonymize=False,
+                disp_layers=['rois'], **kwargs):
     """Creates a static instance of the webGL MRI viewer that can easily be posted 
     or shared. 
 
@@ -49,23 +52,23 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         Dataset object containing all the data you wish to plot
     types : tuple, optional
         Types of surfaces to include. Fiducial and flat surfaces are automatically
-        included. Default ("inflated",)
+        included. Default ('inflated',)
     recache : bool, optional
         Whether to recreate CTM and SVG files for surfaces. Default False
     cmap : string, optional
-        Name of default colormap used to show data. Default "RdBu_r"
+        Name of default colormap used to show data. Default 'RdBu_r'
     template : string, optional
-        Name of template HTML file. Default "static.html"
+        Name of template HTML file. Default 'static.html'
     anonymize : bool, optional
         Whether to rename CTM and SVG files generically, for public distribution.
         Default False
     disp_layers : list of strings | ['rois']
-        Which layers to include from rois.svg file. Slightly WIP; EITHER ['rois'] (default)
-        OR ['sulci'] should work. 
+        Which layers to include from rois.svg file.
     **kwargs : dict, optional
         All additional keyword arguments are passed to the template renderer.
 
-    You'll probably need nginx to view this, since file:// paths don't handle xsrf correctly
+    You'll probably need a real web server to view this, since file:// paths
+    don't handle xsrf correctly
     """
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
@@ -82,7 +85,12 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     subjects = list(package.subjects)
 
     ctmargs = dict(method='mg2', level=9, recache=recache)
-    ctms = dict((subj, utils.get_ctmpack(subj, types, disp_layers=disp_layers, **ctmargs)) for subj in subjects)
+    ctms = dict((subj, utils.get_ctmpack(subj,
+                                         types,
+                                         disp_layers=disp_layers,
+                                         **ctmargs))
+                for subj in subjects)
+    
     db.auxfile = None
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
@@ -153,18 +161,20 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     loader = FallbackLoader(rootdirs)
     tpl = loader.load(templatefile)
     kwargs.update(viewopts)
-    html = tpl.generate(
-        data=json.dumps(metadata), 
-        colormaps=colormaps, 
-        default_cmap=cmap, 
-        python_interface=False, 
-        layout=layout,
-        subjects=json.dumps(ctms),
-        **kwargs)
+    html = tpl.generate(data=json.dumps(metadata), 
+                        colormaps=colormaps, 
+                        default_cmap=cmap, 
+                        python_interface=False, 
+                        layout=layout,
+                        subjects=json.dumps(ctms),
+                        disp_layers=disp_layers,
+                        **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
 
+
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
-    autoclose=True, open_browser=True, port=None, pickerfun=None, disp_layers=['rois'], **kwargs):
+         autoclose=True, open_browser=True, port=None, pickerfun=None,
+         disp_layers=['rois'], **kwargs):
     """Display a dynamic viewer using the given dataset
     """
     data = dataset.normalize(data)
@@ -187,7 +197,12 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     subjects = list(package.subjects)
     
     kwargs.update(dict(method='mg2', level=9, recache=recache))
-    ctms = dict((subj, utils.get_ctmpack(subj, types, disp_layers=disp_layers, **kwargs)) for subj in subjects)
+    ctms = dict((subj, utils.get_ctmpack(subj,
+                                         types,
+                                         disp_layers=disp_layers,
+                                         **kwargs))
+                for subj in subjects)
+    
     subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))
     db.auxfile = None
 
@@ -200,6 +215,25 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         smoothstep=(lambda x, y, m: linear(x,y,3*m**2 - 2*m**3)), 
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
+
+    # Useful function for transmitting colors..
+    def rgb_to_hex(rgb):
+        return '#%02x%02x%02x' % rgb
+    
+    disp_defaults = dict()
+    for layer in disp_layers:
+        disp_defaults[layer] = dict()
+        disp_defaults[layer]["line_width"] = options.config.get(layer, "line_width")
+
+        line_color = map(float, options.config.get(layer, "line_color").split(","))
+        fill_color = map(float, options.config.get(layer, "fill_color").split(","))
+
+        disp_defaults[layer]["line_color"] = rgb_to_hex(tuple(x*255 for x in line_color[:3]))
+        disp_defaults[layer]["fill_color"] = rgb_to_hex(tuple(x*255 for x in fill_color[:3]))
+        
+        # Manually extract alpha values from line and fill color option strings
+        disp_defaults[layer]["line_alpha"] = line_color[3]
+        disp_defaults[layer]["fill_alpha"] = fill_color[3]
 
     post_name = Queue.Queue()
 
@@ -251,15 +285,15 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     class MixerHandler(web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
-            generated = html.generate(
-                data=metadata, 
-                colormaps=colormaps, 
-                default_cmap=cmap, 
-                python_interface=True, 
-                layout=layout,
-                subjects=subjectjs,
-                disp_layers=disp_layers,
-                **viewopts)
+            generated = html.generate(data=metadata, 
+                                      colormaps=colormaps, 
+                                      default_cmap=cmap, 
+                                      python_interface=True, 
+                                      layout=layout,
+                                      subjects=subjectjs,
+                                      disp_layers=disp_layers,
+                                      disp_defaults=disp_defaults,
+                                      **viewopts)
             self.write(generated)
 
         def post(self):
@@ -392,7 +426,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
             return Proxy("mixer.html")
 
-        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0, fps=30, size=(1920, 1080), interpolation="linear"):
+        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0,
+                      fps=30, size=(1920, 1080), interpolation="linear"):
             """Renders movie frames for animation of mesh movement
 
             Makes an animation (for example, a transition between inflated and 
@@ -447,7 +482,9 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 else:
                     if f['state'] not in state:
                         state[f['state']] = dict(idx=0, val=self.getState(f['state'])[0])
-                    start = dict(idx=state[f['state']]['idx'], state=f['state'], value=state[f['state']]['val'])
+                    start = dict(idx=state[f['state']]['idx'],
+                                 state=f['state'],
+                                 value=state[f['state']]['val'])
                     end = dict(idx=f['idx'], state=f['state'], value=f['value'])
                     state[f['state']]['idx'] = f['idx']
                     state[f['state']]['val'] = f['value']

@@ -1083,23 +1083,32 @@ var mriview = (function(module) {
             var layername = disp_layers[li];
 
             $(this.object).find("#"+layername+"_linewidth").slider({
-                min:.5, max:10, step:.1, value:3,
+                min:.5, max:10, step:.1, 
+		value: disp_defaults[layername]['line_width'],
                 change: updateOverlays,
             });
             $(this.object).find("#"+layername+"_linealpha").slider({
-                min:0, max:1, step:.001, value:1,
+                min:0, max:1, step:.001, 
+		value: disp_defaults[layername]['line_alpha'],
                 change: updateOverlays,
             });
             $(this.object).find("#"+layername+"_fillalpha").slider({
-                min:0, max:1, step:.001, value:0,
+                min:0, max:1, step:.001, 
+		value: disp_defaults[layername]['fill_alpha'],
                 change: updateOverlays,
             });
             $(this.object).find("#"+layername+"_shadowalpha").slider({
                 min:0, max:20, step:1, value:4,
                 change: updateOverlays,
             });
-            $(this.object).find("#"+layername+"_linecolor").miniColors({close: updateOverlays});
-            $(this.object).find("#"+layername+"_fillcolor").miniColors({close: updateOverlays});
+            $(this.object).find("#"+layername+"_linecolor").miniColors({
+		close: updateOverlays,
+		defaultValue: disp_defaults[layername]['line_color']
+	    });
+            $(this.object).find("#"+layername+"_fillcolor").miniColors({
+		close: updateOverlays,
+		defaultValue: disp_defaults[layername]['fill_color']
+	    });
             $(this.object).find("#"+layername+"_shadowcolor").miniColors({close: updateOverlays});
 
             var _this = this;

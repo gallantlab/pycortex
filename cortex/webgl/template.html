@@ -42,8 +42,10 @@
 {% block javascripts %}
 {% end %}
 
+{% autoescape None %}
 <script type="text/javascript">
 var disp_layers = [{% for layer in disp_layers %}"{{layer}}", {%end%}];
+var disp_defaults = {{json_encode(disp_defaults)}};
 </script>
 
 <script type='text/html' id='mriview_html'>

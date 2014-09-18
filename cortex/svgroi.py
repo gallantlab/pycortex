@@ -22,10 +22,10 @@ parser = etree.XMLParser(remove_blank_text=True, huge_tree=True)
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
 class ROIpack(object):
-    def __init__(self, tcoords, svgfile, callback=None, 
-        linewidth=None, linecolor=None, roifill=None, shadow=None,
-        labelsize=None, labelcolor=None, dashtype='fromsvg', dashoffset='fromsvg',
-        layer='rois'):
+    def __init__(self, tcoords, svgfile, callback=None, linewidth=None,
+                 linecolor=None, roifill=None, shadow=None, labelsize=None,
+                 labelcolor=None, dashtype='fromsvg', dashoffset='fromsvg',
+                 layer='rois'):
         """Contains ROI data in SVG form 
 
         Stores [[display elements]] from one layer of an svg file. 
