@@ -168,6 +168,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                         layout=layout,
                         subjects=json.dumps(ctms),
                         disp_layers=disp_layers,
+                        disp_defaults=_make_disp_defaults(disp_layers),
                         **kwargs)
     htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
 
@@ -215,25 +216,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         smoothstep=(lambda x, y, m: linear(x,y,3*m**2 - 2*m**3)), 
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
-
-    # Useful function for transmitting colors..
-    def rgb_to_hex(rgb):
-        return '#%02x%02x%02x' % rgb
-    
-    disp_defaults = dict()
-    for layer in disp_layers:
-        disp_defaults[layer] = dict()
-        disp_defaults[layer]["line_width"] = options.config.get(layer, "line_width")
-
-        line_color = map(float, options.config.get(layer, "line_color").split(","))
-        fill_color = map(float, options.config.get(layer, "fill_color").split(","))
-
-        disp_defaults[layer]["line_color"] = rgb_to_hex(tuple(x*255 for x in line_color[:3]))
-        disp_defaults[layer]["fill_color"] = rgb_to_hex(tuple(x*255 for x in fill_color[:3]))
-        
-        # Manually extract alpha values from line and fill color option strings
-        disp_defaults[layer]["line_alpha"] = line_color[3]
-        disp_defaults[layer]["fill_alpha"] = fill_color[3]
 
     post_name = Queue.Queue()
 
@@ -292,7 +274,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                                       layout=layout,
                                       subjects=subjectjs,
                                       disp_layers=disp_layers,
-                                      disp_defaults=disp_defaults,
+                                      disp_defaults=_make_disp_defaults(disp_layers),
                                       **viewopts)
             self.write(generated)
 
@@ -546,3 +528,27 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         return client
 
     return server
+
+
+
+def _make_disp_defaults(disp_layers):
+    # Useful function for transmitting colors..
+    def rgb_to_hex(rgb):
+        return '#%02x%02x%02x' % rgb
+    
+    disp_defaults = dict()
+    for layer in disp_layers:
+        disp_defaults[layer] = dict()
+        disp_defaults[layer]["line_width"] = options.config.get(layer, "line_width")
+
+        line_color = map(float, options.config.get(layer, "line_color").split(","))
+        fill_color = map(float, options.config.get(layer, "fill_color").split(","))
+
+        disp_defaults[layer]["line_color"] = rgb_to_hex(tuple(x*255 for x in line_color[:3]))
+        disp_defaults[layer]["fill_color"] = rgb_to_hex(tuple(x*255 for x in fill_color[:3]))
+        
+        # Manually extract alpha values from line and fill color option strings
+        disp_defaults[layer]["line_alpha"] = line_color[3]
+        disp_defaults[layer]["fill_alpha"] = fill_color[3]
+
+    return disp_defaults
