@@ -171,7 +171,8 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "get_mask", "get_overlay","get_cache", "get_view","save_view"] + list(self.subjects.keys())
+        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo",
+                "get_mask", "get_overlay","get_cache", "get_view","save_view"] + list(self.subjects.keys())
 
     def loadXfm(self, *args, **kwargs):
         warnings.warn("loadXfm is deprecated, use save_xfm instead", Warning)
@@ -206,11 +207,11 @@ class Database(object):
         return self.get_cache(*args, **kwargs)
 
     def loadView(self, *args, **kwargs):
-        warnings.warn("loadView is deprecated, use save_view instead", Warning)
+        warnings.warn("loadView is deprecated, use get_view instead", Warning)
         return self.save_view(*args, **kwargs)
 
     def setView(self, *args, **kwargs):
-        warnings.warn("setView is deprecated, use get_view instead", Warning)
+        warnings.warn("setView is deprecated, use save_view instead", Warning)
         return self.get_view(*args, **kwargs)
 
     @property
@@ -221,7 +222,7 @@ class Database(object):
         self._subjects = dict([(sname, SubjectDB(sname, filestore=self.filestore)) for sname in subjs])
         return self._subjects
 
-    def get_anat(self, subject, type='raw', recache=False, **kwargs):
+    def get_anat(self, subject, type='raw', xfmname=None, recache=False, **kwargs):
         """Return anatomical information from the filestore. Anatomical information is defined as
         any volume-space anatomical information pertaining to the subject, such as T1 image,
         white matter masks, etc. Volumes not found in the database will be automatically generated.
@@ -252,7 +253,13 @@ class Database(object):
             getattr(anat, type)(anatfile, subject, **kwargs)
 
         import nibabel
-        return nibabel.load(anatfile)
+        anatnib = nibabel.load(anatfile)
+
+        if xfmname is None:
+            return anatnib
+
+        from . import volume
+        return volume.anat2epispace(anatnib.get_data().T.astype(np.float), subject, xfmname)
 
     def get_surfinfo(self, subject, type="curvature", recache=False, **kwargs):
         """Return auxillary surface information from the filestore. Surface info is defined as 
@@ -303,23 +310,29 @@ class Database(object):
             return Vertex(verts, subject)
         return npz
 
-    def get_overlay(self, subject, type='rois', **kwargs):
-        if type in ["rois","cutouts"]:
-            from . import svgroi
-            pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
-            try:
-                tf = self.auxfile.get_overlay(subject, type)
-                svgfile = tf.name
-            except (AttributeError, IOError):
-                svgfile = self.get_paths(subject)["rois"]
-                    
+    def get_overlay(self, subject, otype='rois', **kwargs):
+        from . import svgroi
+        pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
+        if otype in ["rois", "cutouts", "sulci"] or isinstance(otype, (list,tuple)):
+            # Assumes that all lists or tuples will only consist of "rois","cutouts",and "sulci"...
+            # Prevents combining external files with sulci, e.g. 
+            svgfile = self.get_paths(subject)["rois"]
+            if self.auxfile is not None:
+                try:
+                    tf = self.auxfile.get_overlay(subject, otype) # kwargs??
+                    svgfile = tf.name
+                except (AttributeError, IOError):
+                    # NOTE: This is better error handling, but does not account for
+                    # case in which self.auxfile is None - when is that?? I (ML) think
+                    # it only comes up with new svg layer variants in extra_layers branch...
+                    # svgfile = self.get_paths(subject)["rois"]
+                    # Layer type does not exist or has been temporarily removed
+                    pass                    
             if 'pts' in kwargs:
                 pts = kwargs['pts']
                 del kwargs['pts']
-            return svgroi.get_roipack(svgfile, pts, polys, layer=type,**kwargs)
-        if type == "external":
-            from . import svgroi
-            pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
+            return svgroi.get_roipack(svgfile, pts, polys, layer=otype, **kwargs)
+        if otype == "external":
             svgfile = kwargs["svgfile"]
             del kwargs["svgfile"]
             if 'pts' in kwargs:
@@ -343,9 +356,11 @@ class Database(object):
         xfm : (4,4) array
             The affine transformation matrix
         xfmtype : str, optional
-            Type of the provided transform, either magnet space or coord space. Defaults to magnet.
+            Type of the provided transform, either magnet space or coord space.
+            Defaults to 'magnet'.
         reference : str, optional
-            The nibabel-compatible reference image associated with this transform. Required if name not in database
+            The nibabel-compatible reference image associated with this transform.
+            Required if name not in database
         """
         if xfmtype not in ["magnet", "coord"]:
             raise TypeError("Unknown transform type")
@@ -662,5 +677,55 @@ class Database(object):
         sName = os.path.join(self.filestore, subject, "views", name+'.json')
         view = json.load(open(sName))
         vw._set_view(**view)
+
+    def get_mnixfm(self, subject, xfm, template=None):
+        """Get transform from the space specified by `xfm` to MNI space.
+
+        Parameters
+        ----------
+        subject : str
+            Subject identifier
+        xfm : str
+            Name of functional space transform. Can be 'identity' for anat space.
+        template : str or None, optional
+            Path to MNI template volume. If None, uses default specified in cortex.mni
+
+        Returns
+        -------
+        mnixfm : numpy.ndarray
+            Transformation matrix from the space specified by `xfm` to MNI space.
+
+        Notes
+        -----
+        Equivalent to cortex.mni.compute_mni_transform, but this function also caches
+        the result (which is nice because computing it can be slow).
+
+        See Also
+        --------
+        compute_mni_transform, transform_to_mni, and transform_mni_to_subject in
+        cortex.mni
+        """
+        from . import mni
+
+        if template is None:
+            templatehash = "default"
+        else:
+            templatehash = sha1(template).hexdigest()
+
+        # Check cache first
+        mnixfmfile = os.path.join(self.get_cache(subject), "mni_xfm-%s-%s.txt"%(xfm, templatehash))
+        if os.path.exists(mnixfmfile):
+            mnixfm = np.loadtxt(mnixfmfile)
+        else:
+            # Run the transform
+            if template is None:
+                mnixfm = mni.compute_mni_transform(subject, xfm)
+            else:
+                mnixfm = mni.compute_mni_transform(subject, xfm, template)
+
+            # Cache the result
+            mni._save_fsl_xfm(mnixfmfile, mnixfm)
+
+        return mnixfm
 
 db = Database()

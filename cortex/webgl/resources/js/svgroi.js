@@ -86,21 +86,19 @@ var roilabel_fshader = [
 function ROIpack(svgdoc, renderer, positions) {
     this.svgroi = svgdoc.getElementsByTagName("svg")[0];
     this.svgroi.id = "svgroi";
-    this.rois = $(this.svgroi).find("path");
-    this.rois.each(function() { this.removeAttribute("filter"); });
+    this.layers = {};
+    this.positions = positions;
+    this.renderer = renderer;
+    this.layer_label_visibility = {};
 
-    var names = {};
-    $(this.svgroi).find("#roilabels").children().each(function() {
-        var name = $(this).text();
-        if (names[name] === undefined)
-            names[name] = [];
-        names[name].push($(this).data("ptidx"));
-    });
-    $(this.svgroi).find("#roilabels").remove();
+    for (var li=0; li<disp_layers.length; li++) {
+        this.layers[disp_layers[li]] = $(this.svgroi).find("#"+disp_layers[li]).find("path");
+        this.layers[disp_layers[li]].each(function() { this.removeAttribute("filter"); });
+        this.layer_label_visibility[disp_layers[li]] = true;
+    }
     $(this.svgroi).find("defs").remove();
 
-    this.labels = new ROIlabels(names, positions);
-    this.labels.update(renderer, 22);
+    this.update_labels();
 
     var w = this.svgroi.getAttribute("width");
     var h = this.svgroi.getAttribute("height");
@@ -114,6 +112,21 @@ function ROIpack(svgdoc, renderer, positions) {
     this.canvas = document.createElement("canvas");
 }
 ROIpack.prototype = {
+    update_labels: function() {
+        var names = {};
+        for (var li=0; li<disp_layers.length; li++) {
+            if(this.layer_label_visibility[disp_layers[li]]) {
+                $(this.svgroi).find("#"+disp_layers[li]+"_labels").children().each(function() {
+                    var name = $(this).text();
+                    if (names[name] === undefined)
+                        names[name] = [];
+                    names[name].push($(this).data("ptidx"));
+                });
+            }
+        }
+        this.labels = new ROIlabels(names, this.positions);
+        this.labels.update(this.renderer, 22);
+    },
     resize: function(width, height) {
         this.labels.resize(width * dpi_ratio, height * dpi_ratio);
     },
@@ -126,58 +139,66 @@ ROIpack.prototype = {
     }, 
     update: function(renderer) {
         var loaded = $.Deferred();
-        var fo = $("#roi_fillalpha").length > 0 ? $("#roi_fillalpha").slider("option", "value") : 0;
-        var lo = $("#roi_linealpha").length > 0 ? $("#roi_linealpha").slider("option", "value") : 1;
-        var fc = $("#roi_fillcolor").length > 0 ? $("#roi_fillcolor").attr("value") : "#000";
-        var lc = $("#roi_linecolor").length > 0 ? $("#roi_linecolor").attr("value") : "#FFF";
-        var lw = $("#roi_linewidth").length > 0 ? $("#roi_linewidth").slider("option", "value") : 3;
-        var sw = $("#roi_shadowalpha").length > 0 ? $("#roi_shadowalpha").slider("option", "value") : 5 ;
-        fo = "fill-opacity:" + fo;
-        lo = "stroke-opacity:" + lo;
-        fc = "fill:" + fc;
-        lc = "stroke:" + lc;
-        lw = "stroke-width:" + lw + "px";
-        sw = parseInt(sw);
 
-        this.rois.attr("style", [fo, lo, fc, lc, lw].join(";"));
+        for (var li=0; li<disp_layers.length; li++) {
+            var layer = disp_layers[li];
+            var fo = $("#"+layer+"_fillalpha").length > 0 ? $("#"+layer+"_fillalpha").slider("option", "value") : 0;
+            var lo = $("#"+layer+"_linealpha").length > 0 ? $("#"+layer+"_linealpha").slider("option", "value") : 1;
+            var fc = $("#"+layer+"_fillcolor").length > 0 ? $("#"+layer+"_fillcolor").attr("value") : "#000";
+            var lc = $("#"+layer+"_linecolor").length > 0 ? $("#"+layer+"_linecolor").attr("value") : "#FFF";
+            var lw = $("#"+layer+"_linewidth").length > 0 ? $("#"+layer+"_linewidth").slider("option", "value") : 3;
+            var sw = $("#"+layer+"_shadowalpha").length > 0 ? $("#"+layer+"_shadowalpha").slider("option", "value") : 5 ;
+            fo = "fill-opacity:" + fo;
+            lo = "stroke-opacity:" + lo;
+            fc = "fill:" + fc;
+            lc = "stroke:" + lc;
+            lw = "stroke-width:" + lw + "px";
+            sw = parseInt(sw);
+
+            this.layers[layer].attr("style", [fo, lo, fc, lc, lw].join(";"));
+        }
+
         var svg_xml = (new XMLSerializer()).serializeToString(this.svgroi);
 
-        if (sw > 0) {
-            var sc = $("#roi_shadowcolor").length > 0 ? $("#roi_shadowcolor").val() : "#000";
-            sc = "stroke:" + sc;
-            this.rois.attr("style", [sc, fc, fo, lo, lw].join(";"));
-            var shadow_xml = (new XMLSerializer()).serializeToString(this.svgroi);
+        // if (sw > 0) {
+        //     var sc = $("#roi_shadowcolor").length > 0 ? $("#roi_shadowcolor").val() : "#000";
+        //     sc = "stroke:" + sc;
+        //     this.rois.attr("style", [sc, fc, fo, lo, lw].join(";"));
+        //     this.sulci.attr("style", [fo, lo, fc, lc, lw].join(";"));
+        //     this.miscdisp.attr("style", [fo, lo, fc, lc, lw].join(";"));
 
-            canvg(this.canvas, shadow_xml, {
-                ignoreMouse:true, 
-                ignoreAnimation:true,
-                ignoreClear:false,
-                renderCallback: function() {
-                    this._shadowtex.setRadius(sw/4);
-                    var tex = this._shadowtex.blur(renderer, new THREE.Texture(this.canvas));
-                    canvg(this.canvas, svg_xml, {
-                        ignoreMouse:true,
-                        ignoreAnimation:true,
-                        renderCallback: function() {
-                            var tex = this._shadowtex.overlay(renderer, new THREE.Texture(this.canvas));
-                            loaded.resolve(tex);
-                        }.bind(this)
-                    });
-                }.bind(this)
-            });
+        //     var shadow_xml = (new XMLSerializer()).serializeToString(this.svgroi);
 
-        } else {
-            canvg(this.canvas, svg_xml, {
-                ignoreMouse:true,
-                ignoreAnimation:true,
-                renderCallback:function() {
-                    var tex = new THREE.Texture(this.canvas);
-                    tex.needsUpdate = true;
-                    tex.premultiplyAlpha = true;
-                    loaded.resolve(tex);
-                }.bind(this),
-            });
-        }
+        //     canvg(this.canvas, shadow_xml, {
+        //         ignoreMouse:true, 
+        //         ignoreAnimation:true,
+        //         ignoreClear:false,
+        //         renderCallback: function() {
+        //             this._shadowtex.setRadius(sw/4);
+        //             var tex = this._shadowtex.blur(renderer, new THREE.Texture(this.canvas));
+        //             canvg(this.canvas, svg_xml, {
+        //                 ignoreMouse:true,
+        //                 ignoreAnimation:true,
+        //                 renderCallback: function() {
+        //                     var tex = this._shadowtex.overlay(renderer, new THREE.Texture(this.canvas));
+        //                     loaded.resolve(tex);
+        //                 }.bind(this)
+        //             });
+        //         }.bind(this)
+        //     });
+
+        // } else {
+        canvg(this.canvas, svg_xml, {
+            ignoreMouse:true,
+            ignoreAnimation:true,
+            renderCallback:function() {
+                var tex = new THREE.Texture(this.canvas);
+                tex.needsUpdate = true;
+                tex.premultiplyAlpha = true;
+                loaded.resolve(tex);
+            }.bind(this),
+        });
+        // }
         return loaded.promise();
     }, 
 

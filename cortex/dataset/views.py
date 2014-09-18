@@ -1,4 +1,5 @@
 import json
+import warnings
 
 import h5py
 import numpy as np
@@ -38,7 +39,10 @@ def _from_hdf_data(h5, name, xfmname=None, **kwargs):
 
     mask = None
     if "mask" in dnode.attrs:
-        mask = db.get_mask(subj, xfmname, dnode.attrs['mask'])
+        if dnode.attrs['mask'].startswith("__"):
+            mask = h5['/subjects/%s/transforms/%s/masks/%s'%(dnode.attrs['subject'], xfmname, dnode.attrs['mask'])].value
+        else:
+            mask = dnode.attrs['mask']
 
     #support old style RGB volumes
     if dnode.dtype == np.uint8 and dnode.shape[-1] in (3, 4):
@@ -160,13 +164,16 @@ class Dataview(object):
         if not isinstance(cmap, list):
             cmap = [cmap]
 
-        if len(data) == 1:
-            xfm = None if xfmname is None else xfmname[0]
-            return _from_hdf_view(node.file, data[0], xfmname=xfm, cmap=cmap[0], description=desc, 
-                vmin=vmin[0], vmax=vmax[0], state=state, **attrs)
-        else:
-            views = [_from_hdf_view(node.file, d, xfmname=x) for d, x in zip(data, xfname)]
-            raise NotImplementedError
+        try:
+            if len(data) == 1:
+                xfm = None if xfmname is None else xfmname[0]
+                return _from_hdf_view(node.file, data[0], xfmname=xfm, cmap=cmap[0], description=desc, 
+                    vmin=vmin[0], vmax=vmax[0], state=state, **attrs)
+            else:
+                views = [_from_hdf_view(node.file, d, xfmname=x) for d, x in zip(data, xfname)]
+                raise NotImplementedError
+        except:
+            warnings.warn("Could not load view '%s'"%node.name)
 
     def _write_hdf(self, h5, name="data", data=None, xfmname=None):
         views = h5.require_group("/views")
