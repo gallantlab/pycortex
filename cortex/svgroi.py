@@ -571,11 +571,15 @@ def _labelpos(pts):
 def _split_multipath(pathstr):
     """Appropriately splits an SVG path with multiple sub-paths.
     """
-    if pathstr[0] != "m":
+    # m is absolute path, M is relative path (or vice versa?)
+    if not pathstr[0] in ["m","M"]:
         raise ValueError("Bad path format: %s" % pathstr)
-    
-    for subpath in pathstr[1:].split("m"):
-        yield ("m" + subpath).strip()
+    import re
+    subpaths = [sp for sp in re.split('[Mm]',pathstr) if len(sp)>0]
+    headers = re.findall('[Mm]',pathstr)
+    for subpath,header in zip(subpaths,headers):
+        # Need further parsing of multi-path strings? perhaps no.
+        yield (header + subpath).strip()
 
 def scrub(svgfile):
     """Remove data layers from an svg object prior to rendering
