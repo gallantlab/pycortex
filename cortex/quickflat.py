@@ -81,8 +81,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         raise ValueError('Cannot flatten movie volumes')
     
     if fig is None:
+        fig_resize = True
         fig = plt.figure()
     else:
+        fig_resize = False
         fig = plt.figure(fig.number)
 
     im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
@@ -241,6 +243,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             zorder=3,
             origin='lower')
 
+    if fig_resize:
+        imsize = fig.get_axes()[0].get_images()[0].get_size()
+        fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
+        
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
