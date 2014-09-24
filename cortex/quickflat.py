@@ -71,7 +71,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         rois.svg file to display. Defaults to None.
 
     """
-    from matplotlib import cm, pyplot as plt
+    from matplotlib import colors,cm, pyplot as plt
     from matplotlib.collections import LineCollection
 
     dataview = dataset.normalize(braindata)
@@ -87,7 +87,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
                        height=height, thick=thick, depth=depth)
-    
+
     if cutout:
         roi = db.get_overlay(dataview.data.subject,
                              otype='cutouts',
@@ -157,8 +157,24 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         extent=extents, 
         origin='lower')
     if not isinstance(dataview, (dataset.VolumeRGB, dataset.VertexRGB)):
+        # Get colormap from matplotlib or pycortex colormaps
+        ## -- redundant code, here and in cortex/dataset/views.py -- ##
+        if isinstance(dataview.cmap,(str,unicode)):
+            if not dataview.cmap in cm.__dict__:
+                # unknown colormap, test whether it's in pycortex colormaps
+                cmapdir = config.get('webgl', 'colormaps')
+                colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
+                colormaps = dict(((os.path.split(c)[1][:-4],c) for c in colormaps))
+                if not dataview.cmap in colormaps:
+                    raise Exception('Unkown color map!')
+                I = plt.imread(colormaps[dataview.cmap])
+                cmap = colors.ListedColormap(np.squeeze(I))
+                # Register colormap while we're at it
+                cm.register_cmap(dataview.cmap,cmap)
+            else:
+                cmap = dataview.cmap
         kwargs.update(
-            cmap=dataview.cmap, 
+            cmap=cmap, 
             vmin=dataview.vmin, 
             vmax=dataview.vmax)
     ax = fig.add_axes((0,0,1,1))
@@ -221,7 +237,6 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                               labelsize=labelsize,
                               labelcolor=labelcolor)
         overlays.append(disp)
-
     for oo in overlays:
         roitex = oo.get_texture(height, labels=with_labels)
         roitex.seek(0)
