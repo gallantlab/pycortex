@@ -4,7 +4,7 @@ import sys
 import binascii
 import numpy as np
 from importlib import import_module
-
+from . import options
 from .database import db
 from .volume import mosaic, unmask, anat2epispace
 
@@ -181,7 +181,8 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     if isinstance(dv, dataset.Dataset):
         raise TypeError("Please specify a data view")
 
-    rois = db.get_overlay(dv.data.subject)
+    #rois = db.get_overlay(dv.data.subject)
+    rois = db.get_overlay(dv.subject)
     try:
         import cStringIO
         fp = cStringIO.StringIO()

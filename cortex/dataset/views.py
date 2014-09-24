@@ -1,9 +1,7 @@
 import json
 import warnings
-
 import h5py
 import numpy as np
-
 from .. import options
 from ..database import db
 from .braindata import BrainData, VolumeData, VertexData, _hash
@@ -192,9 +190,25 @@ class Dataview(object):
 
     @property
     def raw(self):
-        from matplotlib import cm, colors
-        cmap = cm.get_cmap(self.cmap)
-        norm = colors.Normalize(self.vmin, self.vmax)
+        from matplotlib import colors, cm, pyplot as plt
+        import glob, os
+        # Get colormap from matplotlib or pycortex colormaps
+        ## -- redundant code, here and in cortex/quicklflat.py -- ##
+        if isinstance(self.cmap,(str,unicode)):
+            if not self.cmap in cm.__dict__:
+                # unknown colormap, test whether it's in pycortex colormaps
+                cmapdir = options.config.get('webgl', 'colormaps')
+                colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
+                colormaps = dict(((os.path.split(c)[1][:-4],c) for c in colormaps))
+                if not self.cmap in colormaps:
+                    raise Exception('Unkown color map!')
+                I = plt.imread(colormaps[self.cmap])
+                cmap = colors.ListedColormap(np.squeeze(I))
+                # Register colormap while we're at it
+                cm.register_cmap(self.cmap,cmap)
+            else:
+                cmap = self.cmap
+        norm = colors.Normalize(self.vmin, self.vmax) # Does this do anything?
         return np.rollaxis(cmap(self.data), -1)
 
 class Multiview(Dataview):
