@@ -64,8 +64,10 @@ class Volume2D(Dataview2D):
                 raise TypeError("Invalid data for second dimension")
             self.dim1 = dim1
             self.dim2 = dim2
-            vmin, vmin2 = dim1.vmin, dim2.vmin
-            vmax, vmax2 = dim1.vmax, dim2.vmax
+            vmin = dim1.vmin if vmin is None else vmin
+            vmin2 = dim2.vmin if vmin2 is None else vmin2
+            vmax = dim1.vmax if vmax is None else vmax
+            vmax2 = dim2.vmax if vmax2 is None else vmax2
         else:
             self.dim1 = Volume(dim1, subject, xfmname)
             self.dim2 = Volume(dim2, subject, xfmname)
