@@ -1,8 +1,9 @@
+import os
 import json
 import numpy as np
 
 from .. import options
-from .views import Dataview, Volume, Vertex
+from .views import Dataview, Volume, Vertex, VolumeRGB, VertexRGB
 from .braindata import VolumeData, VertexData
 
 default_cmap2D = options.config.get("basic", "default_cmap2D")
@@ -53,6 +54,32 @@ class Dataview2D(Dataview):
 
         return sdict
 
+    def _to_raw(self, data1, data2):
+        from matplotlib import pyplot as plt
+        from matplotlib.colors import Normalize
+        cmapdir = options.config.get("webgl", "colormaps")
+        cmap = plt.imread(os.path.join(cmapdir, "%s.png"%self.cmap))
+
+        norm1 = Normalize(self.vmin, self.vmax)
+        norm2 = Normalize(self.vmin2, self.vmax2)
+        
+        d1 = np.clip(norm1(data1), 0, 1)
+        d2 = np.clip(1 - norm2(data2), 0, 1)
+        dim1 = np.round(d1 * (cmap.shape[1]-1)).astype(np.uint32)
+        dim2 = np.round(d2 * (cmap.shape[0]-1)).astype(np.uint32)
+
+        colored = cmap[dim2.ravel(), dim1.ravel()]
+        r, g, b, a = colored.T
+        r.shape = dim1.shape
+        g.shape = dim1.shape
+        b.shape = dim1.shape
+        a.shape = dim1.shape
+        return r, g, b, a
+
+    @property
+    def subject(self):
+        return self.dim1.subject
+
 class Volume2D(Dataview2D):
     _cls = VolumeData
     def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", cmap=None,
@@ -83,6 +110,24 @@ class Volume2D(Dataview2D):
         viewnode[7] = json.dumps([[self.dim1.xfmname, self.dim2.xfmname]])
         return viewnode
 
+    @property
+    def raw(self):
+        """Implement 2D colormapping for quickflat"""
+        if self.dim1.xfmname != self.dim2.xfmname:
+            raise ValueError("Both Volumes must have same xfmname to generate single raw volume")
+
+        if self.dim1.linear and self.dim2.linear and self.dim1.mask == self.dim2.mask:
+            r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
+        else:
+            r, g, b, a = self._to_raw(self.dim1.volume, self.dim2.volume)
+        
+        return VolumeRGB(r, g, b, alpha=a, subject=self.dim1.subject, xfmname=self.dim1.xfmname, 
+            state=self.state, description=self.description, **self.attrs)
+
+    @property
+    def xfmname(self):
+        return self.dim1.xfmname
+
 class Vertex2D(Dataview):
     _cls = VertexData
     def __init__(self, dim1, dim2, subject=None, description="", cmap=None,
@@ -94,8 +139,10 @@ class Vertex2D(Dataview):
                 raise TypeError("Invalid data for second dimension")
             self.dim1 = dim1
             self.dim2 = dim2
-            vmin, vmin2 = dim1.vmin, dim2.vmin
-            vmax, vmax2 = dim1.vmax, dim2.vmax
+            vmin = dim1.vmin if vmin is None else vmin
+            vmin2 = dim2.vmin if vmin2 is None else vmin2
+            vmax = dim1.vmax if vmax is None else vmax
+            vmax2 = dim2.vmax if vmax2 is None else vmax2
         else:
             self.dim1 = Vertex(dim1, subject)
             self.dim2 = Vertex(dim2, subject)
@@ -104,3 +151,8 @@ class Vertex2D(Dataview):
 
     def __repr__(self):
         return "<2D vertex data for (%s)>"%self.dim1.subject
+
+    @property
+    def raw(self):
+        r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
+        return VertexRGB(r, g, b, alpha=a, subject=self.dim1.subject)
