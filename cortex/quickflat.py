@@ -66,9 +66,11 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Maximum value for background curvature colormap. Defaults to config file value.
     cvthr : bool,optional
         Apply threshold to background curvature
-    extra_disp : str
-        Optional extra display layer. String specifies the name of the layer in the
-        rois.svg file to display. Defaults to None.
+    extra_disp : tuple
+        Optional extra display layer from external .svg file. Tuple specifies (filename,layer)
+        filename should be a full path. External svg file should be structured exactly as 
+        rois.svg for the subject. (Best to just copy rois.svg somewhere else and add layers to it)
+        Default value is None.
 
     """
     from matplotlib import colors,cm, pyplot as plt
@@ -89,7 +91,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                        height=height, thick=thick, depth=depth)
 
     if cutout:
-        roi = db.get_overlay(dataview.data.subject,
+        roi = db.get_overlay(dataview.subject,
                              otype='cutouts',
                              roifill=(0.,0.,0.,0.),
                              linecolor=(0.,0.,0.,0.),
@@ -231,11 +233,14 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                               labelcolor=labelcolor)
         overlays.append(sulc)
     if not extra_disp is None:
+        svgfile,layer = extra_disp
         disp = db.get_overlay(dataview.subject,
-                              otype=extra_disp,
+                              otype='external',
                               shadow=shadow,
                               labelsize=labelsize,
-                              labelcolor=labelcolor)
+                              labelcolor=labelcolor,
+                              layer=layer,
+                              svgfile=svgfile)
         overlays.append(disp)
     for oo in overlays:
         roitex = oo.get_texture(height, labels=with_labels)
