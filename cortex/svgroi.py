@@ -26,6 +26,7 @@ class ROIpack(object):
     def __init__(self, tcoords, svgfile, callback=None, 
         linewidth=None, linecolor=None, roifill=None, shadow=None,
         labelsize=None, labelcolor=None,layer='rois'):
+        self.all_splines = [] # houses the svg splines for a given area
         if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
             tcoords -= tcoords.min(0)
             tcoords /= tcoords.max(0)
@@ -181,29 +182,30 @@ class ROIpack(object):
 
     def get_ptidx(self):
         return dict([(name, roi.get_ptidx()) for name, roi in list(self.rois.items())])
-        
-    def get_roi(self, roiname, vinds):
+
+    def get_splines(self, roiname):
         import svgsplines
 
-        path_strs = [list(_tokenize_path(path.attrib['d'])) 
+        path_strs = [list(_tokenize_path(path.attrib['d']))
                      for path in self.rois[roiname].paths]
-        vts = (self.tcoords*self.svgshape).astype(float)
-        vts = vts[vinds,:] #temp, to delete
-        all_splines = []
+
         COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
         UPPERCASE = set('MZLHVCSQTA')
+        all_splines = [] # after this gets populated, set self.all_splines = all_splines
 
-        print 'started get_roi'
-
+        ###
+        # this is for the svg path parsing (https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths)
+        # the general format is that there is a state machine that keeps track of which command (path_ind)
+        # that it's listening to while parsing over the appropriately sized (param_len) groups of
+        # coordinates for that command 
+        ###
         for path in path_strs:
             path_splines = []
             first_coord = array([0,0])
             prev_coord = array([0,0])
-            
-            for path_ind in range(len(path)):
-                #if len(COMMANDS.intersection(path[path_ind])) > 0:
-                    #print path[path_ind].lower()
+            isFirstM = True# inkscape may create multiple starting commands to move to the spline's starting coord, this just treats those as one commend
 
+            for path_ind in range(len(path)):
                 if path_ind == 0 and path[path_ind].lower() != 'm':
                     raise ValueError('Unknown path format!')
                 
@@ -217,17 +219,18 @@ class ROIpack(object):
                         else:
                             prev_coord = prev_coord + array([float(path[p_j]),float(path[p_j+1])])
 
-                        if path_ind == 0:
+                        # this conditional is for recognizing and storing the last coord in the first M command(s)
+                        # as the official first coord in the spline path for any return-to-first command 
+                        if isFirstM == True and (len(COMMANDS.intersection(path[p_j+param_len].lower())) == 1 and
+                                                 COMMANDS.intersection(path[p_j+param_len].lower()) != 'm'):
+                            prev_coord[1] = self.svgshape[1] - prev_coord[1] # starting coord needs to be referenced from the flipped origin
                             first_coord = prev_coord
+                            isFirstM = False
 
                         p_j += param_len
                         
                 elif path[path_ind].lower() == 'z':
-                    #print first_coord
-                    path_splines.append(LineSpline(prev_coord, first_coord))
-                    #print path_splines[len(path_splines)-1].getSplineHash()
-                    #path_splines[len(path_splines)-1].plotSpline()
-                    show()
+                    path_splines.append(LineSpline(prev_coord, first_coord))                    
                     prev_coord = first_coord
                     
                 elif path[path_ind].lower() == 'l':
@@ -238,13 +241,11 @@ class ROIpack(object):
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         if path[path_ind] == 'L':
                             next_coord = array([float(path[p_j]),float(path[p_j+1])])
+
                         else:
-                            next_coord = prev_coord + array([float(path[p_j]),float(path[p_j+1])])
-                                       
+                            next_coord = prev_coord + array([float(path[p_j]),-1.0*float(path[p_j+1])]) 
+                        
                         path_splines.append(LineSpline(prev_coord, next_coord))
-                        #print path_splines[len(path_splines)-1].getSplineHash()
-                        #path_splines[len(path_splines)-1].plotSpline()
-                        show()
                         prev_coord = next_coord
                         p_j += param_len
 
@@ -260,9 +261,6 @@ class ROIpack(object):
                             next_coord = prev_coord + array([float(path[p_j]), 0])
                         
                         path_splines.append(LineSpline(prev_coord, next_coord))
-                        #print path_splines[len(path_splines)-1].getSplineHash()
-                        #path_splines[len(path_splines)-1].plotSpline()
-                        show()
                         prev_coord = next_coord
                         p_j += param_len
                 
@@ -275,12 +273,9 @@ class ROIpack(object):
                         if path[path_ind] == 'V':
                             next_coord = array([prev_coord[0], float(path[p_j])])
                         else:
-                            next_coord = prev_coord + array([0, float(path[p_j])]) 
+                            next_coord = prev_coord + array([0, -1.0*float(path[p_j])]) 
                         
                         path_splines.append(LineSpline(prev_coord, next_coord))
-                        #print path_splines[len(path_splines)-1].getSplineHash()
-                        #path_splines[len(path_splines)-1].plotSpline()
-                        show()
                         prev_coord = next_coord
                         p_j += param_len
                 
@@ -297,14 +292,11 @@ class ROIpack(object):
                             ctl2_coord = array([float(path[p_j+2]), float(path[p_j+3])])
                             end_coord = array([float(path[p_j+4]), float(path[p_j+5])])
                         else:
-                            ctl1_coord = prev_coord + array([float(path[p_j]), float(path[p_j+1])])
-                            ctl2_coord = ctl1_coord + array([float(path[p_j+2]), float(path[p_j+3])])
-                            end_coord = ctl2_coord + array([float(path[p_j+4]), float(path[p_j+5])])
+                            ctl1_coord = prev_coord + array([float(path[p_j]), -1.0*float(path[p_j+1])]) 
+                            ctl2_coord = prev_coord + array([float(path[p_j+2]), -1.0*float(path[p_j+3])]) 
+                            end_coord = prev_coord + array([float(path[p_j+4]), -1.0*float(path[p_j+5])]) 
 
                         path_splines.append(CubBezSpline(prev_coord, ctl1_coord, ctl2_coord, end_coord))
-                        #print path_splines[len(path_splines)-1].getSplineHash()
-                        #path_splines[len(path_splines)-1].plotSpline()
-                        show()
                         prev_coord = end_coord
                         p_j += param_len
                 
@@ -322,13 +314,10 @@ class ROIpack(object):
                             ctl2_coord = array([float(path[p_j]), float(path[p_j+1])])
                             end_coord = array([float(path[p_j+2]), float(path[p_j+3])])
                         else:
-                            ctl2_coord = ctl1_coord + array([float(path[p_j]), float(path[p_j+1])])
-                            end_coord = ctl2_coord + array([float(path[p_j+2]), float(path[p_j+3])])
+                            ctl2_coord = prev_coord + array([float(path[p_j]), -1.0*float(path[p_j+1])]) 
+                            end_coord = prev_coord + array([float(path[p_j+2]), -1.0*float(path[p_j+3])]) 
                         
                         path_splines.append(CubBezSpline(prev_coord, ctl1_coord, ctl2_coord, end_coord))
-                        #print path_splines[len(path_splines)-1].getSplineHash()
-                        #path_splines[len(path_splines)-1].plotSpline()
-                        show()
                         prev_coord = end_coord
                         p_j += param_len
 
@@ -343,13 +332,10 @@ class ROIpack(object):
                             ctl_coord = array([float(path[p_j]), float(path[p_j+1])])
                             end_coord = array([float(path[p_j+2]), float(path[p_j+3])])
                         else:
-                            ctl_coord = prev_coord + array([float(path[p_j]), float(path[p_j+1])])
-                            end_coord = ctl_coord + array([float(path[p_j+2]), float(path[p_j+3])])
-                    
+                            ctl_coord = prev_coord + array([float(path[p_j]), -1.0*float(path[p_j+1])]) 
+                            end_coord = prev_coord + array([float(path[p_j+2]), -1.0*float(path[p_j+3])]) 
+                                        
                         path_splines.append(QuadBezSpline(prev_coord, ctl_coord, end_coord))
-                        #print path_splines[len(path_splines)-1].getSplineHash()
-                        #path_splines[len(path_splines)-1].plotSpline()
-                        show()
                         prev_coord = end_coord
                         p_j += param_len
                 
@@ -365,16 +351,14 @@ class ROIpack(object):
                         if path[path_ind] == 'T':
                             end_coord = array([float(path[p_j]), float(path[p_j+1])])
                         else:
-                            end_coord = ctl_coord + array([float(path[p_j]), float(path[p_j+1])])
+                            end_coord = prev_coord + array([float(path[p_j]), -1.0*float(path[p_j+1])]) 
 
                         path_splines.append(QuadBezSpline(prev_coord, ctl_coord, end_coord))
-                        #print path_splines[len(path_splines)-1].getSplineHash()
-                        #path_splines[len(path_splines)-1].plotSpline()
-                        show()
                         prev_coord = end_coord
                         p_j += param_len
-                        
-                elif path[path_ind].lower() == 'a':
+                
+                # NOTE: This is *NOT* functional. Arcspline parsing saves to an incomplete ArcSpline class
+                elif path[path_ind].lower() == 'a': 
                     param_len = 7
                     p_j = path_ind + 1
                     end_coord = array([0,0])
@@ -389,113 +373,102 @@ class ROIpack(object):
                         if path[path_ind] == 'A':
                             end_coord = array([float(path[p_j+5]), float(path[p_j+6])])
                         else:
-                            end_coord = prev_coord + array([float(path[p_j+5]), float(path[p_j+6])])
+                            end_coord = prev_coord + array([float(path[p_j+5]), -1.0*float(path[p_j+6])])
 
                         path_splines.append(ArcSpline(prev_coord, rx, ry, x_rot, large_arc_flag, sweep_flag, end_coord))
                         prev_coord = end_coord
                         p_j += param_len
 
-                #print [sp.getSplineHash() for sp in path_splines]
-
             all_splines.append(path_splines)
 
-        print 'region num: ' + str(len(all_splines))
+        return all_splines
 
-       
-        vts_inside_region = array([False]*len(vts))
 
-        for splines in all_splines: #retrieves splines for each path separately
-            print 'checking a region'
-            x0s = array([min([float(sp_i.smallestX()) for sp_i in splines]) - 1]*(len(vts))).astype(float)
-            y0s = vts[:,1]
-            vt_is = array([x0s,y0s]).T #coords
+    ###
+    # The get_roi function takes in an roi's name and returns an array indicating if every vertex is or isn't in that roi
+    # The way it works is that it collapses all of the x-values of the vertex coordinates approximately around the roi to the same
+    # small value, making a vertical line left of the roi. Then, it stretches the line to the right again, but stops the coordinates if they
+    # hit either an roi boundary or the original vertex position. In other words, it increases the x-values of the coordinates to either
+    # those of the the nearest spline path or the original vertex coordinate, whichever has the closer x-value.
+    # This way, it keeps track of how many boundaries it hit, starting from the outside, going inward toward the the original vertex coordinate.
+    # An odd number of boundaries found before the vertex means 'outside' the region or 'False' in the array, and an even number of
+    # boundaries found before the vertex means 'inside' the region or 'True' in the array
+    #
+    # This is all implemented with 1d and nd arrays manipulations, so the math is very algebraic.
+    ###
+    def get_roi(self, roiname):
+        vts = self.tcoords*self.svgshape # reverts tcoords from unit circle size to normal svg image format size  
+        all_splines = self.get_splines(roiname) #all_splines is a list of generally two roi paths, one for each hemisphere
+
+        vts_inside_region = zeros(vts.shape[0],dtype=bool) # ultimately what gets returned
+
+        for splines in all_splines: #retrieves path splines for each hemisphere separately
+            x0s = min(vts[:,0])*.98*ones(vts.shape[0])
+
+            # Only checks the vertices in a bounding box around the spline path.
+            # The splines are always within a convex shape whose corners are
+            # their svg command's end point and control points, so the box is their
+            # min and max X and Y coordinates.
+            beforeSplineRegionX = vts[:,0] < min([float(sp_i.smallestX()) for sp_i in splines])
+            beforeSplineRegionY = vts[:,1] < min([float(sp_i.smallestY()) for sp_i in splines])
+            afterSplineRegionX = vts[:,0] > max([float(sp_i.biggestX()) for sp_i in splines])
+            afterSplineRegionY = vts[:,1] > max([float(sp_i.biggestY()) for sp_i in splines])
+
+            found_vtxs = zeros(vts.shape[0],dtype=bool)
+            found_vtxs[beforeSplineRegionX] = True
+            found_vtxs[beforeSplineRegionY] = True
+            found_vtxs[afterSplineRegionX] = True
+            found_vtxs[afterSplineRegionY] = True
             
-            vt_ish = array(['.']*len(vts)).astype(str_) #starting hashcodes, used to gaurantee no conflicts
+            vt_isx = vstack([x0s,vts[:,1]]).T #iterable coords, same x-value as each other, but at their old y-value positions
+ 
+            vtx_is = vt_isx[~found_vtxs]
 
-            found_vtxs = array([False]*len(vts)).astype(bool_)
-            print 'starting to find' 
-            while sum(found_vtxs) != len(found_vtxs):
-                print 'num found: ' + str(sum(found_vtxs))
-                closest_xs = array([Inf]*len(vts)).astype(float)
-                closest_xsh = array(['.']*len(vts)).astype(str_)
-                for s in splines:
-                    xvals = s.closestXGivenY(vt_is, vt_ish)
-                    vt_ixs = xvals[0]
-                    vt_ixsh = xvals[1]
-                    
-                    isValid = vt_ixsh!=array(['.']*len(vts))
-                    isSmaller = vt_ixs<closest_xs
-                    
-                    closest_xs[isValid*isSmaller] = vt_ixs[isValid*isSmaller]
-                    closest_xsh[isValid*isSmaller] = vt_ixsh[isValid*isSmaller]
-                    print 'printing closest xs'
-                    print vt_ixs
-                    print [isValid, isSmaller]
-                    print closest_xs
+            splines_xs = [] # stores the roi's splines
+            for i in range(len(splines)):
+                splines_xs.append(splines[i].allSplineXsGivenY(vtx_is)) # gets all the splines' x-values for each y-value in the line we're checking
 
-                for s in splines:
-                    s.plotSpline()
-                    plot(vt_ixs, y0s, 'b+')
-                plot(vts[:,0], y0s, 'r+')
-                show()
+            small_vts = vts[~found_vtxs,:]
+            small_vts_inside_region = vts_inside_region[~found_vtxs]
+            small_found_vtxs = found_vtxs[~found_vtxs]
 
-                found_vtxs = vts[:,0]<closest_xs
-                print 'printing vts'
-                print vts[:,0]
-                print ~found_vtxs
-                vts_inside_region[~found_vtxs] = ones((len(vts)))[~found_vtxs] - vts_inside_region[~found_vtxs]
-                vt_is[~found_vtxs] = array([closest_xs[~found_vtxs], y0s[~found_vtxs]]).T
-                vt_ish[~found_vtxs] = closest_xsh[~found_vtxs]
-                print vt_is
+            # keeps stretching the vertical line to the right until all the points find their original vertex again
+            while sum(small_found_vtxs) != len(small_found_vtxs):
+                closest_xs = Inf*ones(vtx_is.shape[0]) # starting marker for all vts are at Inf
+
+                for spline_i_xs in splines_xs:
+                    if len(spline_i_xs.shape) == 1: # Line splines
+                        isGreaterThanVtx = spline_i_xs > vtx_is[:,0]
+                        isLessThanClosestX = spline_i_xs < closest_xs
+                        closest_xs[isGreaterThanVtx*isLessThanClosestX] = spline_i_xs[isGreaterThanVtx*isLessThanClosestX]
+                    else: # all other splines
+                        for j in range(spline_i_xs.shape[1]):
+                            isGreaterThanVtx = spline_i_xs[:,j] > vtx_is[:,0]
+                            isLessThanClosestX = spline_i_xs[:,j] < closest_xs
+                            closest_xs[isGreaterThanVtx*isLessThanClosestX] = spline_i_xs[isGreaterThanVtx*isLessThanClosestX,j]
+
+                # checks if it's found the boundary or the original vertex
+                # it forgets about all the points in the line who've found their original vertex
+                # if it found a boundary, then flip the 'inside' flag to 'outside', and vice versa
+                small_found_vtxsx = small_vts[~small_found_vtxs,0]<closest_xs
+                small_found_vtxs[~small_found_vtxs] = small_found_vtxsx
+
+                small_vts_inside_region[~small_found_vtxs] = True - small_vts_inside_region[~small_found_vtxs]
+                vtx_is[~small_found_vtxsx,0] = closest_xs[~small_found_vtxsx]
+                vtx_is = vtx_is[~small_found_vtxsx,:]
+
+                for i in range(len(splines_xs)):
+                    if len(splines_xs[i].shape) == 1:
+                        splines_xs[i] = splines_xs[i][~small_found_vtxsx]
+                    else:
+                        splines_xs[i] = splines_xs[i][~small_found_vtxsx,:]
+
+            vts_inside_region[~found_vtxs] = small_vts_inside_region # reverts shape back from small bounding box to whole brain shape
 
             if sum(vts_inside_region) == len(vts_inside_region):
                 break
-        print 'found all'
 
-        for i in range(len(vts)):
-            vt = vts[i,:]
-            if vts_inside_region[i]:
-                print vt
-                plt.axis('equal')
-                for splines in all_splines:
-                    for sp in splines:
-                        sp.plotSpline()
-
-                plt.plot(vt[0], vt[1], 'r+')
-                plt.xlim([min(vt[0],min([float(sp_i.smallestX()) for sp_i in splines])) - 5,
-                          max(vt[0],max([float(sp_i.biggestX()) for sp_i in splines])) + 5])
-                plt.ylim([min(vt[1],min([float(sp_i.smallestY()) for sp_i in splines])) - 5,
-                          max(vt[1],max([float(sp_i.biggestY()) for sp_i in splines])) + 5])
-                plt.show()
-    
-        return vts_inside_region ## final return value
-        
-        '''
-        import Image
-        shadow = self.shadow
-        self.set(shadow=0)
-
-        state = dict()
-        for name, roi in list(self.rois.items()):
-            #Store what the ROI style so we can restore
-            state[name] = dict(linewidth=roi.linewidth, roifill=roi.roifill, hide=roi.hide)
-            if name == roiname:
-                roi.set(linewidth=0, roifill=(0,0,0,1), hide=False)
-            else:
-                roi.set(hide=True)
-        
-        im = self.get_texture(self.svgshape[1], labels=False, bits=8)
-        imdat = np.array(Image.open(im))[::-1]
-        idx = (self.tcoords*(np.array(self.svgshape)-1)).round().astype(int)[:,::-1]
-        roiidx = np.nonzero(imdat[tuple(idx.T)] == 1)[0]
-
-        #restore the old roi settings
-        for name, roi in list(self.rois.items()):
-            roi.set(**state[name])
-
-        self.set(shadow=shadow)
-        return roiidx
-        '''
+        return vts_inside_region # final output of whether or not each brain vertex is within the specified roi
     
     @property
     def names(self):
