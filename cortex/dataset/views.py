@@ -162,16 +162,13 @@ class Dataview(object):
         if not isinstance(cmap, list):
             cmap = [cmap]
 
-        try:
-            if len(data) == 1:
-                xfm = None if xfmname is None else xfmname[0]
-                return _from_hdf_view(node.file, data[0], xfmname=xfm, cmap=cmap[0], description=desc, 
-                    vmin=vmin[0], vmax=vmax[0], state=state, **attrs)
-            else:
-                views = [_from_hdf_view(node.file, d, xfmname=x) for d, x in zip(data, xfname)]
-                raise NotImplementedError
-        except:
-            warnings.warn("Could not load view '%s'"%node.name)
+        if len(data) == 1:
+            xfm = None if xfmname is None else xfmname[0]
+            return _from_hdf_view(node.file, data[0], xfmname=xfm, cmap=cmap[0], description=desc, 
+                vmin=vmin[0], vmax=vmax[0], state=state, **attrs)
+        else:
+            views = [_from_hdf_view(node.file, d, xfmname=x) for d, x in zip(data, xfname)]
+            raise NotImplementedError
 
     def _write_hdf(self, h5, name="data", data=None, xfmname=None):
         views = h5.require_group("/views")
