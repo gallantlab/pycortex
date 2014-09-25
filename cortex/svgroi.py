@@ -426,7 +426,7 @@ class ROIpack(object):
 
             splines_xs = [] # stores the roi's splines
             for i in range(len(splines)):
-                splines_xs.append(splines[i].allSplineXsGivenY(vtx_is)) # gets all the splines' x-values for each y-value in the line we're checking
+                splines_xs.append(splines[i].allSplineXGivenY(vtx_is)) # gets all the splines' x-values for each y-value in the line we're checking
 
             small_vts = vts[~found_vtxs,:]
             small_vts_inside_region = vts_inside_region[~found_vtxs]

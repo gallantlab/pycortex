@@ -2,15 +2,12 @@ from pylab import *
 import math
 import time
 
-## note: even though using pylab, still need to specify plt.plot() becuase plot() may
-## conflict with a sympy function                                                                                                                                                  
-
 class LineSpline:
     def __init__(self, start, end):
         self.s = start
         self.e = end
 
-    def allSplineXsGivenY(self, vts):
+    def allSplineXGivenY(self, vts):
         # linear function t*s + (1-t)*e = vt_i
         # solve for t given y-coords, find closest x-coord
 
@@ -22,7 +19,7 @@ class LineSpline:
         a = s[1] - e[1]
         b = e[1] - vts[:,1]
         
-
+        # params for the single root
         t = nan
         if isHorizLine:
             t = -1*ones(vts.shape[0])
@@ -37,18 +34,17 @@ class LineSpline:
 
         closest_xs = Inf*ones(vts.shape[0])
 
+        # ensure it's within the spline's piecewise region   
         isValid = (0<=t)*(t<=1)
         x_ts = t*s[0] + (1-t)*e[0]
         
-        #spline_h = self.getSplineHash()
-        #x_tsh = array([i+spline_h for i in x_ts.astype(str_)]).astype(str_) #calculated points' hash array
         isClosest = (x_ts-vts[:,0]>0)*isValid
         closest_xs[isClosest] = x_ts[isClosest]
 
         return closest_xs
 
 
-    def allSplineYsGivenX(self, vts):
+    def allSplineYGivenX(self, vts):
         # linear function t*s + (1-t)*e = vt_i
         # solve for t given x-coords, find closest y-coord
 
@@ -59,7 +55,8 @@ class LineSpline:
 
         a = s[0] - e[:,0]
         b = e[0] - vts[:,0]
-        
+
+        # params for the single root  
         t = nan
         if isVertLine:
             t = -1*ones(vts.shape[0])
@@ -74,11 +71,10 @@ class LineSpline:
 
         closest_ys = Inf*ones(vts)
 
+        # ensure it's within the spline's piecewise region
         isValid = (0<=t)*(t<=1)
         y_ts = t*s[1] + (1-t)*e[1]
         
-        #spline_h = self.getSplineHash()
-        #y_tsh = array([i+spline_h for i in y_ts.astype(str_)]).astype(str_) #calculated points' hash array            
         isClosest = (y_ts-vts[:,1]>0)*isValid
         closest_ys[isClosest] = y_ts[isClosest]
         return closest_ys
@@ -95,7 +91,7 @@ class LineSpline:
     def biggestY(self):
          return max(self.s[1], self.e[1])
 
-    def getSplineHash(self):
+    def toString(self):
         s = self.s
         e = self.e
 
@@ -130,7 +126,7 @@ class QuadBezSpline:
         self.c = ctl
         self.e = end
 
-    def allSplineXsGivenY(self, vts):
+    def allSplineXGivenY(self, vts):
         # quadtric function a*t^2 + b*t + c = 0, using vt_iy
         # solve for t given a,b,c, use it to find closest x to the right of vt
         # coeffs are derived from the quad bez formua
@@ -142,35 +138,26 @@ class QuadBezSpline:
         a = s[1] - 2*c[1] + e[1]
         b = 2*c[1] - 2*s[1]
         c = s[1] - vts[:,1]
-        t1 = (-b + (b*b - 4*a*c)**.5)/(2*a)
+
+        # params for the two roots
+        t1 = (-b + (b*b - 4*a*c)**.5)/(2*a) 
         t2 = (-b - (b*b - 4*a*c)**.5)/(2*a)
-        #ts = [t1, t2]
 
         closest_xs = Inf*ones((vts.shape[0],2))
 
+        # ensure they're within the spline's piecewise region
         isValid1 = (0<=t1)*(t1<=1)
         isValid2 = (0<=t2)*(t2<=1)
+
         x_t1 = ((1-t1)**2)*s[0] + 2*(1-t1)*t1*c[0] + t1*t1*e[0]
         x_t2 = ((1-t2)**2)*s[0] + 2*(1-t2)*t2*c[0] + t2*t2*e[0]
 
         closest_xs[isValid1,0] = x_t1[isValid1]
         closest_xs[isValid2,1] = x_t2[isValid2]
-        '''
-        #closest_xsh = array(['.']*len(vts)).astype(str_)
-        for t in ts:
-            isValid = (0<=t)*(t<=1)
-            x_ts = ((1-t)**2)*s[0] + 2*(1-t)*t*c[0] + t*t*e[0]
-
-            #spline_h = self.getSplineHash()
-            #x_tsh = array([i+spline_h for i in x_ts.astype(str_)]).astype(str_) #calculated points' hash array
-            isClosest = (x_ts < closest_xs)*(x_ts-vts[:,0]>0)*isValid
-            closest_xs[isClosest] = x_ts[isClosest]
-            closest_xsh[isClosest] = x_tsh[isClosest]
-        '''
 
         return closest_xs
 
-    def allSplineYsGivenX(self, vts):
+    def allSplineYGivenX(self, vts):
         # quadtric function a*t^2 + b*t + c = 0, using vt_iy
         # solve for t given a,b,c, use it to find closest y above vt
         # coeffs are derived from the quad bez formua                                                                 
@@ -182,33 +169,23 @@ class QuadBezSpline:
         a = s[0] - 2*c[0] + e[0]
         b = 2*c[0] - 2*s[0]
         c = s[0] - vts[:,0]
+
+        # params for the two roots  
         t1 = (-b + (b*b - 4*a*c)**.5)/(2*a)
         t2 = (-b - (b*b - 4*a*c)**.5)/(2*a)
-        #ts = [t1, t2]
 
         closest_ys = Inf*ones((vts.shape[0],2))
 
+        # ensure they're within the spline's piecewise region   
         isValid1 = (0<=t1)*(t1<=1)
         isValid2 = (0<=t2)*(t2<=1)
+
         y_t1 = ((1-t1)**2)*s[1] + 2*(1-t1)*t1*c[1] + t1*t1*e[1]
         y_t2 = ((1-t2)**2)*s[1] + 2*(1-t2)*t2*c[1] + t2*t2*e[1]
 
         closest_ys[isValid1,0] = y_t1[isValid1]
         closest_ys[isValid2,1] = y_t2[isValid2]
 
-        '''
-        closest_ys = Inf*ones(vts.shape[0])
-        #closest_xsh = array(['.']*len(vts)).astype(str_)
-        for t in ts:
-            isValid = (0<=t)*(t<=1)
-            y_ts = ((1-t)**2)*s[1] + 2*(1-t)*t*c[1] + t*t*e[1]
-
-            #spline_h = self.getSplineHash()
-            #y_tsh = array([i+spline_h for i in y_ts.astype(str_)]).astype(str_) #calculated points' hash array        
-            isClosest = (y_ts < closest_ys)*(y_ts-vts[:,1]>0)*isValid
-            closest_ys[isClosest] = x_ts[isClosest]
-            closest_ysh[isClosest] = x_tsh[isClosest]
-        '''
         return closest_ys
 
     def smallestX(self):
@@ -228,7 +205,7 @@ class QuadBezSpline:
         self.c += ref
         self.e += ref
 
-    def getSplineHash(self):
+    def toString(self):
         s = self.s
         c = self.c
         e = self.e
@@ -263,15 +240,12 @@ class CubBezSpline:
         self.c2 = ctl2
         self.e = end
 
-    def allSplineXsGivenY(self, vts):
+    def allSplineXGivenY(self, vts):
         # cubic function a*t^3 + b*t^2 + c*t + d = 0, using vt_iy
         # solve for t given a,b,c,d, use it to find closest x to the right of vt
         # the coeffs are derived from cubic bez formula
         # based on computationally safe precision variant of Cardano's method from this link:
         # https://www.e-education.psu.edu/png520/m11_p6.html
-
-
-        #print 'cub bez closestxgiveny'
 
         s = self.s
         c1 = self.c1
@@ -292,7 +266,7 @@ class CubBezSpline:
         Q = (a**2 - 3.0*b)/9.0
         R = (2.0*a**3 - 9.0*a*b + 27.0*c)/54.0
         M = R**2 - Q**3
-        #print max(M)
+        
         isMPos = M>0
         isMPos = array([isMPos]).T
         
@@ -317,12 +291,15 @@ class CubBezSpline:
         ts2[isNaNts2] = 0
 
         ts = ts1 + ts2
+
+        # params for the three roots
         t1 = ts[:,0]
         t2 = ts[:,1]
         t3 = ts[:,2]
 
         closest_xs = Inf*ones((vts.shape[0],3))
 
+        # ensure they're within the spline's piecewise region   
         isValid1 = (0<=t1)*(t1<=1)
         isValid2 = (0<=t2)*(t2<=1)
         isValid3 = (0<=t3)*(t3<=1)
@@ -334,30 +311,10 @@ class CubBezSpline:
         closest_xs[isValid1,0] = x_t1[isValid1]
         closest_xs[isValid2,1] = x_t2[isValid2]
         closest_xs[isValid3,2] = x_t3[isValid3]
-        '''
-        #closest_xsh = array(['.']*len(vts)).astype(str_)
-        for i in range(ts.shape[1]):
-            t = real((ts[:,i]))
-            isValid = (0<=t)*(t<=1)
-            #print [min(t),max(t)]
-            x_ts = ((1-t)**3)*s[0] + 3*((1-t)**2)*t*c1[0] + 3*(1-t)*t*t*c2[0] + (t**3)*e[0]
-            
-            #spline_h = self.getSplineHash()
-            #x_tsh = array([j+spline_h for j in x_ts.astype(str_)]).astype(str_) #calculated points' hash array
-            
-            isClosest = (x_ts-vts[:,0]>0)*isValid*(x_ts < closest_xs)
-            #print x_ts
-            closest_xs[isClosest] = x_ts[isClosest]
-            #closest_xsh[isClosest] = x_tsh[isClosest]
 
-            closerthan = vts[(x_ts < closest_xs),:]
-            greaterthan = vts[(x_ts-vts[:,0]>0),:]
-            isvalid = vts[isValid,:]
-            isclosest = vts[isClosest,:]
-        '''
         return closest_xs
 
-    def allSplineYsGivenX(self, vts):
+    def allSplineYGivenX(self, vts):
         # cubic function a*t^3 + b*t^2 + c*t + d = 0, using vt_ix 
         # solve for t given a,b,c,d, use it to find closest y to the right of vt
         # the coeffs are derived from cubic bez formula
@@ -406,12 +363,15 @@ class CubBezSpline:
         ts2[isNaNts2] = 0
 
         ts = ts1 + ts2
+
+        # params for the three roots
         t1 = ts[:,0]
         t2 = ts[:,1]
         t3 = ts[:,2]
 
         closest_ys = Inf*ones((vts.shape[0],3))
 
+        # ensure they're within the spline's piecewise region   
         isValid1 = (0<=t1)*(t1<=1)
         isValid2 = (0<=t2)*(t2<=1)
         isValid3 = (0<=t3)*(t3<=1)
@@ -424,27 +384,6 @@ class CubBezSpline:
         closest_ys[isValid2,1] = y_t2[isValid2]
         closest_ys[isValid3,2] = y_t3[isValid3]
 
-        '''
-        closest_ys = Inf*ones(vts.shape[0])
-        #closest_ysh = array(['.']*len(vts)).astype(str_)
-        for i in range(ts.shape[1]):
-            t = real((ts[:,i]))
-            isValid = (0<=t)*(t<=1)
-            y_ts = ((1-t)**3)*s[1] + 3*((1-t)**2)*t*c1[1] + 3*(1-t)*t*t*c2[1] + (t**3)*e[1]
-
-            #spline_h = self.getSplineHash()
-            #y_tsh = array([j+spline_h for j in y_ts.astype(str_)]).astype(str_) #calculated points' hash array
-
-            isClosest = (y_ts-vts[:,1]>0)*isValid*(y_ts < closest_ys)
-
-            closest_ys[isClosest] = y_ts[isClosest]
-            closest_ysh[isClosest] = y_tsh[isClosest]
-
-            closerthan = vts[(y_ts < closest_ys),:]
-            greaterthan = vts[(y_ts-vts[:,1]>0),:]
-            isvalid = vts[isValid,:]
-            isclosest = vts[isClosest,:]
-        '''
         return closest_ys
 
     def smallestX(self):
@@ -465,7 +404,7 @@ class CubBezSpline:
         self.c2 += ref
         self.e += ref
 
-    def getSplineHash(self):
+    def toString(self):
         s = self.s
         c1 = self.c1
         c2 = self.c2
@@ -494,8 +433,6 @@ class CubBezSpline:
         else:
             plt.plot(sp_pts[:,0], sp_pts[:,1], 'k.', linewidth=3)
 
-        #cds = array([s,c1,c2,e])
-        #plt.plot(cds[:,0], cds[:,1], 'k.', linewidth=1)
 
 class ArcSpline: ### INCOMPLETE. DO NOT USE.
     def __init__(self, start, radx, rady, x_rotation, large_arc_flag, sweep_flag, end):
@@ -507,7 +444,7 @@ class ArcSpline: ### INCOMPLETE. DO NOT USE.
         self.sf = sweep_flag
         self.e = end
 
-    def allSplineXsGivenY(self, vt_i, vt_ih):
+    def allSplineXGivenY(self, vt_i, vt_ih):
         s = self.s
         rx = self.rx
         ry = self.ry
