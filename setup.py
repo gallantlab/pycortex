@@ -11,6 +11,7 @@ except ImportError:
 
 if len(set(('develop', 'bdist_egg', 'bdist_rpm', 'bdist', 'bdist_dumb',
             'bdist_wininst', 'install_egg_info', 'egg_info', 'easy_install',
+            'test',
             )).intersection(sys.argv)) > 0:
     # This formulation is taken from nibabel.
     # "setup_egg imports setuptools setup, thus monkeypatching distutils."
@@ -83,7 +84,8 @@ setup(name='pycortex',
       package_data={
             'cortex':[ 
                 'svgbase.xml',
-                'defaults.cfg'
+                'defaults.cfg',
+                'bbr.sch'
             ],
             'cortex.webgl': [
                 '*.html', 
@@ -96,8 +98,9 @@ setup(name='pycortex',
                 'resources/images/*'
             ]
       },
-      requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>2.1)', 'shapely', 'html5lib'],
+      requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>3.1)', 'shapely', 'html5lib', 'h5py (>=2.3)', 'numexpr'],
       cmdclass=dict(install=my_install),
       include_package_data=True,
+      test_suite='nose.collector'
 )
 

@@ -132,6 +132,7 @@ Transforms from anatomical space to functional space are notoriously tricky. Aut
     from cortex import surfs
     surfs.loadXfm(subject, xfmname, xfm, xfmtype='magnet', reference='path_to_functional.nii')
 
+.. _database-masks:
 
 Masks
 ^^^^^

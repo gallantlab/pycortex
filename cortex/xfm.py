@@ -59,19 +59,54 @@ class Transform(object):
     def save(self, subject, name, xfmtype="magnet"):
         if self.reference is None:
             raise ValueError('Cannot save reference-free transforms into the database')
-        from .db import surfs
-        surfs.loadXfm(subject, name, self.xfm, xfmtype=xfmtype, reference=self.reference.get_filename())
+        from .database import db
+        db.save_xfm(subject, name, self.xfm, xfmtype=xfmtype, reference=self.reference.get_filename())
 
     @classmethod
-    def from_fsl(cls, xfm, infile, reffile):
+    def from_fsl(cls, xfm, func_nii, anat_nii):
+        """Converts an fsl transform to a pycortex transform.
+
+        Converts a transform computed using FSL's FLIRT to a transform ("xfm") object in pycortex.
+        The transform must have been computed FROM the nifti volume specified in `func_nii` TO the 
+        volume specified in `anat_nii` (See Notes below).
+
+        Parameters
+        ----------
+        xfm : array
+            4x4 transformation matrix, loaded from an FSL .mat file, for a transform computed 
+            FROM the func_nii volume TO the anat_nii volume.
+        anat_nii : str or nibabel.Nifti1Image
+            nibabel image object (or path to nibabel-readable image) for anatomical volume from 
+            which cortical surface was created
+        func_nii : str or nibabel.Nifti1Image
+            nibabel image object (or string path to nibabel-readable image) for (functional) data volume 
+            to be projected onto cortical surface
+
+        Returns
+        -------
+        xfm : cortex.xfm.Transform object
+            A pycortex COORD transform. 
+
+        Notes
+        -----
+        The transform is assumed to be computed FROM the functional data TO the anatomical data.
+        In FSL speak, that means that the arguments to flirt should have been:
+        flirt -in <func_nii> -ref <anat_nii> ...
+
         """
-        Converts fsl transform xfm (estimated FROM infile TO reffile) 
-        to a pycortex COORD transform. 
-        """
-        ## Adapted from dipy.external.fsl.flirt2aff#############################
+        ## -- Adapted from dipy.external.fsl.flirt2aff -- ##
         import nibabel
         import numpy.linalg as npl
-        
+        inv = npl.inv
+
+        # Internally, pycortex computes the OPPOSITE transform: from anatomical volume to functional volume. 
+        # Thus, assign anat to "infile" (starting point for transform)
+        infile = anat_nii
+        # Assign func to "reffile" (end point for transform)
+        reffile = func_nii
+        # and invert the usual direction (change from func>anat to anat>func)
+        xfm = inv(xfm)
+
         try:
             inIm = nibabel.load(infile)
         except AttributeError:
@@ -92,21 +127,40 @@ class Transform(object):
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
         inAffine = inIm.get_affine()
-        inv = np.linalg.inv
+        
         coord = np.dot(inv(refspace),np.dot(xfm,np.dot(inspace,inv(inAffine))))
         return cls(coord, refIm)
 
-    def to_fsl(self, infile):
-        """
-        Converts a pycortex transform to an FSL transform.
-        The resulting FSL transform goes FROM the space of the "infile" input
-        TO the space of the reference nifti stored in the pycortex transform.
+    def to_fsl(self, anat_nii, direction='func>anat'):
+        """Converts a pycortex transform to an FSL transform.
 
-        This should ONLY be used for "coord" transforms! Will fail hard for 
-        "magnet" transforms!
+        Uses the stored "reference" file provided when the transform was created (usually 
+        a functional data or statistical volume) and the supplied anatomical file to 
+        create an FSL transform. By default, returns the transform FROM the refernce volume
+        (usually the functional data volume) to the anatomical volume (`anat_nii` input). 
+
+        Parameters
+        ----------
+        anat_nii : str or nibabel.Nifti1Image
+            nibabel image object (or path to nibabel-readable image) for anatomical volume from 
+            which cortical surface was created
+
+        direction : str, optional {'func>anat', 'anat>func'}
+            Direction of transform to return. Defaults to 'func>anat'
+
+        Notes
+        -----
+        This function will only work for "coord" transform objects, (those retrieved with 
+        cortex.db.get_xfm(xfmtype='coord',...)). It will fail hard for "magnet" transforms!
+
         """
         import nibabel
         import numpy.linalg as npl
+        inv = npl.inv
+        ## -- Internal notes -- ## 
+        # pycortex transforms are internally stored as anatomical space -> functional data space
+        # transforms. Thus the anatomical file is the "infile" in FSL-speak.
+        infile = anat_nii
 
         try:
             inIm = nibabel.load(infile)
@@ -128,9 +182,12 @@ class Transform(object):
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
         inAffine = inIm.get_affine()
-        inv = np.linalg.inv
+        
         fslx = np.dot(refspace,np.dot(self.xfm,np.dot(inAffine,inv(inspace))))
-        return fslx
+        if direction=='func>anat':
+            return inv(fslx)
+        elif direction=='anat>func':
+            return fslx
 
 def isstr(obj):
     """Check for stringy-ness in python 2.7 or 3"""

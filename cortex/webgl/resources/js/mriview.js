@@ -5,6 +5,8 @@ var mriview = (function(module) {
     
     var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
 
+    module.flatscale = .35;
+
     module.Viewer = function(figure) { 
         jsplot.Axes.call(this, figure);
         //Initialize all the html
@@ -56,7 +58,7 @@ var mriview = (function(module) {
         this.surfs[idx].apply(idx);
         this.renderer.render(scene, this.camera);
     }
-    
+
     module.Viewer.prototype.getState = function(state) {
         switch (state) {
             case 'mix':
@@ -77,6 +79,23 @@ var mriview = (function(module) {
                 return [t.x, t.y, t.z];
             case 'depth':
                 return this.uniforms.thickmix.value;
+            case 'visL':
+                return this.meshes.left.visible;
+            case 'visR':
+                return this.meshes.right.visible;
+            case 'rotationL':
+                var rot = this.meshes.left.rotation
+                return [rot.x,rot.y,rot.z];
+            case 'rotationR':
+                var rot = this.meshes.right.rotation
+                return [rot.x,rot.y,rot.z];
+            case 'alpha':
+                return this.renderer.getClearAlpha;
+            case 'projection':
+                if (this.camera.inOrthographicMode) {
+                    return 'orthographic'}
+                else if (this.camera.inPerspectiveMode) {
+                    return 'perspective'}
         };
     };
     module.Viewer.prototype.setState = function(state, value) {
@@ -86,7 +105,8 @@ var mriview = (function(module) {
             case 'pivot':
                 return this.setPivot(value);
             case 'frame':
-                return this.setFrame(value);
+                this.setFrame(value);
+                return this.figure.notify("setFrame", this, [value]);
             case 'azimuth':
                 return this.controls.setCamera(value);
             case 'altitude':
@@ -98,9 +118,163 @@ var mriview = (function(module) {
                 return this.controls.target.set(value[0], value[1], value[2]);
             case 'depth':
                 return this.uniforms.thickmix.value = value;
+            case 'visL':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.left.visible = value;
+            case 'visR':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.right.visible = value;
+            case 'rotationL':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.left.rotation.set(value[0], value[1], value[2]);
+            case 'rotationR':
+                if (this.roipack) this.roipack._updatemove = true;
+                return this.meshes.right.rotation.set(value[0], value[1], value[2]);
+            case 'alpha':
+                return this.renderer.setClearColor(0,value);
+            case 'data':
+                return this.setData(value)
+            case 'labels':
+                return this.labelshow = value;
+            case 'projection':
+                if (value=='perspective'){
+                    return this.controls.camera.toPerspective()}
+                else if (value=='orthographic'){
+                    return this.controls.camera.toOrthographic()}
         };
     };
-    
+    module.Viewer.prototype.reset_view = function(center, height) {
+        var asp = this.flatlims[1][0] / this.flatlims[1][1];
+        var camasp = height !== undefined ? asp : this.camera.cameraP.aspect;
+        var size = [module.flatscale*this.flatlims[1][0], module.flatscale*this.flatlims[1][1]];
+        var min = [module.flatscale*this.flatlims[0][0], module.flatscale*this.flatlims[0][1]];
+        var xoff = center ? 0 : size[0] / 2 - min[0];
+        var zoff = center ? 0 : size[1] / 2 - min[1];
+        var h = size[0] / 2 / camasp;
+        h /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
+        this.controls.target.set(xoff, this.flatoff[1], zoff);
+        this.controls.setCamera(180, 90, h);
+        this.setMix(1);
+        this.setShift(0);
+    };
+    module.Viewer.prototype.update_volvis = function() {
+        for (var i = 0; i < 3; i++) {
+            this.planes[i].update();
+            this.planes[i].mesh.visible = $("#volvis").prop("checked");
+        }
+        this.schedule();
+    };
+    module.Viewer.prototype.update_leftvis = function() {
+        this.meshes.left.visible = $("#leftvis").prop("checked");
+        this.schedule();
+    };
+    module.Viewer.prototype.update_rightvis = function() {
+        this.meshes.right.visible = $("#rightvis").prop("checked");
+        this.schedule();
+    };
+    module.Viewer.prototype.update_projection = function() {
+        if ($("#projpersp").prop("checked")) {
+            this.setState("projection", "perspective");
+        } else {
+            this.setState("projection", "orthographic");
+        }
+        this.schedule();
+    };
+    // module.Viewer.prototype.saveflat = function(height, posturl) {
+    //     var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
+    //     var roistate = $(this.object).find("#roishow").attr("checked");
+    //     this.screenshot(width, height, function() { 
+    //         this.reset_view(false, height); 
+    //         $(this.object).find("#roishow").attr("checked", false);
+    //         $(this.object).find("#roishow").change();
+    //     }.bind(this), function(png) {
+    //         $(this.object).find("#roishow").attr("checked", roistate);
+    //         $(this.object).find("#roishow").change();
+    //         this.controls.target.set(0,0,0);
+    //         this.roipack.saveSVG(png, posturl);
+    //     }.bind(this));
+    // }; 
+    module.Viewer.prototype.setMix = function(val) {
+        var num = this.meshes.left.geometry.morphTargets.length;
+        var flat = num - 1;
+        var n1 = Math.floor(val * num)-1;
+        var n2 = Math.ceil(val * num)-1;
+
+        for (var h in this.meshes) {
+            var hemi = this.meshes[h];
+            if (hemi !== undefined) {
+                for (var i=0; i < num; i++) {
+                    hemi.morphTargetInfluences[i] = 0;
+                }
+
+                if (this.flatlims !== undefined)
+                    this.uniforms.hide_mwall.value = (n2 == flat);
+
+                hemi.morphTargetInfluences[n2] = (val * num)%1;
+                if (n1 >= 0)
+                    hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
+            }
+        }
+        if (this.flatlims !== undefined) {
+            this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
+            this.setPivot(this._pivot);
+            this.update_spec();
+            if (n2 == flat) {
+                for (var i = 0; i < 3; i++) {
+                    this.planes[i].update();
+                    this.planes[i].mesh.visible = false;
+                }
+                $("#volvis").attr("disabled", true);
+            } else {
+                $("#volvis").removeAttr("disabled");
+                this.update_volvis();
+            }
+        }
+        $(this.object).find("#mix").slider("value", val);
+        
+        this.dispatchEvent({type:"mix", flat:this.flatmix, mix:val});
+        this.figure.notify("setmix", this, [val]);
+        this.schedule();
+    }; 
+    module.Viewer.prototype.setPivot = function (val, fromuser) {
+        this._pivot = val;
+        val = this.flatmix * 180 + (1-this.flatmix) * this._pivot;
+        $(this.object).find("#pivot").slider("option", "value", val);
+        var names = {left:1, right:-1};
+        var frac = Math.abs(val/180) * (1-this.flatmix);
+        if (val > 0) {
+            for (var name in names) {
+                this.pivot[name].front.rotation.z = 0;
+                this.pivot[name].back.rotation.z = val*Math.PI/180 * names[name]/ 2;
+                // Move hemispheres so that focus stays at center
+                this.pivot[name].back.position.y = frac * this.meshes.right.geometry.boundingBox.min.y + ((1-frac) * this.pivot[name].back.orig_position.y);
+
+            }
+        } else {
+            for (var name in names) {
+                this.pivot[name].back.rotation.z = 0;
+                // Make sure back position is reset before front pivoting
+                this.pivot[name].back.position.y = this.pivot[name].back.orig_position.y;
+                this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
+
+                // Move hemispheres so that focus stays at center
+                this.pivot[name].front.position.y = frac * (this.meshes.right.geometry.boundingBox.max.y - this.pivot[name].front.orig_position.y) + ((1-frac) * this.pivot[name].front.orig_position.y);
+            }
+        }
+        this.figure.notify("setpivot", this, [val]);
+        this.schedule();
+    };
+    module.Viewer.prototype.setShift = function(val) {
+        this.pivot.left.front.position.x = -val;
+        this.pivot.right.front.position.x = val;
+        this.figure.notify('setshift', this, [val]);
+        this.schedule();
+    };
+    module.Viewer.prototype.update_spec = function() {
+        var s = this.specular * (1 - this.flatmix);
+        this.uniforms.specular.value.set(s, s, s);
+    };
+
     module.Viewer.prototype.addData = function(data) {
         if (!(data instanceof Array))
             data = [data];
@@ -179,9 +353,12 @@ var mriview = (function(module) {
             $(this.object).find("#vrange").slider("option", {min: this.active.data[0].min, max:this.active.data[0].max});
             if (this.active.data.length > 1) {
                 $(this.object).find("#vrange2").slider("option", {min: this.active.data[1].min, max:this.active.data[1].max});
+                this.setVminmax(this.active.vmin[0], this.active.vmax[0], 0);
+                this.setVminmax(this.active.vmin[1], this.active.vmax[1], 1);
                 $(this.object).find("#vminmax2").show();
             } else {
                 $(this.object).find("#vminmax2").hide();
+                this.setVminmax(this.active.vmin, this.active.vmax, 0);
             }
 
             if (this.active.data[0].movie) {
@@ -203,6 +380,7 @@ var mriview = (function(module) {
             } else {
                 $(this.object).find("#moviecontrols").hide();
                 $(this.object).find("#bottombar").removeClass("bbar_controls");
+                this.active.set(this.uniforms, 0);
             }
             $(this.object).find("#datasets li").each(function() {
                 if ($(this).text() == name)
@@ -235,12 +413,8 @@ var mriview = (function(module) {
         });
         if (dir === undefined)
             dir = 1
-        if (this.colormap.image.height > 8) {
-            var idx = (i + dir * 2).mod(datasets.length);
-            this.setData(datasets.slice(idx, idx+2));
-        } else {
-            this.setData([datasets[(i+dir).mod(datasets.length)]]);
-        }
+
+        this.setData([datasets[(i+dir).mod(datasets.length)]]);
     };
     module.Viewer.prototype.rmData = function(name) {
         delete this.datasets[name];
@@ -282,8 +456,59 @@ var mriview = (function(module) {
         $(this.object).find(range).slider("values", [vmin, vmax]);
         $(this.object).find(min).val(vmin);
         $(this.object).find(max).val(vmax);
-        this.active.setVminmax(vmin, vmax, dim);
+
+        if (this.active.vmin instanceof Array) {
+            this.active.vmin[dim] = vmin;
+            this.active.vmax[dim] = vmax;
+        } else {
+            this.active.vmin = vmin;
+            this.active.vmax = vmax;
+        }
+
         this.schedule();
+    };
+
+    module.Viewer.prototype.startCmapSearch = function() {
+        var sr = $(this.object).find("#cmapsearchresults"),
+        cm = $(this.object).find("#colormap"),
+        sb = $(this.object).find("#cmapsearchbox"),
+        v = this;
+
+        sb.val("");
+        sb.css("width", cm.css("width"));
+        sb.css("height", cm.css("height"));
+        sr.show();
+        sb.keyup(function(e) {
+            if (e.keyCode == 13) { // enter
+                try {this.setColormap($(sr[0]).find(".selected_sr input")[0].value);}
+                finally {this.stopCmapSearch();}
+            } if (e.keyCode == 27) { // escape
+                this.stopCmapSearch();
+            }
+            var value = sb[0].value.trim();
+            sr.empty();
+            if (value.length > 0) {
+                for (var k in this.cmapnames) {
+                    if (k.indexOf(value) > -1) {
+                        sr.append($($(this.object).find("#colormap li")[this.cmapnames[k]]).clone());
+                    }
+                }
+                $(sr[0].firstChild).addClass("selected_sr");
+                sr.children().mousedown(function() {
+                    try {v.setColormap($(this).find("input")[0].value);}
+                    finally {v.stopCmapSearch();}
+                });
+            }
+        }.bind(this)).show();
+        sb.focus();
+        sb.blur(function() {this.stopCmapSearch();}.bind(this));
+    };
+
+    module.Viewer.prototype.stopCmapSearch = function() {
+        var sr = $(this.object).find("#cmapsearchresults"),
+        sb = $(this.object).find("#cmapsearchbox");
+        sr.hide().empty();
+        sb.hide();
     };
 
     module.Viewer.prototype.setFrame = function(frame) {
@@ -346,6 +571,8 @@ var mriview = (function(module) {
             _bound = true;
             window.addEventListener( 'keydown', function(e) {
                 btnspeed = 0.5;
+                if (e.target.tagName == "INPUT" && e.target.type == "text")
+                    return;
                 if (e.keyCode == 32) {         //space
                     if (this.active.data[0].movie)
                         this.playpause();
@@ -363,13 +590,21 @@ var mriview = (function(module) {
             }.bind(this));
         }
         window.addEventListener( 'keydown', function(e) {
-            if (e.target.tagName == "INPUT")
+            if (e.target.tagName == "INPUT" && e.target.type == "text")
                 return;
             if (e.keyCode == 107 || e.keyCode == 187) { //+
                 this.nextData(1);
             } else if (e.keyCode == 109 || e.keyCode == 189) { //-
                 this.nextData(-1);
+            } else if (e.keyCode == 68) { //d
+                if (this.uniforms.dataAlpha.value < 1)
+                    this.uniforms.dataAlpha.value = 1;
+                else
+                    this.uniforms.dataAlpha.value = 0;
+                this.schedule();
             } else if (e.keyCode == 76) { //l
+                var box = $(this.object).find("#labelshow");
+                box.attr("checked", box.attr("checked") == "checked" ? null : "checked");
                 this.labelshow = !this.labelshow;
                 this.schedule();
                 e.stopPropagation();
@@ -412,6 +647,9 @@ var mriview = (function(module) {
                     this.schedule();
                 }.bind(this)
             });
+            $(this.object).find("#cmapsearch").click(function() {
+                this.startCmapSearch();
+            }.bind(this));
 
             $(this.object).find("#vrange").slider({ 
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1],
@@ -461,48 +699,68 @@ var mriview = (function(module) {
                 this.schedule();
             }.bind(this));            
         }
-        /*
-        var updateROIs = function() {
+
+        // Setup controls for multiple overlays
+        var updateOverlays = function() {
             this.roipack.update(this.renderer).done(function(tex){
                 this.uniforms.map.texture = tex;
                 this.schedule();
             }.bind(this));
         }.bind(this);
-        $(this.object).find("#roi_linewidth").slider({
-            min:.5, max:10, step:.1, value:3,
-            change: updateROIs,
-        });
-        $(this.object).find("#roi_linealpha").slider({
-            min:0, max:1, step:.001, value:1,
-            change: updateROIs,
-        });
-        $(this.object).find("#roi_fillalpha").slider({
-            min:0, max:1, step:.001, value:0,
-            change: updateROIs,
-        });
-        $(this.object).find("#roi_shadowalpha").slider({
-            min:0, max:20, step:1, value:4,
-            change: updateROIs,
-        });
-        $(this.object).find("#volview").change(this.toggle_view.bind(this));
-        $(this.object).find("#roi_linecolor").miniColors({close: updateROIs});
-        $(this.object).find("#roi_fillcolor").miniColors({close: updateROIs});
-        $(this.object).find("#roi_shadowcolor").miniColors({close: updateROIs});
 
-        var _this = this;
-        $(this.object).find("#roishow").change(function() {
-            if (this.checked) 
-                updateROIs();
-            else {
-                _this.uniforms.map.texture = this.blanktex;
+        for (var li=0; li<disp_layers.length; li++) {
+            var layername = disp_layers[li];
+
+            $(this.object).find("#"+layername+"_linewidth").slider({
+                min:.5, max:10, step:.1, 
+		value: disp_defaults[layername]['line_width'],
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_linealpha").slider({
+                min:0, max:1, step:.001, 
+		value: disp_defaults[layername]['line_alpha'],
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_fillalpha").slider({
+                min:0, max:1, step:.001, 
+		value: disp_defaults[layername]['fill_alpha'],
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_shadowalpha").slider({
+                min:0, max:20, step:1, value:4,
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_linecolor").miniColors({
+		close: updateOverlays,
+		defaultValue: disp_defaults[layername]['line_color']
+	    });
+            $(this.object).find("#"+layername+"_fillcolor").miniColors({
+		close: updateOverlays,
+		defaultValue: disp_defaults[layername]['fill_color']
+	    });
+            $(this.object).find("#"+layername+"_shadowcolor").miniColors({close: updateOverlays});
+
+            var _this = this;
+            $(this.object).find("#"+layername+"show").change(function() {
+                console.log("Toggling: " + "#"+$(this).attr("layername"));
+                var el = $(_this.roipack.svgroi).find("#"+$(this).attr("layername"));
+                if (this.checked)
+                    el.css('display','inline');
+                else
+                    el.css('display','none');
+
+                updateOverlays();
+            }).attr("layername", layername);
+
+            $(this.object).find("#"+layername+"labelshow").change(function() {
+                // this.labelshow = !this.labelshow;
+                _this.roipack.layer_label_visibility[$(this).attr("layername")] = this.checked;
+                _this.roipack.update_labels();
+                _this.roipack.labels.setMix(_this.flatmix);
                 _this.schedule();
-            }
-        });
-
-        $(this.object).find("#labelshow").change(function() {
-            this.labelshow = !this.labelshow;
-            this.schedule();
-        }.bind(this));
+            }).attr("layername", layername);
+        }
+        $(this.object).find("#overlay_fieldset").tabs();
 
         $(this.object).find("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
             this.uniforms.curvAlpha.value = ui.value;
@@ -520,6 +778,11 @@ var mriview = (function(module) {
             this.uniforms.dataAlpha.value = ui.value;
             this.schedule();
         }.bind(this)})
+        $(this.object).find("#layer_specularity").slider({ min:0, max:1, step:.001, value:this.specular, slide:function(event, ui) {
+            this.specular = ui.value;
+            this.update_spec();
+            this.schedule();
+        }.bind(this)})
         $(this.object).find("#layer_hatchalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
             this.uniforms.hatchAlpha.value = ui.value;
             this.schedule();
@@ -528,6 +791,12 @@ var mriview = (function(module) {
             this.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
             this.schedule();
         }.bind(this)});
+
+        $(this.object).find("#volvis").change(this.update_volvis.bind(this));
+        $(this.object).find("#leftvis").change(this.update_leftvis.bind(this));
+        $(this.object).find("#rightvis").change(this.update_rightvis.bind(this));
+        $(this.object).find("#projpersp").change(this.update_projection.bind(this));
+        $(this.object).find("#projortho").change(this.update_projection.bind(this));
 
         $(this.object).find("#voxline_show").change(function() {
             viewopts.voxlines = $(this.object).find("#voxline_show")[0].checked;
@@ -612,7 +881,7 @@ var mriview = (function(module) {
         var td, btn, name;
         td = document.createElement("td");
         btn = document.createElement("button");
-        btn.setAttribute("title", "Reset to fiducial view of the brain");
+        btn.setAttribute("title", "Reset to fiducial view of the brain (Hotkey: R)");
         btn.innerHTML = "Fiducial";
         td.setAttribute("style", "text-align:left;width:150px;");
         btn.addEventListener("click", function() {
@@ -641,7 +910,7 @@ var mriview = (function(module) {
             td = document.createElement("td");
             btn = document.createElement("button");
             btn.innerHTML = "Flat";
-            btn.setAttribute("title", "Switch to the flattened view of the brain");
+            btn.setAttribute("title", "Switch to the flattened view of the brain (Hotkey: F)");
             td.setAttribute("style", "text-align:right;width:150px;");
             btn.addEventListener("click", function() {
                 this.animate([{idx:btnspeed, state:"mix", value:1.0}]);

@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 from . import dataset
-from .db import surfs
+from .database import db
 from .xfm import Transform
 
 def unmask(mask, data):
@@ -140,18 +140,16 @@ def show_slice(dataview, **kwargs):
     import matplotlib.pyplot as plt
 
     dataview = dataset.normalize(dataview)
-    if not isinstance(dataview.data, dataset.BrainData):
-        raise TypeError('Only simple views supported by matplotlib')
-    if not isinstance(dataview.data, dataset.VolumeData):
+    if not isinstance(dataview, dataset.Volume):
         raise TypeError('Only volumetric data may be visualized in show_slice')
 
-    subject = dataview.data.subject
-    xfmname = dataview.data.xfmname
+    subject = dataview.subject
+    xfmname = dataview.xfmname
     imshow_kw = dict(vmin=dataview.vmin, vmax=dataview.vmax, cmap=dataview.cmap)
     imshow_kw.update(kwargs)
 
-    anat = surfs.getAnat(subject, 'raw').get_data().T
-    data = epi2anatspace(dataview.data)
+    anat = db.get_anat(subject, 'raw').get_data().T
+    data = epi2anatspace(dataview.volume.squeeze())
 
     data[data < dataview.vmin] = np.nan
 
@@ -196,7 +194,7 @@ def show_mip(data, **kwargs):
 def show_glass(dataview, pad=10):
     '''Create a classic "glass brain" view of the data, with the outline'''
     import nibabel
-    nib = surfs.getAnat(subject, 'fiducial')
+    nib = db.get_anat(subject, 'fiducial')
     mask = nib.get_data()
 
     left, right = np.nonzero(np.diff(mask.max(0).max(0)))[0][[0,-1]]
@@ -228,8 +226,8 @@ def epi2anatspace(volumedata, order=1):
     ds = dataset.normalize(volumedata)
     volumedata = ds.data
 
-    anat = surfs.getAnat(volumedata.subject, "raw")
-    xfm = surfs.getXfm(volumedata.subject, volumedata.xfmname, "coord")
+    anat = db.get_anat(volumedata.subject, "raw")
+    xfm = db.get_xfm(volumedata.subject, volumedata.xfmname, "coord")
 
     #allxfm =  Transform(anat.get_affine(), anat.shape).inv * xfm.inv
     allxfm = xfm * Transform(anat.get_affine(), anat.shape)
@@ -240,14 +238,15 @@ def epi2anatspace(volumedata, order=1):
 
 def anat2epispace(anatdata, subject, xfmname, order=1):
     from scipy.ndimage.interpolation import affine_transform
-    anatref = surfs.getAnat(subject)
-    target = surfs.getXfm(subject, xfmname, "coord")
+    anatref = db.get_anat(subject)
+    target = db.get_xfm(subject, xfmname, "coord")
 
     allxfm =  Transform(anatref.get_affine(), anatref.shape).inv * target.inv
     #allxfm = xfm * Transform(anat.get_affine(), anat.shape)
 
     rotpart = allxfm.xfm[:3, :3]
     transpart = allxfm.xfm[:3,-1]
+    
     return affine_transform(anatdata.T, rotpart, offset=transpart, output_shape=target.shape[::-1], cval=np.nan, order=order).T
 
 
@@ -268,8 +267,8 @@ def epi2anatspace_fsl(volumedata):
     data = volumedata.volume
 
     ## Get transform (pycortex estimates anat-to-epi)
-    xfm = surfs.getXfm(subject, xfmname)
-    fslxfm = xfm.to_fsl(surfs.getAnat(subject, 'raw').get_filename())
+    xfm = db.get_xfm(subject, xfmname)
+    fslxfm = xfm.to_fsl(db.get_anat(subject, 'raw').get_filename())
     ## Invert transform to epi-to-anat
     fslxfm = np.linalg.inv(fslxfm)
     ## Save out into ascii file
@@ -284,7 +283,7 @@ def epi2anatspace_fsl(volumedata):
     nibabel.save(datafile, datafilename)
 
     ## Reslice epi-space image
-    raw = surfs.getAnat(subject, type='raw').get_filename()
+    raw = db.get_anat(subject, type='raw').get_filename()
     outfilename = tempfile.mktemp(".nii")
     subprocess.call(["fsl5.0-flirt",
                      "-ref", raw,
@@ -311,8 +310,8 @@ def anat2epispace_fsl(data,subject,xfmname):
     import nibabel
 
     ## Get transform (pycortex estimates anat-to-epi)
-    xfm = surfs.getXfm(subject, xfmname)
-    anatNII = surfs.getAnat(subject, type='raw')
+    xfm = db.get_xfm(subject, xfmname)
+    anatNII = db.get_anat(subject, type='raw')
     fslxfm = xfm.to_fsl(anatNII.get_filename())
     ## Save out into ascii file
     xfmfilename = tempfile.mktemp(".mat")

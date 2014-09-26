@@ -16,18 +16,18 @@ $ sudo pip install pycortex
 If you are using [Ubuntu](http://ubuntu.com), using [Neurodebian](http://neuro.debian.net/) is highly recommended. The following command will install all python prerequisites:
 
 ```
-$ sudo apt-get install python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib
+$ sudo apt-get install python-pip python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib mayavi2 inkscape blender
 $ sudo pip install pycortex
 ```
 
 Demo
 ----
-Pycortex is best used with [IPython](http://www.ipython.org/). To run this demo, please download this [example dataset](http://gallantlab.org/pycortex/retinotopy_demo.hdf).
+Pycortex is best used with [IPython](http://www.ipython.org/). To run this demo, please download this [example dataset](http://gallantlab.org/pycortex/S1_retinotopy.hdf).
 
 ```
 $ ipython
 In [1]: import cortex
-In [2]: ds = cortex.openFile("S1_retinotopy.hdf")
+In [2]: ds = cortex.load("S1_retinotopy.hdf")
 In [3]: cortex.webshow(ds)
 ```
 

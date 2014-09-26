@@ -7,7 +7,11 @@ dict(
     images=(__braindata_name=["img1.png", "img2.png"]),
 )
 """
+<<<<<<< HEAD
 import cStringIO
+=======
+import os
+>>>>>>> master
 import json
 import numpy as np
 
@@ -18,23 +22,21 @@ class Package(object):
     """Package the data into a form usable by javascript"""
     def __init__(self, data):
         self.dataset = dataset.normalize(data)
-        self.uniques = data.uniques()
+        self.uniques = data.uniques(collapse=True)
         
         self.brains = dict()
         self.images = dict()
         for brain in self.uniques:
             name = brain.name
-            self.brains[name] = brain.to_json()
-            if isinstance(brain, dataset.VertexData):
-                voldata = brain.data
-            else:
-                voldata = brain.volume
-            if not brain.movie:
-                voldata = voldata[np.newaxis]
-            if brain.raw:
+            self.brains[name] = brain.to_json(simple=True)
+            voldata = brain.volume
+            if isinstance(brain, (dataset.VolumeRGB, dataset.VertexRGB)):
                 voldata = voldata.astype(np.uint8)
+                self.brains[name]['raw'] = True
             else:
                 voldata = voldata.astype(np.float32)
+                self.brains[name]['raw'] = False
+                
             if isinstance(brain, dataset.VertexData):
                 npyform = cStringIO.StringIO()
                 np.save(npyform, voldata)
@@ -44,15 +46,17 @@ class Package(object):
                 self.images[name] = [volume.mosaic(vol, show=False) for vol in voldata]
                 if len(set([shape for m, shape in self.images[name]])) != 1:
                     raise ValueError('Internal error in mosaic')
-                self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
                 self.brains[name]['mosaic'] = self.images[name][0][1]
+                self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
 
     @property
     def views(self):
         metadata = []
         for name, view in self.dataset:
-            meta = view.to_json()
+            meta = view.to_json(simple=False)
             meta['name'] = name
+            if 'stim' in meta['attrs']:
+                meta['attrs']['stim'] = os.path.split(meta['attrs']['stim'])[1] 
             metadata.append(meta)
         return metadata
 
@@ -70,7 +74,7 @@ class Package(object):
         return names
 
 def _pack_png(mosaic):
-    import Image
+    from PIL import Image
     import cStringIO
     buf = cStringIO.StringIO()
     if mosaic.dtype not in (np.float32, np.uint8):

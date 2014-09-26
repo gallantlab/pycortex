@@ -25,12 +25,14 @@ THREE.LandscapeControls = function ( element, camera ) {
     this.minRadius = function(mix){return 101*mix}; // limits zoom for flatmap, which disappears at r=100
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
+    this.friction = 0.05; // velocity lost per milisecond
 
     // internals
     this.target = new THREE.Vector3();
     this.azimuth = 45;
     this.altitude = 75;
     this.radius = 250;
+    this._scheduled = false;
 
     var _state = STATE.NONE,
         _start = new THREE.Vector3(),
@@ -41,6 +43,8 @@ THREE.LandscapeControls = function ( element, camera ) {
     var _clicktime = 0; // Time of last click (mouseup event)
     var _indblpick = false; // In double-click and hold?
     var _picktimer = false; // timer that runs pick event
+    this._momentumtimer = false; // time that glide has been going on post mouse-release
+    var _nomove_timer;
 
     // events
 
@@ -55,7 +59,7 @@ THREE.LandscapeControls = function ( element, camera ) {
         } else 
             mouseChange = _end.clone().sub(_start);
 
-        if (mouseChange.length() > 0 && statefunc[_state]) {
+        if (statefunc[_state]) {
             if (statefunc[_state])
                 statefunc[_state](mouseChange);
         }
@@ -86,6 +90,8 @@ THREE.LandscapeControls = function ( element, camera ) {
     };
 
     function mousedown( event ) {
+        this.unschedule();
+
         event.preventDefault();
         event.stopPropagation();
 
@@ -109,6 +115,10 @@ THREE.LandscapeControls = function ( element, camera ) {
 
     function mouseup( event ) {
         if ( ! this.enabled ) return;
+        this.dispatchEvent( changeEvent );
+
+        this._momentumtimer = new Date().getTime();
+        this.schedule( true );
 
         event.preventDefault();
         event.stopPropagation();
@@ -139,6 +149,18 @@ THREE.LandscapeControls = function ( element, camera ) {
         } else {
             _end = this.getMouse(event);
         }
+
+        var nomove_evt = function() {
+            if ( _state === STATE.NONE ) {
+                return;
+            } else {
+                _end = _start.clone();
+                this.update(this.flatmix);
+            }
+        };
+        clearTimeout(_nomove_timer);
+        _nomove_timer = setTimeout(nomove_evt.bind(this), 100);
+
         this.dispatchEvent( changeEvent );
     };
 
@@ -265,8 +287,8 @@ THREE.LandscapeControls.prototype = {
     },
 
     rotate: function ( mouseChange ) {
-        var azdiff = -this.rotateSpeed*mouseChange.x;
-        var az = this.azimuth + azdiff;
+        this.azvel_init = -this.rotateSpeed * mouseChange.x;
+        var az = this.azimuth + this.azvel_init;
         if ( this.azlim > 0 ) {
             if ( this.azlim > az || az > (360-this.azlim)) {
                 this.azimuth = azdiff < 0 ? this.azlim : 360-this.azlim;
@@ -277,14 +299,18 @@ THREE.LandscapeControls.prototype = {
             this.azimuth = az - 360*Math.floor(az / 360);
         }
 
+        //this.altitude -= this.rotateSpeed*mouseChange.y;
+        this.altvel_init = -this.rotateSpeed * mouseChange.y;
+        this.altitude += this.altvel_init;
+        //this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
 
-        this.altitude -= this.rotateSpeed*mouseChange.y;
-
-    // Add panning depending on flatmix
-    var panMouseChange = new Object;
-    panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
-    panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
-    this.pan(panMouseChange);
+        // Add panning depending on flatmix
+        if ( this.flatmix > 0 ) {
+            var panMouseChange = new Object;
+            panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
+            panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
+            this.pan(panMouseChange);
+        }
     }, 
 
     pan: function( mouseChange ) {
@@ -296,22 +322,103 @@ THREE.LandscapeControls.prototype = {
             up.setLength( this.panSpeed*mouseChange.y ));
         this.camera.position.add( pan );
         this.target.add( pan );
+        this.panxvel_init = this.panSpeed * mouseChange.x;
+        this.panyvel_init = this.panSpeed * mouseChange.y;
+        this.pan( this.panSpeed * mouseChange.x, this.panSpeed * mouseChange.y );
     },
-
+ 
     zoom: function( mouseChange ) {
-        var factor = 1.0 + mouseChange.y*this.zoomSpeed;
-        this.radius *= factor;
-        if (this.radius > this.maxRadius) { 
-            this.radius = this.maxRadius; 
-        }
-        if (this.radius < this.minRadius(this.flatmix)) { 
-            this.radius = this.minRadius(this.flatmix); 
-        }
+        this._zoom(1.0 + mouseChange.y*this.zoomSpeed);
     },
     
     wheelzoom: function( wheelEvent ) {
-        var factor = 1.0 + this.zoomSpeed * -1 * wheelEvent.wheelDelta/10.0;
-        this.radius *= factor;
+        this._zoom(1.0 + this.zoomSpeed * -1 * wheelEvent.wheelDelta/10.0);
+    },
+
+    _zoom: function( factor ) {
+        if (this.camera.inPerspectiveMode) {
+            this.radius *= factor;
+            if (this.radius > this.maxRadius) { 
+                this.radius = this.maxRadius; 
+            }
+            if (this.radius < this.minRadius(this.flatmix)) { 
+                this.radius = this.minRadius(this.flatmix); 
+            }
+        } else {
+            // Orthographic mode, zoom by changing frustrum limits
+            this.camera.cameraO.top *= factor;
+            this.camera.cameraO.bottom *= factor;
+            this.camera.cameraO.right *= factor;
+            this.camera.cameraO.left *= factor;
+            this.camera.cameraO.updateProjectionMatrix();
+        }
+    },
+
+    schedule: function( force ) {
+        // console.log("Scheduling");
+        if (this._in_anim || force) {
+            this._in_anim = true;
+            requestAnimationFrame( this.anim.bind(this) );
+        }
+    },
+
+    unschedule: function() {
+        // console.log("unscheduling");
+        this.resetvel();
+        this._in_anim = false;
+    },
+
+    resetvel: function() {
+        this.altvel_init = 0;
+        this.azvel_init = 0;
+        this.panxvel_init = 0;
+        this.panyvel_init = 0;
+    },
+ 
+    anim: function() {
+        var now = new Date().getTime();
+        if ( Math.abs(this.azvel_init) > 0 || Math.abs(this.altvel_init) > 0 ) {
+            // console.log("Animating", this.azvel, this.altvel);
+            //this.azvel *= 1 - this.friction;
+            this.azvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.azvel_init;
+            this.azimuth += this.azvel;
+            this.azimuth = ((this.azimuth % 360) + 360) % 360;
+
+            //this.altvel *= 1 - this.friction;
+            this.altvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.altvel_init;
+            this.altitude += this.altvel;
+            // this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
+
+            // console.log("Animating", this.azvel, this.altvel);
+        }
+        else {
+            this.azvel = 0;
+            this.altvel = 0;
+        }
+
+        if ( Math.abs(this.panxvel_init) > 0 || Math.abs(this.panyvel_init) > 0 ) {
+            // console.log("Animating", this.panxvel, this.panyvel);
+            this.panxvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.panxvel_init;
+            this.panyvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.panyvel_init;
+            //this.panxvel *= 1 - this.friction;
+            //this.panyvel *= 1 - this.friction;
+
+            this.setpan(this.panxvel, this.panyvel);
+        }
+        else {
+            this.panxvel = 0;
+            this.panyvel = 0;
+        }
+     
+        this.dispatchEvent( {type:'change'} );
+
+        // console.log("velocities: ", this.altvel, this.azvel, this.panxvel, this.panyvel);
+        if (Math.abs(this.altvel)<0.01 && Math.abs(this.azvel)<0.01 && Math.abs(this.panxvel)<0.01 && Math.abs(this.panyvel)<0.01) {
+            this.unschedule();
+        } else {
+            this.schedule();
+        }
+
     }
 
 }

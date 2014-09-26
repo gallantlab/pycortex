@@ -1,15 +1,98 @@
 import json
-
+import warnings
 import h5py
 import numpy as np
-
 from .. import options
-from . import BrainData, VolumeData, VertexData
+from ..database import db
+from .braindata import BrainData, VolumeData, VertexData, _hash
 
 default_cmap = options.config.get("basic", "default_cmap")
 
-class View(object):
-    def __init__(self, cmap=None, vmin=None, vmax=None, state=None, **kwargs):
+def normalize(data):
+    if isinstance(data, tuple):
+        if len(data) == 3:
+            if data[0].dtype == np.uint8:
+                return VolumeRGB(data[0][...,0], data[0][...,1], data[0][...,2], *data[1:])
+            return Volume(*data)
+        elif len(data) == 2:
+            return Vertex(*data)
+        else:
+            raise TypeError("Invalid input for Dataview")
+    elif isinstance(data, Dataview):
+        return data
+    else:
+        raise TypeError("Invalid input for Dataview")
+
+def _from_hdf_data(h5, name, xfmname=None, **kwargs):
+    """Decodes a __hash named node from an HDF file into the 
+    constituent Vertex or Volume object"""
+    dnode = h5.get("/data/%s"%name)
+    if dnode is None:
+        dnode = h5.get(name)
+
+    subj = dnode.attrs['subject']
+    #support old style xfmname saving as attribute
+    if xfmname is None and 'xfmname' in dnode.attrs:
+        xfmname = dnode.attrs['xfmname']
+
+    mask = None
+    if "mask" in dnode.attrs:
+        if dnode.attrs['mask'].startswith("__"):
+            mask = h5['/subjects/%s/transforms/%s/masks/%s'%(dnode.attrs['subject'], xfmname, dnode.attrs['mask'])].value
+        else:
+            mask = dnode.attrs['mask']
+
+    #support old style RGB volumes
+    if dnode.dtype == np.uint8 and dnode.shape[-1] in (3, 4):
+        alpha = None
+        if dnode.shape[-1] == 4:
+            alpha = dnode[..., 3]
+
+        if xfmname is None:
+            return VertexRGB(dnode[...,0], dnode[...,1], dnode[...,2], subj, 
+                alpha=alpha, **kwargs)
+
+        return VolumeRGB(dnode[...,0], dnode[...,1], dnode[...,2], subj, xfmname, 
+            alpha=alpha, mask=mask, **kwargs)
+
+    if xfmname is None:
+        return Vertex(dnode, subj, **kwargs)
+    
+    return Volume(dnode, subj, xfmname, mask=mask, **kwargs)
+        
+
+def _from_hdf_view(h5, data, xfmname=None, vmin=None, vmax=None,  **kwargs):
+    try:
+        basestring
+        strcls = (unicode, str)
+    except NameError:
+        strcls = str
+
+    if isinstance(data, strcls):
+        return _from_hdf_data(h5, data, xfmname=xfmname, vmin=vmin, vmax=vmax, **kwargs)
+        
+    if len(data) == 2:
+        dim1 = _from_hdf_data(h5, data[0], xfmname=xfmname[0])
+        dim2 = _from_hdf_data(h5, data[1], xfmname=xfmname[1])
+        cls = Vertex2D if isinstance(dim1, Vertex) else Volume2D
+        return cls(dim1, dim2, vmin=vmin[0], vmin2=vmin[1], 
+            vmax=vmax[0], vmax2=vmax[1], **kwargs)
+    elif len(data) == 4:
+        red, green, blue = [_from_hdf_data(h5, d, xfmname=xfmname) for d in data[:3]]
+        alpha = None 
+        if data[3] is not None:
+            alpha = _from_hdf_data(h5, data[3], xfmname=xfmname)
+
+        cls = VertexRGB if isinstance(red, Vertex) else VolumeRGB
+        return cls(red, green, blue, alpha=alpha, **kwargs)
+    else:
+        raise ValueError("Invalid Dataview specification")
+
+class Dataview(object):
+    def __init__(self, cmap=None, vmin=None, vmax=None, description="", state=None, **kwargs):
+        if self.__class__ == Dataview:
+            raise TypeError('Cannot directly instantiate Dataview objects')
+
         self.cmap = cmap if cmap is not None else default_cmap
         self.vmin = vmin
         self.vmax = vmax
@@ -17,6 +100,17 @@ class View(object):
         self.attrs = kwargs
         if 'priority' not in self.attrs:
             self.attrs['priority'] = 1
+        self.description = description
+
+    def copy(self, *args, **kwargs):
+        kwargs.update(self.attrs)
+        return self.__class__(*args, 
+            cmap=self.cmap, 
+            vmin=self.vmin, 
+            vmax=self.vmax, 
+            description=self.description, 
+            state=self.state, 
+            **kwargs)
 
     @property
     def priority(self):
@@ -26,181 +120,143 @@ class View(object):
     def priority(self, value):
         self.attrs['priority'] = value
 
-    def __call__(self, data, description=""):
-        return DataView(data, description, cmap=self.cmap, vmin=self.vmin, vmax=self.vmax, state=self.state)
+    def to_json(self, simple=False):
+        if simple:
+            return dict()
+            
+        sdict = dict(
+            state=self.state, 
+            attrs=self.attrs.copy(), 
+            desc=self.description)
+        try:
+            sdict.update(dict(
+                cmap=[self.cmap], 
+                vmin=[self.vmin if self.vmin is not None else np.percentile(np.nan_to_num(self.data), 1)], 
+                vmax=[self.vmax if self.vmax is not None else np.percentile(np.nan_to_num(self.data), 99)]
+                ))
+        except AttributeError:
+            pass
+        return sdict
 
-class DataView(View):
-    def __init__(self, data, description="", **kwargs):
-        super(DataView, self).__init__(**kwargs)
-        if isinstance(data, list):
-            #validate if the input is of a recognizable form
-            if len(data) != 1 or len(data[0]) != 2:
-                raise TypeError("Sorry, multi views are currently not supported...")
-            xdim, ydim = map(DataView.normalize, data[0])
-            if xdim.subject != ydim.subject:
-                raise TypeError("2D data views require the same subject")
-            if xdim.raw or ydim.raw:
-                raise TypeError("2D data views cannot be raw")
-            #this awful bit of logic checks validity of movies
-            if xdim.movie ^ ydim.movie or (
-                xdim.movie and 
-                len(xdim.data) != len(ydim.data)):
-                raise TypeError('2D movies must be same length')
-
-            no_nan_x = xdim.data[~np.isnan(xdim.data)]
-            no_nan_y = ydim.data[~np.isnan(ydim.data)]
-            if self.vmin is None:
-                self.vmin = [(
-                    float(np.percentile(no_nan_x, 1)), 
-                    float(np.percentile(no_nan_y, 1)))]
-            if self.vmax is None:
-                self.vmax = [(
-                    float(np.percentile(no_nan_x, 99)), 
-                    float(np.percentile(no_nan_y, 99)))]
-            self.data = [(xdim, ydim)]
-        else:
-            self.data = normalize(data)
-            no_nan = self.data.data[~np.isnan(self.data.data)]
-
-            if self.vmin is None:
-                self.vmin = float(np.percentile(no_nan, 1))
-            if self.vmax is None:
-                self.vmax = float(np.percentile(no_nan, 99))
-
-        self.description = description
-
-    @classmethod
-    def from_hdf(cls, ds, node):
-        data = []
-        for name in json.loads(node[0]):
-            if isinstance(name, list):
-                d = []
-                for n in name:
-                    bd = BrainData.from_hdf(ds, node.file.get(n))
-                    d.append(bd)
-                data.append(d)
-            else:
-                bd = BrainData.from_hdf(ds, node.file.get(name))
-                data.append(bd)
-        if len(data) < 2 and isinstance(data[0], BrainData):
-            data = data[0]
+    @staticmethod
+    def from_hdf(node):
+        data = json.loads(node[0])
         desc = node[1]
-        cmap = node[2]
+        try:
+            cmap = json.loads(node[2])
+        except:
+            cmap = node[2]
         vmin = json.loads(node[3])
         vmax = json.loads(node[4])
         state = json.loads(node[5])
         attrs = json.loads(node[6])
-        return cls(data, cmap=cmap, vmin=vmin, vmax=vmax, description=desc, **attrs)
+        try:
+            xfmname = json.loads(node[7])
+        except ValueError:
+            xfmname = None
 
-    def to_json(self):
-        dnames = []
-        if isinstance(self.data, BrainData):
-            dnames.append(self.data.name)
-        elif isinstance(self.data, list):
-            for data in self.data:
-                if isinstance(data, BrainData):
-                    dnames.append(data.name)
-                else:
-                    dnames.append([d.name for d in data])
+        if not isinstance(vmin, list):
+            vmin = [vmin]
+        if not isinstance(vmax, list):
+            vmax = [vmax]
+        if not isinstance(cmap, list):
+            cmap = [cmap]
 
-        return dict(
-            data=dnames, 
-            cmap=self.cmap, 
-            vmin=self.vmin, 
-            vmax=self.vmax, 
-            desc=self.description, 
-            state=self.state, 
-            attrs=self.attrs)
+        if len(data) == 1:
+            xfm = None if xfmname is None else xfmname[0]
+            return _from_hdf_view(node.file, data[0], xfmname=xfm, cmap=cmap[0], description=desc, 
+                vmin=vmin[0], vmax=vmax[0], state=state, **attrs)
+        else:
+            views = [_from_hdf_view(node.file, d, xfmname=x) for d, x in zip(data, xfname)]
+            raise NotImplementedError
 
-    def copy(self, data=None):
-        if data is None:
-            data = self.data
-        return DataView(data, 
-            self.description, vmin=self.vmin, vmax=self.vmax, cmap=self.cmap, state=self.state, **self.attrs)
+    def _write_hdf(self, h5, name="data", data=None, xfmname=None):
+        views = h5.require_group("/views")
+        view = views.require_dataset(name, (8,), h5py.special_dtype(vlen=str))
+        view[0] = json.dumps(data)
+        view[1] = self.description
+        try:
+            view[2] = json.dumps([self.cmap])
+            view[3] = json.dumps([self.vmin])
+            view[4] = json.dumps([self.vmax])
+        except AttributeError:
+            #For VolumeRGB/Vertex, there is no cmap/vmin/vmax
+            view[2] = None
+            view[3:5] = "null"
+        view[5] = json.dumps(self.state)
+        view[6] = json.dumps(self.attrs)
+        view[7] = json.dumps(xfmname)
+        return view
 
     @property
     def raw(self):
-        if not isinstance(self.data, BrainData):
-            raise ValueError('Can only colormap single data views')
-        if self.data.raw:
-            raise ValueError('Data is already colormapped')
-        from matplotlib import cm, colors
-        cmap = cm.get_cmap(self.cmap)
-        norm = colors.Normalize(vmin=self.vmin, vmax=self.vmax, clip=True)
-        raw = (cmap(norm(self.data.data)) * 255).astype(np.uint8)
-        return self.copy(self.data.copy(raw))
+        from matplotlib import colors, cm, pyplot as plt
+        import glob, os
+        # Get colormap from matplotlib or pycortex colormaps
+        ## -- redundant code, here and in cortex/quicklflat.py -- ##
+        if isinstance(self.cmap,(str,unicode)):
+            if not self.cmap in cm.__dict__:
+                # unknown colormap, test whether it's in pycortex colormaps
+                cmapdir = options.config.get('webgl', 'colormaps')
+                colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
+                colormaps = dict(((os.path.split(c)[1][:-4],c) for c in colormaps))
+                if not self.cmap in colormaps:
+                    raise Exception('Unkown color map!')
+                I = plt.imread(colormaps[self.cmap])
+                cmap = colors.ListedColormap(np.squeeze(I))
+                # Register colormap while we're at it
+                cm.register_cmap(self.cmap,cmap)
+            else:
+                cmap = self.cmap
+        norm = colors.Normalize(self.vmin, self.vmax) # Does this do anything?
+        return np.rollaxis(cmap(self.data), -1)
 
-    def map(self, sampler="nearest"):
-        if not isinstance(self.data, VolumeData):
-            raise ValueError("Can only map volumedata views")
+class Multiview(Dataview):
+    def __init__(self, views, description=""):
+        for view in views:
+            if not isinstance(view, Dataview):
+                raise TypeError("Must be a View object!")
+        raise NotImplementedError
+        self.views = views
 
-        return self.copy(self.data.map(sampler))
+    def uniques(self, collapse=False):
+        for view in self.views:
+            for sv in view.uniques(collapse=collapse):
+                yield sv
 
-    def __iter__(self):
-        if isinstance(self.data, BrainData):
-            yield self.data
-        else:
-            for data in self.data:
-                if isinstance(data, BrainData):
-                    yield data
-                else:
-                    for d in data:
-                        yield d
-
-    def view(self, cmap=None, vmin=None, vmax=None, state=None, **kwargs):
-        """Generate a new view on the contained data. Any variable that is not 
-        None will be updated"""
-        cmap = self.cmap if cmap is None else cmap
-        vmin = self.vmin if vmin is None else vmin
-        vmax = self.vmax if vmax is None else vmax
-        state = self.state if state is None else state
-
-        for key, value in self.attrs.items():
-            if key not in kwargs:
-                kwargs[key] = value
-
-        return DataView(self.data, cmap=cmap, vmin=vmin, vmax=vmax, state=state, **kwargs)
+class Volume(VolumeData, Dataview):
+    def __init__(self, data, subject, xfmname, mask=None, 
+        cmap=None, vmin=None, vmax=None, description="", **kwargs):
+        super(Volume, self).__init__(data, subject, xfmname, mask=mask, 
+            cmap=cmap, vmin=vmin, vmax=vmax, description=description, **kwargs)
 
     def _write_hdf(self, h5, name="data"):
-        #Must support 3 optional layers of stacking
-        if isinstance(self.data, BrainData):
-            dnode = self.data._write_hdf(h5)
-            nname = [dnode.name]
-        else:
-            nname = []
-            for data in self.data:
-                if isinstance(data, BrainData):
-                    dnode = data._write_hdf(h5)
-                    nname.append(dnode.name)
-                else:
-                    dnames = []
-                    for d in data:
-                        dnode = d._write_hdf(h5)
-                        dnames.append(dnode.name)
-                    nname.append(dnames)
+        datanode = VolumeData._write_hdf(self, h5)
+        viewnode = Dataview._write_hdf(self, h5, name=name,
+            data=[self.name], xfmname=[self.xfmname])
+        return viewnode
 
-        views = h5.require_group("/views")
-        view = views.require_dataset(name, (8,), h5py.special_dtype(vlen=str))
-        view[0] = json.dumps(nname)
-        view[1] = self.description
-        view[2] = self.cmap
-        view[3] = json.dumps(self.vmin)
-        view[4] = json.dumps(self.vmax)
-        view[5] = json.dumps(self.state)
-        view[6] = json.dumps(self.attrs)
-        return view
+    @property
+    def raw(self):
+        r, g, b, a = super(Volume, self).raw
+        return VolumeRGB(r, g, b, self.subject, self.xfmname, a, 
+            description=self.description, state=self.state, **self.attrs)
 
-def normalize(data):
-    if isinstance(data, tuple):
-        if len(data) == 3:
-            return VolumeData(*data)
-        elif len(data) == 2:
-            return VertexData(*data)
-        else:
-            raise TypeError("Invalid input for DataView")
-    elif isinstance(data, BrainData):
-        return data
-    elif isinstance(data, DataView) and isinstance(data.data, BrainData):
-        return data.data
-    else:
-        raise TypeError("Invalid input for DataView")
+class Vertex(VertexData, Dataview):
+    def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
+        super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
+            description=description, **kwargs)
+
+    def _write_hdf(self, h5, name="data"):
+        datanode = VertexData._write_hdf(self, h5)
+        viewnode = Dataview._write_hdf(self, h5, name=name, data=[self.name])
+        return viewnode
+
+    @property
+    def raw(self):
+        r, g, b, a = super(Vertex, self).raw
+        return VertexRGB(r, g, b, self.subject, a, 
+            description=self.description, state=self.state, **self.attrs)
+
+from .viewRGB import VolumeRGB, VertexRGB
+from .view2D import Volume2D, Vertex2D

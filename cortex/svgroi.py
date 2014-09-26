@@ -1,7 +1,9 @@
 import os
+import re
 import copy
 import shlex
 import tempfile
+import itertools
 import subprocess as sp
 
 import numpy as np
@@ -20,45 +22,110 @@ parser = etree.XMLParser(remove_blank_text=True, huge_tree=True)
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
 class ROIpack(object):
-    def __init__(self, tcoords, svgfile, callback=None, 
-        linewidth=None, linecolor=None, roifill=None, shadow=None,
-        labelsize=None, labelcolor=None,layer='rois'):
-        if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
-            tcoords -= tcoords.min(0)
-            tcoords /= tcoords.max(0)
+    def __init__(self, tcoords, svgfile, callback=None, linewidth=None,
+                 linecolor=None, roifill=None, shadow=None, labelsize=None,
+                 labelcolor=None, dashtype='fromsvg', dashoffset='fromsvg',
+                 layer='rois'):
+        """Contains ROI data in SVG form 
 
-        self.tcoords = tcoords
-        self.svgfile = svgfile
-        self.callback = callback
-        self.kdt = cKDTree(tcoords)
-        self.layer = layer 
+        Stores [[display elements]] from one layer of an svg file. 
+        Most commonly, these are ROIs. Each ROI (or other display element)
+        can contain multiple paths. 
+        If those paths are closed (i.e., if these are all ROIs), then 
+        you can use the method ROIpack.get_roi() to get an index of the
+        vertices associated with 
 
-        self.linewidth = float(config.get(self.layer, "line_width")) if linewidth is None else linewidth
-        self.linecolor = tuple(map(float, config.get(self.layer, "line_color").split(','))) if linecolor is None else linecolor
-        self.roifill = tuple(map(float, config.get(self.layer, "fill_color").split(','))) if roifill is None else roifill
-        self.shadow = float(config.get(self.layer, "shadow")) if shadow is None else shadow
-        self.reload(size=labelsize, color=labelcolor)
+        Parameters
+        ----------
+
+        Notes
+        -----
+        The name and the function of this class have begun to diverge. This class
+        almost entirely has to do with parsing and storing elements of svg files, 
+        *SOME* of which are related to ROIs, and some of which are not. In the future,
+        this class may be renamed to something like DispPack, display_pack, disp_elements,
+        etc
+
+        """
+        if isinstance(layer,(list,tuple)):
+            # More elegant would be to have ROIpack be a fundamentally multi-layer
+            # object, but for backward compatibility and for not breaking other
+            # other parts of the code (e.g. finding roi indices, etc) I have kept 
+            # it this way ML 2014.08.12
+            self.svgfile = svgfile
+            self.callback = callback
+            self.kdt = cKDTree(tcoords)
+            self.layer = 'multi_layer'
+            self.layers = {}
+            self.rois = {}
+            self.layer_names = layer
+            layer1 = layer[0]
+            # Recursive call to create multiple layers
+            for iL,L in enumerate(layer):
+                self.layers[L] = ROIpack(tcoords, svgfile, callback, linewidth, linecolor, 
+                    roifill, shadow, labelsize, labelcolor, dashtype, dashoffset,
+                    layer=L)
+                # Necessary?
+                self.rois.update(self.layers[L].rois)
+                # # Create combined svg out of individual layer svgs
+                if iL == 0:
+                    self.tcoords = self.layers[layer1].tcoords
+                    svg_fin = copy.copy(self.layers[layer1].svg)
+                elif iL>0:
+                    to_add = _find_layer(self.layers[L].svg, L)
+                    svg_fin.getroot().insert(0, to_add)
+            # linewidth, etc not set - set in individual layers
+            self.svg = svg_fin
+        else:
+            # Normalize coordinates 0-1
+            if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
+                tcoords -= tcoords.min(0)
+                tcoords /= tcoords.max(0)
+            self.tcoords = tcoords
+            self.svgfile = svgfile
+            self.callback = callback
+            self.kdt = cKDTree(tcoords)
+            self.layer = layer 
+            # Display parameters
+            if layer in config.sections():
+                dlayer = layer
+            else:
+                # Unknown display layer; default to values for ROIs
+                import warnings
+                warnings.warn('No defaults set for display layer %s; Using defaults for ROIs in options.cfg file')
+                dlayer = 'rois'                
+            self.linewidth = float(config.get(dlayer, "line_width")) if linewidth is None else linewidth
+            self.linecolor = tuple(map(float, config.get(dlayer, "line_color").split(','))) if linecolor is None else linecolor
+            self.roifill = tuple(map(float, config.get(dlayer, "fill_color").split(','))) if roifill is None else roifill
+            self.shadow = float(config.get(dlayer, "shadow")) if shadow is None else shadow
+
+            # For dashed lines, default to WYSIWYG from rois.svg
+            self.dashtype = dashtype
+            self.dashoffset = dashoffset
+
+
+            self.reload(size=labelsize, color=labelcolor)
 
     def reload(self, **kwargs):
+        """Change display properties of sub-elements of one-layer ROIpack"""
         self.svg = scrub(self.svgfile)
         self.svg = _strip_top_layers(self.svg,self.layer)
         w = float(self.svg.getroot().get("width"))
         h = float(self.svg.getroot().get("height"))
         self.svgshape = w, h
 
-        #Set up the ROI dict
+        #Set up the ROI dict 
         self.rois = {}
         for r in _find_layer(self.svg, self.layer).findall("{%s}g"%svgns):
             roi = ROI(self, r)
             self.rois[roi.name] = roi
-
         self.set()
         #self.setup_labels(**kwargs)
 
     def add_roi(self, name, pngdata, add_path=True):
         """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
         #self.svg deletes the images -- we want to save those, so let's load it again
-        svg = etree.parse(self.svgfile)
+        svg = etree.parse(self.svgfile, parser=parser)
         imglayer = _find_layer(svg, "data")
         if add_path:
             _make_layer(_find_layer(svg, "rois"), name)
@@ -78,7 +145,12 @@ class ROIpack(object):
         with open(self.svgfile, "w") as xml:
             xml.write(etree.tostring(svg, pretty_print=True))
 
-    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None):
+    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None,
+        dashtype=None, dashoffset=None):
+        """Fix all display properties for lines (paths) within each display element (usually ROIs)"""
+        if self.layer=='multi_layer':
+            print('Cannot set display properties for multi-layer ROIpack')
+            return
         if linewidth is not None:
             self.linewidth = linewidth
         if linecolor is not None:
@@ -88,9 +160,14 @@ class ROIpack(object):
         if shadow is not None:
             self.shadow = shadow
             self.svg.find("//{%s}feGaussianBlur"%svgns).attrib["stdDeviation"] = str(shadow)
+        if dashtype is not None:
+            self.dashtype = dashtype
+        if dashoffset is not None:
+            self.dashoffset = dashoffset
 
         for roi in list(self.rois.values()):
-            roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill, shadow=shadow)
+            roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill, 
+                shadow=shadow,dashtype=dashtype,dashoffset=dashoffset)
 
         try:
             if self.callback is not None:
@@ -180,7 +257,7 @@ class ROIpack(object):
         return dict([(name, roi.get_ptidx()) for name, roi in list(self.rois.items())])
 
     def get_roi(self, roiname):
-        import Image
+        from PIL import Image
         shadow = self.shadow
         self.set(shadow=0)
 
@@ -213,10 +290,18 @@ class ROIpack(object):
         return self.rois[name]
 
     def setup_labels(self, size=None, color=None, shadow=None):
+        """Sets up coordinates for labels wrt SVG file (2D flatmap)"""
+        # Recursive call for multiple layers
+        if self.layer == 'multi_layer':
+            label_layers = []
+            for L in self.layer_names:
+                label_layers.append(self.layers[L].setup_labels())
+                self.svg.getroot().insert(0, label_layers[-1])
+            return label_layers
         if size is None:
-            size = config.get("rois", "labelsize")
+            size = config.get(self.layer, "labelsize")
         if color is None:
-            color = tuple(map(float, config.get("rois", "labelcolor").split(",")))
+            color = tuple(map(float, config.get(self.layer, "labelcolor").split(",")))
         if shadow is None:
             shadow = self.shadow
 
@@ -224,9 +309,9 @@ class ROIpack(object):
         color = "rgb(%d, %d, %d)"%(color[0]*255, color[1]*255, color[2]*255)
 
         try:
-            layer = _find_layer(self.svg, "roilabels")
-        except AssertionError:
-            layer = _make_layer(self.svg.getroot(), "roilabels")
+            layer = _find_layer(self.svg, "%s_labels"%self.layer)
+        except ValueError: # Changed in _find_layer below... AssertionError: # Why assertion error? 
+            layer = _make_layer(self.svg.getroot(), "%s_labels"%self.layer)
 
         labelpos, candidates = [], []
         for roi in list(self.rois.values()):
@@ -274,8 +359,9 @@ class ROI(object):
         self.name = xml.get("{%s}label"%inkns)
         self.paths = xml.findall(".//{%s}path"%svgns)
         self.hide = "style" in xml.attrib and "display:none" in xml.get("style")
-        self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill)
-    
+        self.set(linewidth=self.parent.linewidth, linecolor=self.parent.linecolor, roifill=self.parent.roifill,
+            dashtype=self.parent.dashtype,dashoffset=self.parent.dashoffset)
+
     def _parse_svg_pts(self, datastr):
         data = list(_tokenize_path(datastr))
         #data = data.replace(",", " ").split()
@@ -323,7 +409,8 @@ class ROI(object):
         pts[:,1] = 1-pts[:,1]
         return pts
     
-    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None, hide=None):
+    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None, hide=None, 
+        dashtype=None, dashoffset=None):
         if linewidth is not None:
             self.linewidth = linewidth
         if linecolor is not None:
@@ -332,7 +419,12 @@ class ROI(object):
             self.roifill = roifill
         if hide is not None:
             self.hide = hide
+        if dashtype is not None:
+            self.dashtype = dashtype
+        if dashoffset is not None:
+            self.dashoffset = dashoffset
 
+        # Establish line styles
         style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
                     "stroke-linecap:butt;stroke-linejoin:miter;"+\
                     "stroke:{lc};stroke-opacity:{lo};{hide}"
@@ -343,17 +435,35 @@ class ROI(object):
             fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=roifill[-1],
             lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1], 
             lw=self.linewidth, hide=hide)
-
+        # Deal with dashed lines, on a path-by-path basis
         for path in self.paths:
-            path.attrib["style"] = style
+            # (This must be done separately from style if we want 
+            # to be able to vary dashed/not-dashed style across 
+            # rois/display elements, which we do)
+            if self.dashtype is None:
+                dashstr = ""
+            elif self.dashtype=='fromsvg':
+                dt = re.search('(?<=stroke-dasharray:)[^;]*',path.attrib['style'])
+                if dt is None or dt.group()=='none':
+                    dashstr=""
+                else:
+                    # Search for dash offset only if dasharray is found
+                    do = re.search('(?<=stroke-dashoffset:)[^;]*',path.attrib['style'])
+                    dashstr = "stroke-dasharray:%s;stroke-dashoffset:%s;"%(dt.group(),do.group())
+            else:
+                dashstr = "stroke-dasharray:%d,%d;stroke-dashoffset:%d;"%(self.dashtype+(self.dashoffset))
+            path.attrib["style"] = style+dashstr
+            
             if self.parent.shadow > 0:
                 path.attrib["filter"] = "url(#dropshadow)"
             elif "filter" in path.attrib:
                 del path.attrib['filter']
+            # Set layer id to "rois" (or whatever). 
     
-    def get_labelpos(self, pts=None, norms=None, fancy=True):
+    def get_labelpos(self, pts=None, norms=None, fancy=False):
         if not hasattr(self, "coords"):
-            cpts = [self._parse_svg_pts(path.get("d")) for path in self.paths]
+            allpaths = itertools.chain(*[_split_multipath(path.get("d")) for path in self.paths])
+            cpts = [self._parse_svg_pts(p) for p in allpaths]
             self.coords = [ self.parent.kdt.query(p)[1] for p in cpts ]
         
         if pts is None:
@@ -400,9 +510,23 @@ def _make_layer(parent, name):
     return layer
 
 def _strip_top_layers(svg,layer):
-    """Remove all top-level layers except <layer> from lxml svg object"""
-    tokeep = _find_layer(svg,layer) # will throw an error if not present
-    tostrip = [l for l in svg.getroot().getchildren() if l.get('{%s}label'%inkns) and not l.get('{%s}label'%inkns)==layer
+    """Remove all top-level layers except <layer> from lxml svg object
+
+    `layer` can be a list/tuple if you wish to keep multiple layers (for display!)
+    
+    NOTES
+    -----
+    Trying to keep multiple layers will severely bork use of ROIpack for 
+    actual ROIs. 
+
+    """
+    if not isinstance(layer,(tuple,list)):
+        layer = (layer,)
+    # Make sure desired layer(s) exist:
+    for l in layer:
+        tokeep = _find_layer(svg,l) # will throw an error if not present
+        tokeep.set('id',l)
+    tostrip = [l for l in svg.getroot().getchildren() if l.get('{%s}label'%inkns) and not l.get('{%s}label'%inkns) in layer
         and not l.get('{%s}label'%inkns)=='roilabels']
     for s in tostrip:
         s.getparent().remove(s)
@@ -453,9 +577,24 @@ def _labelpos(pts):
     pt = np.dot(np.dot(np.array([x,y,0]), sp), v)
     return pt + pts.mean(0)
 
+def _split_multipath(pathstr):
+    """Appropriately splits an SVG path with multiple sub-paths.
+    """
+    # m is absolute path, M is relative path (or vice versa?)
+    if not pathstr[0] in ["m","M"]:
+        raise ValueError("Bad path format: %s" % pathstr)
+    import re
+    subpaths = [sp for sp in re.split('[Mm]',pathstr) if len(sp)>0]
+    headers = re.findall('[Mm]',pathstr)
+    for subpath,header in zip(subpaths,headers):
+        # Need further parsing of multi-path strings? perhaps no.
+        yield (header + subpath).strip()
 
 def scrub(svgfile):
-    """Remove data layers from an svg object prior to rendering"""
+    """Remove data layers from an svg object prior to rendering
+
+    Returns etree-parsed svg object
+    """
     svg = etree.parse(svgfile, parser=parser)
     try:
         rmnode = _find_layer(svg, "data")
@@ -497,8 +636,6 @@ def make_svg(pts, polys):
     return svg
 
 def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
-    from .db import surfs
-    
     cullpts = pts[:,:2]
     if remove_medial:
         valid = np.unique(polys)

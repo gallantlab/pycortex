@@ -60,7 +60,11 @@ var jsplot = (function (module) {
             }
         }
     }
-    module.Figure.prototype.resize = function() {
+    module.Figure.prototype.resize = function(width, height) {
+        if (width !== undefined)
+            $(this.object).width(width);
+        if (height !== undefined)
+            $(this.object).height(height);
         var w = $(this.object).width();
         var h = $(this.object).height();
         this.dispatchEvent({type:'resize', width:w, height:h});
@@ -193,7 +197,7 @@ var jsplot = (function (module) {
         var types = { 
             ogv: 'video/ogg; codecs="theora, vorbis"', 
             webm: 'video/webm; codecs="vp8, vorbis"',
-            mp4: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'
+            mp4: 'video/mp4; codecs="h264, aac"'
         }
         var src = $(this.object).find("source");
         var ext = url.match(/^(.*)\.(\w{3,4})$/);

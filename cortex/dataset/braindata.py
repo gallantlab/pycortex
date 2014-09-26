@@ -2,15 +2,21 @@ import hashlib
 import numpy as np
 import h5py
 
-from ..db import surfs
+from ..database import db
 
 class BrainData(object):
-    def __init__(self, data):
+    def __init__(self, data, subject, **kwargs):
         if isinstance(data, str):
             import nibabel
             nib = nibabel.load(data)
             data = nib.get_data().T
         self._data = data
+        try:
+            basestring
+        except NameError:
+            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
+        self.subject = subject
+        super(BrainData, self).__init__(**kwargs)
 
     @property
     def data(self):
@@ -18,18 +24,22 @@ class BrainData(object):
             return self._data.value
         return self._data
 
+    @data.setter
+    def data(self, data):
+        self._data = data
+
     @property
     def name(self):
         '''Name of this BrainData, according to its hash'''
         return "__%s"%_hash(self.data)[:16]
 
-    def copy(self):
-        raise NotImplementedError("Copy not supported for BrainData, use VolumeData or VertexData")
-
     def exp(self):
         """Copy of this object with data exponentiated.
         """
         return self.copy(np.exp(self.data))
+
+    def uniques(self, collapse=False):
+        yield self
 
     def __hash__(self):
         return hash(_hash(self.data))
@@ -39,29 +49,23 @@ class BrainData(object):
             name = self.name
 
         dgrp = h5.require_group("/data")
-        if name in dgrp:
-            #don't need to update anything, since it's saved already
+        if name in dgrp and "__%s"%_hash(dgrp[name].value)[:16] == name:
+            #don't need to update anything, since it's the same data
             return h5.get("/data/%s"%name)
 
         node = _hdf_write(h5, self.data, name=name)
         node.attrs['subject'] = self.subject
         return node
 
-    @staticmethod
-    def from_hdf(dataset, node):
-        subj = node.attrs['subject']
-        if "xfmname" in node.attrs:
-            xfmname = node.attrs['xfmname']
-            mask = None
-            if "mask" in node.attrs:
-                try:
-                    surfs.getMask(subj, xfmname, node.attrs['mask'])
-                    mask = node.attrs['mask']
-                except IOError:
-                    mask = dataset.getMask(subj, xfmname, node.attrs['mask'])
-            return VolumeData(node, subj, xfmname, mask=mask)
-        else:
-            return VertexData(node, subj)
+    def to_json(self, simple=False):
+        sdict = super(BrainData, self).to_json(simple=simple)
+        if simple:
+            sdict.update(dict(name=self.name,
+                subject=self.subject,
+                min=float(np.nan_to_num(self.data).min()), 
+                max=float(np.nan_to_num(self.data).max()),
+                shape=self.shape))
+        return sdict
 
     @classmethod
     def add_numpy_methods(cls):
@@ -87,79 +91,60 @@ class BrainData(object):
 BrainData.add_numpy_methods()
 
 class VolumeData(BrainData):
-    def __init__(self, data, subject, xfmname, mask=None):
-        """Three possible variables: raw, volume, movie, vertex. Enumerated with size:
-        raw volume movie: (t, z, y, x, c)
-        raw volume image: (z, y, x, c)
-        reg volume movie: (t, z, y, x)
-        reg volume image: (z, y, x)
-        raw linear movie: (t, v, c)
-        reg linear movie: (t, v)
-        raw linear image: (v, c)
-        reg linear image: (v,)
+    def __init__(self, data, subject, xfmname, mask=None, **kwargs):
+        """Three possible variables: volume, movie, vertex. Enumerated with size:
+        volume movie: (t, z, y, x)
+        volume image: (z, y, x)
+        linear movie: (t, v)
+        linear image: (v,)
         """
-        super(VolumeData, self).__init__(data)
+        if self.__class__ == VolumeData:
+            raise TypeError('Cannot directly instantiate VolumeData objects')
+        super(VolumeData, self).__init__(data, subject, **kwargs)
         try:
             basestring
         except NameError:
-            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
             xfmname = xfmname if isinstance(xfmname, str) else xfmname.decode('utf-8')
-        self.subject = subject
         self.xfmname = xfmname
 
         self._check_size(mask)
         self.masked = _masker(self)
 
-    def copy(self, data=None):
-        """Copies this VolumeData.
-        """
-        if data is None:
-            data = self.data
-        return VolumeData(data, self.subject, self.xfmname, mask=self._mask)
+    def to_json(self, simple=False):
+        if simple:
+            return super(VolumeData, self).to_json(simple=simple)
+        
+        xfm = db.get_xfm(self.subject, self.xfmname, 'coord').xfm
+        sdict = dict(xfm=[list(np.array(xfm).ravel())], data=[self.name])
+        sdict.update(super(VolumeData, self).to_json())
+        return sdict
 
-    def to_json(self):
-        xfm = surfs.getXfm(self.subject, self.xfmname, 'coord').xfm
-        return dict(
-            data=self.name,
-            subject=self.subject, 
-            xfm=list(np.array(xfm).ravel()),
-            movie=self.movie,
-            raw=self.raw,
-            shape=self.shape,
-            min=float(self.data.min()),
-            max=float(self.data.max()),
-        )
+    @classmethod
+    def empty(cls, subject, xfmname, **kwargs):
+        xfm = db.get_xfm(subject, xfmname)
+        shape = xfm.shape
+        return cls(np.zeros(shape), subject, xfmname, **kwargs)
+
+    @classmethod
+    def random(cls, subject, xfmname, **kwargs):
+        xfm = db.get_xfm(subject, xfmname)
+        shape = xfm.shape
+        return cls(np.random.randn(*shape), subject, xfmname, **kwargs)
 
     def _check_size(self, mask):
-        self.raw = self.data.dtype == np.uint8
-        if self.data.ndim == 5:
-            if not self.raw:
-                raise ValueError("Invalid data shape")
-            self.linear = False
-            self.movie = True
-        elif self.data.ndim == 4:
-            self.linear = False
-            self.movie = not self.raw
-        elif self.data.ndim == 3:
-            self.linear = self.movie = self.raw
-        elif self.data.ndim == 2:
-            self.linear = True
-            self.movie = not self.raw
-        elif self.data.ndim == 1:
-            self.linear = True
-            self.movie = False
-        else:
+        if self.data.ndim not in (1, 2, 3, 4):
             raise ValueError("Invalid data shape")
+        
+        self.linear = self.data.ndim in (1, 2)
+        self.movie = self.data.ndim in (2, 4)
 
         if self.linear:
+            #Guess the mask
             if mask is None:
-                #try to guess mask type
-                nvox = self.data.shape[-2 if self.raw else -1]
-                if self.raw:
-                    nvox = self.data.shape[-2]
+                nvox = self.data.shape[-1]
                 self._mask, self.mask = _find_mask(nvox, self.subject, self.xfmname)
             elif isinstance(mask, str):
-                self.mask = surfs.getMask(self.subject, self.xfmname, mask)
+                self.mask = db.get_mask(self.subject, self.xfmname, mask)
                 self._mask = mask
             elif isinstance(mask, np.ndarray):
                 self.mask = mask
@@ -171,11 +156,9 @@ class VolumeData(BrainData):
             shape = self.data.shape
             if self.movie:
                 shape = shape[1:]
-            if self.raw:
-                shape = shape[:-1]
-            xfm = surfs.getXfm(self.subject, self.xfmname)
+            xfm = db.get_xfm(self.subject, self.xfmname)
             if xfm.shape != shape:
-                raise ValueError("Volumetric data must be same shape as reference for transform")
+                raise ValueError("Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)" % (str(shape), str(xfm.shape)))
             self.shape = shape
 
     def map(self, projection="nearest"):
@@ -193,12 +176,13 @@ class VolumeData(BrainData):
             if isinstance(self._mask, np.ndarray):
                 name = "custom"
             maskstr = "%s masked"%name
-        if self.raw:
-            maskstr += " raw"
         if self.movie:
             maskstr += " movie"
         maskstr = maskstr[0].upper()+maskstr[1:]
         return "<%s data for (%s, %s)>"%(maskstr, self.subject, self.xfmname)
+
+    def copy(self, data):
+        return super(VolumeData, self).copy(data, self.subject, self.xfmname, mask=self._mask)
 
     @property
     def volume(self):
@@ -209,13 +193,8 @@ class VolumeData(BrainData):
         else:
             data = self.data[:]
 
-        if self.raw and data.shape[-1] == 3:
-            #stack the alpha dimension
-            shape = data.shape[:3]+(1,)
-            if self.movie:
-                shape = data.shape[:4]+(1,)
-            alpha = 255*np.ones(shape).astype(np.uint8)
-            data = np.concatenate([data, alpha], axis=-1)
+        if not self.movie:
+            data = data[np.newaxis]
 
         return data
 
@@ -235,8 +214,7 @@ class VolumeData(BrainData):
 
     def _write_hdf(self, h5, name=None):
         node = super(VolumeData, self)._write_hdf(h5, name=name)
-        node.attrs['xfmname'] = self.xfmname
-
+        
         #write the mask into the file, as necessary
         if self._mask is not None:
             mask = self._mask
@@ -251,47 +229,67 @@ class VolumeData(BrainData):
 
         return node
 
+    def save_nii(self, filename):
+        """Save as a nifti file at the given filename. Nifti headers are
+        copied from the reference nifti file.
+        """
+        xfm = db.get_xfm(self.subject, self.xfmname)
+        affine = xfm.reference.get_affine()
+        import nibabel
+        new_nii = nibabel.Nifti1Image(self.volume.T, affine)
+        nibabel.save(new_nii, filename)
 
-class VertexData(VolumeData):
-    def __init__(self, data, subject):
+class VertexData(BrainData):
+    def __init__(self, data, subject, **kwargs):
         """Represents `data` at each vertex on a `subject`s cortex.
         `data` shape possibilities:
 
-        raw linear movie: (t, v, c)
         reg linear movie: (t, v)
-        raw linear image: (v, c)
         reg linear image: (v,)
+        None: creates zero-filled VertexData
 
         where t is the number of time points, c is colors (i.e. RGB), and v is the
         number of vertices (either in both hemispheres or one hemisphere).
         """
+        if self.__class__ == VertexData:
+            raise TypeError('Cannot directly instantiate VertexData objects')
+        super(VertexData, self).__init__(data, subject, **kwargs)
         try:
-            basestring
-        except NameError:
-            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
-        self.subject = subject
-
-        left, right = surfs.getSurf(self.subject, "fiducial")
+            left, right = db.get_surf(self.subject, "wm")
+        except IOError:
+            left, right = db.get_surf(self.subject, "fiducial")
         self.llen = len(left[0])
         self.rlen = len(right[0])
         self._set_data(data)
+
+    @classmethod
+    def empty(cls, subject, **kwargs):
+        try:
+            left, right = db.get_surf(subject, "wm")
+        except IOError:
+            left, right = db.get_surf(subject, "fiducial")
+        nverts = len(left[0]) + len(right[0])
+        return cls(np.zeros((nverts,)), subject, **kwargs)
+
+    @classmethod
+    def random(cls, subject, **kwargs):
+        try:
+            left, right = db.get_surf(subject, "wm")
+        except IOError:
+            left, right = db.get_surf(subject, "fiducial")
+        nverts = len(left[0]) + len(right[0])
+        return cls(np.random.randn(nverts), subject, **kwargs)
 
     def _set_data(self, data):
         """Stores data for this VertexData. Also sets flags if `data` appears to
         be in 'movie' or 'raw' format. See __init__ for `data` shape possibilities.
         """
-        self._data = data
+        if data is None:
+            data = np.zeros((self.llen + self.rlen,))
         
-        self.movie = False
-        self.raw = data.dtype == np.uint8
-        if data.ndim == 3:
-            self.movie = True
-            if not self.raw:
-                raise ValueError('Invalid data shape')
-        elif data.ndim == 2:
-            self.movie = not self.raw
-
-        self.nverts = self.data.shape[-2 if self.raw else -1]
+        self._data = data
+        self.movie = self.data.ndim > 1
+        self.nverts = self.data.shape[-1]
         if self.llen == self.nverts:
             # Just data for left hemisphere
             self.hem = "left"
@@ -308,28 +306,10 @@ class VertexData(VolumeData):
             # Data for both hemispheres
             self.hem = "both"
         else:
-            raise ValueError('Invalid number of vertices for subject')
+            raise ValueError('Invalid number of vertices for subject (given %d, should be %d for left hem, %d for right hem, or %d for both)' % (self.nverts, self.llen, self.rlen, self.llen+self.rlen))
 
-    def copy(self, data=None):
-        """Copies this VertexData. Uses __new__ to avoid expensive initialization that
-        involves loading the surface from disk. Can also be used to cheaply create a
-        new VertexData object for a subject with new `data`, if supplied.
-        """
-        newvd = self.__class__.__new__(self.__class__)
-        newvd.subject = self.subject
-        newvd.attrs = self.attrs
-        newvd.llen = self.llen
-        newvd.rlen = self.rlen
-        
-        if newdata is None:
-            newvd._set_data(self.data)
-        else:
-            newvd._set_data(data)
-
-        return newvd
-
-    def _check_size(self):
-        raise NotImplementedError
+    def copy(self, data):
+        return super(VertexData, self).copy(data, self.subject)
 
     def volume(self, xfmname, projection='nearest', **kwargs):
         import warnings
@@ -339,12 +319,10 @@ class VertexData(VolumeData):
         return mapper.backwards(self, **kwargs)
 
     def __repr__(self):
-        maskstr = ''
-        if self.raw:
-            maskstr += " raw"
+        maskstr = ""
         if self.movie:
-            maskstr += " movie"
-        return "<%s vertex data for %s>"%(maskstr, self.subject)
+            maskstr = "movie "
+        return "<Vertex %sdata for %s>"%(maskstr, self.subject)
 
     def __getitem__(self, idx):
         if not self.movie:
@@ -365,31 +343,31 @@ class VertexData(VolumeData):
 
     @property
     def vertices(self):
-        if self.raw and self.data.shape[-1] < 4:
-            shape = (1,)+self.data.shape[::-1][1:]
-            return np.vstack([self.data.T, 255*np.ones(shape, dtype=np.uint8)]).T
-        return self.data
+        verts = self.data
+        if not self.movie:
+            verts = verts[np.newaxis]
+        return verts
 
     @property
     def left(self):
         if self.movie:
-            return self.vertices[:,:self.llen]
+            return self.data[:,:self.llen]
         else:
-            return self.vertices[:self.llen]
+            return self.data[:self.llen]
 
     @property
     def right(self):
         if self.movie:
-            return self.vertices[:,self.llen:]
+            return self.data[:,self.llen:]
         else:
-            return self.vertices[self.llen:]
+            return self.data[self.llen:]
 
 def _find_mask(nvox, subject, xfmname):
     import os
     import re
     import glob
     import nibabel
-    files = surfs.getFiles(subject)['masks'].format(xfmname=xfmname, type="*")
+    files = db.get_paths(subject)['masks'].format(xfmname=xfmname, type="*")
     for fname in glob.glob(files):
         nib = nibabel.load(fname)
         mask = nib.get_data().T != 0
@@ -402,19 +380,17 @@ def _find_mask(nvox, subject, xfmname):
 
 
 class _masker(object):
-    def __init__(self, ds):
-        self.ds = ds
+    def __init__(self, dv):
+        self.dv = dv
 
         self.data = None
-        if ds.linear:
-            self.data = ds.data
+        if dv.linear:
+            self.data = dv.data
 
     def __getitem__(self, masktype):
-        s, x = self.ds.subject, self.ds.xfmname
-        mask = surfs.getMask(s, x, masktype)
-        if self.ds.movie:
-            return VolumeData(self.ds.volume[:,mask], s, x, mask=masktype)
-        return VolumeData(self.ds.volume[mask], s, x, mask=masktype)
+        s, x = self.dv.subject, self.dv.xfmname
+        mask = db.get_mask(s, x, masktype)
+        return self.dv.copy(self.dv.volume[:,mask].squeeze())
 
 def _hash(array):
     '''A simple numpy hash function'''

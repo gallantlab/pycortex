@@ -35,7 +35,7 @@ table {
 
     position:relative;
     z-index:10;
-    background-color:rgba(255,255,255, .2);
+    background-color:rgba(255,255,255, .4);
     box-shadow:0px 0px 10px black;
 }
 .infobar:hover, .infobar:active {
@@ -133,7 +133,7 @@ a:visited { color:white; }
     padding:10px;
     margin:20px;
     border-radius:10px;
-    background:rgba(255,255,255,.2);
+    background:rgba(255,255,255,.4);
     font-weight:bold;
 }
 .datadesc {
@@ -160,8 +160,12 @@ a:visited { color:white; }
 
 #display_options fieldset {
     border:1px solid #666;
-    border-radius: 20px 20px 50px 50px / 5px 5px 10px 10px;
+    /*border-radius: 20px 20px 50px 50px / 5px 5px 10px 10px;*/
+    border-radius: 12px 12px 12px 12px / 12px 12px 10px 10px;
     margin:5px;
+}
+.display_opt {
+    margin-top: 3px;
 }
 .opt_category {
     float:left;
@@ -184,12 +188,37 @@ a:visited { color:white; }
 }
 
 /* Colorbar */
-.dd-selected-text, .dd-option-text { display:none; }
+.dd-selected-text, .dd-option-text {
+    font-size:8px;
+    line-height:8px;
+    color:#888;
+    float:left;
+    width:36px;
+    /*overflow:auto;*/
+}
 .dd-option-image, .dd-selected-image { 
+    float:right;
+    padding-right: 10px;
     min-height:8px; 
-    width:256px; 
+    /*width:256px; 
     max-width:256px; 
-    max-height:256px; 
+    max-height:256px; */
+    width:220px;
+    max-width:220px;
+    max-height:220px;
+}
+#cmapsearchbox {
+    position:absolute;
+    z-index:6;
+}
+#cmapsearchresults {
+    z-index:5;
+    margin-top:30px;
+    position:absolute;
+    max-height:320px;
+}
+.selected_sr {
+    background:#ddf;
 }
 
 .vcolorbar { 
@@ -218,6 +247,14 @@ input.vlim {
     float:left;
 }
 p#zlocklabel {
+    float:left;
+    margin-right:5px;
+}
+
+#projopts {
+    float:left;
+}
+p#projlabel {
     float:left;
     margin-right:5px;
 }
@@ -318,3 +355,37 @@ table#movieui {
 #mixbtns td {
     text-align:center;
 }
+
+/*!
+ * jQuery UI Tabs 1.8.23
+ *
+ * Copyright 2012, AUTHORS.txt (http://jqueryui.com/about)
+ * Dual licensed under the MIT or GPL Version 2 licenses.
+ * http://jquery.org/license
+ *
+ * http://docs.jquery.com/UI/Tabs#theming
+ */
+#overlays_tabs {
+    border:1px solid #666;
+    /*border-radius: 20px 20px 50px 50px / 5px 5px 10px 10px;*/
+    border-radius: 12px 12px 12px 12px / 12px 12px 10px 10px;
+    margin:5px;
+    min-width:200px;
+}
+
+.ui-tabs { position: relative; padding: .2em; zoom: 1; background: none !important;} /* position: relative prevents IE scroll bug (element with position: relative inside container with overflow: auto appear as "fixed") */
+.ui-tabs .ui-tabs-nav { 
+    margin: 0; 
+    padding: .2em .2em 0;
+    border: 0 !important;
+    background: none !important;
+    position: absolute;
+    top: -11pt;
+}
+.ui-tabs .ui-tabs-nav li { list-style: none; float: left; position: relative; top: 1px; margin: 0 .2em 1px 0; padding: 0; white-space: nowrap; background: none !important; border-bottom: 1px solid #666;}
+.ui-tabs .ui-tabs-nav li a { float: left; padding: 0em 1em; text-decoration: none; }
+.ui-tabs .ui-tabs-nav li.ui-tabs-selected { margin-bottom: 0; padding-bottom: 1px; border:1px solid #666;border-bottom: none;}
+.ui-tabs .ui-tabs-nav li.ui-tabs-selected a, .ui-tabs .ui-tabs-nav li.ui-state-disabled a, .ui-tabs .ui-tabs-nav li.ui-state-processing a { cursor: text; }
+.ui-tabs .ui-tabs-nav li a, .ui-tabs.ui-tabs-collapsible .ui-tabs-nav li.ui-tabs-selected a { cursor: pointer; } /* first selector in group seems obsolete, but required to overcome bug in Opera applying cursor: text overall if defined elsewhere... */
+.ui-tabs .ui-tabs-panel { display: block; border-width: 0; padding: 0em 1.4em 1em 1.4em; background: none; }
+.ui-tabs .ui-tabs-hide { display: none !important; }

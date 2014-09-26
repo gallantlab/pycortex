@@ -18,128 +18,94 @@ To create a dataset manually::
 
 To generate a data view and save it::
 
-    dv = cortex.DataView((np.random.randn(31, 100, 100), "S1", "fullhead"), cmap="RdBu_r", vmin=-3, vmax=3)
+    dv = cortex.Volume(np.random.randn(31, 100, 100), "S1", "fullhead", cmap="RdBu_r", vmin=-3, vmax=3)
     ds = cortex.Dataset(name=dv)
     ds.save("test_data.hdf")
 
 Loading data::
 
-    ds = cortex.openFile("test_data.hdf")
+    ds = cortex.load("test_data.hdf")
 
-If you already have a Nifti file with the alignment written into the header::
+If you already have a Nifti file aligned to a transform in the database::
 
-    dv = cortex.DataView(("path/to/nifti_file.nii.gz", "S1", "identity"))
+    dv = cortex.Volume("path/to/nifti_file.nii.gz", "S1", "fullhead")
     cortex.quickshow(dv)
 
 Overview
 --------
-Pycortex's main data structures consists of the :class:`Dataset`, the :class:`DataView`, and the :class:`BrainData` objects. These three objects serve different roles:
+Pycortex's main data structures consists of the :class:`Dataset`, and the Dataview classes :class:`Volume`, :class:`Vertex`, :class:`VolumeRGB`, :class:`VertexRGB`, :class:`Volume2d`, :class:`Vertex2D`.
 
-    * :class:`BrainData` objects store brain data together with the subject information. Most pycortex data structures will automatically cast a tuple into the appropriate :class:`VolumeData` and :class:`VertexData` objects.
-    * :class:`DataView` objects store :class:`BrainData` objects along with view attributes such as the colormap, minimum, and maximum. The stored :class:`BrainData` object is only a reference.
-    * :class:`Dataset` objects store a collection of :class:`DataView` objects with associated names. It provides additional functionality to store and load the DataViews as HDF files.
+    * :class:`Dataset` objects store a collection of :class:`Dataview` objects with associated names. It provides additional functionality to store and load the DataViews as HDF files.
 
-These data structures can typically be cast from simpler structures such as tuples or dictionaries.
+    * :class:`Volume` is a :class:`Dataview` object that holds either a single or a time series of volumetric data (IE the data is in the original volume space).
+    * :class:`Vertex` is a :class:`Dataview` object that holds either a single or a time series of vertex data (IE the data has been projected onto the surface vertices).
+    * :class:`VolumeRGB` is a :class:`Dataview` object that contains 3 or 4 :class:`Volume` objects corresponding to the red, green, blue, and optionally alpha channels of a raw dataview.
+    * :class:`Volume2D` is a :class:`Dataview` object that holds a pair of volumetric data, to be displayed using a 2D colormap.
 
-BrainData
+Dataviews
 ---------
-Brain data is encapsulated by the :class:`VolumeData` and :class:`VertexData` classes. :class:`VolumeData` expects three arguments to initialize properly:
+Dataview is a parent class that is instantiated in the form of one of the following subclasses: :class:`Volume`, :class:`Vertex`, :class:`VolumeRGB`, :class:`VertexRGB`, :class:`Volume2D`, :class:`Vertex2D`. All dataviews have the following additional kwargs:
 
-    * **data**: Data to be interpreted as volumetric data. Can be one of the following:
-        * Numpy array with shape
-            * (t, z, y, x, c): Time series volume data in raw colors
-            * (z, y, x, c): Single volume data in raw colors
-            * (t, z, y, x): Time series volume data
-            * (x, y, z): Single volume data
-            * (t, m, c): Time series masked data in raw colors
-            * (t, m): Time series masked data
-            * (m, c): Single masked data in raw colors
-            * (m,): Single masked data
-        * Filename of a NifTi file
-    * **subject**: string name of the subject
-    * **xfmname**: string name of the transform
+    * **cmap**: colormap name. This should be a colormap name in matplotlib. See `matplotlib colormaps <http://wiki.scipy.org/Cookbook/Matplotlib/Show_colormaps>`_  for acceptable names.
+    * **vmin** / **vmax**: colormap minimum and maximums, same as in imshow.
+    * **description**: A text description of the data view. This is shown as a subheading in the webgl view.
+    * **priority**: Priority of this data view when included with others in a :class:`Dataset`.
+    * Other kwargs: Additional string-based attributes are saved here. For example, additional quickflat options can be specified here, to be automatically applied during the :method:`cortex.quickflat.make_figure` command. webgl views currently do not support any other view options.
 
-:class:`VertexData` objects require just two elements:
+In all following examples, **kwargs** contains these options.
 
-    * **data**: Data to be interpreted as vertex data. Can be one of the following:
-        * Numpy array with shape
-            * raw linear movie: (t, v, c)
-            * reg linear movie: (t, v)
-            * raw linear image: (v, c)
-            * reg linear image: (v,)
-    * **subject**: string name of the subject
+Volume and Vertex
+~~~~~~~~~~~~~~~~~
+These are your basic data classes. They have the following call signatures::
 
-Generally, you will not need to instantiate BrainData objects yourself. They are automatically instantiated when Dataset objects or DataView objects are created. BrainData objects allow numpy operations::
-    
-    ones = cortex.DataView((np.ones(31, 100, 100), "S1", "fullhead"))
-    fives = cortex.DataView(ones.data + 4)
-    np.allclose(fives.data.volume, 5)
+    vol = cortex.Volume(nparray, subject, xfmname, mask=None, **kwargs)
+    vert = cortex.Vertex(nparray, subject, **kwargs)
 
-:class:`VolumeData` also include a few important properties and methods:
+In addition, there are two classmethods that allow you to define standard empty or random data views::
 
-.. autosummary::
-    :toctree:generated/
+    empty = cortex.Volume.empty(subject, xfmname, **kwargs)
+    rand = cortex.Volume.random(subject, xfmname, **kwargs)
+    verts = cortex.Vertex.random(subject, **kwargs)
 
-    VolumeData.map
-    VolumeData.copy
-    VolumeData.volume
+The :class:`Volume` and :class:`Vertex` objects support standard numpy operations. For example::
 
-Raw Data
-~~~~~~~~
-Any data that has uint8 type is automatically considered to be "raw" color data. This allows the support and plotting of RGB values as computed seperately, outside of colormaps. If the data is input with type uint8, only a few data shapes are legal: (t, z, y, x, c), (z, y, x, c), (t, m, c), and (m, c). 
+    vol = cortex.Volume.empty(subject, xfmname) + 1
 
-Masked Data
-~~~~~~~~~~~
-Masked data is data in which the following operation has occurred::
-    
+:class:`Volume` also supports masked data. Masked data is data in which the following operation has occurred::
+
     data = np.random.randn(32, 100, 100)
     mask = np.random.rand(32, 100, 100) > .5
-    masked = data[mask]
 
-This is exceptionally useful for doing voxel selection. Masks should be stored in the pycortex database in order to avoid overwritten transforms. However, :class:`VolumeData` objects do allow you to store custom masks. The syntax for using custom masks is as follows::
+This is good for limiting the number of voxels required to model. Masks are delicate; you have to have the exact mask, otherwise the linear ordering of the voxels required to reconstruct the 3D volume is lost. It is hightly recommended that you store masks in the pycortex database for this reason. See :ref:`database-masks` for more information about storing masks.
 
-    vol = cortex.VolumeData(data, subject, xfmname, mask=mask)
+Generally, the :class:`Volume` class will automatically understand masked data, assuming the mask exists in the database. If you have masked data where the mask does not exist in the database, you must provide it in the mask keyword argument.
 
-The **mask** parameter may be either an ndarray with the same shape as the transform reference, or the name of a mask in the database. If a "linear" shaped data is passed to VolumeData and a mask name is not specified, pycortex will attempt to locate the correct mask from the database. An exception will occur if a matching one is not found.
+Volume and Vertex objects can also be implicitly defined using a tuple syntax, as highlighted in the quickstart above.
 
-DataView
---------
-DataView objects allow you to define a specific set of view attributes to attach to BrainData objects. This separation of data from its view allows for data deduplication if you want different views of the same data. For example::
+RGB data
+~~~~~~~~
+If you have data which does not require colormapping, it is possible to directly plot them using an RGB dataview. The calling signature looks like this::
 
-    vol = cortex.VolumeData(np.random.randn(31, 100, 100), "S1", "fullhead")
-    dv1 = cortex.DataView(vol, cmap="hot", vmin=0, vmax=1)
-    dv2 = cortex.DataView(vol, cmap="RdBu_r", vmin=-1, vmax=1)
+    rgb = cortex.VolumeRGB(red, green, blue, subject=None, xfmname=None, alpha=None, **kwargs)
+    verts = cortex.VertexRGB(red, green, blue, subject=None, alpha=None, **kwargs)
 
-If you have not saved out a dataset file, then both ``dv1`` and ``dv2`` only contain references to the same ``vol`` VolumeData object. During the dataset saving process, hashes of the volumes are taken, allowing data deduplication. Datasets loaded from files reference the same h5py datasets to avoid memory duplication.
+You can provide either numpy arrays or :class:`Volume` objects for the red, green, blue, and alpha channels. If you provide :class:`Volume` objects, the subject and xfmname keywords must remain None. If you provide numpy arrays for red/green/blue, subject must not be None.
 
-Dataview objects can be instantiated with many attributes. The default ones are as follows:
+If you provided either numpy arrays or :class:`Volume` objects without vmin/vmax, the data will be normalized and cast to uint8 in order to display them. This means that the data will automatically be scaled between 0-255 and quantized. If your data is already normalized between 0 and 1, this will not occur.
 
-    * **data**: either a BrainData object or a multiview list
-    * **description**: a text string describing the view on this data
-    * **cmap**: a string that's passed to matplotlib that determines the colormap. This parameter is ignored if the BrainData object is raw.
-    * **vmin**: the colormap minimum
-    * **vmax**: the colormap maximum
-    * **priority**: Priority of this data view when included with others in a :class:`Dataset`.
+2D dataviews
+~~~~~~~~~~~~
+In order to specify 2D data views in webgl, this helper class lets you specify a pair of :class:`Volume` objects to be plotted using a 2D colormap. Currently, quickflat does not yet support 2D colormaps. To declare a 2D dataview::
 
-Additional attributes are saved in the **attrs** dictionary inside the DataView. These are automatically stored inside the Dataset HDF file.
-
-Multiviews
-~~~~~~~~~~
-DataView objects allow the definition of something called a "multiview". The majority of the multiview functionality is not yet implemented yet. However, one important functionality is already supported -- two-dimensional colormaps.
-
-Multiviews are intended to support the ability to view multiple brains at the same time. For example, the `movie demo <http://gallantlab.org/pycortex/movie_demo/>`_ is a rudimentary multiview, where two subjects are displayed at the same time. A multiview is defined by passing a list of BrainData objects as the first parameter.
-
-Two-dimensional colormaps are supported using a multiview definition. If any multiview entry contains a 2-tuple instead of a BrainData object, the pair of BrainData objects are the two dimension for a 2D colormap. For example::
-    
-    dim1 = cortex.VolumeData(np.random.randn(31, 100, 100), "S1", "fullhead")
-    dim2 = cortex.VolumeData(np.random.randn(31, 100, 100), "S1", "fullhead")
-    dv = cortex.DataView([(dim1, dim2)], cmap="RdBu_covar", vmin=[(-1,-3)], vmax=[(1,3)])
-
-Notice that the vmin/vmax values should match the structure of input.
+    dim1 = cortex.Volume.random(subject, xfmname)
+    dim2 = cortex.Volume.random(subject, xfmname)
+    twod = cortex.Volume2D(dim1, dim2, subject=None, xfmname=None, vmin2=None, vmax2=None, **kwargs)
 
 Dataset
 -------
 Dataset objects hold a dictionary of DataView objects. Its main function is saving out data into a standardized HDF format. Datasets also allow subject data packing, if you desire to send data to someone without the subject database.
+
+In addition, Datasets provide data deduplication. This is especially important for the webgl views, in order to reduce the amount of data transfer between server and client. Deduplication is accomplished using a SHA1 hash of the raw numpy data. This is not a foolproof method, but given the constraints of visualizing volumetric data, additional Numpy attributes do not need to be included in the hash.
 
 To save data::
 
@@ -177,7 +143,6 @@ The saved out HDF5 format has the following structure::
     /data/
         hash
             -> subject
-            -> xfmname
             -> maskname
     /views
         name1[dataref, desc, cmap, vmin, vmax, state]

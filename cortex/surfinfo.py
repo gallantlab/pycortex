@@ -8,12 +8,12 @@ import numpy as np
 
 from . import utils
 from . import polyutils
-from .db import surfs
+from .database import db
 from .xfm import Transform
 
 def curvature(outfile, subject, smooth=20, **kwargs):
     curvs = []
-    for pts, polys in surfs.getSurf(subject, "fiducial"):
+    for pts, polys in db.get_surf(subject, "fiducial"):
         surf = polyutils.Surface(pts, polys)
         curv = surf.smooth(surf.mean_curvature(), smooth)
         curvs.append(curv)
@@ -34,8 +34,8 @@ def distortion(outfile, subject, type='areal', smooth=20):
     """
     distortions = []
     for hem in ["lh", "rh"]:
-        fidvert, fidtri = surfs.getSurf(subject, "fiducial", hem)
-        flatvert, flattri = surfs.getSurf(subject, "flat", hem)
+        fidvert, fidtri = db.get_surf(subject, "fiducial", hem)
+        flatvert, flattri = db.get_surf(subject, "flat", hem)
         surf = polyutils.Surface(fidvert, fidtri)
 
         dist = getattr(polyutils.Distortion(flatvert, fidvert, flattri), type)
@@ -45,8 +45,8 @@ def distortion(outfile, subject, type='areal', smooth=20):
     np.savez(outfile, left=distortions[0], right=distortions[1])
 
 def thickness(outfile, subject):
-    pl, pr = surfs.getSurf(subject, "pia")
-    wl, wr = surfs.getSurf(subject, "wm")
+    pl, pr = db.get_surf(subject, "pia")
+    wl, wr = db.get_surf(subject, "wm")
     left = np.sqrt(((pl[0] - wl[0])**2).sum(1))
     right = np.sqrt(((pr[0] - wr[0])**2).sum(1))
     np.savez(outfile, left=left, right=right)
@@ -55,7 +55,7 @@ def tissots_indicatrix(outfile, sub, radius=10, spacing=50, maxfails=100):
     tissots = []
     allcenters = []
     for hem in ["lh", "rh"]:
-        fidpts, fidpolys = surfs.getSurf(sub, "fiducial", hem)
+        fidpts, fidpolys = db.get_surf(sub, "fiducial", hem)
         #G = make_surface_graph(fidtri)
         surf = polyutils.Surface(fidpts, fidpolys)
         nvert = fidpts.shape[0]
@@ -87,10 +87,10 @@ def tissots_indicatrix(outfile, sub, radius=10, spacing=50, maxfails=100):
     np.savez(outfile, left=tissots[0], right=tissots[1], centers=allcenters)
 
 def flat_border(outfile, subject):
-    flatpts, flatpolys = surfs.getSurf(subject, "flat", merge=True, nudge=True)
+    flatpts, flatpolys = db.get_surf(subject, "flat", merge=True, nudge=True)
     flatpolyset = set(map(tuple, flatpolys))
     
-    fidpts, fidpolys = surfs.getSurf(subject, "fiducial", merge=True, nudge=True)
+    fidpts, fidpolys = db.get_surf(subject, "fiducial", merge=True, nudge=True)
     fidpolyset = set(map(tuple, fidpolys))
     fidonlypolys = fidpolyset - flatpolyset
     fidonlypolyverts = np.unique(np.array(list(fidonlypolys)).ravel())

@@ -38,18 +38,21 @@ def _call_blender(filename, code):
 def add_cutdata(fname, dataview, name="retinotopy", projection="nearest", mesh="hemi"):
     from matplotlib import cm
     dataview = dataset.normalize(dataview)
-    mapped = dataview.data.map(projection)
-    vcolor = mapped.data
+    mapped = dataview.map(projection)
+    left = mapped.left
+    right = mapped.right
 
     cmap = cm.get_cmap(dataview.cmap)
     vmin = dataview.vmin
     vmax = dataview.vmax
-    vcolor = cmap((vcolor - vmin) / (vmax - vmin))[:,:3]
+    lcolor = cmap((left - vmin) / (vmax - vmin))[:,:3]
+    rcolor = cmap((right - vmin) / (vmax - vmin))[:,:3]
 
     p = xdrlib.Packer()
     p.pack_string(mesh)
     p.pack_string(name)
-    p.pack_array(vcolor.ravel(), p.pack_double)
+    p.pack_array(lcolor.ravel(), p.pack_double)
+    p.pack_array(rcolor.ravel(), p.pack_double)
     with tempfile.NamedTemporaryFile() as tf:
         tf.write(p.get_buffer())
         tf.flush()
@@ -57,12 +60,49 @@ def add_cutdata(fname, dataview, name="retinotopy", projection="nearest", mesh="
             u = xdrlib.Unpacker(fp.read())
             mesh = u.unpack_string().decode('utf-8')
             name = u.unpack_string().decode('utf-8')
-            color = u.unpack_array(u.unpack_double)
-            blendlib.add_vcolor(blendlib._repack(color), mesh, name)
+            left = u.unpack_array(u.unpack_double)
+            right = u.unpack_array(u.unpack_double)
+            lcolor = blendlib._repack(left)
+            rcolor = blendlib._repack(right)
+            print(len(lcolor), len(rcolor))
+            blendlib.add_vcolor((lcolor, rcolor), mesh, name)
         """.format(tfname=tf.name)
         _call_blender(fname, code)
 
     return 
+
+
+def gii_cut(fname, subject, hemi):
+    '''
+    Add gifti surface to blender
+    '''
+    from ..database import db
+    hemis = dict(lh='left',
+                 rh='right')
+    
+    wpts, polys = db.get_surf(subject, 'wm', hemi)
+    ipts, _ = db.get_surf(subject, 'very_inflated', hemi)
+    curvature = db.getSurfInfo(subject, 'curvature')
+    rcurv = curvature.__getattribute__(hemis[hemi])
+
+    p = xdrlib.Packer()
+    p.pack_array(wpts.ravel(), p.pack_double)
+    p.pack_array(ipts.ravel(), p.pack_double)
+    p.pack_array(polys.ravel(), p.pack_uint)
+    p.pack_array(rcurv.ravel(), p.pack_double)
+    with tempfile.NamedTemporaryFile() as tf:
+        tf.write(p.get_buffer())
+        tf.flush()
+        code = """with open('{tfname}', 'rb') as fp:
+            u = xdrlib.Unpacker(fp.read())
+            wpts = u.unpack_array(u.unpack_double)
+            ipts = u.unpack_array(u.unpack_double)
+            polys = u.unpack_array(u.unpack_uint)
+            curv = u.unpack_array(u.unpack_double)
+            blendlib.init_subject(wpts, ipts, polys, curv)
+        """.format(tfname=tf.name)
+        _call_blender(fname, code)
+
 
 def fs_cut(fname, subject, hemi):
     wpts, polys, curv = freesurfer.get_surf(subject, hemi, 'smoothwm')
@@ -103,3 +143,4 @@ def write_patch(bname, pname, mesh="hemi"):
             blendlib.save_patch(pname, mesh)
         """.format(tfname=tf.name)
         _call_blender(bname, code)
+
