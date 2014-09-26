@@ -207,7 +207,7 @@ class Dataview(object):
                 # Register colormap while we're at it
                 cm.register_cmap(self.cmap,cmap)
             else:
-                cmap = self.cmap
+                cmap = cm.get_cmap(self.cmap)
         norm = colors.Normalize(self.vmin, self.vmax) # Does this do anything?
         return np.rollaxis(cmap(self.data), -1)
 
