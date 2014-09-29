@@ -314,6 +314,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 'visL','visR','alpha','rotationR','rotationL','projection']
             for k in kwargs.keys():
                 if not k in props:
+                    if k=='time':
+                        continue
                     print('Unknown parameter %s!'%k)
                     continue
                 self.setState(k,kwargs[k][0])
@@ -491,6 +493,44 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                         else:
                             self.setState(start['state'], val)
                 self.saveIMG(filename%(i+offset), size=size)
+        
+        def _get_anim_seq(self,keyframes,fps=30,interpolation='linear'):
+            """Convert a list of keyframes to a list of EVERY frame in an animation.
+
+            Utility function called by make_movie; separated out so that individual
+            frames of an animation can be re-rendered, or for more control over the 
+            animation process in general.
+
+            """
+            # Misc. setup
+            fr = 0
+            a = np.array
+            func = mixes[interpolation]
+            skip_props = ['projection','visR','visL',]
+
+            keyframes = sorted(keyframes, key=lambda x:x['time'])
+            allframes = []
+            for start,end in zip(keyframes[:-1],keyframes[1:]):
+                t0 = start['time']
+                t1 = end['time']
+                tdif = float(t1-t0)
+                fr_time = np.arange(0, (tdif+1./fps), 1./fps)
+                # Interpolate between values
+                for t in fr_time:
+                    frame = {}
+                    for prop in start.keys():
+                        if prop=='time':
+                            continue
+                        if (prop in skip_props) or (start[prop][0] is None):
+                            frame[prop] = start[prop]
+                            continue
+                        val = func(a(start[prop]), a(end[prop]), t/tdif)
+                        if isinstance(val, np.ndarray):
+                            frame[prop] = val.tolist()
+                        else:
+                            frame[prop] = val
+                    allframes.append(frame)
+            return allframes
 
         def make_movie(self, animation, filename="brainmovie%07d.png", offset=0,
                       fps=30, size=(1920, 1080), interpolation="linear"):
@@ -547,38 +587,11 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             js_handle.make_movie(animation)
             """
 
-            keyframes = sorted(animation, key=lambda x:x['time'])
-            fr = 0
-            a = np.array
-            func = mixes[interpolation]
-            skip_props = ['projection','visR','visL',]
-            for start,end in zip(keyframes[:-1],keyframes[1:]):
-                kf0 = copy.copy(start)
-                t0 = kf0.pop('time')
-                kf1 = copy.copy(end)
-                t1 = kf1.pop('time')
-                tdif = float(t1-t0)
-                fr_time = np.arange(0, (tdif+1./fps), 1./fps)
-                allframes = []
-                # Interpolate between values
-                for t in fr_time:
-                    frame = {}
-                    for prop in kf0.keys():
-                        if (prop in skip_props) or (kf0[prop][0] is None):
-                            frame[prop] = kf0[prop]
-                            continue
-                        val = func(a(kf0[prop]), a(kf1[prop]), t/tdif)
-                        if isinstance(val, np.ndarray):
-                            frame[prop] = val.ravel().tolist()
-                        else:
-                            frame[prop] = val
-                    allframes.append(frame)
-                for frame in allframes:
-                    self._set_view(**frame)
-                    #saveevt.clear() #?
-                    self.saveIMG(filename%(fr+offset), size=size)
-                    fr+=1
-                    #saveevt.wait() #?
+            allframes = self._get_anim_seq(animation,fps,interpolation)
+            for fr,frame in enumerate(allframes):
+                self._set_view(**frame)
+                self.saveIMG(filename%(fr+offset+1), size=size)
+                
     class PickerHandler(web.RequestHandler):
         def get(self):
             pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
@@ -613,8 +626,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         return client
 
     return server
-
-
 
 def _make_disp_defaults(disp_layers):
     # Useful function for transmitting colors..
