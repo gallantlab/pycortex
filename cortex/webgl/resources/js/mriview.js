@@ -339,7 +339,7 @@ var mriview = (function(module) {
                 return $(this.object).find("#mix").slider("value");
             case 'pivot':
                 //return $("#pivot").slider("value");
-            return this._pivot;
+                return this._pivot;
             case 'frame':
                 return this.frame;
             case 'azimuth':
@@ -410,6 +410,8 @@ var mriview = (function(module) {
                 return this.setData(value)
             case 'labels':
                 return this.labelshow = value;
+            case 'pivot':
+                return 'SORRY NOT YET'
             case 'projection':
                 if (value=='perspective'){
                     return this.controls.camera.toPerspective()}

@@ -1,5 +1,6 @@
 import os
 import glob
+import copy
 import json
 import Queue
 import shutil
@@ -298,7 +299,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             Sets each the state of each keyword argument provided. View parameters
             that can be set include:
             
-            altitude, azimuth, target, mix, radius, visL, visR 
+            altitude, azimuth, target, mix, radius, visL, visR, pivot,
             (L/R hemisphere visibility), alpha (background alpha), 
             rotationL, rotationR (L/R hemisphere rotation, [x,y,z])
             
@@ -309,7 +310,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             higher-level functions that load .json files, which have the 
             parameters in lists by default. So it's annoying either way.
             """
-            props = ['altitude','azimuth','target','mix','radius',
+            props = ['altitude','azimuth','target','mix','radius','pivot',
                 'visL','visR','alpha','rotationR','rotationL','projection']
             for k in kwargs.keys():
                 if not k in props:
@@ -317,20 +318,23 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                     continue
                 self.setState(k,kwargs[k][0])
 
-        def _capture_view(self):
+        def _capture_view(self,time=None):
             """Low-level command: returns a dict of current view parameters
 
             Retrieves the following view parameters from current viewer:
 
             altitude, azimuth, target, mix, radius, visL, visR, alpha, 
-            rotationR, rotationL, projection
+            rotationR, rotationL, projection, pivot
 
+            `time` appends a 'time' key into the view (for use in animations)
             """
-            props = ['altitude','azimuth','target','mix','radius',
+            props = ['altitude','azimuth','target','mix','radius','pivot',
                 'visL','visR','alpha','rotationR','rotationL','projection']
             view = {}
             for p in props:
                 view[p] = self.getState(p)[0]
+            if not time is None:
+                view['time'] = time
             return view
 
         def save_view(self,subject,name):
@@ -408,7 +412,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
             return Proxy("mixer.html")
 
-        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0,
+        def makeMovie_old(self, animation, filename="brainmovie%07d.png", offset=0,
                       fps=30, size=(1920, 1080), interpolation="linear"):
             """Renders movie frames for animation of mesh movement
 
@@ -454,8 +458,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             # Animate! (use default settings)
             js_handle.makeMovie(animation)
             """
-
+            # build up two variables: State and Anim.
+            # state is a dict of all values being modified at any time
             state = dict()
+            # anim is a list of transitions between keyframes
             anim = []
             for f in sorted(animation, key=lambda x:x['idx']):
                 if f['idx'] == 0:
@@ -493,7 +499,93 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 saveevt.clear()
                 self.saveIMG(filename%(i+offset))
                 saveevt.wait()
+        def make_movie(self, animation, filename="brainmovie%07d.png", offset=0,
+                      fps=30, size=(1920, 1080), interpolation="linear"):
+            """Renders movie frames for animation of mesh movement
 
+            Makes an animation (for example, a transition between inflated and 
+            flattened brain or a rotating brain) of a cortical surface. Takes a 
+            list of dictionaries (`animation`) as input, and uses the values in
+            the dictionaries as keyframes for the animation.
+
+            Mesh display parameters that can be animated include 'elevation',
+            'azimuth','mix','radius','target' (more?)
+
+
+            Parameters
+            ----------
+            animation : list of dicts
+                This is a list of keyframes for the animation. Each keyframe should be 
+                a dict in the form captured by the ._capture_view method. NOTE: every 
+                view must include all view parameters. Additionally, there should be 
+                one extra key/value pair for "time". The value for time should be
+                in seconds. The list of keyframes is sorted by time before applying, 
+                so they need not be in order in the input.
+            filename : string path name
+                Must contain '%d' (or some variant thereof) to account for frame
+                number, e.g. '/some/directory/brainmovie%07d.png'
+            offset : int
+                Frame number for first frame rendered. Useful for concatenating
+                animations.
+            fps : int
+                Frame rate of resultant movie
+            size : tuple (x,y)
+                Size (in pixels) of resulting movie
+            interpolation : {"linear","smoothstep","smootherstep"}
+                Interpolation method for values between keyframes.
+
+            Notes
+            -----
+            Make sure that all values that will be modified over the course
+            of the animation are initialized (have some starting value) in the first 
+            frame.
+
+            Example
+            -------
+            # Called after a call of the form: js_handle = cortex.webgl.show(DataViewObject)
+            # Start with left hemisphere view
+            js_handle._setView(azimuth=[90],altitude=[90.5],mix=[0])
+            # Initialize list
+            animation = []
+            # Append 5 key frames for a simple rotation
+            for az,t in zip([90,180,270,360,450],[0,.5,1.0,1.5,2.0]):
+                animation.append({'time':t,'azimuth':[az]})
+            # Animate! (use default settings)
+            js_handle.make_movie(animation)
+            """
+
+            keyframes = sorted(animation, key=lambda x:x['time'])
+            fr = 0
+            a = np.array
+            func = mixes[interpolation]
+            skip_props = ['projection','visR','visL',]
+            for start,end in zip(keyframes[:-1],keyframes[1:]):
+                kf0 = copy.copy(start)
+                t0 = kf0.pop('time')
+                kf1 = copy.copy(end)
+                t1 = kf1.pop('time')
+                tdif = float(t1-t0)
+                fr_time = np.arange(0, (tdif+1./fps), 1./fps)
+                allframes = []
+                # Interpolate between values
+                for t in fr_time:
+                    frame = {}
+                    for prop in kf0.keys():
+                        if (prop in skip_props) or (kf0[prop][0] is None):
+                            frame[prop] = kf0[prop]
+                            continue
+                        val = func(a(kf0[prop]), a(kf1[prop]), t/tdif)
+                        if isinstance(val, np.ndarray):
+                            frame[prop] = val.ravel().tolist()
+                        else:
+                            frame[prop] = val
+                    allframes.append(frame)
+                for frame in allframes:
+                    self._set_view(**frame)
+                    #saveevt.clear() #?
+                    self.saveIMG(filename%(fr+offset))
+                    fr+=1
+                    #saveevt.wait() #?
     class PickerHandler(web.RequestHandler):
         def get(self):
             pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
