@@ -960,3 +960,22 @@ def measure_volume(pts, polys):
     pd = tvtk.PolyData(points=pts, polys=polys)
     mp = tvtk.MassProperties(input=pd)
     return mp.volume
+
+def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
+    imgdata = tvtk.ImageData(dimensions=volume.shape)
+    imgdata.point_data.scalars = volume.flatten('F')
+
+    contours = tvtk.ContourFilter(input=imgdata, number_of_contours=1)
+    contours.set_value(0, 1)
+
+    if smooth:
+        smoothargs = dict(number_of_iterations=40, feature_angle = 90, pass_band=.05)
+        smoothargs.update(kwargs)
+        contours = tvtk.WindowedSincPolyDataFilter(input=contours.output, **smoothargs)
+    if decimate:
+        contours = tvtk.QuadricDecimation(input=contours.output, target_reduction=.75)
+    
+    contours.update()
+    pts = contours.output.points.to_array()
+    polys = contours.output.polys.to_array().reshape(-1, 4)[:,1:]
+    return pts, polys
