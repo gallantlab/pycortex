@@ -405,11 +405,11 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             size : tuple (x,y) 
                 size (in pixels) of image to save. Resizes whole window.
             """
-            if not size is None:
-                self.resize(*size)
+            #if not size is None:
+            #    self.resize(*size)
             post_name.put(filename)
 
-            Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
+            Proxy = serve.JSProxy(self.send, "window.viewers.getImage")
             return Proxy("mixer.html")
 
         def makeMovie_old(self, animation, filename="brainmovie%07d.png", offset=0,
