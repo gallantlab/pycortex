@@ -924,7 +924,6 @@ var mriview = (function(module) {
         }
         this.figure.notify("playtoggle", this);
     };
-
     module.Viewer.prototype.getImage = function(width, height, post) {
         if (width === undefined)
             width = this.canvas.width();

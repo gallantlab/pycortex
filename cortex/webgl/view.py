@@ -395,7 +395,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         #    Proxy = serve.JSProxy(self.send, "window.viewers.setData")
         #    return Proxy(name)
 
-        def saveIMG(self, filename,size=None):
+        def saveIMG(self, filename,size=(None, None)):
             """Saves currently displayed view to a .png image file
 
             Parameters
@@ -405,12 +405,9 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             size : tuple (x,y) 
                 size (in pixels) of image to save. Resizes whole window.
             """
-            if not size is None:
-                self.resize(*size)
             post_name.put(filename)
-
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
-            return Proxy("mixer.html")
+            return Proxy(size[0], size[1], "mixer.html")
 
         def makeMovie_old(self, animation, filename="brainmovie%07d.png", offset=0,
                       fps=30, size=(1920, 1080), interpolation="linear"):
@@ -479,9 +476,6 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                     if start['value'] != end['value']:
                         anim.append((start, end))
 
-            if not size is None:
-                # Warning: UNRELIABLE!
-                self.resize(*size)
             for i, sec in enumerate(np.arange(0, anim[-1][1]['idx']+1./fps, 1./fps)):
                 for start, end in anim:
                     if start['idx'] < sec <= end['idx']:
@@ -496,9 +490,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                             self.setState(start['state'], val.ravel().tolist())
                         else:
                             self.setState(start['state'], val)
-                saveevt.clear()
-                self.saveIMG(filename%(i+offset))
-                saveevt.wait()
+                self.saveIMG(filename%(i+offset), size=size)
+
         def make_movie(self, animation, filename="brainmovie%07d.png", offset=0,
                       fps=30, size=(1920, 1080), interpolation="linear"):
             """Renders movie frames for animation of mesh movement
@@ -583,7 +576,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 for frame in allframes:
                     self._set_view(**frame)
                     #saveevt.clear() #?
-                    self.saveIMG(filename%(fr+offset))
+                    self.saveIMG(filename%(fr+offset), size=size)
                     fr+=1
                     #saveevt.wait() #?
     class PickerHandler(web.RequestHandler):
