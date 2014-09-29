@@ -234,14 +234,18 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         overlays.append(sulc)
     if not extra_disp is None:
         svgfile,layer = extra_disp
-        disp = db.get_overlay(dataview.subject,
+        if not isinstance(layer,(list,tuple)):
+            layer = [layer]
+        for extralayer in layer:
+            # Allow multiple extra layer overlays
+            disp = db.get_overlay(dataview.subject,
                               otype='external',
                               shadow=shadow,
                               labelsize=labelsize,
                               labelcolor=labelcolor,
-                              layer=layer,
+                              layer=extralayer,
                               svgfile=svgfile)
-        overlays.append(disp)
+            overlays.append(disp)
     for oo in overlays:
         roitex = oo.get_texture(height, labels=with_labels)
         roitex.seek(0)
