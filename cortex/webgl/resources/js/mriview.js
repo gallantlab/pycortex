@@ -398,6 +398,10 @@ var mriview = (function(module) {
             case 'visR':
                 if (this.roipack) this.roipack._updatemove = true;
                 return this.meshes.right.visible = value;
+            //case 'volume_vis':
+            //    this.planes[0].mesh.visible = value[0]
+            //    this.planes[1].mesh.visible = value[1]
+            //    this.planes[2].mesh.visible = value[2]
             case 'rotationL':
                 if (this.roipack) this.roipack._updatemove = true;
                 return this.meshes.left.rotation.set(value[0], value[1], value[2]);
@@ -406,6 +410,8 @@ var mriview = (function(module) {
                 return this.meshes.right.rotation.set(value[0], value[1], value[2]);
             case 'alpha':
                 return this.renderer.setClearColor(0,value);
+            case 'specularity':
+                return this.specularity = value
             case 'data':
                 return this.setData(value)
             case 'labels':

@@ -335,7 +335,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             parameters in lists by default. So it's annoying either way.
             """
             props = ['altitude','azimuth','target','mix','radius','pivot',
-                'visL','visR','alpha','rotationR','rotationL','projection']
+                'visL','visR','alpha','rotationR','rotationL','projection',
+                'volume_vis','frame',]
             for k in kwargs.keys():
                 if not k in props:
                     if k=='time':
@@ -355,7 +356,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             `time` appends a 'time' key into the view (for use in animations)
             """
             props = ['altitude','azimuth','target','mix','radius','pivot',
-                'visL','visR','alpha','rotationR','rotationL','projection']
+                'visL','visR','alpha','rotationR','rotationL','projection',
+                'volume_vis','frame']
             view = {}
             for p in props:
                 view[p] = self.getState(p)[0]
