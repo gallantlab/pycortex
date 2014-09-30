@@ -336,7 +336,11 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             """
             props = ['altitude','azimuth','target','mix','radius','pivot',
                 'visL','visR','alpha','rotationR','rotationL','projection',
-                'volume_vis','frame',]
+                'volume_vis','frame','slices']
+            # Set mix first, as it interacts with other arguments
+            if 'mix' in kwargs:
+                mix = kwargs.pop('mix')
+                self.setState('mix',mix)
             for k in kwargs.keys():
                 if not k in props:
                     if k=='time':
@@ -357,7 +361,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             """
             props = ['altitude','azimuth','target','mix','radius','pivot',
                 'visL','visR','alpha','rotationR','rotationL','projection',
-                'volume_vis','frame']
+                'volume_vis','frame','slices']
             view = {}
             for p in props:
                 view[p] = self.getState(p)[0]
@@ -365,7 +369,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 view['time'] = time
             return view
 
-        def save_view(self,subject,name):
+        def save_view(self,subject,name,is_overwrite=False):
             """Saves current view parameters to pycortex database
 
             Parameters
@@ -374,6 +378,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 pycortex subject id
             name : string
                 name for view to store
+            is_overwrite: bool
+                whether to overwrite an extant view (default : False)
 
             Notes
             -----
@@ -384,7 +390,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             --------
             viewer methods get_view, _set_view, _capture_view
             """
-            db.save_view(self,subject,name)
+            db.save_view(self,subject,name,is_overwrite)
 
         def get_view(self,subject,name):
             """Get saved view from pycortex database.
@@ -612,11 +618,12 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             # Animate! (use default settings)
             js_handle.make_movie(animation)
             """
-
+            import time
             allframes = self._get_anim_seq(animation,fps,interpolation)
             for fr,frame in enumerate(allframes):
                 self._set_view(**frame)
                 self.saveIMG(filename%(fr+offset+1), size=size)
+                time.sleep(.01)
 
     class PickerHandler(web.RequestHandler):
         def get(self):
