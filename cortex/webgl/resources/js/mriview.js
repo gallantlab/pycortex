@@ -370,6 +370,8 @@ var mriview = (function(module) {
                     return 'orthographic'}
                 else if (this.camera.inPerspectiveMode) {
                     return 'perspective'}
+            case 'slices':
+                return [this.planes[0].slice, this.planes[1].slice, this.planes[2].slice]
         };
     };
     module.Viewer.prototype.setState = function(state, value) {
@@ -423,6 +425,8 @@ var mriview = (function(module) {
                     return this.controls.camera.toPerspective()}
                 else if (value=='orthographic'){
                     return this.controls.camera.toOrthographic()}
+            case 'slices':
+                return [this.planes[0].update(value[0]), this.planes[1].update(value[1]), this.planes[2].update(value[2])];
         };
     };
     module.Viewer.prototype.animate = function(animation) {
