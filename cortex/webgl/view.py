@@ -551,7 +551,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 # when trying to get pixel-perfect matches. Mark will fix
                 # this, but is WAY too pooped right now; you should thank
                 # him for not introducing more bugs. 
-                fr_time = np.linspace(0, tdif, tdif*fps, endpoint=False)
+                use_endpoint = keyframes[-1]==end
+                fr_time = np.linspace(0, tdif, tdif*fps, endpoint=use_endpoint)
                 # Interpolate between values
                 for t in fr_time:
                     frame = {}
