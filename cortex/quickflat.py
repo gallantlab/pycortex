@@ -79,8 +79,6 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     dataview = dataset.normalize(braindata)
     if not isinstance(dataview, dataset.Dataview):
         raise TypeError('Please provide a Dataview, not a Dataset')
-    if dataview.movie:
-        raise ValueError('Cannot flatten movie volumes')
     
     if fig is None:
         fig_resize = True
@@ -356,13 +354,8 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     roipack.get_svg(fname, labels=True, with_ims=[pngdata])
 
 def make(braindata, height=1024, recache=False, **kwargs):
-    if not isinstance(braindata, (dataset.Volume, dataset.Vertex, dataset.VolumeRGB, dataset.VertexRGB)):
-        raise TypeError('Invalid type for quickflat')
-    if braindata.movie:
-        raise ValueError('Cannot flatten multiple volumes')
-
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
-
+    
     if not hasattr(braindata, "xfmname"):
         pixmap = get_flatcache(braindata.subject,
                                None,
@@ -370,13 +363,23 @@ def make(braindata, height=1024, recache=False, **kwargs):
                                recache=recache,
                                **kwargs)
         data = braindata.vertices
+        if isinstance(braindata, dataset.Vertex2D):
+            data = braindata.raw.vertices
+        else:
+            data = braindata.vertices
     else:
         pixmap = get_flatcache(braindata.subject,
                                braindata.xfmname,
                                height=height,
                                recache=recache,
                                **kwargs)
-        data = braindata.volume
+        if isinstance(braindata, dataset.Volume2D):
+            data = braindata.raw.volume
+        else:
+            data = braindata.volume
+
+    if data.shape[0] > 1:
+        raise ValueError("Cannot flatten movie views")
 
     if data.dtype == np.uint8:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
