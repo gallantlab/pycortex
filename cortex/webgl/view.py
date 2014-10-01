@@ -546,7 +546,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 t0 = start['time']
                 t1 = end['time']
                 tdif = float(t1-t0)
-                fr_time = np.arange(0, (tdif+1./fps), 1./fps)
+                fr_time = np.linspace(0, tdif, tdif*fps, endpoint=False)
                 # Interpolate between values
                 for t in fr_time:
                     frame = {}
