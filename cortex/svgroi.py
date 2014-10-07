@@ -87,13 +87,22 @@ class ROIpack(object):
             self.kdt = cKDTree(tcoords)
             self.layer = layer 
             # Display parameters
-            self.linewidth = float(config.get(self.layer, "line_width")) if linewidth is None else linewidth
-            self.linecolor = tuple(map(float, config.get(self.layer, "line_color").split(','))) if linecolor is None else linecolor
-            self.roifill = tuple(map(float, config.get(self.layer, "fill_color").split(','))) if roifill is None else roifill
-            self.shadow = float(config.get(self.layer, "shadow")) if shadow is None else shadow
+            if layer in config.sections():
+                dlayer = layer
+            else:
+                # Unknown display layer; default to values for ROIs
+                import warnings
+                warnings.warn('No defaults set for display layer %s; Using defaults for ROIs in options.cfg file')
+                dlayer = 'rois'                
+            self.linewidth = float(config.get(dlayer, "line_width")) if linewidth is None else linewidth
+            self.linecolor = tuple(map(float, config.get(dlayer, "line_color").split(','))) if linecolor is None else linecolor
+            self.roifill = tuple(map(float, config.get(dlayer, "fill_color").split(','))) if roifill is None else roifill
+            self.shadow = float(config.get(dlayer, "shadow")) if shadow is None else shadow
+
             # For dashed lines, default to WYSIWYG from rois.svg
             self.dashtype = dashtype
             self.dashoffset = dashoffset
+
 
             self.reload(size=labelsize, color=labelcolor)
 

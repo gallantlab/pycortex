@@ -66,30 +66,32 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Maximum value for background curvature colormap. Defaults to config file value.
     cvthr : bool,optional
         Apply threshold to background curvature
-    extra_disp : str
-        Optional extra display layer. String specifies the name of the layer in the
-        rois.svg file to display. Defaults to None.
+    extra_disp : tuple
+        Optional extra display layer from external .svg file. Tuple specifies (filename,layer)
+        filename should be a full path. External svg file should be structured exactly as 
+        rois.svg for the subject. (Best to just copy rois.svg somewhere else and add layers to it)
+        Default value is None.
 
     """
-    from matplotlib import cm, pyplot as plt
+    from matplotlib import colors,cm, pyplot as plt
     from matplotlib.collections import LineCollection
 
     dataview = dataset.normalize(braindata)
     if not isinstance(dataview, dataset.Dataview):
         raise TypeError('Please provide a Dataview, not a Dataset')
-    if dataview.movie:
-        raise ValueError('Cannot flatten movie volumes')
     
     if fig is None:
+        fig_resize = True
         fig = plt.figure()
     else:
+        fig_resize = False
         fig = plt.figure(fig.number)
 
     im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
                        height=height, thick=thick, depth=depth)
-    
+
     if cutout:
-        roi = db.get_overlay(dataview.data.subject,
+        roi = db.get_overlay(dataview.subject,
                              otype='cutouts',
                              roifill=(0.,0.,0.,0.),
                              linecolor=(0.,0.,0.,0.),
@@ -157,8 +159,24 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         extent=extents, 
         origin='lower')
     if not isinstance(dataview, (dataset.VolumeRGB, dataset.VertexRGB)):
+        # Get colormap from matplotlib or pycortex colormaps
+        ## -- redundant code, here and in cortex/dataset/views.py -- ##
+        if isinstance(dataview.cmap,(str,unicode)):
+            if not dataview.cmap in cm.__dict__:
+                # unknown colormap, test whether it's in pycortex colormaps
+                cmapdir = config.get('webgl', 'colormaps')
+                colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
+                colormaps = dict(((os.path.split(c)[1][:-4],c) for c in colormaps))
+                if not dataview.cmap in colormaps:
+                    raise Exception('Unkown color map!')
+                I = plt.imread(colormaps[dataview.cmap])
+                cmap = colors.ListedColormap(np.squeeze(I))
+                # Register colormap while we're at it
+                cm.register_cmap(dataview.cmap,cmap)
+            else:
+                cmap = dataview.cmap
         kwargs.update(
-            cmap=dataview.cmap, 
+            cmap=cmap, 
             vmin=dataview.vmin, 
             vmax=dataview.vmax)
     ax = fig.add_axes((0,0,1,1))
@@ -215,13 +233,15 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                               labelcolor=labelcolor)
         overlays.append(sulc)
     if not extra_disp is None:
+        svgfile,layer = extra_disp
         disp = db.get_overlay(dataview.subject,
-                              otype=extra_disp,
+                              otype='external',
                               shadow=shadow,
                               labelsize=labelsize,
-                              labelcolor=labelcolor)
+                              labelcolor=labelcolor,
+                              layer=layer,
+                              svgfile=svgfile)
         overlays.append(disp)
-
     for oo in overlays:
         roitex = oo.get_texture(height, labels=with_labels)
         roitex.seek(0)
@@ -241,6 +261,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             zorder=3,
             origin='lower')
 
+    if fig_resize:
+        imsize = fig.get_axes()[0].get_images()[0].get_size()
+        fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
+        
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
@@ -330,13 +354,8 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     roipack.get_svg(fname, labels=True, with_ims=[pngdata])
 
 def make(braindata, height=1024, recache=False, **kwargs):
-    if not isinstance(braindata, (dataset.Volume, dataset.Vertex, dataset.VolumeRGB, dataset.VertexRGB)):
-        raise TypeError('Invalid type for quickflat')
-    if braindata.movie:
-        raise ValueError('Cannot flatten multiple volumes')
-
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
-
+    
     if not hasattr(braindata, "xfmname"):
         pixmap = get_flatcache(braindata.subject,
                                None,
@@ -344,13 +363,23 @@ def make(braindata, height=1024, recache=False, **kwargs):
                                recache=recache,
                                **kwargs)
         data = braindata.vertices
+        if isinstance(braindata, dataset.Vertex2D):
+            data = braindata.raw.vertices
+        else:
+            data = braindata.vertices
     else:
         pixmap = get_flatcache(braindata.subject,
                                braindata.xfmname,
                                height=height,
                                recache=recache,
                                **kwargs)
-        data = braindata.volume
+        if isinstance(braindata, dataset.Volume2D):
+            data = braindata.raw.volume
+        else:
+            data = braindata.volume
+
+    if data.shape[0] > 1:
+        raise ValueError("Cannot flatten movie views")
 
     if data.dtype == np.uint8:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
