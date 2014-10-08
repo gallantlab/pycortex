@@ -262,11 +262,7 @@ class ROIpack(object):
     def get_splines(self, roiname):
         path_strs = [list(_tokenize_path(path.attrib['d']))
                      for path in self.rois[roiname].paths]
-        '''
-        for i in range(len(path_strs)):
-            print self.rois[roiname].paths[i].attrib['d']
-            print path_strs[i]
-        '''
+
         COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
         UPPERCASE = set('MZLHVCSQTA')
         all_splines = [] #contains each hemisphere separately
@@ -299,7 +295,6 @@ class ROIpack(object):
                         else:
                             prev_coord[0] += float(path[p_j])
                             prev_coord[1] += float(path[p_j+1])
-                            #prev_coord = prev_coord + array([float(path[p_j]),float(path[p_j+1])])
 
                             # this conditional is for recognizing and storing the last coord in the first M command(s)
                             # as the official first coord in the spline path for any return-to-first command 
@@ -329,12 +324,10 @@ class ROIpack(object):
                         if path[path_ind] == 'L':
                             next_coord[0] = float(path[p_j])
                             next_coord[1] = self.svgshape[1] - float(path[p_j+1])
-                            #next_coord = array([float(path[p_j]), self.svgshape[1] - float(path[p_j+1])])
 
                         else:
                             next_coord[0] = prev_coord[0] + float(path[p_j])
                             next_coord[1] = prev_coord[1] - float(path[p_j+1])
-                            #next_coord = prev_coord + array([float(path[p_j]),-1.0*float(path[p_j+1])]) 
                         
                         path_splines.append(LineSpline(prev_coord, next_coord))
                         prev_coord[0] = next_coord[0]
@@ -350,11 +343,9 @@ class ROIpack(object):
                         if path[path_ind] == 'H':
                             next_coord[0] = float(path[p_j])
                             next_coord[1] = prev_coord[1]
-                            #next_coord = array([float(path[p_j]), prev_coord[1]])
                         else:
                             next_coord[0] = prev_coord[0] + float(path[p_j])
                             next_coord[1] = prev_coord[1]
-                            #next_coord = prev_coord + array([float(path[p_j]), 0])
                         
                         path_splines.append(LineSpline(prev_coord, next_coord))
                         prev_coord[0] =next_coord[0]
@@ -370,11 +361,9 @@ class ROIpack(object):
                         if path[path_ind] == 'V':
                             next_coord[0] = prev_coord[0]
                             next_coord[1] = self.svgshape[1] - float(path[p_j])
-                            #next_coord = array([prev_coord[0], self.svgshape[1] - float(path[p_j])])
                         else:
                             next_coord[0] = prev_coord[0]
                             next_coord[1] = prev_coord[1] - float(path[p_j])
-                            #next_coord = prev_coord + array([0, -1.0*float(path[p_j])]) 
                         
                         path_splines.append(LineSpline(prev_coord, next_coord))
                         prev_coord[0] = next_coord[0]
@@ -398,10 +387,6 @@ class ROIpack(object):
 
                             end_coord[0] = float(path[p_j+4])
                             end_coord[1] = self.svgshape[1] - float(path[p_j+5])
-                            
-                            #ctl1_coord = array([float(path[p_j]), self.svgshape[1] - float(path[p_j+1])])
-                            #ctl2_coord = array([float(path[p_j+2]), self.svgshape[1] - float(path[p_j+3])])
-                            #end_coord = array([float(path[p_j+4]), self.svgshape[1] - float(path[p_j+5])])
                         else:
                             ctl1_coord[0] = prev_coord[0] + float(path[p_j])
                             ctl1_coord[1] = prev_coord[1] - float(path[p_j+1])
@@ -412,17 +397,7 @@ class ROIpack(object):
                             end_coord[0] = prev_coord[0] + float(path[p_j+4])
                             end_coord[1] = prev_coord[1] - float(path[p_j+5])
 
-                            #ctl1_coord = prev_coord + array([float(path[p_j]), -1.0*float(path[p_j+1])]) 
-                            #ctl2_coord = prev_coord + array([float(path[p_j+2]), -1.0*float(path[p_j+3])]) 
-                            #end_coord = prev_coord + array([float(path[p_j+4]), -1.0*float(path[p_j+5])]) 
-
                         path_splines.append(CubBezSpline(prev_coord, ctl1_coord, ctl2_coord, end_coord))
-                        
-                        #print 'after single newest' + str(len(path_splines))
-                        #print ['cub prev: ',prev_coord, 'c: ', path[p_j:p_j+6]]
-                        #print path_splines[len(path_splines)-1].toString()
-                        #path_splines[len(path_splines)-1].plotSpline()
-                        #show()
 
                         prev_coord[0] = end_coord[0]
                         prev_coord[1] = end_coord[1]
@@ -444,17 +419,12 @@ class ROIpack(object):
 
                             end_coord[0] = float(path[p_j+2])
                             end_coord[1] = self.svgshape[1] - float(path[p_j+3])
-
-                            #ctl2_coord = array([float(path[p_j]), self.svgshape[1] - float(path[p_j+1])])
-                            #end_coord = array([float(path[p_j+2]), self.svgshape[1] - float(path[p_j+3])])
                         else:
                             ctl2_coord[0] = prev_coord[0] + float(path[p_j])
                             ctl2_coord[1] = prev_coord[1] - float(path[p_j+1])
                             
                             end_coord[0] = prev_coord[0] + float(path[p_j+2])
                             end_coord[1] = prev_coord[1] - float(path[p_j+3])
-                            #ctl2_coord = prev_coord + array([float(path[p_j]), -1.0*float(path[p_j+1])]) 
-                            #end_coord = prev_coord + array([float(path[p_j+2]), -1.0*float(path[p_j+3])]) 
                         
                         path_splines.append(CubBezSpline(prev_coord, ctl1_coord, ctl2_coord, end_coord))
                         prev_coord[0] = end_coord[0]
@@ -474,18 +444,12 @@ class ROIpack(object):
 
                             end_coord[0] = float(path[p_j+2])
                             end_coord[1] = self.svgshape[1] - float(path[p_j+3])
-
-                            #ctl_coord = array([float(path[p_j]), self.svgshape[1] - float(path[p_j+1])])
-                            #end_coord = array([float(path[p_j+2]), self.svgshape[1] - float(path[p_j+3])])
                         else:
                             ctl_coord[0] = prev_coord[0] + float(path[p_j])
                             ctl_coord[1] = prev_coord[1] - float(path[p_j+1])
 
                             end_coord[0] = prev_coord[0] + float(path[p_j+2])
                             end_coord[1] = prev_coord[1] - float(path[p_j+3])
-
-                            #ctl_coord = prev_coord + array([float(path[p_j]), -1.0*float(path[p_j+1])]) 
-                            #end_coord = prev_coord + array([float(path[p_j+2]), -1.0*float(path[p_j+3])]) 
                                         
                         path_splines.append(QuadBezSpline(prev_coord, ctl_coord, end_coord))
                         prev_coord[0] = end_coord[0]
@@ -504,11 +468,9 @@ class ROIpack(object):
                         if path[path_ind] == 'T':
                             end_coord[0] = float(path[p_j])
                             end_coord[1] = self.svgshape[1] - float(path[p_j+1])
-                            #end_coord = array([float(path[p_j]), self.svgshape[1] - float(path[p_j+1])])
                         else:
                             end_coord[0] = prev_coord[0] + float(path[p_j])
                             end_coord[1] = prev_coord[1] - float(path[p_j+1])
-                            #end_coord = prev_coord + array([float(path[p_j]), -1.0*float(path[p_j+1])]) 
 
                         path_splines.append(QuadBezSpline(prev_coord, ctl_coord, end_coord))
                         prev_coord[0] = end_coord[0]
@@ -531,11 +493,9 @@ class ROIpack(object):
                         if path[path_ind] == 'A':
                             end_coord[0] = float(path[p_j+5])
                             end_coord[1] = float(path[p_j+6])
-                            #end_coord = array([float(path[p_j+5]), float(path[p_j+6])])
                         else:
                             end_coord[0] = prev_coord[0] + float(path[p_j+5])
                             end_coord[1] = prev_coord[1] - float(path[p_j+6])
-                            #end_coord = prev_coord + array([float(path[p_j+5]), -1.0*float(path[p_j+6])])
 
                         path_splines.append(ArcSpline(prev_coord, rx, ry, x_rot, large_arc_flag, sweep_flag, end_coord))
 
@@ -611,14 +571,7 @@ class ROIpack(object):
                         for j in range(spline_i_xs.shape[1]):
                             isGreaterThanVtx = spline_i_xs[:,j] > vtx_is[:,0]
                             isLessThanClosestX = spline_i_xs[:,j] < closest_xs
-                            closest_xs[isGreaterThanVtx*isLessThanClosestX] = spline_i_xs[isGreaterThanVtx*isLessThanClosestX,j]
-                      
-                '''
-                plot(small_vts[~small_found_vtxs,0],small_vts[~small_found_vtxs,1],'c.')
-                plot(small_vts[small_found_vtxs,0],small_vts[small_found_vtxs,1],'r.')
-                plot(closest_xs,vtx_is[:,1],'m.')
-                show()
-                '''
+                            closest_xs[isGreaterThanVtx*isLessThanClosestX] = spline_i_xs[isGreaterThanVtx*isLessThanClosestX,j]                    
             
                 # checks if it's found the boundary or the original vertex
                 # it forgets about all the points in the line who've found their original vertex
