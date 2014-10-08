@@ -9,7 +9,7 @@ warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 from .. import dataset
 
 def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
-    from ..db import surfs
+    from ..database import db
     from . import point, patch, volume, line
 
     mapcls = dict(
@@ -28,11 +28,13 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     if len(kwds) > 0:
         ptype += '_'+kwds
 
-    fnames = surfs.getFiles(subject)
-    xfmfile = fnames['xfmdir'].format(xfmname=xfmname)
-    cachefile = fnames['projcache'].format(xfmname=xfmname, projection=ptype)
+    fname = "{xfmname}_{projection}.npz".format(xfmname=xfmname, projection=ptype)
+
+    xfmfile = db.get_paths(subject)['xfmdir'].format(xfmname=xfmname)
+    cachefile = os.path.join(db.get_cache(subject), fname)
+
     try:
-        if not recache and xfmname == "identity" or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime:
+        if not recache and (xfmname == "identity" or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime):
            return mapcls[type].from_cache(cachefile) 
         raise Exception
     except Exception as e:
@@ -83,9 +85,9 @@ class Mapper(object):
 
     def __call__(self, data):
         if isinstance(data, tuple):
-            data = dataset.VolumeData(*data)
+            data = dataset.Volume(*data)
 
-        if isinstance(data, dataset.VertexData):
+        if isinstance(data, dataset.Vertex):
             llen = self.masks[0].shape[0]
             if data.raw:
                 left, right = data.data[..., :llen,:], data.data[..., llen:,:]
@@ -99,12 +101,7 @@ class Mapper(object):
                     right = right[..., self.idxmap[1]]
             return left, right
 
-        if data.raw:
-            raise ValueError('Mapping raw data is unsupported')
-
         volume = data.volume
-        if not data.movie:
-            volume = volume[np.newaxis]
         volume.shape = len(volume), -1
         volume = volume.T
 
@@ -116,7 +113,7 @@ class Mapper(object):
             mapped[0] = mapped[0][:, self.idxmap[0]]
             mapped[1] = mapped[1][:, self.idxmap[1]]
 
-        return dataset.VertexData(np.hstack(mapped).squeeze(), data.subject, **data.attrs)
+        return dataset.Vertex(np.hstack(mapped).squeeze(), data.subject)
         
     def backwards(self, verts, fast=True):
         '''Projects vertex data back into volume space
@@ -129,24 +126,26 @@ class Mapper(object):
         '''
         left = np.zeros((self.masks[0].shape[0],), dtype=bool)
         right = np.zeros((self.masks[1].shape[0],), dtype=bool)
-        if isinstance(verts, (list, tuple)) and len(verts) == 2:
-            if len(verts[0]) == len(left):
-                left = verts[0]
-                right = verts[1]
-            elif verts[0].max() < len(left):
-                left[verts[0]] = True
-                right[verts[1]] = True
+        
+        if len(verts) > 0:
+            if isinstance(verts, (list, tuple)) and len(verts) == 2:
+                if len(verts[0]) == len(left):
+                    left = verts[0]
+                    right = verts[1]
+                elif verts[0].max() < len(left):
+                    left[verts[0]] = True
+                    right[verts[1]] = True
+                else:
+                    raise ValueError
             else:
-                raise ValueError
-        else:
-            if len(verts) == self.nverts:
-                left = verts[:len(left)]
-                right = verts[len(left):]
-            elif verts.max() < self.nverts:
-                left[verts[verts < len(left)]] = True
-                right[verts[verts >= len(left)] - len(left)] = True
-            else:
-                raise ValueError
+                if len(verts) == self.nverts:
+                    left = verts[:len(left)]
+                    right = verts[len(left):]
+                elif verts.max() < self.nverts:
+                    left[verts[verts < len(left)]] = True
+                    right[verts[verts >= len(left)] - len(left)] = True
+                else:
+                    raise ValueError
 
         output = []
         for mask, data in zip(self.masks, [left, right]):
@@ -158,11 +157,11 @@ class Mapper(object):
     @classmethod
     def _cache(cls, filename, subject, xfmname, **kwargs):
         print('Caching mapper...')
-        from ..db import surfs
+        from ..database import db
         masks = []
-        xfm = surfs.getXfm(subject, xfmname, xfmtype='coord')
-        fid = surfs.getSurf(subject, 'fiducial', merge=False, nudge=False)
-        flat = surfs.getSurf(subject, 'flat', merge=False, nudge=False)
+        xfm = db.get_xfm(subject, xfmname, xfmtype='coord')
+        fid = db.get_surf(subject, 'fiducial', merge=False, nudge=False)
+        flat = db.get_surf(subject, 'flat', merge=False, nudge=False)
 
         for (pts, _), (_, polys) in zip(fid, flat):
             masks.append(cls._getmask(xfm(pts), polys, xfm.shape, **kwargs))

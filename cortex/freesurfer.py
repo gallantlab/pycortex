@@ -1,12 +1,14 @@
 import os
+import shutil
 import struct
 import tempfile
+import warnings
 import shlex
 import subprocess as sp
 
 import numpy as np
 
-from . import db
+from . import database
 from . import anat
 
 def get_paths(subject, hemi, type="patch"):
@@ -18,50 +20,97 @@ def get_paths(subject, hemi, type="patch"):
     elif type == "curv":
         return os.path.join(base, "surf", hemi+".curv{name}")
 
+def autorecon(subject, type="all"):
+    types = { 
+        'all':'autorecon-all',
+        '1':"autorecon1",
+        '2':"autorecon2",
+        '3':"autorecon3",
+        'cp':"autorecon2-cp",
+        'wm':"autorecon2-wm",
+        'pia':"autorecon2-pial"}
+
+    times = {
+        'all':"12 hours", 
+        '2':"6 hours", 
+        'cp':"8 hours", 
+        'wm':"4 hours"
+        }
+    if str(type) in times:
+        resp = raw_input("recon-all will take approximately %s to run! Continue? "%times[str(type)])
+        if resp.lower() not in ("yes", "y"):
+            return
+            
+    cmd = "recon-all -s {subj} -{cmd}".format(subj=subject, cmd=types[str(type)])
+    sp.check_call(shlex.split(cmd))
+
+def flatten(subject, hemi, patch):
+    resp = raw_input('Flattening takes approximately 2 hours! Continue? ')
+    if resp.lower() in ('y', 'yes'):
+        inpath = get_paths(subject, hemi).format(name=patch)
+        outpath = get_paths(subject, hemi).format(name=patch+".flat")
+        cmd = "mris_flatten -O fiducial {inpath} {outpath}".format(inpath=inpath, outpath=outpath)
+        sp.check_call(shlex.split(cmd))
+    else:
+        print("Not going to flatten...")
+
 def import_subj(subject, sname=None):
     if sname is None:
         sname = subject
-    db.surfs.makeSubj(sname)
+    database.db.make_subj(sname)
 
     import nibabel
-    surfs = os.path.join(db.filestore, sname, "surfaces", "{name}_{hemi}.npz")
-    anats = os.path.join(db.filestore, sname, "anatomicals", "{name}.{type}")
+    surfs = os.path.join(database.default_filestore, sname, "surfaces", "{name}_{hemi}.gii")
+    anats = os.path.join(database.default_filestore, sname, "anatomicals", "{name}.nii.gz")
+    surfinfo = os.path.join(database.default_filestore, sname, "surface-info", "{name}.npz")
     fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
+    curvs = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'surf', '{hemi}.{name}')
 
     #import anatomicals
-    for fsname, name in dict(T1="raw").items():
+    for fsname, name in dict(T1="raw", aseg="aseg").items():
         path = os.path.join(fspath, "{fsname}.mgz").format(fsname=fsname)
-        out = anats.format(subj=sname, name=name, type='nii.gz')
+        out = anats.format(subj=sname, name=name)
         cmd = "mri_convert {path} {out}".format(path=path, out=out)
         sp.call(shlex.split(cmd))
+
+    if not os.path.exists(curvs.format(hemi="lh", name="fiducial")):
+        make_fiducial(subject)
 
     #Freesurfer uses FOV/2 for center, let's set the surfaces to use the magnet isocenter
     trans = nibabel.load(out).get_affine()[:3, -1]
     surfmove = trans - np.sign(trans) * [128, 128, 128]
 
-    curvs = dict(lh=[], rh=[])
+    from . import formats
     #import surfaces
-    for fsname, name in [('smoothwm',"wm"), ('pial',"pia"), ('inflated',"inflated"), ('inflated',"flat")]:
+    for fsname, name in [('smoothwm',"wm"), ('pial',"pia"), ('inflated',"inflated")]:
         for hemi in ("lh", "rh"):
-            pts, polys, curv = get_surf(subject, hemi, fsname)
+            pts, polys, _ = get_surf(subject, hemi, fsname)
             fname = surfs.format(subj=sname, name=name, hemi=hemi)
-            np.savez(fname, pts=pts + surfmove, polys=polys)
-            if fsname == 'smoothwm':
-                curvs[hemi] = curv
+            formats.write_gii(fname, pts=pts + surfmove, polys=polys)
 
-    np.savez(anats.format(subj=sname, name="curvature", type='npz'), left=-curvs['lh'], right=-curvs['rh'])
-    #np.savez(anats.format(subj=sname, name="thickness", type='npz'), left=curvs['lh'], right=curvs['rh'])
+    #import surfinfo
+    for curv, info in dict(sulc="sulcaldepth", thickness="thickness", curv="curvature").items():
+        lh, rh = [parse_curv(curvs.format(hemi=hemi, name=curv)) for hemi in ['lh', 'rh']]
+        np.savez(surfinfo.format(subj=sname, name=info), left=-lh, right=-rh)
 
 def import_flat(subject, patch, sname=None):
     if sname is None:
         sname = subject
-    surfs = os.path.join(db.filestore, sname, "surfaces", "flat_{hemi}.npz")
+    surfs = os.path.join(database.default_filestore, sname, "surfaces", "flat_{hemi}.gii")
+
+    from . import formats
     for hemi in ['lh', 'rh']:
         pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat")
         flat = pts[:,[1, 0, 2]]
         flat[:,1] = -flat[:,1]
         fname = surfs.format(hemi=hemi)
-        np.savez(fname, pts=flat, polys=polys)
+        print("saving to %s"%fname)
+        formats.write_gii(fname, pts=flat, polys=polys)
+
+    #clear the cache, per #81
+    cache = os.path.join(database.default_filestore, sname, "cache")
+    shutil.rmtree(cache)
+    os.makedirs(cache)
 
 def make_fiducial(subject):
     for hemi in ['lh', 'rh']:
@@ -104,18 +153,6 @@ def parse_patch(filename):
         data = np.fromstring(fp.read(), dtype=[('vert', '>i4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4')])
         assert len(data) == nverts
         return data
-
-def write_patch(filename, pts, edges=None):
-    if edges is None:
-        edges = set()
-
-    with open(filename, 'wb') as fp:
-        fp.write(struct.pack('>2i', -1, len(pts)))
-        for i, pt in pts:
-            if i in edges:
-                fp.write(struct.pack('>i3f', -i-1, *pt))
-            else:
-                fp.write(struct.pack('>i3f', i+1, *pt))
 
 def get_surf(subject, hemi, type, patch=None):
     if type == "patch":
@@ -193,8 +230,8 @@ def show_surf(subject, hemi, type, patch=None, curv=True):
 
     picker = fig.on_mouse_pick(picker_callback)
     picker.tolerance = 0.01
-
-    return surf
+    mlab.show()
+    return fig, surf
 
 def write_dot(fname, pts, polys, name="test"):
     import networkx as nx
@@ -345,3 +382,8 @@ def stretch_mwall(pts, polys, mwall):
     pts[mwall, 1] = radius * np.cos(angles) + center[1]
     pts[mwall, 2] = radius * np.sin(angles) + center[2]
     return SpringLayout(pts, polys, inflated, pins=mwall)
+
+
+if __name__ == "__main__":
+    import sys
+    show_surf(sys.argv[1], sys.argv[2], sys.argv[3])

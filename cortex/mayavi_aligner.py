@@ -67,7 +67,7 @@ class RotationWidget(HasTraits):
         def startmove(obj, evt):
             self.startmove = (self.pos, self.angle, self.radius)
         def endmove(obj, evt):
-            if hasattr(self.callback, "__call__") and self._btn == 1:
+            if hasattr(self.callback, "__call__"):
                 self.callback( self, self.pos - self.startmove[0], 
                                 self.angle - self.startmove[1], 
                                 self.radius / self.startmove[2])
@@ -126,6 +126,7 @@ class RotationWidget(HasTraits):
         self.circle.visible = self.enabled
 
 class ThreeDScene(MayaviScene):
+    #this will not work for qt4 windows, but its functionality is not important!
     aligner = Instance("Align")
     state = Array(value=[1,1,1])
 
@@ -150,68 +151,92 @@ class ThreeDScene(MayaviScene):
         self.aligner.scene_3d.renderer.reset_camera_clipping_range()
         self.aligner.scene_3d.render()
 
-class FlatScene(Scene):
-    handle = Instance(RotationWidget)
-    aligner = Instance("Align")
-    axis = Instance("Axis")
-    invert = Bool(value=False)
+#We need to override the mayavi default keys to avoid command overlap
+try:
+    #This is a WX window
+    Scene.OnKeyDown
+    class FlatScene(Scene):
+        def OnKeyDown(self, event):
+            #emulate behavior in QT
+            lookup = dict((i, (chr(i), None)) for i in range(256))
+            lookup[315] = ('', 'Up')
+            lookup[314] = ('', 'Left')
+            lookup[316] = ('', 'Right')
+            lookup[317] = ('', 'Down')
+            lookup[322] = ('', 'Insert')
+            lookup[313] = ('', 'Home')
+            lookup[366] = ('', 'Prior')
+            lookup[127] = ('', 'Del')
+            lookup[312] = ('', 'End')
+            lookup[367] = ('', 'Next')
 
-    def OnKeyDown(self, evt):
-        i = -1 if self.invert else 1
-        key = evt.GetKeyCode()
-        ckey = chr(key % 256)
-        rotccw, rotcw = [322, 57], [366, 48]
-        moves = {314:(-1,0,0), 315:(0,1,0), 316:(1,0,0), 317:(0,-1,0)}
-        if self.invert:
-            rotccw, rotcw = rotcw, rotccw
-            moves = {314:(0,1,0), 315:(1,0,0), 316:(0,-1,0), 317:(-1,0,0)}
-        
-        mult = (2,.2)[evt.ShiftDown()]
-        smult = (1.1, 1.01)[evt.ShiftDown()]
-        if key in moves:
-            self.handle.move(np.array(moves[key])*mult)
-        elif key in rotccw : #ins
-            self.handle.move(angle=np.pi / 120.*i*mult)
-        elif key in rotcw: #pgup
-            self.handle.move(angle=-np.pi / 120.*i*mult)
-        elif key == 367: #pgdn
-            #x scale up
-            self.axis.transform(scale=(smult, 1))
-        elif key == 313: #home
-            #y scale up
-            self.axis.transform(scale=(1, smult))
-        elif key == 312: #end
-            #y scale down
-            self.axis.transform(scale=(1, 1/smult))
-        elif key == 127: #del
-            #x scale down
-            self.axis.transform(scale=(1/smult, 1))
-        elif ckey == "h":
-            self.aligner.outlines_visible = not self.aligner.outlines_visible
-        elif ckey == ']':
-            self.axis.next_slice()
-        elif ckey == '[':
-            self.axis.prev_slice()
-        elif ckey == '\x1a' and evt.CmdDown():
-            self.aligner.undo()
-        else:
-            super(FlatScene, self).OnKeyDown(evt)
+            event.Skip()
+            ctrl, shift = event.ControlDown(), event.ShiftDown()
+            key, keysym = lookup[event.GetKeyCode()]
 
-    def OnButtonDown(self, evt):
-        self.handle._btn = evt.Button
+            # wxPython 2.6.0.1 does not return a valid event.Get{X,Y}()
+            # for this event, so we use the cached position.
+            (x,y)= self._vtk_control._Iren.GetEventPosition()
+            self._vtk_control._Iren.SetEventInformation(x, y,
+                                           ctrl, shift, key, 0,
+                                           keysym)
 
-        if evt.ShiftDown():
-            self.handle.constrain = True
-        else:
-            self.handle.constrain = False
-            
-        super(FlatScene, self).OnButtonDown(evt)
+            self._vtk_control._Iren.KeyPressEvent()
+            self._vtk_control._Iren.CharEvent()
+
+except AttributeError:
+    #This is a QT4 window
+    from tvtk.pyface.ui.qt4 import scene
+    class FlatInteractor(scene._VTKRenderWindowInteractor):
+        def keyPressEvent(self, e):
+            scene.QVTKRenderWindowInteractor.keyPressEvent(self, e)
+
+    class FlatScene(Scene):
+        def _create_control(self, parent):
+            """ Create the toolkit-specific control that represents the widget. """
+
+            # Create the VTK widget.
+            self._vtk_control = window = FlatInteractor(self, parent,
+                                                                     stereo=self.stereo)
+
+            # Switch the default interaction style to the trackball one.
+            window.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
+
+            # Grab the renderwindow.
+            renwin = self._renwin = tvtk.to_tvtk(window.GetRenderWindow())
+            renwin.set(point_smoothing=self.point_smoothing,
+                       line_smoothing=self.line_smoothing,
+                       polygon_smoothing=self.polygon_smoothing)
+            # Create a renderer and add it to the renderwindow
+            self._renderer = tvtk.Renderer()
+            renwin.add_renderer(self._renderer)
+            # Save a reference to our camera so it is not GC'd -- needed for
+            # the sync_traits to work.
+            self._camera = self.camera
+
+            # Sync various traits.
+            self._renderer.background = self.background
+            self.sync_trait('background', self._renderer)
+            self.renderer.on_trait_change(self.render, 'background')
+            renwin.off_screen_rendering = self.off_screen_rendering
+            self._camera.parallel_projection = self.parallel_projection
+            self.sync_trait('parallel_projection', self._camera)
+            self.sync_trait('off_screen_rendering', self._renwin)
+            self.render_window.on_trait_change(self.render, 'off_screen_rendering')
+            self.render_window.on_trait_change(self.render, 'stereo_render')
+            self.render_window.on_trait_change(self.render, 'stereo_type')
+            self.camera.on_trait_change(self.render, 'parallel_projection')
+
+            self._interactor = tvtk.to_tvtk(window._Iren)
+
+            return window
 
 ################################################################################
 
 class Axis(HasTraits):
     axis = Int
     parent = Instance('Align')
+    invert = Bool(value=False)
 
     ipw_3d = Instance(PipelineBase)
     ipw = Instance(PipelineBase)
@@ -239,6 +264,7 @@ class Axis(HasTraits):
         self.ipw_3d
         self.ipw
         self._last = -1
+        self._keytime = None
 
         spacing = list(np.abs(self.parent.spacing))
         shape = list(self.parent.epi.shape)
@@ -251,16 +277,14 @@ class Axis(HasTraits):
         spacing.append(1)
         self.spacing = np.array(spacing)
         self.shape = np.array(shape)
-        self.reset_view()
+
+        self.handle
 
     def reset_view(self):
         center = self.shape * self.spacing / 2. + (self.shape + 1) % 2 * self.spacing / 2.
         width = (self.shape * self.spacing)[:2]
         width = np.min(width) * 0.5
 
-        self.scene.scene_editor.handle = self.handle
-        self.scene.scene_editor.aligner = self.parent
-        self.scene.scene_editor.axis = self
         self.scene.scene.background = (0, 0, 0)
         mlab.view(*([(0, 0), (90, 0), (0, 0)][self.axis]),
                   focalpoint=center,
@@ -268,10 +292,60 @@ class Axis(HasTraits):
         self.scene.scene.parallel_projection = True
         self.scene.scene.camera.parallel_scale = width * 1.2
         self.scene.scene.interactor.interactor_style = tvtk.InteractorStyleImage()
-        def focusfunc(vtkobj, i):
-            self.scene.scene_editor.control.SetFocusFromKbd()
 
-        self.scene.scene.interactor.add_observer("MouseMoveEvent", focusfunc)
+        try: #WX window
+            self.scene.scene_editor.control.SetFocusFromKbd
+            def focusfunc(vtkobj, i):
+                self.scene.scene_editor.control.SetFocusFromKbd()
+        except AttributeError: #QT window
+            self.scene.scene_editor.control.setFocus
+            def focusfunc(vtkobj, i):
+                self.scene.scene_editor.control.setFocus()
+
+        self.scene.interactor.add_observer("MouseMoveEvent", focusfunc)
+        self.scene.interactor.add_observer("KeyReleaseEvent", self.handle_keys)
+        self._outline_color_changed()
+
+    def handle_keys(self, evt, name):
+        key, sym = evt.GetKeyCode(), evt.GetKeySym()
+        #print repr(key), repr(sym), evt.GetShiftKey(), evt.GetControlKey()
+
+        if key in ('', chr(127)):
+            i = -1 if self.invert else 1
+            mult = (2,.2)[evt.GetShiftKey()]
+            smult = (1.1, 1.01)[evt.GetShiftKey()]
+
+            rotccw, rotcw = "Insert", "Prior"
+            moves = dict(Up=(0,1,0), Down=(0,-1,0), Left=(-1,0,0), Right=(1,0,0))
+            if self.invert:
+                rotccw, rotcw = rotcw, rotccw
+                moves = dict(Up=(1,0,0), Down=(-1,0,0), Left=(0,1,0), Right=(0,-1,0))
+
+            if sym in moves:
+                self.handle.move(np.array(moves[sym])*mult)
+            elif sym == rotccw: #ins
+                self.handle.move(angle=np.pi / 120.*i*mult)
+            elif sym == rotcw: #pgup
+                self.handle.move(angle=-np.pi / 120.*i*mult)
+            elif sym == "Del":
+                self.transform(scale=(smult, 1))
+            elif sym == "Home":
+                self.transform(scale=(1, smult))
+            elif sym == "End":
+                self.transform(scale=(1, 1/smult))
+            elif sym == "Next":
+                self.transform(scale=(1/smult, 1))
+        elif key == ']':
+            self.next_slice()
+        elif key == '[':
+            self.prev_slice()
+        elif key == 'H':
+            self.parent.outlines_visible = not self.parent.outlines_visible
+        elif key == 'Z' and evt.GetControlKey() == 1:
+            self.parent.undo()
+        
+        #clear out key buffer, otherwise the ctrl release will have the wrong state
+        evt.SetKeyEventInformation(0,0,'',0,'')
 
     @on_trait_change("parent.scene_3d.activated")
     def activate_3d(self):
@@ -427,7 +501,10 @@ class Axis(HasTraits):
         self.outline.children[0].children[0].visible = self.parent.outlines_visible
 
     def _outline_color_changed(self):
-        color = tuple([c/255. for c in tuple(self.outline_color)])
+        try:
+            color = tuple([c/255. for c in tuple(self.outline_color)])
+        except TypeError:
+            color = self.outline_color.getRgbF()[:3]
         self.surf.children[0].children[0].actor.property.color = color
         self.outline.children[0].children[0].children[0].actor.property.color = color
 
@@ -541,16 +618,13 @@ class XAxis(Axis):
 
 class YAxis(Axis):
     axis = 1
+    invert = True
     scene = DelegatesTo('parent', 'scene_y')
     def _outline_default(self):
         surf = super(YAxis, self)._outline_default()
         surf.children[0].filter.transform.rotate_y(90)
         surf.children[0].filter.transform.rotate_x(90)
         return surf
-
-    def reset_view(self):
-        self.scene.scene_editor.invert = True
-        super(YAxis, self).reset_view()
 
 class ZAxis(Axis):
     axis = 2
@@ -568,9 +642,9 @@ class Align(HasTraits):
     # The position of the view
     position = Array(shape=(3,))
 
-    brightness = Range(-1., 1., value=0.)
+    brightness = Range(-2., 2., value=0.)
     contrast = Range(0., 3., value=1.)
-    opacity = Range(0., 1., value=float(options.config.get("mayavi_aligner", "opacity")))
+    opacity = Range(0., 1., value=.1)
     colormap = Enum(*lut_manager.lut_mode_list())
     fliplut = Bool
 
@@ -646,6 +720,8 @@ class Align(HasTraits):
         self.center = self.spacing*nii.get_shape()[:3] / 2 + self.origin
 
         self.padshape = 2**(np.ceil(np.log2(np.array(epi.shape))))
+
+        epi = np.nan_to_num(epi)
         self.epi_orig = epi - epi.min()
         self.epi_orig /= self.epi_orig.max()
         self.epi_orig *= 2
@@ -703,7 +779,7 @@ class Align(HasTraits):
         self.scene_3d.scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
         self.scene_3d.scene_editor.aligner = self
 
-        self.opacity = 0.1
+        self.opacity = float(options.config.get("mayavi_aligner", "opacity"))
         self.xfm.widget.enabled = False
         self.colormap = options.config.get("mayavi_aligner", "colormap")
 
@@ -881,23 +957,23 @@ class Align(HasTraits):
             )
 
 def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", decimate=False):
-    from .db import surfs
+    from .database import db
 
     dbxfm = None
     try:
-        db = surfs.getXfm(subject, xfmname, xfmtype='magnet')
-        epifile = db.reference.get_filename()
-        dbxfm = db.xfm
+        dbxfm = db.get_xfm(subject, xfmname, xfmtype='magnet')
+        epifile = dbxfm.reference.get_filename()
+        dbxfm = dbxfm.xfm
     except IOError:
         pass
 
     try:
-        wpts, wpolys = surfs.getSurf(subject, 'wm', merge=True, nudge=False)
-        ppts, ppolys = surfs.getSurf(subject, 'pia', merge=True, nudge=False)
+        wpts, wpolys = db.get_surf(subject, 'wm', merge=True, nudge=False)
+        ppts, ppolys = db.get_surf(subject, 'pia', merge=True, nudge=False)
         pts = np.vstack([wpts, ppts])
         polys = np.vstack([wpolys, ppolys+len(wpts)])
     except IOError:
-        pts, polys = surfs.getSurf(subject, 'fiducial', merge=True, nudge=False)
+        pts, polys = db.get_surf(subject, 'fiducial', merge=True, nudge=False)
 
     if decimate:
         pts, polys = polyutils.decimate(pts, polys)

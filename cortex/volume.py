@@ -1,12 +1,21 @@
 import os
 import numpy as np
 
-from .db import surfs
+from . import dataset
+from .database import db
+from .xfm import Transform
 
 def unmask(mask, data):
     """unmask(mask, data)
 
-    `Unmasks` the data, assuming it's been masked.
+    Unmask the data, assuming it's been masked. Creates a volume
+    the same size as `mask` containing `data` at the locations
+    where `mask` is True.
+
+    If `data` is RGB valued (dtype uint8 and last dim is 3 or 4),
+    the area outside the mask will be filled with zeros.
+
+    Otherwise, a numpy MaskedArray will be returned.
 
     Parameters
     ----------
@@ -14,6 +23,11 @@ def unmask(mask, data):
         The data mask
     data : array_like
         Actual MRI data to unmask
+
+    Returns
+    -------
+    unmasked : array_like
+        Volume same size as `mask` but same dtype as `data`.
     """
     nvox = mask.sum()
     if data.shape[0] == nvox:
@@ -30,8 +44,11 @@ def unmask(mask, data):
         if data.shape[-1] == 3:
             output[:, mask > 0, 3] = 255
     else:
-        output = (np.nan*np.ones((len(data),)+mask.shape)).astype(data.dtype)
-        output[:, mask > 0] = data
+        #output = (np.nan*np.ones((len(data),)+mask.shape)).astype(data.dtype)
+        outdata = np.zeros((len(data),)+mask.shape).astype(data.dtype)
+        outdata[:, mask>0] = data
+        outmask = np.tile(~mask[None,:,:,:], (len(data), 1, 1, 1))
+        output = np.ma.MaskedArray(outdata, mask=outmask)
 
     return output.squeeze()
 
@@ -66,7 +83,7 @@ def detrend_poly(data, polyorder = 10, mask=None):
         return detrended.reshape(*s)
 
 def mosaic(data, dim=0, show=True, **kwargs):
-    """mosaic(data, xy=(6, 5), trim=10, skip=1)
+    """mosaic(data, dim=0, show=True)
 
     Turns volume data into a mosaic, useful for quickly viewing volumetric data
     IN RADIOLOGICAL COORDINATES (LEFT SIDE OF FIGURE IS RIGHT SIDE OF SUBJECT)
@@ -88,7 +105,7 @@ def mosaic(data, dim=0, show=True, **kwargs):
     aspect = width / float(height)
     square = np.sqrt(slices / aspect)
     nwide = int(np.ceil(square))
-    ntall = int(np.ceil(square * aspect))
+    ntall = int(np.ceil(slices*aspect / nwide))
 
     shape = (ntall * (height+1) + 1, nwide * (width+1) + 1)
     if data.dtype == np.uint8:
@@ -117,25 +134,31 @@ def mosaic(data, dim=0, show=True, **kwargs):
 
     return output, (nwide, ntall)
 
-def show_slice(data, subject, xfmname, vmin=None, vmax=None, **kwargs):
+def show_slice(dataview, **kwargs):
     import nibabel
     from matplotlib import cm
     import matplotlib.pyplot as plt
 
-    if vmax is None:
-        from scipy import stats
-        vmax = stats.scoreatpercentile(data.ravel(), 99)
+    dataview = dataset.normalize(dataview)
+    if not isinstance(dataview, dataset.Volume):
+        raise TypeError('Only volumetric data may be visualized in show_slice')
 
-    anat = nibabel.load(surfs.getAnat(subject, 'raw')).get_data().T
-    data, _ = epi2anatspace(data, subject, xfmname)
-    data[data < vmin] = np.nan
+    subject = dataview.subject
+    xfmname = dataview.xfmname
+    imshow_kw = dict(vmin=dataview.vmin, vmax=dataview.vmax, cmap=dataview.cmap)
+    imshow_kw.update(kwargs)
+
+    anat = db.get_anat(subject, 'raw').get_data().T
+    data = epi2anatspace(dataview.volume.squeeze())
+
+    data[data < dataview.vmin] = np.nan
 
     state = dict(slice=data.shape[0]*.66, dim=0, pad=())
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
     anatomical = ax.imshow(anat[state['pad'] + (state['slice'],)], cmap=cm.gray, aspect='equal')
-    functional = ax.imshow(data[state['pad'] + (state['slice'],)], vmin=vmin, vmax=vmax, aspect='equal', **kwargs)
+    functional = ax.imshow(data[state['pad'] + (state['slice'],)], aspect='equal', **imshow_kw)
 
     def update():
         print("showing dim %d, slice %d"%(state['dim'] % 3, state['slice']))
@@ -168,10 +191,10 @@ def show_mip(data, **kwargs):
     fig.add_subplot(223).imshow(data.max(2), **kwargs)
     return fig
 
-def show_glass(data, subject, xfmname, pad=10):
+def show_glass(dataview, pad=10):
     '''Create a classic "glass brain" view of the data, with the outline'''
     import nibabel
-    nib = surfs.getAnat(subject, 'fiducial')
+    nib = db.get_anat(subject, 'fiducial')
     mask = nib.get_data()
 
     left, right = np.nonzero(np.diff(mask.max(0).max(0)))[0][[0,-1]]
@@ -184,32 +207,83 @@ def show_glass(data, subject, xfmname, pad=10):
     #too much work for something we'll never use
     raise NotImplementedError
 
-def epi2anatspace(data, subject, xfmname):
+def epi2anatspace(volumedata, order=1):
+    """Resample an epi volume data into anatomical space using scipy.
+
+    Parameters
+    ----------
+    volumedata : VolumeData
+        The input epi volumedata object.
+    order : int
+        The order of the resampler, in terms of splines. 0 is nearest, 1 is linear.
+
+    Returns
+    -------
+    anatspace : ndarray
+        The ND array of the anatomy space data
+    """
+    from scipy.ndimage.interpolation import affine_transform
+    ds = dataset.normalize(volumedata)
+    volumedata = ds.data
+
+    anat = db.get_anat(volumedata.subject, "raw")
+    xfm = db.get_xfm(volumedata.subject, volumedata.xfmname, "coord")
+
+    #allxfm =  Transform(anat.get_affine(), anat.shape).inv * xfm.inv
+    allxfm = xfm * Transform(anat.get_affine(), anat.shape)
+
+    rotpart = allxfm.xfm[:3, :3]
+    transpart = allxfm.xfm[:3,-1]
+    return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape[::-1], cval=np.nan, order=order).T
+
+def anat2epispace(anatdata, subject, xfmname, order=1):
+    from scipy.ndimage.interpolation import affine_transform
+    anatref = db.get_anat(subject)
+    target = db.get_xfm(subject, xfmname, "coord")
+
+    allxfm =  Transform(anatref.get_affine(), anatref.shape).inv * target.inv
+    #allxfm = xfm * Transform(anat.get_affine(), anat.shape)
+
+    rotpart = allxfm.xfm[:3, :3]
+    transpart = allxfm.xfm[:3,-1]
+    
+    return affine_transform(anatdata.T, rotpart, offset=transpart, output_shape=target.shape[::-1], cval=np.nan, order=order).T
+
+
+def epi2anatspace_fsl(volumedata):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
-
-    Returns the data and a temporary filename.
     """
+    #This function is currently broken! do not use it!
+    raise NotImplementedError
+
     import tempfile
     import subprocess
     import nibabel
 
-    ## Get transform, save out into ascii file
-    xfm = surfs.getXfm(subject, xfmname)
-    fslxfm = xfm.to_fsl(surfs.getAnat(subject, 'raw'))
+    volumedata = dataset.normalize(volumedata).data
+    subject = volumedata.subject
+    xfmname = volumedata.xfmname
+    data = volumedata.volume
 
+    ## Get transform (pycortex estimates anat-to-epi)
+    xfm = db.get_xfm(subject, xfmname)
+    fslxfm = xfm.to_fsl(db.get_anat(subject, 'raw').get_filename())
+    ## Invert transform to epi-to-anat
+    fslxfm = np.linalg.inv(fslxfm)
+    ## Save out into ascii file
     xfmfilename = tempfile.mktemp(".mat")
     with open(xfmfilename, "w") as xfmh:
-        for ll in fslxfm.tolist():
+        for ll in fslxfm.tolist():      
             xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
 
     ## Save out data into nifti file
-    datafile = nibabel.Nifti1Image(data.T, xfm.epi.get_affine(), xfm.epi.get_header())
+    datafile = nibabel.Nifti1Image(data.T, xfm.reference.get_affine(), xfm.reference.get_header())
     datafilename = tempfile.mktemp(".nii")
     nibabel.save(datafile, datafilename)
 
     ## Reslice epi-space image
-    raw = surfs.getAnat(subject, type='raw')
+    raw = db.get_anat(subject, type='raw').get_filename()
     outfilename = tempfile.mktemp(".nii")
     subprocess.call(["fsl5.0-flirt",
                      "-ref", raw,
@@ -221,8 +295,54 @@ def epi2anatspace(data, subject, xfmname):
 
     ## Load resliced image
     outdata = nibabel.load(outfilename+".gz").get_data().T
+    ## Clean up
+    os.remove(outfilename+".gz")
+    os.remove(datafilename)
+    ## Done!
+    return outdata
 
-    return outdata, outfilename
+def anat2epispace_fsl(data,subject,xfmname):
+    """Resamples anat-space data into the epi space for the given [subject]
+    and transformation [xfm] 
+    """
+    import tempfile
+    import subprocess
+    import nibabel
+
+    ## Get transform (pycortex estimates anat-to-epi)
+    xfm = db.get_xfm(subject, xfmname)
+    anatNII = db.get_anat(subject, type='raw')
+    fslxfm = xfm.to_fsl(anatNII.get_filename())
+    ## Save out into ascii file
+    xfmfilename = tempfile.mktemp(".mat")
+    print('xfm file: %s'%xfmfilename)
+    with open(xfmfilename, "w") as xfmh:
+        for ll in fslxfm.tolist():
+            xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
+
+    ## Save out data into nifti file
+    datafile = nibabel.Nifti1Image(data.T, anatNII.get_affine(), anatNII.get_header())
+    datafilename = tempfile.mktemp(".nii")
+    nibabel.save(datafile, datafilename)
+
+    ## Reslice epi-space image
+    epiNIIf = xfm.reference.get_filename()
+    outfilename = tempfile.mktemp(".nii")
+    subprocess.call(["fsl5.0-flirt",
+                     "-in", datafilename,
+                     "-ref", epiNIIf,
+                     "-out", outfilename,
+                     "-init", xfmfilename,
+                     #"-interp", "sinc",
+                     "-applyxfm"])
+
+    ## Load resliced image
+    outdata = nibabel.load(outfilename+".gz").get_data().T
+    ## Clean up
+    os.remove(outfilename+".gz")
+    os.remove(datafilename)
+    ## Done!
+    return outdata
 
 def fslview(*ims):
     import tempfile

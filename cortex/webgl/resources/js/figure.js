@@ -60,7 +60,11 @@ var jsplot = (function (module) {
             }
         }
     }
-    module.Figure.prototype.resize = function() {
+    module.Figure.prototype.resize = function(width, height) {
+        if (width !== undefined)
+            $(this.object).width(width);
+        if (height !== undefined)
+            $(this.object).height(height);
         var w = $(this.object).width();
         var h = $(this.object).height();
         this.dispatchEvent({type:'resize', width:w, height:h});
@@ -191,7 +195,7 @@ var jsplot = (function (module) {
         var types = { 
             ogv: 'video/ogg; codecs="theora, vorbis"', 
             webm: 'video/webm; codecs="vp8, vorbis"',
-            mp4: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'
+            mp4: 'video/mp4; codecs="h264, aac"'
         }
         var src = $(this.object).find("source");
         var ext = url.match(/^(.*)\.(\w{3,4})$/);
@@ -244,6 +248,21 @@ var jsplot = (function (module) {
         else
             this.movie.pause();
         this.figure.notify("playtoggle", this);
+    }
+
+    module.ImageAxes = function(figure) {
+        module.Axes.call(this, figure);
+    }
+    module.ImageAxes.prototype = Object.create(module.Axes.prototype);
+    module.ImageAxes.prototype.constructor = module.ImageAxes;
+    module.ImageAxes.prototype.set = function(url) {
+        $(this.object).fadeTo(0);
+        var img = new Image();
+        img.onload = function() {
+            $(this.object).html(img);
+            $(this.object).fadeTo(1);
+        }.bind(this);
+        img.src = url;
     }
 
     return module;

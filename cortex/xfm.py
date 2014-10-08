@@ -2,17 +2,20 @@ import os
 import numpy as np
 
 class Transform(object):
-    '''A standard affine transform. Typically holds a transform from anatomical fiducial space to epi magnet space.
+    '''
+    A standard affine transform. Typically holds a transform from anatomical 
+    magnet space to epi file space.
     '''
     def __init__(self, xfm, reference):
         self.xfm = xfm
         self.reference = None
-        if isinstance(reference, str):
+
+        if isstr(reference):
+            import nibabel
             try:
-                import nibabel
                 self.reference = nibabel.load(reference)
                 self.shape = self.reference.shape[:3][::-1]
-            except:
+            except IOError:
                 self.reference = reference
         elif isinstance(reference, tuple):
             self.shape = reference
@@ -34,12 +37,16 @@ class Transform(object):
         ref = self.reference
         if ref is None:
             ref = self.shape
+        if isinstance(other, Transform):
+            other = other.xfm
         return Transform(np.dot(self.xfm, other), ref)
 
     def __rmul__(self, other):
         ref = self.reference
         if ref is None:
             ref = self.shape
+        if isinstance(other, Transform):
+            other = other.xfm
         return Transform(np.dot(other, self.xfm), ref)
 
     def __repr__(self):
@@ -52,115 +59,142 @@ class Transform(object):
     def save(self, subject, name, xfmtype="magnet"):
         if self.reference is None:
             raise ValueError('Cannot save reference-free transforms into the database')
-        from .db import surfs
-        surfs.loadXfm(subject, name, self.xfm, xfmtype=xfmtype, reference=self.reference.get_filename())
+        from .database import db
+        db.save_xfm(subject, name, self.xfm, xfmtype=xfmtype, reference=self.reference.get_filename())
 
-    # @classmethod
-    # def from_fsl(cls, xfm, epifile, rawfile):
-    #     """
-    #     takes transform xfm (estimated )
-    #     """
-    #     ## Adapted from dipy.external.fsl.flirt2aff#############################
-    #     import nibabel
-    #     import numpy.linalg as npl
-        
-    #     epi = nibabel.load(epifile)
-    #     raw = nibabel.load(rawfile)
-    #     in_hdr = epi.get_header()
-    #     ref_hdr = raw.get_header()
-    #     # get_zooms gets the positive voxel sizes as returned in the header
-    #     inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
-    #     refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-    #     # Assure that both determinants are negative, i.e. that both spaces are FLIPPED (??)
-    #     if npl.det(in_hdr.get_best_affine())>=0:
-    #         inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
-    #     if npl.det(ref_hdr.get_best_affine())>=0:
-    #         refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
-
-    #     M = raw.get_affine()
-    #     inv = np.linalg.inv
-    #     coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
-    #     return cls(coord, epi)
     @classmethod
-    def from_fsl(cls, xfm, basefile, reffile):
+    def from_fsl(cls, xfm, func_nii, anat_nii):
+        """Converts an fsl transform to a pycortex transform.
+
+        Converts a transform computed using FSL's FLIRT to a transform ("xfm") object in pycortex.
+        The transform must have been computed FROM the nifti volume specified in `func_nii` TO the 
+        volume specified in `anat_nii` (See Notes below).
+
+        Parameters
+        ----------
+        xfm : array
+            4x4 transformation matrix, loaded from an FSL .mat file, for a transform computed 
+            FROM the func_nii volume TO the anat_nii volume.
+        anat_nii : str or nibabel.Nifti1Image
+            nibabel image object (or path to nibabel-readable image) for anatomical volume from 
+            which cortical surface was created
+        func_nii : str or nibabel.Nifti1Image
+            nibabel image object (or string path to nibabel-readable image) for (functional) data volume 
+            to be projected onto cortical surface
+
+        Returns
+        -------
+        xfm : cortex.xfm.Transform object
+            A pycortex COORD transform. 
+
+        Notes
+        -----
+        The transform is assumed to be computed FROM the functional data TO the anatomical data.
+        In FSL speak, that means that the arguments to flirt should have been:
+        flirt -in <func_nii> -ref <anat_nii> ...
+
         """
-        takes transform xfm (estimated FROM basefile TO reffile) and converts to GLab COORDINATE transform
-        """
-        ## Adapted from dipy.external.fsl.flirt2aff#############################
+        ## -- Adapted from dipy.external.fsl.flirt2aff -- ##
         import nibabel
         import numpy.linalg as npl
+        inv = npl.inv
+
+        # Internally, pycortex computes the OPPOSITE transform: from anatomical volume to functional volume. 
+        # Thus, assign anat to "infile" (starting point for transform)
+        infile = anat_nii
+        # Assign func to "reffile" (end point for transform)
+        reffile = func_nii
+        # and invert the usual direction (change from func>anat to anat>func)
+        xfm = inv(xfm)
+
+        try:
+            inIm = nibabel.load(infile)
+        except AttributeError:
+            inIm = infile
         
-        baseIm = nibabel.load(basefile)
         refIm = nibabel.load(reffile)
-        base_hdr = baseIm.get_header()
+        in_hdr = inIm.get_header()
         ref_hdr = refIm.get_header()
-        # get_zooms gets the positive voxel sizes as returned in the header
-        inspace = np.diag(base_hdr.get_zooms()[:3] + (1,))
-        refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        # Assure that both determinants are negative, i.e. that both spaces are FLIPPED (??)
-        if npl.det(base_hdr.get_best_affine())>=0:
-            inspace = np.dot(inspace, _x_flipper(base_hdr.get_data_shape()[0]))
-        if npl.det(ref_hdr.get_best_affine())>=0:
-            refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
-
-        M = refIm.get_affine()
-        inv = np.linalg.inv
-        coord = np.dot(M,np.dot(inv(refspace),np.dot(xfm,inspace)))
-        # This works as well (demonstration of different path to same transform)
-        #coord = np.dot(inv(inspace), np.dot(inv(xfm), np.dot(refspace, inv(M))))
-        #coord = inv(coord)
-        return cls(coord, refIm)
-
-    # def to_fsl(self, rawfile):
-    #     import nibabel
-    #     import numpy.linalg as npl
-
-    #     raw = nibabel.load(rawfile)
-    #     in_hdr = self.reference.get_header()
-    #     ref_hdr = raw.get_header()
-        
-    #     # get_zooms gets the positive voxel sizes as returned in the header
-    #     inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
-    #     refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        
-    #     if npl.det(in_hdr.get_best_affine())>=0:
-    #         inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
-    #     if npl.det(ref_hdr.get_best_affine())>=0:
-    #         refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
-
-    #     M = raw.get_affine()
-    #     inv = np.linalg.inv
-
-    #     fslx = inv(np.dot(inspace, np.dot(self.xfm, np.dot(M, inv(refspace)))))
-    #     return fslx
-    def to_fsl(self, basefile):
-        """
-        Converts a Glab transform to an FSL transform.
-        The resulting FSL transform goes FROM the space of the "basefile" input
-        TO the space of the reference nifti stored in the GLab transform.
-        """
-        import nibabel
-        import numpy.linalg as npl
-
-        baseIm = nibabel.load(basefile)
-        in_hdr = baseIm.get_header()
-        ref_hdr = self.reference.get_header()
-        
         # get_zooms gets the positive voxel sizes as returned in the header
         inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-
+        # Since FSL does not use the full transform info in the nifti header, 
+        # determine whether the transform indicates that the X axis should be 
+        # flipped; if so, flip the X axis (for both infile and reffile)
         if npl.det(in_hdr.get_best_affine())>=0:
             inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
         if npl.det(ref_hdr.get_best_affine())>=0:
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
-        M = self.reference.get_affine()
-        inv = np.linalg.inv
-        fslx = np.dot(refspace,np.dot(inv(M),np.dot(self.xfm,inv(inspace))))
-        #fslx = inv(np.dot(inspace, np.dot(inv(self.xfm), np.dot(M, inv(refspace)))))
-        return fslx
+        inAffine = inIm.get_affine()
+        
+        coord = np.dot(inv(refspace),np.dot(xfm,np.dot(inspace,inv(inAffine))))
+        return cls(coord, refIm)
 
+    def to_fsl(self, anat_nii, direction='func>anat'):
+        """Converts a pycortex transform to an FSL transform.
+
+        Uses the stored "reference" file provided when the transform was created (usually 
+        a functional data or statistical volume) and the supplied anatomical file to 
+        create an FSL transform. By default, returns the transform FROM the refernce volume
+        (usually the functional data volume) to the anatomical volume (`anat_nii` input). 
+
+        Parameters
+        ----------
+        anat_nii : str or nibabel.Nifti1Image
+            nibabel image object (or path to nibabel-readable image) for anatomical volume from 
+            which cortical surface was created
+
+        direction : str, optional {'func>anat', 'anat>func'}
+            Direction of transform to return. Defaults to 'func>anat'
+
+        Notes
+        -----
+        This function will only work for "coord" transform objects, (those retrieved with 
+        cortex.db.get_xfm(xfmtype='coord',...)). It will fail hard for "magnet" transforms!
+
+        """
+        import nibabel
+        import numpy.linalg as npl
+        inv = npl.inv
+        ## -- Internal notes -- ## 
+        # pycortex transforms are internally stored as anatomical space -> functional data space
+        # transforms. Thus the anatomical file is the "infile" in FSL-speak.
+        infile = anat_nii
+
+        try:
+            inIm = nibabel.load(infile)
+        except AttributeError:
+            inIm = infile
+        in_hdr = inIm.get_header()
+        ref_hdr = self.reference.get_header()
+        # get_zooms gets the positive voxel sizes as returned in the header
+        inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
+        refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
+        # Since FSL does not use the full transform info in the nifti header, 
+        # determine whether the transform indicates that the X axis should be 
+        # flipped; if so, flip the X axis (for both infile and reffile)
+        if npl.det(in_hdr.get_best_affine())>=0:
+            print("Determinant is > 0: FLIPPING!")
+            inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
+        if npl.det(ref_hdr.get_best_affine())>=0:
+            print("Determinant is > 0: FLIPPING!")
+            refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
+
+        inAffine = inIm.get_affine()
+        
+        fslx = np.dot(refspace,np.dot(self.xfm,np.dot(inAffine,inv(inspace))))
+        if direction=='func>anat':
+            return inv(fslx)
+        elif direction=='anat>func':
+            return fslx
+
+def isstr(obj):
+    """Check for stringy-ness in python 2.7 or 3"""
+    try:
+        return isinstance(obj, basestring)
+    except NameError:
+        return isinstance(obj, str)
 
 def _x_flipper(N_i):
     #Copied from dipy

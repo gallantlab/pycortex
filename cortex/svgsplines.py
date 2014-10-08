@@ -4,8 +4,13 @@ import time
 
 class LineSpline:
     def __init__(self, start, end):
-        self.s = start
-        self.e = end
+        self.s = zeros(2)
+        self.e = zeros(2)
+
+        self.s[0] = start[0]
+        self.s[1] = start[1]
+        self.e[0] = end[0]
+        self.e[1] = end[1]
 
     def allSplineXGivenY(self, vts):
         # linear function t*s + (1-t)*e = vt_i
@@ -16,29 +21,27 @@ class LineSpline:
 
         isHorizLine = s[1]==e[1]
 
-        a = s[1] - e[1]
-        b = e[1] - vts[:,1]
+        a = e[1] - s[1]
+        b = s[1] - vts[:,1]
         
         # params for the single root
         t = nan
         if isHorizLine:
             t = -1*ones(vts.shape[0])
+            isSSmaller = s[0]<e[0]
+            isAtY = vts[:,1]==s[1]
+            t[isAtY] = t[isAtY] + 1*isSSmaller + 2*(~isSSmaller) # t=0 if s<e, else t=1
         else:
             t = -1*b/a
-
-        isSSmaller = s[0]<e[0]
-        isESmaller = s[0]>=e[0]
-        isAtY = vts[:,1]==s[1]
-        t[isHorizLine*isSSmaller*isAtY] = zeros(sum(isHorizLine*isSSmaller*isAtY))
-        t[isHorizLine*isESmaller*isAtY] = ones(sum(isHorizLine*isESmaller*isAtY))
 
         closest_xs = Inf*ones(vts.shape[0])
 
         # ensure it's within the spline's piecewise region   
         isValid = (0<=t)*(t<=1)
-        x_ts = t*s[0] + (1-t)*e[0]
+        x_ts = (1-t)*s[0] + t*e[0]
         
         isClosest = (x_ts-vts[:,0]>0)*isValid
+
         closest_xs[isClosest] = x_ts[isClosest]
 
         return closest_xs
@@ -53,27 +56,24 @@ class LineSpline:
 
         isVertLine = s[0]==e[:,0]
 
-        a = s[0] - e[:,0]
-        b = e[0] - vts[:,0]
+        a = e[0] - s[:,0]
+        b = s[0] - vts[:,0]
 
         # params for the single root  
         t = nan
         if isVertLine:
             t = -1*ones(vts.shape[0])
+            isSSmaller = s[1]<e[1]
+            isAtX = vts[:,0]==s[0]
+            t[isAtX] = t[isAtX] + 1*isSSmaller + 2*(~isSSmaller) # t=0 if s<e, else t=1
         else:
             t = -1*b/a
-
-        isSSmaller = s[1]<e[1]
-        isESmaller = s[1]>=e[1]
-        isAtX = vts[:,0]==s[0]
-        t[isVertLine*isSSmaller*isAtX] = zeros((sum(isVertLine*isSSmaller*isAtX)))
-        t[isVertLine*isESmaller*isAtX] = ones((sum(isVertLine*isESmaller*isAtX)))
 
         closest_ys = Inf*ones(vts)
 
         # ensure it's within the spline's piecewise region
         isValid = (0<=t)*(t<=1)
-        y_ts = t*s[1] + (1-t)*e[1]
+        y_ts = (1-t)*s[1] + t*e[1]
         
         isClosest = (y_ts-vts[:,1]>0)*isValid
         closest_ys[isClosest] = y_ts[isClosest]
@@ -122,9 +122,16 @@ class LineSpline:
 
 class QuadBezSpline:
     def __init__(self, start, ctl, end):
-        self.s = start
-        self.c = ctl
-        self.e = end
+        self.s = zeros(2)
+        self.c = zeros(2)
+        self.e = zeros(2) 
+
+        self.s[0] = start[0]
+        self.s[1] = start[1]
+        self.c[0] = ctl[0]
+        self.c[1] = ctl[1]
+        self.e[0] = end[0]
+        self.e[1] = end[1]
 
     def allSplineXGivenY(self, vts):
         # quadtric function a*t^2 + b*t + c = 0, using vt_iy
@@ -138,6 +145,27 @@ class QuadBezSpline:
         a = s[1] - 2*c[1] + e[1]
         b = 2*c[1] - 2*s[1]
         c = s[1] - vts[:,1]
+
+        if a == 0:
+            t = nan
+            if b == 0:
+                t = -1*ones(vts.shape[0])
+                isSSmaller = s[0]<c[0]
+                isAtY = vts[:,1]==s[1]
+                t[isAtY] = t[isAtY] + 1*isSSmaller + 2*(~isSSmaller) # t=0 if s<c, else t=1                                                                                                                                              \
+                    
+            else:
+                t = -1.0*c/b
+                
+            closest_xs = Inf*ones((vts.shape[0],2))
+            #ensure it's within the spline's piecewise region
+
+            isValid = (0<=t)*(t<=1)
+            x_ts = ((1-t)**2)*s[0] + 2*(1-t)*t*c[0] + t*t*e[0]
+            isClosest = (x_ts-vts[:,0]>0)*isValid
+            for i in range(closest_xs.shape[1]):
+                closest_xs[isClosest,i] = x_ts[isClosest]
+            return closest_xs
 
         # params for the two roots
         t1 = (-b + (b*b - 4*a*c)**.5)/(2*a) 
@@ -169,6 +197,26 @@ class QuadBezSpline:
         a = s[0] - 2*c[0] + e[0]
         b = 2*c[0] - 2*s[0]
         c = s[0] - vts[:,0]
+
+        if a == 0:
+            t = nan
+            if b == 0:
+                t = -1*ones(vts.shape[0])
+                isSSmaller = s[1]<c[1]
+                isAtX = vts[:,0]==s[0]
+                t[isAtX] = t[isAtX] + 1*isSSmaller + 2*(~isSSmaller) # t=0 if s<c, else t=1
+            else:
+                t = -1.0*c/b
+                
+            closest_ys = Inf*ones((vts.shape[0],2))
+            #ensure it's within the spline's piecewise region 
+
+            isValid = (0<=t)*(t<=1)
+            y_ts = ((1-t)**2)*s[1] + 2*(1-t)*t*c[1] + t*t*e[1]
+            isClosest = (x_ts-vts[:,1]>0)*isValid
+            for i in range(closest_xs.shape[1]):
+                closest_xs[isClosest,i] = x_ts[isClosest]
+            return closest_xs
 
         # params for the two roots  
         t1 = (-b + (b*b - 4*a*c)**.5)/(2*a)
@@ -235,10 +283,19 @@ class QuadBezSpline:
 
 class CubBezSpline:
     def __init__(self, start, ctl1, ctl2, end):
-        self.s = start
-        self.c1 = ctl1
-        self.c2 = ctl2
-        self.e = end
+        self.s = zeros(2)
+        self.c1 = zeros(2)
+        self.c2 = zeros(2)
+        self.e = zeros(2)
+
+        self.s[0] = start[0]
+        self.s[1] = start[1]
+        self.c1[0] = ctl1[0]
+        self.c1[1] = ctl1[1]
+        self.c2[0] = ctl2[0]
+        self.c2[1] = ctl2[1]
+        self.e[0] = end[0]
+        self.e[1] = end[1]
 
     def allSplineXGivenY(self, vts):
         # cubic function a*t^3 + b*t^2 + c*t + d = 0, using vt_iy
@@ -257,6 +314,45 @@ class CubBezSpline:
         c = 3.0*c1[1] - 3.0*s[1]
         d = s[1] - vts[:,1]
 
+        if a == 0:
+            if b == 0:
+                t = nan
+                if c == 0:
+                    t = -1*ones(vts.shape[0])
+                    isSSmaller = s[0]<c1[0]
+                    isAtY = vts[:,1]==s[1]
+                    t[isAtY] = t[isAtY] + 1*isSSmaller + 2*(~isSSmaller) # t=0 if s<e, else t=1                                                                                                                                                       
+                else:
+                    t = -1.0*d/c
+
+                closest_xs = Inf*ones((vts.shape[0],3))
+                #ensure it's within the spline's piecewise region 
+                isValid = (0<=t)*(t<=1)
+                x_ts = ((1-t)**3)*s[0] + 3*((1-t)**2)*t*c1[0] + 3*(1-t)*t*t*c2[0] + (t**3)*e[0]
+                isClosest = (x_ts-vts[:,0]>0)*isValid
+                for i in range(closest_xs.shape[1]):
+                    closest_xs[isClosest,i] = x_ts[isClosest]                
+                return closest_xs
+            else:
+                # params for the two roots
+                t1 = (-c + (b*b - 4*b*d)**.5)/(2*b)
+                t2 = (-c - (b*b - 4*b*d)**.5)/(2*b)
+
+                closest_xs = Inf*ones((vts.shape[0],3))
+        
+                #ensure they're within the spline's piecewise region
+                isValid1 = (0<=t1)*(t1<=1)
+                isValid2 = (0<=t2)*(t2<=1)
+
+                x_t1 = ((1-t1)**3)*s[0] + 3*((1-t1)**2)*t1*c1[0] + 3*(1-t1)*t1*t1*c2[0] + (t1**3)*e[0]
+                x_t2 = ((1-t2)**3)*s[0] + 3*((1-t2)**2)*t2*c1[0] + 3*(1-t2)*t2*t2*c2[0] + (t2**3)*e[0]
+
+                closest_xs[isValid1,0] = x_t1[isValid1]
+                closest_xs[isValid2,1] = x_t2[isValid2]
+                closest_xs[isValid2,2] = x_t2[isValid2]
+                
+                return closest_xs
+    
         #standardize to x^3 + a*x^2 + b*x + c = 0 format
         a_old = a
         a = b/a_old
@@ -281,17 +377,30 @@ class CubBezSpline:
         S_p = -1.0*sign(R)*(abs(R) + M**.5)**(1.0/3)
         T_p = Q/S_p
         x_p = S_p + T_p - a/3.0
-        x_p = x_p
 
         ts1 = ~isMPos*array([x1, x2, x3]).T
         isNaNts1 = isnan(ts1)
-        ts1[isNaNts1] = 0
+        ts1[isNaNts1] = 0.0
+
         ts2 = isMPos*array([x_p,x_p,x_p]).T
         isNaNts2 = isnan(ts2)
-        ts2[isNaNts2] = 0
+        ts2[isNaNts2] = 0.0
 
         ts = ts1 + ts2
-
+        ts[isNaNts1*isNaNts2] = -1.0
+        '''
+        if ts.size == sum(isNaNts1*isNaNts2):
+            print ['null shape', vts.shape]
+            print ['x1', sum(x1<Inf), 'x_p', sum(x_p<Inf)]
+            print 'null spline: ' + self.toString()
+            plot(vts[:,0], vts[:,1], 'r.')
+            self.plotSpline(1)
+            plot(x1,vts[:,1],marker='.', color=rand(3,1), linestyle='None')
+            plot(x2,vts[:,1],marker='.', color=rand(3,1), linestyle='None')
+            plot(x3,vts[:,1],marker='.', color=rand(3,1), linestyle='None')
+            plot(x_p,vts[:,1],marker='.', color=rand(3,1), linestyle='None')
+            show()
+        '''
         # params for the three roots
         t1 = ts[:,0]
         t2 = ts[:,1]
@@ -330,6 +439,45 @@ class CubBezSpline:
         b = 3.0*c2[0] - 6.0*c1[0] + 3.0*s[0]
         c = 3.0*c1[0] - 3.0*s[0]
         d = s[0] - vts[:,0]
+
+        if a == 0:
+            if b == 0:
+                t = nan
+                if c == 0:
+                    t = -1*ones(vts.shape[0])
+                    isSSmaller = s[1]<c1[1]
+                    isAtX = vts[:,0]==s[0]
+                    t[isAtX] = t[isAtX] + 1*isSSmaller + 2*(~isSSmaller) # t=0 if s<c1, else t=1                                                                                                                                                                                                                                              
+                else:
+                    t = -1.0*d/c
+
+                closest_ys = Inf*ones((vts.shape[0],3))
+                #ensure it's within the spline's piecewise region                                
+                isValid = (0<=t)*(t<=1)
+                y_ts = ((1-t)**3)*s[1] + 3*((1-t)**2)*t*c1[1] + 3*(1-t)*t*t*c2[1] + (t**3)*e[1]
+                isClosest = (y_ts-vts[:,1]>0)*isValid
+                for i in range(closest_ys.shape[1]):
+                    closest_ys[isClosest,i] = y_ts[isClosest]
+                return closest_ys
+            else:
+                # params for the two roots                                            
+                t1 = (-c + (b*b - 4*b*d)**.5)/(2*b)
+                t2 = (-c - (b*b - 4*b*d)**.5)/(2*b)
+
+                closest_ys = Inf*ones((vts.shape[0],3))
+
+                #ensure they're within the spline's piecewise region
+                isValid1 = (0<=t1)*(t1<=1)
+                isValid2 = (0<=t2)*(t2<=1)
+
+                y_t1 = ((1-t1)**3)*s[1] + 3*((1-t1)**2)*t1*c1[1] + 3*(1-t1)*t1*t1*c2[1] + (t1**3)*e[1]
+                y_t2 = ((1-t2)**3)*s[1] + 3*((1-t2)**2)*t2*c1[1] + 3*(1-t2)*t2*t2*c2[1] + (t2**3)*e[1]
+
+                closest_ys[isValid1,0] = x_t1[isValid1]
+                closest_ys[isValid2,1] = x_t2[isValid2]
+                closest_ys[isValid2,2] = x_t2[isValid2]
+
+                return closest_ys
         
         #standardize to y^3 + a*y^2 + b*y + c = 0 format   
         a_old = a
@@ -363,6 +511,7 @@ class CubBezSpline:
         ts2[isNaNts2] = 0
 
         ts = ts1 + ts2
+        ts[isNaNts1*isNaNts2] = -1.0
 
         # params for the three roots
         t1 = ts[:,0]

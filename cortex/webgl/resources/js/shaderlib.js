@@ -49,8 +49,8 @@ var Shaderlib = (function() {
 
         samplers: [
             "vec2 make_uv_x(vec2 coord, float slice) {",
-                "vec2 pos = vec2(mod(slice, mosaic[0].x), floor(slice / mosaic[0].x));",
-                "vec2 offset = (pos * (dshape[0]+1.)) + 1.;",
+                "vec2 pos = vec2(mod(slice, mosaic[0].x), slice / mosaic[0].x);",
+                "vec2 offset = (floor(pos) * (dshape[0]+1.)) + 1.;",
                 "vec2 imsize = (mosaic[0] * (dshape[0]+1.)) + 1.;",
                 "return (2.*(offset+coord)+1.) / (2.*imsize);",
             "}",
@@ -66,7 +66,7 @@ var Shaderlib = (function() {
             "}",
 
             "vec4 debug_x(sampler2D data, vec3 coord) {",
-                "return vec4(coord / vec3(100., 100., 32.), 1.);",
+                "return vec4(coord / vec3(136., 136., 38.), 1.);",
             "}",
 
             "vec2 make_uv_y(vec2 coord, float slice) {",
@@ -97,7 +97,7 @@ var Shaderlib = (function() {
     };
     module.prototype = {
         constructor: module,
-        main: function(sampler, raw, twod, voxline, volume) {
+        main: function(sampler, raw, twod, voxline, volume, rois) {
             //Creates shader code with all the parameters
             //sampler: which sampler to use, IE nearest or trilinear
             //raw: whether the dataset is raw or not
@@ -116,11 +116,19 @@ var Shaderlib = (function() {
                 header += "#define CORTSHEET\n";
             if (twod)
                 header += "#define TWOD\n";
+            if (rois)
+                header += "#define ROI_RENDER\n";
 
             var vertShade =  [
-            THREE.ShaderChunk[ "map_pars_vertex" ], 
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+        "#ifdef SUBJ_SURF",
+            THREE.ShaderChunk[ "map_pars_vertex" ], 
             THREE.ShaderChunk[ "morphtarget_pars_vertex" ],
+            
+            "varying float vCurv;",
+            // "varying float vDrop;",
+            "varying float vMedial;",
+        "#endif",
 
             "uniform float thickmix;",
             "uniform mat4 volxfm[2];",
@@ -132,9 +140,7 @@ var Shaderlib = (function() {
 
             "varying vec3 vViewPosition;",
             "varying vec3 vNormal;",
-            "varying float vCurv;",
-            // "varying float vDrop;",
-            "varying float vMedial;",
+
             "varying vec3 vPos_x[2];",
             "varying vec3 vPos_y[2];",
 
@@ -142,12 +148,6 @@ var Shaderlib = (function() {
 
                 "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
                 "vViewPosition = -mvPosition.xyz;",
-
-                THREE.ShaderChunk[ "map_vertex" ],
-
-                // "vDrop = dropout;",
-                "vCurv = auxdat.y;",
-                "vMedial = auxdat.x;",
 
                 //Find voxel positions with both transforms (2D colormap x and y datasets)
                 "vPos_x[0] = (volxfm[0]*vec4(position,1.)).xyz;",
@@ -160,6 +160,13 @@ var Shaderlib = (function() {
                 "vec3 npos = position;",
                 "#endif",
 
+        "#ifdef SUBJ_SURF",
+                THREE.ShaderChunk[ "map_vertex" ],
+
+                // "vDrop = dropout;",
+                "vMedial = auxdat.x;",
+                "vCurv = auxdat.y;",
+
                 THREE.ShaderChunk[ "morphnormal_vertex" ],
                 "vNormal = transformedNormal;",
 
@@ -169,7 +176,12 @@ var Shaderlib = (function() {
                 "morphed += ( morphTarget2 - npos ) * morphTargetInfluences[ 2 ];",
                 "morphed += ( morphTarget3 - npos ) * morphTargetInfluences[ 3 ];",
                 "morphed += npos;",
+
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( morphed, 1.0 );",
+        "#else",
+                "vNormal = normalMatrix * normal;",
+                "gl_Position = projectionMatrix * modelViewMatrix * vec4( npos, 1.0);",
+        "#endif",
 
             "}"
             ].join("\n");
@@ -179,10 +191,9 @@ var Shaderlib = (function() {
             var fragHead = [
             "#extension GL_OES_standard_derivatives: enable",
             "#extension GL_OES_texture_float: enable",
+
             THREE.ShaderChunk[ "map_pars_fragment" ],
             THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
-
-            "uniform int hide_mwall;",
 
             "uniform vec3 diffuse;",
             "uniform vec3 ambient;",
@@ -195,26 +206,31 @@ var Shaderlib = (function() {
             "uniform float vmax[2];",
             "uniform float framemix;",
 
+            "uniform vec3 voxlineColor;",
+            "uniform float voxlineWidth;",
+            "uniform float dataAlpha;",
+
+        "#ifdef SUBJ_SURF",
+            "uniform int hide_mwall;",
             "uniform float curvAlpha;",
             "uniform float curvScale;",
             "uniform float curvLim;",
-            "uniform float dataAlpha;",
             "uniform float hatchAlpha;",
             "uniform vec3 hatchColor;",
-            "uniform vec3 voxlineColor;",
-            "uniform float voxlineWidth;",
 
             "uniform sampler2D hatch;",
             "uniform vec2 hatchrep;",
+
+            "varying float vCurv;",
+            // "varying float vDrop;",
+            "varying float vMedial;",
+        "#endif",
 
             "uniform vec2 mosaic[2];",
             "uniform vec2 dshape[2];",
             "uniform sampler2D data[4];",
             "uniform float thickmix;",
 
-            "varying float vCurv;",
-            // "varying float vDrop;",
-            "varying float vMedial;",
             "varying vec3 vPos_x[2];",
             "varying vec3 vPos_y[2];",
 
@@ -224,16 +240,19 @@ var Shaderlib = (function() {
             utils.samplers,
 
             "void main() {",
+
+        "#ifdef SUBJ_SURF",
                 //Curvature Underlay
                 "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
                 "vec4 cColor = vec4(vec3(curv) * curvAlpha, curvAlpha);",
+        "#endif",
 
                 "vec3 coord_x, coord_y;",
-                "#ifdef RAWCOLORS",
+            "#ifdef RAWCOLORS",
                 "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
-                "#else",
+            "#else",
                 "vec4 values = vec4(0.);",
-                "#endif",
+            "#endif",
                 "",
             ].join("\n");
 
@@ -310,18 +329,27 @@ var Shaderlib = (function() {
                 // "vec4 hColor = hw * vec4(hatchColor, 1.) * texture2D(hatch, vUv*hatchrep);",
 
                 //roi layer
+            "#ifdef ROI_RENDER",
                 "vec4 rColor = texture2D(map, vUv);",
+            "#endif",          
 
+        "#ifdef SUBJ_SURF",
                 "if (vMedial < .999) {",
                     "gl_FragColor = cColor;",
                     "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
                     // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
+            "#ifdef ROI_RENDER",
                     "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
+            "#endif",
                 "} else if (hide_mwall == 1) {",
                     "discard;",
                 "} else {",
                     "gl_FragColor = cColor;",
                 "}",
+        "#else",
+                "if (vColor.a < .01) discard;",
+                "gl_FragColor = vColor;",
+        "#endif",
 
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
             "}"

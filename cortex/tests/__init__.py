@@ -1,2 +1,1 @@
-from . import mapper
-from . import polyutils
+"""Collection of unit-tests for PyCortex"""

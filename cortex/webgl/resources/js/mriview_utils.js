@@ -3,13 +3,13 @@ Number.prototype.mod = function(n) {
 }
 
 var mriview = (function(module) {
-    module.MultiView = function(parent, nrows, ncols, dataset) {
+    module.MultiView = function(parent, nrows, ncols, dataviews) {
         jsplot.GridFigure.call(this, parent, nrows, ncols);
 
-        var subjects = {}, snames = [], name, subj;
-        for (var i = 0; i < dataset['__order__'].length; i++) {
-            name = dataset['__order__'][i];
-            subj = dataset[name].subject;
+        var subjects = {}, snames = [], view, subj;
+        for (var i = 0; i < dataviews.length; i++) {
+            view = dataviews[i];
+            subj = view.data[0].subject;
             if (subjects[subj] === undefined) {
                 subjects[subj] = true;
                 snames.push(subj);
@@ -24,20 +24,19 @@ var mriview = (function(module) {
         }
         
         this.subjects = snames;
-        this.addData(dataset);
+        this.addData(dataviews);
     }
     module.MultiView.prototype = Object.create(jsplot.GridFigure.prototype);
     module.MultiView.prototype.constructor = module.MultiView;
-    module.MultiView.prototype.addData = function(dataset) {
-        var data = {}, subj, name;
-        for (var i = 0; i < dataset['__order__'].length; i++) {
-            name = dataset['__order__'][i];
-            subj = dataset[name].subject;
+    module.MultiView.prototype.addData = function(dataviews) {
+        var data = {}, subj, view;
+        for (var i = 0; i < dataviews.length; i++) {
+            view = dataviews[i];
+            subj = view.data[0].subject;
             if (data[subj] === undefined) {
-                data[subj] = {__order__:[]};
+                data[subj] = [];
             }
-            data[subj][name] = dataset[name];
-            data[subj]['__order__'].push(name);
+            data[subj].push(view);
         }
 
         for (subj in data) {
@@ -82,28 +81,25 @@ var mriview = (function(module) {
     }
     multiview_prototype(module.MultiView.prototype, ['getState', 'setState', 'setColormap', 'nextData']);
 
-    var blanktex = document.createElement("canvas");
-    blanktex.width = 16;
-    blanktex.height = 16;
-    module.blanktex = new THREE.Texture(blanktex);
-    module.blanktex.needsUpdate = true;
-    module.blanktex.magFilter = THREE.NearestFilter;
-    module.blanktex.minFilter = THREE.NearestFilter;
-
     module.getTexture = function(gl, renderbuf) {
+        var glcanvas = document.createElement("canvas");
+        glcanvas.width = renderbuf.width;
+        glcanvas.height = renderbuf.height;
+        var glctx = glcanvas.getContext("2d");
+        var img = glctx.createImageData(renderbuf.width, renderbuf.height);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
+        gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        glctx.putImageData(img, 0, 0);
+
+        //This ridiculousness is necessary to flip the image...
         var canvas = document.createElement("canvas");
         canvas.width = renderbuf.width;
         canvas.height = renderbuf.height;
         var ctx = canvas.getContext("2d");
-        var img = ctx.createImageData(renderbuf.width, renderbuf.height);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
-        gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        ctx.putImageData(img, 0,0);
-        ctx.scale(1, -1);
-        img = new Image();
-        img.src = canvas.toDataURL();
-        return img;
+        ctx.scale(1,-1);
+        ctx.drawImage(glcanvas, 0,-renderbuf.height);
+        return canvas;
     }
 
     module.makeFlat = function(uv, flatlims, flatoff, right) {

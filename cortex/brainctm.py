@@ -19,7 +19,7 @@ import tempfile
 import numpy as np
 from scipy.spatial import cKDTree
 
-from .db import surfs
+from .database import db
 from .utils import get_cortical_mask, get_mapper, get_dropout
 from . import polyutils
 from openctm import CTMfile
@@ -27,14 +27,17 @@ from openctm import CTMfile
 class BrainCTM(object):
     def __init__(self, subject, decimate=False):
         self.subject = subject
-        self.files = surfs.getFiles(subject)
         self.types = []
 
-        left, right = surfs.getSurf(subject, "fiducial")
-        fleft, fright = surfs.getSurf(subject, "flat", nudge=True, merge=False)
+        left, right = db.get_surf(subject, "fiducial")
+        try:
+            fleft, fright = db.get_surf(subject, "flat", nudge=True, merge=False)
+        except IOError:
+            fleft = None
+
         if decimate:
             try:
-                pleft, pright = surfs.getSurf(subject, "pia")
+                pleft, pright = db.get_surf(subject, "pia")
                 self.left = DecimatedHemi(left[0], left[1], fleft[1], pia=pleft[0])
                 self.right = DecimatedHemi(right[0], right[1], fright[1], pia=pright[0])
                 self.addSurf("wm", name="wm", addtype=False, renorm=False)
@@ -43,8 +46,8 @@ class BrainCTM(object):
                 self.right = DecimatedHemi(right[0], right[1], fright[1])
         else:
             try:
-                pleft, pright = surfs.getSurf(subject, "pia")
-                wleft, wright = surfs.getSurf(subject, "wm")
+                pleft, pright = db.get_surf(subject, "pia")
+                wleft, wright = db.get_surf(subject, "wm")
                 self.left = Hemi(pleft[0], left[1])
                 self.right = Hemi(pright[0], right[1])
                 self.addSurf("wm", name="wm", addtype=False, renorm=False)
@@ -52,29 +55,33 @@ class BrainCTM(object):
                 self.left = Hemi(left[0], left[1])
                 self.right = Hemi(right[0], right[1])
 
-            #set medial wall
-            for hemi, ptpoly in ([self.left, fleft], [self.right, fright]):
-                fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
-                flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
-                hemi.aux[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
+            if fleft is not None:
+                #set medial wall
+                for hemi, ptpoly in ([self.left, fleft], [self.right, fright]):
+                    fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
+                    flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
+                    hemi.aux[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
 
         #Find the flatmap limits
-        flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
-        fmin, fmax = flatmerge.min(0), flatmerge.max(0)
-        self.flatlims = map(float, -fmin), map(float, fmax-fmin)
+        if fleft is not None:
+            flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
+            fmin, fmax = flatmerge.min(0), flatmerge.max(0)
+            self.flatlims = map(float, -fmin), map(float, fmax-fmin)
 
-        self.left.setFlat(fleft[0])
-        self.right.setFlat(fright[0])
+            self.left.setFlat(fleft[0])
+            self.right.setFlat(fright[0])
+        else:
+            self.flatlims = None
 
     def addSurf(self, typename, addtype=True, **kwargs):
-        left, right = surfs.getSurf(self.subject, typename, nudge=False, merge=False)
+        left, right = db.get_surf(self.subject, typename, nudge=False, merge=False)
         self.left.addSurf(left[0], **kwargs)
         self.right.addSurf(right[0], **kwargs)
         if addtype:
             self.types.append(typename)
 
     def addCurvature(self, **kwargs):
-        npz = surfs.getAnat(self.subject, type='curvature', **kwargs)
+        npz = db.get_surfinfo(self.subject, type='curvature', **kwargs)
         try:
             self.left.aux[:,1] = npz.left[self.left.mask]
             self.right.aux[:,1] = npz.right[self.right.mask]
@@ -82,13 +89,12 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
-    def save(self, path, method='mg2', **kwargs):
+    def save(self, path, method='mg2', disp_layers=['rois'], **kwargs):
         ctmname = path+".ctm"
         svgname = path+".svg"
         jsname = path+".json"
-        #ptmapname = path+".npz"
 
-        ##### Save CTM concatenation
+        # Save CTM concatenation
         (lpts, _, _), lbin = self.left.save(method=method, **kwargs)
         (rpts, _, _), rbin = self.right.save(method=method, **kwargs)
 
@@ -98,11 +104,17 @@ class BrainCTM(object):
             offsets.append(fp.tell())
             fp.write(rbin)
 
-        ##### Save the JSON descriptor
-        json.dump(dict(rois=os.path.split(svgname)[1], data=os.path.split(ctmname)[1], names=self.types, 
-            materials=[], offsets=offsets, flatlims=self.flatlims), open(jsname, 'w'))
+        # Save the JSON descriptor
+        jsdict = dict(rois=os.path.split(svgname)[1],
+                      data=os.path.split(ctmname)[1],
+                      names=self.types, 
+                      materials=[],
+                      offsets=offsets)
+        if self.flatlims is not None:
+            jsdict['flatlims'] = self.flatlims
+        json.dump(jsdict, open(jsname, 'w'))
 
-        ##### Compute and save the index map
+        # Compute and save the index map
         if method != 'raw':
             ptmap, inverse = [], []
             for hemi, pts in zip([self.left, self.right], [lpts, rpts]):
@@ -110,27 +122,31 @@ class BrainCTM(object):
                 diff, idx = kdt.query(pts)
                 ptmap.append(idx)
                 inverse.append(idx.argsort())
-
-            # np.savez(ptmapname, left=ptmap[0], right=ptmap[1])
         else:
             ptmap = inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
-        ##### Save the SVG with remapped indices
+        # Save the SVG with remapped indices (map 2D flatmap locations to vertices)
         if self.left.flat is not None:
+            # add sulci & display layers
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            roipack = surfs.getOverlay(self.subject, pts=flatpts)
-            layer = roipack.setup_labels()
-            with open(svgname, "w") as fp:
-                for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
-                    idx = int(element.attrib["data-ptidx"])
-                    if idx < len(inverse[0]):
-                        idx = inverse[0][idx]
-                    else:
-                        idx -= len(inverse[0])
-                        idx = inverse[1][idx] + len(inverse[0])
-                    element.attrib["data-ptidx"] = str(idx)
-                fp.write(roipack.toxml())
+            roipack = db.get_overlay(self.subject, pts=flatpts, otype=disp_layers)
+            layers = roipack.setup_labels()
 
+            if not isinstance(layers, (tuple, list)):
+                layers = (layers,)
+            
+            # assign coordinates in left hemisphere negative values
+            with open(svgname, "w") as fp:
+                for layer in layers:
+                    for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
+                        idx = int(element.attrib["data-ptidx"])
+                        if idx < len(inverse[0]):
+                            idx = inverse[0][idx]
+                        else:
+                            idx -= len(inverse[0])
+                            idx = inverse[1][idx] + len(inverse[0])
+                        element.attrib["data-ptidx"] = str(idx)
+                fp.write(roipack.toxml())
         return ptmap
 
 class Hemi(object):
@@ -138,7 +154,7 @@ class Hemi(object):
         self.tf = tempfile.NamedTemporaryFile()
         self.ctm = CTMfile(self.tf.name, "w")
 
-        self.ctm.setMesh(pts, polys, norms=norms)
+        self.ctm.setMesh(pts.astype(np.float32), polys.astype(np.uint32), norms=norms)
 
         self.pts = pts
         self.polys = polys
@@ -206,7 +222,10 @@ class DecimatedHemi(Hemi):
     def addSurf(self, pts, **kwargs):
         super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
 
-def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimate=False):
+def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
+              decimate=False, disp_layers=['rois']):
+    """Generates a cached CTM file"""
+
     ctm = BrainCTM(subj, decimate=decimate)
     ctm.addCurvature()
     for name in types:
@@ -215,4 +234,29 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0, decimat
     if not os.path.exists(os.path.split(outfile)[0]):
         os.makedirs(os.path.split(outfile)[0])
 
-    return ctm.save(os.path.splitext(outfile)[0], method=method, level=level)
+    return ctm.save(os.path.splitext(outfile)[0],
+                    method=method,
+                    level=level,
+                    disp_layers=disp_layers)
+
+def read_pack(ctmfile):
+    fname = os.path.splitext(ctmfile)[0]
+    jsfile = json.load(open(fname+".json"))
+    offset = jsfile['offsets']
+
+    meshes = []
+
+    with open(ctmfile, 'r') as ctmfp:
+        ctmfp.seek(0, 2)
+        offset.append(ctmfp.tell())
+
+        for start, end in zip(offset[:-1], offset[1:]):
+            ctmfp.seek(start)
+            tf = tempfile.NamedTemporaryFile()
+            tf.write(ctmfp.read(end-start))
+            tf.seek(0)
+            ctm = CTMfile(tf.name, "r")
+            pts, polys, norms = ctm.getMesh()
+            meshes.append((pts, polys))
+
+    return meshes

@@ -9,7 +9,7 @@ def nearest(coords, shape, **kwargs):
     valid = ~(np.isnan(coords).all(1))
     rcoords = coords[valid].round().astype(int)
     j = np.ravel_multi_index(rcoords.T[::-1], shape, mode='clip')
-    return np.nonzero(valid)[0], j, np.ones((valid.sum(),))
+    return np.nonzero(valid)[0], j, (rcoords > 0).all(1) #np.ones((valid.sum(),))
     
 def trilinear(coords, shape, **kwargs):
     #trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
