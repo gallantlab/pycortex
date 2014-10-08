@@ -74,7 +74,8 @@ class Surface(object):
                                   (self.polys[:,0], self.polys[:,2])), (npt,npt))
         adj3 = sparse.coo_matrix((np.ones((npoly,)),
                                   (self.polys[:,1], self.polys[:,2])), (npt,npt))
-        return (adj1 + adj2 + adj3).tocsr()
+        alladj = (adj1 + adj2 + adj3).tocsr()
+        return alladj + alladj.T
     
     @property
     @_memo
