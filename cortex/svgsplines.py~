@@ -388,7 +388,23 @@ class CubBezSpline:
 
         ts = ts1 + ts2
         ts[isNaNts1*isNaNts2] = -1.0
+<<<<<<< HEAD
+        '''
+        if ts.size == sum(isNaNts1*isNaNts2):
+            print ['null shape', vts.shape]
+            print ['x1', sum(x1<Inf), 'x_p', sum(x_p<Inf)]
+            print 'null spline: ' + self.toString()
+            plot(vts[:,0], vts[:,1], 'r.')
+            self.plotSpline(1)
+            plot(x1,vts[:,1],marker='.', color=rand(3,1), linestyle='None')
+            plot(x2,vts[:,1],marker='.', color=rand(3,1), linestyle='None')
+            plot(x3,vts[:,1],marker='.', color=rand(3,1), linestyle='None')
+            plot(x_p,vts[:,1],marker='.', color=rand(3,1), linestyle='None')
+            show()
+        '''
+=======
 
+>>>>>>> vertexrois
         # params for the three roots
         t1 = ts[:,0]
         t2 = ts[:,1]
