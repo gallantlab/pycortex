@@ -289,24 +289,28 @@ class ROIpack(object):
                     p_j = path_ind + 1 # temp index
                     
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
+                        old_prev_coord = zeros(2)
+                        old_prev_coord[0] = prev_coord[0]
+                        old_prev_coord[1] = prev_coord[1]
+ 
                         if path[path_ind] == 'M':
                             prev_coord[0] = float(path[p_j])
                             prev_coord[1] = self.svgshape[1] - float(path[p_j+1])
                         else:
                             prev_coord[0] += float(path[p_j])
-                            prev_coord[1] += float(path[p_j+1])
+                            if isFirstM:
+                                prev_coord[1] = self.svgshape[1] - float(path[p_j+1])
+                            else:
+                                prev_coord[1] -= float(path[p_j+1])
 
                             # this conditional is for recognizing and storing the last coord in the first M command(s)
-                            # as the official first coord in the spline path for any return-to-first command 
-                        if isFirstM == True and (len(COMMANDS.intersection(path[p_j+param_len].lower())) == 1 and
-                                                 COMMANDS.intersection(path[p_j+param_len].lower()) != 'm'):
-                            if path[path_ind] == 'm':
-                                # starting coord needs to be referenced from the flipped origin (inherent in capital commands parsing) 
-                                prev_coord[1] = self.svgshape[1] - prev_coord[1] 
+                            # as the official first coord in the spline path for any 'close path (ie, z)' command 
+                        if isFirstM == True:
                             first_coord[0] = prev_coord[0]
                             first_coord[1] = prev_coord[1]
-
                             isFirstM = False
+                        else:
+                            path_splines.append(LineSpline(old_prev_coord,prev_coord))
 
                         p_j += param_len
                         
