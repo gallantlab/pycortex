@@ -89,7 +89,18 @@ def _from_hdf_view(h5, data, xfmname=None, vmin=None, vmax=None,  **kwargs):
         raise ValueError("Invalid Dataview specification")
 
 class Dataview(object):
-    def __init__(self, cmap=None, vmin=None, vmax=None, description="", state=None, **kwargs):
+    def __init__(self, cmap=None, vmin=None, vmax=None, description="", state=None, 
+        cvmin=None,cvmax=None,cvthr=False,**kwargs):
+        """
+        MOAR HELP PLEASE. or maybe not. Is this even visible in inherited classes?
+
+        cvmin : float,optional
+            Minimum value for curvature colormap. Defaults to config file value.
+        cvmax : float, optional
+            Maximum value for background curvature colormap. Defaults to config file value.
+        cvthr : bool,optional
+            Apply threshold to background curvature
+        """
         if self.__class__ == Dataview:
             raise TypeError('Cannot directly instantiate Dataview objects')
 
@@ -207,7 +218,7 @@ class Dataview(object):
                 # Register colormap while we're at it
                 cm.register_cmap(self.cmap,cmap)
             else:
-                cmap = self.cmap
+                cmap = cm.get_cmap(self.cmap)
         norm = colors.Normalize(self.vmin, self.vmax) # Does this do anything?
         return np.rollaxis(cmap(self.data), -1)
 

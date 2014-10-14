@@ -36,7 +36,7 @@ class ROIpack(object):
         can contain multiple paths. 
         If those paths are closed (i.e., if these are all ROIs), then 
         you can use the method ROIpack.get_roi() to get an index of the
-        vertices associated with 
+        vertices associated with each roi.
 
         Parameters
         ----------
@@ -95,7 +95,7 @@ class ROIpack(object):
             else:
                 # Unknown display layer; default to values for ROIs
                 import warnings
-                warnings.warn('No defaults set for display layer %s; Using defaults for ROIs in options.cfg file')
+                warnings.warn('No defaults set for display layer %s; Using defaults for ROIs in options.cfg file'%layer)
                 dlayer = 'rois'                
             self.linewidth = float(config.get(dlayer, "line_width")) if linewidth is None else linewidth
             self.linecolor = tuple(map(float, config.get(dlayer, "line_color").split(','))) if linecolor is None else linecolor
@@ -105,7 +105,6 @@ class ROIpack(object):
             # For dashed lines, default to WYSIWYG from rois.svg
             self.dashtype = dashtype
             self.dashoffset = dashoffset
-
 
             self.reload(size=labelsize, color=labelcolor)
 
@@ -610,6 +609,39 @@ class ROIpack(object):
     def __getitem__(self, name):
         return self.rois[name]
 
+    def __add__(self,other_roipack):
+        """Combine layers from two roipacks. Layers / svg file from first is maintained."""
+        comb = copy.deepcopy(self)
+        if hasattr(comb,'layers'):
+            lay1 = self.layer_names
+        else:    
+            # Convert single-layer to multi-layer ROI
+            comb.layers = {self.layer:self}
+            comb.layer = 'multi_layer'
+            lay1 = [self.layer]
+        svg_fin = copy.copy(comb.svg)
+        if hasattr(other_roipack,'layers'):
+            lay2 = other_roipack.layer_names
+            for k,L in other_roipack.layers.items():
+                comb.layers[k] = L
+                comb.rois.update(L.rois)
+                to_add = _find_layer(L.svg, k)
+                svg_fin.getroot().insert(0, to_add)
+        else:
+            comb.layers[other_roipack.layer] = other_roipack
+            to_add = _find_layer(other_roipack.svg, other_roipack.layer)
+            svg_fin.getroot().insert(0, to_add)
+            lay2 = [other_roipack.layer]
+        # Maintain order of layers according to order of addition
+        comb.layer_names = lay1+lay2 
+        comb.svg = svg_fin
+        comb.kdt = cKDTree(self.kdt.data) # necessary?
+        for L in comb.layer_names:
+            comb.layers[L].kdt = comb.kdt # Why the hell do I have to do this?
+        #for r in comb.rois:
+        #    r.parent = comb # necessary?
+        return comb
+
     def setup_labels(self, size=None, color=None, shadow=None):
         """Sets up coordinates for labels wrt SVG file (2D flatmap)"""
         # Recursive call for multiple layers
@@ -619,10 +651,17 @@ class ROIpack(object):
                 label_layers.append(self.layers[L].setup_labels())
                 self.svg.getroot().insert(0, label_layers[-1])
             return label_layers
+        if self.layer in config.sections():
+            dlayer = self.layer
+        else:
+            # Unknown display layer; default to values for ROIs
+            import warnings
+            warnings.warn('No defaults set for display layer %s; Using defaults for ROIs in options.cfg file'%self.layer)
+            dlayer = 'rois'                
         if size is None:
-            size = config.get(self.layer, "labelsize")
+            size = config.get(dlayer, "labelsize")
         if color is None:
-            color = tuple(map(float, config.get(self.layer, "labelcolor").split(",")))
+            color = tuple(map(float, config.get(dlayer, "labelcolor").split(",")))
         if shadow is None:
             shadow = self.shadow
 
@@ -785,8 +824,9 @@ class ROI(object):
         if not hasattr(self, "coords"):
             allpaths = itertools.chain(*[_split_multipath(path.get("d")) for path in self.paths])
             cpts = [self._parse_svg_pts(p) for p in allpaths]
+            # Bug here. I have no idea why the combined roipack fails here but the non-combined one doesn't
             self.coords = [ self.parent.kdt.query(p)[1] for p in cpts ]
-        
+
         if pts is None:
             pts = self.parent.tcoords
 
