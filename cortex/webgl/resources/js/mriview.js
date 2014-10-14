@@ -95,7 +95,7 @@ var mriview = (function(module) {
                 vmax:       { type:'fv1',value:[1,1]},
 
                 curvAlpha:  { type:'f', value:1.},
-                curvScale:  { type:'f', value:.5},
+                curvScale:  { type:'f', value:2.0},//0.5 TEMP FIX!!
                 curvLim:    { type:'f', value:.2},
                 dataAlpha:  { type:'f', value:1.0},
                 hatchAlpha: { type:'f', value:1.},
@@ -954,6 +954,7 @@ var mriview = (function(module) {
         var oldw = this.canvas.width(), oldh = this.canvas.height();
         this.camera.setSize(width, height);
         this.camera.updateProjectionMatrix();
+        this.controls._zoom(1.0) // To assure orthographic zoom is set correctly
         //this.renderer.setSize(width, height);
         this.renderer.setClearColorHex(0x0, 0);
         this.renderer.render(this.scene, this.camera, renderbuf);

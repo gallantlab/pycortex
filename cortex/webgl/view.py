@@ -539,20 +539,25 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             a = np.array
             func = mixes[interpolation]
             skip_props = ['projection','visR','visL',]
-
+            # Get keyframes
             keyframes = sorted(keyframes, key=lambda x:x['time'])
+            # Normalize all time to frame rate
+            fs = 1./fps
+            for k in range(len(keyframes)):
+                t = keyframes[k]['time']
+                t = np.round(t/fs)*fs
+                keyframes[k]['time'] = t
             allframes = []
             for start,end in zip(keyframes[:-1],keyframes[1:]):
                 t0 = start['time']
                 t1 = end['time']
                 tdif = float(t1-t0)
-                # NOTE: This still screws up the last animation frame;
-                # it will stop 1 frame short. Which is sooper irritating
-                # when trying to get pixel-perfect matches. Mark will fix
-                # this, but is WAY too pooped right now; you should thank
-                # him for not introducing more bugs. 
+                # Check whether to continue frame sequence to endpoint
                 use_endpoint = keyframes[-1]==end
-                fr_time = np.linspace(0, tdif, tdif*fps, endpoint=use_endpoint)
+                nvalues = np.round(tdif/fs)
+                if use_endpoint:
+                    nvalues +=1
+                fr_time = np.linspace(0,1,nvalues,endpoint=use_endpoint)
                 # Interpolate between values
                 for t in fr_time:
                     frame = {}
@@ -562,7 +567,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                         if (prop in skip_props) or (start[prop][0] is None):
                             frame[prop] = start[prop]
                             continue
-                        val = func(a(start[prop]), a(end[prop]), t/tdif)
+                        val = func(a(start[prop]), a(end[prop]), t)
                         if isinstance(val, np.ndarray):
                             frame[prop] = val.tolist()
                         else:
