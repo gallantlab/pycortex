@@ -981,7 +981,15 @@ var mriview = (function(module) {
                 } else if (e.keyCode == 70) { //f
                     this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
                                   {idx:btnspeed, state:"mix", value:1.0}]);
-                } 
+                } else if (e.keyCode == 37) { //left
+		    this.animate([{idx:btnspeed, state:"azimuth", value:(Math.floor(this.getState("azimuth")/90)+1)*90.5}]);
+		} else if (e.keyCode == 39) { //right
+		    this.animate([{idx:btnspeed, state:"azimuth", value:(Math.floor(this.getState("azimuth")/90)-1)*90.5}]);
+		} else if (e.keyCode == 38) { //up
+		    this.animate([{idx:btnspeed, state:"altitude", value:(Math.round(this.getState("altitude")/90)-1)*90.5}]);
+		} else if (e.keyCode == 40) { //down
+		    this.animate([{idx:btnspeed, state:"altitude", value:(Math.round(this.getState("altitude")/90)+1)*90.5}]);
+		}
             }.bind(this));
         }
         window.addEventListener( 'keydown', function(e) {
