@@ -443,7 +443,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
             return Proxy(size[0], size[1], "mixer.html")
 
-        def makeMovie_old(self, animation, filename="brainmovie%07d.png", offset=0,
+        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0,
                       fps=30, size=(1920, 1080), interpolation="linear"):
             """Renders movie frames for animation of mesh movement
 
@@ -575,7 +575,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                     allframes.append(frame)
             return allframes
 
-        def make_movie(self, animation, filename="brainmovie%07d.png", offset=0,
+        def make_movie_views(self, animation, filename="brainmovie%07d.png", offset=0,
                       fps=30, size=(1920, 1080), interpolation="linear"):
             """Renders movie frames for animation of mesh movement
 
