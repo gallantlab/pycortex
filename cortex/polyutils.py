@@ -980,3 +980,4 @@ def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
     pts = contours.output.points.to_array()
     polys = contours.output.polys.to_array().reshape(-1, 4)[:,1:]
     return pts, polys
+
