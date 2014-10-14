@@ -15,7 +15,7 @@ from .options import config
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
                 height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
                 with_labels=True, with_colorbar=True, with_borders=False, 
-                with_dropout=False, with_curvature=False,extra_disp=None, 
+                with_dropout=False, with_curvature=False, extra_disp=None, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, cvmin=None,
                 cvmax=None, cvthr=None, fig=None,**kwargs):
@@ -191,11 +191,21 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         fig.colorbar(cimg, cax=cbar, orientation='horizontal')
 
     if with_dropout is not False:
-        if with_dropout is True: with_dropout = 20
+        if isinstance(with_dropout, dataset.Dataview):
+            dropout_data = with_dropout
+        else:
+            if with_dropout is True:
+                dropout_power = 20 # default
+            else:
+                dropout_power = with_dropout
+
+            dropout_data = utils.get_dropout(dataview.subject, dataview.xfmname,
+                                             power=dropout_power)
+        
+        dmap, ee = make(dropout_data, height=height, sampler=sampler)
         dax = fig.add_axes((0,0,1,1))
-        dmap, ee = make(utils.get_dropout(dataview.subject, dataview.xfmname,
-                                          power=with_dropout),
-                        height=height, sampler=sampler)
+        
+        # Create cross-hatch image
         hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
         hatchspace = 4
         hatchpat = (hx+hy)%(2*hatchspace) < 2
@@ -268,14 +278,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
-    bgcolor=None, dpi=100, **kwargs):
-    """
-    make_png(name, braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100,
-                with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
-                linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
-                **kwargs)
-
-    Create a PNG of the VertexData or VolumeData on a flatmap.
+             bgcolor=None, dpi=100, **kwargs):
+    """Create a PNG of the VertexData or VolumeData on a flatmap.
 
     Parameters
     ----------
