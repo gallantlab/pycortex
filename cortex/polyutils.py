@@ -109,7 +109,7 @@ class Surface(object):
         nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], 
                             self.ppts[:,2] - self.ppts[:,0])
         # Compute vector length
-        return np.sqrt((nnfnorms**2).sum(-1))
+        return np.sqrt((nnfnorms**2).sum(-1)) / 2
 
     @property
     @_memo
