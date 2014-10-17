@@ -147,8 +147,8 @@ class VolumeData(BrainData):
                 self.mask = db.get_mask(self.subject, self.xfmname, mask)
                 self._mask = mask
             elif isinstance(mask, np.ndarray):
-                self.mask = mask
-                self._mask = mask
+                self.mask = mask > 0
+                self._mask = mask > 0
 
             self.shape = self.mask.shape
         else:

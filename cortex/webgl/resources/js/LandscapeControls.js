@@ -252,6 +252,7 @@ THREE.LandscapeControls.prototype = {
     resize: function(w, h) {
         this.domElement.style.width = w+"px";
         this.domElement.style.height = h+"px";
+        this._zoom(1.0) // To set orthographic zoom correctly
     },
 
     getMouse: function ( event ) {
@@ -275,7 +276,7 @@ THREE.LandscapeControls.prototype = {
         }
 
         this._limitview();
-
+        this._zoom(1.0) // Establish zoom (?)
         var altrad = this.altitude*Math.PI / 180;
         var azirad = (this.azimuth+90)*Math.PI / 180;
 
@@ -344,8 +345,9 @@ THREE.LandscapeControls.prototype = {
     },
 
     _zoom: function( factor ) {
+        this.radius *= factor;
         if (this.camera.inPerspectiveMode) {
-            this.radius *= factor;
+            // Perspective mode, zoom by changing radius from camera to object
             if (this.radius > this.maxRadius) { 
                 this.radius = this.maxRadius; 
             }
@@ -354,10 +356,13 @@ THREE.LandscapeControls.prototype = {
             }
         } else {
             // Orthographic mode, zoom by changing frustrum limits
-            this.camera.cameraO.top *= factor;
-            this.camera.cameraO.bottom *= factor;
-            this.camera.cameraO.right *= factor;
-            this.camera.cameraO.left *= factor;
+            var aspect = this.camera.cameraP.aspect
+            var height = 2.0*this.radius*Math.tan(this.camera.cameraP.fov/2.0)
+            var width = aspect*height
+            this.camera.cameraO.top = height/2.0
+            this.camera.cameraO.bottom = -height/2.0
+            this.camera.cameraO.right = width/2.0
+            this.camera.cameraO.left = -width/2.0
             this.camera.cameraO.updateProjectionMatrix();
         }
     },

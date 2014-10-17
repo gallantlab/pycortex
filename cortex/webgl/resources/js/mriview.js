@@ -95,7 +95,7 @@ var mriview = (function(module) {
                 vmax:       { type:'fv1',value:[1,1]},
 
                 curvAlpha:  { type:'f', value:1.},
-                curvScale:  { type:'f', value:.5},
+                curvScale:  { type:'f', value:2.0},//0.5 TEMP FIX!!
                 curvLim:    { type:'f', value:.2},
                 dataAlpha:  { type:'f', value:1.0},
                 hatchAlpha: { type:'f', value:1.},
@@ -339,7 +339,7 @@ var mriview = (function(module) {
                 return $(this.object).find("#mix").slider("value");
             case 'pivot':
                 //return $("#pivot").slider("value");
-            return this._pivot;
+                return this._pivot;
             case 'frame':
                 return this.frame;
             case 'azimuth':
@@ -370,6 +370,8 @@ var mriview = (function(module) {
                     return 'orthographic'}
                 else if (this.camera.inPerspectiveMode) {
                     return 'perspective'}
+            case 'slices':
+                return [this.planes[0].slice, this.planes[1].slice, this.planes[2].slice]
         };
     };
     module.Viewer.prototype.setState = function(state, value) {
@@ -398,6 +400,10 @@ var mriview = (function(module) {
             case 'visR':
                 if (this.roipack) this.roipack._updatemove = true;
                 return this.meshes.right.visible = value;
+            //case 'volume_vis':
+            //    this.planes[0].mesh.visible = value[0]
+            //    this.planes[1].mesh.visible = value[1]
+            //    this.planes[2].mesh.visible = value[2]
             case 'rotationL':
                 if (this.roipack) this.roipack._updatemove = true;
                 return this.meshes.left.rotation.set(value[0], value[1], value[2]);
@@ -406,15 +412,21 @@ var mriview = (function(module) {
                 return this.meshes.right.rotation.set(value[0], value[1], value[2]);
             case 'alpha':
                 return this.renderer.setClearColor(0,value);
+            case 'specularity':
+                return this.specularity = value
             case 'data':
                 return this.setData(value)
             case 'labels':
                 return this.labelshow = value;
+            case 'pivot':
+                return 'SORRY NOT YET'
             case 'projection':
                 if (value=='perspective'){
                     return this.controls.camera.toPerspective()}
                 else if (value=='orthographic'){
                     return this.controls.camera.toOrthographic()}
+            case 'slices':
+                return [this.planes[0].update(value[0]), this.planes[1].update(value[1]), this.planes[2].update(value[2])];
         };
     };
     module.Viewer.prototype.animate = function(animation) {
@@ -926,7 +938,6 @@ var mriview = (function(module) {
         }
         this.figure.notify("playtoggle", this);
     };
-
     module.Viewer.prototype.getImage = function(width, height, post) {
         if (width === undefined)
             width = this.canvas.width();
@@ -947,6 +958,7 @@ var mriview = (function(module) {
         var oldw = this.canvas.width(), oldh = this.canvas.height();
         this.camera.setSize(width, height);
         this.camera.updateProjectionMatrix();
+        this.controls._zoom(1.0) // To assure orthographic zoom is set correctly
         //this.renderer.setSize(width, height);
         this.renderer.setClearColorHex(0x0, 0);
         this.renderer.render(this.scene, this.camera, renderbuf);

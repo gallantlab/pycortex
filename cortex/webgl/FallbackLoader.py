@@ -2,8 +2,8 @@ import os
 from tornado import template
 
 class FallbackLoader(template.BaseLoader):
-    """Loads templates from a multiple directories, falling back to next
-    if the template is not found in the first directory.
+    """Loads templates from one of multiple potential directories, falling back 
+    to next if the template is not found in the first directory.
     """
     def __init__(self, root_directories, **kwargs):
         super(FallbackLoader, self).__init__(**kwargs)

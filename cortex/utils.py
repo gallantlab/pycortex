@@ -30,7 +30,7 @@ def get_roipack(*args, **kwargs):
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False,
-                decimate=False, disp_layers=['rois']):
+                decimate=False, disp_layers=['rois'],extra_disp=None):
     """Creates ctm file for the specified input arguments.
 
     This is a cached file that specifies (1) the surfaces between which
@@ -39,14 +39,17 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     """   
     lvlstr = ("%dd" if decimate else "%d")%level
     # Generates different cache files for each combination of disp_layers
-    ctmcache = "%s_[{types}]_{method}_{level}_{layers}.json"%subject
+    ctmcache = "%s_[{types}]_{method}_{level}_{layers}{extra}.json"%subject
+    # Mark any ctm file containing extra_disp as unique (will be over-written every time)
     ctmcache = ctmcache.format(types=','.join(types),
                                method=method,
                                level=lvlstr,
-                               layers=repr(sorted(disp_layers)))
+                               layers=repr(sorted(disp_layers)),
+                               extra='' if extra_disp is None else '_xx')
     ctmfile = os.path.join(db.get_cache(subject), ctmcache)
 
-    if os.path.exists(ctmfile) and not recache:
+    if os.path.exists(ctmfile) and not recache: # and extra_disp is None:
+        # (never load cache with extra_disp, which is based on files outside pycortex)
         return ctmfile
 
     print("Generating new ctm file...")
@@ -57,7 +60,8 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
                                method=method, 
                                level=level,
                                decimate=decimate,
-                               disp_layers=disp_layers)
+                               disp_layers=disp_layers,
+                               extra_disp=extra_disp)
     return ctmfile
 
 def get_ctmmap(subject, **kwargs):
@@ -181,7 +185,6 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     if isinstance(dv, dataset.Dataset):
         raise TypeError("Please specify a data view")
 
-    #rois = db.get_overlay(dv.data.subject)
     rois = db.get_overlay(dv.subject)
     try:
         import cStringIO

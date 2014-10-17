@@ -109,7 +109,7 @@ class Surface(object):
         nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], 
                             self.ppts[:,2] - self.ppts[:,0])
         # Compute vector length
-        return np.sqrt((nnfnorms**2).sum(-1))
+        return np.sqrt((nnfnorms**2).sum(-1)) / 2
 
     @property
     @_memo
@@ -418,7 +418,7 @@ class Surface(object):
         fe31 = np.cross(fnorms, ppts[:,0] - ppts[:,2])
         return fe12, fe23, fe31
 
-    def geodesic_distance(self, verts, m=2.0, fem=False):
+    def geodesic_distance(self, verts, m=1.0, fem=False):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
         vertex in the collection `verts`.
 
@@ -980,3 +980,4 @@ def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
     pts = contours.output.points.to_array()
     polys = contours.output.polys.to_array().reshape(-1, 4)[:,1:]
     return pts, polys
+
