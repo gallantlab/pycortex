@@ -418,7 +418,7 @@ class Surface(object):
         fe31 = np.cross(fnorms, ppts[:,0] - ppts[:,2])
         return fe12, fe23, fe31
 
-    def geodesic_distance(self, verts, m=2.0, fem=False):
+    def geodesic_distance(self, verts, m=1.0, fem=False):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
         vertex in the collection `verts`.
 
