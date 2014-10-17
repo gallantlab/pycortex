@@ -698,31 +698,8 @@ var mriview = (function(module) {
                 this.setVminmax(this.active.vmin, this.active.vmax, 0);
             }
 
-            if (this.active.data[0].movie) {
-                $(this.object).find("#moviecontrols").show();
-                $(this.object).find("#bottombar").addClass("bbar_controls");
-                $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
-                this.active.data[0].loaded.progress(function(idx) {
-                    var pct = idx / this.active.frames * 100;
-                    $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
-                }.bind(this)).done(function() {
-                    $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
-                }.bind(this));
-                
-                this.active.loaded.done(function() {
-                    this.setFrame(0);
-                }.bind(this));
-
-                if (this.active.stim && figure) {
-                    figure.setSize("right", "30%");
-                    this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
-                    this.movie.setFrame(0);
-                }
-            } else {
-                $(this.object).find("#moviecontrols").hide();
-                $(this.object).find("#bottombar").removeClass("bbar_controls");
-                this.active.set(this.uniforms, 0);
-            }
+            this.setupStim();
+            
             $(this.object).find("#datasets li").each(function() {
                 if ($(this).text() == name)
                     $(this).addClass("ui-selected");
@@ -763,6 +740,33 @@ var mriview = (function(module) {
             if ($(this).text() == name)
                 $(this).remove();
         })
+    };
+    module.Viewer.prototype.setupStim = function() {
+        if (this.active.data[0].movie) {
+            $(this.object).find("#moviecontrols").show();
+            $(this.object).find("#bottombar").addClass("bbar_controls");
+            $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
+            this.active.data[0].loaded.progress(function(idx) {
+                var pct = idx / this.active.frames * 100;
+                $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
+            }.bind(this)).done(function() {
+                $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
+            }.bind(this));
+            
+            this.active.loaded.done(function() {
+                this.setFrame(0);
+            }.bind(this));
+
+            if (this.active.stim && figure) {
+                figure.setSize("right", "30%");
+                this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
+                this.movie.setFrame(0);
+            }
+        } else {
+            $(this.object).find("#moviecontrols").hide();
+            $(this.object).find("#bottombar").removeClass("bbar_controls");
+            this.active.set(this.uniforms, 0);
+        }
     };
 
     module.Viewer.prototype.setColormap = function(cmap) {
@@ -1116,15 +1120,15 @@ var mriview = (function(module) {
                 min:0, max:20, step:1, value:4,
                 change: updateOverlays,
             });
-            $(this.object).find("#"+layername+"_linecolor").miniColors({
-		close: updateOverlays,
+            $(this.object).find("#"+layername+"_linecolor").minicolors({
+		change: updateOverlays,
 		defaultValue: disp_defaults[layername]['line_color']
 	    });
-            $(this.object).find("#"+layername+"_fillcolor").miniColors({
-		close: updateOverlays,
+            $(this.object).find("#"+layername+"_fillcolor").minicolors({
+		change: updateOverlays,
 		defaultValue: disp_defaults[layername]['fill_color']
 	    });
-            $(this.object).find("#"+layername+"_shadowcolor").miniColors({close: updateOverlays});
+            $(this.object).find("#"+layername+"_shadowcolor").minicolors({change: updateOverlays});
 
             var _this = this;
             $(this.object).find("#"+layername+"show").change(function() {
@@ -1173,7 +1177,7 @@ var mriview = (function(module) {
             this.uniforms.hatchAlpha.value = ui.value;
             this.schedule();
         }.bind(this)})
-        $(this.object).find("#layer_hatchcolor").miniColors({close: function(hex, rgb) {
+        $(this.object).find("#layer_hatchcolor").minicolors({close: function(hex, rgb) {
             this.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
             this.schedule();
         }.bind(this)});
@@ -1189,7 +1193,7 @@ var mriview = (function(module) {
             this.setVoxView(this.active.filter, viewopts.voxlines);
             this.schedule();
         }.bind(this));
-        $(this.object).find("#voxline_color").miniColors({ close: function(hex, rgb) {
+        $(this.object).find("#voxline_color").minicolors({ close: function(hex, rgb) {
             this.uniforms.voxlineColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b/255);
             this.schedule();
         }.bind(this)});
