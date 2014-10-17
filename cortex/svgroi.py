@@ -4,11 +4,9 @@ import copy
 import shlex
 import tempfile
 import itertools
+import numpy as np
 import subprocess as sp
-from svgsplines import *
-
-from matplotlib.pyplot import *
-from numpy import *
+from svgsplines import LineSpline, QuadBezSpline, CubBezSpline, ArcSpline
 
 from scipy.spatial import cKDTree
 
@@ -275,8 +273,8 @@ class ROIpack(object):
 
         for path in path_strs:
             path_splines = []
-            first_coord = zeros(2) #array([0,0])
-            prev_coord = zeros(2) #array([0,0])
+            first_coord = np.zeros(2) #array([0,0])
+            prev_coord = np.zeros(2) #array([0,0])
             isFirstM = True# inkscape may create multiple starting commands to move to the spline's starting coord, this just treats those as one commend
 
             for path_ind in range(len(path)):
@@ -288,7 +286,7 @@ class ROIpack(object):
                     p_j = path_ind + 1 # temp index
                     
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
-                        old_prev_coord = zeros(2)
+                        old_prev_coord = np.zeros(2)
                         old_prev_coord[0] = prev_coord[0]
                         old_prev_coord[1] = prev_coord[1]
  
@@ -321,7 +319,7 @@ class ROIpack(object):
                 elif path[path_ind].lower() == 'l':
                     param_len = 2
                     p_j = path_ind + 1
-                    next_coord = zeros(2)
+                    next_coord = np.zeros(2)
                                        
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         if path[path_ind] == 'L':
@@ -340,7 +338,7 @@ class ROIpack(object):
                 elif path[path_ind].lower() == 'h':
                     param_len = 1
                     p_j = path_ind + 1
-                    next_coord = zeros(2)
+                    next_coord = np.zeros(2)
                                        
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         if path[path_ind] == 'H':
@@ -351,14 +349,14 @@ class ROIpack(object):
                             next_coord[1] = prev_coord[1]
                         
                         path_splines.append(LineSpline(prev_coord, next_coord))
-                        prev_coord[0] =next_coord[0]
-                        prev_coord[1] =next_coord[1]
+                        prev_coord[0] = next_coord[0]
+                        prev_coord[1] = next_coord[1]
                         p_j += param_len
                 
                 elif path[path_ind].lower() == 'v':
                     param_len = 1
                     p_j = path_ind + 1
-                    next_coord = zeros(2)
+                    next_coord = np.zeros(2)
 
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         if path[path_ind] == 'V':
@@ -376,9 +374,9 @@ class ROIpack(object):
                 elif path[path_ind].lower() == 'c':
                     param_len = 6
                     p_j = path_ind + 1
-                    ctl1_coord = zeros(2)
-                    ctl2_coord = zeros(2)
-                    end_coord = zeros(2)
+                    ctl1_coord = np.zeros(2)
+                    ctl2_coord = np.zeros(2)
+                    end_coord = np.zeros(2)
 
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         if path[path_ind] == 'C':
@@ -410,9 +408,9 @@ class ROIpack(object):
                 elif path[path_ind].lower() == 's':
                     param_len = 4
                     p_j = path_ind + 1
-                    ctl1_coord = zeros(2)
-                    ctl2_coord = zeros(2)
-                    end_coord = zeros(2)
+                    ctl1_coord = np.zeros(2)
+                    ctl2_coord = np.zeros(2)
+                    end_coord = np.zeros(2)
 
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         ctl1_coord = prev_coord - path_splines[len(path_splines)-1].c2 + prev_coord
@@ -439,8 +437,8 @@ class ROIpack(object):
                 elif path[path_ind].lower() == 'q':
                     param_len = 4
                     p_j = path_ind + 1
-                    ctl_coord = zeros(2)
-                    end_coord = zeros(2)
+                    ctl_coord = np.zeros(2)
+                    end_coord = np.zeros(2)
 
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         if path[path_ind] == 'Q':
@@ -464,8 +462,8 @@ class ROIpack(object):
                 elif path[path_ind].lower() == 't':
                     param_len = 2
                     p_j = path_ind + 1
-                    ctl_coord = zeros(2)
-                    end_coord = zeros(2)
+                    ctl_coord = np.zeros(2)
+                    end_coord = np.zeros(2)
 
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         ctl_coord = prev_coord - path_splines[len(path_splines)-1].c + prev_coord
@@ -486,7 +484,7 @@ class ROIpack(object):
                 elif path[path_ind].lower() == 'a': 
                     param_len = 7
                     p_j = path_ind + 1
-                    end_coord = zeros(2)
+                    end_coord = np.zeros(2)
 
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         rx = float(path[p_j])
@@ -530,27 +528,27 @@ class ROIpack(object):
         vts = self.tcoords*self.svgshape # reverts tcoords from unit circle size to normal svg image format size  
         all_splines = self.get_splines(roiname) #all_splines is a list of generally two roi paths, one for each hemisphere
 
-        vts_inside_region = zeros(vts.shape[0],dtype=bool) # ultimately what gets returned
+        vts_inside_region = np.zeros(vts.shape[0],dtype=bool) # ultimately what gets returned
 
         for splines in all_splines: #retrieves path splines for each hemisphere separately
-            x0s = min(vts[:,0])*.98*ones(vts.shape[0])
+            x0s = np.min(vts[:,0])*.98*np.ones(vts.shape[0])
 
             # Only checks the vertices in a bounding box around the spline path.
             # The splines are always within a convex shape whose corners are
             # their svg command's end point and control points, so the box is their
             # min and max X and Y coordinates.
-            beforeSplineRegionX = vts[:,0] < min([float(sp_i.smallestX()) for sp_i in splines])
-            beforeSplineRegionY = vts[:,1] < min([float(sp_i.smallestY()) for sp_i in splines])
-            afterSplineRegionX = vts[:,0] > max([float(sp_i.biggestX()) for sp_i in splines])
-            afterSplineRegionY = vts[:,1] > max([float(sp_i.biggestY()) for sp_i in splines])
+            beforeSplineRegionX = vts[:,0] < np.min([float(sp_i.smallestX()) for sp_i in splines])
+            beforeSplineRegionY = vts[:,1] < np.min([float(sp_i.smallestY()) for sp_i in splines])
+            afterSplineRegionX = vts[:,0] > np.max([float(sp_i.biggestX()) for sp_i in splines])
+            afterSplineRegionY = vts[:,1] > np.max([float(sp_i.biggestY()) for sp_i in splines])
 
-            found_vtxs = zeros(vts.shape[0],dtype=bool)
+            found_vtxs = np.zeros(vts.shape[0],dtype=bool)
             found_vtxs[beforeSplineRegionX] = True
             found_vtxs[beforeSplineRegionY] = True
             found_vtxs[afterSplineRegionX] = True
             found_vtxs[afterSplineRegionY] = True
             
-            vt_isx = vstack([x0s,vts[:,1]]).T #iterable coords, same x-value as each other, but at their old y-value positions
+            vt_isx = np.vstack([x0s,vts[:,1]]).T #iterable coords, same x-value as each other, but at their old y-value positions
  
             vtx_is = vt_isx[~found_vtxs]
 
@@ -564,7 +562,7 @@ class ROIpack(object):
 
             # keeps stretching the vertical line to the right until all the points find their original vertex again            
             while sum(small_found_vtxs) != len(small_found_vtxs):
-                closest_xs = Inf*ones(vtx_is.shape[0]) # starting marker for all vts are at Inf
+                closest_xs = np.Inf*np.ones(vtx_is.shape[0]) # starting marker for all vts are at Inf
 
                 for i in range(len(splines_xs)):
                     spline_i_xs = splines_xs[i]
