@@ -74,7 +74,8 @@ class Surface(object):
                                   (self.polys[:,0], self.polys[:,2])), (npt,npt))
         adj3 = sparse.coo_matrix((np.ones((npoly,)),
                                   (self.polys[:,1], self.polys[:,2])), (npt,npt))
-        return (adj1 + adj2 + adj3).tocsr()
+        alladj = (adj1 + adj2 + adj3).tocsr()
+        return alladj + alladj.T
     
     @property
     @_memo
@@ -108,7 +109,7 @@ class Surface(object):
         nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], 
                             self.ppts[:,2] - self.ppts[:,0])
         # Compute vector length
-        return np.sqrt((nnfnorms**2).sum(-1))
+        return np.sqrt((nnfnorms**2).sum(-1)) / 2
 
     @property
     @_memo
@@ -417,7 +418,7 @@ class Surface(object):
         fe31 = np.cross(fnorms, ppts[:,0] - ppts[:,2])
         return fe12, fe23, fe31
 
-    def geodesic_distance(self, verts, m=2.0, fem=False):
+    def geodesic_distance(self, verts, m=1.0, fem=False):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
         vertex in the collection `verts`.
 
@@ -960,3 +961,23 @@ def measure_volume(pts, polys):
     pd = tvtk.PolyData(points=pts, polys=polys)
     mp = tvtk.MassProperties(input=pd)
     return mp.volume
+
+def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
+    imgdata = tvtk.ImageData(dimensions=volume.shape)
+    imgdata.point_data.scalars = volume.flatten('F')
+
+    contours = tvtk.ContourFilter(input=imgdata, number_of_contours=1)
+    contours.set_value(0, 1)
+
+    if smooth:
+        smoothargs = dict(number_of_iterations=40, feature_angle = 90, pass_band=.05)
+        smoothargs.update(kwargs)
+        contours = tvtk.WindowedSincPolyDataFilter(input=contours.output, **smoothargs)
+    if decimate:
+        contours = tvtk.QuadricDecimation(input=contours.output, target_reduction=.75)
+    
+    contours.update()
+    pts = contours.output.points.to_array()
+    polys = contours.output.polys.to_array().reshape(-1, 4)[:,1:]
+    return pts, polys
+

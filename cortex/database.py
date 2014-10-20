@@ -171,7 +171,8 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "get_mask", "get_overlay","get_cache", "get_view","save_view"] + list(self.subjects.keys())
+        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo",
+                "get_mask", "get_overlay","get_cache", "get_view","save_view"] + list(self.subjects.keys())
 
     def loadXfm(self, *args, **kwargs):
         warnings.warn("loadXfm is deprecated, use save_xfm instead", Warning)
@@ -206,11 +207,11 @@ class Database(object):
         return self.get_cache(*args, **kwargs)
 
     def loadView(self, *args, **kwargs):
-        warnings.warn("loadView is deprecated, use save_view instead", Warning)
+        warnings.warn("loadView is deprecated, use get_view instead", Warning)
         return self.save_view(*args, **kwargs)
 
     def setView(self, *args, **kwargs):
-        warnings.warn("setView is deprecated, use get_view instead", Warning)
+        warnings.warn("setView is deprecated, use save_view instead", Warning)
         return self.get_view(*args, **kwargs)
 
     @property
@@ -309,29 +310,37 @@ class Database(object):
             return Vertex(verts, subject)
         return npz
 
-    def get_overlay(self, subject, type='rois', **kwargs):
-        if type in ["rois","cutouts"]:
-            from . import svgroi
-            pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
-            try:
-                tf = self.auxfile.get_overlay(subject, type)
-                svgfile = tf.name
-            except (AttributeError, IOError):
-                svgfile = self.get_paths(subject)["rois"]
-                    
+    def get_overlay(self, subject, otype='rois', **kwargs):
+        from . import svgroi
+        pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
+        if otype in ["rois", "cutouts", "sulci"] or isinstance(otype, (list,tuple)):
+            # Assumes that all lists or tuples will only consist of "rois","cutouts",and "sulci"...
+            # Prevents combining external files with sulci, e.g. 
+            svgfile = self.get_paths(subject)["rois"]
+            if self.auxfile is not None:
+                try:
+                    tf = self.auxfile.get_overlay(subject, otype) # kwargs??
+                    svgfile = tf.name
+                except (AttributeError, IOError):
+                    # NOTE: This is better error handling, but does not account for
+                    # case in which self.auxfile is None - when is that?? I (ML) think
+                    # it only comes up with new svg layer variants in extra_layers branch...
+                    # svgfile = self.get_paths(subject)["rois"]
+                    # Layer type does not exist or has been temporarily removed
+                    pass                    
             if 'pts' in kwargs:
                 pts = kwargs['pts']
                 del kwargs['pts']
-            return svgroi.get_roipack(svgfile, pts, polys, layer=type,**kwargs)
-        if type == "external":
-            from . import svgroi
-            pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
+            return svgroi.get_roipack(svgfile, pts, polys, layer=otype, **kwargs)
+        if otype == "external":
+            layer = kwargs['layer']
+            del kwargs['layer']
             svgfile = kwargs["svgfile"]
             del kwargs["svgfile"]
             if 'pts' in kwargs:
                 pts = kwargs['pts']
                 del kwargs['pts']
-            return svgroi.get_roipack(svgfile, pts, polys, **kwargs)
+            return svgroi.get_roipack(svgfile, pts, polys, layer=layer,**kwargs)
 
         raise TypeError('Invalid overlay type')
     
@@ -349,9 +358,11 @@ class Database(object):
         xfm : (4,4) array
             The affine transformation matrix
         xfmtype : str, optional
-            Type of the provided transform, either magnet space or coord space. Defaults to magnet.
+            Type of the provided transform, either magnet space or coord space.
+            Defaults to 'magnet'.
         reference : str, optional
-            The nibabel-compatible reference image associated with this transform. Required if name not in database
+            The nibabel-compatible reference image associated with this transform.
+            Required if name not in database
         """
         if xfmtype not in ["magnet", "coord"]:
             raise TypeError("Unknown transform type")
