@@ -10,7 +10,6 @@ import os
 import re
 import copy
 import glob
-import time
 import json
 import shutil
 import warnings
@@ -202,7 +201,7 @@ class Database(object):
         warnings.warn("getOverlay is deprecated, use get_overlay instead", Warning)
         return self.get_overlay(*args, **kwargs)
 
-    def get_cache(self, *args, **kwargs):
+    def getCache(self, *args, **kwargs):
         warnings.warn("getCache is deprecated, use get_cache instead", Warning)
         return self.get_cache(*args, **kwargs)
 
@@ -423,7 +422,6 @@ class Database(object):
                 pass
 
         if name == "identity":
-            import nibabel
             nib = self.get_anat(subject, 'raw')
             return Transform(np.linalg.inv(nib.get_affine()), nib)
 
@@ -574,7 +572,6 @@ class Database(object):
     def get_paths(self, subject):
         """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
         """
-        surfparse = re.compile(r'(.*)/([\w-]+)_([\w-]+)_(\w+).*')
         surfpath = os.path.join(self.filestore, subject, "surfaces")
 
         if self.subjects[subject]._warning is not None:

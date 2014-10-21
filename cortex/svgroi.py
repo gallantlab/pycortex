@@ -261,7 +261,6 @@ class ROIpack(object):
                      for path in self.rois[roiname].paths]
 
         COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
-        UPPERCASE = set('MZLHVCSQTA')
         all_splines = [] #contains each hemisphere separately
 
         ###  
@@ -1011,8 +1010,6 @@ def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
     return rois
 
 ## From svg.path (https://github.com/regebro/svg.path/blob/master/src/svg/path/parser.py)
-import re
-
 COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
 UPPERCASE = set('MZLHVCSQTA')
 

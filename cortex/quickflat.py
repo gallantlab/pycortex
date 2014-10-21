@@ -1,9 +1,6 @@
 import io
 import os
-import sys
-import time
 import glob
-import pickle
 import binascii
 import numpy as np
 
@@ -560,7 +557,7 @@ def _make_vertex_cache(subject, height=1024):
 
 def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sampler='nearest'):
     from scipy import sparse
-    from scipy.spatial import cKDTree, Delaunay
+    from scipy.spatial import Delaunay
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
     fmax, fmin = flat.max(0), flat.min(0)
