@@ -7,11 +7,12 @@ import numpy as np
 import networkx as nx
 
 from db import surfs
+
+from dataset import db
 from svgroi import get_roipack, _make_layer, _find_layer, parser
 from lxml import etree
-from dataset import VertexData
-from polyutils import Surface, boundary_edges
-from utils import get_curvature, add_roi
+from polyutils import Surface
+
 import quickflat
 
 class ROIpack(object):
@@ -29,9 +30,12 @@ class ROIpack(object):
             print("ROI file %s doesn't exist.." % self.roifile)
             return
 
-        # Create basic VertexData to avoid expensive initialization..
-        empty = VertexData(None, self.subject)
-        
+        #Used to create basic VertexData to avoid expensive initialization..
+        #empty = VertexData(None, self.subject)
+
+        #hack just gets curvature VertexData to prevent error from old way
+        empty = db.get_surfinfo(self.subject)
+
         # Load ROIs from file
         if self.roifile.endswith("npz"):
             roidata = np.load(self.roifile)
@@ -79,7 +83,7 @@ class ROIpack(object):
         # Add default layers
         # Add curvature
         from matplotlib import cm
-        curv = VertexData(np.hstack(get_curvature(self.subject)), self.subject)
+        curv = db.get_surfinfo(self.subject)
         fp = cStringIO.StringIO()
         curvim = quickflat.make_png(fp, curv, height=1024, with_rois=False, with_labels=False,
                                     with_colorbar=False, cmap=cm.gray,recache=True)
