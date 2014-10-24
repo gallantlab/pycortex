@@ -261,7 +261,6 @@ class ROIpack(object):
                      for path in self.rois[roiname].paths]
 
         COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
-        UPPERCASE = set('MZLHVCSQTA')
         all_splines = [] #contains each hemisphere separately
 
         ###  
@@ -598,7 +597,7 @@ class ROIpack(object):
             if sum(vts_inside_region) == len(vts_inside_region):
                 break
 
-        return vts_inside_region # final output of whether or not each brain vertex is within the specified roi
+        return np.nonzero(vts_inside_region)[0] # output indices of vertices that are inside the roi
     
     @property
     def names(self):
@@ -1011,8 +1010,6 @@ def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
     return rois
 
 ## From svg.path (https://github.com/regebro/svg.path/blob/master/src/svg/path/parser.py)
-import re
-
 COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
 UPPERCASE = set('MZLHVCSQTA')
 

@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import numpy as np
-from scipy.spatial import distance, Delaunay, cKDTree
+from scipy.spatial import distance, Delaunay
 from scipy import sparse
 import scipy.sparse.linalg
 import functools
@@ -266,7 +266,6 @@ class Surface(object):
         pu = scalars[self.polys]
         fe12, fe23, fe31 = [f.T for f in self._facenorm_cross_edge]
         pu1, pu2, pu3 = pu.T
-        fa = self.face_areas
 
         # numexpr is much faster than doing this using numpy!
         #gradu = ((fe12.T * pu[:,2] +
@@ -488,7 +487,6 @@ class Surface(object):
         X = np.nan_to_num(ne.evaluate("-graduT / sqrt(gusum)").T)
 
         # Compute integrated divergence of X at each vertex
-        ppts = self.ppts
         #x1 = x2 = x3 = np.zeros((X.shape[0],))
         c32, c13, c21 = self._cot_edge
         x1 = 0.5 * (c32 * X).sum(1)
@@ -925,7 +923,6 @@ def rasterize(poly, shape=(256, 256)):
 
 def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True):
     from tvtk.api import tvtk
-    from PIL import Image, ImageDraw
     
     pd = tvtk.PolyData(points=pts + center + (0, 0, 0), polys=polys)
     plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
@@ -963,6 +960,7 @@ def measure_volume(pts, polys):
     return mp.volume
 
 def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
+    import tvtk
     imgdata = tvtk.ImageData(dimensions=volume.shape)
     imgdata.point_data.scalars = volume.flatten('F')
 
