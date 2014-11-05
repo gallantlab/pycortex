@@ -63,11 +63,13 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Maximum value for background curvature colormap. Defaults to config file value.
     cvthr : bool,optional
         Apply threshold to background curvature
-    extra_disp : tuple
+    extra_disp : tuple, optional
         Optional extra display layer from external .svg file. Tuple specifies (filename,layer)
         filename should be a full path. External svg file should be structured exactly as 
         rois.svg for the subject. (Best to just copy rois.svg somewhere else and add layers to it)
         Default value is None.
+    extra_hatch : tuple, optional
+        Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple. 
 
     """
     from matplotlib import colors,cm, pyplot as plt
