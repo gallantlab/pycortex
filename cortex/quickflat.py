@@ -15,7 +15,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 with_dropout=False, with_curvature=False, extra_disp=None, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, cvmin=None,
-                cvmax=None, cvthr=None, fig=None,**kwargs):
+                cvmax=None, cvthr=None, fig=None, extra_hatch=None, **kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
     matplotlib's imshow command.
 
@@ -199,17 +199,20 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             dropout_data = utils.get_dropout(dataview.subject, dataview.xfmname,
                                              power=dropout_power)
         
-        dmap, ee = make(dropout_data, height=height, sampler=sampler)
-        dax = fig.add_axes((0,0,1,1))
-        
-        # Create cross-hatch image
-        hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
-        hatchspace = 4
-        hatchpat = (hx+hy)%(2*hatchspace) < 2
-        hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
-        hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
-        hatchim[:,:,3] *= (dmap>0.5).astype(float)
+        hatchim = _make_hatch_image(dropout_data, height, sampler)
         if cutout: hatchim[:,:,3]*=co
+        dax = fig.add_axes((0,0,1,1))
+        dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal",
+                   interpolation="nearest", extent=extents, origin='lower')
+
+    if extra_hatch is not None:
+        hatch_data, hatch_color = extra_hatch
+        hatchim = _make_hatch_image(hatch_data, height, sampler)
+        hatchim[:,:,0] = hatch_color[0]
+        hatchim[:,:,1] = hatch_color[1]
+        hatchim[:,:,2] = hatch_color[2]
+        if cutout: hatchim[:,:,3]*=co
+        dax = fig.add_axes((0,0,1,1))
         dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal",
                    interpolation="nearest", extent=extents, origin='lower')
     
@@ -517,6 +520,16 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
 
     return pixmap
 
+def _make_hatch_image(dropout_data, height, sampler):
+    dmap, ee = make(dropout_data, height=height, sampler=sampler)
+    hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
+    hatchspace = 4
+    hatchpat = (hx+hy)%(2*hatchspace) < 2
+    hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
+    hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
+    hatchim[:,:,3] *= (dmap>0.5).astype(float)
+
+    return hatchim
 
 def _make_flatmask(subject, height=1024):
     from . import polyutils
