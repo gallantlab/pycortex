@@ -1,10 +1,8 @@
 import io
 import os
-import sys
 import binascii
 import numpy as np
 from importlib import import_module
-from . import options
 from .database import db
 from .volume import mosaic, unmask, anat2epispace
 
@@ -128,7 +126,6 @@ def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
     argdist : ndarray
         Point index for the closest point
     """
-    import nibabel
     from scipy.spatial import cKDTree
 
     fiducial, polys = db.get_surf(subject, surface, merge=True)
@@ -274,7 +271,6 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     rois, vertIdx = db.get_overlay(subject, remove_medial=True)
 
     # Retrieve shape from the reference
-    import nibabel
     shape = db.get_xfm(subject, xfmname).shape
     
     # Get 3D coords
