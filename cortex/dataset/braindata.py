@@ -201,9 +201,10 @@ class VolumeData(BrainData):
     def save(self, filename, name=None):
         """Save the dataset into an hdf file with the provided name
         """
+        import os
         if isinstance(filename, str):
             fname, ext = os.path.splitext(filename)
-            if ext in (".hdf", ".h5"):
+            if ext in (".hdf", ".h5",".hf5"):
                 h5 = h5py.File(filename, "a")
                 self._write_hdf(h5, name=name)
                 h5.close()

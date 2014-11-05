@@ -175,6 +175,9 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 cm.register_cmap(dataview.cmap,cmap)
             else:
                 cmap = dataview.cmap
+        elif isinstance(dataview.cmap,colors.Colormap):
+            # Allow input of matplotlib colormap class
+            cmap = dataview.cmap
         kwargs.update(
             cmap=cmap, 
             vmin=dataview.vmin, 
