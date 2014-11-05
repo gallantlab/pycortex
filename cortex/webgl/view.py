@@ -40,9 +40,9 @@ viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
                 template="static.html", layout=None, anonymize=False,
-                disp_layers=['rois'], extra_disp=None, **kwargs):
-    """Creates a static instance of the webGL MRI viewer that can easily be posted 
-    or shared. 
+                disp_layers=['rois'], extra_disp=None, html_embed=True, **kwargs):
+    """Creates a static instance of the webGL MRI viewer that can easily be posted
+    or shared.
 
     Parameters
     ----------
@@ -72,6 +72,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     ----------------
     extra_disp : tuple
         (filename,[layers]) for display of layers from external svg file
+    html_embed : bool, optional
+        Whether to embed the webgl resources in the html output.  Default 'True'.
+        If 'False', the webgl resources must be served by your web server.
 
     Notes
     -----
@@ -99,7 +102,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                                          extra_disp=extra_disp,
                                          **ctmargs))
                 for subj in subjects)
-    
+
     db.auxfile = None
     if layout is None:
         layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
@@ -121,7 +124,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
             newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
             if os.path.exists(newfile):
                 os.unlink(newfile)
-            
+
             if os.path.exists(srcfile):
                 shutil.copy2(srcfile, newfile)
 
@@ -130,7 +133,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                 nfh = open(newfile)
                 jsoncontents = nfh.read()
                 nfh.close()
-                
+
                 ofh = open(newfile, "w")
                 ofh.write(jsoncontents.replace(fname, newfname))
                 ofh.close()
@@ -155,7 +158,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
             if not os.path.exists(stimpath):
                 os.makedirs(stimpath)
             shutil.copy2(view.attrs['stim'], stimpath)
-    
+
     #Parse the html file and paste all the js and css files directly into the html
     from . import htmlembed
     if os.path.exists(template):
@@ -176,16 +179,21 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     loader = FallbackLoader(rootdirs)
     tpl = loader.load(templatefile)
     kwargs.update(viewopts)
-    html = tpl.generate(data=json.dumps(metadata), 
-                        colormaps=colormaps, 
-                        default_cmap=cmap, 
-                        python_interface=False, 
+    html = tpl.generate(data=json.dumps(metadata),
+                        colormaps=colormaps,
+                        default_cmap=cmap,
+                        python_interface=False,
                         layout=layout,
                         subjects=json.dumps(ctms),
                         disp_layers=disp_layers,
                         disp_defaults=_make_disp_defaults(disp_layers),
                         **kwargs)
-    htmlembed.embed(html, os.path.join(outpath, "index.html"), rootdirs)
+    desthtml = os.path.join(outpath, "index.html")
+    if html_embed:
+        htmlembed.embed(html, desthtml, rootdirs)
+    else:
+        with open(desthtml, "w") as htmlfile:
+            htmlfile.write(html)
 
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
@@ -206,12 +214,12 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
             sname = os.path.split(view.attrs['stim'])[1]
             stims[sname] = view.attrs['stim']
-    
+
     package = Package(data)
     metadata = json.dumps(package.metadata())
     images = package.images
     subjects = list(package.subjects)
-    
+
     kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj,
                                          types,
@@ -219,7 +227,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                                          extra_disp=extra_disp,
                                          **kwargs))
                 for subj in subjects)
-    
+
     subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))
     db.auxfile = None
 
@@ -229,7 +237,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     linear = lambda x, y, m: (1.-m)*x + m*y
     mixes = dict(
         linear=linear,
-        smoothstep=(lambda x, y, m: linear(x,y,3*m**2 - 2*m**3)), 
+        smoothstep=(lambda x, y, m: linear(x,y,3*m**2 - 2*m**3)),
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
 
@@ -292,10 +300,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             else:
                 dl = []
             print(disp_layers+dl)
-            generated = html.generate(data=metadata, 
-                                      colormaps=colormaps, 
-                                      default_cmap=cmap, 
-                                      python_interface=True, 
+            generated = html.generate(data=metadata,
+                                      colormaps=colormaps,
+                                      default_cmap=cmap,
+                                      python_interface=True,
                                       layout=layout,
                                       subjects=subjectjs,
                                       disp_layers=disp_layers+dl,
@@ -322,16 +330,16 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
             Sets each the state of each keyword argument provided. View parameters
             that can be set include:
-            
+
             altitude, azimuth, target, mix, radius, visL, visR, pivot,
-            (L/R hemisphere visibility), alpha (background alpha), 
+            (L/R hemisphere visibility), alpha (background alpha),
             rotationL, rotationR (L/R hemisphere rotation, [x,y,z])
-            
+
             Notes
             -----
             Args must be lists instead of scalars, e.g. `azimuth`=[90]
-            This could be changed, but this is a hidden function, called by 
-            higher-level functions that load .json files, which have the 
+            This could be changed, but this is a hidden function, called by
+            higher-level functions that load .json files, which have the
             parameters in lists by default. So it's annoying either way.
             """
             props = ['altitude','azimuth','target','mix','radius','pivot',
@@ -354,7 +362,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
             Retrieves the following view parameters from current viewer:
 
-            altitude, azimuth, target, mix, radius, visL, visR, alpha, 
+            altitude, azimuth, target, mix, radius, visL, visR, alpha,
             rotationR, rotationL, projection, pivot
 
             `time` appends a 'time' key into the view (for use in animations)
@@ -395,7 +403,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         def get_view(self,subject,name):
             """Get saved view from pycortex database.
 
-            Retrieves named view from pycortex database and sets current 
+            Retrieves named view from pycortex database and sets current
             viewer parameters to retrieved values.
 
             Parameters
@@ -422,7 +430,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             metadata.update(new_meta)
             images.update(new_ims)
             return Proxy(metadata)
-        
+
         # Would like this to be here instead of in setState, but did
         # not know how to make that work...
         #def setData(self,name):
@@ -436,8 +444,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             ----------
             filename : string
                 duh.
-            size : tuple (x,y) 
-                size (in pixels) of image to save. 
+            size : tuple (x,y)
+                size (in pixels) of image to save.
             """
             post_name.put(filename)
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
@@ -447,8 +455,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                       fps=30, size=(1920, 1080), interpolation="linear"):
             """Renders movie frames for animation of mesh movement
 
-            Makes an animation (for example, a transition between inflated and 
-            flattened brain or a rotating brain) of a cortical surface. Takes a 
+            Makes an animation (for example, a transition between inflated and
+            flattened brain or a rotating brain) of a cortical surface. Takes a
             list of dictionaries (`animation`) as input, and uses the values in
             the dictionaries as keyframes for the animation.
 
@@ -518,19 +526,19 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                             func = mixes['linear']
                         else:
                             func = mixes[interpolation]
-                            
+
                         val = func(np.array(start['value']), np.array(end['value']), idx)
                         if isinstance(val, np.ndarray):
                             self.setState(start['state'], val.ravel().tolist())
                         else:
                             self.setState(start['state'], val)
                 self.saveIMG(filename%(i+offset), size=size)
-        
+
         def _get_anim_seq(self,keyframes,fps=30,interpolation='linear'):
             """Convert a list of keyframes to a list of EVERY frame in an animation.
 
             Utility function called by make_movie; separated out so that individual
-            frames of an animation can be re-rendered, or for more control over the 
+            frames of an animation can be re-rendered, or for more control over the
             animation process in general.
 
             """
@@ -579,8 +587,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                       fps=30, size=(1920, 1080), interpolation="linear"):
             """Renders movie frames for animation of mesh movement
 
-            Makes an animation (for example, a transition between inflated and 
-            flattened brain or a rotating brain) of a cortical surface. Takes a 
+            Makes an animation (for example, a transition between inflated and
+            flattened brain or a rotating brain) of a cortical surface. Takes a
             list of dictionaries (`animation`) as input, and uses the values in
             the dictionaries as keyframes for the animation.
 
@@ -591,11 +599,11 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             Parameters
             ----------
             animation : list of dicts
-                This is a list of keyframes for the animation. Each keyframe should be 
-                a dict in the form captured by the ._capture_view method. NOTE: every 
-                view must include all view parameters. Additionally, there should be 
+                This is a list of keyframes for the animation. Each keyframe should be
+                a dict in the form captured by the ._capture_view method. NOTE: every
+                view must include all view parameters. Additionally, there should be
                 one extra key/value pair for "time". The value for time should be
-                in seconds. The list of keyframes is sorted by time before applying, 
+                in seconds. The list of keyframes is sorted by time before applying,
                 so they need not be in order in the input.
             filename : string path name
                 Must contain '%d' (or some variant thereof) to account for frame
@@ -613,7 +621,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             Notes
             -----
             Make sure that all values that will be modified over the course
-            of the animation are initialized (have some starting value) in the first 
+            of the animation are initialized (have some starting value) in the first
             frame.
 
             Example
@@ -652,7 +660,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
     if port is None:
         port = random.randint(1024, 65536)
-        
+
     server = WebApp([
             (r'/ctm/(.*)', CTMHandler),
             (r'/data/(.*)', DataHandler),
@@ -675,7 +683,7 @@ def _make_disp_defaults(disp_layers):
     # Useful function for transmitting colors..
     def rgb_to_hex(rgb):
         return '#%02x%02x%02x' % rgb
-    
+
     disp_defaults = dict()
     for layer in disp_layers:
         if layer in options.config.sections():
@@ -693,7 +701,7 @@ def _make_disp_defaults(disp_layers):
 
         disp_defaults[layer]["line_color"] = rgb_to_hex(tuple(x*255 for x in line_color[:3]))
         disp_defaults[layer]["fill_color"] = rgb_to_hex(tuple(x*255 for x in fill_color[:3]))
-        
+
         # Manually extract alpha values from line and fill color option strings
         disp_defaults[layer]["line_alpha"] = line_color[3]
         disp_defaults[layer]["fill_alpha"] = fill_color[3]
