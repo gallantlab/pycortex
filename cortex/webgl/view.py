@@ -40,7 +40,8 @@ viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
                 template="static.html", layout=None, anonymize=False,
-                disp_layers=['rois'], extra_disp=None, html_embed=True, **kwargs):
+                disp_layers=['rois'], extra_disp=None, html_embed=True,
+                copy_ctmfiles=True, **kwargs):
     """Creates a static instance of the webGL MRI viewer that can easily be posted
     or shared.
 
@@ -75,6 +76,11 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     html_embed : bool, optional
         Whether to embed the webgl resources in the html output.  Default 'True'.
         If 'False', the webgl resources must be served by your web server.
+    copy_ctmfiles : bool, optional
+        Whether to copy the CTM files to the static directory.  Default 'True'.
+        In some use cases, the same CTM data will be used in many static views. To
+         avoid duplication of files, set to 'False'.  (The datastore cache must
+         then be served with your web server).
 
     Notes
     -----
@@ -125,7 +131,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
             if os.path.exists(newfile):
                 os.unlink(newfile)
 
-            if os.path.exists(srcfile):
+            if os.path.exists(srcfile) and copy_ctmfiles:
                 shutil.copy2(srcfile, newfile)
 
             if ext == "json" and anonymize:
