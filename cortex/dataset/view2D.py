@@ -116,7 +116,9 @@ class Volume2D(Dataview2D):
         if self.dim1.xfmname != self.dim2.xfmname:
             raise ValueError("Both Volumes must have same xfmname to generate single raw volume")
 
-        if self.dim1.linear and self.dim2.linear and self.dim1.mask == self.dim2.mask:
+        if (self.dim1.linear and self.dim2.linear and 
+            self.dim1.mask.shape == self.dim2.mask.shape and 
+            all(self.dim1.mask == self.dim2.mask)):
             r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
         else:
             r, g, b, a = self._to_raw(self.dim1.volume, self.dim2.volume)
