@@ -89,7 +89,18 @@ def _from_hdf_view(h5, data, xfmname=None, vmin=None, vmax=None,  **kwargs):
         raise ValueError("Invalid Dataview specification")
 
 class Dataview(object):
-    def __init__(self, cmap=None, vmin=None, vmax=None, description="", state=None, **kwargs):
+    def __init__(self, cmap=None, vmin=None, vmax=None, description="", state=None, 
+        cvmin=None,cvmax=None,cvthr=False,**kwargs):
+        """
+        MOAR HELP PLEASE. or maybe not. Is this even visible in inherited classes?
+
+        cvmin : float,optional
+            Minimum value for curvature colormap. Defaults to config file value.
+        cvmax : float, optional
+            Maximum value for background curvature colormap. Defaults to config file value.
+        cvthr : bool,optional
+            Apply threshold to background curvature
+        """
         if self.__class__ == Dataview:
             raise TypeError('Cannot directly instantiate Dataview objects')
 
@@ -207,9 +218,15 @@ class Dataview(object):
                 # Register colormap while we're at it
                 cm.register_cmap(self.cmap,cmap)
             else:
-                cmap = self.cmap
-        norm = colors.Normalize(self.vmin, self.vmax) # Does this do anything?
-        return np.rollaxis(cmap(self.data), -1)
+                cmap = cm.get_cmap(self.cmap)
+        elif isinstance(self.cmap,colors.Colormap):
+            cmap = self.cmap
+        # Normalize colors according to vmin, vmax
+        norm = colors.Normalize(self.vmin, self.vmax) 
+        cmapper = cm.ScalarMappable(norm=norm, cmap=cmap)
+        color_data = cmapper.to_rgba(self.data.flatten()).reshape(self.data.shape+(4,))
+        # rollaxis puts the last color dimension first, to allow output of separate channels: r,g,b,a = dataset.raw
+        return np.rollaxis(color_data, -1)
 
 class Multiview(Dataview):
     def __init__(self, views, description=""):

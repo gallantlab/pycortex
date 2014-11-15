@@ -149,7 +149,7 @@ def show_slice(dataview, **kwargs):
     imshow_kw.update(kwargs)
 
     anat = db.get_anat(subject, 'raw').get_data().T
-    data = epi2anatspace(dataview.volume.squeeze())
+    data = epi2anatspace(dataview)
 
     data[data < dataview.vmin] = np.nan
 
@@ -224,7 +224,7 @@ def epi2anatspace(volumedata, order=1):
     """
     from scipy.ndimage.interpolation import affine_transform
     ds = dataset.normalize(volumedata)
-    volumedata = ds.data
+    volumedata = ds#.data
 
     anat = db.get_anat(volumedata.subject, "raw")
     xfm = db.get_xfm(volumedata.subject, volumedata.xfmname, "coord")
@@ -234,7 +234,9 @@ def epi2anatspace(volumedata, order=1):
 
     rotpart = allxfm.xfm[:3, :3]
     transpart = allxfm.xfm[:3,-1]
-    return affine_transform(volumedata.volume.T, rotpart, offset=transpart, output_shape=anat.shape[::-1], cval=np.nan, order=order).T
+    return affine_transform(volumedata.volume.T.squeeze(), rotpart,
+                            offset=transpart, output_shape=anat.shape[::-1],
+                            cval=np.nan, order=order).T
 
 def anat2epispace(anatdata, subject, xfmname, order=1):
     from scipy.ndimage.interpolation import affine_transform

@@ -3,6 +3,8 @@ scripts
 
 # C extensions
 *.so
+formats.c
+openctm.c
 
 # Packages
 *.egg

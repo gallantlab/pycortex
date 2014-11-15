@@ -179,13 +179,21 @@ class VertexRGB(DataviewRGB):
 
         verts = []
         for dv in (self.red, self.green, self.blue, alpha):
-            vert = dv.vertices
+            vert = dv.vertices.copy()
             if vert.dtype != np.uint8:
-                if vert.min() < 0:
-                    vert -= vert.min()
-                if vert.max() > 1:
-                    vert /= vert.max()
-                vert = (vert * 255).astype(np.uint8)
+                if dv.vmin is None:
+                    if vert.min() < 0:
+                        vert -= vert.min()
+                else:
+                    vert -= dv.vmin
+
+                if dv.vmax is None:
+                    if vert.max() > 1:
+                        vert /= vert.max()
+                else:
+                    vert /= dv.vmax - dv.vmin
+
+                vert = (np.clip(vert, 0, 1) * 255).astype(np.uint8)
             verts.append(vert)
 
         return np.array(verts).transpose([1, 2, 0])

@@ -107,7 +107,7 @@ class WebApp(threading.Thread):
 
         for sock in self.sockets:
             sock.write_message(msg)
-        return [json.loads(self.response.get()) for _ in range(self.n_clients)]
+        return [json.loads(self.response.get(timeout=2)) for _ in range(self.n_clients)]
 
     def get_client(self):
         self.connect.wait()

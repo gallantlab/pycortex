@@ -89,7 +89,18 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
-    def save(self, path, method='mg2', disp_layers=['rois'], **kwargs):
+    def save(self, path, method='mg2', disp_layers=['rois'], extra_disp=None, **kwargs):
+        """Save CTM file for static html display. 
+
+        Parameters
+        ----------
+        path : string filepath
+        method : idkwtf
+        disp_layers : tuple|list
+            list of strings; names of layers from rois.svg to show
+        extra_disp : tuple
+            (svgfile,[layers]) - tuple of (external display .svg filename, [list_of,layers_in_file,to_display])
+        """
         ctmname = path+".ctm"
         svgname = path+".svg"
         jsname = path+".json"
@@ -104,7 +115,7 @@ class BrainCTM(object):
             offsets.append(fp.tell())
             fp.write(rbin)
 
-        # Save the JSON descriptor
+        # Save the JSON descriptor | Need to add to this for extra_disp?
         jsdict = dict(rois=os.path.split(svgname)[1],
                       data=os.path.split(ctmname)[1],
                       names=self.types, 
@@ -130,8 +141,13 @@ class BrainCTM(object):
             # add sulci & display layers
             flatpts = np.vstack([self.left.flat, self.right.flat])
             roipack = db.get_overlay(self.subject, pts=flatpts, otype=disp_layers)
+            # optionally add extra display layers
+            if not extra_disp is None:
+                esvgfile,elayerlist = extra_disp
+                eroipack = db.get_overlay(self.subject,pts=flatpts, otype='external',
+                    svgfile=esvgfile,layer=elayerlist)
+                roipack = roipack + eroipack
             layers = roipack.setup_labels()
-
             if not isinstance(layers, (tuple, list)):
                 layers = (layers,)
             
@@ -223,7 +239,7 @@ class DecimatedHemi(Hemi):
         super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
 
 def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
-              decimate=False, disp_layers=['rois']):
+              decimate=False, disp_layers=['rois'],extra_disp=None):
     """Generates a cached CTM file"""
 
     ctm = BrainCTM(subj, decimate=decimate)
@@ -237,7 +253,8 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
     return ctm.save(os.path.splitext(outfile)[0],
                     method=method,
                     level=level,
-                    disp_layers=disp_layers)
+                    disp_layers=disp_layers,
+                    extra_disp=extra_disp)
 
 def read_pack(ctmfile):
     fname = os.path.splitext(ctmfile)[0]

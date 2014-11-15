@@ -1,9 +1,6 @@
 import io
 import os
-import sys
-import time
 import glob
-import pickle
 import binascii
 import numpy as np
 
@@ -15,10 +12,10 @@ from .options import config
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
                 height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
                 with_labels=True, with_colorbar=True, with_borders=False, 
-                with_dropout=False, with_curvature=False,extra_disp=None, 
+                with_dropout=False, with_curvature=False, extra_disp=None, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, cvmin=None,
-                cvmax=None, cvthr=None, fig=None,**kwargs):
+                cvmax=None, cvthr=None, fig=None, extra_hatch=None, **kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
     matplotlib's imshow command.
 
@@ -66,11 +63,13 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Maximum value for background curvature colormap. Defaults to config file value.
     cvthr : bool,optional
         Apply threshold to background curvature
-    extra_disp : tuple
+    extra_disp : tuple, optional
         Optional extra display layer from external .svg file. Tuple specifies (filename,layer)
         filename should be a full path. External svg file should be structured exactly as 
         rois.svg for the subject. (Best to just copy rois.svg somewhere else and add layers to it)
         Default value is None.
+    extra_hatch : tuple, optional
+        Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple. 
 
     """
     from matplotlib import colors,cm, pyplot as plt
@@ -175,6 +174,9 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 cm.register_cmap(dataview.cmap,cmap)
             else:
                 cmap = dataview.cmap
+        elif isinstance(dataview.cmap,colors.Colormap):
+            # Allow input of matplotlib colormap class
+            cmap = dataview.cmap
         kwargs.update(
             cmap=cmap, 
             vmin=dataview.vmin, 
@@ -191,18 +193,31 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         fig.colorbar(cimg, cax=cbar, orientation='horizontal')
 
     if with_dropout is not False:
-        if with_dropout is True: with_dropout = 20
-        dax = fig.add_axes((0,0,1,1))
-        dmap, ee = make(utils.get_dropout(dataview.subject, dataview.xfmname,
-                                          power=with_dropout),
-                        height=height, sampler=sampler)
-        hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
-        hatchspace = 4
-        hatchpat = (hx+hy)%(2*hatchspace) < 2
-        hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
-        hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
-        hatchim[:,:,3] *= (dmap>0.5).astype(float)
+        if isinstance(with_dropout, dataset.Dataview):
+            dropout_data = with_dropout
+        else:
+            if with_dropout is True:
+                dropout_power = 20 # default
+            else:
+                dropout_power = with_dropout
+
+            dropout_data = utils.get_dropout(dataview.subject, dataview.xfmname,
+                                             power=dropout_power)
+        
+        hatchim = _make_hatch_image(dropout_data, height, sampler)
         if cutout: hatchim[:,:,3]*=co
+        dax = fig.add_axes((0,0,1,1))
+        dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal",
+                   interpolation="nearest", extent=extents, origin='lower')
+
+    if extra_hatch is not None:
+        hatch_data, hatch_color = extra_hatch
+        hatchim = _make_hatch_image(hatch_data, height, sampler)
+        hatchim[:,:,0] = hatch_color[0]
+        hatchim[:,:,1] = hatch_color[1]
+        hatchim[:,:,2] = hatch_color[2]
+        if cutout: hatchim[:,:,3]*=co
+        dax = fig.add_axes((0,0,1,1))
         dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal",
                    interpolation="nearest", extent=extents, origin='lower')
     
@@ -234,14 +249,18 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         overlays.append(sulc)
     if not extra_disp is None:
         svgfile,layer = extra_disp
-        disp = db.get_overlay(dataview.subject,
+        if not isinstance(layer,(list,tuple)):
+            layer = [layer]
+        for extralayer in layer:
+            # Allow multiple extra layer overlays
+            disp = db.get_overlay(dataview.subject,
                               otype='external',
                               shadow=shadow,
                               labelsize=labelsize,
                               labelcolor=labelcolor,
-                              layer=layer,
+                              layer=extralayer,
                               svgfile=svgfile)
-        overlays.append(disp)
+            overlays.append(disp)
     for oo in overlays:
         roitex = oo.get_texture(height, labels=with_labels)
         roitex.seek(0)
@@ -268,14 +287,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
-    bgcolor=None, dpi=100, **kwargs):
-    """
-    make_png(name, braindata, recache=False, pixelwise=True, thick=32, sampler='nearest', height=1024, dpi=100,
-                with_rois=True, with_labels=True, with_colorbar=True, with_borders=False, with_dropout=False, 
-                linewidth=None, linecolor=None, roifill=None, shadow=None, labelsize=None, labelcolor=None,
-                **kwargs)
-
-    Create a PNG of the VertexData or VolumeData on a flatmap.
+             bgcolor=None, dpi=100, **kwargs):
+    """Create a PNG of the VertexData or VolumeData on a flatmap.
 
     Parameters
     ----------
@@ -512,6 +525,16 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
 
     return pixmap
 
+def _make_hatch_image(dropout_data, height, sampler):
+    dmap, ee = make(dropout_data, height=height, sampler=sampler)
+    hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
+    hatchspace = 4
+    hatchpat = (hx+hy)%(2*hatchspace) < 2
+    hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
+    hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
+    hatchim[:,:,3] *= (dmap>0.5).astype(float)
+
+    return hatchim
 
 def _make_flatmask(subject, height=1024):
     from . import polyutils
@@ -552,7 +575,7 @@ def _make_vertex_cache(subject, height=1024):
 
 def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sampler='nearest'):
     from scipy import sparse
-    from scipy.spatial import cKDTree, Delaunay
+    from scipy.spatial import Delaunay
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
     fmax, fmin = flat.max(0), flat.min(0)

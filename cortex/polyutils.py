@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import numpy as np
-from scipy.spatial import distance, Delaunay, cKDTree
+from scipy.spatial import distance, Delaunay
 from scipy import sparse
 import scipy.sparse.linalg
 import functools
@@ -109,7 +109,7 @@ class Surface(object):
         nnfnorms = np.cross(self.ppts[:,1] - self.ppts[:,0], 
                             self.ppts[:,2] - self.ppts[:,0])
         # Compute vector length
-        return np.sqrt((nnfnorms**2).sum(-1))
+        return np.sqrt((nnfnorms**2).sum(-1)) / 2
 
     @property
     @_memo
@@ -418,7 +418,7 @@ class Surface(object):
         fe31 = np.cross(fnorms, ppts[:,0] - ppts[:,2])
         return fe12, fe23, fe31
 
-    def geodesic_distance(self, verts, m=2.0, fem=False):
+    def geodesic_distance(self, verts, m=1.0, fem=False):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
         vertex in the collection `verts`.
 
@@ -488,7 +488,6 @@ class Surface(object):
         X = np.nan_to_num(ne.evaluate("-graduT / sqrt(gusum)").T)
 
         # Compute integrated divergence of X at each vertex
-        ppts = self.ppts
         #x1 = x2 = x3 = np.zeros((X.shape[0],))
         c32, c13, c21 = self._cot_edge
         x1 = 0.5 * (c32 * X).sum(1)
@@ -925,7 +924,6 @@ def rasterize(poly, shape=(256, 256)):
 
 def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True):
     from tvtk.api import tvtk
-    from PIL import Image, ImageDraw
     
     pd = tvtk.PolyData(points=pts + center + (0, 0, 0), polys=polys)
     plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
@@ -963,6 +961,7 @@ def measure_volume(pts, polys):
     return mp.volume
 
 def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
+    import tvtk
     imgdata = tvtk.ImageData(dimensions=volume.shape)
     imgdata.point_data.scalars = volume.flatten('F')
 
@@ -980,3 +979,4 @@ def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
     pts = contours.output.points.to_array()
     polys = contours.output.polys.to_array().reshape(-1, 4)[:,1:]
     return pts, polys
+
