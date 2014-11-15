@@ -47,19 +47,22 @@ def read_gii(str filename):
     polys = gii.getArraysFromIntent('triangle')[0].data
     return pts, polys
 
+@cython.boundscheck(False)
 def read_stl(str filename):
+    cdef int i, j
+
     dtype = np.dtype("3f4, (3,3)f4, H")
     with open(filename, 'r') as fp:
         header = fp.read(80)
         if header[:5] == "solid":
-            raise TypeError("Cannot read ASCII stl files")
+            raise TypeError("Cannot read ASCII STL files")
         npolys, = struct.unpack('I', fp.read(4))
         data = np.fromstring(fp.read(), dtype=dtype)
         if npolys != len(data):
             raise ValueError('File invalid')
 
     idx = dict()
-    polys = np.empty((npolys,3))
+    polys = np.empty((npolys,3), dtype=np.uint32)
     for i, pts in enumerate(data['f1']):
         for j, pt in enumerate(pts):
             if tuple(pt) not in idx:
