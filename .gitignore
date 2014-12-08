@@ -3,6 +3,8 @@ scripts
 
 # C extensions
 *.so
+formats.c
+openctm.c
 
 # Packages
 *.egg
@@ -34,3 +36,9 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# OS X bullshit
+.DS_store
+
+# vim temp files
+*~

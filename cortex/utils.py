@@ -1,12 +1,10 @@
 import io
 import os
-import sys
 import binascii
 import numpy as np
 from importlib import import_module
-
 from .database import db
-from .volume import mosaic, unmask
+from .volume import mosaic, unmask, anat2epispace
 
 class DocLoader(object):
     def __init__(self, func, mod, package):
@@ -29,18 +27,39 @@ def get_roipack(*args, **kwargs):
 
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
-def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False, decimate=False):
-    ctmcache = "%s_[{types}]_{method}_{level}_v2.json"%subject
-    ctmform = os.path.join(db.get_cache(subject), ctmcache)
-        
+def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False,
+                decimate=False, disp_layers=['rois'],extra_disp=None):
+    """Creates ctm file for the specified input arguments.
+
+    This is a cached file that specifies (1) the surfaces between which
+    to interpolate (`types` argument), (2) the `method` to interpolate 
+    between surfaces, (3) the display layers to include (rois, sulci, etc)
+    """
     lvlstr = ("%dd" if decimate else "%d")%level
-    ctmfile = ctmform.format(types=','.join(types), method=method, level=lvlstr)
-    if os.path.exists(ctmfile) and not recache:
+    # Generates different cache files for each combination of disp_layers
+    ctmcache = "%s_[{types}]_{method}_{level}_{layers}{extra}.json"%subject
+    # Mark any ctm file containing extra_disp as unique (will be over-written every time)
+    ctmcache = ctmcache.format(types=','.join(types),
+                               method=method,
+                               level=lvlstr,
+                               layers=repr(sorted(disp_layers)),
+                               extra='' if extra_disp is None else '_xx')
+    ctmfile = os.path.join(db.get_cache(subject), ctmcache)
+
+    if os.path.exists(ctmfile) and not recache: # and extra_disp is None:
+        # (never load cache with extra_disp, which is based on files outside pycortex)
         return ctmfile
 
     print("Generating new ctm file...")
     from . import brainctm
-    ptmap = brainctm.make_pack(ctmfile, subject, types=types, method=method, level=level, decimate=decimate)
+    ptmap = brainctm.make_pack(ctmfile,
+                               subject,
+                               types=types,
+                               method=method, 
+                               level=level,
+                               decimate=decimate,
+                               disp_layers=disp_layers,
+                               extra_disp=extra_disp)
     return ctmfile
 
 def get_ctmmap(subject, **kwargs):
@@ -82,7 +101,7 @@ def get_cortical_mask(subject, xfmname, type='nearest'):
         return get_mapper(subject, xfmname, type=type).mask
 
 
-def get_vox_dist(subject, xfmname, surface="fiducial"):
+def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
     """Get the distance (in mm) from each functional voxel to the closest
     point on the surface.
 
@@ -94,6 +113,10 @@ def get_vox_dist(subject, xfmname, surface="fiducial"):
         Name of the transform
     shape : tuple
         Output shape for the mask
+    max_dist : nonnegative float, optional
+        Limit computation to only voxels within `max_dist` mm of the surface.
+        Makes computation orders of magnitude faster for high-resolution 
+        volumes.
 
     Returns
     -------
@@ -103,7 +126,6 @@ def get_vox_dist(subject, xfmname, surface="fiducial"):
     argdist : ndarray
         Point index for the closest point
     """
-    import nibabel
     from scipy.spatial import cKDTree
 
     fiducial, polys = db.get_surf(subject, surface, merge=True)
@@ -113,7 +135,7 @@ def get_vox_dist(subject, xfmname, surface="fiducial"):
     mm = xfm.inv(idx)
 
     tree = cKDTree(fiducial)
-    dist, argdist = tree.query(mm)
+    dist, argdist = tree.query(mm, distance_upper_bound=max_dist)
     dist.shape = (x,y,z)
     argdist.shape = (x,y,z)
     return dist.T, argdist.T
@@ -125,24 +147,34 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
     return get_mapper(subject, xfmname, type=type).hemimasks
 
 def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
-    """Add new overlay data to the ROI file for a subject.
+    """Add new flatmap image to the ROI file for a subject.
+
+    (The subject is specified in creation of the data object)
+
+    Creates a flatmap image from the `data` input, and adds that image as
+    a sub-layer to the data layer in the rois.svg file stored for 
+    the subject  in the pycortex database. Most often, this is data to be 
+    used for defining a region (or several regions) of interest, such as a 
+    localizer contrast (e.g. a t map of Faces > Houses). 
+
+    Use the **kwargs inputs to specify 
 
     Parameters
     ----------
-    data : Dataview
-        The data that will be overlaid on the ROI file.
+    data : DataView
+        The data used to generate the flatmap image. 
     name : str, optional
-        Name that will be assigned to the new dataset. <<IS THIS NECESSARY ANYMORE?>>
+        Name that will be assigned to the `data` sub-layer in the rois.svg file
+            (e.g. 'Faces > Houses, t map, p<.005' or 'Retinotopy - Rotating Wedge')
     open_inkscape : bool, optional
         If True, Inkscape will automatically open the ROI file.
     add_path : bool, optional
-        If True, a new SVG layer will automatically be created in the ROI group
-        with the same `name` as the overlay.
+        If True, also adds a sub-layer to the `rois` new SVG layer will automatically
+        be created in the ROI group with the same `name` as the overlay.
     kwargs : dict
         Passed to cortex.quickflat.make_png
     """
     import subprocess as sp
-    from .utils import get_roipack
     from . import quickflat
     from . import dataset
 
@@ -150,15 +182,17 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     if isinstance(dv, dataset.Dataset):
         raise TypeError("Please specify a data view")
 
-    rois = get_roipack(dv.subject)
+    rois = db.get_overlay(dv.subject)
     try:
         import cStringIO
         fp = cStringIO.StringIO()
     except:
         fp = io.StringIO()
+
     quickflat.make_png(fp, dv, height=1024, with_rois=False, with_labels=False, **kwargs)
     fp.seek(0)
     rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
+    
     if open_inkscape:
         return sp.call(["inkscape", '-f', rois.svgfile])
 
@@ -213,20 +247,34 @@ def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
         
     return output
 
+def get_aseg_mask(subject, xfmname, aseg_id, **kwargs):
+    """Return an epi space mask of the given ID from freesurfer's automatic segmentation
+
+    For aseg_id's, see https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
+    """
+    aseg = db.get_anat(subject, type="aseg").get_data().T
+
+    if isinstance(aseg_id, (list, tuple)):
+        mask = np.zeros(aseg.shape)
+        for idx in aseg_id:
+            mask = np.logical_or(mask, aseg == idx)
+    else:
+        mask = aseg == aseg_id
+    return anat2epispace(mask.astype(float), subject, xfmname, **kwargs)
+
 def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     '''
     Return a numbered mask + dictionary of roi numbers
     roiList is a list of ROIs (which should be defined in the .svg file)
     '''
     # Get ROIs from inkscape SVGs
-    rois, vertIdx = get_roipack(subject, remove_medial=True)
+    rois, vertIdx = db.get_overlay(subject, remove_medial=True)
 
     # Retrieve shape from the reference
-    import nibabel
     shape = db.get_xfm(subject, xfmname).shape
     
     # Get 3D coords
-    coords = np.vstack(db.get_coords(subject, xfmname))
+    coords = np.vstack(db.get_coords(subject, xfmname)) # UGH. RElace with a mapper object, wtf that is.
     nVerts = np.max(coords.shape)
     coords = coords[vertIdx]
     nValidVerts = np.max(coords.shape)
@@ -273,7 +321,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         if not np.any(tmpMask[:,ir]):
             dropROI += [ir]
     # Cull rois with no voxels
-    keepROI = np.array([not ir in dropROI for ir in range(len(roiList))])
+    keepROI = np.array([not ir in dropROI for ir in range(len(roiList))],dtype=np.bool)
     # Cull rois requested, but not avialable in pycortex
     roiListL = [r for ir,r in enumerate(roiList) if not ir in dropROI]
     tmpMask = tmpMask[:,keepROI,:]
@@ -331,3 +379,24 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     cmd = "ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv"
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
+
+def vertex_to_voxel(subject):
+    max_thickness = db.get_surfinfo(subject, "thickness").data.max()
+
+    # Get distance from each voxel to each vertex on each surface
+    fid_dist, fid_verts = get_vox_dist(subject, "identity", "fiducial", max_thickness)
+    wm_dist, wm_verts = get_vox_dist(subject, "identity", "wm", max_thickness)
+    pia_dist, pia_verts = get_vox_dist(subject, "identity", "pia", max_thickness)
+
+    # Get nearest vertex on any surface for each voxel
+    all_dist, all_verts = fid_dist, fid_verts
+    
+    wm_closer = wm_dist < all_dist
+    all_dist[wm_closer] = wm_dist[wm_closer]
+    all_verts[wm_closer] = wm_verts[wm_closer]
+
+    pia_closer = pia_dist < all_dist
+    all_dist[pia_closer] = pia_dist[pia_closer]
+    all_verts[pia_closer] = pia_verts[pia_closer]
+
+    return all_verts

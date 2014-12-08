@@ -170,6 +170,10 @@ def autotweak(subject, xfmname):
 
     from .database import db
     from .xfm import Transform
+    from .options import config
+    
+    fsl_prefix = config.get("basic", "fsl_prefix")
+    schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
 
     magnet = db.get_xfm(subject, xfmname, xfmtype='magnet')
     try:
@@ -182,7 +186,7 @@ def autotweak(subject, xfmname):
         with open(os.path.join(cache, 'init.mat'), 'w') as fp:
             np.savetxt(fp, initmat, fmt='%f')
         print('Running BBR')
-        cmd = 'fsl5.0-flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule /usr/share/fsl/5.0/etc/flirtsch/bbr.sch'
+        cmd = '{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile}'
         cmd = cmd.format(cache=cache, raw=raw, wmseg=wmseg, epi=epifile)
         if sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling BBR flirt')

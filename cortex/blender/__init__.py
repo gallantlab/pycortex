@@ -71,6 +71,39 @@ def add_cutdata(fname, dataview, name="retinotopy", projection="nearest", mesh="
 
     return 
 
+
+def gii_cut(fname, subject, hemi):
+    '''
+    Add gifti surface to blender
+    '''
+    from ..database import db
+    hemis = dict(lh='left',
+                 rh='right')
+    
+    wpts, polys = db.get_surf(subject, 'wm', hemi)
+    ipts, _ = db.get_surf(subject, 'very_inflated', hemi)
+    curvature = db.getSurfInfo(subject, 'curvature')
+    rcurv = curvature.__getattribute__(hemis[hemi])
+
+    p = xdrlib.Packer()
+    p.pack_array(wpts.ravel(), p.pack_double)
+    p.pack_array(ipts.ravel(), p.pack_double)
+    p.pack_array(polys.ravel(), p.pack_uint)
+    p.pack_array(rcurv.ravel(), p.pack_double)
+    with tempfile.NamedTemporaryFile() as tf:
+        tf.write(p.get_buffer())
+        tf.flush()
+        code = """with open('{tfname}', 'rb') as fp:
+            u = xdrlib.Unpacker(fp.read())
+            wpts = u.unpack_array(u.unpack_double)
+            ipts = u.unpack_array(u.unpack_double)
+            polys = u.unpack_array(u.unpack_uint)
+            curv = u.unpack_array(u.unpack_double)
+            blendlib.init_subject(wpts, ipts, polys, curv)
+        """.format(tfname=tf.name)
+        _call_blender(fname, code)
+
+
 def fs_cut(fname, subject, hemi):
     wpts, polys, curv = freesurfer.get_surf(subject, hemi, 'smoothwm')
     ipts, _, _ = freesurfer.get_surf(subject, hemi, 'inflated')
@@ -110,3 +143,4 @@ def write_patch(bname, pname, mesh="hemi"):
             blendlib.save_patch(pname, mesh)
         """.format(tfname=tf.name)
         _call_blender(bname, code)
+

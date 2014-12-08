@@ -31,8 +31,14 @@ var mriview = (function(module) {
         this.dataviews = {};
         this.active = null;
 
-        this.anatomical = true;
-        this.flatmix = 0;
+                // curvAlpha:  { type:'f', value:1.},
+                // curvScale:  { type:'f', value:2.0},//0.5 TEMP FIX!!
+                // curvLim:    { type:'f', value:.2},
+                // dataAlpha:  { type:'f', value:1.0},
+                // hatchAlpha: { type:'f', value:1.},
+                // hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+                // voxlineColor:{type:'v3', value:new THREE.Vector3( 0,0,0 )},
+                // voxlineWidth:{type:'f', value:viewopts.voxline_width},
 
         this.loaded = $.Deferred().done(function() {
             this.schedule();
@@ -63,7 +69,7 @@ var mriview = (function(module) {
                 return $(this.object).find("#mix").slider("value");
             case 'pivot':
                 //return $("#pivot").slider("value");
-            return this._pivot;
+                return this._pivot;
             case 'frame':
                 return this.frame;
             case 'azimuth':
@@ -94,6 +100,8 @@ var mriview = (function(module) {
                     return 'orthographic'}
                 else if (this.camera.inPerspectiveMode) {
                     return 'perspective'}
+            case 'slices':
+                return [this.planes[0].slice, this.planes[1].slice, this.planes[2].slice]
         };
     };
     module.Viewer.prototype.setState = function(state, value) {
@@ -103,7 +111,8 @@ var mriview = (function(module) {
             case 'pivot':
                 return this.setPivot(value);
             case 'frame':
-                return this.setFrame(value);
+                this.setFrame(value);
+                return this.figure.notify("setFrame", this, [value]);
             case 'azimuth':
                 return this.controls.setCamera(value);
             case 'altitude':
@@ -121,6 +130,10 @@ var mriview = (function(module) {
             case 'visR':
                 if (this.roipack) this.roipack._updatemove = true;
                 return this.meshes.right.visible = value;
+            //case 'volume_vis':
+            //    this.planes[0].mesh.visible = value[0]
+            //    this.planes[1].mesh.visible = value[1]
+            //    this.planes[2].mesh.visible = value[2]
             case 'rotationL':
                 if (this.roipack) this.roipack._updatemove = true;
                 return this.meshes.left.rotation.set(value[0], value[1], value[2]);
@@ -129,15 +142,21 @@ var mriview = (function(module) {
                 return this.meshes.right.rotation.set(value[0], value[1], value[2]);
             case 'alpha':
                 return this.renderer.setClearColor(0,value);
+            case 'specularity':
+                return this.specularity = value
             case 'data':
                 return this.setData(value)
             case 'labels':
                 return this.labelshow = value;
+            case 'pivot':
+                return 'SORRY NOT YET'
             case 'projection':
                 if (value=='perspective'){
                     return this.controls.camera.toPerspective()}
                 else if (value=='orthographic'){
                     return this.controls.camera.toOrthographic()}
+            case 'slices':
+                return [this.planes[0].update(value[0]), this.planes[1].update(value[1]), this.planes[2].update(value[2])];
         };
     };
     
@@ -309,27 +328,8 @@ var mriview = (function(module) {
                 this.setVminmax(this.active.vmin, this.active.vmax, 0);
             }
 
-            if (this.active.data[0].movie) {
-                $(this.object).find("#moviecontrols").show();
-                $(this.object).find("#bottombar").addClass("bbar_controls");
-                $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
-                this.active.data[0].loaded.progress(function(idx) {
-                    var pct = idx / this.active.frames * 100;
-                    $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
-                }.bind(this)).done(function() {
-                    $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
-                }.bind(this));
-
-                if (this.active.stim && figure) {
-                    figure.setSize("right", "30%");
-                    this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
-                    this.movie.setFrame(0);
-                }
-            } else {
-                $(this.object).find("#moviecontrols").hide();
-                $(this.object).find("#bottombar").removeClass("bbar_controls");
-                this.active.set(this.uniforms, 0);
-            }
+            this.setupStim();
+            
             $(this.object).find("#datasets li").each(function() {
                 if ($(this).text() == name)
                     $(this).addClass("ui-selected");
@@ -377,6 +377,34 @@ var mriview = (function(module) {
         }
         this.schedule();
     };
+    module.Viewer.prototype.setupStim = function() {
+        if (this.active.data[0].movie) {
+            $(this.object).find("#moviecontrols").show();
+            $(this.object).find("#bottombar").addClass("bbar_controls");
+            $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
+            this.active.data[0].loaded.progress(function(idx) {
+                var pct = idx / this.active.frames * 100;
+                $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
+            }.bind(this)).done(function() {
+                $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
+            }.bind(this));
+            
+            this.active.loaded.done(function() {
+                this.setFrame(0);
+            }.bind(this));
+
+            if (this.active.stim && figure) {
+                figure.setSize("right", "30%");
+                this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
+                this.movie.setFrame(0);
+            }
+        } else {
+            $(this.object).find("#moviecontrols").hide();
+            $(this.object).find("#bottombar").removeClass("bbar_controls");
+            this.active.set(this.uniforms, 0);
+        }
+    };
+
     module.Viewer.prototype.setPivot = function(pivot) {
         for (var i = 0; i < this.surfs.length; i++) {
             this.surfs[i].setPivot(pivot);
@@ -472,9 +500,6 @@ var mriview = (function(module) {
         this.schedule();
     };
 
-// $(this.object).find("#moviecontrols img").attr("src", "resources/images/control-pause.png");
-// $(this.object).find("#moviecontrols img").attr("src", "resources/images/control-play.png");
-
     module.Viewer.prototype.getImage = function(width, height, post) {
         if (width === undefined)
             width = this.canvas.width();
@@ -495,6 +520,7 @@ var mriview = (function(module) {
         var oldw = this.canvas.width(), oldh = this.canvas.height();
         this.camera.setSize(width, height);
         this.camera.updateProjectionMatrix();
+        this.controls._zoom(1.0) // To assure orthographic zoom is set correctly
         //this.renderer.setSize(width, height);
         this.renderer.setClearColor(new THREE.Color(0,0,0), 0);
         this.renderer.render(this.scene, this.camera, renderbuf);
@@ -534,7 +560,15 @@ var mriview = (function(module) {
                 } else if (e.keyCode == 70) { //f
                     this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
                                   {idx:btnspeed, state:"mix", value:1.0}]);
-                } 
+                } else if (e.keyCode == 37) { //left
+		    this.animate([{idx:btnspeed, state:"azimuth", value:(Math.floor(this.getState("azimuth")/90)+1)*90.5}]);
+		} else if (e.keyCode == 39) { //right
+		    this.animate([{idx:btnspeed, state:"azimuth", value:(Math.floor(this.getState("azimuth")/90)-1)*90.5}]);
+		} else if (e.keyCode == 38) { //up
+		    this.animate([{idx:btnspeed, state:"altitude", value:(Math.round(this.getState("altitude")/90)-1)*90.5}]);
+		} else if (e.keyCode == 40) { //down
+		    this.animate([{idx:btnspeed, state:"altitude", value:(Math.round(this.getState("altitude")/90)+1)*90.5}]);
+		}
             }.bind(this));
         }
         window.addEventListener( 'keydown', function(e) {
@@ -544,6 +578,12 @@ var mriview = (function(module) {
                 this.nextData(1);
             } else if (e.keyCode == 109 || e.keyCode == 189) { //-
                 this.nextData(-1);
+            } else if (e.keyCode == 68) { //d
+                if (this.uniforms.dataAlpha.value < 1)
+                    this.uniforms.dataAlpha.value = 1;
+                else
+                    this.uniforms.dataAlpha.value = 0;
+                this.schedule();
             } else if (e.keyCode == 76) { //l
                 var box = $(this.object).find("#labelshow");
                 box.attr("checked", box.attr("checked") == "checked" ? null : "checked");
@@ -642,51 +682,67 @@ var mriview = (function(module) {
             }.bind(this));            
         }
         /*
-        var updateROIs = function() {
+        // Setup controls for multiple overlays
+        var updateOverlays = function() {
             this.roipack.update(this.renderer).done(function(tex){
                 this.uniforms.map.texture = tex;
                 this.schedule();
             }.bind(this));
         }.bind(this);
-        $(this.object).find("#roi_linewidth").slider({
-            min:.5, max:10, step:.1, value:3,
-            change: updateROIs,
-        });
-        $(this.object).find("#roi_linealpha").slider({
-            min:0, max:1, step:.001, value:1,
-            change: updateROIs,
-        });
-        $(this.object).find("#roi_fillalpha").slider({
-            min:0, max:1, step:.001, value:0,
-            change: updateROIs,
-        });
-        $(this.object).find("#roi_shadowalpha").slider({
-            min:0, max:20, step:1, value:4,
-            change: updateROIs,
-        });
-        $(this.object).find("#volvis").change(this.update_volvis.bind(this));
-        $(this.object).find("#leftvis").change(this.update_leftvis.bind(this));
-        $(this.object).find("#rightvis").change(this.update_rightvis.bind(this));
-        $(this.object).find("#projpersp").change(this.update_projection.bind(this));
-        $(this.object).find("#projortho").change(this.update_projection.bind(this));
-        $(this.object).find("#roi_linecolor").miniColors({close: updateROIs});
-        $(this.object).find("#roi_fillcolor").miniColors({close: updateROIs});
-        $(this.object).find("#roi_shadowcolor").miniColors({close: updateROIs});
 
-        var _this = this;
-        $(this.object).find("#roishow").change(function() {
-            if (this.checked) 
-                updateROIs();
-            else {
-                _this.uniforms.map.texture = _this.blanktex;
+        for (var li=0; li<disp_layers.length; li++) {
+            var layername = disp_layers[li];
+
+            $(this.object).find("#"+layername+"_linewidth").slider({
+                min:.5, max:10, step:.1, 
+		value: disp_defaults[layername]['line_width'],
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_linealpha").slider({
+                min:0, max:1, step:.001, 
+		value: disp_defaults[layername]['line_alpha'],
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_fillalpha").slider({
+                min:0, max:1, step:.001, 
+		value: disp_defaults[layername]['fill_alpha'],
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_shadowalpha").slider({
+                min:0, max:20, step:1, value:4,
+                change: updateOverlays,
+            });
+            $(this.object).find("#"+layername+"_linecolor").minicolors({
+		change: updateOverlays,
+		defaultValue: disp_defaults[layername]['line_color']
+	    });
+            $(this.object).find("#"+layername+"_fillcolor").minicolors({
+		change: updateOverlays,
+		defaultValue: disp_defaults[layername]['fill_color']
+	    });
+            $(this.object).find("#"+layername+"_shadowcolor").minicolors({change: updateOverlays});
+
+            var _this = this;
+            $(this.object).find("#"+layername+"show").change(function() {
+                console.log("Toggling: " + "#"+$(this).attr("layername"));
+                var el = $(_this.roipack.svgroi).find("#"+$(this).attr("layername"));
+                if (this.checked)
+                    el.css('display','inline');
+                else
+                    el.css('display','none');
+
+                updateOverlays();
+            }).attr("layername", layername);
+
+            $(this.object).find("#"+layername+"labelshow").change(function() {
+                // this.labelshow = !this.labelshow;
+                _this.roipack.layer_label_visibility[$(this).attr("layername")] = this.checked;
+                _this.roipack.update_labels();
+                _this.roipack.labels.setMix(_this.flatmix);
                 _this.schedule();
-            }
-        });
-
-        $(this.object).find("#labelshow").change(function() {
-            this.labelshow = !this.labelshow;
-            this.schedule();
-        }.bind(this));
+            }).attr("layername", layername);
+        }
+        $(this.object).find("#overlay_fieldset").tabs();
 
         $(this.object).find("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
             this.uniforms.curvAlpha.value = ui.value;
@@ -713,17 +769,23 @@ var mriview = (function(module) {
             this.uniforms.hatchAlpha.value = ui.value;
             this.schedule();
         }.bind(this)})
-        $(this.object).find("#layer_hatchcolor").miniColors({close: function(hex, rgb) {
+        $(this.object).find("#layer_hatchcolor").minicolors({close: function(hex, rgb) {
             this.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
             this.schedule();
         }.bind(this)});
+
+        $(this.object).find("#volvis").change(this.update_volvis.bind(this));
+        $(this.object).find("#leftvis").change(this.update_leftvis.bind(this));
+        $(this.object).find("#rightvis").change(this.update_rightvis.bind(this));
+        $(this.object).find("#projpersp").change(this.update_projection.bind(this));
+        $(this.object).find("#projortho").change(this.update_projection.bind(this));
 
         $(this.object).find("#voxline_show").change(function() {
             viewopts.voxlines = $(this.object).find("#voxline_show")[0].checked;
             this.setVoxView(this.active.filter, viewopts.voxlines);
             this.schedule();
         }.bind(this));
-        $(this.object).find("#voxline_color").miniColors({ close: function(hex, rgb) {
+        $(this.object).find("#voxline_color").minicolors({ close: function(hex, rgb) {
             this.uniforms.voxlineColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b/255);
             this.schedule();
         }.bind(this)});

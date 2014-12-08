@@ -44,17 +44,21 @@ var mriview = (function(module) {
         }
     }
 
-    module.MultiView.prototype.saveIMG = function(post) {
+    module.MultiView.prototype.saveIMG = function(width, height, post) {
         var canvas = document.createElement("canvas");
-        canvas.width = this[this.subjects[0]].canvas.width() * this.ncols;
-        canvas.height = this[this.subjects[0]].canvas.height() * this.nrows;
+        if (width === null || width === undefined)
+            width = this[this.subjects[0]].canvas.width();
+        if (height === null || height === undefined)
+            height = this[this.subjects[0]].canvas.height();
+        canvas.width = width * this.ncols;
+        canvas.height = height * this.nrows;
         var ctx = canvas.getContext("2d");
         var subj, off;
 
         for (var i = 0; i < this.subjects.length; i++) {
             subj = this[this.subjects[i]];
             off = subj.canvas.offset();
-            ctx.drawImage(subj.canvas[0], off.left, off.top);
+            ctx.drawImage(subj.getImage(width, height), off.left, off.top);
         }
 
         var png = canvas.toDataURL();
