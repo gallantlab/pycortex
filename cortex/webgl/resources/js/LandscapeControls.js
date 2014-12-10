@@ -315,12 +315,6 @@ THREE.LandscapeControls.prototype = {
     }, 
 
     pan: function( mouseChange ) {
-        this.panxvel_init = this.panSpeed * mouseChange.x;
-        this.panyvel_init = this.panSpeed * mouseChange.y;
-        this.setpan( this.panSpeed * mouseChange.x, this.panSpeed * mouseChange.y );
-    },
-
-    setpan: function( x, y ) {
         var eye = this.camera.position.clone().sub(this.target);
         var right = eye.clone().cross( this.camera.up );
         var up = right.clone().cross(eye);
@@ -329,6 +323,9 @@ THREE.LandscapeControls.prototype = {
             up.setLength( this.panSpeed*mouseChange.y ));
         this.camera.position.add( pan );
         this.target.add( pan );
+        this.panxvel_init = this.panSpeed * mouseChange.x;
+        this.panyvel_init = this.panSpeed * mouseChange.y;
+        this.pan( this.panSpeed * mouseChange.x, this.panSpeed * mouseChange.y );
     },
  
     zoom: function( mouseChange ) {

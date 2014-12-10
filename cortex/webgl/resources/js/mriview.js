@@ -53,7 +53,7 @@ var mriview = (function(module) {
         this.surfs[idx].apply(idx);
         this.renderer.render(scene, this.camera);
     }
-    
+
     module.Viewer.prototype.getState = function(state) {
         switch (state) {
             case 'mix':
@@ -235,6 +235,138 @@ var mriview = (function(module) {
         }
     };
 
+    module.Viewer.prototype.reset_view = function(center, height) {
+        var asp = this.flatlims[1][0] / this.flatlims[1][1];
+        var camasp = height !== undefined ? asp : this.camera.cameraP.aspect;
+        var size = [module.flatscale*this.flatlims[1][0], module.flatscale*this.flatlims[1][1]];
+        var min = [module.flatscale*this.flatlims[0][0], module.flatscale*this.flatlims[0][1]];
+        var xoff = center ? 0 : size[0] / 2 - min[0];
+        var zoff = center ? 0 : size[1] / 2 - min[1];
+        var h = size[0] / 2 / camasp;
+        h /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
+        this.controls.target.set(xoff, this.flatoff[1], zoff);
+        this.controls.setCamera(180, 90, h);
+        this.setMix(1);
+        this.setShift(0);
+    };
+    // module.Viewer.prototype.update_volvis = function() {
+    //     for (var i = 0; i < 3; i++) {
+    //         this.planes[i].update();
+    //         this.planes[i].mesh.visible = $("#volvis").prop("checked");
+    //     }
+    //     this.schedule();
+    // };
+    // module.Viewer.prototype.update_leftvis = function() {
+    //     this.meshes.left.visible = $("#leftvis").prop("checked");
+    //     this.schedule();
+    // };
+    // module.Viewer.prototype.update_rightvis = function() {
+    //     this.meshes.right.visible = $("#rightvis").prop("checked");
+    //     this.schedule();
+    // };
+    module.Viewer.prototype.update_projection = function() {
+        if ($("#projpersp").prop("checked")) {
+            this.setState("projection", "perspective");
+        } else {
+            this.setState("projection", "orthographic");
+        }
+        this.schedule();
+    };
+    // module.Viewer.prototype.saveflat = function(height, posturl) {
+    //     var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
+    //     var roistate = $(this.object).find("#roishow").attr("checked");
+    //     this.screenshot(width, height, function() { 
+    //         this.reset_view(false, height); 
+    //         $(this.object).find("#roishow").attr("checked", false);
+    //         $(this.object).find("#roishow").change();
+    //     }.bind(this), function(png) {
+    //         $(this.object).find("#roishow").attr("checked", roistate);
+    //         $(this.object).find("#roishow").change();
+    //         this.controls.target.set(0,0,0);
+    //         this.roipack.saveSVG(png, posturl);
+    //     }.bind(this));
+    // }; 
+    // module.Viewer.prototype.setMix = function(val) {
+    //     var num = this.meshes.left.geometry.morphTargets.length;
+    //     var flat = num - 1;
+    //     var n1 = Math.floor(val * num)-1;
+    //     var n2 = Math.ceil(val * num)-1;
+
+    //     for (var h in this.meshes) {
+    //         var hemi = this.meshes[h];
+    //         if (hemi !== undefined) {
+    //             for (var i=0; i < num; i++) {
+    //                 hemi.morphTargetInfluences[i] = 0;
+    //             }
+
+    //             if (this.flatlims !== undefined)
+    //                 this.uniforms.hide_mwall.value = (n2 == flat);
+
+    //             hemi.morphTargetInfluences[n2] = (val * num)%1;
+    //             if (n1 >= 0)
+    //                 hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
+    //         }
+    //     }
+    //     if (this.flatlims !== undefined) {
+    //         this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
+    //         this.setPivot(this._pivot);
+    //         this.update_spec();
+    //         if (n2 == flat) {
+    //             for (var i = 0; i < 3; i++) {
+    //                 this.planes[i].update();
+    //                 this.planes[i].mesh.visible = false;
+    //             }
+    //             $("#volvis").attr("disabled", true);
+    //         } else {
+    //             $("#volvis").removeAttr("disabled");
+    //             this.update_volvis();
+    //         }
+    //     }
+    //     $(this.object).find("#mix").slider("value", val);
+        
+    //     this.dispatchEvent({type:"mix", flat:this.flatmix, mix:val});
+    //     this.figure.notify("setmix", this, [val]);
+    //     this.schedule();
+    // }; 
+    // module.Viewer.prototype.setPivot = function (val, fromuser) {
+    //     this._pivot = val;
+    //     val = this.flatmix * 180 + (1-this.flatmix) * this._pivot;
+    //     $(this.object).find("#pivot").slider("option", "value", val);
+    //     var names = {left:1, right:-1};
+    //     var frac = Math.abs(val/180) * (1-this.flatmix);
+    //     if (val > 0) {
+    //         for (var name in names) {
+    //             this.pivot[name].front.rotation.z = 0;
+    //             this.pivot[name].back.rotation.z = val*Math.PI/180 * names[name]/ 2;
+    //             // Move hemispheres so that focus stays at center
+    //             this.pivot[name].back.position.y = frac * this.meshes.right.geometry.boundingBox.min.y + ((1-frac) * this.pivot[name].back.orig_position.y);
+
+    //         }
+    //     } else {
+    //         for (var name in names) {
+    //             this.pivot[name].back.rotation.z = 0;
+    //             // Make sure back position is reset before front pivoting
+    //             this.pivot[name].back.position.y = this.pivot[name].back.orig_position.y;
+    //             this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
+
+    //             // Move hemispheres so that focus stays at center
+    //             this.pivot[name].front.position.y = frac * (this.meshes.right.geometry.boundingBox.max.y - this.pivot[name].front.orig_position.y) + ((1-frac) * this.pivot[name].front.orig_position.y);
+    //         }
+    //     }
+    //     this.figure.notify("setpivot", this, [val]);
+    //     this.schedule();
+    // };
+    // module.Viewer.prototype.setShift = function(val) {
+    //     this.pivot.left.front.position.x = -val;
+    //     this.pivot.right.front.position.x = val;
+    //     this.figure.notify('setshift', this, [val]);
+    //     this.schedule();
+    // };
+    // module.Viewer.prototype.update_spec = function() {
+    //     var s = this.specular * (1 - this.flatmix);
+    //     this.uniforms.specular.value.set(s, s, s);
+    // };
+
     module.Viewer.prototype.addData = function(data) {
         if (!(data instanceof Array))
             data = [data];
@@ -393,7 +525,14 @@ var mriview = (function(module) {
             $(this.object).find("#moviecontrols").hide();
             $(this.object).find("#bottombar").removeClass("bbar_controls");
         }
+        this.schedule();
     };
+    module.Viewer.prototype.setPivot = function(pivot) {
+        for (var i = 0; i < this.surfs.length; i++) {
+            this.surfs[i].setPivot(pivot);
+        }
+        this.schedule();
+    }
 
     module.Viewer.prototype.setPivot = function(pivot) {
         for (var i = 0; i < this.surfs.length; i++) {

@@ -262,7 +262,6 @@ var Shaderlib = (function() {
                 "values.w += "+sampler+"_y(data[3], vPos_y).r;",
             "#endif",
         "#endif",
-
             "#ifdef RAWCOLORS",
                 "vec4 vColor = mix(color[0], color[1], framemix);",
             "#else",
@@ -542,6 +541,8 @@ var Shaderlib = (function() {
                     "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
             "#endif",
                 "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
+                    "discard;",
+                "} else if (vColor.a < .01) {",
                     "discard;",
                 "} else {",
                     "gl_FragColor = cColor;",

@@ -8,8 +8,8 @@ dict(
 )
 """
 import os
-import cStringIO
 import json
+import cStringIO
 import numpy as np
 
 from .. import dataset
