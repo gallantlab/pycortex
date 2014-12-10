@@ -59,8 +59,7 @@ var mriview = (function(module) {
             case 'mix':
                 return $(this.object).find("#mix").slider("value");
             case 'pivot':
-                //return $("#pivot").slider("value");
-                return this._pivot;
+                return $(this.object).find("#pivot").slider("value");
             case 'frame':
                 return this.frame;
             case 'azimuth':
@@ -494,12 +493,6 @@ var mriview = (function(module) {
                 $(this).remove();
         })
     };
-    module.Viewer.prototype.setMix = function(mix) {
-        for (var i = 0; i < this.surfs.length; i++) {
-            this.surfs[i].setMix(mix);
-        }
-        this.schedule();
-    };
     module.Viewer.prototype.setupStim = function() {
         if (this.active.data[0].movie) {
             $(this.object).find("#moviecontrols").show();
@@ -527,20 +520,21 @@ var mriview = (function(module) {
         }
         this.schedule();
     };
+    module.Viewer.prototype.setMix = function(mix) {
+        for (var i = 0; i < this.surfs.length; i++) {
+            this.surfs[i].setMix(mix);
+        }
+        $(this.object).find("#mix").slider("value", mix);
+        this.schedule();
+    };
     module.Viewer.prototype.setPivot = function(pivot) {
         for (var i = 0; i < this.surfs.length; i++) {
             this.surfs[i].setPivot(pivot);
         }
+        $(this.object).find("#pivot").slider("value", pivot);
         this.schedule();
     }
-
-    module.Viewer.prototype.setPivot = function(pivot) {
-        for (var i = 0; i < this.surfs.length; i++) {
-            this.surfs[i].setPivot(pivot);
-        }
-        this.schedule();
-    }
-
+    
     module.Viewer.prototype.setVminmax = function(vmin, vmax, dim) {
         if (dim === undefined)
             dim = 0;

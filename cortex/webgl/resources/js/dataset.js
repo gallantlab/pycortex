@@ -57,9 +57,9 @@ var dataset = (function(module) {
         this.xfm = json.xfm[0];
         this.cmap = [{type:'t', value:colormaps[json.cmap[0]]}];
         this.vmin = [{type:'fv1', value:json.vmin[0] instanceof Array? json.vmin[0] : [json.vmin[0], 0]}];
-        this.vmax = [{type:'fv1', value:json.vmax
+        this.vmax = [{type:'fv1', value:json.vmax[0] instanceof Array? json.vmax[0] : [json.vmax[0],0]}];
 
-        this.frames = this.data[0].frames
+        this.frames = this.data[0].frames;
         this.length = this.frames / this.rate;
 
         this.uniforms = {
