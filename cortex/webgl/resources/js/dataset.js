@@ -44,9 +44,6 @@ var dataset = (function(module) {
         this.name = json.name;
         this.description = json.desc;
 
-        //Still no multiviews!
-        this.xfm = json.xfm[0];
-
         this.attrs = json.attrs;
         this.state = json.state;
         this.loaded = $.Deferred().done(function() { $("#dataload").hide(); });
@@ -56,17 +53,11 @@ var dataset = (function(module) {
         if (json.attrs.stim !== undefined)
             this.stim = "stim/"+json.attrs.stim;
 
-        var vmin = json.vmin[0];
-        var vmax = json.vmax[0];
-        var cmap = json.cmap[0];
-        this.cmap = [];
-        this.vmin = [];
-        this.vmax = [];
-        for (var i = 0; i < this.data.length; i++) {
-            this.cmap.push({ type:'t',   value:colormaps[cmap[i] || "RdBu_r"]});
-            this.vmin.push({ type:'fv1', value:[vmin[i][0],vmin[i][1] || 0] });
-            this.vmax.push({ type:'fv1', value:[vmax[i][0],vmax[i][1] || 0] });
-        }
+        //no multiviews yet
+        this.xfm = json.xfm[0];
+        this.cmap = [{type:'t', value:colormaps[json.cmap[0]]}];
+        this.vmin = [{type:'fv1', value:json.vmin[0] instanceof Array? json.vmin[0] : [json.vmin[0], 0]}];
+        this.vmax = [{type:'fv1', value:json.vmax[0] instanceof Array? json.vmax[0] : [json.vmax[0], 0]}];
 
         this.frames = this.data[0].frames
         this.length = this.frames / this.rate;
@@ -77,7 +68,6 @@ var dataset = (function(module) {
             mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
             dshape:     { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
             volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
-
             dataAlpha:  { type:'f', value:1.0},
         }
     }
@@ -147,13 +137,13 @@ var dataset = (function(module) {
             $.when(this.data[0].loaded) : 
             $.when(this.data[0].loaded, this.data[1].loaded);
         deferred.done(function() {
-            this.loaded.resolve();
-
             for (var i = 0; i < this.data.length; i++) {
                 this.data[i].init(this.uniforms, i);
                 this.data[i].setFilter(this.filter);
-                this.data[i].set(this.uniforms, i, 0);
             }
+            this.set(0);
+
+            this.loaded.resolve();
         }.bind(this)).progress(function() {
             for (var i = 0; i < this.data.length; i++) {
                 if (this.data[i].textures.length > this.delay && !allready[i]) {
@@ -172,14 +162,14 @@ var dataset = (function(module) {
         }.bind(this));
         return shaders;
     };
-    module.DataView.prototype.set = function(uniforms, time) {
+    module.DataView.prototype.set = function(time) {
         var xfm;
         var frame = ((time + this.delay) * this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
         this.uniforms.framemix.value = frame - fframe;
         for (var i = 0; i < this.data.length; i++) {
-            this.data[i].set(uniforms, i, fframe);
-            xfm = uniforms.volxfm.value[i];
+            this.data[i].set(this.uniforms, i, fframe);
+            xfm = this.uniforms.volxfm.value[i];
             xfm.set.apply(xfm, this.xfm.length != 16 ? this.xfm[i] : this.xfm);
         }
     };
@@ -239,7 +229,7 @@ var dataset = (function(module) {
             img.src = this.data[this.textures.length];
         }.bind(this);
 
-        if (this.xfm === undefined) {
+        if (this.mosaic === undefined) {
             NParray.fromURL(this.data[0], function(array) {
                 this.verts = array;
                 this.verts.loaded.done(function() {

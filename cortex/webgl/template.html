@@ -4,13 +4,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-<link rel="stylesheet" href="resources/css/ui-lightness/jquery-ui-1.8.21.custom.css" type='text/css' />
+<link rel="stylesheet" href="resources/css/jquery-ui.min.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/jquery.miniColors.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/w2ui-1.2.min.css" type='text/css' />
 
-<script type='text/javascript' src='resources/js/jquery-1.8.0.min.js'></script>
-<!-- <script type='text/javascript' src='resources/js/jquery-ui-1.8.23.custom.min.js'></script> -->
-<script type='text/javascript' src='resources/js/jquery-ui-1.8.23.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery-2.1.1.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery-ui.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.miniColors.js'></script>
 
@@ -73,7 +72,7 @@ var disp_defaults = {{json_encode(disp_defaults)}};
 							{% end %}
 						</select>
 					</td><td>
-						<span title="Click to search for colormap by name"><div id='cmapsearch'><img src='resources/images/magnifying_glass.png'></div></span>
+						<span title="Click to search for colormap by name"><div id='cmapsearch'><img src='resources/css/images/magnifying_glass.png'></div></span>
 					</td></tr>
 					<tr><td class='vcolorbar'></td><td>
 						<div id='vminmax'>
@@ -282,7 +281,7 @@ var disp_defaults = {{json_encode(disp_defaults)}};
 	</div>
 </div>
 <div id='main'>
-	<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
+	<div id='ctmload' class='loadmsg'><img src='resources/css/images/loading.gif'>Loading brain...</div>
 	<div id='dataname'></div>
 	<canvas id='brain'></canvas>
 </div>
@@ -293,7 +292,7 @@ var disp_defaults = {{json_encode(disp_defaults)}};
 				<tr>
 					<td><input type='text' id='movieframe' /></td>
 					<td id='movieprogress'><div></div></td>
-					<td id='moviecontrol'><img src='resources/images/control-play.png' /></td>
+					<td id='moviecontrol'><img src='resources/css/images/control-play.png' /></td>
 				</tr>
 			</table>
 		</div>
@@ -321,7 +320,7 @@ var disp_defaults = {{json_encode(disp_defaults)}};
 	<div class='movie_wrapper'>
         <div class='movie_cell'>
             <div class='movie_load loadmsg'>
-                <img src='resources/images/loading.gif'>
+                <img src='resources/css/images/loading.gif'>
                 Loading...
             </div>
             <video class='movie' preload loop='loop'>
@@ -382,7 +381,7 @@ var disp_defaults = {{json_encode(disp_defaults)}};
 
 </head>
 <body>
-<div id='dataload' class='loadmsg'><img src='resources/images/loading.gif'>Loading data...</div>
+<div id='dataload' class='loadmsg'><img src='resources/css/images/loading.gif'>Loading data...</div>
 {% block extrahtml %}
 {% end %}
 

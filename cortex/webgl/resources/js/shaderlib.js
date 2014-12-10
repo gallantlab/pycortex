@@ -534,7 +534,6 @@ var Shaderlib = (function() {
                 "vec4 rColor = texture2D(overlay, vUv);",
             "#endif",          
 
-        "#ifdef SUBJ_SURF",
                 "if (vMedial < .999) {",
                     "gl_FragColor = cColor;",
                     "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
@@ -547,15 +546,6 @@ var Shaderlib = (function() {
                 "} else {",
                     "gl_FragColor = cColor;",
                 "}",
-        "#else",
-                "if (vColor.a < .01) discard;",
-                "gl_FragColor = vColor;",
-        "#endif",
-            "} else if (hide_mwall == 1) {",
-                "discard;",
-            "} else {",
-                "gl_FragColor = cColor;",
-            "}",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
     "#endif",
             "}"

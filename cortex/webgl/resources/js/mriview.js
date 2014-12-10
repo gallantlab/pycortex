@@ -31,15 +31,6 @@ var mriview = (function(module) {
         this.dataviews = {};
         this.active = null;
 
-                // curvAlpha:  { type:'f', value:1.},
-                // curvScale:  { type:'f', value:2.0},//0.5 TEMP FIX!!
-                // curvLim:    { type:'f', value:.2},
-                // dataAlpha:  { type:'f', value:1.0},
-                // hatchAlpha: { type:'f', value:1.},
-                // hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
-                // voxlineColor:{type:'v3', value:new THREE.Vector3( 0,0,0 )},
-                // voxlineWidth:{type:'f', value:viewopts.voxline_width},
-
         this.loaded = $.Deferred().done(function() {
             this.schedule();
             $(this.object).find("#ctmload").hide();
@@ -325,7 +316,7 @@ var mriview = (function(module) {
                 $(this.object).find("#vminmax2").show();
             } else {
                 $(this.object).find("#vminmax2").hide();
-                this.setVminmax(this.active.vmin, this.active.vmax, 0);
+                this.setVminmax(this.active.vmin[0].value[0], this.active.vmax[0].value[0], 0);
             }
 
             this.setupStim();
@@ -401,7 +392,6 @@ var mriview = (function(module) {
         } else {
             $(this.object).find("#moviecontrols").hide();
             $(this.object).find("#bottombar").removeClass("bbar_controls");
-            this.active.set(this.uniforms, 0);
         }
     };
 
@@ -433,13 +423,7 @@ var mriview = (function(module) {
         $(this.object).find(min).val(vmin);
         $(this.object).find(max).val(vmax);
 
-        if (this.active.vmin instanceof Array) {
-            this.active.vmin[dim] = vmin;
-            this.active.vmax[dim] = vmax;
-        } else {
-            this.active.vmin = vmin;
-            this.active.vmax = vmax;
-        }
+        this.active.setVminmax(vmin, vmax, dim);
 
         this.schedule();
     };
@@ -553,7 +537,7 @@ var mriview = (function(module) {
                     e.preventDefault();
                     e.stopPropagation();
                 } else if (e.keyCode == 82) { //r
-                    this.animate([{idx:btnspeed, state:"target", value:this.surfcenter},
+                    this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
                                   {idx:btnspeed, state:"mix", value:0.0}]);
                 } else if (e.keyCode == 73) { //i
                     this.animate([{idx:btnspeed, state:"mix", value:0.5}]);
@@ -636,8 +620,8 @@ var mriview = (function(module) {
             $(this.object).find("#vrange").slider({ 
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1],
                 slide: function(event, ui) { 
-                    $(this.object).find("#vmin").value(ui.values[0]);
-                    $(this.object).find("#vmax").value(ui.values[1]);
+                    $(this.object).find("#vmin").val(ui.values[0]);
+                    $(this.object).find("#vmax").val(ui.values[1]);
                     this.active.setVminmax(ui.values[0], ui.values[1]);
                     this.schedule();
                 }.bind(this)
