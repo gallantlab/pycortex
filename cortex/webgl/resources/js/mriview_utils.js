@@ -185,8 +185,9 @@ var mriview = (function(module) {
             normals[ i + 2 ] *= n;
 
         }
-
-        return {itemSize:3, array:normals};
+        var attr = new THREE.BufferAttribute(normals, 3);
+        attr.needsUpdate = true;
+        return attr;
     }
 
     //Generates a hatch texture in canvas

@@ -209,8 +209,6 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback ) {
 
         var reorderVertices = true;
 
-        scope.materials = [];
-
         THREE.BufferGeometry.call( this );
 
         var s = Date.now();
@@ -441,24 +439,23 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback ) {
         // recast CTM 32-bit indices as 16-bit WebGL indices
         var vertexIndexArray16 = new Uint16Array( vertexIndexArray );
 
-        // attributes
-        var attributes = scope.attributes;
-
-        attributes[ "index" ]    = { itemSize: 1, array: vertexIndexArray16, numItems: vertexIndexArray16.length };
-        attributes[ "position" ] = { itemSize: 3, array: vertexPositionArray, numItems: vertexPositionArray.length };
-
-        if ( vertexNormalArray !== undefined ) {
-
-            attributes[ "normal" ] = { itemSize: 3, array: vertexNormalArray, numItems: vertexNormalArray.length };
-
+        scope.addAttribute("index", new THREE.BufferAttribute(vertexIndexArray16, 3));
+        scope.addAttribute("position", new THREE.BufferAttribute(vertexPositionArray, 3));
+        scope.attributes.index.needsUpdate = true;
+        scope.attributes.position.needsUpdate = true;
+        if (vertexNormalArray !== undefined) {
+            scope.addAttribute("normal", new THREE.BufferAttribute(vertexNormalArray, 3));
+            scope.attributes.normal.needsUpdate = true;
         }
 
         for (var name in vertexUvArrays) {
-            attributes[ name ] = { itemSize: 2, array: vertexUvArrays[name], numItems: vertexUvArrays[name].length };
+            scope.addAttribute(name, new THREE.BufferAttribute(vertexUvArrays[name], 2));
+            scope.attributes[name].needsUpdate = true;
         }
 
         for (var name in vertexAttrArrays) {
-            attributes[ name ]  = { itemSize: 4, array: vertexAttrArrays[name], numItems: vertexAttrArrays[name].length };
+            scope.addAttribute(name, new THREE.BufferAttribute(vertexAttrArrays[name], 4));
+            scope.attributes[name].needsUpdate = true;
         }
 
     }

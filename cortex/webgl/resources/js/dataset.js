@@ -121,9 +121,9 @@ var dataset = (function(module) {
                 attributes: shadecode.attrs,
                 uniforms: merge,
                 lights:true, 
+                side:THREE.DoubleSide,
             });
             //shader.metal = true;
-            shader.side = THREE.DoubleSide;
             shaders.push(shader);
         }
 

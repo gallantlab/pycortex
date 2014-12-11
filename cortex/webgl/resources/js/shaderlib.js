@@ -144,7 +144,7 @@ var Shaderlib = (function() {
         mixer: function(morphs) {
             var glsl = "uniform float surfmix;\n";
             for (var i = 0; i < morphs-1; i++) {
-                glsl += "attribute vec3 mixSurfs"+i+";\n";
+                glsl += "attribute vec4 mixSurfs"+i+";\n";
                 glsl += "attribute vec3 mixNorms"+i+";\n";
             }
             glsl += [
@@ -157,7 +157,7 @@ var Shaderlib = (function() {
             ].join("\n");
             for (var i = 0; i < morphs-1; i++) {
                 glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
-                glsl += "pos  += factor * mixSurfs"+i+";\n";
+                glsl += "pos  += factor * mixSurfs"+i+".xyz;\n";
                 glsl += "norm += factor * mixNorms"+i+";\n";
             }
             glsl += [ "",
@@ -169,7 +169,7 @@ var Shaderlib = (function() {
             ].join("\n");
             for (var i = 0; i < morphs-1; i++) {
                 glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
-                glsl += "pos  += factor * mixSurfs"+i+";\n";
+                glsl += "pos  += factor * mixSurfs"+i+".xyz;\n";
             }
             glsl += [ "",
             "}",
@@ -231,7 +231,6 @@ var Shaderlib = (function() {
 
             var fragShade = [
             "#extension GL_OES_standard_derivatives: enable",
-            "#extension GL_OES_texture_float: enable",
 
             "varying vec3 vPos_x;",
             "varying vec3 vPos_y;",
@@ -313,8 +312,8 @@ var Shaderlib = (function() {
             "uniform mat4 volxfm[2];",
 
             "uniform float thickmix;",
-            "attribute vec3 position2;",
-            "attribute vec3 normal2;",
+            "attribute vec4 wm;",
+            "attribute vec3 wmnorm;",
 
             "attribute vec4 auxdat;",
             // "attribute float dropout;",
@@ -346,15 +345,15 @@ var Shaderlib = (function() {
                 "vPos_y[0] = (volxfm[1]*vec4(position,1.)).xyz;",
             "#endif",
         "#ifdef CORTSHEET",
-                "vPos_x[1] = (volxfm[0]*vec4(position2,1.)).xyz;",
+                "vPos_x[1] = (volxfm[0]*vec4(wm.xyz,1.)).xyz;",
             "#ifdef TWOD",
-                "vPos_y[1] = (volxfm[1]*vec4(position2,1.)).xyz;",
+                "vPos_y[1] = (volxfm[1]*vec4(wm.xyz,1.)).xyz;",
             "#endif",
         "#endif",
     "#endif",
         "#ifdef CORTSHEET",
-                "vec3 mpos = mix(position, position2, thickmix);",
-                "vec3 mnorm = mix(normal, normal2, thickmix);",
+                "vec3 mpos = mix(position, wm.xyz, thickmix);",
+                "vec3 mnorm = mix(normal, wmnorm, thickmix);",
         "#else",
                 "vec3 npos = position;",
                 "vec3 mnorm = normal;",
@@ -373,7 +372,7 @@ var Shaderlib = (function() {
                 "mixfunc(mpos, mnorm, pos, norm);",
 
             "#ifdef CORTSHEET",
-                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, position2) * mix(1., 0., thickmix);",
+                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
             "#endif",
 
                 "vNormal = normalMatrix * norm;",
@@ -384,7 +383,6 @@ var Shaderlib = (function() {
 
             var fragHead = [
             "#extension GL_OES_standard_derivatives: enable",
-            "#extension GL_OES_texture_float: enable",
 
             THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
@@ -397,13 +395,14 @@ var Shaderlib = (function() {
             "uniform float curvAlpha;",
             "uniform float curvScale;",
             "uniform float curvLim;",
-            "uniform float hatchAlpha;",
-            "uniform vec3 hatchColor;",
-            "uniform sampler2D hatch;",
-            "uniform vec2 hatchrep;",
+
+            // "uniform float hatchAlpha;",
+            // "uniform vec3 hatchColor;",
+            // "uniform sampler2D hatch;",
+            // "uniform vec2 hatchrep;",
+            // "varying float vDrop;",
 
             "varying float vCurv;",
-            // "varying float vDrop;",
             "varying float vMedial;",
 
             "uniform float thickmix;",
@@ -533,8 +532,8 @@ var Shaderlib = (function() {
                 "vec4 rColor = texture2D(overlay, vUv);",
             "#endif",          
 
+                "gl_FragColor = vec4(1.);",
                 "if (vMedial < .999) {",
-                    "gl_FragColor = cColor;",
                     "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
                     // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "#ifdef ROI_RENDER",
@@ -542,10 +541,8 @@ var Shaderlib = (function() {
             "#endif",
                 "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
                     "discard;",
-                "} else if (vColor.a < .01) {",
+                "} else if (gl_FragColor.a < .01) {",
                     "discard;",
-                "} else {",
-                    "gl_FragColor = cColor;",
                 "}",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
     "#endif",
@@ -553,12 +550,12 @@ var Shaderlib = (function() {
             ].join("\n");
 
             var attributes = {
-                position2: { type: 'v3', value:null },
-                normal2: { type: 'v3', value:null },
+                wm: { type: 'v4', value:null },
+                wmnorm: { type: 'v3', value:null },
                 auxdat: { type: 'v4', value:null },
             };
             for (var i = 0; i < morphs-1; i++) {
-                attributes['mixSurfs'+i] = { type:'v3', value:null};
+                attributes['mixSurfs'+i] = { type:'v4', value:null};
                 attributes['mixNorms'+i] = { type:'v3', value:null};
             }
 

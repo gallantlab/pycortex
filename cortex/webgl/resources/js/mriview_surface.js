@@ -11,7 +11,7 @@ var mriview = (function(module) {
         this._pivot = 0;
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
-        this.object = new THREE.Object3D();
+        this.object = new THREE.Group();
         this.uniforms = THREE.UniformsUtils.merge( [
             THREE.UniformsLib[ "lights" ],
             {
@@ -72,32 +72,29 @@ var mriview = (function(module) {
                 posdata[name].push(hemi.attributes.position);
 
                 //Put attributes in the correct locations for the shader
-                if (hemi.attributes['wm'] !== undefined) {
+                if (hemi.attributesKeys.indexOf('wm') != -1) {
                     this.volume = 1;
-                    hemi.attributes['position2'] = hemi.attributes['wm'];
-                    hemi.attributes['position2'].stride = 4;
-                    hemi.attributes['position2'].itemSize = 3;
-                    hemi.attributes['normal2'] = module.computeNormal(hemi.attributes['wm'], hemi.attributes.index, hemi.offsets);
-                    delete hemi.attributes['wm'];
+                    hemi.addAttribute("wmnorm", module.computeNormal(hemi.attributes['wm'], hemi.attributes.index, hemi.offsets) );
                 }
+
                 for (var i = 0; i < json.names.length; i++ ) {
                     hemi.attributes['mixSurfs'+i] = hemi.attributes[json.names[i]];
-                    hemi.attributes['mixSurfs'+i].stride = 4;
-                    hemi.attributes['mixSurfs'+i].itemSize = 3;
-                    hemi.attributes['mixNorms'+i] = module.computeNormal(hemi.attributes[json.names[i]], hemi.attributes.index, hemi.offsets);
-                    posdata[name].push(hemi.attributes['mixSurfs'+i]);
+                    hemi.addAttribute('mixNorms'+i, module.computeNormal(hemi.attributes[json.names[i]], hemi.attributes.index, hemi.offsets) );
+                    posdata[name].push(hemi.attributes['mixSurfs'+i].array);
                     delete hemi.attributes[json.names[i]];
                 }
 
                 if (this.flatlims !== undefined) {
                     var flats = this._makeFlat(hemi.attributes.uv.array, json.flatlims, names[name]);
-                    hemi.attributes['mixSurfs'+json.names.length] = {itemSize:3, array:flats.pos};
-                    hemi.attributes['mixNorms'+json.names.length] = {itemSize:3, array:flats.norms};
+                    hemi.addAttribute('mixSurfs'+json.names.length, new THREE.BufferAttribute(flats.pos, 4));
+                    hemi.addAttribute('mixNorms'+json.names.length, new THREE.BufferAttribute(flats.norms, 3));
+                    hemi.attributes['mixSurfs'+json.names.length].needsUpdate = true;
+                    hemi.attributes['mixNorms'+json.names.length].needsUpdate = true;
                     posdata[name].push(hemi.attributes['mixSurfs'+json.names.length]);
                 }
 
                 hemi.dynamic = true;
-                var pivots = {back:new THREE.Object3D(), front:new THREE.Object3D()};
+                var pivots = {back:new THREE.Group(), front:new THREE.Group()};
                 pivots.front.add(pivots.back);
                 pivots.back.position.y = hemi.boundingBox.min.y - hemi.boundingBox.max.y;
                 pivots.front.position.y = hemi.boundingBox.max.y - hemi.boundingBox.min.y + this.flatoff[1];
@@ -139,7 +136,7 @@ var mriview = (function(module) {
             this._update.data = dataview;
             dataview.addEventListener("update", this._update.func);
 
-            if (this.meshes.length > 1) {
+            if (this.meshes.length > 1) { //setup meshes for halo rendering
                 for (var i = 0; i < this.meshes.length; i++) {
                     var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
                         morphs:this.names.length, volume:1, rois: false, halo: true });
@@ -276,23 +273,24 @@ var mriview = (function(module) {
     module.Surface.prototype._makeMesh = function(geom, shader) {
         //Creates the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);
+        mesh.frustumCulled = false;
         mesh.position.y = -this.flatoff[1];
         return mesh;
     };
 
     module.Surface.prototype._makeFlat = function(uv, flatlims, right) {
         var fmin = flatlims[0], fmax = flatlims[1];
-        var flat = new Float32Array(uv.length / 2 * 3);
+        var flat = new Float32Array(uv.length / 2 * 4);
         var norms = new Float32Array(uv.length / 2 * 3);
         for (var i = 0, il = uv.length / 2; i < il; i++) {
             if (right) {
-                flat[i*3+1] = flatscale*uv[i*2] + this.flatoff[1];
+                flat[i*4+1] = flatscale*uv[i*2] + this.flatoff[1];
                 norms[i*3] = 1;
             } else {
-                flat[i*3+1] = flatscale*-uv[i*2] + this.flatoff[1];
+                flat[i*4+1] = flatscale*-uv[i*2] + this.flatoff[1];
                 norms[i*3] = -1;
             }
-            flat[i*3+2] = flatscale*uv[i*2+1];
+            flat[i*4+2] = flatscale*uv[i*2+1];
             uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
             uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
         }

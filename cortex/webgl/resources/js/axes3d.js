@@ -1,4 +1,8 @@
 var jsplot = (function (module) {
+    // make sure canvas size is set properly for high DPI displays
+    // From: http://www.khronos.org/webgl/wiki/HandlingHighDPI
+    var dpi_ratio = window.devicePixelRatio || 1;
+
     module.Axes3D = function(figure) {
         if (this.canvas === undefined) {
             module.Axes.call(this, figure);
@@ -7,7 +11,7 @@ var jsplot = (function (module) {
         }
 
         // scene and camera
-        this.camera = new THREE.CombinedCamera( this.canvas.width(), this.canvas.height(), 45, 1.0, 1000, 1., 1000. );
+        this.camera = new THREE.PerspectiveCamera( 70, this.canvas.width()/this.canvas.height(), 1., 1000. );
         this.camera.up.set(0,0,1);
         this.camera.position.set(0, -500, 0);
         this.camera.lookAt(new THREE.Vector3(0,0,0));
@@ -33,8 +37,7 @@ var jsplot = (function (module) {
             preserveDrawingBuffer:true, 
             canvas:this.canvas[0],
         });
-        this.renderer.setClearColor(new THREE.Color(0, 0, 0), 1);
-        this.renderer.setSize( this.canvas.width(), this.canvas.height() );
+        this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
         this.renderer.sortObjects = true;
 
         this.state = "pause";
@@ -63,11 +66,11 @@ var jsplot = (function (module) {
         this.width = w;
         this.height = h;
 
-        this.renderer.setSize( w * dpi_ratio, h * dpi_ratio );
+        this.renderer.setSize( w , h );
         this.renderer.domElement.style.width = w + 'px'; 
         this.renderer.domElement.style.height = h + 'px'; 
 
-        this.camera.setSize(aspect * 100, 100);
+        this.camera.aspect = aspect;
         this.camera.updateProjectionMatrix();
 
         this.dispatchEvent({ type:"resize", width:w, height:h});
@@ -227,8 +230,8 @@ var jsplot = (function (module) {
                     bottom = (n-i) / n;
                     scene = new THREE.Scene();
                     scene.add(this.camera);
-                    scene.fsquad = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), null);
-                    scene.fsquad.position.z = -1.0001;
+                    // scene.fsquad = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), null);
+                    // scene.fsquad.position.z = -1.0001;
                     this.views.push({left:left, bottom:bottom, width:width, height:height, scene:scene});
                 }
             }

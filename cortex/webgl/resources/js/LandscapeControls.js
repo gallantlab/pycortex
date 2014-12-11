@@ -222,12 +222,12 @@ THREE.LandscapeControls.prototype = {
         var container = $(this.domElement.parentNode.parentNode)
         if (container.find("#zlockwhole").length > 0) {
             if (container.find("#zlockwhole")[0].checked) {
-                rad  = this.flatsize / 2 / this.camera.cameraP.aspect;
+                rad  = this.flatsize / 2 / this.camera.aspect;
                 rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
                 rad -= this.flatoff;
                 rad = flatmix * rad + (1 - flatmix) * this.radius;
             } else if (!container.find("#zlocknone")[0].checked) {
-                rad  = this.flatsize / 4 / this.camera.cameraP.aspect;
+                rad  = this.flatsize / 4 / this.camera.aspect;
                 rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
                 rad -= this.flatoff;
                 rad = flatmix * rad + (1 - flatmix) * this.radius;
@@ -338,7 +338,7 @@ THREE.LandscapeControls.prototype = {
 
     _zoom: function( factor ) {
         this.radius *= factor;
-        if (this.camera.inPerspectiveMode) {
+        // if (this.camera.inPerspectiveMode) {
             // Perspective mode, zoom by changing radius from camera to object
             if (this.radius > this.maxRadius) { 
                 this.radius = this.maxRadius; 
@@ -346,17 +346,17 @@ THREE.LandscapeControls.prototype = {
             if (this.radius < this.minRadius(this.flatmix)) { 
                 this.radius = this.minRadius(this.flatmix); 
             }
-        } else {
-            // Orthographic mode, zoom by changing frustrum limits
-            var aspect = this.camera.cameraP.aspect
-            var height = 2.0*this.radius*Math.tan(this.camera.cameraP.fov/2.0)
-            var width = aspect*height
-            this.camera.cameraO.top = height/2.0
-            this.camera.cameraO.bottom = -height/2.0
-            this.camera.cameraO.right = width/2.0
-            this.camera.cameraO.left = -width/2.0
-            this.camera.cameraO.updateProjectionMatrix();
-        }
+        // } else {
+        //     // Orthographic mode, zoom by changing frustrum limits
+        //     var aspect = this.camera.aspect
+        //     var height = 2.0*this.radius*Math.tan(this.camera.fov/2.0)
+        //     var width = aspect*height
+        //     this.camera.cameraO.top = height/2.0
+        //     this.camera.cameraO.bottom = -height/2.0
+        //     this.camera.cameraO.right = width/2.0
+        //     this.camera.cameraO.left = -width/2.0
+        //     this.camera.cameraO.updateProjectionMatrix();
+        // }
     },
 
     schedule: function( force ) {
