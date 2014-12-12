@@ -276,8 +276,23 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 frame = 0
 
             if dataname in images:
-                self.set_header("Content-Type", "image/png")
-                self.write(images[dataname][int(frame)])
+                dataimg = images[dataname][int(frame)]
+                if dataimg[1:6] == "NUMPY":
+                    self.set_header("Content-Type", "application/octet-stream")
+                else:
+                    self.set_header("Content-Type", "image/png")
+
+                if 'Range' in self.request.headers:
+                    self.set_status(206)
+                    rangestr = self.request.headers['Range'].split('=')[1]
+                    start, end = [ int(i) if len(i) > 0 else None for i in rangestr.split('-') ]
+
+                    clenheader = 'bytes %s-%s/%s' % (start, end or len(dataimg), len(dataimg) )
+                    self.set_header('Content-Range', clenheader)
+                    self.set_header('Content-Length', end-start+1)
+                    self.write(dataimg[start:end+1])
+                else:
+                    self.write(dataimg)
             else:
                 self.set_status(404)
                 self.write_error(404)

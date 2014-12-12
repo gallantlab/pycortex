@@ -43,10 +43,11 @@ var mriview = (function(module) {
         jsplot.Axes3D.prototype.draw.call(this);
     }
     module.Viewer.prototype.drawView = function(scene, idx) {
-        if (this.surfs[idx].prerender)
-            this.surfs[idx].prerender(idx, this.renderer, scene, this.camera);
-        this.surfs[idx].apply(idx);
-        this.renderer.render(scene, this.camera);
+        // if (this.surfs[idx].prerender)
+        //     this.surfs[idx].prerender(idx, this.renderer, scene, this.camera);
+        for (var i = 0; i < this.surfs.length; i++)
+            this.surfs[i].apply(this.active);
+        this.oculus.render(scene, this.camera);
     }
 
     module.Viewer.prototype.getState = function(state) {
@@ -401,27 +402,38 @@ var mriview = (function(module) {
             }
         }
 
-        this.active = this.dataviews[name];
-        this.dispatchEvent({type:"setData", data:this.active});
-
-        //Set up listeners for resizing
-        var surf, scene, grid = grid_shapes[this.active.data.length];
+        //unbind the shader update event from the existing surfaces
         for (var i = 0; i < this.surfs.length; i++) {
-            this.removeEventListener("resize", this.surfs[i]._resize);
+            this.active.removeEventListener("update", this.surfs[i]._update);
+            this.active.removeEventListener("attribute", this.surfs[i]._attrib);
         }
-        this.surfs = [];
+        //set the new active data and update shaders for all surfaces
+        this.active = this.dataviews[name];
+        if (this.surfs.length < 1) {
+            var surf = this.addSurf(module.SurfDelegate);
+        } else {
+            for (var i = 0; i < this.surfs.length; i++) {
+                this.surfs[i].update(this.active);
+                this.active.addEventListener("update", this.surfs[i]._update);
+                this.active.addEventListener("attribute", this.surfs[i]._attrib);
+            }
+        }
+        this.active.loaded.done(function() { this.active.set(); }.bind(this));
+
+        var surf, scene, grid = grid_shapes[this.active.data.length];
+        //cleanup old scene grid for the multiview
+        // for (var i = 0; i < this.views.length; i++) {
+        //     this.views[i].scene.dispose();
+        // }
+        //Generate new scenes and re-add the surface objects
         for (var i = 0; i < this.active.data.length; i++) {
-            surf = subjects[this.active.data[i].subject];
             scene = this.setGrid(grid[0], grid[1], i);
-            scene.add(surf.object);
-            surf.init(this.active)
-            surf._resize = function(evt) { 
-                this.resize(evt.width, evt.height) 
-            }.bind(surf);
-            this.addEventListener("resize", surf._resize);
-            this.surfs.push(surf);
+            for (var j = 0; j < this.surfs.length; j++) {
+                scene.add(this.surfs[j].object);
+            }
         }
 
+        //Show or hide the colormap for raw / non-raw dataviews
         if (this.active.data[0].raw) {
             $("#color_fieldset").fadeTo(0.15, 0);
         } else {
@@ -488,6 +500,15 @@ var mriview = (function(module) {
                 $(this).remove();
         })
     };
+    module.Viewer.prototype.addSurf = function(surftype) {
+        //Sets the slicing surface used to visualize the data
+        var surf = new surftype(this.active);
+        this.surfs.push(surf);
+
+        this.active.addEventListener("update", surf._update);
+        this.active.addEventListener("attribute", surf._attrib);
+    };
+
     module.Viewer.prototype.setupStim = function() {
         if (this.active.data[0].movie) {
             $(this.object).find("#moviecontrols").show();
@@ -517,14 +538,16 @@ var mriview = (function(module) {
     };
     module.Viewer.prototype.setMix = function(mix) {
         for (var i = 0; i < this.surfs.length; i++) {
-            this.surfs[i].setMix(mix);
+            if (this.surfs[i].setMix instanceof Function)
+                this.surfs[i].setMix(mix);
         }
         $(this.object).find("#mix").slider("value", mix);
         this.schedule();
     };
     module.Viewer.prototype.setPivot = function(pivot) {
         for (var i = 0; i < this.surfs.length; i++) {
-            this.surfs[i].setPivot(pivot);
+            if (this.surfs[i].setPivot instanceof Function)
+                this.surfs[i].setPivot(pivot);
         }
         $(this.object).find("#pivot").slider("value", pivot);
         this.schedule();
@@ -606,7 +629,7 @@ var mriview = (function(module) {
         }
 
         this.frame = frame;
-        this.active.set(this.uniforms, frame);
+        this.active.setFrame(this.uniforms, frame);
         $(this.object).find("#movieprogress div").slider("value", frame);
         $(this.object).find("#movieframe").attr("value", frame);
         this.schedule();

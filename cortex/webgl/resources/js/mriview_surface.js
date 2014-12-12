@@ -9,6 +9,7 @@ var mriview = (function(module) {
         this.hemis = {};
         this.volume = 0;
         this._pivot = 0;
+        this.shaders = {};
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
         this.object = new THREE.Group();
@@ -16,9 +17,9 @@ var mriview = (function(module) {
             THREE.UniformsLib[ "lights" ],
             {
                 diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
-                specular:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
+                specular:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
-                shininess:  { type:'f',  value:250},
+                shininess:  { type:'f',  value:1000},
                 specularStrength:{ type:'f',  value:1},
 
                 thickmix:   { type:'f',  value:0.5},
@@ -37,9 +38,7 @@ var mriview = (function(module) {
                 screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
         ]);
-    
-        this._update = {};
-
+        
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, json ) {
             geometries[0].computeBoundingBox();
@@ -76,14 +75,14 @@ var mriview = (function(module) {
                     this.volume = 1;
                     hemi.addAttribute("wmnorm", module.computeNormal(hemi.attributes['wm'], hemi.attributes.index, hemi.offsets) );
                 }
-
+                //Rename the actual surfaces to match shader variable names
                 for (var i = 0; i < json.names.length; i++ ) {
                     hemi.attributes['mixSurfs'+i] = hemi.attributes[json.names[i]];
                     hemi.addAttribute('mixNorms'+i, module.computeNormal(hemi.attributes[json.names[i]], hemi.attributes.index, hemi.offsets) );
                     posdata[name].push(hemi.attributes['mixSurfs'+i].array);
                     delete hemi.attributes[json.names[i]];
                 }
-
+                //Setup flatmap mix
                 if (this.flatlims !== undefined) {
                     var flats = this._makeFlat(hemi.attributes.uv.array, json.flatlims, names[name]);
                     hemi.addAttribute('mixSurfs'+json.names.length, new THREE.BufferAttribute(flats.pos, 4));
@@ -92,6 +91,12 @@ var mriview = (function(module) {
                     hemi.attributes['mixNorms'+json.names.length].needsUpdate = true;
                     posdata[name].push(hemi.attributes['mixSurfs'+json.names.length]);
                 }
+
+                //Queue blank data attributes for vertexdata
+                hemi.addAttribute("data0", new THREE.BufferAttribute(new Float32Array(), 1));
+                hemi.addAttribute("data1", new THREE.BufferAttribute(new Float32Array(), 1));
+                hemi.addAttribute("data2", new THREE.BufferAttribute(new Float32Array(), 1));
+                hemi.addAttribute("data3", new THREE.BufferAttribute(new Float32Array(), 1));
 
                 hemi.dynamic = true;
                 var pivots = {back:new THREE.Group(), front:new THREE.Group()};
@@ -124,60 +129,62 @@ var mriview = (function(module) {
         this.uniforms.screen.value = this.volumebuf;
         this.uniforms.screen_size.value.set(width, height);
     };
-    module.Surface.prototype.init = function(dataview) {
-        this.preshaders = [];
-        this.shaders = [];
+    module.Surface.prototype.init = function(dataview) { 
         this.loaded.done(function() {
-            if (this._update.func !== undefined)
-                this._update.data.removeEventListener("update", this._update.func);
-            this._update.func = function() {
-                this.init(dataview);
-            }.bind(this);
-            this._update.data = dataview;
-            dataview.addEventListener("update", this._update.func);
+            var shaders = [];
+            // Halo rendering code, ignore for now
+            // if (this.meshes.length > 1) { //setup meshes for halo rendering
+            //     for (var i = 0; i < this.meshes.length; i++) {
+            //         var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
+            //             morphs:this.names.length, volume:1, rois: false, halo: true });
+            //         for (var j = 0; j < shaders.length; j++) {
+            //             shaders[j].transparent = i != 0;
+            //             shaders[j].depthTest = true;
+            //             shaders[j].depthWrite = i == 0;
+            //             shaders[j].uniforms.thickmix = {type:'f', value: 1 - i / (this.meshes.length-1)};
+            //             shaders[j].blending = THREE.CustomBlending;
+            //             shaders[j].blendSrc = THREE.OneFactor;
+            //             shaders[j].blendDst = THREE.OneFactor;
+            //         }
+            //         this.preshaders.push(shaders);
+            //     }
+            //     var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
+            //         morphs:this.names.length, volume:1, rois:false, halo:false });
+            //     for (var j = 0; j < shaders.length; j++) {
+            //         shaders[j].uniforms.thickmix = {type:'f', value:1};
+            //         shaders[j].uniforms.dataAlpha = {type:'f', value:0};
+            //     }
 
-            if (this.meshes.length > 1) { //setup meshes for halo rendering
-                for (var i = 0; i < this.meshes.length; i++) {
-                    var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
-                        morphs:this.names.length, volume:1, rois: false, halo: true });
-                    for (var j = 0; j < shaders.length; j++) {
-                        shaders[j].transparent = i != 0;
-                        shaders[j].depthTest = true;
-                        shaders[j].depthWrite = i == 0;
-                        shaders[j].uniforms.thickmix = {type:'f', value: 1 - i / (this.meshes.length-1)};
-                        shaders[j].blending = THREE.CustomBlending;
-                        shaders[j].blendSrc = THREE.OneFactor;
-                        shaders[j].blendDst = THREE.OneFactor;
-                    }
-                    this.preshaders.push(shaders);
-                }
-                var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
-                    morphs:this.names.length, volume:1, rois:false, halo:false });
-                for (var j = 0; j < shaders.length; j++) {
-                    shaders[j].uniforms.thickmix = {type:'f', value:1};
-                    shaders[j].uniforms.dataAlpha = {type:'f', value:0};
-                }
-                this.shaders.push(shaders);
-
-                this.quadshade = dataview.getShader(Shaders.cmap_quad, this.uniforms);
-                this.quadshade.transparent = true;
-                this.quadshade.blending = THREE.CustomBlending
-                this.quadshade.blendSrc = THREE.OneFactor
-                this.quadshade.blendDst = THREE.OneMinusSrcAlphaFactor
-                this.quadshade.depthWrite = false;
-                this.addEventListener("prerender", this._prerender_halosurf.bind(this));
-            } else {
-                var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
+            //     this.quadshade = dataview.getShader(Shaders.cmap_quad, this.uniforms);
+            //     this.quadshade.transparent = true;
+            //     this.quadshade.blending = THREE.CustomBlending
+            //     this.quadshade.blendSrc = THREE.OneFactor
+            //     this.quadshade.blendDst = THREE.OneMinusSrcAlphaFactor
+            //     this.quadshade.depthWrite = false;
+            // } else {
+            if (dataview.vertex) {
+                var shaders = dataview.getShader(Shaders.surface_vertex, this.uniforms, {
                             morphs:this.names.length, 
                             volume:this.volume, 
                             rois:  false,
                             halo: false,
                         });
-                this.shaders.push(shaders);
-                this.removeEventListener("prerender", this._prerender_halosurf.bind(this));
+            } else {
+                var shaders = dataview.getShader(Shaders.surface_pixel, this.uniforms, {
+                            morphs:this.names.length, 
+                            volume:this.volume, 
+                            rois:  false,
+                            halo: false,
+                        });
             }
+            this.shaders[dataview.uuid] = shaders[0];
         }.bind(this));
     };
+    module.Surface.prototype.clearShaders = function() {
+        for (var name in this.shaders) {
+            this.shaders[name].dispose();
+        }
+    }
     module.Surface.prototype.prerender = function(idx, renderer, scene, camera) {
         this.dispatchEvent({type:"prerender", idx:idx, renderer:renderer, scene:scene, camera:camera});
     }
@@ -205,10 +212,10 @@ var mriview = (function(module) {
         scene.fsquad.visible = true;
     };
 
-    module.Surface.prototype.apply = function(idx) {
-        for (var i = 0; i < this.shaders.length; i++) {
-            this.meshes[i].left.material = this.shaders[i][idx];
-            this.meshes[i].right.material = this.shaders[i][idx];
+    module.Surface.prototype.apply = function(dataview) {
+        for (var i = 0; i < this.meshes.length; i++) {
+            this.meshes[i].left.material = this.shaders[dataview.uuid];
+            this.meshes[i].right.material = this.shaders[dataview.uuid];
         }
     };
 
@@ -227,20 +234,7 @@ var mriview = (function(module) {
             this.pivots.left.back.add(lmesh);
             this.pivots.right.back.add(rmesh);
         }
-        if (this._update.func)
-            this._update.func();
     };
-
-    module.Surface.prototype.rotate = function(x, y) {
-        //Rotate the surface given the X and Y mouse displacement
-        this.rotation[0] += x;
-        this.rotation[1] += y;
-        this.rotation[0] = this.rotation[0] % 360;
-        this.rotation[1] = -90 < this.rotation[1] ? (this.rotation[1] < 90 ? this.rotation[1] : 90) : -90;
-        this.object.rotation.set(0,0,0, 'ZYX');
-        this.object.rotateX(this.rotation[1] * Math.PI / 180);
-        this.object.rotateZ(this.rotation[0] * Math.PI / 180);
-    }
 
     module.Surface.prototype.setMix = function(mix) {
         this.uniforms.surfmix.value = mix;
@@ -273,7 +267,6 @@ var mriview = (function(module) {
     module.Surface.prototype._makeMesh = function(geom, shader) {
         //Creates the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);
-        mesh.frustumCulled = false;
         mesh.position.y = -this.flatoff[1];
         return mesh;
     };
@@ -296,6 +289,40 @@ var mriview = (function(module) {
         }
 
         return {pos:flat, norms:norms};
+    };
+
+    module.SurfDelegate = function(dataview) {
+        this.object = new THREE.Group();
+        this.update(dataview);
+        this._update = this.update.bind(this);
+        this._attrib = this.setAttribute.bind(this);
+    }
+    module.SurfDelegate.prototype.update = function(dataview) {
+        if (this.surf !== undefined) {
+            this.object.remove(this.surf.object);
+            this.surf.clearShaders();
+        }
+        var subj = dataview.data[0].subject;
+        this.surf = subjects[subj];
+        this.surf.init(dataview);
+        this.object.add(this.surf.object);
+    }
+    module.SurfDelegate.prototype.setAttribute = function(event) {
+        var name = event.name, left = event.value[0], right = event.value[1];
+        this.surf.hemis.left.attributes[name] = left;
+        this.surf.hemis.right.attributes[name] = right;
+    }
+    module.SurfDelegate.prototype.setMix = function(mix) {
+        return this.surf.setMix(mix);
+    }
+    module.SurfDelegate.prototype.setPivot = function(pivot) {
+        return this.surf.setPivot(mix);
+    }
+    module.SurfDelegate.prototype.setShift = function(shift) {
+        return this.surf.setShift(shift);
+    }
+    module.SurfDelegate.prototype.apply = function(dataview) {
+        return this.surf.apply(dataview);
     }
 
     return module;

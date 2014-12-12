@@ -40,6 +40,8 @@ var jsplot = (function (module) {
         this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
         this.renderer.sortObjects = true;
 
+        this.oculus = new THREE.OculusRiftEffect(this.renderer, {worldScale:1000});
+
         this.state = "pause";
         this._startplay = null;
         this._animation = null;
@@ -67,6 +69,7 @@ var jsplot = (function (module) {
         this.height = h;
 
         this.renderer.setSize( w , h );
+        this.oculus.setSize(w, h);
         this.renderer.domElement.style.width = w + 'px'; 
         this.renderer.domElement.style.height = h + 'px'; 
 
@@ -123,7 +126,7 @@ var jsplot = (function (module) {
         this.dispatchEvent({type:"draw"});
     };
     module.Axes3D.prototype.drawView = function(scene) {
-        this.renderer.render(scene, this.camera);
+        this.oculus.render(scene, this.camera);
     };
     module.Axes3D.prototype.animate = function(animation) {
         var state = {};

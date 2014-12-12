@@ -15,6 +15,21 @@ var dataset = (function(module) {
 
     module.brains = {}; //Singleton containing all BrainData objects
 
+    module.fromJSON = function(dataset) {
+        for (var name in dataset.data) {
+            if (dataset.data[name].mosaic === undefined)
+                module.brains[name] = new module.VertexData(dataset.data[name], dataset.images);
+            else
+                module.brains[name] = new module.VolumeData(dataset.data[name], dataset.images);
+        }
+        var dataviews = [];
+        for (var i = 0; i < dataset.views.length; i++) {
+            dataviews.push(new module.DataView(dataset.views[i]));
+        }
+        return dataviews;
+    }
+
+
     module.makeFrom = function(dvx, dvy) {
         //Generate a new DataView given two existing ones
         var json = {};
@@ -31,6 +46,7 @@ var dataset = (function(module) {
     };
 
     module.DataView = function(json) {
+        this.uuid = THREE.Math.generateUUID();
         this.data = [];
         //Do not handle muliviews for now!
         for (var i = 0; i < json.data.length; i++) {
@@ -43,6 +59,9 @@ var dataset = (function(module) {
         }
         this.name = json.name;
         this.description = json.desc;
+        this.frames = this.data[0].frames;
+        this.length = this.frames / this.rate;
+        this.vertex = this.data[0].mosaic === undefined;
 
         this.attrs = json.attrs;
         this.state = json.state;
@@ -53,23 +72,53 @@ var dataset = (function(module) {
         if (json.attrs.stim !== undefined)
             this.stim = "stim/"+json.attrs.stim;
 
-        //no multiviews yet
-        this.xfm = json.xfm[0];
         this.cmap = [{type:'t', value:colormaps[json.cmap[0]]}];
         this.vmin = [{type:'fv1', value:json.vmin[0] instanceof Array? json.vmin[0] : [json.vmin[0], 0]}];
         this.vmax = [{type:'fv1', value:json.vmax[0] instanceof Array? json.vmax[0] : [json.vmax[0],0]}];
 
-        this.frames = this.data[0].frames;
-        this.length = this.frames / this.rate;
-
         this.uniforms = {
             framemix:   { type:'f',   value:0},
-            data:       { type:'tv',  value:[null, null, null, null]},
-            mosaic:     { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]},
-            dshape:     { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]},
-            volxfm:     { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] },
             dataAlpha:  { type:'f', value:1.0},
         }
+
+        if (!this.vertex) {
+            //no multiviews yet
+            this.xfm = json.xfm[0];
+            //dataview contains volume data
+            this.uniforms.data   = { type:'tv',  value:[null, null, null, null]};
+            this.uniforms.mosaic = { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]};
+            this.uniforms.dshape = { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]};
+            this.uniforms.volxfm = { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] };
+        }
+
+        this._dispatch = this.dispatchEvent.bind(this);
+
+        //Aggregate all Volume/VertexData deferreds to determine when to resolve
+        var allready = [];
+        for (var i = 0; i < this.data.length; i++) {
+            allready.push(false);
+        }
+
+        var deferred = this.data.length == 1 ? 
+            $.when(this.data[0].loaded) : 
+            $.when(this.data[0].loaded, this.data[1].loaded);
+        deferred.progress(function(available) {
+            for (var i = 0; i < this.data.length; i++) {
+                //TODO: fix this load order
+                if (available > this.delay && !allready[i]) {
+                    allready[i] = true;
+
+                    //Resolve this deferred if ALL the BrainData objects are loaded (for multiviews)
+                    var test = true;
+                    for (var i = 0; i < allready.length; i++)
+                        test = test && allready[i];
+                    if (test)
+                        this.loaded.resolve();
+                }
+            }
+        }.bind(this)).done(function() {
+            this.loaded.resolve();
+        }.bind(this));
     }
     THREE.EventDispatcher.prototype.apply(module.DataView.prototype);
     module.DataView.prototype.setVminmax = function(min, max, dim, idx) {
@@ -100,6 +149,8 @@ var dataset = (function(module) {
         if (this.loaded.state() == "pending")
             $("#dataload").show();
 
+        //This only kind of supports multiviews
+        //TODO: hash the multiview as a separate object
         var shaders = [];
         for (var i = 0; i < this.data.length; i++) {
             //Run a shallow merge on the uniform variables
@@ -113,8 +164,11 @@ var dataset = (function(module) {
             for (var name in uniforms)
                 merge[name] = uniforms[name];
 
-            var sampler = module.samplers[this.filter];
-            var shadecode = shaderfunc(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, opts);
+            opts.sampler = module.samplers[this.filter];
+            opts.rgb = this.data[0].raw;
+            opts.twod = this.data.length > 1;
+            opts.voxline = viewopts.voxlines;
+            var shadecode = shaderfunc(opts);
             var shader = new THREE.ShaderMaterial({ 
                 vertexShader:shadecode.vertex,
                 fragmentShader:shadecode.fragment,
@@ -123,65 +177,34 @@ var dataset = (function(module) {
                 lights:true, 
                 side:THREE.DoubleSide,
             });
-            //shader.metal = true;
             shaders.push(shader);
         }
 
-        //Run set up when the datasets are loaded
-        var allready = [];
-        for (var i = 0; i < this.data.length; i++) {
-            allready.push(false);
-        }
-
-        //Temporarily only support 2D dataviews
-        var deferred = this.data.length == 1 ? 
-            $.when(this.data[0].loaded) : 
-            $.when(this.data[0].loaded, this.data[1].loaded);
-        deferred.done(function() {
-            for (var i = 0; i < this.data.length; i++) {
-                this.data[i].init(this.uniforms, i);
-                this.data[i].setFilter(this.filter);
-            }
-            this.set(0);
-
-            this.loaded.resolve();
-        }.bind(this)).progress(function() {
-            for (var i = 0; i < this.data.length; i++) {
-                if (this.data[i].textures.length > this.delay && !allready[i]) {
-                    this.data[i].setFilter(this.filter);
-                    this.data[i].set(this.uniforms, i, 0);
-                    allready[i] = true;
-
-                    //Resolve this deferred if ALL the BrainData objects are loaded (for multiviews)
-                    var test = true;
-                    for (var i = 0; i < allready.length; i++)
-                        test = test && allready[i];
-                    if (test)
-                        this.loaded.resolve();
-                }
-            }
-        }.bind(this));
         return shaders;
     };
-    module.DataView.prototype.set = function(time) {
-        var xfm;
+    module.DataView.prototype.set = function() {
+        for (var i = 0; i < this.data.length; i++) {
+            this.data[i].init(this.uniforms, i, this.xfm, this.filter);
+        }
+        this.setFrame(0);
+    };
+    module.DataView.prototype.setFrame = function(time) {
         var frame = ((time + this.delay) * this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
         this.uniforms.framemix.value = frame - fframe;
         for (var i = 0; i < this.data.length; i++) {
-            this.data[i].set(this.uniforms, i, fframe);
-            xfm = this.uniforms.volxfm.value[i];
-            xfm.set.apply(xfm, this.xfm.length != 16 ? this.xfm[i] : this.xfm);
+            this.data[i].set(this.uniforms, i, fframe, this._dispatch);
         }
-    };
+    }
     module.DataView.prototype.setFilter = function(interp) {
         this.filter = interp;
         for (var i = 0; i < this.data.length; i++)
             this.data[i].setFilter(interp);
-        this.dispatchEvent({type:"update"});
-    }
+        //force a shader update for all surfaces using this dataview
+        this.dispatchEvent({type:"update", dataview:this});
+    };
 
-    module.BrainData = function(json, images) {
+    module.VolumeData = function(json, images) {
         this.loaded = $.Deferred();
         this.subject = json.subject;
         this.movie = images[json.name].length > 1;
@@ -190,7 +213,7 @@ var dataset = (function(module) {
         this.max = json.max;
         this.mosaic = json.mosaic;
         this.name = json.name;
-
+        this.shape = json.shape;
         this.data = images[json.name];
         this.frames = images[json.name].length;
 
@@ -230,30 +253,24 @@ var dataset = (function(module) {
             img.src = this.data[this.textures.length];
         }.bind(this);
 
-        if (this.mosaic === undefined) {
-            NParray.fromURL(this.data[0], function(array) {
-                this.verts = array;
-                this.verts.loaded.done(function() {
-                    this.loaded.resolve()
-                }.bind(this));
-            }.bind(this));
-        } else 
-            loadmosaic(0);
-        module.brains[json.data] = this;
+        loadmosaic(0);
     };
-    module.BrainData.prototype.setFilter = function(interp) {
-        //this.filter = interp;
+    module.VolumeData.prototype.setFilter = function(interp) {
         for (var i = 0, il = this.textures.length; i < il; i++) {
             this.textures[i].minFilter = module.filtertypes[interp];
             this.textures[i].magFilter = module.filtertypes[interp];
             this.textures[i].needsUpdate = true;
         }
     };
-    module.BrainData.prototype.init = function(uniforms, dim) {
+    module.VolumeData.prototype.init = function(uniforms, dim, xfm, filter) {
         uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
         uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
+        var volxfm = uniforms.volxfm.value[dim];
+        volxfm.set.apply(volxfm, xfm.length != 16 ? xfm[dim] : xfm);
+        this.setFilter(filter);
     };
-    module.BrainData.prototype.set = function(uniforms, dim, fframe) {
+
+    module.VolumeData.prototype.set = function(uniforms, dim, fframe) {
         if (uniforms.data.value[dim*2] !== this.textures[fframe]) {
             uniforms.data.value[dim*2] = this.textures[fframe];
             if (this.frames > 1) {
@@ -263,15 +280,42 @@ var dataset = (function(module) {
             }
         }
     }
-    module.fromJSON = function(dataset) {
-        for (var name in dataset.data) {
-            module.brains[name] = new module.BrainData(dataset.data[name], dataset.images);
-        }
-        var dataviews = [];
-        for (var i = 0; i < dataset.views.length; i++) {
-            dataviews.push(new module.DataView(dataset.views[i]));
-        }
-        return dataviews;
+
+    module.VertexData = function(json, images) {
+        this.loaded = $.Deferred();
+        this.subject = json.subject;
+        this.split = json.split;
+        this.movie = json.frames > 1;
+        this.raw = json.raw;
+        this.min = json.min;
+        this.max = json.max;
+        this.name = json.name;
+
+        this.data = images[json.name];
+        this.frames = json.frames;
+
+        this.verts = [];
+        NParray.fromURL(this.data[0], function(array) {
+            array.loaded.progress(function(available){
+                var data = array.view(available-1).data;
+                var left = new THREE.BufferAttribute(data.subarray(0, this.split), this.raw?4:1);
+                var right = new THREE.BufferAttribute(data.subarray(this.split), this.raw?4:1);
+                left.needsUpdate = true;
+                right.needsUpdate = true;
+                this.verts.push([left, right]);
+                this.loaded.notify(available);
+            }.bind(this)).done(function(){
+                this.loaded.resolve();
+            }.bind(this))
+        }.bind(this));
+    }
+    module.VertexData.prototype.init = function(uniforms, dim) {
+        //nothing to set...
+    }
+    module.VertexData.prototype.set = function(uniforms, dim, fframe, dispatch) {
+        var name = dim == 0 ? "data0":"data2";
+        dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
+        dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.frames)]});
     }
 
     return module;

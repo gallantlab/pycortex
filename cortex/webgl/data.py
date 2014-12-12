@@ -14,7 +14,7 @@ import numpy as np
 
 from .. import dataset
 from .. import volume
-
+#TODO: How to package multiviews?
 class Package(object):
     """Package the data into a form usable by javascript"""
     def __init__(self, data):
@@ -26,21 +26,24 @@ class Package(object):
         for brain in self.uniques:
             name = brain.name
             self.brains[name] = brain.to_json(simple=True)
-            voldata = brain.volume
+            if isinstance(brain, dataset.Vertex):
+                encdata = brain.vertices
+            else:
+                encdata = brain.volume
             if isinstance(brain, (dataset.VolumeRGB, dataset.VertexRGB)):
-                voldata = voldata.astype(np.uint8)
+                encdata = encdata.astype(np.uint8)
                 self.brains[name]['raw'] = True
             else:
-                voldata = voldata.astype(np.float32)
+                encdata = encdata.astype(np.float32)
                 self.brains[name]['raw'] = False
 
             if isinstance(brain, dataset.Vertex):
                 npyform = cStringIO.StringIO()
-                np.save(npyform, voldata)
+                np.save(npyform, encdata)
                 npyform.seek(0)
-                self.images[name] = npyform.read()
+                self.images[name] = [npyform.read()]
             else:
-                self.images[name] = [volume.mosaic(vol, show=False) for vol in voldata]
+                self.images[name] = [volume.mosaic(vol, show=False) for vol in encdata]
                 if len(set([shape for m, shape in self.images[name]])) != 1:
                     raise ValueError('Internal error in mosaic')
                 self.brains[name]['mosaic'] = self.images[name][0][1]
