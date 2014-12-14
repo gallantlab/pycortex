@@ -186,9 +186,15 @@ var Shaderlib = (function() {
                 header += "#define RGBCOLORS\n";
             if (opts.twod)
                 header += "#define TWOD\n";
+            if (!opts.viewspace)
+                header += "#define SAMPLE_WORLD\n";
+            if (opts.lights !== undefined && !opts.lights)
+                header += "#define NOLIGHTS\n";
 
             var vertShade =  [
+        "#ifndef NOLIGHTS",
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+        "#endif",
 
             "uniform mat4 volxfm[2];",
 
@@ -208,9 +214,14 @@ var Shaderlib = (function() {
                 "vViewPosition = -mvPosition.xyz;",
 
                 //Find voxel positions with both transforms (2D colormap x and y datasets)
-                "vPos_x = (volxfm[0]*vec4(position,1.)).xyz;",
+        "#ifdef SAMPLE_WORLD",
+                "vec4 sample = vec4(position, 1.);",
+        "#else",
+                "vec4 sample = modelMatrix * vec4(position, 1.);",
+        "#endif", 
+                "vPos_x = (volxfm[0]*sample).xyz;",
         "#ifdef TWOD",
-                "vPos_y = (volxfm[1]*vec4(position,1.)).xyz;",
+                "vPos_y = (volxfm[1]*sample).xyz;",
         "#endif",
 
                 "vNormal = normalMatrix * normal;",
@@ -222,10 +233,22 @@ var Shaderlib = (function() {
             var fragShade = [
             "#extension GL_OES_standard_derivatives: enable",
 
+            "uniform vec3 voxlineColor;",
+            "uniform float voxlineWidth;",
+
+            "uniform sampler2D colormap;",
+            "uniform float vmin[2];",
+            "uniform float vmax[2];",
+            "uniform float framemix;",
+            "uniform vec2 mosaic[2];",
+            "uniform vec2 dshape[2];",
+            "uniform sampler2D data[4];",
+
             "varying vec3 vPos_x;",
             "varying vec3 vPos_y;",
-
+        "#ifndef NOLIGHTS",
             THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
+        "#endif",
             
             utils.standard_frag_vars,
             utils.rand,
@@ -264,14 +287,15 @@ var Shaderlib = (function() {
                 "vColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge*1.001));",
         "#endif",
 
-                "if (vColor.a < .001) discard;",
+                //"if (vColor.a < .001) discard;",
                 "gl_FragColor = vColor;",
-
+        "#ifndef NOLIGHTS",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
+        "#endif",
             "}"
             ].join("\n");
 
-            return {vertex:header+vertShade, fragment:header+fragShade};
+            return {vertex:header+vertShade, fragment:header+fragShade, attrs:{}};
         },
 
         surface_pixel: function(opts) {
@@ -489,7 +513,7 @@ var Shaderlib = (function() {
                     //"gl_FragColor = vec4(res / 256., 1. / 256.);",
                     //"gl_FragColor = vec4(vec3(gl_FragCoord.w), 1.);",
                 "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
-                    "discard;",
+                    "gl_FragColor = vec4(0.);",
                 "}",
     "#else",
             "#ifdef RGBCOLORS",
@@ -520,17 +544,11 @@ var Shaderlib = (function() {
             "#endif",          
 
                 "gl_FragColor = cColor;",
-                "if (vMedial < .999) {",
-                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
-                    // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
+                "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "#ifdef ROI_RENDER",
-                    "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
+                "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
             "#endif",
-                "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
-                    "discard;",
-                "} else if (gl_FragColor.a < .01) {",
-                    "discard;",
-                "}",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
     "#endif",
             "}"
@@ -694,17 +712,11 @@ var Shaderlib = (function() {
 
 
                 "gl_FragColor = cColor;",
-                "if (vMedial < .999) {",
-                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
-                    // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
+                "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "#ifdef ROI_RENDER",
-                    "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
+                "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
             "#endif",
-                "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
-                    "discard;",
-                "} else if (gl_FragColor.a < .01) {",
-                    "discard;",
-                "}",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
             "}"
             ].join("\n");

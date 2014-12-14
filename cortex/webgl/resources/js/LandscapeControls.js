@@ -2,7 +2,7 @@
  * @author Eberhard Graether / http://egraether.com/
  */
 
-THREE.LandscapeControls = function ( element, camera ) {
+THREE.LandscapeControls = function ( cover, camera ) {
     var _this = this;
     STATE = { NONE : -1, ROTATE : 0, PAN : 1, ZOOM : 2 };
     var statefunc = { 
@@ -12,8 +12,8 @@ THREE.LandscapeControls = function ( element, camera ) {
     }
 
     this.keystate = null;
-    this.domElement = element;
     this.camera = camera;
+    this.domElement = cover;
 
     // API
     this.enabled = true;
@@ -26,6 +26,7 @@ THREE.LandscapeControls = function ( element, camera ) {
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
     this.friction = 0.05; // velocity lost per milisecond
+    
 
     // internals
     this.target = new THREE.Vector3();
@@ -161,6 +162,7 @@ THREE.LandscapeControls = function ( element, camera ) {
         clearTimeout(_nomove_timer);
         _nomove_timer = setTimeout(nomove_evt.bind(this), 100);
 
+        this.update(this.flatmix);
         this.dispatchEvent( changeEvent );
     };
 
@@ -200,6 +202,7 @@ THREE.LandscapeControls = function ( element, camera ) {
     window.addEventListener( 'keydown', keydown.bind(this), false );
     window.addEventListener( 'keyup', keyup.bind(this), false );
 
+    this.resize($(cover).width(), $(cover).height() );
     this.flatmix = 0;
     this.setCamera();
 };
@@ -280,11 +283,10 @@ THREE.LandscapeControls.prototype = {
             this._radius*Math.cos(altrad)
         );
 
-        this.camera.position.addVectors(this._target, eye);
-        this.camera.lookAt(this._target);
-        if (changed) {
-            this.dispatchEvent( {type:'change' } );
-        }
+        this.camera.position.addVectors( this._target, eye );
+        this.camera.lookAt( this._target );
+        if (changed)
+            this.dispatchEvent( {type:'change'} );
     },
 
     rotate: function ( mouseChange ) {
@@ -315,17 +317,20 @@ THREE.LandscapeControls.prototype = {
     }, 
 
     pan: function( mouseChange ) {
+        this.panxvel_init = this.panSpeed * mouseChange.x;
+        this.panyvel_init = this.panSpeed * mouseChange.y;
+        this.setpan( this.panSpeed * mouseChange.x, this.panSpeed * mouseChange.y );
+    },
+
+    setpan: function( x, y ) {
         var eye = this.camera.position.clone().sub(this.target);
         var right = eye.clone().cross( this.camera.up );
         var up = right.clone().cross(eye);
         var pan = (new THREE.Vector3()).addVectors(
-            right.setLength( this.panSpeed*mouseChange.x ), 
-            up.setLength( this.panSpeed*mouseChange.y ));
+            right.setLength( x ), 
+            up.setLength( y ));
         this.camera.position.add( pan );
         this.target.add( pan );
-        this.panxvel_init = this.panSpeed * mouseChange.x;
-        this.panyvel_init = this.panSpeed * mouseChange.y;
-        this.pan( this.panSpeed * mouseChange.x, this.panSpeed * mouseChange.y );
     },
  
     zoom: function( mouseChange ) {
@@ -427,4 +432,5 @@ THREE.LandscapeControls.prototype = {
     }
 
 }
+
 THREE.EventDispatcher.prototype.apply(THREE.LandscapeControls.prototype);

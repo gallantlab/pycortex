@@ -174,8 +174,13 @@ var dataset = (function(module) {
                 fragmentShader:shadecode.fragment,
                 attributes: shadecode.attrs,
                 uniforms: merge,
-                lights:true, 
                 side:THREE.DoubleSide,
+                lights:true,
+                depthTest:opts.depthTest === undefined ? true : opts.depthTest,
+                depthWrite:opts.depthWrite === undefined ? true : opts.depthWrite,
+                transparent:opts.transparent === undefined ? false : opts.transparent,
+                blending:opts.blending === undefined ? THREE.NormalBlending : opts.blending,
+                lights:opts.lights === undefined ? true : opts.lights,
             });
             shaders.push(shader);
         }

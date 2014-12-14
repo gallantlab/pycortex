@@ -19,9 +19,6 @@ var mriview = (function(module) {
         this.canvas = $(this.object).find("#brain");
         jsplot.Axes3D.call(this, figure);
 
-        this.controls = new THREE.LandscapeControls(this.canvas[0], this.camera);
-        this.controls.addEventListener("change", this.schedule.bind(this));
-
         this.surfs = [];
         this.dataviews = {};
         this.active = null;
@@ -38,16 +35,30 @@ var mriview = (function(module) {
     THREE.EventDispatcher.prototype.apply(module.Viewer.prototype);
     module.Viewer.prototype.constructor = module.Viewer;
 
-    module.Viewer.prototype.draw = function() {
-        this.controls.update(this.flatmix);
-        jsplot.Axes3D.prototype.draw.call(this);
-    }
     module.Viewer.prototype.drawView = function(scene, idx) {
         // if (this.surfs[idx].prerender)
         //     this.surfs[idx].prerender(idx, this.renderer, scene, this.camera);
         for (var i = 0; i < this.surfs.length; i++)
             this.surfs[i].apply(this.active);
-        this.oculus.render(scene, this.camera);
+        if (this.oculus)
+            this.oculus.render(scene, this.camera);
+        else
+            this.renderer.render(scene, this.camera);
+    }
+
+    module.Viewer.prototype.setOculus = function() {
+        if (this.oculus) {
+            this.removeEventListener("resize", this.oculus._resize);
+            delete this.oculus;
+        } else {
+            this.oculus = new THREE.OculusRiftEffect(this.renderer, {worldScale:1000});
+            this.oculus._resize = function(evt) {
+                this.oculus.setSize(evt.width, evt.height);
+            }.bind(this);
+            this.addEventListener("resize", this.oculus._resize);
+            this.resize();
+        }
+        this.schedule();
     }
 
     module.Viewer.prototype.getState = function(state) {
@@ -395,6 +406,9 @@ var mriview = (function(module) {
                 //Can't create 2D data view when the view is already 2D!
                 if (dv1.data.length > 1 || dv2.data.length > 1)
                     return false;
+                //Can't create mixed volume/vertex renderer
+                if (!(dv1.vertex ^ dv.vertex))
+                    return false;
 
                 return this.addData(dataset.makeFrom(dv1, dv2));
             } else {
@@ -412,6 +426,12 @@ var mriview = (function(module) {
         if (this.surfs.length < 1) {
             var surf = this.addSurf(module.SurfDelegate);
         } else {
+            if (this.active.vertex) {
+                if (this.surfs.length > 1)
+                for (var i = 0; i < this.surfs.length; i++) {
+
+                }//delete all other surfaces, since vertex is tightly coupled to surface
+            }
             for (var i = 0; i < this.surfs.length; i++) {
                 this.surfs[i].update(this.active);
                 this.active.addEventListener("update", this.surfs[i]._update);
@@ -428,9 +448,6 @@ var mriview = (function(module) {
         //Generate new scenes and re-add the surface objects
         for (var i = 0; i < this.active.data.length; i++) {
             scene = this.setGrid(grid[0], grid[1], i);
-            for (var j = 0; j < this.surfs.length; j++) {
-                scene.add(this.surfs[j].object);
-            }
         }
 
         //Show or hide the colormap for raw / non-raw dataviews
@@ -500,14 +517,32 @@ var mriview = (function(module) {
                 $(this).remove();
         })
     };
-    module.Viewer.prototype.addSurf = function(surftype) {
+    module.Viewer.prototype.addSurf = function(surftype, opts) {
         //Sets the slicing surface used to visualize the data
-        var surf = new surftype(this.active);
+        var surf = new surftype(this.active, opts);
+        surf.addEventListener("mix", function(evt){
+            this.controls.update(evt.flat);
+        }.bind(this));
+
         this.surfs.push(surf);
+        this.root.add(surf.object);
 
         this.active.addEventListener("update", surf._update);
         this.active.addEventListener("attribute", surf._attrib);
+        this.schedule();
+        return surf;
     };
+    module.Viewer.prototype.rmSurf = function(surftype) {
+        for (var i = 0; i < this.surfs.length; i++) {
+            if (this.surfs[i].constructor == surftype) {
+                this.active.removeEventListener("update", this.surfs[i]._update);
+                this.active.removeEventListener("attribute", this.surfs[i]._attrib);
+
+                this.root.remove(this.surfs[i].object);
+            }
+        }
+        this.schedule();
+    }
 
     module.Viewer.prototype.setupStim = function() {
         if (this.active.data[0].movie) {
@@ -759,9 +794,10 @@ var mriview = (function(module) {
             $(this.object).find("#colormap").ddslick({ width:296, height:350, 
                 onSelected: function() { 
                     var name = $(this.object).find("#colormap .dd-selected-text").text();
-                    if (this.active)
+                    if (this.active) {
                         this.active.setColormap(name);
-                    this.schedule();
+                        this.schedule();
+                    }
                 }.bind(this)
             });
             $(this.object).find("#cmapsearch").click(function() {

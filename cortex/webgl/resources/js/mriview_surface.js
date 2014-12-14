@@ -13,11 +13,12 @@ var mriview = (function(module) {
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
         this.object = new THREE.Group();
+        this.object.name = 'Surface';
         this.uniforms = THREE.UniformsUtils.merge( [
             THREE.UniformsLib[ "lights" ],
             {
                 diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
-                specular:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
+                specular:   { type:'v3', value:new THREE.Vector3( .01,.01,.01 )},
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
                 shininess:  { type:'f',  value:1000},
                 specularStrength:{ type:'f',  value:1},
@@ -243,6 +244,7 @@ var mriview = (function(module) {
         var clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
         this.uniforms.specularStrength.value = 1-clipped;
         this.setPivot( 180 * clipped);
+        this.dispatchEvent({type:'mix', flat:clipped, mix:mix});
     };
     module.Surface.prototype.setPivot = function (val) {
         this._pivot = val;
@@ -293,19 +295,25 @@ var mriview = (function(module) {
 
     module.SurfDelegate = function(dataview) {
         this.object = new THREE.Group();
+        this.object.name = "SurfDelegate";
         this.update(dataview);
         this._update = this.update.bind(this);
         this._attrib = this.setAttribute.bind(this);
+        this._listeners = {};
     }
     module.SurfDelegate.prototype.update = function(dataview) {
         if (this.surf !== undefined) {
             this.object.remove(this.surf.object);
             this.surf.clearShaders();
+            for (var name in this._listeners)
+                this.surf.removeEventListener(name, this._listeners[name]);
         }
         var subj = dataview.data[0].subject;
         this.surf = subjects[subj];
         this.surf.init(dataview);
         this.object.add(this.surf.object);
+        for (var name in this._listeners)
+            this.surf.addEventListener(name, this._listeners[name]);
     }
     module.SurfDelegate.prototype.setAttribute = function(event) {
         var name = event.name, left = event.value[0], right = event.value[1];
@@ -323,6 +331,102 @@ var mriview = (function(module) {
     }
     module.SurfDelegate.prototype.apply = function(dataview) {
         return this.surf.apply(dataview);
+    }
+    module.SurfDelegate.prototype.addEventListener = function(name, func) {
+        this._listeners[name] = func;
+        this.surf.addEventListener(name, func);
+    }
+    module.SurfDelegate.prototype.removeEventListener = function(name, func) {
+        this.surf.removeEventListener(name, this._listeners[name]);
+        delete this._listeners[name];
+    }
+
+
+    module.VolumeSheets = function(dataview) {
+        if (dataview.vertex)
+            throw "Cannot show volume integration for vertex dataview"
+
+        this.shaders = {};
+        this.uniforms = THREE.UniformsUtils.merge( [
+            THREE.UniformsLib[ "lights" ],
+            {
+                diffuse:    { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+                specular:   { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+                emissive:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
+                shininess:  { type:'f',  value:0},
+                specularStrength:{ type:'f',  value:0},
+                dataAlpha:  { type:'f', value:.1},
+            }]);
+
+        this.object = new THREE.Group();
+        this.object.name = 'VolumeSheets'
+        this.setSheets(30);
+        this.update(dataview);
+    }
+    THREE.EventDispatcher.prototype.apply(module.VolumeSheets.prototype);
+    module.VolumeSheets.prototype.update = function(dataview) {
+        var shaders = dataview.getShader(Shaders.main, this.uniforms, {
+            viewspace:true,
+            depthTest:true,
+            depthWrite:false,
+            blending:THREE.AdditiveBlending,
+            transparent:true,
+            lights:false,
+        });
+        this.shaders[dataview.uuid] = shaders[0];
+
+        //compute dataview extents to scale the sheets
+        var xfm = new THREE.Matrix4();
+        xfm.set.apply(xfm, dataview.xfm);
+        var ixfm = (new THREE.Matrix4()).getInverse(xfm);
+        var zsize = dataview.data[0].mosaic;
+        var shape = dataview.data[0].shape;
+        var near = (new THREE.Vector3(0,0,0)).applyMatrix4(ixfm);
+        var far = (new THREE.Vector3(shape[0], shape[1], zsize[0]*zsize[1])).applyMatrix4(ixfm);
+        var mid = near.clone().multiplyScalar(0.5).add(far.clone().multiplyScalar(.5));
+
+        var scale = near.distanceTo(far);
+        this.object.scale.set(scale/2, scale/2, scale/2);
+        this.object.position.set(mid.x, mid.y, mid.z);
+    }
+    module.VolumeSheets.prototype.apply = function(dataview) {
+        this.mesh.material = this.shaders[dataview.uuid];
+        //this.sheets.material = this.debug_shade;
+    }
+    module.VolumeSheets.prototype.setSheets = function(n) {
+        this.n_sheets = n;
+        this.uniforms.dataAlpha.value = 1 / n;
+        var position = new THREE.BufferAttribute(new Float32Array(4*3*n), 3);
+        var index = new THREE.BufferAttribute(new Uint16Array(2*3*n), 3);
+        var normal = new THREE.BufferAttribute(new Float32Array(4*3*n), 3);
+        for (var i = 0; i < n; i++) {
+            var z = ((2*i+1) / (2*n))*2 - 1;
+            position.setXYZ(i*4  , -1, -1, z);
+            position.setXYZ(i*4+1,  1, -1, z);
+            position.setXYZ(i*4+2,  1,  1, z);
+            position.setXYZ(i*4+3, -1,  1, z);
+            normal.setXYZ(i*4  , 0, 0, 1);
+            normal.setXYZ(i*4+1, 0, 0, 1);
+            normal.setXYZ(i*4+2, 0, 0, 1);
+            normal.setXYZ(i*4+3, 0, 0, 1);
+            index.setXYZ(i*2  , i*4, i*4+1, i*4+2);
+            index.setXYZ(i*2+1, i*4, i*4+2, i*4+3);
+        }
+        this.sheets = new THREE.BufferGeometry();
+        this.sheets.addAttribute("position", position);
+        this.sheets.addAttribute("index", index);
+        this.sheets.addAttribute("normal", normal);
+
+        this.debug_shade = new THREE.MeshBasicMaterial({color:0xffcccc, 
+            side:THREE.DoubleSide,
+            transparent:true,
+            opacity:.1,
+            blending:THREE.AdditiveBlending,
+            depthTest:true,
+            depthWrite:false,
+        });
+        this.mesh = new THREE.Mesh(this.sheets, null);
+        this.object.add(this.mesh);
     }
 
     return module;

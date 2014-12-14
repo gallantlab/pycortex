@@ -11,10 +11,13 @@ var jsplot = (function (module) {
         }
 
         // scene and camera
-        this.camera = new THREE.PerspectiveCamera( 70, this.canvas.width()/this.canvas.height(), 1., 1000. );
+        this.camera = new THREE.PerspectiveCamera( 45, this.canvas.width()/this.canvas.height(), 1., 1000. );
         this.camera.up.set(0,0,1);
         this.camera.position.set(0, -500, 0);
         this.camera.lookAt(new THREE.Vector3(0,0,0));
+        this.controls = new THREE.LandscapeControls(this.canvas[0], this.camera);
+        this.controls.addEventListener("change", this.schedule.bind(this));
+        this.raycaster = new THREE.Raycaster();
         
         //These lights approximately match what's done by vtk
         this.lights = [new THREE.DirectionalLight( 0xffffff ), new THREE.DirectionalLight(0xffffff), new THREE.DirectionalLight(0xffffff)];
@@ -40,8 +43,6 @@ var jsplot = (function (module) {
         this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
         this.renderer.sortObjects = true;
 
-        this.oculus = new THREE.OculusRiftEffect(this.renderer, {worldScale:1000});
-
         this.state = "pause";
         this._startplay = null;
         this._animation = null;
@@ -53,6 +54,16 @@ var jsplot = (function (module) {
         });
         this.figure.register("playtoggle", this, this.playpause.bind(this));
         this.figure.register("setFrame", this, this.setFrame.bind(this));
+
+        this._schedule = function() {
+            this.draw();
+            if (this.state == "play" || this._animation != null) {
+                this.schedule();
+            }
+        }.bind(this);
+
+        this.root = new THREE.Group();
+        this.root.name = 'root';
     }
     module.Axes3D.prototype = Object.create(module.Axes.prototype);
     module.Axes3D.prototype.constructor = module.Axes3D;
@@ -68,8 +79,7 @@ var jsplot = (function (module) {
         this.width = w;
         this.height = h;
 
-        this.renderer.setSize( w , h );
-        this.oculus.setSize(w, h);
+        this.renderer.setSize( w/2 , h/2 );
         this.renderer.domElement.style.width = w + 'px'; 
         this.renderer.domElement.style.height = h + 'px'; 
 
@@ -82,12 +92,7 @@ var jsplot = (function (module) {
     module.Axes3D.prototype.schedule = function() {
         if (!this._scheduled) {
             this._scheduled = true;
-            requestAnimationFrame( function() {
-                this.draw();
-                if (this.state == "play" || this._animation != null) {
-                    this.schedule();
-                }
-            }.bind(this));
+            requestAnimationFrame( this._schedule );
         }
     };
     module.Axes3D.prototype.draw = function () {
@@ -126,7 +131,7 @@ var jsplot = (function (module) {
         this.dispatchEvent({type:"draw"});
     };
     module.Axes3D.prototype.drawView = function(scene) {
-        this.oculus.render(scene, this.camera);
+        this.renderer.render(scene, this.camera);
     };
     module.Axes3D.prototype.animate = function(animation) {
         var state = {};
@@ -233,6 +238,7 @@ var jsplot = (function (module) {
                     bottom = (n-i) / n;
                     scene = new THREE.Scene();
                     scene.add(this.camera);
+                    scene.add(this.root);
                     // scene.fsquad = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), null);
                     // scene.fsquad.position.z = -1.0001;
                     this.views.push({left:left, bottom:bottom, width:width, height:height, scene:scene});
