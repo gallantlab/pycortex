@@ -9,11 +9,10 @@ self.onmessage = function( event ) {
 		var stream = new CTM.Stream( event.data.data );
 		stream.offset = event.data.offsets[ i ];
 
-		var file = new CTM.File( stream );
+		self.postMessage( new CTM.File( stream ) );
 
 	}
-
-	self.postMessage( files );
+	
 	self.close();
 
 }

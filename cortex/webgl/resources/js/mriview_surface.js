@@ -93,6 +93,11 @@ var mriview = (function(module) {
                     posdata[name].push(hemi.attributes['mixSurfs'+json.names.length]);
                 }
 
+                //Generate an index list that has culled non-flatmap vertices
+                var culled = module._cull_flatmap_vertices(hemi.attributes.index.array, hemi.attributes.auxdat.array, hemi.offsets);
+                hemi.culled = { index: new THREE.BufferAttribute(culled.indices, 3), offsets:culled.offsets };
+                hemi.fullind = { index: hemi.attributes.index, offsets:hemi.offsets };
+
                 //Queue blank data attributes for vertexdata
                 hemi.addAttribute("data0", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data1", new THREE.BufferAttribute(new Float32Array(), 1));
@@ -237,11 +242,27 @@ var mriview = (function(module) {
         }
     };
 
+    var _last_clipped = 0;
     module.Surface.prototype.setMix = function(mix) {
         this.uniforms.surfmix.value = mix;
         var smix = mix * (this.names.length - 1);
         var factor = 1 - Math.abs(smix - (this.names.length-1));
         var clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
+
+        //Swap out the polys array between the culled and full when flattening
+        if (clipped > 0 && _last_clipped == 0) {
+            this.hemis.left.attributes.index = this.hemis.left.culled.index;
+            this.hemis.left.offsets = this.hemis.left.culled.offsets;
+            this.hemis.right.attributes.index = this.hemis.right.culled.index;
+            this.hemis.right.offsets = this.hemis.right.culled.offsets;
+        } else if (clipped == 0 && _last_clipped > 0) {
+            this.hemis.left.attributes.index = this.hemis.left.fullind.index;
+            this.hemis.left.offsets = this.hemis.left.fullind.offsets;
+            this.hemis.right.attributes.index = this.hemis.right.fullind.index;
+            this.hemis.right.offsets = this.hemis.right.fullind.offsets;
+        }
+        _last_clipped = clipped;
+
         this.uniforms.specularStrength.value = 1-clipped;
         this.setPivot( 180 * clipped);
         this.dispatchEvent({type:'mix', flat:clipped, mix:mix});

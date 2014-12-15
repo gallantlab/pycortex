@@ -106,6 +106,35 @@ var mriview = (function(module) {
         return canvas;
     }
 
+    module._cull_flatmap_vertices = function(indices, auxdat, offsets) {
+        var culled = new Uint16Array(indices.length), vA, vB, vC;
+        var newOffsets = [];
+        for ( j = 0, jl = offsets.length; j < jl; ++ j ) {
+
+            var start = offsets[ j ].start;
+            var count = offsets[ j ].count;
+            var index = offsets[ j ].index;
+            var nvert = 0;
+
+            for ( i = start, il = start + count; i < il; i += 3 ) {
+                vA = index + indices[ i ];
+                vB = index + indices[ i + 1 ];
+                vC = index + indices[ i + 2 ];
+
+                if (!auxdat[vA*4] && !auxdat[vB*4] && !auxdat[vC*4]) {
+                    culled[start + nvert*3 + 0] = indices[i];
+                    culled[start + nvert*3 + 1] = indices[i+1];
+                    culled[start + nvert*3 + 2] = indices[i+2];
+                    nvert++;
+                }
+
+            }
+            newOffsets.push({start:start, index:index, count:nvert*3});
+        }
+
+        return {indices:culled, offsets:newOffsets};
+    }
+
     module.computeNormal = function(vertices, index, offsets) {
         var i, il;
         var j, jl;

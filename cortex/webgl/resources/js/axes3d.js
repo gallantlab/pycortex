@@ -79,7 +79,7 @@ var jsplot = (function (module) {
         this.width = w;
         this.height = h;
 
-        this.renderer.setSize( w/2 , h/2 );
+        this.renderer.setSize( w , h );
         this.renderer.domElement.style.width = w + 'px'; 
         this.renderer.domElement.style.height = h + 'px'; 
 
