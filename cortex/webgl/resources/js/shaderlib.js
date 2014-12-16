@@ -583,21 +583,21 @@ var Shaderlib = (function() {
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+            "uniform sampler2D colormap;",
             "uniform float vmin[2];",
             "uniform float vmax[2];",
             "uniform float framemix;",
             "uniform float thickmix;",
 
+            "varying vec4 vColor;",
     "#ifdef RGBCOLORS",
             "attribute vec4 data0;",
             "attribute vec4 data1;",
-            "varying vec4 vColor;",
     "#else",
             "attribute float data0;",
             "attribute float data1;",
             "attribute float data2;",
             "attribute float data3;",
-            "varying vec2 vValue;",
     "#endif",
 
             "attribute vec4 wm;",
@@ -622,10 +622,14 @@ var Shaderlib = (function() {
         "#ifdef RGBCOLORS",
                 "vColor = mix(data0, data1, framemix);",
         "#else",
-                "vValue.x = (mix(data0, data1, framemix) - vmin[0]) / (vmax[0] - vmin[0]);",
+                "vec2 cuv;",
+        //         "vValue.x = (mix(data0, data1, framemix) - vmin[0]) / (vmax[0] - vmin[0]);",
+                "cuv.x = (mix(data0, data1, framemix) - vmin[0]) / (vmax[0] - vmin[0]);",
             "#ifdef TWOD",
-                "vValue.y = (mix(data2, data3, framemix) - vmin[1]) / (vmax[1] - vmin[1]);",
+        //         "vValue.y = (mix(data2, data3, framemix) - vmin[1]) / (vmax[1] - vmin[1]);",
+                "cuv.y = (mix(data2, data3, framemix) - vmin[1]) / (vmax[1] - vmin[1]);",
             "#endif",
+                "vColor = texture2D(colormap, cuv);",
         "#endif",
 
         "#ifdef CORTSHEET",
@@ -682,15 +686,14 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             "varying float vMedial;",
             "uniform float thickmix;",
-            "uniform sampler2D colormap;",
 
             utils.standard_frag_vars,
 
-        "#ifdef RGBCOLORS",
+        // "#ifdef RGBCOLORS",
             "varying vec4 vColor;",
-        "#else",
-            "varying vec2 vValue;",
-        "#endif",
+        // "#else",
+        //     "varying vec2 vValue;",
+        // "#endif",
 
             "void main() {",
                 //Curvature Underlay
@@ -706,9 +709,9 @@ var Shaderlib = (function() {
                 "vec4 rColor = texture2D(overlay, vUv);",
             "#endif",
 
-            "#ifndef RGBCOLORS",
-                "vec4 vColor = texture2D(colormap, vValue);",
-            "#endif",
+            // "#ifndef RGBCOLORS",
+            //     "vec4 vColor = texture2D(colormap, vValue);",
+            // "#endif",
 
 
                 "gl_FragColor = cColor;",
