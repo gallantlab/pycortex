@@ -83,35 +83,40 @@ var roilabel_fshader = [
     "}",
 ].join("\n");
 
-function ROIpack(svgdoc, renderer, positions) {
-    this.svgroi = svgdoc.getElementsByTagName("svg")[0];
-    this.svgroi.id = "svgroi";
+function ROIpack(svgpath, positions, callback) {
     this.layers = {};
     this.positions = positions;
-    this.renderer = renderer;
     this.layer_label_visibility = {};
 
-    for (var li=0; li<disp_layers.length; li++) {
-        this.layers[disp_layers[li]] = $(this.svgroi).find("#"+disp_layers[li]).find("path");
-        this.layers[disp_layers[li]].each(function() { this.removeAttribute("filter"); });
-        this.layer_label_visibility[disp_layers[li]] = true;
-    }
-    $(this.svgroi).find("defs").remove();
-
-    this.update_labels();
-
-    var w = this.svgroi.getAttribute("width");
-    var h = this.svgroi.getAttribute("height");
-    this.aspect = w / h;
-    this.svgroi.setAttribute("viewBox", "0 0 "+w+" "+h);
-
-    var gl = renderer.context;
-    var height = Math.min(4096, gl.getParameter(gl.MAX_TEXTURE_SIZE)) / this.aspect;
-    this.setHeight(height);
+    $.get(svgpath, null, this.init.bind(this));
+    this.callback = callback;
     
-    this.canvas = document.createElement("canvas");
+    var gl = document.createElement("canvas").getContext("experimental-webgl");
+    this.max_size = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 }
 ROIpack.prototype = {
+    init: function(svgdoc) {
+        this.svgroi = svgdoc.getElementsByTagName("svg")[0];
+        this.svgroi.id = "svgroi";
+        // for (var li=0; li<disp_layers.length; li++) {
+        //     this.layers[disp_layers[li]] = $(this.svgroi).find("#"+disp_layers[li]).find("path");
+        //     //this.layers[disp_layers[li]].each(function() { this.removeAttribute("filter"); });
+        //     this.layer_label_visibility[disp_layers[li]] = true;
+        // }
+        //$(this.svgroi).find("defs").remove();
+
+        //this.update_labels();
+
+        var w = this.svgroi.getAttribute("width");
+        var h = this.svgroi.getAttribute("height");
+        this.aspect = w / h;
+        this.svgroi.setAttribute("viewBox", "0 0 "+w+" "+h);
+
+        // var gl = renderer.context;
+        // var height = Math.min(4096, gl.getParameter(gl.MAX_TEXTURE_SIZE)) / this.aspect;
+        this.setHeight(Math.min(4096, this.max_size) / this.aspect);
+        this.update();
+    },
     update_labels: function() {
         var names = {};
         for (var li=0; li<disp_layers.length; li++) {
@@ -135,82 +140,50 @@ ROIpack.prototype = {
         this.width = this.height * this.aspect;
         this.svgroi.setAttribute("width", this.width);
         this.svgroi.setAttribute("height", this.height);
-        this._shadowtex = new ShadowTex(Math.ceil(this.width), Math.ceil(this.height), 4);
     }, 
-    update: function(renderer) {
+    update: function() {
         var loaded = $.Deferred();
 
-        for (var li=0; li<disp_layers.length; li++) {
-            var layer = disp_layers[li];
-            var fo = $("#"+layer+"_fillalpha").length > 0 ? $("#"+layer+"_fillalpha").slider("option", "value") : 0;
-            var lo = $("#"+layer+"_linealpha").length > 0 ? $("#"+layer+"_linealpha").slider("option", "value") : 1;
-            var fc = $("#"+layer+"_fillcolor").length > 0 ? $("#"+layer+"_fillcolor").attr("value") : "#000";
-            var lc = $("#"+layer+"_linecolor").length > 0 ? $("#"+layer+"_linecolor").attr("value") : "#FFF";
-            var lw = $("#"+layer+"_linewidth").length > 0 ? $("#"+layer+"_linewidth").slider("option", "value") : 3;
-            var sw = $("#"+layer+"_shadowalpha").length > 0 ? $("#"+layer+"_shadowalpha").slider("option", "value") : 5 ;
-            fo = "fill-opacity:" + fo;
-            lo = "stroke-opacity:" + lo;
-            fc = "fill:" + fc;
-            lc = "stroke:" + lc;
-            lw = "stroke-width:" + lw + "px";
-            sw = parseInt(sw);
+        // for (var li=0; li<disp_layers.length; li++) {
+        //     var layer = disp_layers[li];
+        //     var fo = $("#"+layer+"_fillalpha").length > 0 ? $("#"+layer+"_fillalpha").slider("option", "value") : 0;
+        //     var lo = $("#"+layer+"_linealpha").length > 0 ? $("#"+layer+"_linealpha").slider("option", "value") : 1;
+        //     var fc = $("#"+layer+"_fillcolor").length > 0 ? $("#"+layer+"_fillcolor").attr("value") : "#000";
+        //     var lc = $("#"+layer+"_linecolor").length > 0 ? $("#"+layer+"_linecolor").attr("value") : "#FFF";
+        //     var lw = $("#"+layer+"_linewidth").length > 0 ? $("#"+layer+"_linewidth").slider("option", "value") : 3;
+        //     var sw = $("#"+layer+"_shadowalpha").length > 0 ? $("#"+layer+"_shadowalpha").slider("option", "value") : 5 ;
+        //     fo = "fill-opacity:" + fo;
+        //     lo = "stroke-opacity:" + lo;
+        //     fc = "fill:" + fc;
+        //     lc = "stroke:" + lc;
+        //     lw = "stroke-width:" + lw + "px";
+        //     sw = parseInt(sw);
             
-            //WIP!
-            //style_array = [fo, lo, fc, lc, lw]
-            //(Then set style_array per path?) or set style first, then only update strokeDasharray per path?
-            oldstyle = this.layers[layer].attr("style")
-            console.log(oldstyle) // Hrm. This appears to be too late - the style has already been set before this prints out. Why?
-            // ...I thought this next line set the style...?
-            this.layers[layer].attr("style", [fo, lo, fc, lc, lw].join(";"));
-            // loop over paths
-            // PROBLEM: Still need to find wth the read-in svg line styles are. Must be where we got paths... but fuck if I know.
-            // for (var pth=0; pth<disp_layers[layer].length; pth++){
-            //     this.layers[layer][pth].strokeDasharray=olddasharray
-            //     this.layers[layer][pth].disp_layers[]
-            // }
-        }
-
-        var svg_xml = (new XMLSerializer()).serializeToString(this.svgroi);
-
-        // if (sw > 0) {
-        //     var sc = $("#roi_shadowcolor").length > 0 ? $("#roi_shadowcolor").val() : "#000";
-        //     sc = "stroke:" + sc;
-        //     this.rois.attr("style", [sc, fc, fo, lo, lw].join(";"));
-        //     this.sulci.attr("style", [fo, lo, fc, lc, lw].join(";"));
-        //     this.miscdisp.attr("style", [fo, lo, fc, lc, lw].join(";"));
-
-        //     var shadow_xml = (new XMLSerializer()).serializeToString(this.svgroi);
-
-        //     canvg(this.canvas, shadow_xml, {
-        //         ignoreMouse:true, 
-        //         ignoreAnimation:true,
-        //         ignoreClear:false,
-        //         renderCallback: function() {
-        //             this._shadowtex.setRadius(sw/4);
-        //             var tex = this._shadowtex.blur(renderer, new THREE.Texture(this.canvas));
-        //             canvg(this.canvas, svg_xml, {
-        //                 ignoreMouse:true,
-        //                 ignoreAnimation:true,
-        //                 renderCallback: function() {
-        //                     var tex = this._shadowtex.overlay(renderer, new THREE.Texture(this.canvas));
-        //                     loaded.resolve(tex);
-        //                 }.bind(this)
-        //             });
-        //         }.bind(this)
-        //     });
-
-        // } else {
-        canvg(this.canvas, svg_xml, {
-            ignoreMouse:true,
-            ignoreAnimation:true,
-            renderCallback:function() {
-                var tex = new THREE.Texture(this.canvas);
-                tex.needsUpdate = true;
-                tex.premultiplyAlpha = true;
-                loaded.resolve(tex);
-            }.bind(this),
-        });
+        //     //WIP!
+        //     //style_array = [fo, lo, fc, lc, lw]
+        //     //(Then set style_array per path?) or set style first, then only update strokeDasharray per path?
+        //     oldstyle = this.layers[layer].attr("style")
+        //     console.log(oldstyle) // Hrm. This appears to be too late - the style has already been set before this prints out. Why?
+        //     // ...I thought this next line set the style...?
+        //     this.layers[layer].attr("style", [fo, lo, fc, lc, lw].join(";"));
+        //     // loop over paths
+        //     // PROBLEM: Still need to find wth the read-in svg line styles are. Must be where we got paths... but fuck if I know.
+        //     // for (var pth=0; pth<disp_layers[layer].length; pth++){
+        //     //     this.layers[layer][pth].strokeDasharray=olddasharray
+        //     //     this.layers[layer][pth].disp_layers[]
+        //     // }
         // }
+
+        this.svgroi.toDataURL("image/png", {renderer:"native", callback:function(dataurl) {
+            var img = new Image();
+            img.src = dataurl;
+            var tex = new THREE.Texture(img);
+            tex.needsUpdate = true;
+            tex.premultiplyAlpha = true;
+            this.callback(tex);
+            loaded.resolve(tex);
+        }.bind(this)});
+
         return loaded.promise();
     }, 
 

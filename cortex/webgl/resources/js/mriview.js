@@ -18,6 +18,7 @@ var mriview = (function(module) {
         });
         this.canvas = $(this.object).find("#brain");
         jsplot.Axes3D.call(this, figure);
+        this.controls.addEventListener("pick", this.pick.bind(this));
 
         this.surfs = [];
         this.dataviews = {};
@@ -372,6 +373,19 @@ var mriview = (function(module) {
     //     var s = this.specular * (1 - this.flatmix);
     //     this.uniforms.specular.value.set(s, s, s);
     // };
+
+    module.Viewer.prototype.pick = function(evt) {
+        var x = (evt.x / this.width)*2 - 1;
+        var y = (evt.y / this.height)*2 - 1;
+        var vector = new THREE.Vector3(x, y, 1).unproject(this.camera);
+        this.raycaster.set(this.camera.position, vector.sub(this.camera.position).normalize());
+        for (var i = 0; i < this.surfs.length; i++) {
+            var intersects = this.raycaster.intersectObject(this.surfs[i].object, true);
+            if (intersects.length > 0 && this.surfs[i].pick) {
+                this.surfs[i].pick(intersects);
+            }
+        }
+    }
 
     module.Viewer.prototype.addData = function(data) {
         if (!(data instanceof Array))

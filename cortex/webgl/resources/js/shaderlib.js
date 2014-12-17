@@ -609,7 +609,7 @@ var Shaderlib = (function() {
             "varying vec3 vNormal;",
             "varying vec2 vUv;",
             "varying float vCurv;",
-            "varying float vMedial;",
+            //"varying float vMedial;",
             // "varying float vDrop;",
 
             utils.mixer(morphs),
@@ -646,7 +646,7 @@ var Shaderlib = (function() {
             "#endif",
 
                 // "vDrop = dropout;",
-                "vMedial = auxdat.x;",
+                //"vMedial = auxdat.x;",
                 "vCurv = auxdat.y;",
 
                 "vec3 pos, norm;",
@@ -684,7 +684,7 @@ var Shaderlib = (function() {
             // "uniform vec2 hatchrep;",
             // "varying float vDrop;",
             "varying float vCurv;",
-            "varying float vMedial;",
+            //"varying float vMedial;",
             "uniform float thickmix;",
 
             utils.standard_frag_vars,

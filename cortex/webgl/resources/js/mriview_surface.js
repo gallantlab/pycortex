@@ -1,10 +1,30 @@
 var mriview = (function(module) {
-    var flatscale = 0.25;
+    var flatscale = 0.3;
+
+    function makeAxes(length, color) {
+        function v(x,y,z){ 
+            return new THREE.Vector3(x,y,z); 
+        }
+        var lineGeo = new THREE.Geometry();
+        lineGeo.vertices.push(
+            v(-length, 0, 0), v(length, 0, 0),
+            v(0, -length, 0), v(0, length, 0),
+            v(0, 0, -length), v(0, 0, length)
+        );
+        var lineMat = new THREE.LineBasicMaterial({ color: color, linewidth: 2});
+        var axes = new THREE.Line(lineGeo, lineMat);
+        axes.type = THREE.Lines;
+
+        var vox = new THREE.BoxGeometry(1, 1, 1);
+        var voxMat = new THREE.MeshLambertMaterial({color:0xff0000, transparent:true, opacity:0.75});
+        var voxmesh = new THREE.Mesh(vox, voxMat);
+        return {axes:axes, vox:voxmesh};
+    }
 
     module.Surface = function(ctminfo) {
         this.loaded = $.Deferred();
 
-        this.meshes = [];
+        this.sheets = [];
         this.pivots = {};
         this.hemis = {};
         this.volume = 0;
@@ -30,7 +50,7 @@ var mriview = (function(module) {
                 //hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
                 hatchAlpha: { type:'f', value:1.},
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
-                overlay:    { type:'t', value:this.blanktex },
+                overlay:    { type:'t', value:null },
                 curvAlpha:  { type:'f', value:1.},
                 curvScale:  { type:'f', value:.5},
                 curvLim:    { type:'f', value:.2},
@@ -39,6 +59,12 @@ var mriview = (function(module) {
                 screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
         ]);
+
+        this._update_rois = function(tex) {
+            if (this.uniforms.overlay.dispose !== undefined)
+                this.uniforms.overlay.dispose();
+            this.uniforms.overlay.value = tex;
+        }.bind(this);
         
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, json ) {
@@ -70,6 +96,7 @@ var mriview = (function(module) {
             for (var name in names) {
                 var hemi = geometries[names[name]];
                 posdata[name].push(hemi.attributes.position);
+                hemi.name = "hemi_"+name;
 
                 //Put attributes in the correct locations for the shader
                 if (hemi.attributesKeys.indexOf('wm') != -1) {
@@ -115,11 +142,16 @@ var mriview = (function(module) {
             }
             this.setHalo(1);
 
+
+            //generate rois
+            this.roipack = new ROIpack(loader.extractUrlBase(ctminfo) + json.rois, posdata, this._update_rois);
+
             //Add anatomical and flat names
             this.names.unshift("anatomicals");
             if (this.flatlims !== undefined) {
                 this.names.push("flat");
             }
+
             this.loaded.resolve();
 
         }.bind(this), {useWorker:true});
@@ -139,15 +171,15 @@ var mriview = (function(module) {
         this.loaded.done(function() {
             var shaders = [];
             // Halo rendering code, ignore for now
-            // if (this.meshes.length > 1) { //setup meshes for halo rendering
-            //     for (var i = 0; i < this.meshes.length; i++) {
+            // if (this.sheets.length > 1) { //setup meshes for halo rendering
+            //     for (var i = 0; i < this.sheets.length; i++) {
             //         var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
             //             morphs:this.names.length, volume:1, rois: false, halo: true });
             //         for (var j = 0; j < shaders.length; j++) {
             //             shaders[j].transparent = i != 0;
             //             shaders[j].depthTest = true;
             //             shaders[j].depthWrite = i == 0;
-            //             shaders[j].uniforms.thickmix = {type:'f', value: 1 - i / (this.meshes.length-1)};
+            //             shaders[j].uniforms.thickmix = {type:'f', value: 1 - i / (this.sheets.length-1)};
             //             shaders[j].blending = THREE.CustomBlending;
             //             shaders[j].blendSrc = THREE.OneFactor;
             //             shaders[j].blendDst = THREE.OneFactor;
@@ -172,20 +204,26 @@ var mriview = (function(module) {
                 var shaders = dataview.getShader(Shaders.surface_vertex, this.uniforms, {
                             morphs:this.names.length, 
                             volume:this.volume, 
-                            rois:  false,
+                            rois:  this.roipack instanceof ROIpack,
                             halo: false,
                         });
             } else {
                 var shaders = dataview.getShader(Shaders.surface_pixel, this.uniforms, {
                             morphs:this.names.length, 
                             volume:this.volume, 
-                            rois:  false,
+                            rois:  this.roipack instanceof ROIpack,
                             halo: false,
                         });
             }
             this.shaders[dataview.uuid] = shaders[0];
         }.bind(this));
     };
+    module.Surface.prototype.pick = function(intersects) {
+        console.log(intersects[0].object.geometry.name);
+        var ax = makeAxes(500, 0xffffff);
+        this.object.add(ax.axes);
+        ax.axes.position.copy(intersects[0].point);
+    }
     module.Surface.prototype.clearShaders = function() {
         for (var name in this.shaders) {
             this.shaders[name].dispose();
@@ -194,49 +232,50 @@ var mriview = (function(module) {
     module.Surface.prototype.prerender = function(idx, renderer, scene, camera) {
         this.dispatchEvent({type:"prerender", idx:idx, renderer:renderer, scene:scene, camera:camera});
     }
-    var oldcolor, black = new THREE.Color(0,0,0);
-    module.Surface.prototype._prerender_halosurf = function(evt) {
-        var idx = evt.idx, renderer = evt.renderer, scene = evt.scene, camera = evt.camera;
-        camera.add(scene.fsquad);
-        scene.fsquad.material = this.quadshade[idx];
-        scene.fsquad.visible = false;
-        for (var i = 0; i < this.meshes.length; i++) {
-            this.meshes[i].left.material = this.preshaders[i][idx];
-            this.meshes[i].right.material = this.preshaders[i][idx];
-            this.meshes[i].left.visible = true;
-            this.meshes[i].right.visible = true;
-        }
-        oldcolor = renderer.getClearColor()
-        renderer.setClearColor(black, 0);
-        //renderer.render(scene, camera);
-        renderer.render(scene, camera, this.volumebuf);
-        renderer.setClearColor(oldcolor, 1);
-        for (var i = 1; i < this.meshes.length; i++) {
-            this.meshes[i].left.visible = false;
-            this.meshes[i].right.visible = false;
-        }
-        scene.fsquad.visible = true;
-    };
+
+    // var oldcolor, black = new THREE.Color(0,0,0);
+    // module.Surface.prototype._prerender_halosurf = function(evt) {
+    //     var idx = evt.idx, renderer = evt.renderer, scene = evt.scene, camera = evt.camera;
+    //     camera.add(scene.fsquad);
+    //     scene.fsquad.material = this.quadshade[idx];
+    //     scene.fsquad.visible = false;
+    //     for (var i = 0; i < this.sheets.length; i++) {
+    //         this.sheets[i].left.material = this.preshaders[i][idx];
+    //         this.sheets[i].right.material = this.preshaders[i][idx];
+    //         this.sheets[i].left.visible = true;
+    //         this.sheets[i].right.visible = true;
+    //     }
+    //     oldcolor = renderer.getClearColor()
+    //     renderer.setClearColor(black, 0);
+    //     //renderer.render(scene, camera);
+    //     renderer.render(scene, camera, this.volumebuf);
+    //     renderer.setClearColor(oldcolor, 1);
+    //     for (var i = 1; i < this.sheets.length; i++) {
+    //         this.sheets[i].left.visible = false;
+    //         this.sheets[i].right.visible = false;
+    //     }
+    //     scene.fsquad.visible = true;
+    // };
 
     module.Surface.prototype.apply = function(dataview) {
-        for (var i = 0; i < this.meshes.length; i++) {
-            this.meshes[i].left.material = this.shaders[dataview.uuid];
-            this.meshes[i].right.material = this.shaders[dataview.uuid];
+        for (var i = 0; i < this.sheets.length; i++) {
+            this.sheets[i].left.material = this.shaders[dataview.uuid];
+            this.sheets[i].right.material = this.shaders[dataview.uuid];
         }
     };
 
     module.Surface.prototype.setHalo = function(layers) {
         var lmesh, rmesh;
         layers = Math.max(layers, 1);
-        for (var i = 0; i < this.meshes.length; i++) {
-            this.pivots.left.back.remove(this.meshes[i].left);
-            this.pivots.right.back.remove(this.meshes[i].right);
+        for (var i = 0; i < this.sheets.length; i++) {
+            this.pivots.left.back.remove(this.sheets[i].left);
+            this.pivots.right.back.remove(this.sheets[i].right);
         }
-        this.meshes = [];
+        this.sheets = [];
         for (var i = 0; i < layers; i++) {
             lmesh = this._makeMesh(this.hemis.left);
             rmesh = this._makeMesh(this.hemis.right);
-            this.meshes.push({left:lmesh, right:rmesh});
+            this.sheets.push({left:lmesh, right:rmesh});
             this.pivots.left.back.add(lmesh);
             this.pivots.right.back.add(rmesh);
         }
@@ -340,6 +379,9 @@ var mriview = (function(module) {
         var name = event.name, left = event.value[0], right = event.value[1];
         this.surf.hemis.left.attributes[name] = left;
         this.surf.hemis.right.attributes[name] = right;
+    }
+    module.SurfDelegate.prototype.pick = function(intersects) {
+        return this.surf.pick(intersects);
     }
     module.SurfDelegate.prototype.setMix = function(mix) {
         return this.surf.setMix(mix);
