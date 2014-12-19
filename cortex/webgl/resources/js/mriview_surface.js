@@ -59,12 +59,6 @@ var mriview = (function(module) {
                 screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
         ]);
-
-        this._update_rois = function(tex) {
-            if (this.uniforms.overlay.dispose !== undefined)
-                this.uniforms.overlay.dispose();
-            this.uniforms.overlay.value = tex;
-        }.bind(this);
         
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, json ) {
@@ -93,9 +87,11 @@ var mriview = (function(module) {
 
             var names = {left:0, right:1};
             var posdata = {left:[], right:[]};
+            var posnorms = {left:[], right:[]};
             for (var name in names) {
                 var hemi = geometries[names[name]];
                 posdata[name].push(hemi.attributes.position);
+                posnorms[name].push(hemi.attributes.normal);
                 hemi.name = "hemi_"+name;
 
                 //Put attributes in the correct locations for the shader
@@ -107,7 +103,8 @@ var mriview = (function(module) {
                 for (var i = 0; i < json.names.length; i++ ) {
                     hemi.attributes['mixSurfs'+i] = hemi.attributes[json.names[i]];
                     hemi.addAttribute('mixNorms'+i, module.computeNormal(hemi.attributes[json.names[i]], hemi.attributes.index, hemi.offsets) );
-                    posdata[name].push(hemi.attributes['mixSurfs'+i].array);
+                    posdata[name].push(hemi.attributes['mixSurfs'+i]);
+                    posnorms[name].push(hemi.attributes['mixNorms'+i])
                     delete hemi.attributes[json.names[i]];
                 }
                 //Setup flatmap mix
@@ -118,6 +115,7 @@ var mriview = (function(module) {
                     hemi.attributes['mixSurfs'+json.names.length].needsUpdate = true;
                     hemi.attributes['mixNorms'+json.names.length].needsUpdate = true;
                     posdata[name].push(hemi.attributes['mixSurfs'+json.names.length]);
+                    posnorms[name].push(hemi.attributes['mixNorms'+json.names.length]);
                 }
 
                 //Generate an index list that has culled non-flatmap vertices
@@ -142,9 +140,15 @@ var mriview = (function(module) {
             }
             this.setHalo(1);
 
-
             //generate rois
-            this.roipack = new ROIpack(loader.extractUrlBase(ctminfo) + json.rois, posdata, this._update_rois);
+            if (this.flatlims !== undefined) {
+                this._update_rois = function(tex) {
+                    if (this.uniforms.overlay.dispose !== undefined)
+                        this.uniforms.overlay.dispose();
+                    this.uniforms.overlay.value = tex;
+                }.bind(this);
+                this.roipack = new ROIpack(loader.extractUrlBase(ctminfo) + json.rois, posdata, this._update_rois);
+            }
 
             //Add anatomical and flat names
             this.names.unshift("anatomicals");
@@ -152,20 +156,29 @@ var mriview = (function(module) {
                 this.names.push("flat");
             }
 
+            //create picker
+            this.picker = new PickPosition(this, posdata, posnorms);
+            this.picker.markers.left.position.y = -this.flatoff[1];
+            this.picker.markers.right.position.y = -this.flatoff[1];
+            this.pivots.left.back.add(this.picker.markers.left);
+            this.pivots.right.back.add(this.picker.markers.right);
+            this.addEventListener("mix", this.picker.setMix.bind(this.picker));
+
             this.loaded.resolve();
 
         }.bind(this), {useWorker:true});
     };
     THREE.EventDispatcher.prototype.apply(module.Surface.prototype);
-    module.Surface.prototype.resize = function(width, height) {
-        this.volumebuf = new THREE.WebGLRenderTarget(width, height, {
-            minFilter: THREE.LinearFilter,
-            magFilter: THREE.LinearFilter,
-            format:THREE.RGBAFormat,
-            stencilBuffer:false,
-        });
-        this.uniforms.screen.value = this.volumebuf;
-        this.uniforms.screen_size.value.set(width, height);
+    module.Surface.prototype.resize = function(evt) {
+    //     this.volumebuf = new THREE.WebGLRenderTarget(width, height, {
+    //         minFilter: THREE.LinearFilter,
+    //         magFilter: THREE.LinearFilter,
+    //         format:THREE.RGBAFormat,
+    //         stencilBuffer:false,
+    //     });
+    //     this.uniforms.screen.value = this.volumebuf;
+    //     this.uniforms.screen_size.value.set(width, height);
+        this.loaded.done(function() {this.picker.resize(evt.width, evt.height);}.bind(this));
     };
     module.Surface.prototype.init = function(dataview) { 
         this.loaded.done(function() {
@@ -201,28 +214,22 @@ var mriview = (function(module) {
             //     this.quadshade.depthWrite = false;
             // } else {
             if (dataview.vertex) {
-                var shaders = dataview.getShader(Shaders.surface_vertex, this.uniforms, {
-                            morphs:this.names.length, 
-                            volume:this.volume, 
-                            rois:  this.roipack instanceof ROIpack,
-                            halo: false,
-                        });
+                var shade_cls = Shaders.surface_vertex;
             } else {
-                var shaders = dataview.getShader(Shaders.surface_pixel, this.uniforms, {
-                            morphs:this.names.length, 
-                            volume:this.volume, 
-                            rois:  this.roipack instanceof ROIpack,
-                            halo: false,
-                        });
+                var shade_cls = Shaders.surface_pixel;
             }
+            var shaders = dataview.getShader(shade_cls, this.uniforms, {
+                morphs:this.names.length, 
+                volume:this.volume, 
+                rois:  this.roipack instanceof ROIpack,
+                halo: false,
+            });
             this.shaders[dataview.uuid] = shaders[0];
         }.bind(this));
     };
-    module.Surface.prototype.pick = function(intersects) {
-        console.log(intersects[0].object.geometry.name);
-        var ax = makeAxes(500, 0xffffff);
-        this.object.add(ax.axes);
-        ax.axes.position.copy(intersects[0].point);
+    module.Surface.prototype.pick = function(renderer, camera, x, y) {
+        // console.log(intersects[0].object.geometry.name);
+        this.picker.pick(renderer, camera, x, y, false);
     }
     module.Surface.prototype.clearShaders = function() {
         for (var name in this.shaders) {
@@ -257,10 +264,18 @@ var mriview = (function(module) {
     //     scene.fsquad.visible = true;
     // };
 
+    var _last_dataview;
     module.Surface.prototype.apply = function(dataview) {
-        for (var i = 0; i < this.sheets.length; i++) {
-            this.sheets[i].left.material = this.shaders[dataview.uuid];
-            this.sheets[i].right.material = this.shaders[dataview.uuid];
+        if (_last_dataview != dataview.uuid) {
+            this.loaded.done(function() {
+                for (var i = 0; i < this.sheets.length; i++) {
+                    this.sheets[i].left.material = this.shaders[dataview.uuid];
+                    this.sheets[i].right.material = this.shaders[dataview.uuid];
+                }
+
+                this.picker.apply(dataview)
+            }.bind(this));
+            _last_dataview = dataview.uuid;
         }
     };
 
@@ -359,6 +374,7 @@ var mriview = (function(module) {
         this.update(dataview);
         this._update = this.update.bind(this);
         this._attrib = this.setAttribute.bind(this);
+        this._resize = this.resize.bind(this);
         this._listeners = {};
     }
     module.SurfDelegate.prototype.update = function(dataview) {
@@ -380,8 +396,8 @@ var mriview = (function(module) {
         this.surf.hemis.left.attributes[name] = left;
         this.surf.hemis.right.attributes[name] = right;
     }
-    module.SurfDelegate.prototype.pick = function(intersects) {
-        return this.surf.pick(intersects);
+    module.SurfDelegate.prototype.pick = function(renderer, camera, x, y) {
+        return this.surf.pick(renderer, camera, x, y);
     }
     module.SurfDelegate.prototype.setMix = function(mix) {
         return this.surf.setMix(mix);
@@ -394,6 +410,9 @@ var mriview = (function(module) {
     }
     module.SurfDelegate.prototype.apply = function(dataview) {
         return this.surf.apply(dataview);
+    }
+    module.SurfDelegate.prototype.resize = function(evt) {
+        return this.surf.resize(evt);
     }
     module.SurfDelegate.prototype.addEventListener = function(name, func) {
         this._listeners[name] = func;

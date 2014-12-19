@@ -18,7 +18,6 @@ var mriview = (function(module) {
         });
         this.canvas = $(this.object).find("#brain");
         jsplot.Axes3D.call(this, figure);
-        this.controls.addEventListener("pick", this.pick.bind(this));
 
         this.surfs = [];
         this.dataviews = {};
@@ -374,18 +373,7 @@ var mriview = (function(module) {
     //     this.uniforms.specular.value.set(s, s, s);
     // };
 
-    module.Viewer.prototype.pick = function(evt) {
-        var x = (evt.x / this.width)*2 - 1;
-        var y = (evt.y / this.height)*2 - 1;
-        var vector = new THREE.Vector3(x, y, 1).unproject(this.camera);
-        this.raycaster.set(this.camera.position, vector.sub(this.camera.position).normalize());
-        for (var i = 0; i < this.surfs.length; i++) {
-            var intersects = this.raycaster.intersectObject(this.surfs[i].object, true);
-            if (intersects.length > 0 && this.surfs[i].pick) {
-                this.surfs[i].pick(intersects);
-            }
-        }
-    }
+
 
     module.Viewer.prototype.addData = function(data) {
         if (!(data instanceof Array))
@@ -543,6 +531,7 @@ var mriview = (function(module) {
 
         this.active.addEventListener("update", surf._update);
         this.active.addEventListener("attribute", surf._attrib);
+        this.addEventListener("resize", surf._resize);
         this.schedule();
         return surf;
     };
@@ -551,11 +540,19 @@ var mriview = (function(module) {
             if (this.surfs[i].constructor == surftype) {
                 this.active.removeEventListener("update", this.surfs[i]._update);
                 this.active.removeEventListener("attribute", this.surfs[i]._attrib);
+                this.removeEventListener("resize", this.surfs[i]._resize);
 
                 this.root.remove(this.surfs[i].object);
             }
         }
         this.schedule();
+    }
+
+    module.Viewer.prototype.pick = function(evt) {
+        for (var i = 0; i < this.surfs.length; i++) {
+            if (this.surfs[i].pick)
+                this.surfs[i].pick(this.renderer, this.camera, evt.x, evt.y);
+        }
     }
 
     module.Viewer.prototype.setupStim = function() {

@@ -1,22 +1,32 @@
-function FacePick(viewer, left, right) {
-    this.viewer = viewer;
-
+function PickPosition(surf, posdata, posnorms) {
+    var left = surf.hemis.left, right = surf.hemis.right;
     var worker = new Worker("resources/js/facepick_worker.js");
     worker.addEventListener("message", function(e) {
         var dist = function (a, b) {
-            return Math.sqrt((a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]));
+            return (a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]);
         }
         kdt = new kdTree([], dist, [0, 1, 2]);
         kdt.root = e.data.kdt;
         this[e.data.name] = kdt;
     }.bind(this));
-    worker.postMessage({pos:left, name:"lkdt"});
-    worker.postMessage({pos:right, name:"rkdt"});
+    worker.postMessage({pos:left.attributes.position.array, name:"lkdt"});
+    worker.postMessage({pos:right.attributes.position.array, name:"rkdt"});
+    
+    surf.addEventListener("mix", this.setMix.bind(this));
+
+    this.xfm = new THREE.Matrix4();
+    this.scene = new THREE.Scene();
+    this.scene.children.push(surf.object);
+
+    this.posdata = posdata;
+    this.posnorms = posnorms;
+    this.wm = {left:surf.hemis.left.attributes.wm, right:surf.hemis.right.attributes.wm};
+    this.revIndex = {left:surf.hemis.left.reverseIndexMap, right:surf.hemis.right.reverseIndexMap};
 
     this.axes = [];
 
-    var lbound = this.viewer.meshes.left.geometry.boundingBox;
-    var rbound = this.viewer.meshes.right.geometry.boundingBox;
+    var lbound = left.boundingBox;
+    var rbound = right.boundingBox;
     var min = new THREE.Vector3(
         Math.min(lbound.min.x, rbound.min.x), 
         Math.min(lbound.min.y, rbound.min.y),
@@ -30,16 +40,16 @@ function FacePick(viewer, left, right) {
     this.uniforms = {
         min:    { type:'v3', value:this.bounds.min},
         max:    { type:'v3', value:this.bounds.max},
-        hide_mwall: this.viewer.uniforms.hide_mwall,
+        thickmix:surf.uniforms.thickmix,
+        surfmix:surf.uniforms.surfmix,
     };
 
-    var shaders = Shaders.pick();
+    var shaders = Shaders.pick({morphs:surf.names.length, volume:surf.volume});
     this.shade_x = new THREE.ShaderMaterial({
         vertexShader: shaders.vertex,
         fragmentShader: shaders.fragment[0],
         uniforms: this.uniforms,
-        attributes: { auxdat:true, },
-        morphTargets:true, 
+        attributes: shaders.attrs,
         blending: THREE.CustomBlending,
         blendSrc: THREE.OneFactor,
         blendDst: THREE.ZeroFactor,
@@ -48,8 +58,7 @@ function FacePick(viewer, left, right) {
         vertexShader: shaders.vertex,
         fragmentShader: shaders.fragment[1],
         uniforms: this.uniforms,
-        attributes: { auxdat:true, },
-        morphTargets:true,
+        attributes: shaders.attrs,
         blending: THREE.CustomBlending,
         blendSrc: THREE.OneFactor,
         blendDst: THREE.ZeroFactor,
@@ -58,17 +67,43 @@ function FacePick(viewer, left, right) {
         vertexShader: shaders.vertex,
         fragmentShader: shaders.fragment[2],
         uniforms: this.uniforms,
-        attributes: { auxdat:true, },
-        morphTargets:true,
+        attributes: shaders.attrs,
         blending: THREE.CustomBlending,
         blendSrc: THREE.OneFactor,
         blendDst: THREE.ZeroFactor,
     });
-    this.resize($("#brain").width(), $("#brain").height());
+
+    this.markers = {left:new THREE.Group(), right:new THREE.Group()};
 }
-FacePick.prototype = {
+PickPosition.prototype = {
+    //Set the transform for any voxels
+    apply: function(dataview) {
+        if (dataview)
+            this.xfm.set.apply(this.xfm, dataview.xfm);
+
+        for (var i = 0; i < this.axes.length; i++) {
+            var ax = this.axes[i];
+            var vert = this._getPos(ax.hemi, ax.idx);
+
+            var inv = (new THREE.Matrix4()).getInverse(this.xfm);
+            var vox = vert.base.clone().applyMatrix4(this.xfm);
+            var voxpos = new THREE.Vector3(Math.round(vox.x), Math.round(vox.y), Math.round(vox.z));
+            ax.vox.applyMatrix(inv);
+            ax.vox.position.copy(voxpos.applyMatrix4(inv).sub(vert.base));
+
+            ax.vox.visible = this.uniforms.surfmix.value == 0;
+            ax.group.position.copy(addFlatNorm(vert.pos, vert.norm, this.uniforms.surfmix.value));
+            //console.log(marker.position);
+            ax.group.scale.x = 1.000-this.uniforms.surfmix.value;
+        }
+    },
     resize: function(w, h) {
-        this._valid = false;
+        if (this.x) {
+            this.x.dispose();
+            this.y.dispose();
+            this.z.dispose();
+        }
+        
         this.height = h;
         this.x = new THREE.WebGLRenderTarget(w, h, {
             minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
@@ -87,38 +122,30 @@ FacePick.prototype = {
         });
     },
 
-    draw: function(debug) {
-        var renderer = this.viewer.renderer;
+    draw: function(renderer, camera, debug) {
         var clearAlpha = renderer.getClearAlpha();
         var clearColor = renderer.getClearColor();
-        renderer.setClearColorHex(0x0, 0);
+        renderer.setClearColor(0x0, 0);
 
-        for (var i = 0; i < this.axes.length; i++) {
-            this.axes[i].obj.visible = false;
-        }
+        this.markers.left.visible = false;
+        this.markers.right.visible = false;
 
-        this.viewer.scene.overrideMaterial = this.shade_x;
+        this.scene.overrideMaterial = this.shade_x;
         if (debug)
-            renderer.render(this.viewer.scene, this.viewer.camera);
-        renderer.render(this.viewer.scene, this.viewer.camera, this.x);
-        this.viewer.scene.overrideMaterial = this.shade_y;
-        renderer.render(this.viewer.scene, this.viewer.camera, this.y);
-        this.viewer.scene.overrideMaterial = this.shade_z;
-        renderer.render(this.viewer.scene, this.viewer.camera, this.z);
-        this.viewer.scene.overrideMaterial = null;
+            renderer.render(this.scene, camera);
+        renderer.render(this.scene, camera, this.x);
+        this.scene.overrideMaterial = this.shade_y;
+        renderer.render(this.scene, camera, this.y);
+        this.scene.overrideMaterial = this.shade_z;
+        renderer.render(this.scene, camera, this.z);
 
-        for (var i = 0; i < this.axes.length; i++) {
-            this.axes[i].obj.visible = true;
-        }
+        this.markers.left.visible = true;
+        this.markers.right.visible = true;
 
         renderer.setClearColor(clearColor, clearAlpha);
-        this._valid = true;
     },
 
-    _pick: function(x, y) {
-        if (!this._valid)
-            this.draw();
-        var gl = this.viewer.renderer.context;
+    _pick: function(x, y, gl) {
         var unpack = function(buf) {
             return buf[0]/(256*256*256*256) + buf[1]/(256*256*256) + buf[2]/(256*256) + buf[3]/256;
         }
@@ -127,9 +154,10 @@ FacePick.prototype = {
             if (coord.x == 0 && coord.y == 0 && coord.z == 0)
                 return;
 
-            var range = this.bounds.max.clone().subSelf(this.bounds.min);
-            return coord.multiplySelf(range).addSelf(this.bounds.min);
+            var range = this.bounds.max.clone().sub(this.bounds.min);
+            return coord.multiply(range).add(this.bounds.min);
         }.bind(this);
+
         var xbuf = new Uint8Array(4);
         var ybuf = new Uint8Array(4);
         var zbuf = new Uint8Array(4);
@@ -151,22 +179,22 @@ FacePick.prototype = {
         }
     },
 
-    pick: function(x, y, keep) {
+    pick: function(renderer, scene, x, y, keep) {
         // DISABLE MULTI-CURSORS to make linking to voxels easy
-        var p = this._pick(x, y);
+        this.draw(renderer, scene);
+        var p = this._pick(x, y, renderer.context);
         if (p) {
-            var vec = this.viewer.uniforms.volxfm.value[0].multiplyVector3(p.pos.clone());
-            console.log("Picked vertex "+p.ptidx+" in "+p.hemi+" hemisphere, distance="+p.dist+", voxel=["+vec.x+","+vec.y+","+vec.z+"]");
+            var vec = p.pos.clone().applyMatrix4(this.xfm);
+            var idx = this.revIndex[p.hemi][p.ptidx];
+            console.log("Picked vertex "+idx+" in "+p.hemi+" hemisphere, voxel=["+vec.x+","+vec.y+","+vec.z+"]");
             this.addMarker(p.hemi, p.ptidx, keep);
-            this.viewer.figure.notify("pick", this, [vec]);
             if (this.callback !== undefined)
                 this.callback(vec, p.hemi, p.ptidx);
         } else {
             for (var i = 0; i < this.axes.length; i++) {
-                this.axes[i].obj.parent.remove(this.axes[i].obj);
+                this.markers[this.axes[i].hemi].remove(this.axes[i].group);
             }
             this.axes = [];
-            this.viewer.schedule();
         }
     },
     
@@ -222,43 +250,53 @@ FacePick.prototype = {
     },
 
     _getPos: function(hemi, idx) {
-        var geom = this.viewer.meshes[hemi].geometry;
-        var influ = this.viewer.meshes[hemi].morphTargetInfluences;
+        var positions = this.posdata[hemi];
+        var normals = this.posnorms[hemi];
+        var stride = positions[0].itemSize;
 
-        var sum = 0;
-        var pos = new THREE.Vector3(), norm = new THREE.Vector3();
-        for (var i = 0; i < influ.length; i++) {
-            var stride = geom.morphTargets[i].stride;
-            sum += influ[i];
-            pos.addSelf((new THREE.Vector3(
-                geom.morphTargets[i].array[stride*idx+0],
-                geom.morphTargets[i].array[stride*idx+1],
-                geom.morphTargets[i].array[stride*idx+2])).multiplyScalar(influ[i]));
-            norm.addSelf((new THREE.Vector3(
-                geom.morphNormals[i][idx*3+0],
-                geom.morphNormals[i][idx*3+1],
-                geom.morphNormals[i][idx*3+2])).multiplyScalar(influ[i]));
+        var pos = new THREE.Vector3(
+            positions[0].array[idx*stride+0],
+            positions[0].array[idx*stride+1],
+            positions[0].array[idx*stride+2]
+        )
+        var norm = new THREE.Vector3(
+            normals[0].array[idx*3+0],
+            normals[0].array[idx*3+1],
+            normals[0].array[idx*3+2]
+        )
+
+        if (this.wm[hemi]) {
+            stride = this.wm[hemi].itemSize;
+            pos.multiplyScalar(1 - this.uniforms.thickmix.value).add(
+                (new THREE.Vector3(
+                    this.wm[hemi].array[idx*stride+0],
+                    this.wm[hemi].array[idx*stride+1],
+                    this.wm[hemi].array[idx*stride+2]
+                )).multiplyScalar(this.uniforms.thickmix.value)
+            )
         }
-        var fid = new THREE.Vector3(
-            geom.attributes.position.array[idx*3],
-            geom.attributes.position.array[idx*3+1],
-            geom.attributes.position.array[idx*3+2]);
-        if (geom.attributes.wm) {
-            var mix = this.viewer.uniforms.thickmix.value;
-            var stride = geom.attributes.wm.stride;
-            fid.multiplyScalar(1-mix).addSelf(new THREE.Vector3(
-                geom.attributes.wm.array[idx*stride],
-                geom.attributes.wm.array[idx*stride+1],
-                geom.attributes.wm.array[idx*stride+2]).multiplyScalar(mix)
-            );
+        var base = pos.clone();
+
+        var mix = this.uniforms.surfmix.value * (positions.length-1);
+        var factor = Math.max(0, Math.min(1, 1 - mix));
+        pos.multiplyScalar(factor);
+        norm.multiplyScalar(factor);
+        for (var i = 1; i < positions.length; i++) {
+            stride = positions[i].itemSize;
+            factor = Math.max(0, Math.min(1, 1-Math.abs(mix-i) ));
+            pos.add((new THREE.Vector3(
+                positions[i].array[idx*stride+0],
+                positions[i].array[idx*stride+1],
+                positions[i].array[idx*stride+2]
+            )).multiplyScalar(factor));
+            norm.add((new THREE.Vector3(
+                normals[i].array[idx*3+0],
+                normals[i].array[idx*3+1],
+                normals[i].array[idx*3+2]
+            )).multiplyScalar(factor));
         }
 
-        pos.addSelf(fid.clone().multiplyScalar(1-sum));
-        norm.addSelf((new THREE.Vector3(
-            geom.attributes.normal.array[idx*3],
-            geom.attributes.normal.array[idx*3+1],
-            geom.attributes.normal.array[idx*3+2])).multiplyScalar(1-sum));
-        return {pos:pos, norm:norm, fid:fid, name:hemi};
+        return {pos:pos, norm:norm, name:hemi, base:base};
     },
 
     undblpick: function() {
@@ -271,13 +309,12 @@ FacePick.prototype = {
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
             vert = this._getPos(ax.hemi, ax.idx);
-            //ax.obj.position = vert.pos;
-	    ax.obj.position = addFlatNorm(vert.pos, vert.norm, mixevt.mix);
+            ax.group.position.copy(vert.pos);
+	        // ax.obj.position = addFlatNorm(vert.pos, vert.norm, mixevt.mix);
             // Rescale axes for flat view
-            ax.obj.scale.x = 1.000-mixevt.flat;
-            ax.obj.children[1].visible = mixevt.mix == 0;
+            ax.group.scale.x = 1.000-mixevt.flat;
+            ax.group.children[1].visible = mixevt.mix == 0;
         }
-        this._valid = false;
     },
 
     addMarker: function(hemi, ptidx, keep) {
@@ -286,40 +323,22 @@ FacePick.prototype = {
             if (keep === true) {
                 this.axes[i].obj.material.color.setRGB(180,180,180);
             } else {
-                this.axes[i].obj.parent.remove(this.axes[i].obj);
+                this.markers[this.axes[i].hemi].remove(this.axes[i].group);
+                delete this.axes[i];
             }
         }
-        if (keep !== true)
+
+        if (!keep)
             this.axes = [];
-	
 	
 	// Create axes
         var axes = makeAxes(500, 0xffffff);
-	
-	// Create voxel box
-        var xfm = this.viewer.uniforms.volxfm.value[0];
-        var inv = new THREE.Matrix4().getInverse(xfm);
-        var vox = xfm.multiplyVector3(vert.fid.clone());
-        var voxpos = new THREE.Vector3(Math.round(vox.x), Math.round(vox.y), Math.round(vox.z));
-        axes.vox.applyMatrix(inv)
-        axes.vox.position = inv.multiplyVector3(voxpos).subSelf(vert.fid);
-        var mat = axes.vox.matrix.elements;
-        for (var i = 0; i < 16; i++) {
-            if (Math.abs(mat[i]) < 1e-8)
-                mat[i] = 0;
-        }
-	axes.vox.visible = this.viewer.getState("mix") == 0;
-
-        var marker = new THREE.Object3D();
-        marker.add(axes.axes);
-        marker.add(axes.vox);
-        marker.position = addFlatNorm(vert.pos, vert.norm, this.viewer.getState("mix"));
-        marker.scale.x = 1.000-this.viewer.flatmix;
-
-        this.axes.push({idx:ptidx, obj:marker, hemi:hemi});
-        this.viewer.meshes[vert.name].add(marker);
-	//this.setMix({mix:this.viewer.getState("mix"), flat:this.viewer.getState("flat")});
-        this.viewer.schedule();
+        var group = new THREE.Group();
+        group.add(axes.axes);
+        group.add(axes.vox);
+        this.markers[hemi].add(group);
+        this.axes.push({idx:ptidx, group:group, vox:axes.vox, axes:axes.axes, hemi:hemi});
+        this.apply();
     }
 }
 
@@ -327,7 +346,7 @@ function addFlatNorm(pos, norm, flatmix) {
     var posfrac = flatmix - 0.01;
     var normfrac = flatmix;
     //return pos.clone().multiplyScalar(posfrac).addSelf(norm.clone().multiplyScalar(normfrac));
-    return pos.clone().addSelf(norm.clone().multiplyScalar(normfrac));
+    return pos.clone().add(norm.clone().multiplyScalar(normfrac));
 }
 
 function makeAxes(length, color) {
@@ -336,15 +355,15 @@ function makeAxes(length, color) {
     }
     var lineGeo = new THREE.Geometry();
     lineGeo.vertices.push(
-        v(-length, 0, 0), v(length, 0, 0),
-        v(0, -length, 0), v(0, length, 0),
-        v(0, 0, -length), v(0, 0, length)
+        v(-length, 0, 0), v(0,0,0), v(length, 0, 0), v(0,0,0),
+        v(0, -length, 0), v(0,0,0), v(0, length, 0), v(0,0,0),
+        v(0, 0, -length), v(0,0,0), v(0, 0, length), v(0,0,0)
     );
     var lineMat = new THREE.LineBasicMaterial({ color: color, linewidth: 2});
     var axes = new THREE.Line(lineGeo, lineMat);
     axes.type = THREE.Lines;
 
-    var vox = new THREE.CubeGeometry(1, 1, 1);
+    var vox = new THREE.BoxGeometry(1, 1, 1);
     var voxMat = new THREE.MeshLambertMaterial({color:0xff0000, transparent:true, opacity:0.75});
     var voxmesh = new THREE.Mesh(vox, voxMat);
     return {axes:axes, vox:voxmesh};

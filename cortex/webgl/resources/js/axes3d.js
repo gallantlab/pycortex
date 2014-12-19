@@ -17,16 +17,19 @@ var jsplot = (function (module) {
         this.camera.lookAt(new THREE.Vector3(0,0,0));
         this.controls = new THREE.LandscapeControls(this.canvas[0], this.camera);
         this.controls.addEventListener("change", this.schedule.bind(this));
+        this.controls.addEventListener("pick", this.pick.bind(this));
+        
         this.raycaster = new THREE.Raycaster();
         
         //These lights approximately match what's done by vtk
-        this.lights = [new THREE.DirectionalLight( 0xffffff ), new THREE.DirectionalLight(0xffffff), new THREE.DirectionalLight(0xffffff)];
+        this.lights = [
+            new THREE.DirectionalLight(0xffffff, .47), 
+            new THREE.DirectionalLight(0xffffff, .29), 
+            new THREE.DirectionalLight(0xffffff, .24)
+        ];
         this.lights[0].position.set( 1, -1, -1 ).normalize();
         this.lights[1].position.set( -1, -.25, .75 ).normalize();
         this.lights[2].position.set( 1, -.25, .75 ).normalize();
-        this.lights[0].intensity = .47;
-        this.lights[1].intensity = .29;
-        this.lights[2].intensity = .24;
         this.camera.add( this.lights[0] );
         this.camera.add( this.lights[1] );
         this.camera.add( this.lights[2] );
@@ -87,7 +90,7 @@ var jsplot = (function (module) {
         this.camera.updateProjectionMatrix();
 
         this.dispatchEvent({ type:"resize", width:w, height:h});
-        this.loaded.done(this.schedule.bind(this));
+        this.schedule();
     };
     module.Axes3D.prototype.schedule = function() {
         if (!this._scheduled) {
@@ -166,6 +169,18 @@ var jsplot = (function (module) {
         this._animation = {anim:anim, start:new Date()};
         this.schedule();
     };
+    module.Axes3D.prototype.pick = function(evt) {
+        var x = (evt.x / this.width)*2 - 1;
+        var y = (evt.y / this.height)*2 - 1;
+        var vector = new THREE.Vector3(x, y, 1).unproject(this.camera);
+        this.raycaster.set(this.camera.position, vector.sub(this.camera.position).normalize());
+        for (var i = 0; i < this.surfs.length; i++) {
+            var intersects = this.raycaster.intersectObject(this.surfs[i].object, true);
+            if (intersects.length > 0 && this.surfs[i].pick) {
+                this.surfs[i].pick(intersects);
+            }
+        }
+    }
     module.Axes3D.prototype._animate = function(sec) {
         var state = false;
         var idx, val, f, i, j;

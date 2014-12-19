@@ -58,9 +58,31 @@ class BrainCTM(object):
             if fleft is not None:
                 #set medial wall
                 for hemi, ptpoly in ([self.left, fleft], [self.right, fright]):
-                    fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
-                    flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
-                    hemi.aux[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
+                    # fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
+                    # flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
+                    # medial_verts = set(np.ravel(list(fidpolys - flatpolys)))
+                    medial_verts = set(hemi.polys.ravel()) - set(ptpoly[1].ravel())
+                    hemi.aux[list(medial_verts), 0] = 1
+
+                    connected = [set() for _ in range(len(ptpoly[0]))]
+                    for p1, p2, p3 in hemi.polys:
+                        if p1 not in medial_verts:
+                            connected[p2].add(p1)
+                            connected[p3].add(p1)
+                        if p2 not in medial_verts:
+                            connected[p1].add(p2)
+                            connected[p3].add(p2)
+                        if p3 not in medial_verts:
+                            connected[p1].add(p3)
+                            connected[p2].add(p3)
+
+                    #move the medial wall vertices out of the flatmap
+                    for vert in medial_verts:
+                        candidates = connected[vert]
+                        if len(candidates) > 0:
+                            ptpoly[0][vert] = ptpoly[0][candidates.pop()]
+                        else:
+                            ptpoly[0][vert] = 0
 
         #Find the flatmap limits
         if fleft is not None:
