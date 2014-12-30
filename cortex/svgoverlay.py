@@ -23,9 +23,11 @@ parser = etree.XMLParser(remove_blank_text=True, huge_tree=True)
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
 class SVGOverlay(object):
-    def __init__(self, svgfile):
+    def __init__(self, svgfile, coords=None):
         self.svgfile = svgfile
         self.reload()
+        if coords is not None:
+            self.set_coords(coords)
 
     def reload(self):
         self.svg = scrub(self.svgfile)
@@ -38,6 +40,22 @@ class SVGOverlay(object):
         for layer in self.svg.getroot().findall("{%s}g"%svgns):
             layer = Overlay(self, layer)
             self.layers[layer.name] = layer
+
+    def set_coords(self, coords):
+        # Normalize coordinates 0-1
+        if np.any(coords.max(0) > 1) or np.any(coords.min(0) < 0):
+            coords -= coords.min(0)
+            coords /= coords.max(0)
+        #Renormalize coordinates to shape of svg
+        self.coords = coords * self.svgshape
+        self.kdt = cKDTree(self.coords)
+
+        for layer in self:
+            for name in layer.labels.elements:
+                for element in layer.labels.elements[name]:
+                    x, y = float(element.get("x")), float(element.get("y"))
+                    dist, idx = self.kdt.query((x, y))
+                    element.attrib['data-ptidx'] = str(idx)
 
     def __getattr__(self, attr):
         return self.layers[attr]
@@ -107,7 +125,8 @@ class SVGOverlay(object):
             )
             self.svg.getroot().insert(0, img)
 
-        self.labels.visible = labels
+        for layer in self:
+            layer.labels.visible = labels
 
         pngfile = name
         if name is None:
@@ -125,6 +144,67 @@ class SVGOverlay(object):
         if name is None:
             png.seek(0)
             return png
+
+class Overlay(object):
+    def __init__(self, pack, layer):
+        self.pack = pack
+        self.svg = pack.svg
+        self.layer = layer
+        self.name = layer.attrib['{%s}label'%inkns]
+
+        #check to see if the layer is locked, to see if we need to override the style
+        locked = '{%s}insensitive'%sodins
+        self.shapes = dict()
+        for layer in _find_layer(layer, "shapes").findall("{%s}g"%svgns):
+            override = locked not in layer.attrib or layer.attrib[locked] == "false"
+            shape = Shape(layer, self.pack.svgshape[1], override_style=override)
+            self.shapes[shape.name] = shape
+
+        self.labels = Labels(self)
+
+    def __repr__(self):
+        return "<svg layer with shapes [%s]>"%(','.join(self.shapes.keys()))
+
+    def __getitem__(self, name):
+        return self.shapes[name]
+
+    @property
+    def visible(self):
+        return 'none' not in self.layer.attrib['style']
+    @visible.setter
+    def visible(self, value):
+        style = "display:inline;" if value else "display:none;"
+        self.layer.attrib['style'] = style
+
+    def set(self, **kwargs):
+        for shape in list(self.shapes.values()):
+            shape.set(**kwargs)
+
+    def get_mask(self, name):
+        return self.shapes[name].get_mask(self.pack.coords)
+
+    def add_shape(self, name, pngdata=None, add_path=True):
+        """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
+        #self.svg deletes the images -- we want to save those, so let's load it again
+        svg = etree.parse(self.svgfile, parser=parser)
+        imglayer = _find_layer(svg, "data")
+        if add_path:
+            _make_layer(_find_layer(self.layer, "shapes"), name)
+
+        #Hide all the other layers in the image
+        for layer in imglayer.findall(".//{%s}g"%svgns):
+            layer.attrib["style"] = "display:hidden;"
+
+        layer = _make_layer(imglayer, "img_%s"%name)
+        layer.append(E.image(
+            {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%pngdata},
+            id="image_%s"%name, x="0", y="0",
+            width=str(self.pack.svgshape[0]),
+            height=str(self.pack.svgshape[1]),
+        ))
+
+        with open(self.pack.svgfile, "w") as xml:
+            xml.write(etree.tostring(svg, pretty_print=True))
 
 class Labels(object):
     def __init__(self, overlay):
@@ -189,87 +269,10 @@ class Labels(object):
             self.text_style['display'] = 'none'
         self.set()
 
-class Overlay(object):
-    def __init__(self, pack, layer):
-        self.pack = pack
-        self.svg = pack.svg
-        self.layer = layer
-        self.name = layer.attrib['{%s}label'%inkns]
-
-        #check to see if the layer is locked, to see if we need to override the style
-        locked = '{%s}insensitive'%sodins
-        self.shapes = dict()
-        for layer in _find_layer(layer, "shapes").findall("{%s}g"%svgns):
-            override = locked not in layer.attrib or layer.attrib[locked] == "false"
-            shape = Shape(layer, override_style=override)
-            self.shapes[shape.name] = shape
-
-        self.labels = Labels(self)
-
-    def __repr__(self):
-        return "<svg layer with shapes [%s]>"%(','.join(self.shapes.keys()))
-
-    def __getitem__(self, name):
-        return self.shapes[name]
-
-    @property
-    def visible(self):
-        return 'none' not in self.layer.attrib['style']
-    @visible.setter
-    def visible(self, value):
-        style = "display:inline;" if value else "display:none;"
-        self.layer.attrib['style'] = style
-
-    def set(self, **kwargs):
-        for shape in list(self.shapes.values()):
-            shape.set(**kwargs)
-
-    def set_coords(self, tcoords):
-        # Normalize coordinates 0-1
-        if np.any(tcoords.max(0) > 1) or np.any(tcoords.min(0) < 0):
-            tcoords -= tcoords.min(0)
-            tcoords /= tcoords.max(0)
-        #flip y axis due to svg bottom left origin
-        tcoords[:,1] = 1 - tcoords[:,1]
-        #Renormalize coordinates to shape of svg
-        self.tcoords = tcoords * self.pack.svgshape
-        self.kdt = cKDTree(self.tcoords)
-        
-        for name in self.labels.elements:
-            for element in self.labels.elements[name]:
-                x, y = float(element.get("x")), float(element.get("y"))
-                dist, idx = self.kdt.query((x, y))
-                element.attrib['data-ptidx'] = str(idx)
-
-    def get_mask(self, name):
-        return self.shapes[name].get_mask(self.tcoords)
-
-    def add_shape(self, name, pngdata=None, add_path=True):
-        """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
-        #self.svg deletes the images -- we want to save those, so let's load it again
-        svg = etree.parse(self.svgfile, parser=parser)
-        imglayer = _find_layer(svg, "data")
-        if add_path:
-            _make_layer(_find_layer(self.layer, "shapes"), name)
-
-        #Hide all the other layers in the image
-        for layer in imglayer.findall(".//{%s}g"%svgns):
-            layer.attrib["style"] = "display:hidden;"
-
-        layer = _make_layer(imglayer, "img_%s"%name)
-        layer.append(E.image(
-            {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%pngdata},
-            id="image_%s"%name, x="0", y="0",
-            width=str(self.pack.svgshape[0]),
-            height=str(self.pack.svgshape[1]),
-        ))
-
-        with open(self.pack.svgfile, "w") as xml:
-            xml.write(etree.tostring(svg, pretty_print=True))
-
 class Shape(object):
-    def __init__(self, layer, override_style=True):
+    def __init__(self, layer, height, override_style=True):
         self.layer = layer
+        self.height = height
         self.name = layer.attrib['{%s}label'%inkns]
         self.paths = layer.findall('{%s}path'%svgns)
 
@@ -420,17 +423,17 @@ class Shape(object):
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         old_prev_coord = np.zeros(2)
                         old_prev_coord[0] = prev_coord[0]
-                        old_prev_coord[1] = prev_coord[1]
+                        old_prev_coord[1] = self.height - prev_coord[1]
 
                         if path[path_ind] == 'M':
                             prev_coord[0] = float(path[p_j])
-                            prev_coord[1] = float(path[p_j+1])
+                            prev_coord[1] = self.height - float(path[p_j+1])
                         else:
                             prev_coord[0] += float(path[p_j])
                             if isFirstM:
-                                prev_coord[1] = float(path[p_j+1])
+                                prev_coord[1] = self.height - float(path[p_j+1])
                             else:
-                                prev_coord[1] -= float(path[p_j+1])
+                                prev_coord[1] -= self.height - float(path[p_j+1])
 
                             # this conditional is for recognizing and storing the last coord in the first M command(s)
                             # as the official first coord in the spline path for any 'close path (ie, z)' command 
@@ -773,9 +776,7 @@ def get_overlay(svgfile, pts, polys, remove_medial=False, **kwargs):
         with open(svgfile, "w") as fp:
             fp.write(make_svg(pts.copy(), polys))
 
-    svg = SVGOverlay(svgfile, **kwargs)
-    for layer in svg:
-        layer.set_coords(cullpts)
+    svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)
     
     if remove_medial:
         return svg, valid
