@@ -215,7 +215,7 @@ def get_roi_verts(subject, roi=None):
         after left hemisphere vertex numbers.
     """
     # Get ROIpack
-    rois = db.get_overlay(subject)
+    svg = db.get_overlay(subject)
 
     # Get flat surface so we can figure out which verts are in medial wall
     # or in cuts
@@ -224,14 +224,14 @@ def get_roi_verts(subject, roi=None):
     goodpts = np.unique(polys)
 
     if roi is None:
-        roi = rois.names
+        roi = svg.rois.names
 
     roidict = dict()
     if isinstance(roi, str):
         roi = [roi]
 
     for name in roi:
-        roidict[name] = np.intersect1d(rois.get_roi(name), goodpts)
+        roidict[name] = np.intersect1d(svg.rois.get_mask(name), goodpts)
 
     return roidict
 
