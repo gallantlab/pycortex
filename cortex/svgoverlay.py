@@ -212,6 +212,14 @@ class Overlay(object):
     def __getitem__(self, name):
         return self.shapes[name]
 
+    @property
+    def visible(self):
+        return 'none' not in self.layer.attrib['style']
+    @visible.setter
+    def visible(self, value):
+        style = "display:inline;" if value else "display:none;"
+        self.layer.attrib['style'] = style
+
     def set(self, **kwargs):
         for shape in list(self.shapes.values()):
             shape.set(**kwargs)
