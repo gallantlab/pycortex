@@ -234,7 +234,7 @@ class Overlay(object):
                 element.attrib['data-ptidx'] = str(idx)
 
     def get_mask(self, name):
-        return self.shapes[name].get_roi(self.tcoords)
+        return self.shapes[name].get_mask(self.tcoords)
 
     def add_shape(self, name, pngdata=None, add_path=True):
         """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
@@ -821,6 +821,11 @@ def _parse_svg_pts(datastr):
         elif mode == "C":
             data = data[4:]
             offset = np.array(list(map(float, [data.pop(0), data.pop(0)])))
+        #support multi-part paths, by only using one label for the whole path
+        elif mode == 'm' :
+            offset += list(map(float, [data.pop(0), data.pop(0)]))
+        elif mode == 'M' :
+            offset = list(map(float, [data.pop(0), data.pop(0)]))
 
         ## Check to see if nothing has happened, and, if so, fail
         if len(data) == lastlen:

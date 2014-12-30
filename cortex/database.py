@@ -330,9 +330,9 @@ class Database(object):
             del kwargs['pts']
             
         if os.path.exists(paths['rois']) and not os.path.exists(paths['overlays']):
-            svgoverlay.import_roi(path['rois'], path['overlays'])
+            svgoverlay.import_roi(paths['rois'], paths['overlays'])
 
-        return svgoverlay.get_overlay(svgfile, pts, polys, **kwargs)
+        return svgoverlay.get_overlay(paths['overlays'], pts, polys, **kwargs)
     
     def save_xfm(self, subject, name, xfm, xfmtype="magnet", reference=None):
         """

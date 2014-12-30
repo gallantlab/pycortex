@@ -224,7 +224,7 @@ def get_roi_verts(subject, roi=None):
     goodpts = np.unique(polys)
 
     if roi is None:
-        roi = svg.rois.names
+        roi = svg.rois.shapes.keys()
 
     roidict = dict()
     if isinstance(roi, str):
@@ -268,7 +268,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     roiList is a list of ROIs (which should be defined in the .svg file)
     '''
     # Get ROIs from inkscape SVGs
-    rois, vertIdx = db.get_overlay(subject, remove_medial=True)
+    svg, vertIdx = db.get_overlay(subject, remove_medial=True)
 
     # Retrieve shape from the reference
     shape = db.get_xfm(subject, xfmname).shape
@@ -295,9 +295,9 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
     
     #return rois, flat, coords, voxDst, voxIdx ## rois is a list of class svgROI; flat = flat cortex coords; coords = 3D coords
     if roiList is None:
-        roiList = rois.names
+        roiList = svg.rois.shapes.keys()
     else:
-        roiList = [r for r in roiList if r in ['Cortex','cortex']+rois.names]
+        roiList = [r for r in roiList if r in ['Cortex','cortex']+svg.rois.shapes.keys()]
 
     if isinstance(roiList, str):
         roiList = [roiList]
@@ -310,7 +310,7 @@ def get_roi_masks(subject,xfmname,roiList=None,Dst=2,overlapOpt='cut'):
         else:
             # Irritating index switching:
             roiIdxB1 = np.zeros((nValidVerts,),np.bool) # binary index 1
-            roiIdxS1 = rois.get_roi(roi) # substitution index 1 (in valid vertex space)
+            roiIdxS1 = svg.rois.get_mask(roi) # substitution index 1 (in valid vertex space)
             roiIdxB1[roiIdxS1] = True
             roiIdxB2 = np.zeros((nVerts,),np.bool) # binary index 2
             roiIdxB2[vertIdx] = roiIdxB1
