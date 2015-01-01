@@ -151,6 +151,7 @@ class Overlay(object):
         self.svg = pack.svg
         self.layer = layer
         self.name = layer.attrib['{%s}label'%inkns]
+        self.layer.attrib['class'] = 'display_layer'
 
         #check to see if the layer is locked, to see if we need to override the style
         locked = '{%s}insensitive'%sodins

@@ -28,7 +28,7 @@ def get_roipack(*args, **kwargs):
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False,
-                decimate=False, disp_layers=['rois'],extra_disp=None):
+                decimate=False):
     """Creates ctm file for the specified input arguments.
 
     This is a cached file that specifies (1) the surfaces between which
@@ -37,13 +37,11 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     """
     lvlstr = ("%dd" if decimate else "%d")%level
     # Generates different cache files for each combination of disp_layers
-    ctmcache = "%s_[{types}]_{method}_{level}_{layers}{extra}.json"%subject
+    ctmcache = "%s_[{types}]_{method}_{level}_v3.json"%subject
     # Mark any ctm file containing extra_disp as unique (will be over-written every time)
     ctmcache = ctmcache.format(types=','.join(types),
                                method=method,
-                               level=lvlstr,
-                               layers=repr(sorted(disp_layers)),
-                               extra='' if extra_disp is None else '_xx')
+                               level=lvlstr)
     ctmfile = os.path.join(db.get_cache(subject), ctmcache)
 
     if os.path.exists(ctmfile) and not recache: # and extra_disp is None:
@@ -57,9 +55,7 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
                                types=types,
                                method=method, 
                                level=level,
-                               decimate=decimate,
-                               disp_layers=disp_layers,
-                               extra_disp=extra_disp)
+                               decimate=decimate)
     return ctmfile
 
 def get_ctmmap(subject, **kwargs):

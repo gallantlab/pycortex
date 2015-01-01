@@ -86,25 +86,30 @@ var mriview = (function(module) {
             this.object.position.set(0, -center[1], -center[2]);
 
             var names = {left:0, right:1};
-            var posdata = {left:[], right:[]};
-            var posnorms = {left:[], right:[]};
+            var posdata = {
+                left :{positions:[], normals:[]}, 
+                right:{positions:[], normals:[]},
+            };
             for (var name in names) {
                 var hemi = geometries[names[name]];
-                posdata[name].push(hemi.attributes.position);
-                posnorms[name].push(hemi.attributes.normal);
+                posdata[name].map = hemi.indexMap;
+                posdata[name].positions.push(hemi.attributes.position);
+                posdata[name].normals.push(hemi.attributes.normal);
                 hemi.name = "hemi_"+name;
 
                 //Put attributes in the correct locations for the shader
                 if (hemi.attributesKeys.indexOf('wm') != -1) {
                     this.volume = 1;
                     hemi.addAttribute("wmnorm", module.computeNormal(hemi.attributes['wm'], hemi.attributes.index, hemi.offsets) );
+                    posdata[name].wm = hemi.attributes.wm;
+                    posdata[name].wmnorm = hemi.attributes.wmnorm;
                 }
                 //Rename the actual surfaces to match shader variable names
                 for (var i = 0; i < json.names.length; i++ ) {
                     hemi.attributes['mixSurfs'+i] = hemi.attributes[json.names[i]];
                     hemi.addAttribute('mixNorms'+i, module.computeNormal(hemi.attributes[json.names[i]], hemi.attributes.index, hemi.offsets) );
-                    posdata[name].push(hemi.attributes['mixSurfs'+i]);
-                    posnorms[name].push(hemi.attributes['mixNorms'+i])
+                    posdata[name].positions.push(hemi.attributes['mixSurfs'+i]);
+                    posdata[name].normals.push(hemi.attributes['mixNorms'+i])
                     delete hemi.attributes[json.names[i]];
                 }
                 //Setup flatmap mix
@@ -114,8 +119,8 @@ var mriview = (function(module) {
                     hemi.addAttribute('mixNorms'+json.names.length, new THREE.BufferAttribute(flats.norms, 3));
                     hemi.attributes['mixSurfs'+json.names.length].needsUpdate = true;
                     hemi.attributes['mixNorms'+json.names.length].needsUpdate = true;
-                    posdata[name].push(hemi.attributes['mixSurfs'+json.names.length]);
-                    posnorms[name].push(hemi.attributes['mixNorms'+json.names.length]);
+                    posdata[name].positions.push(hemi.attributes['mixSurfs'+json.names.length]);
+                    posdata[name].normals.push(hemi.attributes['mixNorms'+json.names.length]);
                 }
 
                 //Generate an index list that has culled non-flatmap vertices
@@ -147,7 +152,13 @@ var mriview = (function(module) {
                         this.uniforms.overlay.dispose();
                     this.uniforms.overlay.value = tex;
                 }.bind(this);
-                this.roipack = new ROIpack(loader.extractUrlBase(ctminfo) + json.rois, posdata, this._update_rois);
+
+                var path = loader.extractUrlBase(ctminfo) + json.rois;
+                this.svg = new svgoverlay.SVGOverlay(path, posdata, this._update_rois);
+                this.pivots.left.back.add(this.svg.labels.left);
+                this.pivots.right.back.add(this.svg.labels.right);
+                this.svg.labels.left.position.y = -this.flatoff[1];
+                this.svg.labels.right.position.y = -this.flatoff[1];
             }
 
             //Add anatomical and flat names
@@ -157,7 +168,7 @@ var mriview = (function(module) {
             }
 
             //create picker
-            this.picker = new PickPosition(this, posdata, posnorms);
+            this.picker = new PickPosition(this, posdata);
             this.picker.markers.left.position.y = -this.flatoff[1];
             this.picker.markers.right.position.y = -this.flatoff[1];
             this.pivots.left.back.add(this.picker.markers.left);
@@ -178,7 +189,12 @@ var mriview = (function(module) {
     //     });
     //     this.uniforms.screen.value = this.volumebuf;
     //     this.uniforms.screen_size.value.set(width, height);
-        this.loaded.done(function() {this.picker.resize(evt.width, evt.height);}.bind(this));
+        this.loaded.done(function() {
+            this.picker.resize(evt.width, evt.height);
+        }.bind(this));
+        if (this.svg !== undefined) {
+            this.svg.resize(evt.width, evt.height);
+        }
     };
     module.Surface.prototype.init = function(dataview) { 
         this.loaded.done(function() {
@@ -221,7 +237,7 @@ var mriview = (function(module) {
             var shaders = dataview.getShader(shade_cls, this.uniforms, {
                 morphs:this.names.length, 
                 volume:this.volume, 
-                rois:  this.roipack instanceof ROIpack,
+                rois:  this.svg instanceof svgoverlay.SVGOverlay,
                 halo: false,
             });
             this.shaders[dataview.uuid] = shaders[0];
@@ -229,7 +245,15 @@ var mriview = (function(module) {
     };
     module.Surface.prototype.pick = function(renderer, camera, x, y) {
         // console.log(intersects[0].object.geometry.name);
+        if (this.svg !== undefined) {
+            this.svg.labels.left.visible = false;
+            this.svg.labels.right.visible = false;
+        }
         this.picker.pick(renderer, camera, x, y, false);
+        if (this.svg !== undefined) {
+            this.svg.labels.left.visible = true;
+            this.svg.labels.right.visible = true;
+        }
     }
     module.Surface.prototype.clearShaders = function() {
         for (var name in this.shaders) {
@@ -237,7 +261,9 @@ var mriview = (function(module) {
         }
     }
     module.Surface.prototype.prerender = function(idx, renderer, scene, camera) {
-        this.dispatchEvent({type:"prerender", idx:idx, renderer:renderer, scene:scene, camera:camera});
+        if (this.svg !== undefined) {
+            this.svg.prerender(renderer, scene, camera);
+        }
     }
 
     // var oldcolor, black = new THREE.Color(0,0,0);
@@ -320,6 +346,9 @@ var mriview = (function(module) {
         this.uniforms.specularStrength.value = 1-clipped;
         this.setPivot( 180 * clipped);
         this.dispatchEvent({type:'mix', flat:clipped, mix:mix});
+        if (this.svg !== undefined) {
+            this.svg.setMix(mix);
+        }
     };
     module.Surface.prototype.setPivot = function (val) {
         this._pivot = val;

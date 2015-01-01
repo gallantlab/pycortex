@@ -316,7 +316,7 @@ class Database(object):
         paths = self.get_paths(subject)
         if self.auxfile is not None:
             try:
-                tf = self.auxfile.get_overlay(subject, otype) # kwargs??
+                tf = self.auxfile.get_overlay(subject) # kwargs??
                 svgfile = tf.name
             except (AttributeError, IOError):
                 # NOTE: This is better error handling, but does not account for

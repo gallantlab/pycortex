@@ -135,6 +135,56 @@ var mriview = (function(module) {
         return {indices:culled, offsets:newOffsets};
     }
 
+    //Returns the world position of a vertex given the mix state
+    module.get_position = function(posdata, mix, idx) {
+        var positions = posdata.positions;
+        var normals = posdata.normals;
+
+        var pos = new THREE.Vector3(
+            positions[0].array[idx*3+0],
+            positions[0].array[idx*3+1],
+            positions[0].array[idx*3+2]
+        )
+        var norm = new THREE.Vector3(
+            normals[0].array[idx*3+0],
+            normals[0].array[idx*3+1],
+            normals[0].array[idx*3+2]
+        )
+
+        if (posdata.wm) {
+            var stride = posdata.wm.itemSize;
+            pos.multiplyScalar(1 - mix).add(
+                (new THREE.Vector3(
+                    posdata.wm.array[idx*stride+0],
+                    posdata.wm.array[idx*stride+1],
+                    posdata.wm.array[idx*stride+2]
+                )).multiplyScalar(mix)
+            )
+        }
+        var base = pos.clone();
+
+        var mix = mix * (positions.length-1);
+        var factor = Math.max(0, Math.min(1, 1 - mix));
+        pos.multiplyScalar(factor);
+        norm.multiplyScalar(factor);
+        for (var i = 1; i < positions.length; i++) {
+            stride = positions[i].itemSize;
+            factor = Math.max(0, Math.min(1, 1-Math.abs(mix-i) ));
+            pos.add((new THREE.Vector3(
+                positions[i].array[idx*stride+0],
+                positions[i].array[idx*stride+1],
+                positions[i].array[idx*stride+2]
+            )).multiplyScalar(factor));
+            norm.add((new THREE.Vector3(
+                normals[i].array[idx*3+0],
+                normals[i].array[idx*3+1],
+                normals[i].array[idx*3+2]
+            )).multiplyScalar(factor));
+        }
+
+        return {pos:pos, norm:norm, base:base};
+    }
+
     module.computeNormal = function(vertices, index, offsets) {
         var i, il;
         var j, jl;

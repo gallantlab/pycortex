@@ -111,7 +111,7 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
-    def save(self, path, method='mg2', disp_layers=['rois'], extra_disp=None, **kwargs):
+    def save(self, path, method='mg2', **kwargs):
         """Save CTM file for static html display. 
 
         Parameters
@@ -162,29 +162,19 @@ class BrainCTM(object):
         if self.left.flat is not None:
             # add sulci & display layers
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            roipack = db.get_overlay(self.subject, pts=flatpts, otype=disp_layers)
-            # optionally add extra display layers
-            if not extra_disp is None:
-                esvgfile,elayerlist = extra_disp
-                eroipack = db.get_overlay(self.subject,pts=flatpts, otype='external',
-                    svgfile=esvgfile,layer=elayerlist)
-                roipack = roipack + eroipack
-            layers = roipack.setup_labels()
-            if not isinstance(layers, (tuple, list)):
-                layers = (layers,)
+            svg = db.get_overlay(self.subject, pts=flatpts)
             
             # assign coordinates in left hemisphere negative values
             with open(svgname, "w") as fp:
-                for layer in layers:
-                    for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
-                        idx = int(element.attrib["data-ptidx"])
-                        if idx < len(inverse[0]):
-                            idx = inverse[0][idx]
-                        else:
-                            idx -= len(inverse[0])
-                            idx = inverse[1][idx] + len(inverse[0])
-                        element.attrib["data-ptidx"] = str(idx)
-                fp.write(roipack.toxml())
+                for element in svg.svg.findall(".//{http://www.w3.org/2000/svg}text"):
+                    idx = int(element.attrib["data-ptidx"])
+                    if idx < len(inverse[0]):
+                        idx = inverse[0][idx]
+                    else:
+                        idx -= len(inverse[0])
+                        idx = inverse[1][idx] + len(inverse[0])
+                    element.attrib["data-ptidx"] = str(idx)
+                fp.write(svg.toxml())
         return ptmap
 
 class Hemi(object):
@@ -272,9 +262,7 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
 
     return ctm.save(os.path.splitext(outfile)[0],
                     method=method,
-                    level=level,
-                    disp_layers=disp_layers,
-                    extra_disp=extra_disp)
+                    level=level)
 
 def read_pack(ctmfile):
     fname = os.path.splitext(ctmfile)[0]

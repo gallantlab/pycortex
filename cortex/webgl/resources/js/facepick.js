@@ -1,4 +1,4 @@
-function PickPosition(surf, posdata, posnorms) {
+function PickPosition(surf, posdata) {
     var left = surf.hemis.left, right = surf.hemis.right;
     var worker = new Worker("resources/js/facepick_worker.js");
     worker.addEventListener("message", function(e) {
@@ -19,8 +19,6 @@ function PickPosition(surf, posdata, posnorms) {
     this.scene.children.push(surf.object);
 
     this.posdata = posdata;
-    this.posnorms = posnorms;
-    this.wm = {left:surf.hemis.left.attributes.wm, right:surf.hemis.right.attributes.wm};
     this.revIndex = {left:surf.hemis.left.reverseIndexMap, right:surf.hemis.right.reverseIndexMap};
 
     this.axes = [];
@@ -83,7 +81,7 @@ PickPosition.prototype = {
 
         for (var i = 0; i < this.axes.length; i++) {
             var ax = this.axes[i];
-            var vert = this._getPos(ax.hemi, ax.idx);
+            var vert = mriview.get_position(this.posdata[ax.hemi], this.uniforms.surfmix.value, ax.idx);
 
             var inv = (new THREE.Matrix4()).getInverse(this.xfm);
             var vox = vert.base.clone().applyMatrix4(this.xfm);
@@ -249,56 +247,6 @@ PickPosition.prototype = {
         }
     },
 
-    _getPos: function(hemi, idx) {
-        var positions = this.posdata[hemi];
-        var normals = this.posnorms[hemi];
-        var stride = positions[0].itemSize;
-
-        var pos = new THREE.Vector3(
-            positions[0].array[idx*stride+0],
-            positions[0].array[idx*stride+1],
-            positions[0].array[idx*stride+2]
-        )
-        var norm = new THREE.Vector3(
-            normals[0].array[idx*3+0],
-            normals[0].array[idx*3+1],
-            normals[0].array[idx*3+2]
-        )
-
-        if (this.wm[hemi]) {
-            stride = this.wm[hemi].itemSize;
-            pos.multiplyScalar(1 - this.uniforms.thickmix.value).add(
-                (new THREE.Vector3(
-                    this.wm[hemi].array[idx*stride+0],
-                    this.wm[hemi].array[idx*stride+1],
-                    this.wm[hemi].array[idx*stride+2]
-                )).multiplyScalar(this.uniforms.thickmix.value)
-            )
-        }
-        var base = pos.clone();
-
-        var mix = this.uniforms.surfmix.value * (positions.length-1);
-        var factor = Math.max(0, Math.min(1, 1 - mix));
-        pos.multiplyScalar(factor);
-        norm.multiplyScalar(factor);
-        for (var i = 1; i < positions.length; i++) {
-            stride = positions[i].itemSize;
-            factor = Math.max(0, Math.min(1, 1-Math.abs(mix-i) ));
-            pos.add((new THREE.Vector3(
-                positions[i].array[idx*stride+0],
-                positions[i].array[idx*stride+1],
-                positions[i].array[idx*stride+2]
-            )).multiplyScalar(factor));
-            norm.add((new THREE.Vector3(
-                normals[i].array[idx*3+0],
-                normals[i].array[idx*3+1],
-                normals[i].array[idx*3+2]
-            )).multiplyScalar(factor));
-        }
-
-        return {pos:pos, norm:norm, name:hemi, base:base};
-    },
-
     undblpick: function() {
         if (this._undblpickanim)
             this.viewer.animate(this._undblpickanim);
@@ -308,7 +256,7 @@ PickPosition.prototype = {
         var vert, ax;
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
-            vert = this._getPos(ax.hemi, ax.idx);
+            vert = mriview.get_position(this.posdata[ax.hemi], mixevt.mix, ax.idx);
             ax.group.position.copy(vert.pos);
 	        // ax.obj.position = addFlatNorm(vert.pos, vert.norm, mixevt.mix);
             // Rescale axes for flat view
@@ -318,7 +266,6 @@ PickPosition.prototype = {
     },
 
     addMarker: function(hemi, ptidx, keep) {
-        var vert = this._getPos(hemi, ptidx);
         for (var i = 0; i < this.axes.length; i++) {
             if (keep === true) {
                 this.axes[i].obj.material.color.setRGB(180,180,180);
@@ -331,7 +278,7 @@ PickPosition.prototype = {
         if (!keep)
             this.axes = [];
 	
-	// Create axes
+	    // Create axes
         var axes = makeAxes(500, 0xffffff);
         var group = new THREE.Group();
         group.add(axes.axes);
