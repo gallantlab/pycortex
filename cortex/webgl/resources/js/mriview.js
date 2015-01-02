@@ -773,19 +773,20 @@ var mriview = (function(module) {
                 this.schedule();
                 e.stopPropagation();
                 e.preventDefault();
-            } else if (e.keyCode == 81) { //q
-                this.planes[0].next();
-            } else if (e.keyCode == 87) { //w
-                this.planes[0].prev();
-            } else if (e.keyCode == 65) { //a
-                this.planes[1].next();
-            } else if (e.keyCode == 83) { //s
-                this.planes[1].prev();
-            } else if (e.keyCode == 90) { //z
-                this.planes[2].next();
-            } else if (e.keyCode == 88) { //x
-                this.planes[2].prev();
             }
+            // } else if (e.keyCode == 81) { //q
+            //     this.planes[0].next();
+            // } else if (e.keyCode == 87) { //w
+            //     this.planes[0].prev();
+            // } else if (e.keyCode == 65) { //a
+            //     this.planes[1].next();
+            // } else if (e.keyCode == 83) { //s
+            //     this.planes[1].prev();
+            // } else if (e.keyCode == 90) { //z
+            //     this.planes[2].next();
+            // } else if (e.keyCode == 88) { //x
+            //     this.planes[2].prev();
+            // }
         }.bind(this));
         var _this = this;
         $(this.object).find("#mix").slider({
@@ -926,7 +927,7 @@ var mriview = (function(module) {
             }).attr("layername", layername);
         }
         $(this.object).find("#overlay_fieldset").tabs();
-
+    
         $(this.object).find("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
             this.uniforms.curvAlpha.value = ui.value;
             this.schedule();
@@ -998,7 +999,7 @@ var mriview = (function(module) {
         $(this.object).find("#resetflat").click(function() {
             this.reset_view();
         }.bind(this));
-
+        */
         //Dataset box
         var setdat = function(event, ui) {
             var names = [];
@@ -1039,7 +1040,7 @@ var mriview = (function(module) {
         $(this.object).find("#movieframe").change(function() { 
             _this.setFrame(this.value); 
             _this.figure.notify("setFrame", _this, [this.value]);
-        });*/
+        });
     };
     module.Viewer.prototype._makeBtns = function(names) {
         var btnspeed = 0.5; // How long should folding/unfolding animations take?
