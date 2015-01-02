@@ -1,7 +1,8 @@
 var svgoverlay = (function(module) {
-    var svgns = "http://www.w3.org/2000/svg";
     var svgdoctype = document.implementation.createDocumentType("svg", 
             "-//W3C//DTD SVG 1.0//EN", "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd");
+    var svgns = "http://www.w3.org/2000/svg";
+
     var padding = 8; //Width of the padding around text
 
     var gl = document.createElement("canvas").getContext("experimental-webgl");
@@ -14,6 +15,7 @@ var svgoverlay = (function(module) {
         this.callback = callback;
         this.labels = {left:new THREE.Group(), right:new THREE.Group()};
         this.layers = {};
+        this.surf = surf;
 
         $.get(svgpath, null, this.init.bind(this));
 
@@ -33,18 +35,16 @@ var svgoverlay = (function(module) {
             blendSrc: THREE.OneFactor,
             blendDst: THREE.ZeroFactor,
         });
-        this.resize(surf.width, surf.height);
     }
 
     module.SVGOverlay.prototype.init = function(svgdoc) {
         this.doc = svgdoc
         this.svg = svgdoc.getElementsByTagName("svg")[0];
-        this.svg.id = "svgroi";
 
         var w = this.svg.getAttribute("width");
         var h = this.svg.getAttribute("height");
-        this.aspect = w / h;
         this.svg.setAttribute("viewBox", "0 0 "+w+" "+h);
+        this.aspect = w / h;
 
         var layers = svgdoc.getElementsByClassName("display_layer")
         for (var i = 0; i < layers.length; i++) {
@@ -57,6 +57,7 @@ var svgoverlay = (function(module) {
         }
 
         this.setHeight(Math.min(4096, max_tex_size) / this.aspect);
+        this.resize(this.surf.width, this.surf.height);
         this.update();
     },
     module.SVGOverlay.prototype.setHeight = function(height) {
@@ -75,7 +76,6 @@ var svgoverlay = (function(module) {
             tex.needsUpdate = true;
             tex.premultiplyAlpha = true;
             tex.flipY = true;
-            console.log("Updated svg...");
             this.callback(tex);
             loaded.resolve(tex);
         }.bind(this)});
@@ -92,8 +92,8 @@ var svgoverlay = (function(module) {
             this.labels.right.visible = false;
             //Render depth image
             var clearAlpha = renderer.getClearAlpha();
-            var clearColor = renderer.getClearColor();
-            renderer.setClearColor(0x0, 0);
+            var clearColor = renderer.getClearColor().clone();
+            renderer.setClearColor(0xffffff, 1);
             scene.overrideMaterial = this.depthshade;
             renderer.render(scene, camera, this.depth);
             scene.overrideMaterial = null;
@@ -111,12 +111,14 @@ var svgoverlay = (function(module) {
         });
 
         for (var name in this.layers) {
-            this.layers[name].labels.shader.uniforms.depth.value = this.depth;
+            var uniforms = this.layers[name].labels.shader.uniforms;
+            uniforms.depth.value = this.depth;
+            uniforms.scale.value.set(1 / width, 1 / height);
         }
     }
-    module.SVGOverlay.prototype.setMix = function(mix) {
+    module.SVGOverlay.prototype.setMix = function(evt) {
         for (var name in this.layers) {
-            this.layers[name].labels.setMix(mix);
+            this.layers[name].labels.setMix(evt);
         }
     }
 
@@ -270,7 +272,7 @@ var svgoverlay = (function(module) {
         this.geometry.right.addAttribute("position", new THREE.BufferAttribute(position, 3));
         this.geometry.right.addAttribute("offset", new THREE.BufferAttribute(offset, 2));
 
-        this.setMix(0);
+        this.setMix({mix:0, thickmix:.5});
 
         this.meshes = {};
         this.shader = new THREE.ShaderMaterial({
@@ -411,26 +413,26 @@ var svgoverlay = (function(module) {
         this.meshes.left.visible = false;
         this.meshes.right.visible = false;
     }
-    module.Labels.prototype.setMix = function(mix) {
+    module.Labels.prototype.setMix = function(evt) {
         //Adjust the indicator particle to match the current mix state
         //Indicator particles are set off from the surface by the normal
         var position = this.geometry.right.attributes.position.array;
         for (var i = 0; i < this.indices.right.verts.length; i++) {
             var idx = this.indices.right.verts[i];
-            var vert = mriview.get_position(this.posdata.right, mix, idx);
-            position[i*3+0] = vert.pos.x + vert.norm.x;
-            position[i*3+1] = vert.pos.y + vert.norm.y;
-            position[i*3+2] = vert.pos.z + vert.norm.z;
+            var vert = mriview.get_position(this.posdata.right, evt.mix, evt.thickmix, idx);
+            position[i*3+0] = vert.pos.x + 2*vert.norm.x;
+            position[i*3+1] = vert.pos.y + 2*vert.norm.y;
+            position[i*3+2] = vert.pos.z + 2*vert.norm.z;
         }
         this.geometry.right.attributes.position.needsUpdate = true;
 
         var position = this.geometry.left.attributes.position.array;
         for (var i = 0; i < this.indices.left.verts.length; i++) {
             var idx = this.indices.left.verts[i];
-            var vert = mriview.get_position(this.posdata.left, mix, idx);
-            position[i*3+0] = vert.pos.x + vert.norm.x;
-            position[i*3+1] = vert.pos.y + vert.norm.y;
-            position[i*3+2] = vert.pos.z + vert.norm.z;
+            var vert = mriview.get_position(this.posdata.left, evt.mix, evt.thickmix, idx);
+            position[i*3+0] = vert.pos.x + 2*vert.norm.x;
+            position[i*3+1] = vert.pos.y + 2*vert.norm.y;
+            position[i*3+2] = vert.pos.z + 2*vert.norm.z;
         }
         this.geometry.left.attributes.position.needsUpdate = true;
     }
@@ -445,56 +447,54 @@ var svgoverlay = (function(module) {
 
             "varying float alpha;",
             "varying vec2 vOffset;",
+            "varying vec3 debug;",
 
             "float unpack_depth(const in vec4 cdepth) {",
                 "const vec4 bit_shift = vec4( 1.0 / ( 256.0 * 256.0 * 256.0 ), 1.0 / ( 256.0 * 256.0 ), 1.0 / 256.0, 1.0 );",
                 "float depth = dot( cdepth, bit_shift );",
                 "return depth;",
             "}",
-
-            "float avg_depth( const in vec2 text, const in vec2 screen ) {",
-                "const float w = 1.;",
-                "const float d = 1. / ((w * 2. + 1.) * (w * 2. + 1.));",
-                "vec2 center = (size * (vec2(0.5) - text) + screen) / scale;",
-                "float avg = 0.;",
-                "vec2 pos = vec2(0.);",
-                "for (float i = -w; i <= w; i++) {",
-                    "for (float j = -w; j <= w; j++) {",
-                        "pos = center + vec2(i, j) / scale;",
-                        "avg += unpack_depth(texture2D(depth, pos));",
-                    "}",
-                "}",
-
-                "return avg * d;",
+            "vec4 pack_float( const in float depth ) {",
+                "const vec4 bit_shift = vec4( 256.0 * 256.0 * 256.0, 256.0 * 256.0, 256.0, 1.0 );",
+                "const vec4 bit_mask  = vec4( 0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0 );",
+                "vec4 res = fract( depth * bit_shift );",
+                "res -= res.xxyz * bit_mask;",
+                "return res;",
             "}",
 
-            "float min_depth( const in vec2 text, const in vec2 screen ) {",
-                "const float w = 1.;",
-                "vec2 center = (size * (vec2(0.5) - text) + screen) / scale;",
-                "float minum = 1000.;",
-                "vec2 pos = vec2(0.);",
-                "for (float i = -w; i <= w; i++) {",
-                    "for (float j = -w; j <= w; j++) {",
-                        "pos = center + vec2(i, j) / scale;",
-                        "minum = min(minum, unpack_depth(texture2D(depth, pos)));",
+            "float sample_depth(vec2 coord) {",
+                "float avg = 0.;",
+                "vec2 uv;",
+                "for (float i = -2.; i <= 2.; i++) {",
+                    "for (float j = -2.; j<= 2.; j++) {",
+                        "uv = coord + (2. * vec2(i, j) * scale);",
+                        "avg += unpack_depth(texture2D(depth, uv));",
                     "}",
                 "}",
-
-                "return minum;",
+                "return avg / 25.;",
             "}",
 
             "void main() {",
                 "vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);",
                 "gl_PointSize = size;",
                 "vOffset = offset;",
-                "alpha = 1.;",
                 "gl_Position = projectionMatrix * mvPosition;",
+
+                "vec3 ndc = (gl_Position.xyz / gl_Position.w + 1.) / 2.;",
+
+                //"float d = sample_depth(ndc.xy);",
+                //"float d = unpack_depth(texture2D(depth, ndc.xy));",
+                //"alpha = 1. - step(d, ndc.z);",
+                //"alpha = 200.*abs(ndc.z - d);",
+                //"debug = texture2D(depth, ndc.xy).rgb;", 
+                "alpha = sample_depth(ndc.xy);",
             "}",
             ].join("\n"),
 
         fragment: [
             "varying float alpha;",
             "varying vec2 vOffset;",
+            "varying vec3 debug;",
 
             "uniform vec2 pane;",
             "uniform sampler2D text;",
@@ -504,12 +504,19 @@ var svgoverlay = (function(module) {
                 "vec2 c = gl_PointCoord;",
                 "c.y = (c.y - 0.5) * aspect + 0.5;",
                 "c.y = clamp(c.y, 0., 1.);",
-
                 "vec2 tcoord = c*pane + vOffset;",
-                //"gl_FragColor = texture2D(depth, scoord);",
+
+                //"gl_FragColor = vec4(0., alpha, 0., 1.);",
                 "gl_FragColor = texture2D(text, tcoord);",
-                "gl_FragColor.a *= alpha;",
+                //"gl_FragColor.a *= alpha;",
                 //"gl_FragColor = vec4(gl_PointCoord, 0., 1.);",
+                //"gl_FragColor = vec4(debug, 1.);",
+                //"gl_FragColor.rgb = gl_PointCoord.x < .5 ? debug : vec3(gl_FragCoord.z);",
+                "gl_FragColor.a *= 1. - smoothstep(alpha, alpha +.0005, gl_FragCoord.z);",
+
+                // "if (alpha < .0001) {",
+                //     "gl_FragColor.a = 1.;",
+                // "}",
             "}",
         ].join("\n"),
     }

@@ -136,7 +136,7 @@ var mriview = (function(module) {
     }
 
     //Returns the world position of a vertex given the mix state
-    module.get_position = function(posdata, mix, idx) {
+    module.get_position = function(posdata, surfmix, thickmix, idx) {
         var positions = posdata.positions;
         var normals = posdata.normals;
 
@@ -145,6 +145,7 @@ var mriview = (function(module) {
             positions[0].array[idx*3+1],
             positions[0].array[idx*3+2]
         )
+
         var norm = new THREE.Vector3(
             normals[0].array[idx*3+0],
             normals[0].array[idx*3+1],
@@ -153,17 +154,34 @@ var mriview = (function(module) {
 
         if (posdata.wm) {
             var stride = posdata.wm.itemSize;
-            pos.multiplyScalar(1 - mix).add(
+            pos.multiplyScalar(1 - thickmix).add(
                 (new THREE.Vector3(
                     posdata.wm.array[idx*stride+0],
                     posdata.wm.array[idx*stride+1],
                     posdata.wm.array[idx*stride+2]
-                )).multiplyScalar(mix)
-            )
+                )).multiplyScalar(thickmix)
+            );
+            norm.multiplyScalar(1 - thickmix).add(
+                (new THREE.Vector3(
+                    posdata.wmnorm.array[idx*3+0],
+                    posdata.wmnorm.array[idx*3+1],
+                    posdata.wmnorm.array[idx*3+2]
+                )).multiplyScalar(thickmix)
+            );
         }
         var base = pos.clone();
 
-        var mix = mix * (positions.length-1);
+        var mix = surfmix * (positions.length-1);
+        //add the thickness factor
+        if (posdata.wm) {
+            var stride = posdata.wm.itemSize;
+            var dist = Math.pow(positions[0].array[idx*3+0] - posdata.wm.array[idx*stride+0], 2);
+            dist += Math.pow(positions[0].array[idx*3+1] - posdata.wm.array[idx*stride+1], 2);
+            dist += Math.pow(positions[0].array[idx*3+2] - posdata.wm.array[idx*stride+2], 2);
+
+            var offset = Math.max(0, Math.min(1, mix)) * .62 * (1 - thickmix) * Math.sqrt(dist);
+            pos.add(norm.clone().normalize().multiplyScalar(offset));
+        }
         var factor = Math.max(0, Math.min(1, 1 - mix));
         pos.multiplyScalar(factor);
         norm.multiplyScalar(factor);

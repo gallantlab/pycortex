@@ -79,7 +79,7 @@ var Shaderlib = (function() {
                 "const vec4 bit_mask  = vec4( 0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0 );",
                 "vec4 res = fract( depth * bit_shift );",
                 "res -= res.xxyz * bit_mask;",
-                "return floor(res * 256.) / 256. + 1./512.;",
+                "return res;",
             "}",
         ].join("\n"),
 

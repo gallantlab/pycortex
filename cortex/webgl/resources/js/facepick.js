@@ -81,7 +81,10 @@ PickPosition.prototype = {
 
         for (var i = 0; i < this.axes.length; i++) {
             var ax = this.axes[i];
-            var vert = mriview.get_position(this.posdata[ax.hemi], this.uniforms.surfmix.value, ax.idx);
+            var vert = mriview.get_position(this.posdata[ax.hemi], 
+                this.uniforms.surfmix.value, 
+                this.uniforms.thickmix.value, 
+                ax.idx);
 
             var inv = (new THREE.Matrix4()).getInverse(this.xfm);
             var vox = vert.base.clone().applyMatrix4(this.xfm);
@@ -122,7 +125,7 @@ PickPosition.prototype = {
 
     draw: function(renderer, camera, debug) {
         var clearAlpha = renderer.getClearAlpha();
-        var clearColor = renderer.getClearColor();
+        var clearColor = renderer.getClearColor().clone();
         renderer.setClearColor(0x0, 0);
 
         this.markers.left.visible = false;
@@ -256,7 +259,7 @@ PickPosition.prototype = {
         var vert, ax;
         for (var i = 0, il = this.axes.length; i < il; i++) {
             ax = this.axes[i];
-            vert = mriview.get_position(this.posdata[ax.hemi], mixevt.mix, ax.idx);
+            vert = mriview.get_position(this.posdata[ax.hemi], mixevt.mix, this.uniforms.thickmix.value, ax.idx);
             ax.group.position.copy(vert.pos);
 	        // ax.obj.position = addFlatNorm(vert.pos, vert.norm, mixevt.mix);
             // Rescale axes for flat view

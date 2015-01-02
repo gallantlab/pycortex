@@ -38,7 +38,7 @@ var mriview = (function(module) {
             THREE.UniformsLib[ "lights" ],
             {
                 diffuse:    { type:'v3', value:new THREE.Vector3( .8,.8,.8 )},
-                specular:   { type:'v3', value:new THREE.Vector3( .01,.01,.01 )},
+                specular:   { type:'v3', value:new THREE.Vector3( .005,.005,.005 )},
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
                 shininess:  { type:'f',  value:1000},
                 specularStrength:{ type:'f',  value:1},
@@ -165,9 +165,7 @@ var mriview = (function(module) {
                 this.pivots.right.back.add(this.svg.labels.right);
                 this.svg.labels.left.position.y = -this.flatoff[1];
                 this.svg.labels.right.position.y = -this.flatoff[1];
-                this.addEventListener("mix", function(evt){
-                    this.setMix(evt.mix);
-                }.bind(this.svg));
+                this.addEventListener("mix", this.svg.setMix.bind(this.svg));
                 this.addEventListener("resize", function(evt) {
                     this.resize(evt.width, evt.height);
                 }.bind(this.svg));
@@ -351,7 +349,7 @@ var mriview = (function(module) {
 
         this.uniforms.specularStrength.value = 1-clipped;
         this.setPivot( 180 * clipped);
-        this.dispatchEvent({type:'mix', flat:clipped, mix:mix});
+        this.dispatchEvent({type:'mix', flat:clipped, mix:mix, thickmix:this.uniforms.thickmix.value});
     };
     module.Surface.prototype.setPivot = function (val) {
         this._pivot = val;
