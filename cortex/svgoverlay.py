@@ -1,4 +1,5 @@
 import os
+
 import re
 import copy
 import shlex
@@ -54,7 +55,7 @@ class SVGOverlay(object):
             for name in layer.labels.elements:
                 for element in layer.labels.elements[name]:
                     x, y = float(element.get("x")), float(element.get("y"))
-                    dist, idx = self.kdt.query((x, y))
+                    dist, idx = self.kdt.query((x, self.svgshape[1]-y))
                     element.attrib['data-ptidx'] = str(idx)
 
     def __getattr__(self, attr):

@@ -145,6 +145,12 @@ var mriview = (function(module) {
             }
             this.setHalo(1);
 
+            //Add anatomical and flat names
+            this.names.unshift("anatomicals");
+            if (this.flatlims !== undefined) {
+                this.names.push("flat");
+            }
+
             //generate rois
             if (this.flatlims !== undefined) {
                 this._update_rois = function(tex) {
@@ -154,17 +160,17 @@ var mriview = (function(module) {
                 }.bind(this);
 
                 var path = loader.extractUrlBase(ctminfo) + json.rois;
-                this.svg = new svgoverlay.SVGOverlay(path, posdata, this._update_rois);
+                this.svg = new svgoverlay.SVGOverlay(path, posdata, this, this._update_rois);
                 this.pivots.left.back.add(this.svg.labels.left);
                 this.pivots.right.back.add(this.svg.labels.right);
                 this.svg.labels.left.position.y = -this.flatoff[1];
                 this.svg.labels.right.position.y = -this.flatoff[1];
-            }
-
-            //Add anatomical and flat names
-            this.names.unshift("anatomicals");
-            if (this.flatlims !== undefined) {
-                this.names.push("flat");
+                this.addEventListener("mix", function(evt){
+                    this.setMix(evt.mix);
+                }.bind(this.svg));
+                this.addEventListener("resize", function(evt) {
+                    this.resize(evt.width, evt.height);
+                }.bind(this.svg));
             }
 
             //create picker
@@ -189,12 +195,12 @@ var mriview = (function(module) {
     //     });
     //     this.uniforms.screen.value = this.volumebuf;
     //     this.uniforms.screen_size.value.set(width, height);
+        this.width = evt.width;
+        this.height = evt.height;
         this.loaded.done(function() {
             this.picker.resize(evt.width, evt.height);
         }.bind(this));
-        if (this.svg !== undefined) {
-            this.svg.resize(evt.width, evt.height);
-        }
+        this.dispatchEvent({type:"resize", width:evt.width, height:evt.height});
     };
     module.Surface.prototype.init = function(dataview) { 
         this.loaded.done(function() {
@@ -260,7 +266,7 @@ var mriview = (function(module) {
             this.shaders[name].dispose();
         }
     }
-    module.Surface.prototype.prerender = function(idx, renderer, scene, camera) {
+    module.Surface.prototype.prerender = function(renderer, scene, camera) {
         if (this.svg !== undefined) {
             this.svg.prerender(renderer, scene, camera);
         }
@@ -346,9 +352,6 @@ var mriview = (function(module) {
         this.uniforms.specularStrength.value = 1-clipped;
         this.setPivot( 180 * clipped);
         this.dispatchEvent({type:'mix', flat:clipped, mix:mix});
-        if (this.svg !== undefined) {
-            this.svg.setMix(mix);
-        }
     };
     module.Surface.prototype.setPivot = function (val) {
         this._pivot = val;
@@ -450,6 +453,9 @@ var mriview = (function(module) {
     module.SurfDelegate.prototype.removeEventListener = function(name, func) {
         this.surf.removeEventListener(name, this._listeners[name]);
         delete this._listeners[name];
+    }
+    module.SurfDelegate.prototype.prerender = function(renderer, scene, camera) {
+        this.surf.prerender(renderer, scene, camera);
     }
 
 

@@ -791,10 +791,8 @@ var Shaderlib = (function() {
                 "attribute vec4 auxdat;",
 
                 "varying vec3 vPos;",
-                "varying float vMedial;",
 
                 "void main() {",
-                    "vMedial = auxdat.x;",
 
             "#ifdef CORTSHEET",
                     "vec3 mpos = mix(position, wm.xyz, thickmix);",
@@ -847,6 +845,62 @@ var Shaderlib = (function() {
             }
 
             return {vertex:header+vertShade, fragment:fragShades, attrs:attributes};
+        },
+
+        depth: function(opts) {
+            var header = "";
+            var morphs = opts.morphs;
+            if (opts.volume > 0)
+                header += "#define CORTSHEET\n";
+
+            var vertShade = [
+                "uniform float thickmix;",
+
+                utils.mixer(morphs),
+                "attribute vec4 wm;",
+                "attribute vec3 wmnorm;",
+
+                "void main() {",
+            "#ifdef CORTSHEET",
+                    "vec3 mpos = mix(position, wm.xyz, thickmix);",
+                    "vec3 mnorm = mix(normal, wmnorm, thickmix);",
+            "#else",
+                    "vec3 mpos = position;",
+                    "vec3 mnorm = normal;",
+            "#endif",
+
+                    "vec3 pos, norm;",
+                    "mixfunc(mpos, mnorm, pos, norm);",
+
+                "#ifdef CORTSHEET",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
+                "#endif",
+
+                    "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
+                "}",
+            ].join("\n");
+
+            var fragShade = [
+                "uniform vec3 min;",
+                "uniform vec3 max;",
+                
+                utils.pack,
+                "void main() {",
+                    "gl_FragColor = pack_float(gl_FragCoord.z);",
+                "}"
+            ].join("\n");
+
+            var attributes = {
+                wm: { type: 'v4', value:null },
+                wmnorm: { type: 'v3', value:null },
+            };
+
+            for (var i = 0; i < morphs-1; i++) {
+                attributes['mixSurfs'+i] = { type:'v4', value:null};
+                attributes['mixNorms'+i] = { type:'v3', value:null};
+            }
+
+            return {vertex:header+vertShade, fragment:fragShade, attrs:attributes};
         },
     };
 

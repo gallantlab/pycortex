@@ -37,7 +37,7 @@ var mriview = (function(module) {
 
     module.Viewer.prototype.drawView = function(scene, idx) {
         if (this.surfs[idx].prerender !== undefined)
-            this.surfs[idx].prerender(idx, this.renderer, scene, this.camera);
+            this.surfs[idx].prerender(this.renderer, scene, this.camera);
 
         for (var i = 0; i < this.surfs.length; i++)
             this.surfs[i].apply(this.active);

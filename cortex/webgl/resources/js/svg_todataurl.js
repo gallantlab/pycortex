@@ -43,7 +43,7 @@ SVGElement.prototype.toDataURL = function(type, options) {
 	var _svg = this;
 	
 	function debug(s) {
-		console.log("SVG.toDataURL:", s);
+		//console.log("SVG.toDataURL:", s);
 	}
 
 	function exportSVG() {
