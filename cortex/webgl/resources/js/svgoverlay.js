@@ -53,8 +53,8 @@ var svgoverlay = (function(module) {
             this.layers[name] = this[name];
             this.labels.left.add(this[name].labels.meshes.left);
             this.labels.right.add(this[name].labels.meshes.right);
+            this.layers[name].addEventListener("update", this.update.bind(this));
         }
-        console.log(this.layers);
 
         this.setHeight(Math.min(4096, max_tex_size) / this.aspect);
         this.update();
@@ -75,6 +75,7 @@ var svgoverlay = (function(module) {
             tex.needsUpdate = true;
             tex.premultiplyAlpha = true;
             tex.flipY = true;
+            console.log("Updated svg...");
             this.callback(tex);
             loaded.resolve(tex);
         }.bind(this)});
@@ -196,20 +197,21 @@ var svgoverlay = (function(module) {
     }
     THREE.EventDispatcher.prototype.apply(module.Overlay.prototype);
     module.Overlay.prototype.set = function(options) {
-        for (var i = 0; i < this.shapes.length; i++) {
-            paths = this.shapes[i].getElementsByTagNameNS(svgns, "path");
-            for (var j = 0; j < paths.length; j++) {
+        for (var name in this.shapes) {
+            var paths = this.shapes[name].getElementsByTagNameNS(svgns, "path");
+            for (var i = 0; i < paths.length; i++) {
                 for (var css in options)
-                    paths[j].style[css] = options[css];
+                    paths[i].style[css] = options[css];
             }
         }
+        this.dispatchEvent({type:"update"});
     }
     module.Overlay.prototype.show = function() {
-        this.layer.style.display = "none";
+        this.layer.style.display = "inline";
         this.dispatchEvent({type:"update"});
     }
     module.Overlay.prototype.hide = function() {
-        this.layer.style.display = "inline";
+        this.layer.style.display = "none";
         this.dispatchEvent({type:"update"});
     }
 
@@ -230,7 +232,7 @@ var svgoverlay = (function(module) {
         var leftlen = posdata.left.positions[0].array.length / posdata.left.positions[0].itemSize;
         //Process all text nodes, deduplicate
         this.num = 0;
-        this.indices = {left:{verts:[],panel:[]}, right:{verts:[],panel:[]}}
+        this.indices = {left:{verts:[],text:[]}, right:{verts:[],text:[]}}
         var labels = labels.getElementsByTagNameNS(svgns, "text");
         for (var i = 0; i < labels.length; i++) {
             var name = labels[i].textContent;
@@ -244,11 +246,11 @@ var svgoverlay = (function(module) {
             var idx = parseInt(labels[i].getAttribute("data-ptidx"));
             if (idx < leftlen) {
                 this.indices.left.verts.push(this.posdata.left.map[idx]);
-                this.indices.left.panel.push(this.labels[name].idx);
+                this.indices.left.text.push(name);
             } else {
                 idx -= leftlen;
                 this.indices.right.verts.push(this.posdata.right.map[idx]);
-                this.indices.right.panel.push(this.labels[name].idx);
+                this.indices.right.text.push(name);
             }
         }
 
@@ -277,16 +279,14 @@ var svgoverlay = (function(module) {
             uniforms: {
                 size:  { type:'f', value:0 },
                 pane:  { type:'v2', value:new THREE.Vector2() },
+                scale: { type:'v2', value:new THREE.Vector2(1,1)},
                 depth: { type:'t', value:null },
                 text:  { type:'t', value:null },
-                scale: { type:'v2', value:new THREE.Vector2(1,1)},
             },
             attributes: {
                 offset:{type:'v2', value:null}
             },
             blending: THREE.NormalBlending,
-            // blendSrc: THREE.OneFactor,
-            // blendDst: THREE.OneMinusSrcAlphaFactor,
             depthTest:false,
             depthWrite:false,
             transparent:true,
@@ -307,7 +307,7 @@ var svgoverlay = (function(module) {
             this.size[1] = Math.max(this.size[1], box.height);
         }
         document.body.removeChild(this.svg);
-        this.shader.uniforms.size.value = this.size[0] * retina_scale;
+        this.shader.uniforms.size.value = (this.size[0]+2*padding) * retina_scale;
 
         //Compute the number of panels that results in the "squarest" image
         var aspect = (this.size[0] + 2*padding) / (this.size[1] + 2*padding);
@@ -328,21 +328,54 @@ var svgoverlay = (function(module) {
             this.labels[name].element.setAttribute("y", y*(this.size[1]+2*padding)+this.size[1]  +padding);
 
             //set the texture offsets for all matching labels
-            for (var i = 0, il = this.indices.left.panel.length; i < il; i++) {
-                if (this.indices.left.panel[i] == idx) {
+            for (var i = 0, il = this.indices.left.text.length; i < il; i++) {
+                if (this.indices.left.text[i] == name) {
                     this.geometry.left.attributes.offset.array[i*2+0] = x / nwide;
                     this.geometry.left.attributes.offset.array[i*2+1] = y / ntall;
                 }
             }
-            for (var i = 0, il = this.indices.right.panel.length; i < il; i++) {
-                if (this.indices.right.panel[i] == idx) {
+            for (var i = 0, il = this.indices.right.text.length; i < il; i++) {
+                if (this.indices.right.text[i] == name) {
                     this.geometry.right.attributes.offset.array[i*2+0] = x / nwide;
                     this.geometry.right.attributes.offset.array[i*2+1] = y / ntall;
                 }
             }
         }
+        this.geometry.left.attributes.offset.needsUpdate = true;
+        this.geometry.right.attributes.offset.needsUpdate = true;
 
-        this.svg.toDataURL("image/png", {renderer:"native", callback:function(dataurl) {
+        //Ridiculous workaround for stupid chrome bug with svg text rendering
+        var serializer = new XMLSerializer();
+        function serialize(svg) {
+            var b64 = "data:image/svg+xml;base64,";
+            b64 += btoa(serializer.serializeToString(svg));
+            return b64;
+        }
+        var w = this.size[0] + 2*padding, h = this.size[1] + 2*padding;
+        var complete = document.createElement("canvas");
+        var ctx_comp = complete.getContext("2d");
+        var pane = document.createElement("canvas");
+        var ctx = pane.getContext("2d");
+        var im = new Image();
+        pane.width = w * retina_scale;
+        pane.height = h * retina_scale;
+        complete.width = width * retina_scale;
+        complete.height = height * retina_scale;
+        this.svg.setAttribute("width", pane.width);
+        this.svg.setAttribute("height", pane.height);
+        for (var name in this.labels) {
+            var idx = this.labels[name].idx;
+            var x = Math.floor(idx / ntall);
+            var y = idx % ntall;
+
+            this.svg.setAttribute("viewBox", [x*w, y*h, w, h].join(" "));
+            im.src = serialize(this.svg);
+            ctx.drawImage(im, 0, 0);
+            ctx_comp.drawImage(pane, x*w*retina_scale, y*h*retina_scale);
+            ctx.clearRect(0, 0, pane.width, pane.height);
+        }
+
+        var set_tex = function(dataurl) {
             var img = new Image();
             img.src = dataurl;
             var tex = new THREE.Texture(img);
@@ -353,16 +386,19 @@ var svgoverlay = (function(module) {
             if (this.shader.uniforms.text.value && this.shader.uniforms.text.value.dispose)
                 this.shader.uniforms.text.value.dispose();
             this.shader.uniforms.text.value = tex;
-        }.bind(this)});
+        }.bind(this);
+
+        //this.svg.toDataURL("image/png", {renderer:"native", callback:set_tex});
+        set_tex(complete.toDataURL());
 
         this.shader.uniforms.pane.value.set(1 / nwide, 1 / ntall);
         this.shape = [nwide, ntall];
         this.layer.style.display = "none";
     }
     module.Labels.prototype.set = function(options) {
-        for (var i = 0; i < this.labels.length; i++) {
+        for (var name in this.labels) {
             for (var css in options) {
-                this.labels[i].style[css] = options[css]
+                this.labels[name].element.style[css] = options[css]
             }
         }
         this.update();
@@ -401,310 +437,82 @@ var svgoverlay = (function(module) {
 
     module.label_shader = {
         vertex: [
-    "uniform float size;",
-    "uniform sampler2D depth;",
-    "uniform vec2 scale;",
+            "uniform float size;",
+            "uniform sampler2D depth;",
+            "uniform vec2 scale;",
 
-    "attribute vec2 offset;",
+            "attribute vec2 offset;",
 
-    "varying float alpha;",
-    "varying vec2 vOffset;",
+            "varying float alpha;",
+            "varying vec2 vOffset;",
 
-    "float unpack_depth(const in vec4 cdepth) {",
-        "const vec4 bit_shift = vec4( 1.0 / ( 256.0 * 256.0 * 256.0 ), 1.0 / ( 256.0 * 256.0 ), 1.0 / 256.0, 1.0 );",
-        "float depth = dot( cdepth, bit_shift );",
-        "return depth;",
-    "}",
-
-    "float avg_depth( const in vec2 text, const in vec2 screen ) {",
-        "const float w = 1.;",
-        "const float d = 1. / ((w * 2. + 1.) * (w * 2. + 1.));",
-        "vec2 center = (size * (vec2(0.5) - text) + screen) / scale;",
-        "float avg = 0.;",
-        "vec2 pos = vec2(0.);",
-        "for (float i = -w; i <= w; i++) {",
-            "for (float j = -w; j <= w; j++) {",
-                "pos = center + vec2(i, j) / scale;",
-                "avg += unpack_depth(texture2D(depth, pos));",
+            "float unpack_depth(const in vec4 cdepth) {",
+                "const vec4 bit_shift = vec4( 1.0 / ( 256.0 * 256.0 * 256.0 ), 1.0 / ( 256.0 * 256.0 ), 1.0 / 256.0, 1.0 );",
+                "float depth = dot( cdepth, bit_shift );",
+                "return depth;",
             "}",
-        "}",
 
-        "return avg * d;",
-    "}",
+            "float avg_depth( const in vec2 text, const in vec2 screen ) {",
+                "const float w = 1.;",
+                "const float d = 1. / ((w * 2. + 1.) * (w * 2. + 1.));",
+                "vec2 center = (size * (vec2(0.5) - text) + screen) / scale;",
+                "float avg = 0.;",
+                "vec2 pos = vec2(0.);",
+                "for (float i = -w; i <= w; i++) {",
+                    "for (float j = -w; j <= w; j++) {",
+                        "pos = center + vec2(i, j) / scale;",
+                        "avg += unpack_depth(texture2D(depth, pos));",
+                    "}",
+                "}",
 
-    "float min_depth( const in vec2 text, const in vec2 screen ) {",
-        "const float w = 1.;",
-        "vec2 center = (size * (vec2(0.5) - text) + screen) / scale;",
-        "float minum = 1000.;",
-        "vec2 pos = vec2(0.);",
-        "for (float i = -w; i <= w; i++) {",
-            "for (float j = -w; j <= w; j++) {",
-                "pos = center + vec2(i, j) / scale;",
-                "minum = min(minum, unpack_depth(texture2D(depth, pos)));",
+                "return avg * d;",
             "}",
-        "}",
 
-        "return minum;",
-    "}",
+            "float min_depth( const in vec2 text, const in vec2 screen ) {",
+                "const float w = 1.;",
+                "vec2 center = (size * (vec2(0.5) - text) + screen) / scale;",
+                "float minum = 1000.;",
+                "vec2 pos = vec2(0.);",
+                "for (float i = -w; i <= w; i++) {",
+                    "for (float j = -w; j <= w; j++) {",
+                        "pos = center + vec2(i, j) / scale;",
+                        "minum = min(minum, unpack_depth(texture2D(depth, pos)));",
+                    "}",
+                "}",
 
-    "void main() {",
-        "vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);",
-        "gl_PointSize = size;",
-        "vOffset = offset;",
-        "alpha = 1.;",
-        "gl_Position = projectionMatrix * mvPosition;",
-    "}",
-    ].join("\n"),
+                "return minum;",
+            "}",
+
+            "void main() {",
+                "vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);",
+                "gl_PointSize = size;",
+                "vOffset = offset;",
+                "alpha = 1.;",
+                "gl_Position = projectionMatrix * mvPosition;",
+            "}",
+            ].join("\n"),
 
         fragment: [
-    "varying float alpha;",
-    "varying vec2 vOffset;",
+            "varying float alpha;",
+            "varying vec2 vOffset;",
 
-    "uniform vec2 pane;",
-    "uniform sampler2D text;",
+            "uniform vec2 pane;",
+            "uniform sampler2D text;",
 
-    "void main() {",
-        "float aspect = pane.x / pane.y;",
-        "vec2 c = gl_PointCoord;",
-        "c.y = (c.y - 0.5) * aspect + 0.5;",
-        "c.y = clamp(c.y, 0., 1.);",
+            "void main() {",
+                "float aspect = pane.x / pane.y;",
+                "vec2 c = gl_PointCoord;",
+                "c.y = (c.y - 0.5) * aspect + 0.5;",
+                "c.y = clamp(c.y, 0., 1.);",
 
-        "vec2 tcoord = c*pane + vOffset;",
-        //"gl_FragColor = texture2D(depth, scoord);",
-        "gl_FragColor = texture2D(text, tcoord);",
-        "gl_FragColor.a *= alpha;",
-        //"gl_FragColor = vec4(gl_PointCoord, 0., 1.);",
-    "}",
-    ].join("\n"),
-    }
-/*
-    module.LabelRenderer = function() {
-        this.layers = {};
-        this.objects = {left:new THREE.Group(), right:new THREE.Group()};
-        this.canvas = document.createElement("canvas");
-        this.ctx = this.canvas.getContext('2d');
-    }
-    module.LabelRenderer.prototype.register = function(layer) {
-        var geometry = {left:new THREE.Geometry(), right:new THREE.Geometry()};
-        var name = layer.parentNode.id;
-        var texts = layer.getElementsByTagNameNS("http://www.w3.org/2000/svg", "text");
-        console.log(name, texts);
-    }
-    module.LabelRenderer.prototype.init = function(positions) {
-        this.canvas = document.createElement("canvas");
-        this.geometry =  {left:new THREE.Geometry(), right:new THREE.Geometry()};
-        var uniforms = {
-                    text:   {type:'t', value:1},
-                    depth:  {type:'t', value:2},
-                    size:   {type:'f', value:10},
-                    mix:    {type:'f', value:0},
-                    aspect: {type:'f', value:0},
-                    texsize:{type:'v2', value:new THREE.Vector2()},
-                    scale:  {type:'v2', value:new THREE.Vector2()},
-                };
-        this.shader = {
-            left: new THREE.ShaderMaterial({
-                uniforms: THREE.UniformsUtils.clone(uniforms),
-                attributes: { idx:{type:'v2', value:[]} }, 
-                vertexShader: roilabel_vshader,
-                fragmentShader: roilabel_fshader,
-                blending: THREE.CustomBlending,
-                depthTest: false,
-                transparent: true,
-                depthWrite: false,
-            }),
-            right: new THREE.ShaderMaterial({
-                uniforms: THREE.UniformsUtils.clone(uniforms),
-                attributes: { idx:{type:'v2', value:[]} }, 
-                vertexShader: roilabel_vshader,
-                fragmentShader: roilabel_fshader,
-                blending: THREE.CustomBlending,
-                depthTest: false,
-                transparent: true,
-                depthWrite: false,
-            }),
-        }
-
-        var depthShader = THREE.ShaderLib["depthRGBA"];
-        var depthUniforms = THREE.UniformsUtils.clone(depthShader.uniforms);
-        this.depthmat =  new THREE.ShaderMaterial( { 
-            fragmentShader: depthShader.fragmentShader, 
-            vertexShader: depthShader.vertexShader, 
-            uniforms: depthUniforms,
-            blending: THREE.NoBlending,
-            morphTargets: true 
-        });
-
-        this.geometry.left.dynamic = true;
-        this.geometry.right.dynamic = true;
-        this.geometry.left.attributes = {idx:{type:'v2', value:null}};
-        this.geometry.right.attributes = {idx:{type:'v2', value:null}};
-
-        this.particles = {
-            left: new THREE.ParticleSystem(this.geometry.left, this.shader.left),
-            right: new THREE.ParticleSystem(this.geometry.right, this.shader.right)
-        };
-        this.particles.left.dynamic = true;
-        this.particles.right.dynamic = true;
-        this.particles.left.sortParticles = true;
-        this.particles.right.sortParticles = true;
-
-        this.positions = {};
-        var leftlen = positions.left[0].array.length / 3;
-        for (var name in names) {
-            var labels = names[name];
-            if (this.positions[name] === undefined)
-                this.positions[name] = [];
-
-            for (var i = 0, il = labels.length; i < il; i++) {
-                var pos = [labels[i] < leftlen ? this.geometry.letft : this.geometry.right];
-                var hemi = labels[i] < leftlen ? positions.left : positions.right;
-                var idx = labels[i] < leftlen ? labels[i] : labels[i] - leftlen;
-                for (var j = 0, jl = positions.left.length; j < jl; j++) {
-                    var pt = new THREE.Vector3();
-                    var arr = hemi[j].array;
-                    var k = idx * hemi[j].stride;
-                    pt.set(arr[k], arr[k+1], arr[k+2]);
-                    pos.push(pt);
-                }
-                this.positions[name].push(pos);
-            }
-        }
-        this.mixlen = positions.left.length;
+                "vec2 tcoord = c*pane + vOffset;",
+                //"gl_FragColor = texture2D(depth, scoord);",
+                "gl_FragColor = texture2D(text, tcoord);",
+                "gl_FragColor.a *= alpha;",
+                //"gl_FragColor = vec4(gl_PointCoord, 0., 1.);",
+            "}",
+        ].join("\n"),
     }
 
-    module.LabelRenderer.prototype.resize = function(width, height) {
-        width *= dpi_ratio;
-        height *= dpi_ratio;
-        
-        this.shader.left.uniforms.depth.texture = this.depth;
-        this.shader.right.uniforms.depth.texture = this.depth;
-        this.shader.left.uniforms.scale.value.set( width, height);
-        this.shader.right.uniforms.scale.value.set( width, height);
-    },
-    module.LabelRenderer.prototype.update = function(renderer, height) {
-        height *= 2;
-        height *= dpi_ratio;
-        var w, width = 0, allnames = [];
-        var ctx = this.canvas.getContext('2d');
-        ctx.font = 'italic bold '+(height*0.5)+'px helvetica';
-        for (var name in this.positions) {
-            w = ctx.measureText(name).width;
-            if (width < w)
-                width = w;
-            allnames.push(name);
-        }
-        
-        var aspect = width / height;
-        var nwide = Math.ceil(Math.sqrt(allnames.length / aspect));
-        var ntall = Math.ceil(nwide * aspect);
-        this.texPos = {};
-        this.aspect = aspect;
-        this.size = width;
-        this.canvas.width = width * nwide;
-        this.canvas.height = height * ntall;
-        ctx.font = 'italic bold '+(height*0.5)+'px helvetica';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'black';
-
-        var n = 0, name;
-        for (var i = 0; i < ntall; i++) {
-            for (var j = 0; j < nwide; j++) {
-                if (n < allnames.length) {
-                    name = allnames[n++];
-                    ctx.fillText(name, (j+.5)*width, (i+.5)*height);
-                    this.texPos[name] = new THREE.Vector2(j / nwide, i / ntall);
-                }
-            }
-        }
-
-        var shadow = new ShadowTex(this.canvas.width, this.canvas.height, 1.);
-        var tex = new THREE.Texture(this.canvas);
-        tex.flipY = false;
-        tex = shadow.blur(renderer, tex);
-
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        ctx.fillStyle = 'white';
-        n = 0;
-        for (var i = 0; i < ntall; i++) {
-            for (var j = 0; j < nwide; j++) {
-                if (n < allnames.length) {
-                    ctx.fillText(allnames[n++], (j+.5)*width, (i+.5)*height);
-                }
-            }
-        }
-
-        tex = new THREE.Texture(this.canvas);
-        tex.flipY = false;
-        tex = shadow.overlay(renderer, tex);
-
-        this.shader.left.uniforms.aspect.value = aspect;
-        this.shader.right.uniforms.aspect.value = aspect;
-        this.shader.left.uniforms.texsize.value.set(1/nwide, 1/ntall);
-        this.shader.right.uniforms.texsize.value.set(1/nwide, 1/ntall);
-        this.shader.left.attributes.idx.value = [];
-        this.shader.right.attributes.idx.value = [];
-
-        var hemilut = {};
-        hemilut[this.geometry.left.id] = this.shader.left.attributes.idx.value;
-        hemilut[this.geometry.right.id]= this.shader.right.attributes.idx.value;
-        for (var name in this.positions) {
-            for (var i = 0, il = this.positions[name].length; i < il; i++) {
-                hemilut[this.positions[name][i][0].id].push(this.texPos[name]);
-            }
-        }
-        this.setMix(0);
-
-        this.shader.left.uniforms.size.value = width;
-        this.shader.left.uniforms.text.texture = tex;
-        this.shader.right.uniforms.size.value = width;
-        this.shader.right.uniforms.text.texture = tex;
-        this.resize($("#brain").width(), $("#brain").height());
-    },
-
-    module.LabelRenderer.prototype.setMix = function(val) {
-        //Adjust the indicator particle to match the current mix state
-        //Indicator particles are set off from the surface by the normal
-        this.geometry.left.vertices = [];
-        this.geometry.right.vertices = [];
-        var mixlen = val * (this.mixlen - 1);
-        var low = Math.floor(mixlen);
-        var mix = mixlen % 1;
-
-        var hemi, label, vec;
-        for (var name in this.positions) {
-            for (var i = 0; i < this.positions[name].length; i++) {
-                label = this.positions[name][i];
-                hemi = label[0];
-                vec = label[low+1].clone().multiplyScalar(1 - mix);
-                if (low+2 < label.length)
-                    vec.addSelf(label[low+2].clone().multiplyScalar(mix));
-                hemi.vertices.push(vec);
-            }
-        }
-
-        this.geometry.left.verticesNeedUpdate = true;
-        this.geometry.right.verticesNeedUpdate = true;
-    }, 
-
-    module.LabelRenderer.prototype.render = function(viewer, renderer) {
-        var clearAlpha = renderer.getClearAlpha();
-        var clearColor = renderer.getClearColor();
-        renderer.setClearColorHex(0x0, 0);
-        viewer.scene.overrideMaterial = this.depthmat;
-        renderer.render(viewer.scene, viewer.camera, this.depth);
-        renderer.setClearColor(clearColor, clearAlpha);
-
-        viewer.scene.overrideMaterial = null;
-        viewer.meshes.left.add(this.particles.left);
-        viewer.meshes.right.add(this.particles.right);
-        renderer.render(viewer.scene, viewer.camera);
-        viewer.meshes.left.remove(this.particles.left);
-        viewer.meshes.right.remove(this.particles.right);
-    };
-
-    module.renderer = new module.LabelRenderer();
-    */
     return module;
 }(svgoverlay || {}));

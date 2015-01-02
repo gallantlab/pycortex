@@ -154,8 +154,8 @@ var mriview = (function(module) {
             //generate rois
             if (this.flatlims !== undefined) {
                 this._update_rois = function(tex) {
-                    if (this.uniforms.overlay.dispose !== undefined)
-                        this.uniforms.overlay.dispose();
+                    if (this.uniforms.overlay.value && this.uniforms.overlay.value.dispose)
+                        this.uniforms.overlay.value.dispose();
                     this.uniforms.overlay.value = tex;
                 }.bind(this);
 
