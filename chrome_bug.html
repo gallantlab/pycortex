@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<svg id='test_svg' width='500' height='500' xmlns="http://www.w3.org/2000/svg">
+<defs>
+<filter id="dropshadow">
+  <feGaussianBlur in="SourceAlpha" stdDeviation="2" id="feGaussianBlur4120"/>
+  <feMerge id="feMerge4122">
+    <feMergeNode id="feMergeNode4124"/>
+    <feMergeNode in="SourceGraphic" id="feMergeNode4126"/>
+  </feMerge>
+</filter>
+</defs>    
+<text x='250' y='40' style='font-weight:bold;font-family:Helvetica, sans-serif;font-size:18pt;fill:blue;filter:url(#dropshadow);'>
+    Hello world!
+</text>
+</svg>
+<script type='text/javascript'>
+var svg = document.getElementById('test_svg');
+
+var canvas = document.createElement("canvas");
+canvas.width = 500;
+canvas.height = 500;
+var ctx = canvas.getContext('2d');
+
+var svg_img = new Image();
+var svg_xml = (new XMLSerializer()).serializeToString(svg);
+svg_img.src = "data:image/svg+xml;base64,"+btoa(svg_xml);
+svg_img.onload = function() {
+    ctx.drawImage(svg_img, 0,0);
+    var im = new Image();
+    im.src = canvas.toDataURL();
+    document.body.appendChild(im);
+}
+
+</script>
+

@@ -460,7 +460,7 @@ var svgoverlay = (function(module) {
 
             "varying float alpha;",
             "varying vec2 vOffset;",
-            "varying vec3 debug;",
+            //"varying vec3 debug;",
 
             "float unpack_depth(const in vec4 cdepth) {",
                 "const vec4 bit_shift = vec4( 1.0 / ( 256.0 * 256.0 * 256.0 ), 1.0 / ( 256.0 * 256.0 ), 1.0 / 256.0, 1.0 );",
@@ -493,7 +493,7 @@ var svgoverlay = (function(module) {
                 "vOffset = offset;",
                 "gl_Position = projectionMatrix * mvPosition;",
 
-                "vec3 ndc = (gl_Position.xyz / gl_Position.w + 1.) / 2.;",
+                "vec2 ndc = (gl_Position.xy / gl_Position.w + 1.) / 2.;",
 
                 //"float d = sample_depth(ndc.xy);",
                 //"float d = unpack_depth(texture2D(depth, ndc.xy));",
@@ -507,7 +507,7 @@ var svgoverlay = (function(module) {
         fragment: [
             "varying float alpha;",
             "varying vec2 vOffset;",
-            "varying vec3 debug;",
+            //"varying vec3 debug;",
 
             "uniform vec2 pane;",
             "uniform sampler2D text;",
