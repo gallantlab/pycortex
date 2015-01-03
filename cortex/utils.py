@@ -178,7 +178,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     if isinstance(dv, dataset.Dataset):
         raise TypeError("Please specify a data view")
 
-    rois = db.get_overlay(dv.subject)
+    svg = db.get_overlay(dv.subject)
     try:
         import cStringIO
         fp = cStringIO.StringIO()
@@ -187,10 +187,10 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
 
     quickflat.make_png(fp, dv, height=1024, with_rois=False, with_labels=False, **kwargs)
     fp.seek(0)
-    rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
+    svg.rois.add_shape(name, binascii.b2a_base64(fp.read()), add_path)
     
     if open_inkscape:
-        return sp.call(["inkscape", '-f', rois.svgfile])
+        return sp.call(["inkscape", '-f', svg.svgfile])
 
 def get_roi_verts(subject, roi=None):
     """Return vertices for the given ROIs, or all ROIs if none are given.

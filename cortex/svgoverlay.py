@@ -188,10 +188,11 @@ class Overlay(object):
     def add_shape(self, name, pngdata=None, add_path=True):
         """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
         #self.svg deletes the images -- we want to save those, so let's load it again
-        svg = etree.parse(self.svgfile, parser=parser)
+        svg = etree.parse(self.pack.svgfile, parser=parser)
         imglayer = _find_layer(svg, "data")
         if add_path:
-            _make_layer(_find_layer(self.layer, "shapes"), name)
+            layer = _find_layer(svg, self.name)
+            _make_layer(_find_layer(layer, "shapes"), name)
 
         #Hide all the other layers in the image
         for layer in imglayer.findall(".//{%s}g"%svgns):
