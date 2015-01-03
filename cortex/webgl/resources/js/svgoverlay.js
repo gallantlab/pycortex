@@ -10,9 +10,8 @@ var svgoverlay = (function(module) {
 
     var retina_scale = window.devicePixelRatio || 1;
 
-    module.SVGOverlay = function(svgpath, posdata, surf, callback) {
+    module.SVGOverlay = function(svgpath, posdata, surf) {
         this.posdata = posdata;
-        this.callback = callback;
         this.labels = {left:new THREE.Group(), right:new THREE.Group()};
         this.layers = {};
         this.surf = surf;
@@ -36,7 +35,7 @@ var svgoverlay = (function(module) {
             blendDst: THREE.ZeroFactor,
         });
     }
-
+    THREE.EventDispatcher.prototype.apply(module.SVGOverlay.prototype);
     module.SVGOverlay.prototype.init = function(svgdoc) {
         this.doc = svgdoc
         this.svg = svgdoc.getElementsByTagName("svg")[0];
@@ -44,6 +43,7 @@ var svgoverlay = (function(module) {
         var w = this.svg.getAttribute("width");
         var h = this.svg.getAttribute("height");
         this.svg.setAttribute("viewBox", "0 0 "+w+" "+h);
+        this.svg.setAttribute("preserveAspectRatio", "none");
         this.aspect = w / h;
 
         var layers = svgdoc.getElementsByClassName("display_layer")
@@ -67,20 +67,19 @@ var svgoverlay = (function(module) {
         this.svg.setAttribute("height", this.height);
     }, 
     module.SVGOverlay.prototype.update = function() {
-        var loaded = $.Deferred();
-
         this.svg.toDataURL("image/png", {renderer:"native", callback:function(dataurl) {
             var img = new Image();
             img.src = dataurl;
             var tex = new THREE.Texture(img);
             tex.needsUpdate = true;
+            tex.anisotropy = 16;
+            //tex.mipmaps[0] = tex.image;
+            //tex.generateMipmaps = true;
             tex.premultiplyAlpha = true;
             tex.flipY = true;
-            this.callback(tex);
-            loaded.resolve(tex);
+            
+            this.dispatchEvent({type:"update", texture:tex});
         }.bind(this)});
-
-        return loaded.promise();
     }, 
     module.SVGOverlay.prototype.prerender = function(renderer, scene, camera) {
         var needed = false;
@@ -229,7 +228,6 @@ var svgoverlay = (function(module) {
         this.svg = this.doc.documentElement;
         var defs = labels.parentNode.parentNode.getElementsByTagNameNS(svgns, "defs");
         this.svg.appendChild(defs[0].cloneNode(true));
-        this.svg.style.position = "absolute";
 
         var leftlen = posdata.left.positions[0].array.length / posdata.left.positions[0].itemSize;
         //Process all text nodes, deduplicate
@@ -302,6 +300,7 @@ var svgoverlay = (function(module) {
         this.size = [0, 0];
         this.svg.setAttribute("width", "0");
         this.svg.setAttribute("height", "0");
+        this.svg.style.position = "absolute";
         document.body.appendChild(this.svg);
         for (var name in this.labels) {
             var box = this.labels[name].element.getBBox();
@@ -309,6 +308,7 @@ var svgoverlay = (function(module) {
             this.size[1] = Math.max(this.size[1], box.height);
         }
         document.body.removeChild(this.svg);
+        delete this.svg.style.position;
         this.shader.uniforms.size.value = (this.size[0]+2*padding) * retina_scale;
 
         //Compute the number of panels that results in the "squarest" image

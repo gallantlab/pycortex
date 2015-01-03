@@ -151,26 +151,6 @@ var mriview = (function(module) {
                 this.names.push("flat");
             }
 
-            //generate rois
-            if (this.flatlims !== undefined) {
-                this._update_rois = function(tex) {
-                    if (this.uniforms.overlay.value && this.uniforms.overlay.value.dispose)
-                        this.uniforms.overlay.value.dispose();
-                    this.uniforms.overlay.value = tex;
-                }.bind(this);
-
-                var path = loader.extractUrlBase(ctminfo) + json.rois;
-                this.svg = new svgoverlay.SVGOverlay(path, posdata, this, this._update_rois);
-                this.pivots.left.back.add(this.svg.labels.left);
-                this.pivots.right.back.add(this.svg.labels.right);
-                this.svg.labels.left.position.y = -this.flatoff[1];
-                this.svg.labels.right.position.y = -this.flatoff[1];
-                this.addEventListener("mix", this.svg.setMix.bind(this.svg));
-                this.addEventListener("resize", function(evt) {
-                    this.resize(evt.width, evt.height);
-                }.bind(this.svg));
-            }
-
             //create picker
             this.picker = new PickPosition(this, posdata);
             this.picker.markers.left.position.y = -this.flatoff[1];
@@ -179,7 +159,28 @@ var mriview = (function(module) {
             this.pivots.right.back.add(this.picker.markers.right);
             this.addEventListener("mix", this.picker.setMix.bind(this.picker));
 
-            this.loaded.resolve();
+            //generate rois
+            if (this.flatlims !== undefined) {
+                var path = loader.extractUrlBase(ctminfo) + json.rois;
+                this.svg = new svgoverlay.SVGOverlay(path, posdata, this);
+                this.pivots.left.back.add(this.svg.labels.left);
+                this.pivots.right.back.add(this.svg.labels.right);
+                this.svg.labels.left.position.y = -this.flatoff[1];
+                this.svg.labels.right.position.y = -this.flatoff[1];
+                this.addEventListener("mix", this.svg.setMix.bind(this.svg));
+                this.addEventListener("resize", function(evt) {
+                    this.resize(evt.width, evt.height);
+                }.bind(this.svg));
+                this.svg.addEventListener("update", function(evt) {
+                    if (this.uniforms.overlay.value && this.uniforms.overlay.value.dispose)
+                        this.uniforms.overlay.value.dispose();
+                    this.uniforms.overlay.value = evt.texture;
+                    this.loaded.resolve();
+                    this.dispatchEvent({type:"update"});
+                }.bind(this));
+            } else {
+                this.loaded.resolve();
+            }
 
         }.bind(this), {useWorker:true});
     };

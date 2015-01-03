@@ -49,37 +49,7 @@
 <div id='topbar' class='infobar'>
 	<div class='content'>
 		<form id='display_options'>
-			<fieldset id='color_fieldset' class='opt_category'>
-				<legend>Colormap</legend>
-				<table>
-					<tr><td class='vcolorbar'>
-						<div id='vminmax2'>
-							<input type='text' id='vmax2' class='vlim'/>
-							<div class='vrange_wrap'><div id='vrange2'></div></div>
-							<input type='text' id='vmin2' class='vlim'/>
-							<div class='clear'></div>
-						</div>
-					</td><td>
-						<input id='cmapsearchbox' type='text' name='cmapsearchbox' style='display:none'>
-						<ul id='cmapsearchresults' style='display:none' class='dd-options'></ul>
-						<select id='colormap'>
-							{% for name, img in colormaps %}
-							<option data-imagesrc='{{img}}' {% if name == default_cmap %}selected='selected'{%end%}>{{name}}</option>
-							{% end %}
-						</select>
-					</td><td>
-						<span title="Click to search for colormap by name"><div id='cmapsearch'><img src='resources/css/images/magnifying_glass.png'></div></span>
-					</td></tr>
-					<tr><td class='vcolorbar'></td><td>
-						<div id='vminmax'>
-							<input type='text' id='vmin' class='vlim' />
-							<div class='vrange_wrap'><div id='vrange'></div></div>
-							<input type='text' id='vmax' class='vlim' />
-							<div class='clear'></div>
-						</div>
-					</td><td></td></tr>
-				</table>
-			</fieldset>
+			
 			<div class='opt_category'>
 			<fieldset id="overlay_fieldset" class='subtable'>
 				<legend>&nbsp;</legend>
@@ -271,7 +241,40 @@
 </div>
 <div id='main'>
 	<div id='ctmload' class='loadmsg'><img src='resources/css/images/loading.gif'>Loading brain...</div>
-	<div id='dataname'></div>
+	<div id='dataopts'>
+		<div id='dataname'></div>
+		<fieldset id='color_fieldset' class='opt_category'>
+				<legend>Colormap</legend>
+				<table>
+					<tr><td class='vcolorbar'>
+						<div id='vminmax2'>
+							<input type='text' id='vmax2' class='vlim'/>
+							<div class='vrange_wrap'><div id='vrange2'></div></div>
+							<input type='text' id='vmin2' class='vlim'/>
+							<div class='clear'></div>
+						</div>
+					</td><td>
+						<input id='cmapsearchbox' type='text' name='cmapsearchbox' style='display:none'>
+						<ul id='cmapsearchresults' style='display:none' class='dd-options'></ul>
+						<select id='colormap'>
+							{% for name, img in colormaps %}
+							<option data-imagesrc='{{img}}' {% if name == default_cmap %}selected='selected'{%end%}>{{name}}</option>
+							{% end %}
+						</select>
+					</td><td>
+						<span title="Click to search for colormap by name"><div id='cmapsearch'><img src='resources/css/images/magnifying_glass.png'></div></span>
+					</td></tr>
+					<tr><td class='vcolorbar'></td><td>
+						<div id='vminmax'>
+							<input type='text' id='vmin' class='vlim' />
+							<div class='vrange_wrap'><div id='vrange'></div></div>
+							<input type='text' id='vmax' class='vlim' />
+							<div class='clear'></div>
+						</div>
+					</td><td></td></tr>
+				</table>
+			</fieldset>
+	</div>
 	<canvas id='brain'></canvas>
 </div>
 <div id='bottombar' class='infobar'>
