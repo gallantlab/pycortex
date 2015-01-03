@@ -122,19 +122,41 @@ a:visited { color:white; }
     z-index:2;
 }
 
-#dataname {
+#dataopts {
     display:none;
     position:absolute;
     z-index:8;
     float:left;
-    text-shadow:0px 2px 8px black, 0px 1px 8px black;
-    color:white;
-    font-size:24pt;
     padding:10px;
     margin:20px;
     border-radius:10px;
     background:rgba(255,255,255,.4);
+    width:320px;
+    overflow:hidden;
+    height:58px;
+
+    transition:all .3s;
+    transition-timing-function:ease;
+    transition-delay:1s;
+    -moz-transition: all .3s;
+    -moz-transition-timing-function: ease;
+    -moz-transition-delay:1s;
+    -webkit-transition: all .3s;
+    -webkit-transition-timing-function: ease;
+    -webkit-transition-delay:1s;
+}
+#dataopts:hover, #dataopts:active {
+    height:auto;
+    transition-delay:.1s;
+    -moz-transition-delay:.1s;
+    -webkit-transition-delay:.1s;
+}
+#dataname {
+    color:white;
+    text-shadow:0px 2px 8px black, 0px 1px 8px black;
+    font-size:24pt;
     font-weight:bold;
+    padding-bottom:10px;
 }
 .datadesc {
     font-size:10pt;

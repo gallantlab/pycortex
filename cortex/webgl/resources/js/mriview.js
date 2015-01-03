@@ -489,9 +489,11 @@ var mriview = (function(module) {
             $(this.object).find("#datasets").val(name);
             if (typeof(this.active.description) == "string") {
                 var html = name+"<div class='datadesc'>"+this.active.description+"</div>";
-                $(this.object).find("#dataname").html(html).show();
+                $(this.object).find("#dataname").html(html);
+                $(this.object).find("#dataopts").show();
             } else {
-                $(this.object).find("#dataname").text(name).show();
+                $(this.object).find("#dataname").text(name);
+                $(this.object).find("#dataopts").show();
             }
             this.schedule();
         }.bind(this));

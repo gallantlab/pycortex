@@ -305,16 +305,17 @@ function makeAxes(length, color) {
     }
     var lineGeo = new THREE.Geometry();
     lineGeo.vertices.push(
-        v(-length, 0, 0), v(0,0,0), v(length, 0, 0), v(0,0,0),
-        v(0, -length, 0), v(0,0,0), v(0, length, 0), v(0,0,0),
-        v(0, 0, -length), v(0,0,0), v(0, 0, length), v(0,0,0)
+        v(-length, 0, 0), v(length, 0, 0), 
+        v(0, -length, 0), v(0, length, 0), 
+        v(0, 0, -length), v(0, 0, length)
     );
     var lineMat = new THREE.LineBasicMaterial({ color: color, linewidth: 2});
-    var axes = new THREE.Line(lineGeo, lineMat);
-    axes.type = THREE.Lines;
+    var axes = new THREE.Line(lineGeo, lineMat, THREE.LinePieces);
+    axes.name = "marker_axes"
 
     var vox = new THREE.BoxGeometry(1, 1, 1);
     var voxMat = new THREE.MeshLambertMaterial({color:0xff0000, transparent:true, opacity:0.75});
     var voxmesh = new THREE.Mesh(vox, voxMat);
+    voxmesh.name = "marker_voxel";
     return {axes:axes, vox:voxmesh};
 }
