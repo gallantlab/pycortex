@@ -547,14 +547,13 @@ var Shaderlib = (function() {
 
                 //roi layer
             "#ifdef ROI_RENDER",
-                "vec4 rColor = texture2D(overlay, vUv);",
-            "#endif",          
+                "vec4 rColor = (1. - step(.001, vMedial)) * texture2D(overlay, vUv);",
+            "#endif",
 
                 "gl_FragColor = cColor;",
                 "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
                 // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "#ifdef ROI_RENDER",
-                //"rColor.a = vMedial;",
                 "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
             "#endif",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
@@ -617,7 +616,7 @@ var Shaderlib = (function() {
             "varying vec3 vNormal;",
             "varying vec2 vUv;",
             "varying float vCurv;",
-            //"varying float vMedial;",
+            "varying float vMedial;",
             // "varying float vDrop;",
 
             utils.mixer(morphs),
@@ -654,7 +653,7 @@ var Shaderlib = (function() {
             "#endif",
 
                 // "vDrop = dropout;",
-                //"vMedial = auxdat.x;",
+                "vMedial = auxdat.x;",
                 "vCurv = auxdat.y;",
 
                 "vec3 pos, norm;",
@@ -691,7 +690,7 @@ var Shaderlib = (function() {
             // "uniform vec2 hatchrep;",
             // "varying float vDrop;",
             "varying float vCurv;",
-            //"varying float vMedial;",
+            "varying float vMedial;",
             "uniform float thickmix;",
 
             utils.standard_frag_vars,
@@ -713,7 +712,7 @@ var Shaderlib = (function() {
 
                 //roi layer
             "#ifdef ROI_RENDER",
-                "vec4 rColor = texture2D(overlay, vUv);",
+                "vec4 rColor = (1. - step(.001, vMedial)) * texture2D(overlay, vUv);",
             "#endif",
 
             // "#ifndef RGBCOLORS",

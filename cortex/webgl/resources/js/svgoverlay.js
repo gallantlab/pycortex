@@ -347,35 +347,45 @@ var svgoverlay = (function(module) {
         this.geometry.right.attributes.offset.needsUpdate = true;
 
         //Ridiculous workaround for stupid chrome bug with svg text rendering
-        var serializer = new XMLSerializer();
-        function serialize(svg) {
-            var b64 = "data:image/svg+xml;base64,";
-            b64 += btoa(serializer.serializeToString(svg));
-            return b64;
-        }
-        var w = this.size[0] + 2*padding, h = this.size[1] + 2*padding;
-        var complete = document.createElement("canvas");
-        var ctx_comp = complete.getContext("2d");
-        var pane = document.createElement("canvas");
-        var ctx = pane.getContext("2d");
-        var im = new Image();
-        pane.width = w * retina_scale;
-        pane.height = h * retina_scale;
-        complete.width = width * retina_scale;
-        complete.height = height * retina_scale;
-        this.svg.setAttribute("width", pane.width);
-        this.svg.setAttribute("height", pane.height);
-        for (var name in this.labels) {
-            var idx = this.labels[name].idx;
-            var x = Math.floor(idx / ntall);
-            var y = idx % ntall;
+        // var serializer = new XMLSerializer();
+        // function serialize(svg) {
+        //     var b64 = "data:image/svg+xml;base64,";
+        //     b64 += btoa(serializer.serializeToString(svg));
+        //     return b64;
+        // }
+        // var w = this.size[0] + 2*padding, h = this.size[1] + 2*padding;
+        // var complete = document.createElement("canvas");
+        // var ctx_comp = complete.getContext("2d");
+        // var pane = document.createElement("canvas");
+        // var ctx = pane.getContext("2d");
+        // pane.width = w * retina_scale;
+        // pane.height = h * retina_scale;
+        // complete.width = width * retina_scale;
+        // complete.height = height * retina_scale;
+        // this.svg.setAttribute("width", pane.width);
+        // this.svg.setAttribute("height", pane.height);
 
-            this.svg.setAttribute("viewBox", [x*w, y*h, w, h].join(" "));
-            im.src = serialize(this.svg);
-            ctx.drawImage(im, 0, 0);
-            ctx_comp.drawImage(pane, x*w*retina_scale, y*h*retina_scale);
-            ctx.clearRect(0, 0, pane.width, pane.height);
-        }
+        // var defs = [];
+        // for (var name in this.labels) {
+        //     var def = $.Deferred();
+        //     var idx = this.labels[name].idx;
+        //     var x = Math.floor(idx / ntall);
+        //     var y = idx % ntall;
+        //     this.svg.setAttribute("viewBox", [x*w, y*h, w, h].join(" "));
+        //     var img = new Image();
+        //     img.src = serialize(this.svg);
+        //     img.onload = function() {
+        //         ctx.clearRect(0, 0, pane.width, pane.height);
+        //         ctx.drawImage(img, 0, 0);
+        //         var im = new Image();
+        //         im.src = pane.toDataURL();
+        //         im.onload = function() {
+        //             ctx_comp.drawImage(im, x*w*retina_scale, y*h*retina_scale);
+        //             def.resolve();
+        //         }
+        //     }
+        //     defs.push(def);
+        // }
 
         var set_tex = function(dataurl) {
             var img = new Image();
@@ -390,8 +400,11 @@ var svgoverlay = (function(module) {
             this.shader.uniforms.text.value = tex;
         }.bind(this);
 
-        //this.svg.toDataURL("image/png", {renderer:"native", callback:set_tex});
-        set_tex(complete.toDataURL());
+        // $.when(defs).done(function() {
+        //     set_tex(complete.toDataURL());
+        // });
+
+        this.svg.toDataURL("image/png", {renderer:"native", callback:set_tex});
 
         this.shader.uniforms.pane.value.set(1 / nwide, 1 / ntall);
         this.shape = [nwide, ntall];
