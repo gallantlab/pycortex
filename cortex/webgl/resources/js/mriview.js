@@ -24,10 +24,13 @@ var mriview = (function(module) {
         this.active = null;
 
         this.loaded = $.Deferred().done(function() {
-            this.schedule();
+            // this.schedule();
             $(this.object).find("#ctmload").hide();
-            this.canvas.css("opacity", 1);
+            // this.canvas.css("opacity", 1);
         }.bind(this));
+
+        this.ui = new jsplot.Menu();
+        this.ui.addEventListener("update", this._schedule);
 
         this._bindUI();
     }
@@ -61,102 +64,6 @@ var mriview = (function(module) {
         }
         this.schedule();
     }
-
-    module.Viewer.prototype.getState = function(state) {
-        switch (state) {
-            case 'mix':
-                return $(this.object).find("#mix").slider("value");
-            case 'pivot':
-                return $(this.object).find("#pivot").slider("value");
-            case 'frame':
-                return this.frame;
-            case 'azimuth':
-                return this.controls.azimuth;
-            case 'altitude':
-                return this.controls.altitude;
-            case 'radius':
-                return this.controls.radius;
-            case 'target':
-                var t = this.controls.target;
-                return [t.x, t.y, t.z];
-            case 'depth':
-                return this.uniforms.thickmix.value;
-            case 'visL':
-                return this.meshes.left.visible;
-            case 'visR':
-                return this.meshes.right.visible;
-            case 'rotationL':
-                var rot = this.meshes.left.rotation
-                return [rot.x,rot.y,rot.z];
-            case 'rotationR':
-                var rot = this.meshes.right.rotation
-                return [rot.x,rot.y,rot.z];
-            case 'alpha':
-                return this.renderer.getClearAlpha;
-            case 'projection':
-                if (this.camera.inOrthographicMode) {
-                    return 'orthographic'}
-                else if (this.camera.inPerspectiveMode) {
-                    return 'perspective'}
-            case 'slices':
-                return [this.planes[0].slice, this.planes[1].slice, this.planes[2].slice]
-        };
-    };
-    module.Viewer.prototype.setState = function(state, value) {
-        switch (state) {
-            case 'mix':
-                return this.setMix(value);
-            case 'pivot':
-                return this.setPivot(value);
-            case 'frame':
-                this.setFrame(value);
-                return this.figure.notify("setFrame", this, [value]);
-            case 'azimuth':
-                return this.controls.setCamera(value);
-            case 'altitude':
-                return this.controls.setCamera(undefined, value);
-            case 'radius':
-                return this.controls.setCamera(undefined, undefined, value);
-            case 'target':
-                if (this.roipack) this.roipack._updatemove = true;
-                return this.controls.target.set(value[0], value[1], value[2]);
-            case 'depth':
-                return this.uniforms.thickmix.value = value;
-            case 'visL':
-                if (this.roipack) this.roipack._updatemove = true;
-                return this.meshes.left.visible = value;
-            case 'visR':
-                if (this.roipack) this.roipack._updatemove = true;
-                return this.meshes.right.visible = value;
-            //case 'volume_vis':
-            //    this.planes[0].mesh.visible = value[0]
-            //    this.planes[1].mesh.visible = value[1]
-            //    this.planes[2].mesh.visible = value[2]
-            case 'rotationL':
-                if (this.roipack) this.roipack._updatemove = true;
-                return this.meshes.left.rotation.set(value[0], value[1], value[2]);
-            case 'rotationR':
-                if (this.roipack) this.roipack._updatemove = true;
-                return this.meshes.right.rotation.set(value[0], value[1], value[2]);
-            case 'alpha':
-                return this.renderer.setClearColor(0,value);
-            case 'specularity':
-                return this.specularity = value
-            case 'data':
-                return this.setData(value)
-            case 'labels':
-                return this.labelshow = value;
-            case 'pivot':
-                return 'SORRY NOT YET'
-            case 'projection':
-                if (value=='perspective'){
-                    return this.controls.camera.toPerspective()}
-                else if (value=='orthographic'){
-                    return this.controls.camera.toOrthographic()}
-            case 'slices':
-                return [this.planes[0].update(value[0]), this.planes[1].update(value[1]), this.planes[2].update(value[2])];
-        };
-    };
     
     module.Viewer.prototype.animate = function(animation) {
         var state = {};
@@ -293,88 +200,6 @@ var mriview = (function(module) {
     //         this.roipack.saveSVG(png, posturl);
     //     }.bind(this));
     // }; 
-    // module.Viewer.prototype.setMix = function(val) {
-    //     var num = this.meshes.left.geometry.morphTargets.length;
-    //     var flat = num - 1;
-    //     var n1 = Math.floor(val * num)-1;
-    //     var n2 = Math.ceil(val * num)-1;
-
-    //     for (var h in this.meshes) {
-    //         var hemi = this.meshes[h];
-    //         if (hemi !== undefined) {
-    //             for (var i=0; i < num; i++) {
-    //                 hemi.morphTargetInfluences[i] = 0;
-    //             }
-
-    //             if (this.flatlims !== undefined)
-    //                 this.uniforms.hide_mwall.value = (n2 == flat);
-
-    //             hemi.morphTargetInfluences[n2] = (val * num)%1;
-    //             if (n1 >= 0)
-    //                 hemi.morphTargetInfluences[n1] = 1 - (val * num)%1;
-    //         }
-    //     }
-    //     if (this.flatlims !== undefined) {
-    //         this.flatmix = n2 == flat ? (val*num-.000001)%1 : 0;
-    //         this.setPivot(this._pivot);
-    //         this.update_spec();
-    //         if (n2 == flat) {
-    //             for (var i = 0; i < 3; i++) {
-    //                 this.planes[i].update();
-    //                 this.planes[i].mesh.visible = false;
-    //             }
-    //             $("#volvis").attr("disabled", true);
-    //         } else {
-    //             $("#volvis").removeAttr("disabled");
-    //             this.update_volvis();
-    //         }
-    //     }
-    //     $(this.object).find("#mix").slider("value", val);
-        
-    //     this.dispatchEvent({type:"mix", flat:this.flatmix, mix:val});
-    //     this.figure.notify("setmix", this, [val]);
-    //     this.schedule();
-    // }; 
-    // module.Viewer.prototype.setPivot = function (val, fromuser) {
-    //     this._pivot = val;
-    //     val = this.flatmix * 180 + (1-this.flatmix) * this._pivot;
-    //     $(this.object).find("#pivot").slider("option", "value", val);
-    //     var names = {left:1, right:-1};
-    //     var frac = Math.abs(val/180) * (1-this.flatmix);
-    //     if (val > 0) {
-    //         for (var name in names) {
-    //             this.pivot[name].front.rotation.z = 0;
-    //             this.pivot[name].back.rotation.z = val*Math.PI/180 * names[name]/ 2;
-    //             // Move hemispheres so that focus stays at center
-    //             this.pivot[name].back.position.y = frac * this.meshes.right.geometry.boundingBox.min.y + ((1-frac) * this.pivot[name].back.orig_position.y);
-
-    //         }
-    //     } else {
-    //         for (var name in names) {
-    //             this.pivot[name].back.rotation.z = 0;
-    //             // Make sure back position is reset before front pivoting
-    //             this.pivot[name].back.position.y = this.pivot[name].back.orig_position.y;
-    //             this.pivot[name].front.rotation.z = val*Math.PI/180 * names[name] / 2;
-
-    //             // Move hemispheres so that focus stays at center
-    //             this.pivot[name].front.position.y = frac * (this.meshes.right.geometry.boundingBox.max.y - this.pivot[name].front.orig_position.y) + ((1-frac) * this.pivot[name].front.orig_position.y);
-    //         }
-    //     }
-    //     this.figure.notify("setpivot", this, [val]);
-    //     this.schedule();
-    // };
-    // module.Viewer.prototype.setShift = function(val) {
-    //     this.pivot.left.front.position.x = -val;
-    //     this.pivot.right.front.position.x = val;
-    //     this.figure.notify('setshift', this, [val]);
-    //     this.schedule();
-    // };
-    // module.Viewer.prototype.update_spec = function() {
-    //     var s = this.specular * (1 - this.flatmix);
-    //     this.uniforms.specular.value.set(s, s, s);
-    // };
-
-
 
     module.Viewer.prototype.addData = function(data) {
         if (!(data instanceof Array))
@@ -431,9 +256,9 @@ var mriview = (function(module) {
         } else {
             if (this.active.vertex) {
                 if (this.surfs.length > 1)
-                for (var i = 0; i < this.surfs.length; i++) {
+                    for (var i = 0; i < this.surfs.length; i++) {
 
-                }//delete all other surfaces, since vertex is tightly coupled to surface
+                    }//delete all other surfaces, since vertex is tightly coupled to surface
             }
             for (var i = 0; i < this.surfs.length; i++) {
                 this.surfs[i].update(this.active);
@@ -468,16 +293,16 @@ var mriview = (function(module) {
             //unhide the main canvas object
             this.canvas[0].style.opacity = 1;
 
-            $(this.object).find("#vrange").slider("option", {min: this.active.data[0].min, max:this.active.data[0].max});
-            if (this.active.data.length > 1) {
-                $(this.object).find("#vrange2").slider("option", {min: this.active.data[1].min, max:this.active.data[1].max});
-                $(this.object).find("#vminmax2").show();
-            } else {
-                $(this.object).find("#vminmax2").hide();
-                this.setVminmax(this.active.vmin[0].value[0], this.active.vmax[0].value[0], 0);
-            }
+            // $(this.object).find("#vrange").slider("option", {min: this.active.data[0].min, max:this.active.data[0].max});
+            // if (this.active.data.length > 1) {
+            //     $(this.object).find("#vrange2").slider("option", {min: this.active.data[1].min, max:this.active.data[1].max});
+            //     $(this.object).find("#vminmax2").show();
+            // } else {
+            //     $(this.object).find("#vminmax2").hide();
+            //     this.setVminmax(this.active.vmin[0].value[0], this.active.vmax[0].value[0], 0);
+            // }
 
-            this.setupStim();
+            // this.setupStim();
             
             $(this.object).find("#datasets li").each(function() {
                 if ($(this).text() == name)
@@ -535,6 +360,11 @@ var mriview = (function(module) {
         this.active.addEventListener("update", surf._update);
         this.active.addEventListener("attribute", surf._attrib);
         this.addEventListener("resize", surf._resize);
+
+        if (surf.ui !== undefined) {
+            this.ui.addFolder("Surface", surf.ui);
+        }
+
         this.schedule();
         return surf;
     };
@@ -585,22 +415,6 @@ var mriview = (function(module) {
         }
         this.schedule();
     };
-    module.Viewer.prototype.setMix = function(mix) {
-        for (var i = 0; i < this.surfs.length; i++) {
-            if (this.surfs[i].setMix instanceof Function)
-                this.surfs[i].setMix(mix);
-        }
-        $(this.object).find("#mix").slider("value", mix);
-        this.schedule();
-    };
-    module.Viewer.prototype.setPivot = function(pivot) {
-        for (var i = 0; i < this.surfs.length; i++) {
-            if (this.surfs[i].setPivot instanceof Function)
-                this.surfs[i].setPivot(pivot);
-        }
-        $(this.object).find("#pivot").slider("value", pivot);
-        this.schedule();
-    }
 
     module.Viewer.prototype.setVminmax = function(vmin, vmax, dim) {
         if (dim === undefined)
@@ -633,7 +447,7 @@ var mriview = (function(module) {
         cm = $(this.object).find("#colormap"),
         sb = $(this.object).find("#cmapsearchbox"),
         v = this;
-
+        
         sb.val("");
         sb.css("width", cm.css("width"));
         sb.css("height", cm.css("height"));
@@ -776,34 +590,8 @@ var mriview = (function(module) {
                 e.stopPropagation();
                 e.preventDefault();
             }
-            // } else if (e.keyCode == 81) { //q
-            //     this.planes[0].next();
-            // } else if (e.keyCode == 87) { //w
-            //     this.planes[0].prev();
-            // } else if (e.keyCode == 65) { //a
-            //     this.planes[1].next();
-            // } else if (e.keyCode == 83) { //s
-            //     this.planes[1].prev();
-            // } else if (e.keyCode == 90) { //z
-            //     this.planes[2].next();
-            // } else if (e.keyCode == 88) { //x
-            //     this.planes[2].prev();
-            // }
         }.bind(this));
         var _this = this;
-        $(this.object).find("#mix").slider({
-            min:0, max:1, step:.001,
-            slide: function(event, ui) { this.setMix(ui.value); }.bind(this)
-        });
-        $(this.object).find("#pivot").slider({
-            min:-180, max:180, step:.01,
-            slide: function(event, ui) { this.setPivot(ui.value); }.bind(this)
-        });
-
-        $(this.object).find("#shifthemis").slider({
-            min:0, max:100, step:.01,
-            slide: function(event, ui) { this.setShift(ui.value); }.bind(this)
-        });
 
         if ($(this.object).find("#color_fieldset").length > 0) {
             $(this.object).find("#colormap").ddslick({ width:296, height:350, 
@@ -867,141 +655,7 @@ var mriview = (function(module) {
                 this.schedule();
             }.bind(this));            
         }
-        /*
-        // Setup controls for multiple overlays
-        var updateOverlays = function() {
-            this.roipack.update(this.renderer).done(function(tex){
-                this.uniforms.map.texture = tex;
-                this.schedule();
-            }.bind(this));
-        }.bind(this);
-
-        for (var li=0; li<disp_layers.length; li++) {
-            var layername = disp_layers[li];
-
-            $(this.object).find("#"+layername+"_linewidth").slider({
-                min:.5, max:10, step:.1, 
-		value: disp_defaults[layername]['line_width'],
-                change: updateOverlays,
-            });
-            $(this.object).find("#"+layername+"_linealpha").slider({
-                min:0, max:1, step:.001, 
-		value: disp_defaults[layername]['line_alpha'],
-                change: updateOverlays,
-            });
-            $(this.object).find("#"+layername+"_fillalpha").slider({
-                min:0, max:1, step:.001, 
-		value: disp_defaults[layername]['fill_alpha'],
-                change: updateOverlays,
-            });
-            $(this.object).find("#"+layername+"_shadowalpha").slider({
-                min:0, max:20, step:1, value:4,
-                change: updateOverlays,
-            });
-            $(this.object).find("#"+layername+"_linecolor").minicolors({
-		change: updateOverlays,
-		defaultValue: disp_defaults[layername]['line_color']
-	    });
-            $(this.object).find("#"+layername+"_fillcolor").minicolors({
-		change: updateOverlays,
-		defaultValue: disp_defaults[layername]['fill_color']
-	    });
-            $(this.object).find("#"+layername+"_shadowcolor").minicolors({change: updateOverlays});
-
-            var _this = this;
-            $(this.object).find("#"+layername+"show").change(function() {
-                console.log("Toggling: " + "#"+$(this).attr("layername"));
-                var el = $(_this.roipack.svgroi).find("#"+$(this).attr("layername"));
-                if (this.checked)
-                    el.css('display','inline');
-                else
-                    el.css('display','none');
-
-                updateOverlays();
-            }).attr("layername", layername);
-
-            $(this.object).find("#"+layername+"labelshow").change(function() {
-                // this.labelshow = !this.labelshow;
-                _this.roipack.layer_label_visibility[$(this).attr("layername")] = this.checked;
-                _this.roipack.update_labels();
-                _this.roipack.labels.setMix(_this.flatmix);
-                _this.schedule();
-            }).attr("layername", layername);
-        }
-        $(this.object).find("#overlay_fieldset").tabs();
-    
-        $(this.object).find("#layer_curvalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
-            this.uniforms.curvAlpha.value = ui.value;
-            this.schedule();
-        }.bind(this)})
-        $(this.object).find("#layer_curvmult").slider({ min:.001, max:2, step:.001, value:1, slide:function(event, ui) {
-            this.uniforms.curvScale.value = ui.value;
-            this.schedule();
-        }.bind(this)})
-        $(this.object).find("#layer_curvlim").slider({ min:0, max:.5, step:.001, value:.2, slide:function(event, ui) {
-            this.uniforms.curvLim.value = ui.value;
-            this.schedule();
-        }.bind(this)})
-        $(this.object).find("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:1.0, slide:function(event, ui) {
-            this.uniforms.dataAlpha.value = ui.value;
-            this.schedule();
-        }.bind(this)})
-        $(this.object).find("#layer_specularity").slider({ min:0, max:1, step:.001, value:this.specular, slide:function(event, ui) {
-            this.specular = ui.value;
-            this.update_spec();
-            this.schedule();
-        }.bind(this)})
-        $(this.object).find("#layer_hatchalpha").slider({ min:0, max:1, step:.001, value:1, slide:function(event, ui) {
-            this.uniforms.hatchAlpha.value = ui.value;
-            this.schedule();
-        }.bind(this)})
-        $(this.object).find("#layer_hatchcolor").minicolors({close: function(hex, rgb) {
-            this.uniforms.hatchColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
-            this.schedule();
-        }.bind(this)});
-
-        $(this.object).find("#volvis").change(this.update_volvis.bind(this));
-        $(this.object).find("#leftvis").change(this.update_leftvis.bind(this));
-        $(this.object).find("#rightvis").change(this.update_rightvis.bind(this));
-        $(this.object).find("#projpersp").change(this.update_projection.bind(this));
-        $(this.object).find("#projortho").change(this.update_projection.bind(this));
-
-        $(this.object).find("#voxline_show").change(function() {
-            viewopts.voxlines = $(this.object).find("#voxline_show")[0].checked;
-            this.setVoxView(this.active.filter, viewopts.voxlines);
-            this.schedule();
-        }.bind(this));
-        $(this.object).find("#voxline_color").minicolors({ close: function(hex, rgb) {
-            this.uniforms.voxlineColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b/255);
-            this.schedule();
-        }.bind(this)});
-        $(this.object).find("#voxline_width").slider({ min:.001, max:.1, step:.001, value:viewopts.voxline_width, slide:function(event, ui) {
-            this.uniforms.voxlineWidth.value = ui.value;
-            this.schedule();
-        }.bind(this)});
-        $(this.object).find("#datainterp").change(function() {
-            this.setVoxView($(this.object).find("#datainterp").val(), viewopts.voxlines);
-            this.schedule();
-        }.bind(this));
-        $(this.object).find("#thicklayers").slider({ min:1, max:32, step:1, value:1, slide:function(event, ui)  {
-            if (ui.value == 1)
-                $(this.object).find("#thickmix_row").show();
-            else 
-                $(this.object).find("#thickmix_row").hide();
-            this.uniforms.nsamples.value = ui.value;
-            this.active.init(this.uniforms, this.meshes, this.flatlims !== undefined, this.frames);
-            this.schedule();
-        }.bind(this)});
-        $(this.object).find("#thickmix").slider({ min:0, max:1, step:.001, value:0.5, slide:function(event, ui) {
-            this.figure.notify("setdepth", this, [ui.value]);
-            this.uniforms.thickmix.value = ui.value;
-            this.schedule();
-        }.bind(this)})
-
-        $(this.object).find("#resetflat").click(function() {
-            this.reset_view();
-        }.bind(this));
-        */
+        
         //Dataset box
         var setdat = function(event, ui) {
             var names = [];
@@ -1029,20 +683,20 @@ var mriview = (function(module) {
                 stop: setdat,
             });
 
-        $(this.object).find("#moviecontrol").click(this.playpause.bind(this));
+        // $(this.object).find("#moviecontrol").click(this.playpause.bind(this));
 
-        $(this.object).find("#movieprogress>div").slider({min:0, max:1, step:.001,
-            slide: function(event, ui) { 
-                this.setFrame(ui.value); 
-                this.figure.notify("setFrame", this, [ui.value]);
-            }.bind(this)
-        });
-        $(this.object).find("#movieprogress>div").append("<div class='ui-slider-range ui-widget-header'></div>");
+        // $(this.object).find("#movieprogress>div").slider({min:0, max:1, step:.001,
+        //     slide: function(event, ui) { 
+        //         this.setFrame(ui.value); 
+        //         this.figure.notify("setFrame", this, [ui.value]);
+        //     }.bind(this)
+        // });
+        // $(this.object).find("#movieprogress>div").append("<div class='ui-slider-range ui-widget-header'></div>");
 
-        $(this.object).find("#movieframe").change(function() { 
-            _this.setFrame(this.value); 
-            _this.figure.notify("setFrame", _this, [this.value]);
-        });
+        // $(this.object).find("#movieframe").change(function() { 
+        //     _this.setFrame(this.value); 
+        //     _this.figure.notify("setFrame", _this, [this.value]);
+        // });
     };
     module.Viewer.prototype._makeBtns = function(names) {
         var btnspeed = 0.5; // How long should folding/unfolding animations take?

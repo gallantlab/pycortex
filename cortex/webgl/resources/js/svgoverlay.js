@@ -10,7 +10,29 @@ var svgoverlay = (function(module) {
 
     var retina_scale = window.devicePixelRatio || 1;
 
+    var style_set = function(setter, style) {
+        var func = function(val) {
+            var obj = {};
+            obj[style] = val;
+            setter(val);
+        };
+        var desc;
+        if (style == "stroke") 
+            desc = {value:[1,1,1]};
+        else if (style == "stroke-width") 
+            desc = {min:0, max:10, value:3};
+        else if (style == "opacity") 
+            desc = {min:0, max:1, value:1};
+        else if (style == "fill")
+            desc = {value:[0,0,0]};
+        else if (style == "font-size")
+            desc = {min:8, max:72, value:24};
+        desc.action = func;
+        return desc;
+    }
+
     module.SVGOverlay = function(svgpath, posdata, surf) {
+        this.loaded = $.Deferred();
         this.posdata = posdata;
         this.labels = {left:new THREE.Group(), right:new THREE.Group()};
         this.layers = {};
@@ -46,7 +68,8 @@ var svgoverlay = (function(module) {
         this.svg.setAttribute("preserveAspectRatio", "none");
         this.aspect = w / h;
 
-        var layers = svgdoc.getElementsByClassName("display_layer")
+        var layers = svgdoc.getElementsByClassName("display_layer");
+        this.ui = new jsplot.Menu();
         for (var i = 0; i < layers.length; i++) {
             var name = layers[i].getAttribute("inkscape:label");
             this[name] = new module.Overlay(layers[i], this.posdata);
@@ -54,11 +77,20 @@ var svgoverlay = (function(module) {
             this.labels.left.add(this[name].labels.meshes.left);
             this.labels.right.add(this[name].labels.meshes.right);
             this.layers[name].addEventListener("update", this.update.bind(this));
+
+            var labels = this.layers[name].labels;
+            var setshape = this[name].set.bind(this[name]);
+            var setlabel = labels.set.bind(labels);
+            this.ui.addFolder(name).add({
+                visible: [this[name], "showhide"],
+                labels:  [this[name].labels, "showhide"],
+            });
         }
 
         this.setHeight(Math.min(4096, max_tex_size) / this.aspect);
         this.resize(this.surf.width, this.surf.height);
         this.update();
+        this.loaded.resolve();
     },
     module.SVGOverlay.prototype.setHeight = function(height) {
         this.height = height;
@@ -187,14 +219,23 @@ var svgoverlay = (function(module) {
         this.layer = layer;
         this.shapes = {};
 
-        var shapes = layer.parentNode.getElementById(this.name+"_shapes").children;
-        for (var i = 0 ; i < shapes.length; i++) {
-            var name = shapes[i].getAttribute("inkscape:label");
-            this.shapes[name] = shapes[i];
+        var shapes = layer.parentNode.getElementById(this.name+"_shapes");
+        for (var i = 0 ; i < shapes.children.length; i++) {
+            var name = shapes.children[i].getAttribute("inkscape:label");
+            this.shapes[name] = shapes.children[i];
         }
 
         var labels = layer.parentNode.getElementById(this.name+"_labels");
-        this.labels = new module.Labels(labels, posdata);
+        this.labels = new module.Labels(labels, posdata, this.layer.style.display == "none");
+
+        this._hidden = this.layer.style.display == "none" || shapes.style.display == "none";
+        this.showhide = function(state) {
+            if (state === undefined)
+                return this._hidden;
+
+            if (state) this.show();
+            else this.hide();
+        }.bind(this);
     }
     THREE.EventDispatcher.prototype.apply(module.Overlay.prototype);
     module.Overlay.prototype.set = function(options) {
@@ -217,7 +258,7 @@ var svgoverlay = (function(module) {
     }
 
 
-    module.Labels = function(labels, posdata) {
+    module.Labels = function(labels, posdata, hidden) {
         this.name = labels.parentNode.id;
         this.layer = labels;
         this.posdata = posdata;
@@ -254,7 +295,19 @@ var svgoverlay = (function(module) {
             }
         }
 
+
+        this._hidden = this.layer.style.display == "none" || hidden;
+        this.showhide = function(state) {
+            if (state === undefined)
+                return this._hidden;
+
+            if (this.state) this.show();
+            else this.hide();
+        }.bind(this);
+
         this._make_object();
+        if (this.layer.style.display == 'none')
+            this.hide();
         this.update();
     }
 

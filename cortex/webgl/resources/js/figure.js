@@ -20,6 +20,89 @@ var jsplot = (function (module) {
         return new F();
     }
 
+    module.Menu = function(gui) {
+        this._gui = gui;
+        this._names = [];
+        this._folders = {};
+        this._controls = {};
+    }
+    THREE.EventDispatcher.prototype.apply(module.Menu.prototype);
+    module.Menu.prototype.set = function(gui) {
+        this._gui = gui;
+        for (var i = 0; i < this._names.length; i++) {
+            var name = this._names[i];
+
+            if (this[name] instanceof module.Menu && this._folders[name] === undefined) {
+                this._folders[name] = this._addFolder(gui, name);
+                this[name].set(this._folders[name]);
+            } else if (this._controls[name] === undefined) {
+                this._controls[name] = this._add(gui, name, this[name]);
+            }
+        }
+    }
+    module.Menu.prototype.addFolder = function(name, menu) {
+        this._names.push(name);
+
+        if (menu === undefined)
+            menu = new module.Menu();
+        //cause update events to bubble
+        menu.addEventListener("update", function() {
+            this.dispatchEvent({type:"update"});
+        }.bind(this));
+
+        if (this._gui !== undefined) {
+            this._folders[name] = this._addFolder(this._gui, name);
+            menu.set(this._folders[name]);
+        }
+        
+        this[name] = menu;
+        return menu;
+    }
+    module.Menu.prototype.add = function(desc) {
+        for (var name in desc) {
+            var args = desc[name];
+            
+            this[name] = args;
+            this._names.push(name);
+
+            if (this._gui !== undefined) {
+                this._controls[name] = this._add(this._gui, this[name]);
+            }
+        }
+        return this;
+    }
+    module.Menu.prototype._add = function(gui, name, args) {
+        var obj = args[0][args[1]];
+        if (obj instanceof Function) {
+            var parent = args.shift();
+            var method = args.shift();
+            this[name] = parent[method]();
+            var ctrl = gui.add.apply(gui, [this, name].concat(args));
+            ctrl.onChange(function(name) {
+                parent[method](this[name]);
+                this.dispatchEvent({type:"update"});
+            }.bind(this, name));
+
+            var func = parent[method].bind(parent);
+            parent[method] = function(name, val) {
+                func(val);
+                this[name] = val;
+                ctrl.updateDisplay();
+            }.bind(this, name)
+        } else {
+            var ctrl = gui.add.apply(gui, args).name(name);
+            ctrl.onChange(function() {
+                this.dispatchEvent({type:"update"});
+            }.bind(this));
+        }
+        return ctrl;
+    }
+    module.Menu.prototype._addFolder = function(gui, name) {
+        var folder = gui.addFolder(name);
+        folder.open();
+        return folder;
+    }
+
     module.Figure = function(parent) {
         this._notifying = false;
         this.axes = [];
@@ -35,6 +118,12 @@ var jsplot = (function (module) {
         } else {
             parent.addEventListener('resize', this.resize.bind(this));
         }
+
+        this.gui = new dat.GUI({autoPlace:false});
+        this.ui_element = document.createElement("div");
+        this.ui_element.id = "figure_ui";
+        this.object.appendChild(this.ui_element);
+        this.ui_element.appendChild(this.gui.domElement);
     }
     THREE.EventDispatcher.prototype.apply(module.Figure.prototype);
 
@@ -75,6 +164,8 @@ var jsplot = (function (module) {
         this.ax = module.construct(axcls, args);
         this.axes.push(this.ax);
         $(this.parent.object).append(this.ax.object);
+        if (this.ax.ui !== undefined)
+            this.ax.ui.set(this.gui);
     }
 
     var w2fig_layer = 0;
@@ -111,14 +202,20 @@ var jsplot = (function (module) {
     module.W2Figure.prototype.add = function(axcls, where, instant) {
         var args = Array.prototype.slice.call(arguments).slice(3);
         args.unshift(this);
-        this.ax = module.construct(axcls, args);
-        this.axes[where] = this.ax;
+
+        var axes = module.construct(axcls, args);
         this.w2obj.show(where, instant);
-        this.w2obj.content(where, this.ax.object);
-        if (this.ax instanceof module.Figure) {
-            this.ax.init();
+        this.w2obj.content(where, axes.object);
+        if (axes instanceof module.Figure) {
+            axes.init();
         }
-        return this.ax;
+        this.axes[where] = axes;
+        this.ax = axes;
+
+        if (this.ax.ui !== undefined)
+            this.ax.ui.set(this.gui);
+
+        return axes;
     }
     module.W2Figure.prototype.show = function(where, instant) {
         this.w2obj.show(where, instant);
@@ -188,7 +285,6 @@ var jsplot = (function (module) {
     }
     THREE.EventDispatcher.prototype.apply(module.Axes.prototype);
     module.Axes.prototype.resize = function() {}
-
 
     module.MovieAxes = function(figure, url) {
         module.Axes.call(this, figure);

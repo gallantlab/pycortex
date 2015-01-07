@@ -29,11 +29,13 @@ var mriview = (function(module) {
         this.hemis = {};
         this.volume = 0;
         this._pivot = 0;
+        this._shift = 0;
         this.shaders = {};
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
         this.object = new THREE.Group();
         this.object.name = 'Surface';
+
         this.uniforms = THREE.UniformsUtils.merge( [
             THREE.UniformsLib[ "lights" ],
             {
@@ -50,15 +52,28 @@ var mriview = (function(module) {
                 //hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
                 hatchAlpha: { type:'f', value:1.},
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+
                 overlay:    { type:'t', value:null },
                 curvAlpha:  { type:'f', value:1.},
                 curvScale:  { type:'f', value:.5},
                 curvLim:    { type:'f', value:.2},
 
-                screen:     { type:'t', value:this.volumebuf},
-                screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
+                // screen:     { type:'t', value:this.volumebuf},
+                // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
         ]);
+        
+        this.ui = (new jsplot.Menu()).add({
+            mix: [this, "setMix", 0, 1],
+            pivot: [this, "setPivot", -180, 180],
+            shift: [this, "setShift", 0, 200],
+            depth: [this.uniforms.thickmix, "value", 0, 1],
+        })
+        this.ui.addFolder("curvature").add({
+            alpha: [this.uniforms.curvAlpha, "value", 0, 1],
+            scale: [this.uniforms.curvScale, "value", 0, 1],
+            limit: [this.uniforms.curvScale, "value", 0, 1],
+        })
         
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, json ) {
@@ -177,6 +192,9 @@ var mriview = (function(module) {
                     this.uniforms.overlay.value = evt.texture;
                     this.loaded.resolve();
                     this.dispatchEvent({type:"update"});
+                }.bind(this));
+                this.svg.loaded.done(function() { 
+                    this.ui.addFolder("Overlays", this.svg.ui);
                 }.bind(this));
             } else {
                 this.loaded.resolve();
@@ -329,6 +347,9 @@ var mriview = (function(module) {
 
     var _last_clipped = 0;
     module.Surface.prototype.setMix = function(mix) {
+        if (mix === undefined)
+            return this.uniforms.surfmix.value;
+
         this.uniforms.surfmix.value = mix;
         var smix = mix * (this.names.length - 1);
         var factor = 1 - Math.abs(smix - (this.names.length-1));
@@ -352,7 +373,10 @@ var mriview = (function(module) {
         this.setPivot( 180 * clipped);
         this.dispatchEvent({type:'mix', flat:clipped, mix:mix, thickmix:this.uniforms.thickmix.value});
     };
-    module.Surface.prototype.setPivot = function (val) {
+    module.Surface.prototype.setPivot = function(val) {
+        if (val === undefined)
+            return this._pivot;
+
         this._pivot = val;
         var names = {left:1, right:-1}
         if (val > 0) {
@@ -368,6 +392,9 @@ var mriview = (function(module) {
         }
     };
     module.Surface.prototype.setShift = function(val) {
+        if (val === undefined)
+            return this._shift;
+        this._shift = val;
         this.pivots.left.front.position.x = -val;
         this.pivots.right.front.position.x = val;
     };
@@ -402,6 +429,9 @@ var mriview = (function(module) {
     module.SurfDelegate = function(dataview) {
         this.object = new THREE.Group();
         this.object.name = "SurfDelegate";
+
+        this.ui = new jsplot.Menu();
+
         this.update(dataview);
         this._update = this.update.bind(this);
         this._attrib = this.setAttribute.bind(this);
@@ -419,6 +449,9 @@ var mriview = (function(module) {
         this.surf = subjects[subj];
         this.surf.init(dataview);
         this.object.add(this.surf.object);
+        
+        this.ui.addFolder(subj, this.surf.ui);
+
         for (var name in this._listeners)
             this.surf.addEventListener(name, this._listeners[name]);
     }
@@ -434,7 +467,7 @@ var mriview = (function(module) {
         return this.surf.setMix(mix);
     }
     module.SurfDelegate.prototype.setPivot = function(pivot) {
-        return this.surf.setPivot(mix);
+        return this.surf.setPivot(pivot);
     }
     module.SurfDelegate.prototype.setShift = function(shift) {
         return this.surf.setShift(shift);

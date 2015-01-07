@@ -1,8 +1,4 @@
 var jsplot = (function (module) {
-    // make sure canvas size is set properly for high DPI displays
-    // From: http://www.khronos.org/webgl/wiki/HandlingHighDPI
-    var dpi_ratio = window.devicePixelRatio || 1;
-
     module.Axes3D = function(figure) {
         if (this.canvas === undefined) {
             module.Axes.call(this, figure);
@@ -126,7 +122,7 @@ var jsplot = (function (module) {
                 this.camera.updateProjectionMatrix();
                 this.drawView(this.views[i].scene, i);
             }
-        } else {
+        } else if (this.views.length > 0) {
             this.renderer.enableScissorTest(false);
             this.drawView(this.views[0].scene, 0);
         }
