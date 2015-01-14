@@ -32,6 +32,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
     this.azimuth = 45;
     this.altitude = 75;
     this.radius = 250;
+    this.azlim = 0;
 
     var _state = STATE.NONE,
         _start = new THREE.Vector3(),
@@ -55,6 +56,17 @@ THREE.LandscapeControls = function ( cover, camera ) {
         if (statefunc[_state]) {
             if (statefunc[_state])
                 statefunc[_state](mousechange);
+        }
+
+        var altlim = this.mix * 90;
+        this.altitude = this.altitude > 179.9999-altlim ? 179.9999-altlim : this.altitude;
+        this.altitude = this.altitude < 0.0001+altlim ? 0.0001+altlim : this.altitude;
+
+        var azlim = this.mix * 180;
+        if (azlim > this.azimuth || this.azimuth > (360 - azlim)) {
+            var d1 = azlim - this.azimuth;
+            var d2 = 360 - azlim - this.azimuth;
+            this.azimuth = Math.abs(d1) > Math.abs(d2) ? 360-azlim : azlim;
         }
 
         //this._zoom(1.0) // Establish zoom (?)
@@ -202,37 +214,6 @@ THREE.LandscapeControls = function ( cover, camera ) {
 THREE.LandscapeControls.prototype = {
     setMix: function(mix) {
         this.mix = mix;
-        var altlim = mix * 90;
-        this.altitude = this.altitude > 179.9999-altlim ? 179.9999-altlim : this.altitude;
-        this.altitude = this.altitude < 0.0001+altlim ? 0.0001+altlim : this.altitude;
-
-        var azlim = mix * 180;
-        if (azlim > this.azimuth || this.azimuth > (360 - azlim)) {
-            var d1 = azlim - this.azimuth;
-            var d2 = 360 - azlim - this.azimuth;
-            this.azimuth = Math.abs(d1) > Math.abs(d2) ? 360-azlim : azlim;
-        }
-
-        var rad = this.radius, target = this.target.clone();
-        // var container = $(this.domElement.parentNode.parentNode)
-        // if (container.find("#zlockwhole").length > 0) {
-        //     if (container.find("#zlockwhole")[0].checked) {
-        //         rad  = this.flatsize / 2 / this.camera.aspect;
-        //         rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
-        //         rad -= this.flatoff;
-        //         rad = flatmix * rad + (1 - flatmix) * this.radius;
-        //     } else if (!container.find("#zlocknone")[0].checked) {
-        //         rad  = this.flatsize / 4 / this.camera.aspect;
-        //         rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
-        //         rad -= this.flatoff;
-        //         rad = flatmix * rad + (1 - flatmix) * this.radius;
-        //         if (container.find("#zlockleft")[0].checked) {
-        //             target.x = flatmix * (-this.flatsize / 4) + (1 - flatmix) * target.x;
-        //         } else if (container.find("#zlockright")[0].checked) {
-        //             target.x = flatmix * ( this.flatsize / 4) + (1 - flatmix) * target.x;
-        //         }
-        //     }
-        // }
     },
 
     getMouse: function ( event ) {
@@ -242,28 +223,20 @@ THREE.LandscapeControls.prototype = {
 
     rotate: function ( mouseChange ) {
         this.azvel_init = -this.rotateSpeed * mouseChange.x;
-        var az = this.azimuth + this.azvel_init;
-        if ( this.azlim > 0 ) {
-            if ( this.azlim > az || az > (360-this.azlim)) {
-                this.azimuth = azdiff < 0 ? this.azlim : 360-this.azlim;
-            } else {
-                this.azimuth = az - 360*Math.floor(az / 360);
-            }
-        } else {
-            this.azimuth = az - 360*Math.floor(az / 360);
-        }
+        this.azimuth += this.azvel_init;
 
-        //this.altitude -= this.rotateSpeed*mouseChange.y;
         this.altvel_init = -this.rotateSpeed * mouseChange.y;
         this.altitude += this.altvel_init;
-        //this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
 
         // Add panning depending on flatmix
         if ( this.mix > 0 ) {
             var panMouseChange = new Object;
-            panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
-            panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
+            panMouseChange.x = mouseChange.x * Math.pow(this.mix, 2);
+            panMouseChange.y = mouseChange.y * Math.pow(this.mix, 2);
             this.pan(panMouseChange);
+        } else {
+            this.azimuth = this.azimuth % 360;
+            this.azimuth = this.azimuth < 0 ? this.azimuth + 360 : this.azimuth;
         }
     }, 
 

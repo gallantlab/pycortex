@@ -1,4 +1,7 @@
 var jsplot = (function (module) {
+
+    var retina_scale = window.devicePixelRatio || 1;
+
     module.Axes3D = function(figure) {
         if (this.canvas === undefined) {
             module.Axes.call(this, figure);
@@ -12,12 +15,10 @@ var jsplot = (function (module) {
         this.camera.position.set(0, -500, 0);
         this.camera.lookAt(new THREE.Vector3(0,0,0));
 
-        this.controls = new THREE.LandscapeControls(this.canvas[0], this.camera);
+        this.controls = new jsplot.LandscapeControls();
+        this.controls.bind(this.canvas[0]);
         this.controls.addEventListener("pick", this.pick.bind(this));
-        this.controls.addEventListener("change", function() {
-            this.controls.update();
-            this.schedule();
-        }.bind(this));
+        this.controls.addEventListener("change", this.schedule.bind(this));
         
         //These lights approximately match what's done by vtk
         this.lights = [
@@ -37,7 +38,7 @@ var jsplot = (function (module) {
         // renderer
         this.renderer = new THREE.WebGLRenderer({ 
             alpha:true,
-            antialias: true, 
+            antialias: retina_scale == 1, 
             preserveDrawingBuffer:true, 
             canvas:this.canvas[0],
         });
@@ -107,6 +108,8 @@ var jsplot = (function (module) {
             if (!(this._animate(atime)))
                 delete this._animation;
         }
+
+        this.controls.update(this.camera);
 
         var view, left, bottom, width, height;
         if (this.views.length > 1) {

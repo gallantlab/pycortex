@@ -2,6 +2,12 @@ var mriview = (function(module) {
     var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
     module.Viewer = function(figure) { 
         jsplot.Axes.call(this, figure);
+
+        //mix function to attach to surface when it's added
+        this._mix = function(evt){
+            this.controls.setMix(evt.flat);
+        }.bind(this);
+
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
         //Catalog the available colormaps
@@ -30,7 +36,8 @@ var mriview = (function(module) {
         }.bind(this));
 
         this.ui = new jsplot.Menu();
-        this.ui.addEventListener("update", this._schedule);
+        this.ui.addEventListener("update", this.schedule.bind(this));
+        this.ui.add({mix: {action:[this, "setMix"], hidden:true} });
 
         this._bindUI();
     }
@@ -72,11 +79,11 @@ var mriview = (function(module) {
         for (var i = 0, il = animation.length; i < il; i++) {
             var f = animation[i];
             if (f.idx == 0) {
-                this.setState(f.state, f.value);
+                this.ui.set(f.state, f.value);
                 state[f.state] = {idx:0, val:f.value};
             } else {
                 if (state[f.state] === undefined)
-                    state[f.state] = {idx:0, val:this.getState(f.state)};
+                    state[f.state] = {idx:0, val:this.ui.get(f.state)};
                 var start = {idx:state[f.state].idx, state:f.state, value:state[f.state].val}
                 var end = {idx:f.idx, state:f.state, value:f.value};
                 state[f.state].idx = f.idx;
@@ -116,10 +123,10 @@ var mriview = (function(module) {
                         //val = f.start.value * (1-idx) + f.end.value * idx;
                         val = this._animInterp(f.start.state, f.start.value, f.end.value, idx);
                     }
-                    this.setState(f.start.state, val);
+                    this.ui.set(f.start.state, val);
                     state = true;
                 } else if (sec >= f.end.idx) {
-                    this.setState(f.end.state, f.end.value);
+                    this.ui.set(f.end.state, f.end.value);
                     f.ended = true;
                 } else if (sec < f.start.idx) {
                     state = true;
@@ -130,7 +137,7 @@ var mriview = (function(module) {
     };
     module.Viewer.prototype._animInterp = function(state, startval, endval, idx) {
         switch (state) {
-            case 'azimuth':
+            case 'camera.azimuth':
                 // Azimuth is an angle, so we need to choose which direction to interpolate
                 if (Math.abs(endval - startval) >= 180) { // wrap
                     if (startval > endval) {
@@ -149,43 +156,6 @@ var mriview = (function(module) {
         }
     };
 
-    module.Viewer.prototype.reset_view = function(center, height) {
-        var asp = this.flatlims[1][0] / this.flatlims[1][1];
-        var camasp = height !== undefined ? asp : this.camera.cameraP.aspect;
-        var size = [module.flatscale*this.flatlims[1][0], module.flatscale*this.flatlims[1][1]];
-        var min = [module.flatscale*this.flatlims[0][0], module.flatscale*this.flatlims[0][1]];
-        var xoff = center ? 0 : size[0] / 2 - min[0];
-        var zoff = center ? 0 : size[1] / 2 - min[1];
-        var h = size[0] / 2 / camasp;
-        h /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
-        this.controls.target.set(xoff, this.flatoff[1], zoff);
-        this.controls.setCamera(180, 90, h);
-        this.setMix(1);
-        this.setShift(0);
-    };
-    // module.Viewer.prototype.update_volvis = function() {
-    //     for (var i = 0; i < 3; i++) {
-    //         this.planes[i].update();
-    //         this.planes[i].mesh.visible = $("#volvis").prop("checked");
-    //     }
-    //     this.schedule();
-    // };
-    // module.Viewer.prototype.update_leftvis = function() {
-    //     this.meshes.left.visible = $("#leftvis").prop("checked");
-    //     this.schedule();
-    // };
-    // module.Viewer.prototype.update_rightvis = function() {
-    //     this.meshes.right.visible = $("#rightvis").prop("checked");
-    //     this.schedule();
-    // };
-    module.Viewer.prototype.update_projection = function() {
-        if ($("#projpersp").prop("checked")) {
-            this.setState("projection", "perspective");
-        } else {
-            this.setState("projection", "orthographic");
-        }
-        this.schedule();
-    };
     // module.Viewer.prototype.saveflat = function(height, posturl) {
     //     var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
     //     var roistate = $(this.object).find("#roishow").attr("checked");
@@ -348,9 +318,7 @@ var mriview = (function(module) {
     module.Viewer.prototype.addSurf = function(surftype, opts) {
         //Sets the slicing surface used to visualize the data
         var surf = new surftype(this.active, opts);
-        surf.addEventListener("mix", function(evt){
-            this.controls.update(evt.flat);
-        }.bind(this));
+        surf.addEventListener("mix", this._mix);
 
         this.surfs.push(surf);
         this.root.add(surf.object);
@@ -367,16 +335,29 @@ var mriview = (function(module) {
         return surf;
     };
     module.Viewer.prototype.rmSurf = function(surftype) {
+        var newsurfs = [];
         for (var i = 0; i < this.surfs.length; i++) {
             if (this.surfs[i].constructor == surftype) {
                 this.active.removeEventListener("update", this.surfs[i]._update);
                 this.active.removeEventListener("attribute", this.surfs[i]._attrib);
                 this.removeEventListener("resize", this.surfs[i]._resize);
+                this.surfs[i].removeEventListener("mix", this._mix);
 
                 this.root.remove(this.surfs[i].object);
-            }
+            } else 
+                newsurfs.push(this.surfs[i]);
         }
+        this.surfs = newsurfs;
         this.schedule();
+    }
+
+    module.Viewer.prototype.setMix = function(mix) {
+        if (mix === undefined) {
+            return this.surfs.length == 0 ? 0 : this.surfs[0].setMix();
+        }
+        for (var i = 0; i < this.surfs.length; i++)
+            if (this.surfs[i].setMix !== undefined)
+                this.surfs[i].setMix(mix);
     }
 
     module.Viewer.prototype.pick = function(evt) {
@@ -537,7 +518,52 @@ var mriview = (function(module) {
         $(window).resize(function() { this.resize(); }.bind(this));
         this.canvas.resize(function() { this.resize(); }.bind(this));
 
-        if ($(this.object).find("#color_fieldset").length > 0) {
+        var cam_ui = this.ui.addFolder("camera", true);
+        cam_ui.add({
+            azimuth: {action:[this.controls, 'setAzimuth', 0, 360]},
+            altitude: {action:[this.controls, 'setAltitude', 0, 180]},
+            radius: {action:[this.controls, 'setRadius', 10, 1000]},
+            target: {action:[this.controls, 'setTarget'], hidden:true},
+        });
+
+        var anim_speed = .3;
+        var reset_view = function() {
+            this.animate([
+                {state:'camera.target', idx:anim_speed, value:[0,0,0]},
+                {state:'mix', idx:anim_speed, value:0},
+            ]);
+        }.bind(this);
+        var inflate = function() {
+            this.animate([{state:'mix', idx:anim_speed, value:.5}]);
+        }.bind(this);
+        var flatten = function() {
+            this.animate([ {state:'mix', idx:anim_speed, value:1}]);
+        }.bind(this);
+        cam_ui.add({
+            reset: {action:reset_view, key:'r'},
+            inflate: {action:inflate, key:'i'},
+            flatten: {action:flatten, key:'f'},
+        });
+
+        var _hidelabels = false;
+        var hidelabels = function() {
+            for (var i = 0; i < this.surfs.length; i++) {
+                if (this.surfs[i].surf) { //only do this for surfdelegate objects
+                    var svg = this.surfs[i].surf.svg;
+                    for (var name in svg.layers) {
+                        svg.layers[name].labels.showhide(_hidelabels);
+                    }
+                }
+            }
+            _hidelabels = !_hidelabels;
+            this.schedule();
+        }.bind(this);
+        this.ui.add({
+            hide_labels: {action:hidelabels, key:'l', hidden:true},
+        });
+
+
+        if ($(this.object).find("#colormap_category").length > 0) {
             $(this.object).find("#colormap").ddslick({ width:296, height:350, 
                 onSelected: function() { 
                     var name = $(this.object).find("#colormap .dd-selected-text").text();

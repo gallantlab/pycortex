@@ -174,7 +174,7 @@ var dataset = (function(module) {
                 fragmentShader:shadecode.fragment,
                 attributes: shadecode.attrs,
                 uniforms: merge,
-                side:THREE.DoubleSide,
+                //side:THREE.DoubleSide,
                 lights:true,
                 depthTest:opts.depthTest === undefined ? true : opts.depthTest,
                 depthWrite:opts.depthWrite === undefined ? true : opts.depthWrite,
