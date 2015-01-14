@@ -30,6 +30,7 @@ var mriview = (function(module) {
         this.volume = 0;
         this._pivot = 0;
         this._shift = 0;
+        this._specular = 1;
         this.shaders = {};
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
@@ -64,16 +65,16 @@ var mriview = (function(module) {
         ]);
         
         this.ui = (new jsplot.Menu()).add({
-            mix: [this, "setMix", 0, 1],
-            pivot: [this, "setPivot", -180, 180],
-            shift: [this, "setShift", 0, 200],
-            depth: [this.uniforms.thickmix, "value", 0, 1],
-        })
-        this.ui.addFolder("curvature").add({
-            alpha: [this.uniforms.curvAlpha, "value", 0, 1],
-            scale: [this.uniforms.curvScale, "value", 0, 1],
-            limit: [this.uniforms.curvScale, "value", 0, 1],
-        })
+            mix: {action:[this, "setMix", 0., 1.]},
+            pivot: {action:[this, "setPivot", -180, 180]},
+            shift: {action:[this, "setShift", 0, 200]},
+            depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
+        });
+        this.ui.addFolder("curvature", true).add({
+            alpha: {action:[this.uniforms.curvAlpha, "value", 0, 1]},
+            scale: {action:[this.uniforms.curvScale, "value", 0, 1]},
+            limit: {action:[this.uniforms.curvScale, "value", 0, 1]},
+        });
         
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, json ) {
@@ -161,7 +162,7 @@ var mriview = (function(module) {
             this.setHalo(1);
 
             //Add anatomical and flat names
-            this.names.unshift("anatomicals");
+            this.names.unshift("anatomical");
             if (this.flatlims !== undefined) {
                 this.names.push("flat");
             }
@@ -194,7 +195,7 @@ var mriview = (function(module) {
                     this.dispatchEvent({type:"update"});
                 }.bind(this));
                 this.svg.loaded.done(function() { 
-                    this.ui.addFolder("Overlays", this.svg.ui);
+                    this.ui.addFolder("Overlays", true, this.svg.ui);
                 }.bind(this));
             } else {
                 this.loaded.resolve();
@@ -369,7 +370,7 @@ var mriview = (function(module) {
         }
         _last_clipped = clipped;
 
-        this.uniforms.specularStrength.value = 1-clipped;
+        this.uniforms.specularStrength.value = this._specular * (1-clipped);
         this.setPivot( 180 * clipped);
         this.dispatchEvent({type:'mix', flat:clipped, mix:mix, thickmix:this.uniforms.thickmix.value});
     };
@@ -444,13 +445,14 @@ var mriview = (function(module) {
             this.surf.clearShaders();
             for (var name in this._listeners)
                 this.surf.removeEventListener(name, this._listeners[name]);
+            this.ui.remove(this.surf.ui);
         }
         var subj = dataview.data[0].subject;
         this.surf = subjects[subj];
         this.surf.init(dataview);
         this.object.add(this.surf.object);
         
-        this.ui.addFolder(subj, this.surf.ui);
+        this.ui.addFolder(subj, false, this.surf.ui);
 
         for (var name in this._listeners)
             this.surf.addEventListener(name, this._listeners[name]);

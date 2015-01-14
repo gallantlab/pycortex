@@ -1,3 +1,11 @@
+//monkeypatch a remove folder command
+dat.GUI.prototype.removeFolder = function(name) {
+    this.__folders[name].close();
+    this.__folders[name].domElement.parentNode.parentNode.removeChild(this.__folders[name].domElement.parentNode);
+    this.__folders[name] = undefined;
+    this.onResize();
+}
+
 var jsplot = (function (module) {
     module.Color = function(data) {
         this.color = Color.colors[data];
@@ -22,86 +30,157 @@ var jsplot = (function (module) {
 
     module.Menu = function(gui) {
         this._gui = gui;
-        this._names = [];
+        this._desc = {};
         this._folders = {};
         this._controls = {};
+        this._hidden = false; //the initial state of this folder
+        this._bubble_evt = function() {
+            this.dispatchEvent({type:"update"});
+        }.bind(this);
     }
     THREE.EventDispatcher.prototype.apply(module.Menu.prototype);
-    module.Menu.prototype.set = function(gui) {
+    module.Menu.prototype.init = function(gui) {
         this._gui = gui;
-        for (var i = 0; i < this._names.length; i++) {
-            var name = this._names[i];
-
-            if (this[name] instanceof module.Menu && this._folders[name] === undefined) {
-                this._folders[name] = this._addFolder(gui, name);
-                this[name].set(this._folders[name]);
+        for (var name in this._desc) {
+            if (this._folders[name] === undefined && this._desc[name] instanceof module.Menu) {
+                var hidden = this._desc[name]._hidden;
+                this._folders[name] = this._addFolder(gui, name, hidden);
+                this[name].init(this._folders[name]);
             } else if (this._controls[name] === undefined) {
-                this._controls[name] = this._add(gui, name, this[name]);
+                this._controls[name] = this._add(gui, name, this._desc[name]);
             }
         }
     }
-    module.Menu.prototype.addFolder = function(name, menu) {
-        this._names.push(name);
-
+    module.Menu.prototype.set = function(name, value) {
+        var namespace = name.split('.');
+        var n = namespace.shift();
+        if (namespace.length > 0) {
+            return this[n].set(namespace.join('.'), value);
+        } else if (this[n] === undefined) {
+            var action = this._desc[n].action;
+            action[0][action[1]] = value;
+        } else {
+            this[n] = value;
+        }
+        this._controls[n].updateDisplay();
+        this.dispatchEvent({type:"update"});
+    }
+    module.Menu.prototype.get = function(name) {
+        var namespace = name.split('.');
+        var n = namespace.shift();
+        if (namespace.length > 0) {
+            return this[n].get(namespace.join('.'));
+        } else if (this[n] === undefined) {
+            var action = this._desc[n].action;
+            return action[0][action[1]];
+        } else {
+            return this[n];
+        }
+    }
+    module.Menu.prototype.addFolder = function(name, hidden, menu) {
         if (menu === undefined)
             menu = new module.Menu();
+        menu._hidden = hidden;
+        this._desc[name] = menu;
         //cause update events to bubble
-        menu.addEventListener("update", function() {
-            this.dispatchEvent({type:"update"});
-        }.bind(this));
+        menu.addEventListener("update", this._bubble_evt);
 
         if (this._gui !== undefined) {
-            this._folders[name] = this._addFolder(this._gui, name);
-            menu.set(this._folders[name]);
+            this._folders[name] = this._addFolder(this._gui, name, hidden);
+            menu.init(this._folders[name]);
         }
-        
-        this[name] = menu;
+
         return menu;
     }
     module.Menu.prototype.add = function(desc) {
         for (var name in desc) {
             var args = desc[name];
-            
-            this[name] = args;
-            this._names.push(name);
+            this._desc[name] = args;
 
             if (this._gui !== undefined) {
-                this._controls[name] = this._add(this._gui, this[name]);
+                this._controls[name] = this._add(this._gui, name, args);
             }
         }
         return this;
     }
-    module.Menu.prototype._add = function(gui, name, args) {
-        var obj = args[0][args[1]];
-        if (obj instanceof Function) {
-            var parent = args.shift();
-            var method = args.shift();
-            this[name] = parent[method]();
-            var ctrl = gui.add.apply(gui, [this, name].concat(args));
-            ctrl.onChange(function(name) {
-                parent[method](this[name]);
-                this.dispatchEvent({type:"update"});
-            }.bind(this, name));
-
-            var func = parent[method].bind(parent);
-            parent[method] = function(name, val) {
-                func(val);
-                this[name] = val;
-                ctrl.updateDisplay();
-            }.bind(this, name)
+    module.Menu.prototype.remove = function(name) {
+        if (name === undefined) {
+            for (var n in this._desc) {
+                this._remove(n);
+            }
+        } else if (name instanceof module.Menu){
+            for (var n in this._desc) {
+                if (this._desc[n] === name)
+                    this._remove(n);
+            }
         } else {
-            var ctrl = gui.add.apply(gui, args).name(name);
-            ctrl.onChange(function() {
-                this.dispatchEvent({type:"update"});
-            }.bind(this));
+            this._remove(name);
+        }
+    }
+
+    module.Menu.prototype._addFolder = function(gui, name, hidden) {
+        var folder = gui.addFolder(name);
+        if (!hidden)
+            folder.open();
+        this[name] = this._desc[name];
+        return folder;
+    }
+    module.Menu.prototype._add = function(gui, name, desc) {
+        if (desc.action instanceof Function) {
+            //A button that runs a function (IE Reset)
+        } else if ( desc.action instanceof Array) {
+            var obj = desc.action[0][desc.action[1]];
+            if (obj instanceof Function) {;
+                //copy the args to avoid changing the desc
+                var parent = desc.action[0];
+                var method = desc.action[1];
+                var newargs = [this, name];
+                for (var i = 2; i < desc.action.length; i++)
+                    newargs.push(desc.action[i]);
+                this[name] = parent[method]();
+
+                var ctrl = gui.add.apply(gui, newargs);
+                ctrl.onChange(function(name) {
+                    parent[method](this[name]);
+                    this.dispatchEvent({type:"update"});
+                }.bind(this, name));
+                
+                //replace the function so that calling it will update the control
+                ctrl._oldfunc = parent[method]; //store original so we can replace
+                var func = parent[method].bind(parent);
+                parent[method] = function(name, val) {
+                    func(val);
+                    this[name] = val;
+                    ctrl.updateDisplay();
+                }.bind(this, name)
+            } else {
+                var ctrl = gui.add.apply(gui, desc.action).name(name);
+                ctrl.onChange(function() {
+                    this.dispatchEvent({type:"update"});
+                }.bind(this));
+            }
         }
         return ctrl;
     }
-    module.Menu.prototype._addFolder = function(gui, name) {
-        var folder = gui.addFolder(name);
-        folder.open();
-        return folder;
+    module.Menu.prototype._remove = function(name) {
+        if (this._desc[name] instanceof module.Menu) {
+            this[name].remove();
+            this[name].removeEventListener(this._bubble_evt);
+            delete this._folders[name];
+            if (this._gui !== undefined)
+                this._gui.removeFolder(name);
+        } else {
+            if (this._controls[name]._oldfunc !== undefined) {
+                var args = this._desc[name].action;
+                var parent = args[0], func = args[1];
+                parent[func] = this._controls[name]._oldfunc;
+            }
+            if (this._gui !== undefined)
+                this._gui.remove(this._controls[name]);
+            delete this._controls[name];
+        }
     }
+
 
     module.Figure = function(parent) {
         this._notifying = false;
@@ -165,7 +244,7 @@ var jsplot = (function (module) {
         this.axes.push(this.ax);
         $(this.parent.object).append(this.ax.object);
         if (this.ax.ui !== undefined)
-            this.ax.ui.set(this.gui);
+            this.ax.ui.init(this.gui);
     }
 
     var w2fig_layer = 0;
@@ -213,7 +292,7 @@ var jsplot = (function (module) {
         this.ax = axes;
 
         if (this.ax.ui !== undefined)
-            this.ax.ui.set(this.gui);
+            this.ax.ui.init(this.gui);
 
         return axes;
     }

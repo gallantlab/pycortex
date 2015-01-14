@@ -11,11 +11,13 @@ var jsplot = (function (module) {
         this.camera.up.set(0,0,1);
         this.camera.position.set(0, -500, 0);
         this.camera.lookAt(new THREE.Vector3(0,0,0));
+
         this.controls = new THREE.LandscapeControls(this.canvas[0], this.camera);
-        this.controls.addEventListener("change", this.schedule.bind(this));
         this.controls.addEventListener("pick", this.pick.bind(this));
-        
-        this.raycaster = new THREE.Raycaster();
+        this.controls.addEventListener("change", function() {
+            this.controls.update();
+            this.schedule();
+        }.bind(this));
         
         //These lights approximately match what's done by vtk
         this.lights = [
@@ -46,6 +48,14 @@ var jsplot = (function (module) {
         this._startplay = null;
         this._animation = null;
 
+        this._schedule = function() {
+            this.draw();
+            if (this.state == "play" || this._animation != null) {
+                this.schedule();
+            }
+            //requestAnimationFrame(this._schedule);
+        }.bind(this);
+
         //Figure registrations
         this.figure.register("playsync", this, function(time) {
             if (this._startplay != null)
@@ -53,13 +63,6 @@ var jsplot = (function (module) {
         });
         this.figure.register("playtoggle", this, this.playpause.bind(this));
         this.figure.register("setFrame", this, this.setFrame.bind(this));
-
-        this._schedule = function() {
-            this.draw();
-            if (this.state == "play" || this._animation != null) {
-                this.schedule();
-            }
-        }.bind(this);
 
         this.root = new THREE.Group();
         this.root.name = 'root';
@@ -128,6 +131,8 @@ var jsplot = (function (module) {
         }
         this._scheduled = false;
         this.dispatchEvent({type:"draw"});
+
+        //requestAnimationFrame( this._schedule );
     };
     module.Axes3D.prototype.drawView = function(scene) {
         this.renderer.render(scene, this.camera);

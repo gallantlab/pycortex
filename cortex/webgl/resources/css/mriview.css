@@ -154,9 +154,14 @@ a:visited { color:white; }
 #figure_ui {
     position:absolute;
     right:20px;
-    width:auto !important;
+    width:265px !important;
     height:auto !important;
     z-index:150;
+    max-height:500px;
+    overflow:auto;
+}
+.dg.main .close-button {
+    position:relative !important;
 }
 
 /*************************************************

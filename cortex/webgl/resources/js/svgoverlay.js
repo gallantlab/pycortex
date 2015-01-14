@@ -17,17 +17,18 @@ var svgoverlay = (function(module) {
             setter(val);
         };
         var desc;
-        if (style == "stroke") 
+        if (style == "stroke") {
             desc = {value:[1,1,1]};
-        else if (style == "stroke-width") 
+        } else if (style == "stroke-width") {
             desc = {min:0, max:10, value:3};
-        else if (style == "opacity") 
+        } else if (style == "opacity") {
             desc = {min:0, max:1, value:1};
-        else if (style == "fill")
+        } else if (style == "fill"){
             desc = {value:[0,0,0]};
-        else if (style == "font-size")
+        } else if (style == "font-size"){
             desc = {min:8, max:72, value:24};
-        desc.action = func;
+        }
+        desc.action = [];
         return desc;
     }
 
@@ -82,8 +83,8 @@ var svgoverlay = (function(module) {
             var setshape = this[name].set.bind(this[name]);
             var setlabel = labels.set.bind(labels);
             this.ui.addFolder(name).add({
-                visible: [this[name], "showhide"],
-                labels:  [this[name].labels, "showhide"],
+                visible: {action:[this[name], "showhide"], },
+                labels:  {action:[this[name].labels, "showhide"], },
             });
         }
 
@@ -231,8 +232,8 @@ var svgoverlay = (function(module) {
         this._hidden = this.layer.style.display == "none" || shapes.style.display == "none";
         this.showhide = function(state) {
             if (state === undefined)
-                return this._hidden;
-
+                return !this._hidden;
+            this._hidden = !state;
             if (state) this.show();
             else this.hide();
         }.bind(this);
@@ -299,9 +300,8 @@ var svgoverlay = (function(module) {
         this._hidden = this.layer.style.display == "none" || hidden;
         this.showhide = function(state) {
             if (state === undefined)
-                return this._hidden;
-
-            if (this.state) this.show();
+                return !this._hidden;
+            if (state) this.show();
             else this.hide();
         }.bind(this);
 
@@ -472,10 +472,12 @@ var svgoverlay = (function(module) {
         this.update();
     }
     module.Labels.prototype.show = function() {
+        this._hidden = false;
         this.meshes.left.visible = true;
         this.meshes.right.visible = true;
     }
     module.Labels.prototype.hide = function() {
+        this._hidden = true;
         this.meshes.left.visible = false;
         this.meshes.right.visible = false;
     }

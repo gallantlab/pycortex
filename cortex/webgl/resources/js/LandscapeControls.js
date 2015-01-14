@@ -25,15 +25,13 @@ THREE.LandscapeControls = function ( cover, camera ) {
     this.minRadius = function(mix){return 101*mix}; // limits zoom for flatmap, which disappears at r=100
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
-    this.friction = 0.05; // velocity lost per milisecond
-    
+    this.friction = 0.05; // velocity lost per milisecond    
 
     // internals
     this.target = new THREE.Vector3();
     this.azimuth = 45;
     this.altitude = 75;
     this.radius = 250;
-    this._scheduled = false;
 
     var _state = STATE.NONE,
         _start = new THREE.Vector3(),
@@ -51,25 +49,29 @@ THREE.LandscapeControls = function ( cover, camera ) {
 
     var changeEvent = { type: 'change' };
 
-    this.update = function (flatmix) {
-        var mousechange;
-
-        if (_touch) {
-            _state = 0;
-            mouseChange = _end;
-        } else 
-            mouseChange = _end.clone().sub(_start);
+    this.update = function () {
+        var mousechange = _end.clone().sub(_start);
 
         if (statefunc[_state]) {
             if (statefunc[_state])
-                statefunc[_state](mouseChange);
+                statefunc[_state](mousechange);
         }
 
-        this.flatmix = flatmix;
-        this.setCamera();
+        //this._zoom(1.0) // Establish zoom (?)
+        var altrad = this.altitude*Math.PI / 180;
+        var azirad = (this.azimuth+90)*Math.PI / 180;
+
+        var eye = new THREE.Vector3(
+            this.radius*Math.sin(altrad)*Math.cos(azirad),
+            this.radius*Math.sin(altrad)*Math.sin(azirad),
+            this.radius*Math.cos(altrad)
+        );
+
+        camera.position.addVectors( this.target, eye );
+        camera.lookAt( this.target );
 
         _start = _end;
-    };
+    }.bind(this);
 
     // listeners
     function keydown( event ) {
@@ -91,8 +93,6 @@ THREE.LandscapeControls = function ( cover, camera ) {
     };
 
     function mousedown( event ) {
-        this.unschedule();
-
         event.preventDefault();
         event.stopPropagation();
 
@@ -119,7 +119,6 @@ THREE.LandscapeControls = function ( cover, camera ) {
         this.dispatchEvent( changeEvent );
 
         this._momentumtimer = new Date().getTime();
-        this.schedule( true );
 
         event.preventDefault();
         event.stopPropagation();
@@ -156,18 +155,14 @@ THREE.LandscapeControls = function ( cover, camera ) {
                 return;
             } else {
                 _end = _start.clone();
-                this.update(this.flatmix);
             }
         };
         clearTimeout(_nomove_timer);
         _nomove_timer = setTimeout(nomove_evt.bind(this), 100);
-
-        this.update(this.flatmix);
         this.dispatchEvent( changeEvent );
     };
 
     function touchmove( event ) {
-        $(this.domElement).append("touch");
         _touch = true;
         _end = new THREE.Vector2(event.touches[0].clientX, event.touches[1].clientY);
         this.dispatchEvent( changeEvent );
@@ -180,7 +175,6 @@ THREE.LandscapeControls = function ( cover, camera ) {
         event.stopPropagation();
 
         this.wheelzoom( event );
-        this.setCamera();
         this.dispatchEvent( changeEvent );
 
     };
@@ -202,19 +196,17 @@ THREE.LandscapeControls = function ( cover, camera ) {
     window.addEventListener( 'keydown', keydown.bind(this), false );
     window.addEventListener( 'keyup', keyup.bind(this), false );
 
-    this.resize($(cover).width(), $(cover).height() );
-    this.flatmix = 0;
-    this.setCamera();
+    this.mix = 0;
+    this.update();
 };
 THREE.LandscapeControls.prototype = {
-    _limitview: function( ) {
-        var flatmix = this.flatmix;
-        var azlim = flatmix * 180;
-        var altlim = flatmix * 90;
-        
+    setMix: function(mix) {
+        this.mix = mix;
+        var altlim = mix * 90;
         this.altitude = this.altitude > 179.9999-altlim ? 179.9999-altlim : this.altitude;
         this.altitude = this.altitude < 0.0001+altlim ? 0.0001+altlim : this.altitude;
 
+        var azlim = mix * 180;
         if (azlim > this.azimuth || this.azimuth > (360 - azlim)) {
             var d1 = azlim - this.azimuth;
             var d2 = 360 - azlim - this.azimuth;
@@ -222,71 +214,30 @@ THREE.LandscapeControls.prototype = {
         }
 
         var rad = this.radius, target = this.target.clone();
-        var container = $(this.domElement.parentNode.parentNode)
-        if (container.find("#zlockwhole").length > 0) {
-            if (container.find("#zlockwhole")[0].checked) {
-                rad  = this.flatsize / 2 / this.camera.aspect;
-                rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
-                rad -= this.flatoff;
-                rad = flatmix * rad + (1 - flatmix) * this.radius;
-            } else if (!container.find("#zlocknone")[0].checked) {
-                rad  = this.flatsize / 4 / this.camera.aspect;
-                rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
-                rad -= this.flatoff;
-                rad = flatmix * rad + (1 - flatmix) * this.radius;
-                if (container.find("#zlockleft")[0].checked) {
-                    target.x = flatmix * (-this.flatsize / 4) + (1 - flatmix) * target.x;
-                } else if (container.find("#zlockright")[0].checked) {
-                    target.x = flatmix * ( this.flatsize / 4) + (1 - flatmix) * target.x;
-                }
-            }
-        }
-
-        this._radius = rad;
-        this._target = target;
-    },
-
-    resize: function(w, h) {
-        this.domElement.style.width = w+"px";
-        this.domElement.style.height = h+"px";
-        this._zoom(1.0) // To set orthographic zoom correctly
+        // var container = $(this.domElement.parentNode.parentNode)
+        // if (container.find("#zlockwhole").length > 0) {
+        //     if (container.find("#zlockwhole")[0].checked) {
+        //         rad  = this.flatsize / 2 / this.camera.aspect;
+        //         rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
+        //         rad -= this.flatoff;
+        //         rad = flatmix * rad + (1 - flatmix) * this.radius;
+        //     } else if (!container.find("#zlocknone")[0].checked) {
+        //         rad  = this.flatsize / 4 / this.camera.aspect;
+        //         rad /= Math.tan(this.camera.fov / 2 * Math.PI / 180);
+        //         rad -= this.flatoff;
+        //         rad = flatmix * rad + (1 - flatmix) * this.radius;
+        //         if (container.find("#zlockleft")[0].checked) {
+        //             target.x = flatmix * (-this.flatsize / 4) + (1 - flatmix) * target.x;
+        //         } else if (container.find("#zlockright")[0].checked) {
+        //             target.x = flatmix * ( this.flatsize / 4) + (1 - flatmix) * target.x;
+        //         }
+        //     }
+        // }
     },
 
     getMouse: function ( event ) {
         var off = $(event.target).offset();
         return new THREE.Vector2( event.clientX - off.left, event.clientY - off.top);
-    },
-
-    setCamera: function(az, alt, rad) {
-        var changed = false;
-        if (az !== undefined) {
-            this.azimuth = ((az % 360)+360)%360;
-            changed = true;
-        }
-        if (alt !== undefined) {
-            this.altitude = alt;
-            changed = true;
-        }
-        if (rad !== undefined) {
-            this.radius = rad;
-            changed = true;
-        }
-
-        this._limitview();
-        this._zoom(1.0) // Establish zoom (?)
-        var altrad = this.altitude*Math.PI / 180;
-        var azirad = (this.azimuth+90)*Math.PI / 180;
-
-        var eye = new THREE.Vector3(
-            this._radius*Math.sin(altrad)*Math.cos(azirad),
-            this._radius*Math.sin(altrad)*Math.sin(azirad),
-            this._radius*Math.cos(altrad)
-        );
-
-        this.camera.position.addVectors( this._target, eye );
-        this.camera.lookAt( this._target );
-        if (changed)
-            this.dispatchEvent( {type:'change'} );
     },
 
     rotate: function ( mouseChange ) {
@@ -308,7 +259,7 @@ THREE.LandscapeControls.prototype = {
         //this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
 
         // Add panning depending on flatmix
-        if ( this.flatmix > 0 ) {
+        if ( this.mix > 0 ) {
             var panMouseChange = new Object;
             panMouseChange.x = mouseChange.x * Math.pow(this.flatmix, 2);
             panMouseChange.y = mouseChange.y * Math.pow(this.flatmix, 2);
@@ -364,20 +315,6 @@ THREE.LandscapeControls.prototype = {
         // }
     },
 
-    schedule: function( force ) {
-        // console.log("Scheduling");
-        if (this._in_anim || force) {
-            this._in_anim = true;
-            requestAnimationFrame( this.anim.bind(this) );
-        }
-    },
-
-    unschedule: function() {
-        // console.log("unscheduling");
-        this.resetvel();
-        this._in_anim = false;
-    },
-
     resetvel: function() {
         this.altvel_init = 0;
         this.azvel_init = 0;
@@ -385,51 +322,51 @@ THREE.LandscapeControls.prototype = {
         this.panyvel_init = 0;
     },
  
-    anim: function() {
-        var now = new Date().getTime();
-        if ( Math.abs(this.azvel_init) > 0 || Math.abs(this.altvel_init) > 0 ) {
-            // console.log("Animating", this.azvel, this.altvel);
-            //this.azvel *= 1 - this.friction;
-            this.azvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.azvel_init;
-            this.azimuth += this.azvel;
-            this.azimuth = ((this.azimuth % 360) + 360) % 360;
+    // anim: function() {
+    //     var now = new Date().getTime();
+    //     if ( Math.abs(this.azvel_init) > 0 || Math.abs(this.altvel_init) > 0 ) {
+    //         // console.log("Animating", this.azvel, this.altvel);
+    //         //this.azvel *= 1 - this.friction;
+    //         this.azvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.azvel_init;
+    //         this.azimuth += this.azvel;
+    //         this.azimuth = ((this.azimuth % 360) + 360) % 360;
 
-            //this.altvel *= 1 - this.friction;
-            this.altvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.altvel_init;
-            this.altitude += this.altvel;
-            // this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
+    //         //this.altvel *= 1 - this.friction;
+    //         this.altvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.altvel_init;
+    //         this.altitude += this.altvel;
+    //         // this.altitude = Math.max(Math.min(this.altitude, 180), 0.01);
 
-            // console.log("Animating", this.azvel, this.altvel);
-        }
-        else {
-            this.azvel = 0;
-            this.altvel = 0;
-        }
+    //         // console.log("Animating", this.azvel, this.altvel);
+    //     }
+    //     else {
+    //         this.azvel = 0;
+    //         this.altvel = 0;
+    //     }
 
-        if ( Math.abs(this.panxvel_init) > 0 || Math.abs(this.panyvel_init) > 0 ) {
-            // console.log("Animating", this.panxvel, this.panyvel);
-            this.panxvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.panxvel_init;
-            this.panyvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.panyvel_init;
-            //this.panxvel *= 1 - this.friction;
-            //this.panyvel *= 1 - this.friction;
+    //     if ( Math.abs(this.panxvel_init) > 0 || Math.abs(this.panyvel_init) > 0 ) {
+    //         // console.log("Animating", this.panxvel, this.panyvel);
+    //         this.panxvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.panxvel_init;
+    //         this.panyvel = Math.pow( 1 - this.friction, (now - this._momentumtimer) / 1) * this.panyvel_init;
+    //         //this.panxvel *= 1 - this.friction;
+    //         //this.panyvel *= 1 - this.friction;
 
-            this.setpan(this.panxvel, this.panyvel);
-        }
-        else {
-            this.panxvel = 0;
-            this.panyvel = 0;
-        }
+    //         this.setpan(this.panxvel, this.panyvel);
+    //     }
+    //     else {
+    //         this.panxvel = 0;
+    //         this.panyvel = 0;
+    //     }
      
-        this.dispatchEvent( {type:'change'} );
+    //     this.dispatchEvent( {type:'change'} );
 
-        // console.log("velocities: ", this.altvel, this.azvel, this.panxvel, this.panyvel);
-        if (Math.abs(this.altvel)<0.01 && Math.abs(this.azvel)<0.01 && Math.abs(this.panxvel)<0.01 && Math.abs(this.panyvel)<0.01) {
-            this.unschedule();
-        } else {
-            this.schedule();
-        }
+    //     // console.log("velocities: ", this.altvel, this.azvel, this.panxvel, this.panyvel);
+    //     if (Math.abs(this.altvel)<0.01 && Math.abs(this.azvel)<0.01 && Math.abs(this.panxvel)<0.01 && Math.abs(this.panyvel)<0.01) {
+    //         this.unschedule();
+    //     } else {
+    //         this.schedule();
+    //     }
 
-    }
+    // }
 
 }
 

@@ -24,9 +24,9 @@ var mriview = (function(module) {
         this.active = null;
 
         this.loaded = $.Deferred().done(function() {
-            // this.schedule();
+            //this.schedule();
             $(this.object).find("#ctmload").hide();
-            // this.canvas.css("opacity", 1);
+            this.canvas.css("opacity", 1);
         }.bind(this));
 
         this.ui = new jsplot.Menu();
@@ -290,9 +290,6 @@ var mriview = (function(module) {
             defers.push(subjects[this.active.data[i].subject].loaded)
         }
         $.when.apply(null, defers).done(function() {
-            //unhide the main canvas object
-            this.canvas[0].style.opacity = 1;
-
             // $(this.object).find("#vrange").slider("option", {min: this.active.data[0].min, max:this.active.data[0].max});
             // if (this.active.data.length > 1) {
             //     $(this.object).find("#vrange2").slider("option", {min: this.active.data[1].min, max:this.active.data[1].max});
@@ -321,6 +318,7 @@ var mriview = (function(module) {
                 $(this.object).find("#dataopts").show();
             }
             this.schedule();
+            this.loaded.resolve();
         }.bind(this));
     };
     module.Viewer.prototype.nextData = function(dir) {
@@ -362,7 +360,7 @@ var mriview = (function(module) {
         this.addEventListener("resize", surf._resize);
 
         if (surf.ui !== undefined) {
-            this.ui.addFolder("Surface", surf.ui);
+            this.ui.addFolder("Surface", false, surf.ui);
         }
 
         this.schedule();
@@ -538,60 +536,6 @@ var mriview = (function(module) {
         $(window).scrollTop(0);
         $(window).resize(function() { this.resize(); }.bind(this));
         this.canvas.resize(function() { this.resize(); }.bind(this));
-        //These are events that should only happen once, regardless of multiple views
-        if (!_bound) {
-            _bound = true;
-            window.addEventListener( 'keydown', function(e) {
-                btnspeed = 0.5;
-                if (e.target.tagName == "INPUT" && e.target.type == "text")
-                    return;
-                if (e.keyCode == 32) {         //space
-                    if (this.active.data[0].movie)
-                        this.playpause();
-                    e.preventDefault();
-                    e.stopPropagation();
-                } else if (e.keyCode == 82) { //r
-                    this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
-                                  {idx:btnspeed, state:"mix", value:0.0}]);
-                } else if (e.keyCode == 73) { //i
-                    this.animate([{idx:btnspeed, state:"mix", value:0.5}]);
-                } else if (e.keyCode == 70) { //f
-                    this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
-                                  {idx:btnspeed, state:"mix", value:1.0}]);
-                } else if (e.keyCode == 37) { //left
-		    this.animate([{idx:btnspeed, state:"azimuth", value:(Math.floor(this.getState("azimuth")/90)+1)*90.5}]);
-		} else if (e.keyCode == 39) { //right
-		    this.animate([{idx:btnspeed, state:"azimuth", value:(Math.floor(this.getState("azimuth")/90)-1)*90.5}]);
-		} else if (e.keyCode == 38) { //up
-		    this.animate([{idx:btnspeed, state:"altitude", value:(Math.round(this.getState("altitude")/90)-1)*90.5}]);
-		} else if (e.keyCode == 40) { //down
-		    this.animate([{idx:btnspeed, state:"altitude", value:(Math.round(this.getState("altitude")/90)+1)*90.5}]);
-		}
-            }.bind(this));
-        }
-        window.addEventListener( 'keydown', function(e) {
-            if (e.target.tagName == "INPUT" && e.target.type == "text")
-                return;
-            if (e.keyCode == 107 || e.keyCode == 187) { //+
-                this.nextData(1);
-            } else if (e.keyCode == 109 || e.keyCode == 189) { //-
-                this.nextData(-1);
-            } else if (e.keyCode == 68) { //d
-                if (this.uniforms.dataAlpha.value < 1)
-                    this.uniforms.dataAlpha.value = 1;
-                else
-                    this.uniforms.dataAlpha.value = 0;
-                this.schedule();
-            } else if (e.keyCode == 76) { //l
-                var box = $(this.object).find("#labelshow");
-                box.attr("checked", box.attr("checked") == "checked" ? null : "checked");
-                this.labelshow = !this.labelshow;
-                this.schedule();
-                e.stopPropagation();
-                e.preventDefault();
-            }
-        }.bind(this));
-        var _this = this;
 
         if ($(this.object).find("#color_fieldset").length > 0) {
             $(this.object).find("#colormap").ddslick({ width:296, height:350, 
@@ -697,51 +641,6 @@ var mriview = (function(module) {
         //     _this.setFrame(this.value); 
         //     _this.figure.notify("setFrame", _this, [this.value]);
         // });
-    };
-    module.Viewer.prototype._makeBtns = function(names) {
-        var btnspeed = 0.5; // How long should folding/unfolding animations take?
-        var td, btn, name;
-        td = document.createElement("td");
-        btn = document.createElement("button");
-        btn.setAttribute("title", "Reset to fiducial view of the brain (Hotkey: R)");
-        btn.innerHTML = "Fiducial";
-        td.setAttribute("style", "text-align:left;width:150px;");
-        btn.addEventListener("click", function() {
-            this.animate([{idx:btnspeed, state:"target", value:[0,0,0]},
-                          {idx:btnspeed, state:"mix", value:0.0}]);
-        }.bind(this));
-        td.appendChild(btn);
-        $(this.object).find("#mixbtns").append(td);
-
-        var nameoff = this.flatlims === undefined ? 0 : 1;
-        for (var i = 0; i < names.length; i++) {
-            name = names[i][0].toUpperCase() + names[i].slice(1);
-            td = document.createElement("td");
-            btn = document.createElement("button");
-            btn.innerHTML = name;
-            btn.setAttribute("title", "Switch to the "+name+" view of the brain");
-
-            btn.addEventListener("click", function(j) {
-                this.animate([{idx:btnspeed, state:"mix", value: (j+1) / (names.length+nameoff)}]);
-            }.bind(this, i));
-            td.appendChild(btn);
-            $(this.object).find("#mixbtns").append(td);
-        }
-
-        if (this.flatlims !== undefined) {
-            td = document.createElement("td");
-            btn = document.createElement("button");
-            btn.innerHTML = "Flat";
-            btn.setAttribute("title", "Switch to the flattened view of the brain (Hotkey: F)");
-            td.setAttribute("style", "text-align:right;width:150px;");
-            btn.addEventListener("click", function() {
-                this.animate([{idx:btnspeed, state:"mix", value:1.0}]);
-            }.bind(this));
-            td.appendChild(btn);
-            $(this.object).find("#mixbtns").append(td);
-        }
-
-        $(this.object).find("#mix, #pivot, #shifthemis").parent().attr("colspan", names.length+2);
     };
 
     return module;
