@@ -13,10 +13,12 @@ var jsplot = (function (module) {
 		this.zoomSpeed = 0.002;
 		this.clickTimeout = 200; // milliseconds
 
+		this.friction = .9;
+
 		this._start = new THREE.Vector2();
 		this._end = new THREE.Vector2();
 
-		this._momentum = {};
+		this._momentum = {change:[0,0]};
 		this._state = STATE.NONE;
 	}
 	THREE.EventDispatcher.prototype.apply(module.LandscapeControls.prototype);
@@ -46,6 +48,16 @@ var jsplot = (function (module) {
 			func.call(this, mousechange.x, mousechange.y);
 		}
 
+		if (Math.abs(this._momentum.change[0]) > .05) {
+			this._momentum.change[0] *= this.friction;
+			this._momentum.change[1] *= this.friction;
+		//	console.log(this._momentum.change);
+			this._momentum.func.apply(this, this._momentum.change);
+			setTimeout(function() {
+				this.dispatchEvent( { type: "change" } );
+			}.bind(this), 0);
+		}
+
 		camera.position.addVectors( this.target, this._position() );
 		camera.lookAt( this.target );
 		this._start = this._end;
@@ -58,6 +70,9 @@ var jsplot = (function (module) {
 		var rx = x  * (1 - mix), ry = y * (1 - mix);
 		this.setAzimuth(this.azimuth - this.rotateSpeed * rx);		
 		this.setAltitude(this.altitude - this.rotateSpeed * ry);
+
+		this._momentum.change = [x, y];
+		this._momentum.func = this.rotate;
 	}
 
 	var _upvec = new THREE.Vector3(0,0,1);
@@ -107,7 +122,7 @@ var jsplot = (function (module) {
 		if (rad === undefined)
 			return this.radius;
 
-		this.radius = Math.max(Math.min(rad, 1000), 10);
+		this.radius = Math.max(Math.min(rad, 600), 85);
 	}
 
 	module.LandscapeControls.prototype.setTarget = function(xyz) {
