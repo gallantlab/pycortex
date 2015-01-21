@@ -11,17 +11,16 @@ var mriview = (function(module) {
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
         //Catalog the available colormaps
-        $(this.object).find("#colormap option").each(function() {
-            var im = new Image();
-            im.src = $(this).data("imagesrc");
-            var tex = new THREE.Texture(im);
+        $(this.object).find(".cmap img").each(function() {
+            var tex = new THREE.Texture(this);
             tex.minFilter = THREE.LinearFilter;
             tex.magFilter = THREE.LinearFilter;
             tex.premultiplyAlpha = true;
             tex.flipY = true;
             tex.needsUpdate = true;
-            colormaps[$(this).text()] = tex;
+            colormaps[this.parentNode.id] = tex;
         });
+
         this.canvas = $(this.object).find("#brain");
         jsplot.Axes3D.call(this, figure);
 
@@ -31,6 +30,7 @@ var mriview = (function(module) {
 
         this.loaded = $.Deferred().done(function() {
             //this.schedule();
+            this.resize();
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
         }.bind(this));
@@ -236,7 +236,9 @@ var mriview = (function(module) {
                 this.active.addEventListener("attribute", this.surfs[i]._attrib);
             }
         }
-        this.active.loaded.done(function() { this.active.set(); }.bind(this));
+        this.active.loaded.done(function() { 
+            this.active.set();
+        }.bind(this));
 
         var surf, scene, grid = grid_shapes[this.active.data.length];
         //cleanup old scene grid for the multiview
@@ -269,7 +271,7 @@ var mriview = (function(module) {
             //     this.setVminmax(this.active.vmin[0].value[0], this.active.vmax[0].value[0], 0);
             // }
 
-            // this.setupStim();
+            this.setupStim();
             
             $(this.object).find("#datasets li").each(function() {
                 if ($(this).text() == name)
@@ -369,28 +371,26 @@ var mriview = (function(module) {
 
     module.Viewer.prototype.setupStim = function() {
         if (this.active.data[0].movie) {
-            $(this.object).find("#moviecontrols").show();
-            $(this.object).find("#bottombar").addClass("bbar_controls");
-            $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
-            this.active.data[0].loaded.progress(function(idx) {
-                var pct = idx / this.active.frames * 100;
-                $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
-            }.bind(this)).done(function() {
-                $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
-            }.bind(this));
-            
-            this.active.loaded.done(function() {
-                this.setFrame(0);
-            }.bind(this));
+            // $(this.object).find("#moviecontrols").show();
+            // $(this.object).find("#bottombar").addClass("bbar_controls");
+            // $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
+            // this.active.data[0].loaded.progress(function(idx) {
+            //     var pct = idx / this.active.frames * 100;
+            //     $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
+            // }.bind(this)).done(function() {
+            //     $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
+            // }.bind(this));
 
             if (this.active.stim && figure) {
                 figure.setSize("right", "30%");
                 this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
                 this.movie.setFrame(0);
+                setTimeout(this.resize.bind(this), 1000);
             }
+            //this.active.loaded.done(this.playpause.bind(this));
         } else {
-            $(this.object).find("#moviecontrols").hide();
-            $(this.object).find("#bottombar").removeClass("bbar_controls");
+            // $(this.object).find("#moviecontrols").hide();
+            // $(this.object).find("#bottombar").removeClass("bbar_controls");
         }
         this.schedule();
     };
@@ -471,9 +471,9 @@ var mriview = (function(module) {
         }
 
         this.frame = frame;
-        this.active.setFrame(this.uniforms, frame);
-        $(this.object).find("#movieprogress div").slider("value", frame);
-        $(this.object).find("#movieframe").attr("value", frame);
+        this.active.setFrame(frame);
+        // $(this.object).find("#movieprogress div").slider("value", frame);
+        // $(this.object).find("#movieframe").attr("value", frame);
         this.schedule();
     };
 
