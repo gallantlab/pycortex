@@ -213,6 +213,7 @@ var mriview = (function(module) {
                 return false;
             }
         }
+        this.frame = 0;
 
         //unbind the shader update event from the existing surfaces
         for (var i = 0; i < this.surfs.length; i++) {
@@ -240,15 +241,16 @@ var mriview = (function(module) {
             this.active.set();
         }.bind(this));
 
-        var surf, scene, grid = grid_shapes[this.active.data.length];
-        //cleanup old scene grid for the multiview
-        // for (var i = 0; i < this.views.length; i++) {
-        //     this.views[i].scene.dispose();
+        // var surf, scene, grid = grid_shapes[this.active.data.length];
+        // //cleanup old scene grid for the multiview
+        // // for (var i = 0; i < this.views.length; i++) {
+        // //     this.views[i].scene.dispose();
+        // // }
+        // //Generate new scenes and re-add the surface objects
+        // for (var i = 0; i < this.active.data.length; i++) {
+        //     scene = this.setGrid(grid[0], grid[1], i);
         // }
-        //Generate new scenes and re-add the surface objects
-        for (var i = 0; i < this.active.data.length; i++) {
-            scene = this.setGrid(grid[0], grid[1], i);
-        }
+        scene = this.setGrid(1,1,0);
 
         //Show or hide the colormap for raw / non-raw dataviews
         if (this.active.data[0].raw) {
@@ -308,6 +310,8 @@ var mriview = (function(module) {
         if (dir === undefined)
             dir = 1
 
+        if (this.state != "pause")
+            this.playpause();
         this.setData([datasets[(i+dir).mod(datasets.length)]]);
     };
     module.Viewer.prototype.rmData = function(name) {
@@ -380,6 +384,9 @@ var mriview = (function(module) {
             // }.bind(this)).done(function() {
             //     $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
             // }.bind(this));
+
+            if (this.movie)
+                this.movie.destroy();
 
             if (this.active.stim && figure) {
                 figure.setSize("right", "30%");
@@ -469,7 +476,6 @@ var mriview = (function(module) {
             frame -= this.active.length;
             this._startplay += this.active.length;
         }
-
         this.frame = frame;
         this.active.setFrame(frame);
         // $(this.object).find("#movieprogress div").slider("value", frame);

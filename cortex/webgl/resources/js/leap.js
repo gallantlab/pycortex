@@ -107,35 +107,41 @@ Leap.loop({enableGestures: true}, function(frame) {
 		return;
 
 	frame.gestures.forEach(function(gesture) {
-		if (gesture.type == "swipe") {
+		if (gesture.type == "circle") {
 			if (gesture.pointableIds.length == 1) {
 				if (gesture.state == "start") {
-					_last_gesture = {id:gesture.id, num:0};
-				} else if (_last_gesture.id == gesture.id) {
-					if (_last_gesture.num == 4) {
-						if (explain == -1 && gesture.direction[0] > 0) {
-							viewer.playpause();
-							$("#swipe_left").css("opacity", 1);
-							$("#swipe_left_text").text("to continue");
-							if ((new Date()) - _session_start > idle_length) {
-								explain = 4;
-								$("#display_cover").css("opacity", 1);
-								gesture_anim.show().done(advance_frame);
-							} else {
-								explain = 0;
-								$("#display_cover").css("opacity", 1);
-								$("#intro").css("left", "50%");
-								_explain_timer = setTimeout(advance_frame, frame_pause);
-							}
-						} else if (explain == -1 && gesture.direction[0] < 0) {
-							//viewer.nextData();
-							current_dataset = current_dataset == "Decoding" ? "Localizer" : "Decoding";
-							$("#swipe_left_text").text("for "+current_dataset);
+					_last_gesture = gesture.id;
+				} else if (_last_gesture == gesture.id && gesture.progress >= 1) {
+					var clockwise = false;
+					var pointableID = gesture.pointableIds[0];
+					var direction = frame.pointable(pointableID).direction;
+					var dotProduct = Leap.vec3.dot(direction, gesture.normal);
+
+					if (dotProduct  >  0) clockwise = true;
+
+					if (explain == -1 && !clockwise) {
+						viewer.playpause();
+						$("#swipe_left").css("opacity", 1);
+						$("#swipe_left_text").text("to continue");
+						if ((new Date()) - _session_start > idle_length) {
+							explain = 4;
+							$("#display_cover").css("opacity", 1);
+							gesture_anim.show().done(advance_frame);
 						} else {
-							advance_frame();
+							explain = 0;
+							$("#display_cover").css("opacity", 1);
+							$("#intro").css("left", "50%");
+							_explain_timer = setTimeout(advance_frame, frame_pause);
 						}
+					} else if (explain == -1 && clockwise) {
+						viewer.nextData();
+						viewer.playpause();
+						current_dataset = current_dataset == "Decoding" ? "Localizer" : "Decoding";
+						$("#swipe_left_text").text("for "+current_dataset);
+					} else {
+						advance_frame();
 					}
-					_last_gesture.num += 1;
+					_last_gesture = null;
 				}
 
 				_wave_times = [];

@@ -83,11 +83,6 @@ a:visited { color:white; }
     z-index:2;
     opacity:0;
 }
-#braincover {
-    z-index:8;
-    position:absolute;
-    opacity:0;
-}
 
 
 /*************************************************
@@ -116,10 +111,11 @@ a:visited { color:white; }
     position:absolute;
     z-index:8;
     float:left;
-    padding:10px;
+    padding:15px;
     margin:20px;
     border-radius:10px;
     background:rgba(255,255,255,.2);
+    max-width:350px;
     /*width:320px;
     height:58px;
 */

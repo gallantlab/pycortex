@@ -139,3 +139,19 @@ svg#intro {
 	font-size:32pt;
 	text-align:center;
 }
+
+#attribution {
+	position:absolute;
+	z-index:100;
+	color:#AAA;
+	text-shadow:black 0 0 5px, black 0 0 3px;
+	font-size:9pt;
+	font-weight:100;
+	margin:5px;
+	bottom:0px;
+	text-align:right;
+	right:0px;
+}
+#attribution p {
+	margin:0px;
+}
