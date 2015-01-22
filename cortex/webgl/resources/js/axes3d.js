@@ -238,7 +238,7 @@ var jsplot = (function (module) {
     module.Axes3D.prototype.playpause = function() {
         if (this.state == "pause") {
             //Start playing
-            this._startplay = (new Date()) - (this.active.frame * this.active.rate) * 1000;
+            this._startplay = (new Date()) - (this.frame * 1000);
             this.state = "play";
             this.schedule();
         } else {

@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+<title>Brain</title>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<link rel="stylesheet" href="resources/css/jquery-ui.min.css" type='text/css' />
+<link rel="stylesheet" href="resources/css/jquery.miniColors.css" type='text/css' />
+<link rel="stylesheet" href="resources/css/w2ui-1.4.2.min.css" type='text/css' />
+
+<script type='text/javascript' src='resources/js/jquery-2.1.1.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery-ui.min.js'></script>
+<script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
+<script type="text/javascript" src="resources/js/dat.gui.min.js"></script>
+
+<script type='text/javascript' src="resources/js/three.js"></script>
+<script type='text/javascript' src="resources/js/OculusRiftEffect.js"></script>
+<script type='text/javascript' src="resources/js/ctm/lzma.js"></script>
+<script type='text/javascript' src="resources/js/ctm/ctm.js"></script>
+<script type='text/javascript' src="resources/js/ctm/CTMLoader.js"></script>
+
+<script type="text/javascript" src="resources/js/svg_todataurl.js"></script>
+
+<script type='text/javascript' src='resources/js/datamodel.js'></script>
+<script type='text/javascript' src='resources/js/dataset.js'></script>
+<script type='text/javascript' src='resources/js/sliceplane.js'></script>
+<script type='text/javascript' src='resources/js/svgoverlay.js'></script>
+<script type='text/javascript' src='resources/js/shaderlib.js'></script>
+<script type='text/javascript' src="resources/js/movement.js"></script>
+<script type='text/javascript' src="resources/js/menu.js"></script>
+<script type='text/javascript' src="resources/js/kdTree-min.js"></script>
+<script type='text/javascript' src='resources/js/facepick.js'></script>
+<script type='text/javascript' src='resources/js/w2ui-1.4.2.min.js'></script>
+<script type='text/javascript' src='resources/js/figure.js'></script>
+<script type='text/javascript' src='resources/js/axes3d.js'></script>
+<script type='text/javascript' src='resources/js/mriview_utils.js'></script>
+<script type='text/javascript' src='resources/js/mriview_surface.js'></script>
+<script type='text/javascript' src='resources/js/mriview.js'></script>
+
+<script type='text/javascript' src="resources/js/leap-0.6.4.js"></script>
+<script type='text/javascript' src='resources/js/leap.js'></script>
+
+{% if python_interface %}
+<script type='text/javascript' src='resources/js/python_interface.js'></script>
+{% end %}
+{% block javascripts %}
+{% end %}
+
+{% autoescape None %}
+
+<script type='text/html' id='mriview_html'>
+<div id='main'>
+	<div id='ctmload' class='loadmsg'><img src='resources/css/images/loading.gif'>Loading brain...</div>
+	<div id='dataopts'>
+		<div id='dataname'></div>
+		<div id='dataset_category' class='opt_category' style="display:none;">
+			<p class='opt_label'>Datasets</p>
+			<ul id='datasets'>
+			</ul>
+		</div>
+	</div>
+	<canvas id='brain'></canvas>
+	<div id="colormaps">
+	{% for name, img in colormaps %}
+		<div class='cmap' id='{{name}}' {% if name != default_cmap %}style="display:none;"{%end%} ><img src='{{img}}'/></div>
+	{% end %}
+		<div class='activity_label'>Lower Activity</div>
+		<div class='activity_label'>Higher Activity</div>
+	</div>
+</div>
+
+</script>
+<script type='text/html' id='movieaxes_html'>
+	<div class='movie_wrapper'>
+        <div class='movie_cell'>
+            <div class='movie_load loadmsg'>
+                <img src='resources/css/images/loading.gif'>
+                Loading...
+            </div>
+            <video class='movie' preload loop='loop'>
+                <source />
+            </video>
+        </div>
+    </div>
+</script>
+
+<link rel="stylesheet" href="resources/css/jsplot.css" type='text/css' />
+<link rel="stylesheet" href="resources/css/mriview.css" type='text/css' />
+
+<link rel="stylesheet" href="resources/css/demo.css" type='text/css' />
+
+<script type='text/javascript'>
+	var validator = new function() {
+		var gl;
+		this.webgl = false;
+		try {
+			if (window.WebGLRenderingContext) {
+				gl = document.createElement("canvas").getContext('experimental-webgl');
+				this.webgl = !! gl;
+			}
+		} catch (e) {}
+		this.vtex = function(vtmin, atmin) {
+			var vtex = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+			var atex = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+			if (vtex >= vtmin && atex >= atmin)
+				return true;
+			return false;
+		}
+		this.vattr = function(vmin) {
+			return gl.getParameter(gl.MAX_VERTEX_ATTRIBS) >= vmin;
+		}
+	};
+
+	{% block jsinit %}
+	{% end %}
+
+	var colormaps = {};
+
+	$(document).ready(function() {
+		if (!validator.webgl) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, it seems you have no <a href='http://get.webgl.org'>WebGL support.</a> :(</p><p>If you are using Chrome, try <a href='http://peter.sh/experiments/chromium-command-line-switches/#ignore-gpu-blacklist'>ignoring the GPU blacklist.</a></p>").show();
+		} else if (!validator.vtex(3, 5)) {
+			$(".loadmsg").hide();
+			$("#ctmload").html("<p>Sorry, your computer does not have the minimum number of texture units :(</p><p>Try upgrading your drivers and/or your browser</p>").show();
+		} else {
+			{% block onload %}
+			{% end %}
+		}
+
+	});
+</script>
+
+</head>
+<body>
+<div id='dataload' class='loadmsg'><img src='resources/css/images/loading.gif'>Loading data...</div>
+{% block extrahtml %}
+{% end %}
+
+</body>
+</html>
+	

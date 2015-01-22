@@ -527,7 +527,7 @@ var mriview = (function(module) {
         });
 
         var anim_speed = .3;
-        var reset_view = function() {
+        this.reset_view = function() {
             this.animate([
                 {state:'camera.target', idx:anim_speed, value:[0,0,0]},
                 {state:'mix', idx:anim_speed, value:0},
@@ -540,7 +540,7 @@ var mriview = (function(module) {
             this.animate([ {state:'mix', idx:anim_speed, value:1}]);
         }.bind(this);
         cam_ui.add({
-            reset: {action:reset_view, key:'r'},
+            reset: {action:this.reset_view, key:'r'},
             inflate: {action:inflate, key:'i'},
             flatten: {action:flatten, key:'f'},
         });

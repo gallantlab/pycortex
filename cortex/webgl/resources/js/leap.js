@@ -1,12 +1,106 @@
+var frame_pause = 10000;
+var idle_length = 10000; //length of time before new interaction gives helper
+var gesture_info = {
+	reps: 3,
+	names: ["rotate", "flatten", "scale"],
+	speed: [300, 1000, 300],
+	imgs: [],
+}
+
 var _last_pos = null;
 var _last_strength = [];
 var _zoom = null;
 var _wave_times = [];
 
 var explain = 0;
-var frame_pause = 10000;
 var _last_gesture = null;
 var _explain_timer = null;
+var _idle_time = new Date();
+var _session_start = null;
+
+var current_dataset = "Localizer";
+
+function Gesture(info) {
+	this.active = false;
+	this.info = info;
+	this.imgs = [];
+	for (var i = 0; i < info.names.length; i++) {
+		var im1 = new Image();
+		im1.src = "resources/explo_demo/"+info.names[i]+"_1.svg";
+		var im2 = new Image();
+		im2.src = "resources/explo_demo/"+info.names[i]+"_2.svg";
+		this.imgs.push([im1, im2]);
+	}
+}
+Gesture.prototype.show = function() {
+	this.idx = 0;
+	this.frame = 0;
+	this.active = true;
+	this.update();
+	this.promise = $.Deferred();
+	$("#gestures").show().css("opacity", 1);
+	return this.promise;
+}
+Gesture.prototype.update = function() {
+	if (this.active) {
+		$("#gesture_name").text(this.info.names[this.idx]);
+		$("#gesture_1").attr("src", this.imgs[this.idx][0].src);
+		$("#gesture_2").attr("src", this.imgs[this.idx][1].src);
+
+		if (this.frame % 2 == 0) {
+			$("#gesture_1").fadeIn({duration:this.info.speed[this.idx], easing:"easeInOutQuint"});
+			$("#gesture_2").fadeOut({duration:this.info.speed[this.idx], easing:"easeInOutQuint", complete:this.update.bind(this)});
+		} else {
+			$("#gesture_2").fadeIn({duration:this.info.speed[this.idx], easing:"easeInOutQuint"});
+			$("#gesture_1").fadeOut({duration:this.info.speed[this.idx], easing:"easeInOutQuint", complete:this.update.bind(this)});
+		}
+
+		if (this.frame / 2 > this.info.reps[this.idx]) {
+			this.frame = 0;
+			this.idx += 1;
+			if (this.idx >= this.info.names.length) {
+				this.stop();
+				this.promise.resolve();
+			}
+		} else
+			this.frame += 1;
+	}
+}
+Gesture.prototype.stop = function() {
+	this.active = false;
+	$("#gestures").fadeOut();
+}
+
+var gesture_anim = new Gesture({reps:[2, 1, 2], names:["rotate", "flatten", "zoom"], speed:[1000, 2000, 1000]});
+
+var advance_frame = function() {
+	if (explain < 4) {
+		explain += 1;
+		nextFrame();
+		clearTimeout(_explain_timer);
+		_explain_timer = setTimeout(advance_frame, frame_pause);
+	} else if (explain == 4) {
+		explain += 1;
+		$("#intro").css("left", "-600px");
+		gesture_anim.show().done(advance_frame);
+		clearTimeout(_explain_timer);
+		//_explain_timer = setTimeout(advance_frame, frame_pause);
+	} else {
+		gesture_anim.stop();
+		explain = -1;
+		nextFrame();
+		viewer.reset_view();
+		$("#display_cover").css("opacity", 0);
+		$("#swipe_left").css("opacity", 0);
+		$("#swipe_left_text").text("for "+current_dataset);
+		clearTimeout(_explain_timer);
+		setTimeout(viewer.playpause.bind(viewer), 1000);
+	}
+}
+
+$(document).ready(function() {
+	$("#display_cover").on("click", advance_frame);
+});
 
 Leap.loop({enableGestures: true}, function(frame) {
 	if (!(frame.valid))
@@ -14,50 +108,31 @@ Leap.loop({enableGestures: true}, function(frame) {
 
 	frame.gestures.forEach(function(gesture) {
 		if (gesture.type == "swipe") {
-			//console.log(gesture.state);
 			if (gesture.pointableIds.length == 1) {
 				if (gesture.state == "start") {
 					_last_gesture = {id:gesture.id, num:0};
 				} else if (_last_gesture.id == gesture.id) {
-					var advance_frame = function() {
-						if (explain < 4) {
-							explain += 1;
-							nextFrame();
-							_explain_timer = setTimeout(advance_frame, frame_pause);
-						} else {
-							explain = -1;
-							nextFrame();
-							$("#display_cover").css("opacity", 0);
-							$("#canvas1").css("left", "-600px");
-							$(figure.object).css("opacity", 1);
-							viewer.playpause();
-						}
-					}
-					if (_last_gesture.num == 2) {
+					if (_last_gesture.num == 4) {
 						if (explain == -1 && gesture.direction[0] > 0) {
-							explain = 0;
 							viewer.playpause();
-							setTimeout(function() {
-								$(figure.object).css("opacity", 0);
-							}, 1000);
-							$("#display_cover").css("opacity", 1);
-							$("#canvas1").css("left", "50%");
-							_explain_timer = setTimeout(advance_frame, frame_pause);
+							$("#swipe_left").css("opacity", 1);
+							$("#swipe_left_text").text("to continue");
+							if ((new Date()) - _session_start > idle_length) {
+								explain = 4;
+								$("#display_cover").css("opacity", 1);
+								gesture_anim.show().done(advance_frame);
+							} else {
+								explain = 0;
+								$("#display_cover").css("opacity", 1);
+								$("#intro").css("left", "50%");
+								_explain_timer = setTimeout(advance_frame, frame_pause);
+							}
 						} else if (explain == -1 && gesture.direction[0] < 0) {
 							//viewer.nextData();
-						} else if (explain < 4) {
-							explain += 1;
-							nextFrame();
-							clearTimeout(_explain_timer);
-							_explain_timer = setTimeout(advance_frame, frame_pause);
+							current_dataset = current_dataset == "Decoding" ? "Localizer" : "Decoding";
+							$("#swipe_left_text").text("for "+current_dataset);
 						} else {
-							explain = -1;
-							nextFrame();
-							$("#display_cover").css("opacity", 0);
-							$("#canvas1").css("left", "-600px");
-							$(figure.object).css("opacity", 1);
-							viewer.playpause();
-							clearTimeout(_explain_timer);
+							advance_frame();
 						}
 					}
 					_last_gesture.num += 1;
@@ -68,10 +143,29 @@ Leap.loop({enableGestures: true}, function(frame) {
 				_wave_times.push(new Date());
 			}
 		}
+		_idle_time = new Date();
 	});
 
 	if (explain > -1)
 		return;
+
+	//pop up a helper when it's been idle for a while
+	if (frame.hands.length > 0) {
+		var now = new Date();
+		if (now - _idle_time > idle_length) {
+			_session_start = now;
+			$("#display_cover").css("opacity", .5);
+			$("#swipe_right").css("opacity", 1);
+			$("#swipe_left").css("opacity", 1);
+
+			setTimeout(function() {
+				$("#display_cover").css("opacity", 0);
+				$("#swipe_right").css("opacity", 0);
+				$("#swipe_left").css("opacity", 0);
+			}, 8000);
+		}
+		_idle_time = now;
+	}
 
 	if (frame.hands.length == 1) {
 		_last_strength = [];
