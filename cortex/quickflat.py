@@ -215,7 +215,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     
     if with_rois or with_sulci:
         svg.rois.visible = with_rois
-        svg.sulci.visible = with_sulci
+        if hasattr(svg,'sulci'):
+            svg.sulci.visible = with_sulci
         tex = svg.get_texture(height, labels=with_labels)
         tex.seek(0)
         oax = fig.add_axes((0,0,1,1))
