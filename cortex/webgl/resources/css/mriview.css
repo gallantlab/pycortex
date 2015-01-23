@@ -3,6 +3,7 @@ body {
     font-family:Helvetica, sans-serif;
     font-size:10pt;
     text-align:center;
+    overflow:hidden;
 }
 canvas { display:block; }
 input[type='text'] {

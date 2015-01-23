@@ -17,6 +17,7 @@ var _last_gesture = null;
 var _explain_timer = null;
 var _idle_time = new Date();
 var _session_start = null;
+var _helper_timer = null;
 
 var current_dataset = "Localizer";
 
@@ -38,7 +39,7 @@ Gesture.prototype.show = function() {
 	this.active = true;
 	this.update();
 	this.promise = $.Deferred();
-	$("#gestures").show().css("opacity", 1);
+	$("#gestures").animate({opacity:1});
 	return this.promise;
 }
 Gesture.prototype.update = function() {
@@ -68,7 +69,7 @@ Gesture.prototype.update = function() {
 }
 Gesture.prototype.stop = function() {
 	this.active = false;
-	$("#gestures").fadeOut();
+	$("#gestures").animate({opacity:0});
 }
 
 var gesture_anim = new Gesture({reps:[2, 1, 2], names:["rotate", "flatten", "zoom"], speed:[1000, 2000, 1000]});
@@ -81,7 +82,7 @@ var advance_frame = function() {
 		_explain_timer = setTimeout(advance_frame, frame_pause);
 	} else if (explain == 4) {
 		explain += 1;
-		$("#intro").css("left", "-600px");
+		$("#intro").css("left", "200%");
 		gesture_anim.show().done(advance_frame);
 		clearTimeout(_explain_timer);
 		//_explain_timer = setTimeout(advance_frame, frame_pause);
@@ -90,9 +91,11 @@ var advance_frame = function() {
 		explain = -1;
 		nextFrame();
 		viewer.reset_view();
-		$("#display_cover").css("opacity", 0);
-		$("#swipe_left").css("opacity", 0);
-		$("#swipe_left_text").text("for "+current_dataset);
+		$("#swipe_left").fadeOut();
+		$("#display_cover").fadeOut(400, function() {
+			$("#display_cover").hide();
+			$("#swipe_left_text").text("for "+current_dataset);
+		});
 		clearTimeout(_explain_timer);
 		setTimeout(viewer.playpause.bind(viewer), 1000);
 	}
@@ -121,15 +124,17 @@ Leap.loop({enableGestures: true}, function(frame) {
 
 					if (explain == -1 && !clockwise) {
 						viewer.playpause();
-						$("#swipe_left").css("opacity", 1);
+						clearTimeout(_helper_timer);
+						$("#swipe_right").fadeOut();
+						$("#swipe_left").fadeIn();
 						$("#swipe_left_text").text("to continue");
 						if ((new Date()) - _session_start > idle_length) {
 							explain = 4;
-							$("#display_cover").css("opacity", 1);
+							$("#display_cover").show().fadeIn();
 							gesture_anim.show().done(advance_frame);
 						} else {
 							explain = 0;
-							$("#display_cover").css("opacity", 1);
+							$("#display_cover").show().fadeIn();
 							$("#intro").css("left", "50%");
 							_explain_timer = setTimeout(advance_frame, frame_pause);
 						}
@@ -160,14 +165,14 @@ Leap.loop({enableGestures: true}, function(frame) {
 		var now = new Date();
 		if (now - _idle_time > idle_length) {
 			_session_start = now;
-			$("#display_cover").css("opacity", .5);
-			$("#swipe_right").css("opacity", 1);
-			$("#swipe_left").css("opacity", 1);
+			$("#display_cover").css("background", "rgba(0,0,0,.4)").fadeIn();
+			$("#swipe_left").show().css("opacity", 1);
+			$("#swipe_right").show().css("opacity", 1);
 
-			setTimeout(function() {
-				$("#display_cover").css("opacity", 0);
-				$("#swipe_right").css("opacity", 0);
-				$("#swipe_left").css("opacity", 0);
+			_helper_timer = setTimeout(function() {
+				$("#display_cover").fadeOut(400, function() {
+					$("#display_cover").css("background", "rgba(0,0,0,.8)").hide();
+				});
 			}, 8000);
 		}
 		_idle_time = now;

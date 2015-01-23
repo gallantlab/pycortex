@@ -45,37 +45,18 @@
 	height:100%;
 	background:rgba(0,0,0,.8);
 	z-index:1000;
-
-    transition: all .5s; 
-    transition-timing-function:ease;
-    transition-delay:.2s;
-    -moz-transition: all .5s;
-    -moz-transition-timing-function: ease;
-    -moz-transition-delay:.2s;
-    -webkit-transition: all .25s;
-    -webkit-transition-timing-function: ease;
-    -webkit-transition-delay:.2s;
+	overflow:none;
 }
 
 .swipe_helper {
 	position:absolute;
 	top:50%;
 	margin-top:-100px;
-	opacity:1;
 	z-index:1001;
 	color:white;
 	font-size:14pt;
 	text-align:center;
-	width:180px;
-	transition: all .5s; 
-    transition-timing-function:ease;
-    transition-delay:.2s;
-    -moz-transition: all .5s;
-    -moz-transition-timing-function: ease;
-    -moz-transition-delay:.2s;
-    -webkit-transition: all .25s;
-    -webkit-transition-timing-function: ease;
-    -webkit-transition-delay:.2s;
+	width:170px;
 }
 .swipe_helper img {
 	float:left;
@@ -142,11 +123,12 @@ svg#intro {
 
 #attribution {
 	position:absolute;
-	z-index:100;
-	color:#AAA;
+	z-index:999;
+	color:#BBB;
 	text-shadow:black 0 0 5px, black 0 0 3px;
-	font-size:9pt;
+	font-size:8pt;
 	font-weight:100;
+	max-width:300px;
 	margin:5px;
 	bottom:0px;
 	text-align:right;
