@@ -179,6 +179,13 @@ var mriview = (function(module) {
             if (this.flatlims !== undefined) {
                 var path = loader.extractUrlBase(ctminfo) + json.rois;
                 this.svg = new svgoverlay.SVGOverlay(path, posdata, this);
+                this.svg.addEventListener("update", function(evt) {
+                    if (this.uniforms.overlay.value && this.uniforms.overlay.value.dispose)
+                        this.uniforms.overlay.value.dispose();
+                    this.uniforms.overlay.value = evt.texture;
+                    this.loaded.resolve();
+                    this.dispatchEvent({type:"update"});
+                }.bind(this));
                 this.pivots.left.back.add(this.svg.labels.left);
                 this.pivots.right.back.add(this.svg.labels.right);
                 this.svg.labels.left.position.y = -this.flatoff[1];
@@ -187,13 +194,6 @@ var mriview = (function(module) {
                 this.addEventListener("resize", function(evt) {
                     this.resize(evt.width, evt.height);
                 }.bind(this.svg));
-                this.svg.addEventListener("update", function(evt) {
-                    if (this.uniforms.overlay.value && this.uniforms.overlay.value.dispose)
-                        this.uniforms.overlay.value.dispose();
-                    this.uniforms.overlay.value = evt.texture;
-                    this.loaded.resolve();
-                    this.dispatchEvent({type:"update"});
-                }.bind(this));
                 this.svg.loaded.done(function() { 
                     this.ui.addFolder("Overlays", true, this.svg.ui);
                 }.bind(this));
