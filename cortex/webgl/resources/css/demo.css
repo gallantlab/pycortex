@@ -137,3 +137,14 @@ svg#intro {
 #attribution p {
 	margin:0px;
 }
+
+#dataopts {
+	right:20px;
+	background:none;
+	text-align:right;
+}
+
+#decode_note {
+	display:none;
+	position:absolute;
+}

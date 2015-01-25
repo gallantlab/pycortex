@@ -74,30 +74,34 @@ Gesture.prototype.stop = function() {
 
 var gesture_anim = new Gesture({reps:[2, 1, 2], names:["rotate", "flatten", "zoom"], speed:[1000, 2000, 1000]});
 
+var _advancing = false;
 var advance_frame = function() {
-	if (explain < 4) {
-		explain += 1;
-		nextFrame();
-		clearTimeout(_explain_timer);
-		_explain_timer = setTimeout(advance_frame, frame_pause);
-	} else if (explain == 4) {
-		explain += 1;
-		$("#intro").css("left", "200%");
-		gesture_anim.show().done(advance_frame);
-		clearTimeout(_explain_timer);
-		//_explain_timer = setTimeout(advance_frame, frame_pause);
-	} else {
-		gesture_anim.stop();
-		explain = -1;
-		nextFrame();
-		viewer.reset_view();
-		$("#swipe_left").fadeOut();
-		$("#display_cover").fadeOut(400, function() {
-			$("#display_cover").hide();
-			$("#swipe_left_text").text("for "+current_dataset);
-		});
-		clearTimeout(_explain_timer);
-		setTimeout(viewer.playpause.bind(viewer), 1000);
+	if (!_advancing) {
+		advancing = true;
+		if (explain < 4) {
+			explain += 1;
+			nextFrame();
+			clearTimeout(_explain_timer);
+			_explain_timer = setTimeout(advance_frame, frame_pause);
+		} else if (explain == 4) {
+			explain += 1;
+			$("#intro").css("left", "200%");
+			gesture_anim.show().done(advance_frame);
+			clearTimeout(_explain_timer);
+			//_explain_timer = setTimeout(advance_frame, frame_pause);
+		} else {
+			gesture_anim.stop();
+			explain = -1;
+			nextFrame();
+			viewer.reset_view();
+			$("#swipe_left").fadeOut();
+			$("#display_cover").fadeOut(400, function() {
+				$("#display_cover").hide();
+				$("#swipe_left_text").text("for "+current_dataset);
+			});
+			clearTimeout(_explain_timer);
+			setTimeout(viewer.playpause.bind(viewer), 1000);
+		}
 	}
 }
 
@@ -191,47 +195,42 @@ Leap.loop({enableGestures: true}, function(frame) {
 				viewer.schedule();
 			}
 			_last_pos = pos;
-			_last_mix = null;
 		} else if (frame.hands.length == 2) {
 			var lpalm = frame.hands[0].palmNormal;
 			var rpalm = frame.hands[1].palmNormal;
 			var strength = Math.min(frame.hands[0].grabStrength, frame.hands[1].grabStrength);
 
-			if (frame.hands[0].pinchStrength > .95 && frame.hands[1].pinchStrength > .95) {
-				//flatten
-				var dist = Math.abs(frame.hands[0].palmPosition[0] - frame.hands[1].palmPosition[0]);
-				if (_last_mix == null) {
-					_last_mix = [dist, viewer.setMix()];
-				}
-				var mix = (dist - _last_mix[0]) / 100 + _last_mix[1];
-				mix = Math.min(Math.max(mix, 0), 1);
-				if (mix >= .5) {
-					var fmix = (mix - .5) * 2;
-					_target = viewer.controls.target.clone().multiplyScalar(fmix);
-					viewer.controls.target.set(_target.x, _target.y, _target.z);
-				} else {
-					viewer.controls.target.set(0,0,0);
-				}
-				console.log(dist, _last_mix, mix);
-				viewer.setMix(mix);
-			} else if (strength < .1 && 
-				Math.min(lpalm[0], rpalm[0]) < -.8 && 
+			if (Math.min(lpalm[0], rpalm[0]) < -.8 && 
 				Math.max(lpalm[0], rpalm[0]) > .8) {
-				//zoom
-				var lpos = new THREE.Vector3(), rpos = new THREE.Vector3();
-				lpos.set.apply(lpos, frame.hands[0].palmPosition);
-				rpos.set.apply(rpos, frame.hands[1].palmPosition);
-				lpos.sub(rpos);
+				if (strength == 1) {
+					if (_last_mix === null || now - _last_mix[0] > 3) {
+						_last_mix = [now, 0];
+					} else if (_last_mix[1] == 1) {
+						viewer.animate([{state:'mix', idx:2, value:0}, {state:'camera.target', idx:2, value:[0,0,0]}]);
+						_last_mix = null;
+					}
+				} else if (strength < .1) {
+					//zoom
+					var lpos = new THREE.Vector3(), rpos = new THREE.Vector3();
+					lpos.set.apply(lpos, frame.hands[0].palmPosition);
+					rpos.set.apply(rpos, frame.hands[1].palmPosition);
+					lpos.sub(rpos);
 
-				viewer.controls.setRadius(500 - lpos.length());
-				viewer.schedule();
+					viewer.controls.setRadius(500 - lpos.length());
+					viewer.schedule();
+				}
+			} else if (lpalm[1] < -.8 && rpalm[1] < -.8) {
+				if (_last_mix === null || now - _last_mix[0] > 3) {
+					_last_mix = [now, 1];
+				} else if (_last_mix[1] == 0) {
+					viewer.animate([{state:'mix', idx:2, value:1}]);
+					_last_mix = null;
+				}
 			}
 			_last_pos = null;
 		} else {
 			_last_pos = null;
-			_last_mix = null;
 		}
-
 	}
 
 });
