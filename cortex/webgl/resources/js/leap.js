@@ -77,7 +77,7 @@ var gesture_anim = new Gesture({reps:[2, 1, 2], names:["rotate", "flatten", "zoo
 var _advancing = false;
 var advance_frame = function() {
 	if (!_advancing) {
-		advancing = true;
+		_advancing = true;
 		if (explain < 4) {
 			explain += 1;
 			nextFrame();
@@ -86,13 +86,16 @@ var advance_frame = function() {
 		} else if (explain == 4) {
 			explain += 1;
 			$("#intro").css("left", "200%");
-			gesture_anim.show().done(advance_frame);
+			nextFrame();
+			gesture_anim.show().done(function() {
+				_advancing = false;
+				advance_frame();
+			});
 			clearTimeout(_explain_timer);
 			//_explain_timer = setTimeout(advance_frame, frame_pause);
 		} else {
 			gesture_anim.stop();
 			explain = -1;
-			nextFrame();
 			viewer.reset_view();
 			$("#swipe_left").fadeOut();
 			$("#display_cover").fadeOut(400, function() {
@@ -101,6 +104,7 @@ var advance_frame = function() {
 			});
 			clearTimeout(_explain_timer);
 			setTimeout(viewer.playpause.bind(viewer), 1000);
+			_advancing = false
 		}
 	}
 }
@@ -114,7 +118,7 @@ Leap.loop({enableGestures: true}, function(frame) {
 		return;
 
 	frame.gestures.forEach(function(gesture) {
-		if (gesture.type == "circle") {
+		if (gesture.type == "circle" && viewer.controls._state == -1) {
 			if (gesture.pointableIds.length == 1) {
 				if (gesture.state == "start") {
 					_last_gesture = gesture.id;
@@ -133,7 +137,7 @@ Leap.loop({enableGestures: true}, function(frame) {
 						$("#swipe_left").fadeIn();
 						$("#swipe_left_text").text("to continue");
 						if ((new Date()) - _session_start > idle_length) {
-							explain = 4;
+							explain = 5;
 							$("#display_cover").show().fadeIn();
 							gesture_anim.show().done(advance_frame);
 						} else {
@@ -146,8 +150,13 @@ Leap.loop({enableGestures: true}, function(frame) {
 						viewer.nextData();
 						viewer.playpause();
 						current_dataset = current_dataset == "Decoding" ? "Localizer" : "Decoding";
+						if (current_dataset == "Decoding") {
+							$("#decode_note").hide();
+						} else {
+							$("#decode_note").show();
+						}
 						$("#swipe_left_text").text("for "+current_dataset);
-					} else {
+					} else if (clockwise) {
 						advance_frame();
 					}
 					_last_gesture = null;
@@ -186,15 +195,19 @@ Leap.loop({enableGestures: true}, function(frame) {
 		rotate = frame.hands.length > 1 ? rotate ^ frame.hands[1].pinchStrength > .95 : rotate;
 
 		if (rotate) {
-			var pos = frame.hands[0].palmPosition;
-			if (_last_pos !== null) {
-				var x = (pos[0] - _last_pos[0])*1.5;
-				var y = (pos[2] - _last_pos[2])*1.5;
-				//var z = (pos[2] - _last_pos[2]);
-				viewer.controls.rotate(x, y);
-				viewer.schedule();
+			var extended = 0;
+			for (var i = 0, il = frame.hands[0].fingers.length; i < il; i++) {
+				extended += frame.hands[0].fingers[i].extended;
 			}
-			_last_pos = pos;
+			if (extended > 1) {
+				var pos = frame.hands[0].palmPosition;
+				if (viewer.controls._state != 0) {
+					viewer.controls._state = 0;
+					viewer.controls._start = new THREE.Vector2(pos[0]*1.5, pos[2]*1.5);
+				}
+				viewer.controls._end = new THREE.Vector2(pos[0]*1.5, pos[2]*1.5);
+				viewer.controls.dispatchEvent( { type: "change" } );
+			}
 		} else if (frame.hands.length == 2) {
 			var lpalm = frame.hands[0].palmNormal;
 			var rpalm = frame.hands[1].palmNormal;
@@ -203,33 +216,35 @@ Leap.loop({enableGestures: true}, function(frame) {
 			if (Math.min(lpalm[0], rpalm[0]) < -.8 && 
 				Math.max(lpalm[0], rpalm[0]) > .8) {
 				if (strength == 1) {
-					if (_last_mix === null || now - _last_mix[0] > 3) {
+					if (_last_mix === null || now - _last_mix[0] > 3000) {
 						_last_mix = [now, 0];
 					} else if (_last_mix[1] == 1) {
-						viewer.animate([{state:'mix', idx:2, value:0}, {state:'camera.target', idx:2, value:[0,0,0]}]);
+						viewer.reset_view();
 						_last_mix = null;
 					}
 				} else if (strength < .1) {
 					//zoom
-					var lpos = new THREE.Vector3(), rpos = new THREE.Vector3();
-					lpos.set.apply(lpos, frame.hands[0].palmPosition);
-					rpos.set.apply(rpos, frame.hands[1].palmPosition);
-					lpos.sub(rpos);
-
-					viewer.controls.setRadius(500 - lpos.length());
-					viewer.schedule();
+					var diff = Math.abs(frame.hands[0].palmPosition[0] - frame.hands[1].palmPosition[0])*1.5;
+					if (viewer.controls._state != 2) {
+						viewer.controls._state = 2;
+						viewer.controls._start = new THREE.Vector2(0, -diff);
+					}
+					viewer.controls._end = new THREE.Vector2(0, -diff);
+					viewer.controls.dispatchEvent({type:"change"});
 				}
 			} else if (lpalm[1] < -.8 && rpalm[1] < -.8) {
-				if (_last_mix === null || now - _last_mix[0] > 3) {
+				if (_last_mix === null || now - _last_mix[0] > 3000) {
 					_last_mix = [now, 1];
+					//console.log("start flat");
 				} else if (_last_mix[1] == 0) {
 					viewer.animate([{state:'mix', idx:2, value:1}]);
 					_last_mix = null;
 				}
+			} else {
+				viewer.controls._state = -1;
 			}
-			_last_pos = null;
 		} else {
-			_last_pos = null;
+			viewer.controls._state = -1;
 		}
 	}
 

@@ -52,13 +52,10 @@
 <script type='text/html' id='mriview_html'>
 <div id='main'>
 	<div id='ctmload' class='loadmsg'><img src='resources/css/images/loading.gif'>Loading brain...</div>
-	<div id='dataopts'>
-		<div id='dataname'></div>
-		<div id='dataset_category' class='opt_category' style="display:none;">
-			<p class='opt_label'>Datasets</p>
-			<ul id='datasets'>
-			</ul>
-		</div>
+	<div id='dataset_category' class='opt_category'>
+		<p class='opt_label'>Datasets</p>
+		<ul id='datasets'>
+		</ul>
 	</div>
 	<canvas id='brain'></canvas>
 	<div id="colormaps">
@@ -132,6 +129,9 @@
 </head>
 <body>
 <div id='dataload' class='loadmsg'><img src='resources/css/images/loading.gif'>Loading data...</div>
+<div id='dataopts'>
+	<div id='dataname'></div>
+</div>
 {% block extrahtml %}
 {% end %}
 

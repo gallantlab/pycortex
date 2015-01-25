@@ -32,12 +32,12 @@ function nextFrame() {
     $("#presented_movie").fadeOut();
     $("#fmri_responses").fadeOut();
     $("#dots").fadeOut(400, function() {
-      $("#model").animate({svgTransform:"translate(0,270)"}, 800, function() {
+      $("#model").animate({svgTransform:"translate(0,270)"}, {duration:800, complete:function() {
         explain_dots(2);
         $("#dots").fadeIn(400, function() {
           _advancing = false;
         });
-      });
+      }});
     });
   } else if (intro_frame == 2) {
     intro_frame = 3;

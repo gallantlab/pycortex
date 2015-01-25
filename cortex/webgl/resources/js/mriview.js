@@ -1,4 +1,5 @@
 var mriview = (function(module) {
+    var anim_speed = 2;
     var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
     module.Viewer = function(figure) { 
         jsplot.Axes.call(this, figure);
@@ -285,11 +286,11 @@ var mriview = (function(module) {
             $(this.object).find("#datasets").val(name);
             if (typeof(this.active.description) == "string") {
                 var html = name+"<div class='datadesc'>"+this.active.description+"</div>";
-                $(this.object).find("#dataname").html(html);
-                $(this.object).find("#dataopts").show();
+                $("#dataname").html(html);
+                $("#dataopts").show();
             } else {
-                $(this.object).find("#dataname").text(name);
-                $(this.object).find("#dataopts").show();
+                $("#dataname").text(name);
+                $("#dataopts").show();
             }
             this.schedule();
             this.loaded.resolve();
@@ -532,7 +533,6 @@ var mriview = (function(module) {
             target: {action:[this.controls, 'setTarget'], hidden:true},
         });
 
-        var anim_speed = .3;
         this.reset_view = function() {
             this.animate([
                 {state:'camera.target', idx:anim_speed, value:[0,0,0]},

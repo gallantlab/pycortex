@@ -305,7 +305,7 @@ var svgoverlay = (function(module) {
         }.bind(this);
 
         this._make_object();
-        if (this.layer.style.display == 'none')
+        if (this._hidden)
             this.hide();
         this.update();
     }

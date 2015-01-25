@@ -1,3 +1,5 @@
+* { cursor: url(../explo_demo/cursor.png), none !important }
+
 #figure_ui {
 	display:none;
 }
@@ -139,12 +141,23 @@ svg#intro {
 }
 
 #dataopts {
-	right:20px;
+	right:0px;
+	top:0px;
 	background:none;
 	text-align:right;
+	z-index:1000;
+}
+.datadesc {
+	text-align:justify;
 }
 
 #decode_note {
+	color:#999;
+	text-align:right;
+	font-size:8pt;
+	margin-right:5px;
+}
+
+#dataset_category {
 	display:none;
-	position:absolute;
 }
