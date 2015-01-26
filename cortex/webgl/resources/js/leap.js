@@ -7,7 +7,7 @@ var gesture_info = {
 	imgs: [],
 }
 
-var _last_pos = null;
+var _last_strength = [];
 var _last_mix = null;
 var _last_gesture = null;
 var _target = null;
@@ -16,8 +16,8 @@ var _wave_times = [];
 var explain = 0;
 var _explain_timer = null;
 var _idle_time = new Date();
-var _session_start = null;
 var _helper_timer = null;
+var _new_session = true;
 
 var current_dataset = "Localizer";
 
@@ -136,12 +136,13 @@ Leap.loop({enableGestures: true}, function(frame) {
 						$("#swipe_right").fadeOut();
 						$("#swipe_left").fadeIn();
 						$("#swipe_left_text").text("to continue");
-						if ((new Date()) - _session_start > idle_length) {
+						if (!_new_session) {
 							explain = 5;
 							$("#display_cover").show().fadeIn();
 							gesture_anim.show().done(advance_frame);
 						} else {
 							explain = 0;
+							_new_session = false;
 							$("#display_cover").show().fadeIn();
 							$("#intro").css("left", "50%");
 							_explain_timer = setTimeout(advance_frame, frame_pause);
@@ -177,7 +178,7 @@ Leap.loop({enableGestures: true}, function(frame) {
 		//pop up a helper when it's been idle for a while
 		var now = new Date();
 		if (now - _idle_time > idle_length) {
-			_session_start = now;
+			_new_session = true;
 			$("#display_cover").css("background", "rgba(0,0,0,.4)").fadeIn();
 			$("#swipe_left").show().css("opacity", 1);
 			$("#swipe_right").show().css("opacity", 1);
@@ -186,7 +187,7 @@ Leap.loop({enableGestures: true}, function(frame) {
 				$("#display_cover").fadeOut(400, function() {
 					$("#display_cover").css("background", "rgba(0,0,0,.8)").hide();
 				});
-			}, 8000);
+			}, 5000);
 		}
 		_idle_time = now;
 
@@ -203,11 +204,12 @@ Leap.loop({enableGestures: true}, function(frame) {
 				var pos = frame.hands[0].palmPosition;
 				if (viewer.controls._state != 0) {
 					viewer.controls._state = 0;
-					viewer.controls._start = new THREE.Vector2(pos[0]*1.5, pos[2]*1.5);
+					viewer.controls._start = new THREE.Vector2(pos[0]*1.5, pos[2]*1.5-pos[1]*1.5);
 				}
-				viewer.controls._end = new THREE.Vector2(pos[0]*1.5, pos[2]*1.5);
+				viewer.controls._end = new THREE.Vector2(pos[0]*1.5, pos[2]*1.5-pos[1]*1.5);
 				viewer.controls.dispatchEvent( { type: "change" } );
 			}
+			_last_strength = [];
 		} else if (frame.hands.length == 2) {
 			var lpalm = frame.hands[0].palmNormal;
 			var rpalm = frame.hands[1].palmNormal;
@@ -215,14 +217,7 @@ Leap.loop({enableGestures: true}, function(frame) {
 
 			if (Math.min(lpalm[0], rpalm[0]) < -.8 && 
 				Math.max(lpalm[0], rpalm[0]) > .8) {
-				if (strength == 1) {
-					if (_last_mix === null || now - _last_mix[0] > 3000) {
-						_last_mix = [now, 0];
-					} else if (_last_mix[1] == 1) {
-						viewer.reset_view();
-						_last_mix = null;
-					}
-				} else if (strength < .1) {
+				if (strength < .1) {
 					//zoom
 					var diff = Math.abs(frame.hands[0].palmPosition[0] - frame.hands[1].palmPosition[0])*1.5;
 					if (viewer.controls._state != 2) {
@@ -231,20 +226,35 @@ Leap.loop({enableGestures: true}, function(frame) {
 					}
 					viewer.controls._end = new THREE.Vector2(0, -diff);
 					viewer.controls.dispatchEvent({type:"change"});
-				}
-			} else if (lpalm[1] < -.8 && rpalm[1] < -.8) {
-				if (_last_mix === null || now - _last_mix[0] > 3000) {
-					_last_mix = [now, 1];
-					//console.log("start flat");
-				} else if (_last_mix[1] == 0) {
-					viewer.animate([{state:'mix', idx:2, value:1}]);
-					_last_mix = null;
+				} else {
+					viewer.controls._state = -1;
 				}
 			} else {
 				viewer.controls._state = -1;
-			}
+
+				_last_strength.push(strength);
+				if (_last_strength.length > 10) {
+					console.log(_last_strength);
+					_last_strength.shift();
+
+					var dir = 0;
+					for (var i = 1; i < _last_strength.length; i++) {
+						dir += _last_strength[i] - _last_strength[i-1];
+					}
+					
+					if (dir > .2 && viewer.setMix() > .5) {
+						viewer.reset_view();
+						_last_strength = [];
+					} else if (dir < -.2 && viewer.setMix() < .5) {
+						viewer.animate([{state:'mix', value:1, idx:2}]);
+						_last_strength = [];
+					}
+				}
+			}			
+
 		} else {
 			viewer.controls._state = -1;
+			_last_strength = [];
 		}
 	}
 

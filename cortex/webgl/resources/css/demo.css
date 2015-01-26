@@ -139,10 +139,15 @@ svg#intro {
 #attribution p {
 	margin:0px;
 }
+#attribution p:first-child{
+	font-size:12pt;
+}
 
 #dataopts {
 	right:0px;
 	top:0px;
+	margin:10px;
+	max-width:30%;
 	background:none;
 	text-align:right;
 	z-index:1000;
@@ -159,5 +164,5 @@ svg#intro {
 }
 
 #dataset_category {
-	display:none;
+	display:none;	
 }
