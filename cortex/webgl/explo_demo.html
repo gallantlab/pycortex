@@ -22,6 +22,24 @@
     <div id="intro_frame">
     </div>
   </div>
+  <div id="leap_feedback">
+  <p>Your hands are...</p>
+  <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width='390' height='40'>
+  <defs id="defs4">
+    <linearGradient id="linearGradient4145">
+      <stop style="stop-color:#ff0000;stop-opacity:1" offset="0" id="stop4147" />
+      <stop id="stop4153" offset="0.2" style="stop-color:#0066AA;stop-opacity:1" />
+      <stop style="stop-color:#0066AA;stop-opacity:1" offset="0.8" id="stop4155" />
+      <stop style="stop-color:#000000;stop-opacity:1" offset="1" id="stop4149" />
+    </linearGradient>
+  </defs>
+  <rect style="fill:url(#linearGradient4145);fill-opacity:1;stroke-width:1;stroke:#CCC;" width="380" height="20"  x="5" y="10" />
+  <circle id='dist_indicator' cx='25' cy='20' r='15' style="stroke-width:3;stroke:white;fill:none;display:none;" /> 
+  </svg>
+  <span id='too_close' class='indicator_name'>Too close</span>
+  <span id='just_right' class='indicator_name'>Just right</span>
+  <span id='too_far' class='indicator_name'>Too far</span>
+  </div>
   <div id="attribution">
     <p> Visit this at home at tinyurl.com/pycortex</p>
     <p> pycortex software by James Gao</p>
@@ -31,8 +49,6 @@
     <p> Decoding by Natalia Bilenko, Valkyrie Savage, &amp; Shinji Nishimoto</p>
     <p>Funding support from NEI-EY019684 &amp; NSF-0939370 grant awards to Jack Gallant, University of California at Berkeley. </p>
   </div>
-
-<script type="text/javascript" src="resources/explo_demo/intro.js"></script>
 
 {% end %}
 {% block onload %}
@@ -49,6 +65,9 @@
 
 		figure = new jsplot.W2Figure();
 		viewer = figure.add(mriview.Viewer, "main", true);
+    viewer.loaded.done(function() {
+      viewer.playpause();
+    });
 
 		dataviews = dataset.fromJSON({{data}});
 		viewer.addData(dataviews);
