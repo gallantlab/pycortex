@@ -395,6 +395,7 @@ var mriview = (function(module) {
                 this.movie.setFrame(0);
                 setTimeout(this.resize.bind(this), 1000);
             }
+            this.dispatchEvent({type:"stimulus", object:this.movie});
             //this.active.loaded.done(this.playpause.bind(this));
         } else {
             // $(this.object).find("#moviecontrols").hide();

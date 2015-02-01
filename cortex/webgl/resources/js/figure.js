@@ -285,12 +285,12 @@ var jsplot = (function (module) {
             this.loadmsg.show()
         }
     }
-    module.MovieAxes.prototype.playtoggle = function() {
-        if (this.movie.paused)
-            this.movie.play();
-        else
+    module.MovieAxes.prototype.playtoggle = function(state) {
+        if (!this.movie.paused && state == "pause")
             this.movie.pause();
-        this.figure.notify("playtoggle", this);
+        else
+            this.movie.play();
+        this.figure.notify("playtoggle", this, [this.movie.paused?"pause":"play"]);
     }
 
     module.ImageAxes = function(figure) {

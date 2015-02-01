@@ -38,9 +38,10 @@
 <script type='text/javascript' src='resources/js/mriview_utils.js'></script>
 <script type='text/javascript' src='resources/js/mriview_surface.js'></script>
 <script type='text/javascript' src='resources/js/mriview.js'></script>
-<script type="text/javascript" src="resources/explo_demo/demo.js"></script>
+
 <script type='text/javascript' src="resources/js/leap-0.6.4.js"></script>
 <script type='text/javascript' src='resources/js/leap.js'></script>
+<script type="text/javascript" src="resources/explo_demo/demo.js"></script>
 
 {% if python_interface %}
 <script type='text/javascript' src='resources/js/python_interface.js'></script>
@@ -65,6 +66,26 @@
 	{% end %}
 		<div class='activity_label'>Lower Activity</div>
 		<div class='activity_label'>Higher Activity</div>
+	</div>
+	<div id="leap_feedback">
+	  <p>Your hands are...</p>
+	  <div id='dist_bar'>
+	  	  <div id='too_far' class='indicator_name'>Too far</div>
+		  <div id='just_right' class='indicator_name'>Just right</div>
+		  <div id='too_close' class='indicator_name'>Too close</div>
+		  <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width='40' height='390'>
+			  <defs id="defs4">
+			    <linearGradient id="linearGradient4145" x1='0' y1='380' x2='0' y2='0' gradientUnits="userSpaceOnUse">
+			      <stop style="stop-color:#cc00ff;stop-opacity:1" offset="0" id="stop4147" />
+			      <stop id="stop4153" offset="0.2" style="stop-color:#008800;stop-opacity:1" />
+			      <stop style="stop-color:#008800;stop-opacity:1" offset="0.8" id="stop4155" />
+			      <stop style="stop-color:#000000;stop-opacity:1" offset="1" id="stop4149" />
+			    </linearGradient>
+			  </defs>
+			  <rect style="fill:url(#linearGradient4145);fill-opacity:1;stroke-width:1;stroke:#CCC;" width="20" height="380"  x="10" y="5" />
+			  <circle id='dist_indicator' cx='20' cy='25' r='15' style="stroke-width:3;stroke:white;fill:none;display:none;" /> 
+		  </svg>
+	  </div>
 	</div>
 </div>
 

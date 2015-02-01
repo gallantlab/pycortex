@@ -1,7 +1,7 @@
 var idle_length = 10000; //ms between updates that's considered idle
-var helper_length = 5000;
-var reset_length = 30000;
-var data_length = 30000 * 3;
+//var helper_length = 5000;
+var reset_length = 15000;
+var data_length = 31000;
 
 function Demo() {
 	this.state = "movement"; //intro, gesture, movement
@@ -10,17 +10,18 @@ function Demo() {
 	this.idleTime = new Date();
 	this._explain_timer = null;
 	this._advancing = false;
+	this._last_feedback = -1;
 
 	this._reset_timer = null;
 	this._next_timer = null;
 	this.update();
 	this.dataset = "Categories";
-	setInterval(this.nextData.bind(this), data_length);
+	this._data_timer = setTimeout(this.nextData.bind(this), data_length);
 }
 Demo.prototype.setLeap = function() {
 	//Activates this mode when it detects the leap motion
-	console.log('Leap control activated');
-	this.advance();
+	$("*").css("cursor", "url(../explo_demo/cursor.png), none !important");
+	//this.advance();
 	this._leap = true;
 	$("#leap_feedback").show();
 }
@@ -29,14 +30,12 @@ Demo.prototype.advance = function() {
 		this._advancing = true;
 		if (this.state == "movement") {
 			this.state = "gesture";
-			if (viewer.state == "play")
-				viewer.playpause();
-
+			viewer.playpause("pause");
+			clearTimeout(this._data_timer);
+			this._advancing = false;
 			$("#display_cover").fadeIn();
 			gesture_anim.show().done(function() {
-				this._advancing = false;
-				$("#display_cover").fadeOut();
-				viewer.playpause();
+				this.advance();
 			}.bind(this));
 		} else {
 			this.state = "movement";
@@ -48,9 +47,10 @@ Demo.prototype.advance = function() {
 			});
 			setTimeout(function() {
 				if (viewer.state != "play") 
-					viewer.playpause();
+					viewer.playpause("play");
 			}, 1000);
 			this._advancing = false;
+			this._data_timer = setTimeout(this.nextData.bind(this), data_length)
 		}
 	}
 }
@@ -72,7 +72,7 @@ Demo.prototype.advance = function() {
 // 		this._explain_timer = setTimeout(advance_frame, frame_pause);
 // 	}
 // }
-Demo.prototype.nextData = function() {
+Demo.prototype.nextData = function(longer) {
 	viewer.nextData();
 	viewer.playpause();
 	this.dataset = this.dataset == "Decoding" ? "Categories" : "Decoding";
@@ -82,13 +82,21 @@ Demo.prototype.nextData = function() {
 		$("#decode_note").show();
 	}
 	$("#swipe_left_text").text("for "+this.dataset);
+
+	var length = data_length;
+	if (longer) {
+		clearTimeout(this._data_timer);
+		length = 3*data_length;
+	}
+	this._data_timer = setTimeout(this.nextData.bind(this), length);
 }
 Demo.prototype.update = function(now) {
 	if (!now)
 		var now = new Date();
-
+	var ret = false;
 	if (now - this.idleTime > idle_length) {
 		this.newSession();
+		ret = true;
 	}
 
 	this.idleTime = now;
@@ -98,6 +106,7 @@ Demo.prototype.update = function(now) {
 		if (viewer.state != "play")
 			viewer.playpause();
 	}, reset_length);
+	return ret;
 }
 Demo.prototype.newSession = function() {
 	if (this._leap) {
@@ -111,39 +120,45 @@ Demo.prototype.newSession = function() {
 
 		// 	});
 		// }, helper_length);
-		$("#leap_feedback").animate({boxShadow:'0 0 50px white'});
+		$("#leap_feedback").fadeTo(400, 1).animate({boxShadow:'0 0 50px white'});
 		$("#just_right").show();
 		setTimeout(function() {
-			$("#leap_feedback").animate({boxShadow:'0 0 0px white'});
+			$("#leap_feedback").fadeTo(400, .2).animate({boxShadow:'0 0 0px white'});
 			$("#just_right").hide();
-		}, 6000);
+		}, 10000);
 	}
 }
 Demo.prototype.setFeedback = function(val) {
-	var range = $("#leap_feedback svg").width();
-	var pos = Math.min(Math.max(val, 0), 1) * range;
-	$("#dist_indicator").attr("cx", pos).show();
-	if (val <= .2) {
-		$("#just_right").css("opacity", 0);
-		$("#too_close").css("opacity", 1);
-		$("#too_far").css("opacity", 0);
-	} else if (val >= .8) {
-		$("#just_right").css("opacity", 0);
-		$("#too_close").css("opacity", 0);
-		$("#too_far").css("opacity", 1);
-	} else {
-		$("#just_right").css("opacity", 1);
-		$("#too_close").css("opacity", 0);
-		$("#too_far").css("opacity", 0);
+	if (val == -1) {
+		$("#dist_indicator").hide();
+		return;
 	}
-}
-
-
-var gesture_info = {
-	reps: 3,
-	names: ["rotate", "flatten", "scale"],
-	speed: [300, 1000, 300],
-	imgs: [],
+	var range = $("#leap_feedback svg").height();
+	var pos = (1 - Math.min(Math.max(val, 0), 1)) * range;
+	$("#dist_indicator").attr("cy", pos).show();
+	if (val <= .2) {
+		if (this._last_feedback > .2) {
+			$("#leap_feedback").fadeTo(400, 1);
+			$("#just_right").css("opacity", 0);
+			$("#too_close").css("opacity", 1);
+			$("#too_far").css("opacity", 0);
+		}
+	} else if (val >= .8) {
+		if (this._last_feedback < .8) {
+			$("#leap_feedback").fadeTo(400, 1);
+			$("#just_right").css("opacity", 0);
+			$("#too_close").css("opacity", 0);
+			$("#too_far").css("opacity", 1);
+		}
+	} else {
+		if (this._last_feedback <= .2 || this._last_feedback >= .8) {
+			$("#leap_feedback").fadeTo(400, .2);
+			$("#just_right").css("opacity", 1);
+			$("#too_close").css("opacity", 0);
+			$("#too_far").css("opacity", 0);
+		}
+	}
+	this._last_feedback = val;
 }
 
 function Gesture(info) {
@@ -169,7 +184,7 @@ Gesture.prototype.show = function() {
 }
 Gesture.prototype.update = function() {
 	if (this.active) {
-		$("#gesture_name").text(this.info.names[this.idx]);
+		$("#gesture_name").text(this.info.help[this.idx]);
 		$("#gesture_1").attr("src", this.imgs[this.idx][0].src);
 		$("#gesture_2").attr("src", this.imgs[this.idx][1].src);
 
@@ -197,6 +212,13 @@ Gesture.prototype.stop = function() {
 	$("#gestures").animate({opacity:0});
 }
 
+var gesture_info = {
+	reps: [3,1,2],
+	names: ['rotate', 'flatten', 'zoom'],
+	help: ["Make \"OK\" with one hand", "Slowly, hands apart", "Keep fingers separated"],
+	speed: [1000, 2000, 1000],
+	imgs: [],
+}
 
-var gesture_anim = new Gesture({reps:[2, 1, 2], names:["rotate", "flatten", "zoom"], speed:[1000, 2000, 1000]});
+var gesture_anim = new Gesture(gesture_info);
 var demo = new Demo();

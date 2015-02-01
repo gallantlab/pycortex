@@ -1,16 +1,13 @@
 var _last_strength = [];
 var _last_mix = null;
 var _last_gesture = null;
+var _last_valid = new Date();
 var _target = null;
 var _wave_times = [];
 
-var frustration_length = 10000;
+var frustration_length = 8000;
 
-var leapcontrol = new Leap.Controller({enableGestures: true});
-$("#display_cover").on("click", demo.advance.bind(demo));
-leapcontrol.on("connect", demo.setLeap.bind(demo));
-
-leapcontrol.on("frame", function(frame) {
+var leapcontrol = Leap.loop({enableGestures: true}, function(frame) {
 	if (!(frame.valid))
 		return;
 
@@ -27,30 +24,26 @@ leapcontrol.on("frame", function(frame) {
 
 					if (dotProduct  >  0) clockwise = true;
 
-					if (explain == -1 && !clockwise) {
-						demo.showIntro();
-
-					} else if (explain == -1 && clockwise) {
-						demo.nextData();
+					if (demo.state == "movement" && !clockwise) {
+						demo.advance();
+						_last_valid = new Date();
+					} else if (demo.state == "movement" && clockwise) {
+						demo.nextData(true);
+						_last_valid = new Date();
 					} else if (clockwise) {
-						demo.nextFrame();
+						demo.advance();
+						_last_valid = new Date();
 					}
 					_last_gesture = null;
 				}
-
-				_wave_times = [];
-			} else {
-				_wave_times.push(new Date());
 			}
 		}
 		_idle_time = new Date();
 	});
 
-	if (demo.state != "movement")
-		return;
-
 	if (frame.hands.length > 0) {
-		var normdist = (frame.hands[0].palmPosition[1] - 80) / 500;
+		//update the hand feedback indicator
+		var normdist = (frame.hands[0].palmPosition[1] - 20) / 500;
 		demo.setFeedback(normdist);
 
 		//pop up a helper when it's been idle for a while
@@ -74,6 +67,7 @@ leapcontrol.on("frame", function(frame) {
 				}
 				viewer.controls._end = new THREE.Vector2(pos[0]*1.5, pos[2]*1.5-pos[1]*1.5);
 				viewer.controls.dispatchEvent( { type: "change" } );
+				_last_valid = new Date();
 			}
 			_last_strength = [];
 		} else if (frame.hands.length == 2) {
@@ -92,6 +86,7 @@ leapcontrol.on("frame", function(frame) {
 					}
 					viewer.controls._end = new THREE.Vector2(0, -diff);
 					viewer.controls.dispatchEvent({type:"change"});
+					_last_valid = new Date();
 				} else {
 					viewer.controls._state = -1;
 				}
@@ -109,9 +104,11 @@ leapcontrol.on("frame", function(frame) {
 					
 					if (dir > .2 && viewer.setMix() > .5) {
 						viewer.reset_view();
+						_last_valid = new Date();
 						_last_strength = [];
 					} else if (dir < -.2 && viewer.setMix() < .5) {
 						viewer.animate([{state:'mix', value:1, idx:2}]);
+						_last_valid = new Date();
 						_last_strength = [];
 					}
 				}
@@ -121,6 +118,18 @@ leapcontrol.on("frame", function(frame) {
 			viewer.controls._state = -1;
 			_last_strength = [];
 		}
+
+		if (demo.state == "gesture") {
+			if (now - _last_valid < .5)
+				demo.advance();
+		} else if (now - _last_valid > frustration_length) {
+			//_last_valid = new Date();
+			demo.advance();
+		} 
+
+	} else {
+		_last_valid = new Date();
+		demo.setFeedback(-1);
 	}
 });
 

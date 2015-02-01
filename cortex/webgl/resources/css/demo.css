@@ -1,5 +1,3 @@
-/** { cursor: url(../explo_demo/cursor.png), none !important }*/
-
 #figure_ui {
 	display:none;
 }
@@ -101,12 +99,12 @@ svg#intro {
 	top:50%;
 	width:965px;
 	margin-left:-482.5px;
-	margin-top:-420px;
+	margin-top:-450px;
 	opacity:0;
 	z-index:1001;
 }
 #gestures p:first-child {
-	font-size:24px;
+	font-size:48pt;
 	font-weight:bold;
 	text-align:center;
 }
@@ -132,7 +130,7 @@ svg#intro {
 	font-size:8pt;
 	font-weight:100;
 	max-width:330px;
-	margin:5px;
+	margin:8px;
 	bottom:0px;
 	text-align:right;
 	right:0px;
@@ -183,35 +181,47 @@ svg#intro {
 
 #leap_feedback {
 	position:absolute;
-	width:390px;
+	height:450px;
+	margin-top:-225px;
 	text-align:center;
 	display:none;
 	z-index:1000;
-	right:0px;
-	bottom:120px;
+	left:0px;
+	top:50%;
 	padding:10px;
-	border-radius:20px 0 0 20px;
+	opacity:.2;
+	border-radius:0 20px 20px 0;
 	box-shadow:white 0 0 0px;
 }
 #leap_feedback p:first-child {
 	text-align:left;
 	margin:0;
 	font-weight:bold;
-	font-size:14pt;
+	font-size:12pt;
 	color:#AAA;
+	width:100px;
 }
+#dist_bar {
+	text-align:left;
+	display:block;
+	position:relative;
+	width:100px;
+}
+
 .indicator_name {
 	font-weight:bold;
 	font-size:14pt;
-	display:block;
+	left:40px;
 }
 #too_close {
 	color:#black;
 	text-shadow:white 0 0 1px, white 0 0 3px, red 0 0 10px, red 0 0 10px, red 0 0 10px;
-	float:left;
+	position:absolute;
+	bottom:0px;
 }
 #just_right {
-	display:inline;
+	position:absolute;
+	top:50%;
 	color:black;
 	font-weight:bold;
 	font-size:14pt;
@@ -220,5 +230,6 @@ svg#intro {
 #too_far {
 	color:black;
 	text-shadow:white 0 0 1px, white 0 0 3px, red 0 0 10px, red 0 0 10px, red 0 0 10px;
-	float:right;
+	position:absolute;
+	top:0px;
 }
