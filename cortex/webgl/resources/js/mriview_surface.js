@@ -459,8 +459,11 @@ var mriview = (function(module) {
     }
     module.SurfDelegate.prototype.setAttribute = function(event) {
         var name = event.name, left = event.value[0], right = event.value[1];
-        this.surf.hemis.left.attributes[name] = left;
-        this.surf.hemis.right.attributes[name] = right;
+        var hemis = this.surf.hemis;
+        this.surf.loaded.done(function() {
+            hemis.left.attributes[name] = left;
+            hemis.right.attributes[name] = right;
+        });
     }
     module.SurfDelegate.prototype.pick = function(renderer, camera, x, y) {
         return this.surf.pick(renderer, camera, x, y);
