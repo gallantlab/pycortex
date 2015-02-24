@@ -62,6 +62,7 @@ var dataset = (function(module) {
         this.frames = this.data[0].frames;
         this.length = this.frames / this.rate;
         this.vertex = this.data[0].mosaic === undefined;
+        this.frame = 0;
 
         this.attrs = json.attrs;
         this.state = json.state;
@@ -102,7 +103,8 @@ var dataset = (function(module) {
         var deferred = this.data.length == 1 ? 
             $.when(this.data[0].loaded) : 
             $.when(this.data[0].loaded, this.data[1].loaded);
-        deferred.progress(function(available) {
+        deferred
+        /*.progress(function(available) {
             for (var i = 0; i < this.data.length; i++) {
                 //TODO: fix this load order
                 if (available > this.delay && !allready[i]) {
@@ -116,7 +118,8 @@ var dataset = (function(module) {
                         this.loaded.resolve();
                 }
             }
-        }.bind(this)).done(function() {
+        }.bind(this))*/
+        .done(function() {
             this.loaded.resolve();
         }.bind(this));
     }
@@ -194,6 +197,7 @@ var dataset = (function(module) {
         this.setFrame(0);
     };
     module.DataView.prototype.setFrame = function(time) {
+        this.frame = time;
         var frame = ((time + this.delay) * this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
         this.uniforms.framemix.value = frame - fframe;

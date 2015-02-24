@@ -176,6 +176,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                         colormaps=colormaps,
                         default_cmap=cmap,
                         python_interface=False,
+                        leapmotion=True,
                         layout=layout,
                         subjects=json.dumps(ctms),
                         **kwargs)
@@ -188,14 +189,15 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
-         autoclose=True, open_browser=True, port=None, pickerfun=None, **kwargs):
+         autoclose=True, open_browser=True, port=None, pickerfun=None, template="mixer.html",
+         **kwargs):
     """Display a dynamic viewer using the given dataset. See cortex.webgl.make_static for help.
     """
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
 
-    html = FallbackLoader([serve.cwd]).load("mixer.html")
+    html = FallbackLoader([serve.cwd]).load(template)
     db.auxfile = data
 
     #Extract the list of stimuli, for special-casing
@@ -296,6 +298,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                                       colormaps=colormaps,
                                       default_cmap=cmap,
                                       python_interface=True,
+                                      leapmotion=True,
                                       layout=layout,
                                       subjects=subjectjs,
                                       **viewopts)

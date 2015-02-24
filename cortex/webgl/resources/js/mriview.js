@@ -1,4 +1,5 @@
 var mriview = (function(module) {
+    var anim_speed = 2;
     var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
     module.Viewer = function(figure) { 
         jsplot.Axes.call(this, figure);
@@ -11,17 +12,16 @@ var mriview = (function(module) {
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
         //Catalog the available colormaps
-        $(this.object).find("#colormap option").each(function() {
-            var im = new Image();
-            im.src = $(this).data("imagesrc");
-            var tex = new THREE.Texture(im);
+        $(this.object).find(".cmap img").each(function() {
+            var tex = new THREE.Texture(this);
             tex.minFilter = THREE.LinearFilter;
             tex.magFilter = THREE.LinearFilter;
             tex.premultiplyAlpha = true;
             tex.flipY = true;
             tex.needsUpdate = true;
-            colormaps[$(this).text()] = tex;
+            colormaps[this.parentNode.id] = tex;
         });
+
         this.canvas = $(this.object).find("#brain");
         jsplot.Axes3D.call(this, figure);
 
@@ -31,6 +31,7 @@ var mriview = (function(module) {
 
         this.loaded = $.Deferred().done(function() {
             //this.schedule();
+            this.resize();
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
         }.bind(this));
@@ -213,6 +214,7 @@ var mriview = (function(module) {
                 return false;
             }
         }
+        this.frame = 0;
 
         //unbind the shader update event from the existing surfaces
         for (var i = 0; i < this.surfs.length; i++) {
@@ -236,17 +238,20 @@ var mriview = (function(module) {
                 this.active.addEventListener("attribute", this.surfs[i]._attrib);
             }
         }
-        this.active.loaded.done(function() { this.active.set(); }.bind(this));
+        this.active.loaded.done(function() { 
+            this.active.set();
+        }.bind(this));
 
-        var surf, scene, grid = grid_shapes[this.active.data.length];
-        //cleanup old scene grid for the multiview
-        // for (var i = 0; i < this.views.length; i++) {
-        //     this.views[i].scene.dispose();
+        // var surf, scene, grid = grid_shapes[this.active.data.length];
+        // //cleanup old scene grid for the multiview
+        // // for (var i = 0; i < this.views.length; i++) {
+        // //     this.views[i].scene.dispose();
+        // // }
+        // //Generate new scenes and re-add the surface objects
+        // for (var i = 0; i < this.active.data.length; i++) {
+        //     scene = this.setGrid(grid[0], grid[1], i);
         // }
-        //Generate new scenes and re-add the surface objects
-        for (var i = 0; i < this.active.data.length; i++) {
-            scene = this.setGrid(grid[0], grid[1], i);
-        }
+        scene = this.setGrid(1,1,0);
 
         //Show or hide the colormap for raw / non-raw dataviews
         if (this.active.data[0].raw) {
@@ -269,7 +274,7 @@ var mriview = (function(module) {
             //     this.setVminmax(this.active.vmin[0].value[0], this.active.vmax[0].value[0], 0);
             // }
 
-            // this.setupStim();
+            this.setupStim();
             
             $(this.object).find("#datasets li").each(function() {
                 if ($(this).text() == name)
@@ -281,11 +286,11 @@ var mriview = (function(module) {
             $(this.object).find("#datasets").val(name);
             if (typeof(this.active.description) == "string") {
                 var html = name+"<div class='datadesc'>"+this.active.description+"</div>";
-                $(this.object).find("#dataname").html(html);
-                $(this.object).find("#dataopts").show();
+                $("#dataname").html(html);
+                $("#dataopts").show();
             } else {
-                $(this.object).find("#dataname").text(name);
-                $(this.object).find("#dataopts").show();
+                $("#dataname").text(name);
+                $("#dataopts").show();
             }
             this.schedule();
             this.loaded.resolve();
@@ -306,6 +311,8 @@ var mriview = (function(module) {
         if (dir === undefined)
             dir = 1
 
+        if (this.state != "pause")
+            this.playpause();
         this.setData([datasets[(i+dir).mod(datasets.length)]]);
     };
     module.Viewer.prototype.rmData = function(name) {
@@ -369,28 +376,30 @@ var mriview = (function(module) {
 
     module.Viewer.prototype.setupStim = function() {
         if (this.active.data[0].movie) {
-            $(this.object).find("#moviecontrols").show();
-            $(this.object).find("#bottombar").addClass("bbar_controls");
-            $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
-            this.active.data[0].loaded.progress(function(idx) {
-                var pct = idx / this.active.frames * 100;
-                $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
-            }.bind(this)).done(function() {
-                $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
-            }.bind(this));
-            
-            this.active.loaded.done(function() {
-                this.setFrame(0);
-            }.bind(this));
+            // $(this.object).find("#moviecontrols").show();
+            // $(this.object).find("#bottombar").addClass("bbar_controls");
+            // $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
+            // this.active.data[0].loaded.progress(function(idx) {
+            //     var pct = idx / this.active.frames * 100;
+            //     $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
+            // }.bind(this)).done(function() {
+            //     $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
+            // }.bind(this));
+
+            if (this.movie)
+                this.movie.destroy();
 
             if (this.active.stim && figure) {
                 figure.setSize("right", "30%");
                 this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
                 this.movie.setFrame(0);
+                setTimeout(this.resize.bind(this), 1000);
             }
+            this.dispatchEvent({type:"stimulus", object:this.movie});
+            //this.active.loaded.done(this.playpause.bind(this));
         } else {
-            $(this.object).find("#moviecontrols").hide();
-            $(this.object).find("#bottombar").removeClass("bbar_controls");
+            // $(this.object).find("#moviecontrols").hide();
+            // $(this.object).find("#bottombar").removeClass("bbar_controls");
         }
         this.schedule();
     };
@@ -469,11 +478,10 @@ var mriview = (function(module) {
             frame -= this.active.length;
             this._startplay += this.active.length;
         }
-
         this.frame = frame;
-        this.active.setFrame(this.uniforms, frame);
-        $(this.object).find("#movieprogress div").slider("value", frame);
-        $(this.object).find("#movieframe").attr("value", frame);
+        this.active.setFrame(frame);
+        // $(this.object).find("#movieprogress div").slider("value", frame);
+        // $(this.object).find("#movieframe").attr("value", frame);
         this.schedule();
     };
 
@@ -526,11 +534,13 @@ var mriview = (function(module) {
             target: {action:[this.controls, 'setTarget'], hidden:true},
         });
 
-        var anim_speed = .3;
-        var reset_view = function() {
+        this.reset_view = function() {
             this.animate([
                 {state:'camera.target', idx:anim_speed, value:[0,0,0]},
                 {state:'mix', idx:anim_speed, value:0},
+                {state:'camera.azimuth', idx:anim_speed, value:45},
+                {state:'camera.altitude', idx:anim_speed, value:75},
+                {state:'camera.radius', idx:anim_speed, value:250},
             ]);
         }.bind(this);
         var inflate = function() {
@@ -540,7 +550,7 @@ var mriview = (function(module) {
             this.animate([ {state:'mix', idx:anim_speed, value:1}]);
         }.bind(this);
         cam_ui.add({
-            reset: {action:reset_view, key:'r'},
+            reset: {action:this.reset_view, key:'r'},
             inflate: {action:inflate, key:'i'},
             flatten: {action:flatten, key:'f'},
         });

@@ -36,12 +36,12 @@ var jsplot = (function (module) {
 
 	module.LandscapeControls.prototype.update = function(camera) {
 		var func;
-		if (this._state !== STATE.NONE) {
-			if (this._state === STATE.ROTATE)
+		if (this._state != STATE.NONE) {
+			if (this._state == STATE.ROTATE)
 				func = this.rotate
-			else if (this._state === STATE.PAN)
+			else if (this._state == STATE.PAN)
 				func = this.pan
-			else if (this._state === STATE.ZOOM)
+			else if (this._state == STATE.ZOOM)
 				func = this.zoom
 
 			var mousechange = this._end.clone().sub(this._start);

@@ -235,16 +235,16 @@ var jsplot = (function (module) {
                 return startval * (1-idx) + endval * idx;
         }
     };
-    module.Axes3D.prototype.playpause = function() {
-        if (this.state == "pause") {
+    module.Axes3D.prototype.playpause = function(state) {
+        if (this.state == "play" && state == "pause") {
+            this.state = "pause";
+        } else {
             //Start playing
-            this._startplay = (new Date()) - (this.frame * this.active.rate) * 1000;
+            this._startplay = (new Date()) - (this.frame * 1000);
             this.state = "play";
             this.schedule();
-        } else {
-            this.state = "pause";
         }
-        this.figure.notify("playtoggle", this);
+        this.figure.notify("playtoggle", this, [this.state]);
     };
     module.Axes3D.prototype.setGrid = function(m, n, idx) {
         //Establish of grid of views M rows by N columns

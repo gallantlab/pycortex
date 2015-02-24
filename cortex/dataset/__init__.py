@@ -91,7 +91,8 @@ class Dataset(object):
             try:
                 ds.views[name] = Dataview.from_hdf(node)
             except:
-                warnings.warn("Could not load view '%s'"%node.name)
+                import traceback
+                traceback.print_exc()
 
         db.auxfile = None
 

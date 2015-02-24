@@ -168,17 +168,24 @@ var mriview = (function(module) {
             }
 
             //create picker
-            this.picker = new PickPosition(this, posdata);
-            this.picker.markers.left.position.y = -this.flatoff[1];
-            this.picker.markers.right.position.y = -this.flatoff[1];
-            this.pivots.left.back.add(this.picker.markers.left);
-            this.pivots.right.back.add(this.picker.markers.right);
-            this.addEventListener("mix", this.picker.setMix.bind(this.picker));
+            // this.picker = new PickPosition(this, posdata);
+            // this.picker.markers.left.position.y = -this.flatoff[1];
+            // this.picker.markers.right.position.y = -this.flatoff[1];
+            // this.pivots.left.back.add(this.picker.markers.left);
+            // this.pivots.right.back.add(this.picker.markers.right);
+            // this.addEventListener("mix", this.picker.setMix.bind(this.picker));
 
             //generate rois
             if (this.flatlims !== undefined) {
                 var path = loader.extractUrlBase(ctminfo) + json.rois;
                 this.svg = new svgoverlay.SVGOverlay(path, posdata, this);
+                this.svg.addEventListener("update", function(evt) {
+                    if (this.uniforms.overlay.value && this.uniforms.overlay.value.dispose)
+                        this.uniforms.overlay.value.dispose();
+                    this.uniforms.overlay.value = evt.texture;
+                    this.loaded.resolve();
+                    this.dispatchEvent({type:"update"});
+                }.bind(this));
                 this.pivots.left.back.add(this.svg.labels.left);
                 this.pivots.right.back.add(this.svg.labels.right);
                 this.svg.labels.left.position.y = -this.flatoff[1];
@@ -187,13 +194,6 @@ var mriview = (function(module) {
                 this.addEventListener("resize", function(evt) {
                     this.resize(evt.width, evt.height);
                 }.bind(this.svg));
-                this.svg.addEventListener("update", function(evt) {
-                    if (this.uniforms.overlay.value && this.uniforms.overlay.value.dispose)
-                        this.uniforms.overlay.value.dispose();
-                    this.uniforms.overlay.value = evt.texture;
-                    this.loaded.resolve();
-                    this.dispatchEvent({type:"update"});
-                }.bind(this));
                 this.svg.loaded.done(function() { 
                     this.ui.addFolder("Overlays", true, this.svg.ui);
                 }.bind(this));
@@ -216,7 +216,7 @@ var mriview = (function(module) {
         this.width = evt.width;
         this.height = evt.height;
         this.loaded.done(function() {
-            this.picker.resize(evt.width, evt.height);
+            //this.picker.resize(evt.width, evt.height);
         }.bind(this));
         this.dispatchEvent({type:"resize", width:evt.width, height:evt.height});
     };
@@ -323,7 +323,7 @@ var mriview = (function(module) {
                     this.sheets[i].right.material = this.shaders[dataview.uuid];
                 }
 
-                this.picker.apply(dataview)
+                //this.picker.apply(dataview)
             }.bind(this));
             _last_dataview = dataview.uuid;
         }

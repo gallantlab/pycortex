@@ -39,8 +39,6 @@ var svgoverlay = (function(module) {
         this.layers = {};
         this.surf = surf;
 
-        $.get(svgpath, null, this.init.bind(this));
-
         var shader = Shaders.depth({
             morphs:surf.names.length,
             volume:surf.volume,
@@ -57,6 +55,8 @@ var svgoverlay = (function(module) {
             blendSrc: THREE.OneFactor,
             blendDst: THREE.ZeroFactor,
         });
+
+        $.get(svgpath, null, this.init.bind(this));
     }
     THREE.EventDispatcher.prototype.apply(module.SVGOverlay.prototype);
     module.SVGOverlay.prototype.init = function(svgdoc) {
@@ -105,12 +105,11 @@ var svgoverlay = (function(module) {
             img.src = dataurl;
             var tex = new THREE.Texture(img);
             tex.needsUpdate = true;
-            tex.anisotropy = 16;
+            //tex.anisotropy = 16;
             //tex.mipmaps[0] = tex.image;
             //tex.generateMipmaps = true;
             tex.premultiplyAlpha = true;
             tex.flipY = true;
-            
             this.dispatchEvent({type:"update", texture:tex});
         }.bind(this)});
     }, 
@@ -306,7 +305,7 @@ var svgoverlay = (function(module) {
         }.bind(this);
 
         this._make_object();
-        if (this.layer.style.display == 'none')
+        if (this._hidden)
             this.hide();
         this.update();
     }
