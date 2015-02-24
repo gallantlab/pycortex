@@ -104,7 +104,7 @@ var dataset = (function(module) {
             $.when(this.data[0].loaded) : 
             $.when(this.data[0].loaded, this.data[1].loaded);
         deferred
-        /*.progress(function(available) {
+        .progress(function(available) {
             for (var i = 0; i < this.data.length; i++) {
                 //TODO: fix this load order
                 if (available > this.delay && !allready[i]) {
@@ -118,7 +118,7 @@ var dataset = (function(module) {
                         this.loaded.resolve();
                 }
             }
-        }.bind(this))*/
+        }.bind(this))
         .done(function() {
             this.loaded.resolve();
         }.bind(this));
@@ -324,7 +324,7 @@ var dataset = (function(module) {
     module.VertexData.prototype.set = function(uniforms, dim, fframe, dispatch) {
         var name = dim == 0 ? "data0":"data2";
         dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
-        dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.frames)]});
+        dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.verts.length)]});
     }
 
     return module;

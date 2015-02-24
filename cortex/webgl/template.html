@@ -60,7 +60,13 @@
 			<ul id='datasets'>
 			</ul>
 		</div>
+	</div>
 	<canvas id='brain'></canvas>
+	<div id="colormaps">
+	{% for name, img in colormaps %}
+		<div class='cmap' id='{{name}}' {% if name != default_cmap %}style="display:none;"{%end%} ><img src='{{img}}'/></div>
+	{% end %}
+	</div>
 </div>
 
 </script>

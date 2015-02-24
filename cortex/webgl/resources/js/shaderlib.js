@@ -722,6 +722,7 @@ var Shaderlib = (function() {
 
                 "gl_FragColor = cColor;",
                 "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                //"gl_FragColor = vec4(1., 0., 0., 1.);",
                 // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "#ifdef ROI_RENDER",
                 "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
