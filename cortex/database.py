@@ -601,6 +601,8 @@ class Database(object):
         if os.path.exists(os.path.join(self.filestore, subject)):
             if raw_input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
                 shutil.rmtree(os.path.join(self.filestore, subject))
+            else:
+                raise ValueError('Do not overwrite')
 
         for dirname in ['transforms', 'anatomicals', 'cache', 'surfaces', 'surface-info','views']:
             try:
