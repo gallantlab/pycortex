@@ -34,6 +34,7 @@ var mriview = (function(module) {
             this.resize();
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
+            this.playpause();
         }.bind(this));
 
         this.ui = new jsplot.Menu();
