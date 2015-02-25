@@ -318,14 +318,14 @@ var dataset = (function(module) {
                     if (this.raw) {
 
                     } else {
-                        // for (var i = 0; i < sleft.length; i++) {
-                        //     sleft[i] = left[hemis.left.indexMap[i]];
-                        // }
+                        for (var i = 0; i < sleft.length; i++) {
+                            sleft[i] = left[hemis.left.reverseIndexMap[i]];
+                        }
                         for (var i = 0; i < sright.length; i++) {
                             sright[i] = right[hemis.right.reverseIndexMap[i]];
                         }
                     }
-                    var lattr = new THREE.BufferAttribute(left, this.raw?4:1);
+                    var lattr = new THREE.BufferAttribute(sleft, this.raw?4:1);
                     var rattr = new THREE.BufferAttribute(sright, this.raw?4:1);
                     lattr.needsUpdate = true;
                     rattr.needsUpdate = true;

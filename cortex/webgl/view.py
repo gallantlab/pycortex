@@ -213,7 +213,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     images = package.images
     subjects = list(package.subjects)
 
-    kwargs.update(dict(method='raw', level=9, recache=recache))
+    kwargs.update(dict(method='mg2', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj,types,**kwargs))
                 for subj in subjects)
     package.reorder(ctms)

@@ -68,12 +68,10 @@ class Package(object):
             if isinstance(brain, dataset.Vertex):
                 data = np.array(self.images[brain.name])[0]
                 npyform = cStringIO.StringIO()
-                print data
                 if self.brains[brain.name]['raw']:
-                    data = data[..., indices[brain.subject]['inverse'],:]
+                    data = data[..., indices[brain.subject]['index'], :]
                 else:
-                    data = data[..., indices[brain.subject]['inverse']]
-                print data
+                    data = data[..., indices[brain.subject]['index']]
                 np.save(npyform, data)
                 npyform.seek(0)
                 self.images[brain.name] = [npyform.read()]
