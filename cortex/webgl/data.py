@@ -37,11 +37,9 @@ class Package(object):
                 encdata = encdata.astype(np.float32)
                 self.brains[name]['raw'] = False
 
+            #VertexData requires reordering, only save normalized version for now
             if isinstance(brain, dataset.Vertex):
-                npyform = cStringIO.StringIO()
-                np.save(npyform, encdata)
-                npyform.seek(0)
-                self.images[name] = [npyform.read()]
+                self.images[name] = [encdata]
             else:
                 self.images[name] = [volume.mosaic(vol, show=False) for vol in encdata]
                 if len(set([shape for m, shape in self.images[name]])) != 1:
@@ -63,6 +61,24 @@ class Package(object):
     @property
     def subjects(self):
         return set(braindata.subject for braindata in self.uniques)
+
+    def reorder(self, subjects):
+        indices = dict((k, np.load(os.path.splitext(v)[0]+".npz")) for k, v in subjects.items())
+        for brain in self.uniques:
+            if isinstance(brain, dataset.Vertex):
+                data = np.array(self.images[brain.name])[0]
+                npyform = cStringIO.StringIO()
+                print data
+                if self.brains[brain.name]['raw']:
+                    data = data[..., indices[brain.subject]['inverse'],:]
+                else:
+                    data = data[..., indices[brain.subject]['inverse']]
+                print data
+                np.save(npyform, data)
+                npyform.seek(0)
+                self.images[brain.name] = [npyform.read()]
+        for npz in indices.values():
+            npz.close()
 
     def metadata(self, **kwargs):
         return dict(views=self.views, data=self.brains, images=self.image_names(**kwargs))

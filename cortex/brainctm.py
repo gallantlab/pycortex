@@ -126,6 +126,7 @@ class BrainCTM(object):
         ctmname = path+".ctm"
         svgname = path+".svg"
         jsname = path+".json"
+        mapname = path+".npz"
 
         # Save CTM concatenation
         (lpts, _, _), lbin = self.left.save(method=method, **kwargs)
@@ -158,9 +159,12 @@ class BrainCTM(object):
         else:
             ptmap = inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
+        np.savez(mapname, 
+            index=np.hstack([ptmap[0], ptmap[1]+len(ptmap[0])]), 
+            inverse=np.hstack([inverse[0], inverse[1]+len(inverse[0])]))
+
         # Save the SVG with remapped indices (map 2D flatmap locations to vertices)
         if self.left.flat is not None:
-            # add sulci & display layers
             flatpts = np.vstack([self.left.flat, self.right.flat])
             svg = db.get_overlay(self.subject, pts=flatpts)
             

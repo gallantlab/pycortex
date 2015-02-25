@@ -102,6 +102,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     ctmargs = dict(method='mg2', level=9, recache=recache)
     ctms = dict((subj, utils.get_ctmpack(subj,types,**ctmargs))
                 for subj in subjects)
+    package.reorder(ctms)
 
     db.auxfile = None
     if layout is None:
@@ -212,9 +213,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     images = package.images
     subjects = list(package.subjects)
 
-    kwargs.update(dict(method='mg2', level=9, recache=recache))
+    kwargs.update(dict(method='raw', level=9, recache=recache))
     ctms = dict((subj, utils.get_ctmpack(subj,types,**kwargs))
                 for subj in subjects)
+    package.reorder(ctms)
 
     subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))
     db.auxfile = None

@@ -307,12 +307,31 @@ var dataset = (function(module) {
         NParray.fromURL(this.data[0], function(array) {
             array.loaded.progress(function(available){
                 var data = array.view(available-1).data;
-                var left = new THREE.BufferAttribute(data.subarray(0, this.split), this.raw?4:1);
-                var right = new THREE.BufferAttribute(data.subarray(this.split), this.raw?4:1);
-                left.needsUpdate = true;
-                right.needsUpdate = true;
-                this.verts.push([left, right]);
-                this.loaded.notify(available);
+                var left = data.subarray(0, this.split*(this.raw?4:1));
+                var right = data.subarray(this.split*(this.raw?4:1));
+                //Since the buffer probably got shuffled, we need to map it using indexMap
+                var sleft = new Float32Array(left.length);
+                var sright = new Float32Array(right.length);
+                var hemis = subjects[this.subject].hemis;
+
+                subjects[this.subject].loaded.done(function() {
+                    if (this.raw) {
+
+                    } else {
+                        // for (var i = 0; i < sleft.length; i++) {
+                        //     sleft[i] = left[hemis.left.indexMap[i]];
+                        // }
+                        for (var i = 0; i < sright.length; i++) {
+                            sright[i] = right[hemis.right.reverseIndexMap[i]];
+                        }
+                    }
+                    var lattr = new THREE.BufferAttribute(left, this.raw?4:1);
+                    var rattr = new THREE.BufferAttribute(sright, this.raw?4:1);
+                    lattr.needsUpdate = true;
+                    rattr.needsUpdate = true;
+                    this.verts.push([lattr, rattr]);
+                    this.loaded.notify(available);
+                }.bind(this));
             }.bind(this)).done(function(){
                 this.loaded.resolve();
             }.bind(this))
