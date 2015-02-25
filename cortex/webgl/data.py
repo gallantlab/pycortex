@@ -72,7 +72,7 @@ class Package(object):
                     data = data[..., indices[brain.subject]['index'], :]
                 else:
                     data = data[..., indices[brain.subject]['index']]
-                np.save(npyform, data)
+                np.save(npyform, np.ascontiguousarray(data))
                 npyform.seek(0)
                 self.images[brain.name] = [npyform.read()]
         for npz in indices.values():
