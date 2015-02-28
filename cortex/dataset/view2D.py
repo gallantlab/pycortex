@@ -130,7 +130,7 @@ class Volume2D(Dataview2D):
     def xfmname(self):
         return self.dim1.xfmname
 
-class Vertex2D(Dataview):
+class Vertex2D(Dataview2D):
     _cls = VertexData
     def __init__(self, dim1, dim2, subject=None, description="", cmap=None,
         vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):

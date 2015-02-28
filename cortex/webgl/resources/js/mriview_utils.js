@@ -85,23 +85,23 @@ var mriview = (function(module) {
     }
     multiview_prototype(module.MultiView.prototype, ['getState', 'setState', 'setColormap', 'nextData']);
 
+    var glcanvas = document.createElement("canvas");
+    var glctx = glcanvas.getContext("2d");
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d");
+    ctx.scale(1,-1);
     module.getTexture = function(gl, renderbuf) {
-        var glcanvas = document.createElement("canvas");
         glcanvas.width = renderbuf.width;
         glcanvas.height = renderbuf.height;
-        var glctx = glcanvas.getContext("2d");
         var img = glctx.createImageData(renderbuf.width, renderbuf.height);
         gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
         gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         glctx.putImageData(img, 0, 0);
 
-        //This ridiculousness is necessary to flip the image...
-        var canvas = document.createElement("canvas");
+        // //This ridiculousness is necessary to flip the image...
         canvas.width = renderbuf.width;
         canvas.height = renderbuf.height;
-        var ctx = canvas.getContext("2d");
-        ctx.scale(1,-1);
         ctx.drawImage(glcanvas, 0,-renderbuf.height);
         return canvas;
     }

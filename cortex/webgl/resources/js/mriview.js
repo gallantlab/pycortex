@@ -34,12 +34,14 @@ var mriview = (function(module) {
             this.resize();
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
-            this.playpause();
         }.bind(this));
 
         this.ui = new jsplot.Menu();
         this.ui.addEventListener("update", this.schedule.bind(this));
-        this.ui.add({mix: {action:[this, "setMix"], hidden:true} });
+        this.ui.add({
+            mix: {action:[this, "setMix"], hidden:true},
+            frame:{action:[this, "setFrame"], hidden:true},
+        });
 
         this._bindUI();
     }
@@ -475,6 +477,8 @@ var mriview = (function(module) {
     };
 
     module.Viewer.prototype.setFrame = function(frame) {
+        if (frame === undefined)
+            return this.frame;
         if (frame > this.active.length) {
             frame -= this.active.length;
             this._startplay += this.active.length;
@@ -484,41 +488,6 @@ var mriview = (function(module) {
         // $(this.object).find("#movieprogress div").slider("value", frame);
         // $(this.object).find("#movieframe").attr("value", frame);
         this.schedule();
-    };
-
-    module.Viewer.prototype.getImage = function(width, height, post) {
-        if (width === undefined)
-            width = this.canvas.width();
-        
-        if (height === undefined)
-            height = width * this.canvas.height() / this.canvas.width();
-
-        console.log(width, height);
-        var renderbuf = new THREE.WebGLRenderTarget(width, height, {
-            minFilter: THREE.LinearFilter,
-            magFilter: THREE.LinearFilter,
-            format:THREE.RGBAFormat,
-            stencilBuffer:false,
-        });
-
-        var clearAlpha = this.renderer.getClearAlpha();
-        var clearColor = this.renderer.getClearColor();
-        var oldw = this.canvas.width(), oldh = this.canvas.height();
-        this.camera.setSize(width, height);
-        this.camera.updateProjectionMatrix();
-        this.controls._zoom(1.0) // To assure orthographic zoom is set correctly
-        //this.renderer.setSize(width, height);
-        this.renderer.setClearColor(new THREE.Color(0,0,0), 0);
-        this.renderer.render(this.scene, this.camera, renderbuf);
-        //this.renderer.setSize(oldw, oldh);
-        this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
-        this.camera.setSize(oldw, oldh);
-        this.camera.updateProjectionMatrix();
-
-        var img = mriview.getTexture(this.renderer.context, renderbuf)
-        if (post !== undefined)
-            $.post(post, {png:img.toDataURL()});
-        return img;
     };
 
     var _bound = false;

@@ -46,6 +46,7 @@ var jsplot = (function (module) {
         }
 
         this.gui = new dat.GUI({autoPlace:false});
+        this.gui.close();
         this.ui_element = document.createElement("div");
         this.ui_element.id = "figure_ui";
         this.object.appendChild(this.ui_element);

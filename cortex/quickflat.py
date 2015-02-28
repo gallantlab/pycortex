@@ -330,7 +330,7 @@ def make(braindata, height=1024, recache=False, **kwargs):
                                height=height,
                                recache=recache,
                                **kwargs)
-        data = braindata.vertices
+        
         if isinstance(braindata, dataset.Vertex2D):
             data = braindata.raw.vertices
         else:

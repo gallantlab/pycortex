@@ -432,7 +432,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         #    Proxy = serve.JSProxy(self.send, "window.viewers.setData")
         #    return Proxy(name)
 
-        def saveIMG(self, filename,size=(None, None)):
+        def getImage(self, filename,size=(1920, 1080)):
             """Saves currently displayed view to a .png image file
 
             Parameters
@@ -443,7 +443,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 size (in pixels) of image to save.
             """
             post_name.put(filename)
-            Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
+            Proxy = serve.JSProxy(self.send, "window.viewer.getImage")
             return Proxy(size[0], size[1], "mixer.html")
 
         def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0,
@@ -497,9 +497,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             state = dict()
             # anim is a list of transitions between keyframes
             anim = []
+            setfunc = self.ui.set
             for f in sorted(animation, key=lambda x:x['idx']):
                 if f['idx'] == 0:
-                    self.setState(f['state'], f['value'])
+                    setfunc(f['state'], f['value'])
                     state[f['state']] = dict(idx=f['idx'], val=f['value'])
                 else:
                     if f['state'] not in state:
@@ -524,10 +525,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
                         val = func(np.array(start['value']), np.array(end['value']), idx)
                         if isinstance(val, np.ndarray):
-                            self.setState(start['state'], val.ravel().tolist())
+                            setfunc(start['state'], val.ravel().tolist())
                         else:
-                            self.setState(start['state'], val)
-                self.saveIMG(filename%(i+offset), size=size)
+                            setfunc(start['state'], val)
+                self.getImage(filename%(i+offset), size=size)
 
         def _get_anim_seq(self,keyframes,fps=30,interpolation='linear'):
             """Convert a list of keyframes to a list of EVERY frame in an animation.
@@ -648,10 +649,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         def get_client(self):
             self.connect.wait()
             self.connect.clear()
-            return JSMixer(self.send, "window.viewers")
+            return JSMixer(self.send, "window.viewer")
 
         def get_local_client(self):
-            return JSMixer(self.srvsend, "window.viewers")
+            return JSMixer(self.srvsend, "window.viewer")
 
     if port is None:
         port = random.randint(1024, 65536)

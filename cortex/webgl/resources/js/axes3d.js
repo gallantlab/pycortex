@@ -267,5 +267,39 @@ var jsplot = (function (module) {
         return this.views[idx].scene;
     }
 
+    module.Axes3D.prototype.getImage = function(width, height, post) {
+        if (width === undefined)
+            width = this.canvas.width();
+        
+        if (height === undefined)
+            height = width * this.canvas.height() / this.canvas.width();
+
+        console.log(width, height);
+        var renderbuf = new THREE.WebGLRenderTarget(width, height, {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter,
+            format:THREE.RGBAFormat,
+            stencilBuffer:false,
+        });
+
+        var clearAlpha = this.renderer.getClearAlpha();
+        var clearColor = this.renderer.getClearColor();
+        var oldw = this.canvas.width(), oldh = this.canvas.height();
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
+        this.renderer.setClearColor(new THREE.Color(0,0,0), 0);
+        this.renderer.render(this.views[0].scene, this.camera, renderbuf);
+        this.renderer.setSize(oldw, oldh);
+        this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
+        this.camera.aspect = oldw / oldh;
+        this.camera.updateProjectionMatrix();
+
+        var img = mriview.getTexture(this.renderer.context, renderbuf)
+        if (post !== undefined)
+            $.post(post, {png:img.toDataURL()});
+        return img;
+    };
+
     return module;
 }(jsplot || {}));

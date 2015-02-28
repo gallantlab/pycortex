@@ -316,7 +316,11 @@ class WebApp(threading.Thread):
 
         for sock in self.sockets:
             sock.write_message(msg)
-        return [json.loads(self.response.get(timeout=2)) for _ in range(self.n_clients)]
+
+        try:
+            return [json.loads(self.response.get(timeout=2)) for _ in range(self.n_clients)]
+        except:
+            return [None for _ in range(self.n_clients)]
 
     def get_client(self):
         self.connect.wait()
@@ -327,6 +331,7 @@ class JSProxy(object):
     def __init__(self, sendfunc, name="window"):
         self.send = sendfunc
         self.name = name
+        
         self.attrs = self.send(method='query', params=[self.name])[0]
     
     def __getattr__(self, attr):

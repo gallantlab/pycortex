@@ -679,14 +679,18 @@ try:
         if len(pts) > 20:
             pts = pts[::len(pts)/20]
 
-        poly = Polygon([tuple(p) for p in pts])
-        for i in np.linspace(0,1,100):
-            if poly.buffer(-i).is_empty:
-                return list(poly.buffer(-last_i).centroid.coords)[0] * max + min
-            last_i = i
+        try:
+            poly = Polygon([tuple(p) for p in pts])
+            for i in np.linspace(0,1,100):
+                if poly.buffer(-i).is_empty:
+                    return list(poly.buffer(-last_i).centroid.coords)[0] * max + min
+                last_i = i
 
-        print("unable to find zero centroid...")
-        return list(poly.buffer(-100).centroid.coords)[0] * max + min
+            print("unable to find zero centroid...")
+            return list(poly.buffer(-100).centroid.coords)[0] * max + min
+        except:
+            print("Shapely error")
+            return pts.mean(0)
 
 except ImportError:
     print("Cannot find shapely, using simple label placement")

@@ -29,7 +29,10 @@ var jsplot = (function (module) {
             return this[n].set(namespace.join('.'), value);
         } else if (this[n] === undefined) {
             var action = this._desc[n].action;
-            action[0][action[1]] = value;
+            if (action[0][action[1]] instanceof Function)
+                action[0][action[1]].call(action[0], value)
+            else 
+                action[0][action[1]] = value;
         } else {
             this[n] = value;
             var action = this._desc[n].action;
@@ -46,6 +49,8 @@ var jsplot = (function (module) {
             return this[n].get(namespace.join('.'));
         } else if (this[n] === undefined) { //object reference
             var action = this._desc[n].action;
+            if (action[0][action[1]] instanceof Function)
+                return action[0][action[1]].call(action[0]);
             return action[0][action[1]];
         } else { // object function
             var action = this._desc[n].action;
