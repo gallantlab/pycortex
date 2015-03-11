@@ -323,7 +323,7 @@ var mriview = (function(module) {
                     this.sheets[i].right.material = this.shaders[dataview.uuid];
                 }
 
-                //this.picker.apply(dataview)
+                this.picker.apply(dataview)
             }.bind(this));
             _last_dataview = dataview.uuid;
         }

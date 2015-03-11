@@ -56,6 +56,8 @@ class SVGOverlay(object):
                 for element in layer.labels.elements[name]:
                     x, y = float(element.get("x")), float(element.get("y"))
                     dist, idx = self.kdt.query((x, self.svgshape[1]-y))
+                    if idx >= len(self.kdt.data):
+                        idx = 0
                     element.attrib['data-ptidx'] = str(idx)
 
     def __getattr__(self, attr):
@@ -690,7 +692,7 @@ try:
             return list(poly.buffer(-100).centroid.coords)[0] * max + min
         except:
             print("Shapely error")
-            return pts.mean(0)
+            return np.nanmean(pts, 0)
 
 except ImportError:
     print("Cannot find shapely, using simple label placement")
