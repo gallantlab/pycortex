@@ -64,7 +64,7 @@ class BrainData(object):
                 subject=self.subject,
                 min=float(np.nan_to_num(self.data).min()), 
                 max=float(np.nan_to_num(self.data).max()),
-                shape=self.shape))
+                ))
         return sdict
 
     @classmethod
@@ -112,7 +112,9 @@ class VolumeData(BrainData):
 
     def to_json(self, simple=False):
         if simple:
-            return super(VolumeData, self).to_json(simple=simple)
+            sdict = super(VolumeData, self).to_json(simple=simple)
+            sdict["shape"] = self.shape
+            return sdict
         
         xfm = db.get_xfm(self.subject, self.xfmname, 'coord').xfm
         sdict = dict(xfm=[list(np.array(xfm).ravel())], data=[self.name])
@@ -331,6 +333,16 @@ class VertexData(BrainData):
         
         #return VertexData(self.data[idx], self.subject, **self.attrs)
         return self.copy(self.data[idx])
+
+    def to_json(self, simple=False):
+        if simple:
+            sdict = dict(split=self.llen, frames=self.vertices.shape[0])
+            sdict.update(super(VertexData, self).to_json(simple=simple))
+            return sdict
+            
+        sdict = dict(data=[self.name])
+        sdict.update(super(VertexData, self).to_json())
+        return sdict
 
     @property
     def vertices(self):
