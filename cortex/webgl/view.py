@@ -527,7 +527,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             for i, sec in enumerate(np.arange(0, anim[-1][1]['idx']+1./fps, 1./fps)):
                 for start, end in anim:
                     if start['idx'] < sec <= end['idx']:
-                        idx = (sec - start['idx']) / (end['idx'] - start['idx'])
+                        idx = (sec - start['idx']) / float(end['idx'] - start['idx'])
                         if start['state'] == 'frame':
                             func = mixes['linear']
                         else:
