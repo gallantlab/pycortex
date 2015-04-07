@@ -3,8 +3,8 @@ scripts
 
 # C extensions
 *.so
-formats.c
-openctm.c
+cortex/formats.c
+cortex/openctm.c
 
 # Packages
 *.egg
