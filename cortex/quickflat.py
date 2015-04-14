@@ -15,7 +15,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 with_dropout=False, with_curvature=False, extra_disp=None, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, cvmin=None,
-                cvmax=None, cvthr=None, fig=None, extra_hatch=None, **kwargs):
+                cvmax=None, cvthr=None, fig=None, extra_hatch=None,
+                colorbar_ticks=None, **kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
     matplotlib's imshow command.
 
@@ -190,7 +191,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     if with_colorbar:
         cbar = fig.add_axes((.4, .07, .2, .04))
-        fig.colorbar(cimg, cax=cbar, orientation='horizontal')
+        fig.colorbar(cimg, cax=cbar, orientation='horizontal',
+                     ticks=colorbar_ticks)
 
     if with_dropout is not False:
         if isinstance(with_dropout, dataset.Dataview):
@@ -262,7 +264,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                               svgfile=svgfile)
             overlays.append(disp)
     for oo in overlays:
-        roitex = oo.get_texture(height, labels=with_labels)
+        roitex = oo.get_texture(height, labels=with_labels, size=labelsize)
         roitex.seek(0)
         oax = fig.add_axes((0,0,1,1))
         roi_im = plt.imread(roitex)
