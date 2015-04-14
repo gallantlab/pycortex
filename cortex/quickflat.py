@@ -532,7 +532,7 @@ def _make_hatch_image(dropout_data, height, sampler):
     hatchpat = (hx+hy)%(2*hatchspace) < 2
     hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
     hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
-    hatchim[:,:,3] *= (dmap>0.5).astype(float)
+    hatchim[:,:,3] *= np.clip(dmap, 0, 1).astype(float)
 
     return hatchim
 
