@@ -342,7 +342,8 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
         fig.savefig(fname, transparent=True, dpi=dpi)
     else:
         fig.savefig(fname, facecolor=bgcolor, transparent=False, dpi=dpi)
-    plt.close()
+    fig.clf()
+    plt.close(fig)
 
 def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024, thick=32, depth=0.5, **kwargs):
     dataview = dataset.normalize(braindata)
