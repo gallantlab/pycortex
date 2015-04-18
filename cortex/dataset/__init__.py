@@ -1,12 +1,10 @@
 """Module for maintaining brain data and their masks
 
-Three basic classes, with child classes:
+Four basic classes:
   1. Dataset
-  2. BrainData
-    a. VolumeData
-    b. VertexData
-  3. View
-    a. DataView
+  2. Volume/Vertex
+  3. VolumeRGB/VertexRGB
+  4. Volume2D/Vertex2D
 
 Dataset holds a collection of View and BrainData objects. It provides a thin
 wrapper around h5py to store data. Datasets will store all View and BrainData
@@ -93,7 +91,8 @@ class Dataset(object):
             try:
                 ds.views[name] = Dataview.from_hdf(node)
             except:
-                warnings.warn("Could not load view '%s'"%node.name)
+                import traceback
+                traceback.print_exc()
 
         db.auxfile = None
 

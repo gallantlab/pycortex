@@ -64,7 +64,7 @@ class BrainData(object):
                 subject=self.subject,
                 min=float(np.nan_to_num(self.data).min()), 
                 max=float(np.nan_to_num(self.data).max()),
-                shape=self.shape))
+                ))
         return sdict
 
     @classmethod
@@ -112,7 +112,9 @@ class VolumeData(BrainData):
 
     def to_json(self, simple=False):
         if simple:
-            return super(VolumeData, self).to_json(simple=simple)
+            sdict = super(VolumeData, self).to_json(simple=simple)
+            sdict["shape"] = self.shape
+            return sdict
         
         xfm = db.get_xfm(self.subject, self.xfmname, 'coord').xfm
         sdict = dict(xfm=[list(np.array(xfm).ravel())], data=[self.name])
@@ -332,6 +334,16 @@ class VertexData(BrainData):
         #return VertexData(self.data[idx], self.subject, **self.attrs)
         return self.copy(self.data[idx])
 
+    def to_json(self, simple=False):
+        if simple:
+            sdict = dict(split=self.llen, frames=self.vertices.shape[0])
+            sdict.update(super(VertexData, self).to_json(simple=simple))
+            return sdict
+            
+        sdict = dict(data=[self.name])
+        sdict.update(super(VertexData, self).to_json())
+        return sdict
+
     @property
     def vertices(self):
         verts = self.data
@@ -379,9 +391,11 @@ class _masker(object):
             self.data = dv.data
 
     def __getitem__(self, masktype):
-        s, x = self.dv.subject, self.dv.xfmname
-        mask = db.get_mask(s, x, masktype)
-        return self.dv.copy(self.dv.volume[:,mask].squeeze())
+        try:
+            mask = db.get_mask(self.dv.subject, self.dv.xfmname, masktype)
+            return self.dv.copy(self.dv.volume[:,mask].squeeze())
+        except:
+            self.dv.copy(self.dv.volume[:, mask].squeeze())
 
 def _hash(array):
     '''A simple numpy hash function'''
