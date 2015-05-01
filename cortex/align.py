@@ -200,3 +200,76 @@ def autotweak(subject, xfmname):
         print('Saved transform as (%s, %s)'%(subject, xfmname+'_auto'))
     finally:
         shutil.rmtree(cache)
+
+
+def automatic_bbregister(subject, xfmname, reference, noclean=False):
+    """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.
+
+    If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting
+    transform called `xfmname` will be automatically stored in the database.
+
+    It's good practice to open up this transform afterward in the manual aligner and check how it worked.
+    Do that using the following (with the same `subject` and `xfmname` used here, no need for `reference`):
+    > align.manual(subject, xfmname)
+
+    Parameters
+    ----------
+    subject : str
+        Subject identifier.
+    xfmname : str
+        String identifying the transform to be created.
+    reference : str
+        Path to a nibabel-readable image that will be used as the reference for this transform.
+        Usually, this is a single (3D) functional data volume.
+    noclean : bool, optional
+        If True intermediate files will not be removed from /tmp (this is useful for debugging things),
+        and the returned value will be the name of the temp directory. Default False.
+
+    Returns
+    -------
+    Nothing unless `noclean` is True.
+    """
+    import shlex
+    import shutil
+    import tempfile
+    import subprocess as sp
+
+    from .database import db
+    from .xfm import Transform
+    from .options import config
+
+    fsl_prefix = config.get("basic", "fsl_prefix")
+    schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
+
+    retval = None
+    try:
+        cache = tempfile.mkdtemp()
+        absreference = os.path.abspath(reference)
+        raw = db.get_anat(subject, type='raw').get_filename()
+        bet = db.get_anat(subject, type='brainmask').get_filename()
+        wmseg = db.get_anat(subject, type='whitematter').get_filename()
+            # Compute anatomical-to-epi transform
+
+        print('Running bbregister')
+        cmd = 'bbregister --s {subject} --mov {absref} --bold --init-fsl --reg {cache}/register.dat --fslmat {cache}/out.mat'
+        cmd = cmd.format(cache=cache, absref=absreference, subject=subject)
+
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError('Error calling bbregister')
+
+        x = np.loadtxt(os.path.join(cache, "out.mat"))
+        # Pass transform as FROM epi TO anat; transform will be inverted
+        # back to anat-to-epi, standard direction for pycortex internal
+        # storage by from_fsl
+        xfm = Transform.from_fsl(x,absreference,raw)
+        # Save as pycortex 'coord' transform
+        xfm.save(subject,xfmname,'coord')
+        print('Success')
+
+    finally:
+        if not noclean:
+            shutil.rmtree(cache)
+        else:
+            retval = cache
+
+    return retval
