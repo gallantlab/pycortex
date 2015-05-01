@@ -75,7 +75,7 @@ def manual(subject, xfmname, reference=None, **kwargs):
     
     return m
 
-def automatic(subject, xfmname, reference, noclean=False):
+def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed"):
     """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL. 
 
     If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting 
@@ -121,16 +121,17 @@ def automatic(subject, xfmname, reference, noclean=False):
         raw = db.get_anat(subject, type='raw').get_filename()
         bet = db.get_anat(subject, type='brainmask').get_filename()
         wmseg = db.get_anat(subject, type='whitematter').get_filename()
-        # Compute anatomical-to-epi transform
+        #Compute anatomical-to-epi transform
         print('FLIRT pre-alignment')
         cmd = '{fslpre}flirt  -in {epi} -ref {bet} -dof 6 -omat {cache}/init.mat'.format(
-            fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet)
+           fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet)
         if sp.call(cmd, shell=True) != 0:
-            raise IOError('Error calling initial FLIRT')
+           raise IOError('Error calling initial FLIRT')
+
         print('Running BBR')
         # Run epi-to-anat transform (this is more stable than anat-to-epi in FSL!)
-        cmd = '{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile}'
-        cmd = cmd.format(fslpre=fsl_prefix, cache=cache, raw=raw, wmseg=wmseg, epi=absreference, schfile=schfile)
+        cmd = '{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile} -bbrtype {bbrtype}'
+        cmd = cmd.format(fslpre=fsl_prefix, cache=cache, raw=bet, wmseg=wmseg, epi=absreference, schfile=schfile, bbrtype=bbrtype)
         if sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling BBR flirt')
 

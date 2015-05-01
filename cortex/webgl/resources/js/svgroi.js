@@ -154,8 +154,20 @@ ROIpack.prototype = {
             lc = "stroke:" + lc;
             lw = "stroke-width:" + lw + "px";
             sw = parseInt(sw);
-
+            
+            //WIP!
+            //style_array = [fo, lo, fc, lc, lw]
+            //(Then set style_array per path?) or set style first, then only update strokeDasharray per path?
+            oldstyle = this.layers[layer].attr("style")
+            console.log(oldstyle) // Hrm. This appears to be too late - the style has already been set before this prints out. Why?
+            // ...I thought this next line set the style...?
             this.layers[layer].attr("style", [fo, lo, fc, lc, lw].join(";"));
+            // loop over paths
+            // PROBLEM: Still need to find wth the read-in svg line styles are. Must be where we got paths... but fuck if I know.
+            // for (var pth=0; pth<disp_layers[layer].length; pth++){
+            //     this.layers[layer][pth].strokeDasharray=olddasharray
+            //     this.layers[layer][pth].disp_layers[]
+            // }
         }
 
         var svg_xml = (new XMLSerializer()).serializeToString(this.svgroi);

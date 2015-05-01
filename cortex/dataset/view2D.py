@@ -116,7 +116,9 @@ class Volume2D(Dataview2D):
         if self.dim1.xfmname != self.dim2.xfmname:
             raise ValueError("Both Volumes must have same xfmname to generate single raw volume")
 
-        if self.dim1.linear and self.dim2.linear and self.dim1.mask == self.dim2.mask:
+        if ((self.dim1.linear and self.dim2.linear) and
+            (self.dim1.mask.shape == self.dim2.mask.shape) and
+            np.all(self.dim1.mask == self.dim2.mask)):
             r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
         else:
             r, g, b, a = self._to_raw(self.dim1.volume, self.dim2.volume)
@@ -128,7 +130,7 @@ class Volume2D(Dataview2D):
     def xfmname(self):
         return self.dim1.xfmname
 
-class Vertex2D(Dataview):
+class Vertex2D(Dataview2D):
     _cls = VertexData
     def __init__(self, dim1, dim2, subject=None, description="", cmap=None,
         vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):

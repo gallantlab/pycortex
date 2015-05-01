@@ -48,6 +48,30 @@ def read_gii(str filename):
     return pts, polys
 
 @cython.boundscheck(False)
+def read_stl(str filename):
+    cdef int i, j
+
+    dtype = np.dtype("3f4, (3,3)f4, H")
+    with open(filename, 'r') as fp:
+        header = fp.read(80)
+        if header[:5] == "solid":
+            raise TypeError("Cannot read ASCII STL files")
+        npolys, = struct.unpack('I', fp.read(4))
+        data = np.fromstring(fp.read(), dtype=dtype)
+        if npolys != len(data):
+            raise ValueError('File invalid')
+
+    idx = dict()
+    polys = np.empty((npolys,3), dtype=np.uint32)
+    for i, pts in enumerate(data['f1']):
+        for j, pt in enumerate(pts):
+            if tuple(pt) not in idx:
+                idx[tuple(pt)] = len(idx)
+            polys[i, j] = idx[tuple(pt)]
+
+    return np.array(idx.keys()), polys
+
+@cython.boundscheck(False)
 def read_vtk(str filename):
     cdef str vtk, line
     cdef bytes svtk
@@ -125,6 +149,8 @@ def write_stl(bytes filename, object pts, object polys):
     with open(filename, 'w') as fp:
         fp.write(struct.pack('80xI', len(polys)))
         fp.write(data.tostring())
+
+
 
 def write_gii(bytes filename, object pts, object polys):
     from nibabel import gifti

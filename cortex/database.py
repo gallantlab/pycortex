@@ -280,6 +280,9 @@ class Database(object):
         -------
         verts : Vertex class
             If the surface information has "left" and "right" entries, a Vertex class is returned
+
+        - OR -
+        
         npz : npzfile
             Otherwise, an npz object is returned. Remember to close it!
         """
