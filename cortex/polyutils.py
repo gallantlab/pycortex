@@ -315,6 +315,7 @@ class Surface(object):
         pu = scalars[self.polys]
         fe12, fe23, fe31 = [f.T for f in self._facenorm_cross_edge]
         pu1, pu2, pu3 = pu.T
+        fa = self.face_areas
 
         # numexpr is much faster than doing this using numpy!
         #gradu = ((fe12.T * pu[:,2] +

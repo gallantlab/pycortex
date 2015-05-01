@@ -789,8 +789,8 @@ class ROI(object):
         linecolor = np.array(self.linecolor)*255
         hide = "display:none;" if self.hide else ""
         style = style.format(
-            fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=roifill[-1],
-            lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1], 
+            fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=roifill[-1]/255.0,
+            lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1]/255.0, 
             lw=self.linewidth, hide=hide)
         # Deal with dashed lines, on a path-by-path basis
         for path in self.paths:

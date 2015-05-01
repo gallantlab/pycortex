@@ -219,8 +219,14 @@ class Dataview(object):
                 cm.register_cmap(self.cmap,cmap)
             else:
                 cmap = cm.get_cmap(self.cmap)
-        norm = colors.Normalize(self.vmin, self.vmax) # Does this do anything?
-        return np.rollaxis(cmap(self.data), -1)
+        elif isinstance(self.cmap,colors.Colormap):
+            cmap = self.cmap
+        # Normalize colors according to vmin, vmax
+        norm = colors.Normalize(self.vmin, self.vmax) 
+        cmapper = cm.ScalarMappable(norm=norm, cmap=cmap)
+        color_data = cmapper.to_rgba(self.data.flatten()).reshape(self.data.shape+(4,))
+        # rollaxis puts the last color dimension first, to allow output of separate channels: r,g,b,a = dataset.raw
+        return np.rollaxis(color_data, -1)
 
 class Multiview(Dataview):
     def __init__(self, views, description=""):
