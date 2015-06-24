@@ -99,6 +99,12 @@ class Transform(object):
         import numpy.linalg as npl
         inv = npl.inv
 
+        # Load transform from text file, if string is provided
+        if isinstance(xfm,(str,unicode)):
+            with open(xfm,'r') as fid:
+                L = fid.readlines()
+            xfm  = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
+
         # Internally, pycortex computes the OPPOSITE transform: from anatomical volume to functional volume. 
         # Thus, assign anat to "infile" (starting point for transform)
         infile = anat_nii
