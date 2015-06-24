@@ -74,7 +74,8 @@ class Transform(object):
         ----------
         xfm : array
             4x4 transformation matrix, loaded from an FSL .mat file, for a transform computed 
-            FROM the func_nii volume TO the anat_nii volume.
+            FROM the func_nii volume TO the anat_nii volume. Alternatively, a string file name
+            for the FSL .mat file.
         anat_nii : str or nibabel.Nifti1Image
             nibabel image object (or path to nibabel-readable image) for anatomical volume from 
             which cortical surface was created
