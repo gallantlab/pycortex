@@ -158,3 +158,7 @@ class Vertex2D(Dataview2D):
     def raw(self):
         r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
         return VertexRGB(r, g, b, alpha=a, subject=self.dim1.subject)
+
+    @property
+    def vertices(self):
+        return self.raw.vertices
