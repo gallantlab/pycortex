@@ -7,6 +7,10 @@ def collapse(j, data):
 
 def nearest(coords, shape, **kwargs):
     valid = ~(np.isnan(coords).all(1))
+    valid = np.logical_and(valid, np.logical_and(coords[:,0] > -.5, coords[:,0] < shape[2]+.5))
+    valid = np.logical_and(valid, np.logical_and(coords[:,1] > -.5, coords[:,1] < shape[1]+.5))
+    valid = np.logical_and(valid, np.logical_and(coords[:,2] > -.5, coords[:,2] < shape[0]+.5))
+
     rcoords = coords[valid].round().astype(int)
     j = np.ravel_multi_index(rcoords.T[::-1], shape, mode='clip')
     #return np.nonzero(valid)[0], j, (rcoords > 0).all(1) #np.ones((valid.sum(),))
