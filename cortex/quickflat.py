@@ -135,7 +135,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         iy,ix = ((0,-1),(0,-1))
     
     if with_curvature:
-        curv,ee = make(db.get_surfinfo(dataview.subject))
+        curv,ee = make(db.get_surfinfo(dataview.subject),recache=recache)
         if cutout: curv[co==0] = np.nan
         axcv = fig.add_axes((0,0,1,1))
         # Option to use thresholded curvature
@@ -189,7 +189,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     ax.set_ylim(extents[2], extents[3])
 
 
-    if with_colorbar:
+    if with_colorbar and not isinstance(dataview, dataset.Volume2D):
         cbar = fig.add_axes((.4, .07, .2, .04))
         fig.colorbar(cimg, cax=cbar, orientation='horizontal',
                      ticks=colorbar_ticks)

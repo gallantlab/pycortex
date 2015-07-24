@@ -24,7 +24,7 @@ To test if your install went well, first download the `example dataset <http://g
     
     $ ipython
     In [1]: import cortex
-    In [2]: ds = cortex.openFile("S1_retinotopy.hdf")
+    In [2]: ds = cortex.load("S1_retinotopy.hdf")
     In [3]: cortex.webshow(ds)
 
 If everything went well, this should pop up a web browser window with the same view as http://gallantlab.org/pycortex/retinotopy_demo/.
