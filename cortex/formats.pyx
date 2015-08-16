@@ -12,7 +12,7 @@ from libc.stdlib cimport atoi, atof
 np.import_array()
 
 def read(str globname):
-    readers = OrderedDict([('gii', read_gii), ('npz', read_npz), ('vtk', read_vtk), ('off', read_off)])
+    readers = OrderedDict([('gii', read_gii), ('npz', read_npz), ('vtk', read_vtk), ('off', read_off), ('stl', read_stl)])
     for ext, func in readers.items():
         try:
             return func(globname+"."+ext)
@@ -63,13 +63,15 @@ def read_stl(str filename):
 
     idx = dict()
     polys = np.empty((npolys,3), dtype=np.uint32)
+    points = []
     for i, pts in enumerate(data['f1']):
         for j, pt in enumerate(pts):
             if tuple(pt) not in idx:
                 idx[tuple(pt)] = len(idx)
+                points.append(tuple(pt))
             polys[i, j] = idx[tuple(pt)]
 
-    return np.array(idx.keys()), polys
+    return np.array(points), polys
 
 @cython.boundscheck(False)
 def read_vtk(str filename):

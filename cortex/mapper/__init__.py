@@ -101,7 +101,7 @@ class Mapper(object):
                     right = right[..., self.idxmap[1]]
             return left, right
 
-        volume = data.volume
+        volume = np.ascontiguousarray(data.volume)
         volume.shape = len(volume), -1
         volume = volume.T
 

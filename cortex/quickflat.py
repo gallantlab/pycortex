@@ -136,7 +136,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         iy,ix = ((0,-1),(0,-1))
     
     if with_curvature:
-        curv,ee = make(db.get_surfinfo(dataview.subject))
+        curv,ee = make(db.get_surfinfo(dataview.subject),recache=recache)
         if cutout: curv[co==0] = np.nan
         axcv = fig.add_axes((0,0,1,1))
         # Option to use thresholded curvature
@@ -190,7 +190,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     ax.set_ylim(extents[2], extents[3])
 
 
-    if with_colorbar:
+    if with_colorbar and not isinstance(dataview, dataset.Volume2D):
         cbar = fig.add_axes((.4, .07, .2, .04))
         fig.colorbar(cimg, cax=cbar, orientation='horizontal',
                      ticks=colorbar_ticks)
@@ -345,7 +345,8 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
         fig.savefig(fname, transparent=True, dpi=dpi)
     else:
         fig.savefig(fname, facecolor=bgcolor, transparent=False, dpi=dpi)
-    plt.close()
+    fig.clf()
+    plt.close(fig)
 
 def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024, thick=32, depth=0.5, **kwargs):
     dataview = dataset.normalize(braindata)
@@ -535,7 +536,7 @@ def _make_hatch_image(dropout_data, height, sampler):
     hatchpat = (hx+hy)%(2*hatchspace) < 2
     hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
     hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
-    hatchim[:,:,3] *= (dmap>0.5).astype(float)
+    hatchim[:,:,3] *= np.clip(dmap, 0, 1).astype(float)
 
     return hatchim
 

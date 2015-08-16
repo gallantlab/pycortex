@@ -74,6 +74,9 @@ class Dataview2D(Dataview):
         g.shape = dim1.shape
         b.shape = dim1.shape
         a.shape = dim1.shape
+        # Preserve nan values as alpha = 0
+        aidx = np.logical_or(np.isnan(data1),np.isnan(data2))
+        a[aidx] = 0
         return r, g, b, a
 
     @property
@@ -158,3 +161,7 @@ class Vertex2D(Dataview2D):
     def raw(self):
         r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
         return VertexRGB(r, g, b, alpha=a, subject=self.dim1.subject)
+
+    @property
+    def vertices(self):
+        return self.raw.vertices
