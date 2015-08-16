@@ -31,7 +31,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     thick : int
         Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
     sampler : str
-        Name of sampling function used to sample underlying volume data
+        Name of sampling function used to sample underlying volume data. Options include 
+        'trilinear','nearest','lanczos'; see functions in cortex.mapper.samplers.py for all options
     height : int
         Height of the image to render. Automatically scales the width for the aspect
         of the subject's flatmap
