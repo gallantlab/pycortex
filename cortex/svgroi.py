@@ -6,6 +6,8 @@ import tempfile
 import itertools
 import numpy as np
 import subprocess as sp
+
+from matplotlib.colors import colorConverter as colconv
 from svgsplines import LineSpline, QuadBezSpline, CubBezSpline, ArcSpline
 
 from scipy.spatial import cKDTree
@@ -785,18 +787,11 @@ class ROI(object):
         style = "fill:{fill}; fill-opacity:{fo};stroke-width:{lw}px;"+\
                     "stroke-linecap:butt;stroke-linejoin:miter;"+\
                     "stroke:{lc};stroke-opacity:{lo};{hide}"
-        roifill = np.array(self.roifill)*255
-        linecolor = np.array(self.linecolor)*255
-        hide = "display:none;" if self.hide else ""
-        style = style.format(
-            fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=roifill[-1]/255.0,
-            lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1]/255.0, 
-            lw=self.linewidth, hide=hide)
-        # Deal with dashed lines, on a path-by-path basis
+        # Set all properties on a path-by-path basis
         for path in self.paths:
-            # (This must be done separately from style if we want 
-            # to be able to vary dashed/not-dashed style across 
-            # rois/display elements, which we do)
+            # (This must be done if we want to be able to vary any property
+            # across rois/display elements, which we do)
+            # First: Dashes
             if self.dashtype is None:
                 dashstr = ""
             elif self.dashtype=='fromsvg':
@@ -809,7 +804,31 @@ class ROI(object):
                     dashstr = "stroke-dasharray:%s;stroke-dashoffset:%s;"%(dt.group(),do.group())
             else:
                 dashstr = "stroke-dasharray:%d,%d;stroke-dashoffset:%d;"%(self.dashtype+(self.dashoffset))
-            path.attrib["style"] = style+dashstr
+            if self.roifill=='fromsvg':
+                # Retrieve from SVG file
+                rf_svg = re.search('(?<=fill:)[^;)]*',path.attrib['style'])
+                roifill = colconv.to_rgba(lc_svg.group())
+            # Set roifill to 0-255
+            roifill = np.array(self.roifill)*255
+            if self.linecolor=='fromsvg':
+                # Retrieve from SVG file
+                lc_svg = re.search('(?<=stroke:)[^;)]*',path.attrib['style'])
+                linecolor = colconv.to_rgba(lc_svg.group())
+            # Set linecolor to 0-255
+            linecolor = np.array(self.linecolor)*255
+            if self.linewidth=='fromsvg':
+                # Retrieve from SVG file
+                lw_svg = re.search('(?<=stroke-width:)[^px;)]*',path.attrib['style'])
+                lw=np.float(lw_svg.group())
+            else:
+                lw = self.linewidth
+            hide = "display:none;" if self.hide else ""
+            path_style = style.format(
+                fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=roifill[-1]/255.0,
+                lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1]/255.0, 
+                lw=lw, hide=hide)
+
+            path.attrib["style"] = path_style+dashstr
             
             if self.parent.shadow > 0:
                 path.attrib["filter"] = "url(#dropshadow)"
