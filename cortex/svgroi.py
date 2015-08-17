@@ -806,27 +806,37 @@ class ROI(object):
                 dashstr = "stroke-dasharray:%d,%d;stroke-dashoffset:%d;"%(self.dashtype+(self.dashoffset))
             if self.roifill=='fromsvg':
                 # Retrieve from SVG file
-                rf_svg = re.search('(?<=fill:)[^;)]*',path.attrib['style'])
-                roifill = colconv.to_rgba(lc_svg.group())
+                rf_svg = re.search('(?<=fill:)[^;)]*',path.attrib['style']).group()
+                if 'rgb' in rf_svg:
+                    opacity = re.search('(?<=fill-opacity:)[^;)]*',path.attrib['style']).group()
+                    self.roifill = [float(x)/255. for x in rf_svg[4:].split(',')]+[float(opacity)]
+                else:
+                    self.roifill = colconv.to_rgba(rf_svg)
             # Set roifill to 0-255
             roifill = np.array(self.roifill)*255
             if self.linecolor=='fromsvg':
                 # Retrieve from SVG file
-                lc_svg = re.search('(?<=stroke:)[^;)]*',path.attrib['style'])
-                linecolor = colconv.to_rgba(lc_svg.group())
+                lc_svg = re.search('(?<=stroke:)[^;)]*',path.attrib['style']).group()
+                # This if clause is necessary because this is looped through 
+                # twice (with set and reload methods from ROI class). 
+                # There should be a more compact/elegant way to do this.
+                if 'rgb' in lc_svg:
+                    opacity = re.search('(?<=stroke-opacity:)[^;)]*',path.attrib['style']).group()
+                    self.linecolor = [float(x)/255. for x in lc_svg[4:].split(',')]+[float(opacity)]
+                else:
+                    self.linecolor = colconv.to_rgba(lc_svg)
             # Set linecolor to 0-255
             linecolor = np.array(self.linecolor)*255
             if self.linewidth=='fromsvg':
                 # Retrieve from SVG file
-                lw_svg = re.search('(?<=stroke-width:)[^px;)]*',path.attrib['style'])
-                lw=np.float(lw_svg.group())
-            else:
-                lw = self.linewidth
+                lw_svg = re.search('(?<=stroke-width:)[^px;)]*',path.attrib['style']).group()
+                self.linewidth=np.float(lw_svg)
+            linewidth = self.linewidth
             hide = "display:none;" if self.hide else ""
             path_style = style.format(
                 fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=roifill[-1]/255.0,
                 lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1]/255.0, 
-                lw=lw, hide=hide)
+                lw=linewidth, hide=hide)
 
             path.attrib["style"] = path_style+dashstr
             

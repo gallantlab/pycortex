@@ -141,6 +141,7 @@ ROIpack.prototype = {
         var loaded = $.Deferred();
 
         for (var li=0; li<disp_layers.length; li++) {
+            //This loops over display layers; need to loop over individual paths to preserve path-specific formatting (fromsvg)
             var layer = disp_layers[li];
             var fo = $("#"+layer+"_fillalpha").length > 0 ? $("#"+layer+"_fillalpha").slider("option", "value") : 0;
             var lo = $("#"+layer+"_linealpha").length > 0 ? $("#"+layer+"_linealpha").slider("option", "value") : 1;

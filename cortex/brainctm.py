@@ -89,7 +89,7 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
-    def save(self, path, method='mg2', disp_layers=['rois'], extra_disp=None, **kwargs):
+    def save(self, path, method='mg2', disp_layers=['rois'], extra_disp=None, linecolor=None,linewidth=None,roifill=None, **kwargs):
         """Save CTM file for static html display. 
 
         Parameters
@@ -140,12 +140,12 @@ class BrainCTM(object):
         if self.left.flat is not None:
             # add sulci & display layers
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            roipack = db.get_overlay(self.subject, pts=flatpts, otype=disp_layers)
+            roipack = db.get_overlay(self.subject, pts=flatpts, otype=disp_layers,linecolor=linecolor,roifill=roifill,linewidth=linewidth)
             # optionally add extra display layers
             if not extra_disp is None:
                 esvgfile,elayerlist = extra_disp
                 eroipack = db.get_overlay(self.subject,pts=flatpts, otype='external',
-                    svgfile=esvgfile,layer=elayerlist)
+                    svgfile=esvgfile,layer=elayerlist,linecolor=linecolor,roifill=roifill,linewidth=linewidth)
                 roipack = roipack + eroipack
             layers = roipack.setup_labels()
             if not isinstance(layers, (tuple, list)):
@@ -239,7 +239,7 @@ class DecimatedHemi(Hemi):
         super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
 
 def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
-              decimate=False, disp_layers=['rois'],extra_disp=None):
+              decimate=False, disp_layers=['rois'],extra_disp=None,**kwargs):
     """Generates a cached CTM file"""
 
     ctm = BrainCTM(subj, decimate=decimate)
@@ -254,7 +254,8 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
                     method=method,
                     level=level,
                     disp_layers=disp_layers,
-                    extra_disp=extra_disp)
+                    extra_disp=extra_disp,
+                    **kwargs)
 
 def read_pack(ctmfile):
     fname = os.path.splitext(ctmfile)[0]
