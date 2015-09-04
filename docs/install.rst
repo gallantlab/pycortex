@@ -11,6 +11,7 @@ If you are running Ubuntu, the built-in python packages should be sufficient. Us
     sudo pip install pycortex
 
 If you wish to run the latest bleeding-edge version of pycortex, use the following instructions (this is also a good thing to try if for whatever reason the pip install does not work)::
+
     # This will create a source code directory for pycortex. 
     git clone https://github.com/gallantlab/pycortex
     cd pycortex
