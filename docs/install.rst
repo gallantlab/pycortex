@@ -10,10 +10,11 @@ If you are running Ubuntu, the built-in python packages should be sufficient. Us
     sudo apt-get install python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib
     sudo pip install pycortex
 
-If you wish to run the latest bleeding-edge version of pycortex, use the following instructions::
-
-    git clone https://github.com/jamesgao/pycortex.git
+If you wish to run the latest bleeding-edge version of pycortex, use the following instructions (this is also a good thing to try if for whatever reason the pip install does not work)::
+    # This will create a source code directory for pycortex. 
+    git clone https://github.com/gallantlab/pycortex
     cd pycortex
+    # This will install the pycortex code into your local python installation
     sudo python setup.py install
 
 .. _Anaconda: https://store.continuum.io/cshop/anaconda/
