@@ -74,6 +74,9 @@ class Dataview2D(Dataview):
         g.shape = dim1.shape
         b.shape = dim1.shape
         a.shape = dim1.shape
+        # Preserve nan values as alpha = 0
+        aidx = np.logical_or(np.isnan(data1),np.isnan(data2))
+        a[aidx] = 0
         return r, g, b, a
 
     @property

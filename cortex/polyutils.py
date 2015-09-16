@@ -226,7 +226,7 @@ class Surface(object):
         lfac = sparse.dia_matrix((D,[0]), (npt,npt)) - factor * (W-V)
         goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
         lfac_solver = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
-        to_smooth = scalars
+        to_smooth = scalars.copy()
         for _ in range(iterations):
             from_smooth = lfac_solver((D * to_smooth)[goodrows])
             to_smooth[goodrows] = from_smooth
