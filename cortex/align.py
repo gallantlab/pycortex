@@ -152,6 +152,96 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed"):
 
     return retval
 
+def anat_to_mni(subject, xfmname, noclean=False):
+    """Create an automatic alignment of an anatomical image to the MNI standard.
+
+    If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting 
+    transform called `xfmname` will be automatically stored in the database.
+
+    Parameters
+    ----------
+    subject : str
+        Subject identifier.
+    xfmname : str
+        String identifying the transform to be created.
+    anatimg : str
+        Path to a nibabel-readable image that will be used as the reference for this transform.
+        This should be a 3D anatomical volume.
+    noclean : bool, optional
+        If True intermediate files will not be removed from /tmp (this is useful for debugging things),
+        and the returned value will be the name of the temp directory. Default False.
+
+    Returns
+    -------
+    Nothing unless `noclean` is True.
+    """
+
+    import shlex
+    import shutil
+    import tempfile
+    import subprocess as sp
+
+    from .database import db
+    from .xfm import Transform
+    from .options import config
+
+    fsl_prefix = config.get("basic", "fsl_prefix")
+    schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
+
+    print('anat_to_mni, subject: %s, xfmname: %s' % (subject, xfmname))
+    
+    try:
+        raw_anat = db.get_anat(subject, type='raw').get_filename()
+        bet_anat = db.get_anat(subject, type='brainmask').get_filename()
+        anat_dir = os.path.dirname(raw_anat)
+        odir = '/tmp'
+
+        # stem for the reoriented-into-MNI anatomical images (required by FLIRT/FNIRT)
+        reorient_anat = 'reorient_anat'
+        reorient_cmd = '{fslpre}fslreorient2std {raw_anat} {adir}/{ra_raw}'.format(fslpre=fsl_prefix,raw_anat=raw_anat, adir=odir, ra_raw=reorient_anat)
+        print('Reorienting anatomicals using fslreorient2std')
+        if sp.call(reorient_cmd, shell=True) != 0:
+            raise IOError('Error calling fslreorient2std on raw anatomical')
+        reorient_cmd = '{fslpre}fslreorient2std {bet_anat} {adir}/{ra_raw}_brain'.format(fslpre=fsl_prefix,bet_anat=bet_anat, adir=odir, ra_raw=reorient_anat)
+        if sp.call(reorient_cmd, shell=True) != 0:
+            raise IOError('Error calling fslreorient2std on brain-extracted anatomical')
+        
+        fsldir = os.environ['FSLDIR']
+        standard = '%s/data/standard/MNI152_T1_1mm'%fsldir
+        bet_standard = '%s_brain'%standard
+        standardmask = '%s_mask_dil'%bet_standard
+        cout = 'anat2mni' #stem of the filenames of the transform estimates
+
+        # initial affine anatomical-to-standard registration using FLIRT. required, as the output xfm is used as a start by FNIRT.
+        flirt_cmd = '{fslpre}flirt -in {adir}/{ra_raw}_brain -ref {bet_standard} -dof 6 -omat /tmp/{cout}_flirt'
+        flirt_cmd = flirt_cmd.format(fslpre=fsl_prefix, ra_raw=reorient_anat, bet_standard=bet_standard, adir=odir, cout=cout)
+        print('Running FLIRT to estimate initial affine transform')
+        #if sp.call(flirt_cmd, shell=True) != 0:
+        #    raise IOError('Error calling FLIRT with command: %s' % flirt_cmd)
+
+        # FNIRT anat-to-mni transform estimation cmd (does not apply any transform, but generates estimate [cout])
+        cmd = '{fslpre}fnirt --in={ad}/{ra_raw} --ref={standard} --refmask={standardmask} --aff=/tmp/{cout}_flirt --cout={anat_dir}/{cout}_fnirt --fout=/tmp/{cout}_field --config=T1_2_MNI152_2mm'
+        cmd = cmd.format(fslpre=fsl_prefix, ra_raw=reorient_anat, standard=standard, standardmask=standardmask, ad=odir, anat_dir=anat_dir, cout=cout)
+        print('Running FNIRT to estimate transform... this can take a while')
+        #if sp.call(cmd, shell=True) != 0:
+        #    raise IOError('Error calling fnirt')
+
+        # we now have, in /tmp/cout_fnirt, the warp estimate that should be passed to img2stdcoord.
+        # let's get all vertex coordinates
+        cfile = '/tmp/fid_coords'
+        cfile_warped = '/tmp/mni_coords'
+        [pts, polys] = db.get_surf(subject,"fiducial",merge=True)
+        np.savetxt(cfile, pts, fmt='%g')
+
+        xfm_cmd = 'cat {coordfile} | {fslpre}img2stdcoord -mm -img {ad}/{ra_raw} -std {standard} -warp {anat_dir}/{cout}_fnirt > {cfile_warped}'
+        xfm_cmd = xfm_cmd.format(coordfile=cfile, fslpre=fsl_prefix, ra_raw=reorient_anat, standard=standard, ad=odir, anat_dir=anat_dir, cout=cout, cfile_warped=cfile_warped)
+
+        print('raw anatomical: %s\nbet anatomical: %s\nflirt cmd:%s\nfnirt cmd: %s\nxfm cmd: %s' % (raw_anat,bet_anat,flirt_cmd,cmd,xfm_cmd))
+
+    finally:
+        pass
+
+
 def autotweak(subject, xfmname):
     """Tweak an alignment using the FLIRT boundary-based alignment (BBR) from FSL.
     Ideally this function should actually use a limited search range, but it doesn't.
