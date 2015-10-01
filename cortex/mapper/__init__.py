@@ -21,8 +21,7 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
         const_patch_trilin=patch.ConstPatchTrilin,
         const_patch_lanczos=patch.ConstPatchLanczos,
         line_nearest=line.LineNN,
-        line_trilinear=line.LineTrilin,
-        warp=warp.WarpMapper)
+        line_trilinear=line.LineTrilin)
     Map = mapcls[type]
     ptype = Map.__name__.lower()
     kwds ='_'.join(['%s%s'%(k,str(v)) for k, v in list(kwargs.items())])
