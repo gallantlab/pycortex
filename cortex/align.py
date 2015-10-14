@@ -180,10 +180,12 @@ def anat_to_mni(subject, xfmname, noclean=False):
     import shutil
     import tempfile
     import subprocess as sp
+    import nibabel as nib
 
     from .database import db
     from .xfm import Transform
     from .options import config
+    from .dataset import Volume
 
     fsl_prefix = config.get("basic", "fsl_prefix")
     schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
@@ -201,16 +203,16 @@ def anat_to_mni(subject, xfmname, noclean=False):
         reorient_anat = 'reorient_anat'
         reorient_cmd = '{fslpre}fslreorient2std {raw_anat} {adir}/{ra_raw}'.format(fslpre=fsl_prefix,raw_anat=raw_anat, adir=odir, ra_raw=reorient_anat)
         print('Reorienting anatomicals using fslreorient2std, cmd like: \n%s' % reorient_cmd)
-        if sp.call(reorient_cmd, shell=True) != 0:
-            raise IOError('Error calling fslreorient2std on raw anatomical')
+        #if sp.call(reorient_cmd, shell=True) != 0:
+        #    raise IOError('Error calling fslreorient2std on raw anatomical')
         reorient_cmd = '{fslpre}fslreorient2std {bet_anat} {adir}/{ra_raw}_brain'.format(fslpre=fsl_prefix,bet_anat=bet_anat, adir=odir, ra_raw=reorient_anat)
-        if sp.call(reorient_cmd, shell=True) != 0:
-            raise IOError('Error calling fslreorient2std on brain-extracted anatomical')
+        #if sp.call(reorient_cmd, shell=True) != 0:
+        #    raise IOError('Error calling fslreorient2std on brain-extracted anatomical')
 
         ra_betmask = reorient_anat + "_brainmask"
         reorient_cmd = '{fslpre}fslreorient2std {bet_anat} {adir}/{ra_betmask}'.format(fslpre=fsl_prefix,bet_anat=betmask_anat, adir=odir, ra_betmask=ra_betmask)
-        if sp.call(reorient_cmd, shell=True) != 0:
-            raise IOError('Error calling fslreorient2std on brain-extracted mask')
+        #if sp.call(reorient_cmd, shell=True) != 0:
+        #    raise IOError('Error calling fslreorient2std on brain-extracted mask')
         
         fsldir = os.environ['FSLDIR']
         standard = '%s/data/standard/MNI152_T1_1mm'%fsldir
@@ -221,28 +223,82 @@ def anat_to_mni(subject, xfmname, noclean=False):
         # initial affine anatomical-to-standard registration using FLIRT. required, as the output xfm is used as a start by FNIRT.
         flirt_cmd = '{fslpre}flirt -in {bet_standard} -ref {adir}/{ra_raw}_brain -dof 6 -omat /tmp/{cout}_flirt'
         flirt_cmd = flirt_cmd.format(fslpre=fsl_prefix, ra_raw=reorient_anat, bet_standard=bet_standard, adir=odir, cout=cout)
-        print('Running FLIRT to estimate initial affine transform')
+        print('Running FLIRT to estimate initial affine transform with command:\n%s'%flirt_cmd)
         #if sp.call(flirt_cmd, shell=True) != 0:
         #    raise IOError('Error calling FLIRT with command: %s' % flirt_cmd)
 
         # FNIRT mni-to-anat transform estimation cmd (does not apply any transform, but generates estimate [cout])
         cmd = '{fslpre}fnirt --in={standard} --ref={ad}/{ra_raw} --refmask={ad}/{refmask} --aff=/tmp/{cout}_flirt --cout={anat_dir}/{cout}_fnirt --fout={anat_dir}/{cout}_field --iout=/tmp/mni2anat_iout --config=T1_2_MNI152_2mm'
         cmd = cmd.format(fslpre=fsl_prefix, ra_raw=reorient_anat, standard=standard, refmask=ra_betmask, ad=odir, anat_dir=anat_dir, cout=cout)
-        print('Running FNIRT to estimate transform... this can take a while')
+        print('Running FNIRT to estimate transform, using the following command... this can take a while:\n%s'%cmd)
         #if sp.call(cmd, shell=True) != 0:
         #    raise IOError('Error calling fnirt with cmd: %s'%cmd)
 
-        # we now have, in /tmp/cout_fnirt, the warp estimate that should be passed to img2stdcoord.
-        # let's get all vertex coordinates
-        cfile = '/tmp/fid_coords'
-        cfile_warped = '/tmp/mni_coords'
-        [pts, polys] = db.get_surf(subject,"fiducial",merge=True)
+        [pts, polys] = db.get_surf(subject,"fiducial",merge="True")
         # np.savetxt(cfile, pts, fmt='%g')
 
-        xfm_cmd = 'cat {coordfile} | {fslpre}img2stdcoord -mm -std {ad}/{ra_raw} -img {standard} -warp {anat_dir}/{cout}_fnirt > {cfile_warped}'
-        xfm_cmd = xfm_cmd.format(coordfile=cfile, fslpre=fsl_prefix, ra_raw=reorient_anat, standard=standard, ad=odir, anat_dir=anat_dir, cout=cout, cfile_warped=cfile_warped)
+        #print('raw anatomical: %s\nbet anatomical: %s\nflirt cmd:%s\nfnirt cmd: %s\npts: %s' % (raw_anat,bet_anat,flirt_cmd,cmd,pts))
 
-        print('raw anatomical: %s\nbet anatomical: %s\nflirt cmd:%s\nfnirt cmd: %s\nxfm cmd: %s' % (raw_anat,bet_anat,flirt_cmd,cmd,xfm_cmd))
+        # take the reoriented anatomical, get its affine coord transform, invert this, and save it
+        reo_xfmnm = 'reorient_inv'
+        re_anat = db.get_anat(subject,reorient_anat)
+        reo_xfm = Transform(np.linalg.inv(re_anat.get_affine()),re_anat)
+        reo_xfm.save(subject,reo_xfmnm,"coord")
+
+        # get the reoriented anatomical's qform and its inverse, they will be needed later
+        aqf = re_anat.get_qform()
+        aqfinv = np.linalg.inv(aqf)
+
+        # load the warp field data as a volume
+        warp = db.get_anat(subject,'%s_field'%cout)
+        wd = warp.get_data()
+        # need in (t,z,y,x) order
+        wd = np.swapaxes(wd,0,3) # x <--> t
+        wd = np.swapaxes(wd,1,2) # y <--> z
+        wv = Volume(wd,subject,reo_xfmnm)
+
+        # now do the mapping! this gets the warp field values at the corresponding points
+        # (uses fiducial surface by default)
+        warpvd = wv.map(projection="nearest")
+
+        # reshape into something sensible
+        warpverts_L = [vs for vs in np.swapaxes(warpvd.left,0,1)]
+        warpverts_R = [vs for vs in np.swapaxes(warpvd.right,0,1)]
+        warpverts_ordered = np.concatenate((warpverts_L, warpverts_R))
+
+        # append 1s for matrix multiplication (coordinate transformation)
+        o = np.ones((len(pts),1))
+        pad_pts = np.append(pts, o, axis=1)
+
+        # print pts, len(pts), len(pts[0]), warpverts_ordered, len(warpverts_ordered), pad_pts, len(pad_pts), pad_pts[0]
+
+        # transform vertex coords from mm to vox using the anat's qform
+        voxcoords = [aqfinv.dot(padpt) for padpt in pad_pts]
+        # add the offsets specified in the warp at those locations (ignoring the 1s here)
+        mnivoxcoords = [voxcoords[n][:-1] + warpverts_ordered[n] for n in range(len(voxcoords))]
+        # re-pad for matrix multiplication
+        pad_mnivox = np.append(mnivoxcoords, o, axis=1)
+
+        # multiply by the standard's qform to recover mm coords
+        std = nib.load('%s.nii.gz'%standard)
+        stdqf = std.get_qform()
+        mni_coords = np.array([stdqf.dot(padmni)[:-1] for padmni in pad_mnivox])
+
+        # some debug output
+        # print pts, mni_coords
+        print pts[0], mni_coords[0]
+        print len(pts), len(mni_coords)
+        print type(pts), type(pts[0][0]), type(mni_coords)
+
+        # now split mni_coords into left and right arrays for saving
+        nverts_L = len(warpverts_L)
+        print nverts_L
+        left = mni_coords[:nverts_L]
+        right = mni_coords[nverts_L:]
+        print len(left), len(right)
+
+        mni_surfinfo_fn = db.get_paths(subject)['surfinfo'].format(type='mnicoords',opts='')
+        np.savez(mni_surfinfo_fn,leftpts=left,rightpts=right)
 
     finally:
         pass
