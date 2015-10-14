@@ -61,6 +61,7 @@ class BrainCTM(object):
                     fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
                     flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
                     hemi.aux[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
+                    hemi.mni[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
 
         #Find the flatmap limits
         if fleft is not None:
@@ -89,6 +90,12 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
+    def addMNI(self, **kwargs):
+        print('Adding MNI coords...')
+        npz = db.get_surfinfo(self.subject, type='mnicoords', **kwargs)
+        self.left.mni[:,:-1] = npz['leftpts']
+        self.right.mni[:,:-1] = npz['rightpts']
+
     def save(self, path, method='mg2', disp_layers=['rois'], extra_disp=None, **kwargs):
         """Save CTM file for static html display. 
 
@@ -104,6 +111,8 @@ class BrainCTM(object):
         ctmname = path+".ctm"
         svgname = path+".svg"
         jsname = path+".json"
+
+        print("In method save() of BrainCTM, ctmname: %s"%ctmname)
 
         # Save CTM concatenation
         (lpts, _, _), lbin = self.left.save(method=method, **kwargs)
@@ -177,9 +186,11 @@ class Hemi(object):
         self.flat = None
         self.surfs = {}
         self.aux = np.zeros((len(self.ctm), 4))
+        self.mni = np.zeros((len(self.ctm), 4))
 
     def addSurf(self, pts, name=None, renorm=True):
         '''Scales the in-between surfaces to be same scale as fiducial'''
+        print('In Hemi.addSurf()...')
         if name is None:
             name = 'morphTarget%d'%len(self.surfs)
 
@@ -191,6 +202,7 @@ class Hemi(object):
 
         attrib = np.hstack([rnorm, np.zeros((len(rnorm),1))])
         self.surfs[name] = attrib
+        print('Adding attrib %s'%name)
         self.ctm.addAttrib(attrib, name)
 
     def setFlat(self, pts):
@@ -199,6 +211,8 @@ class Hemi(object):
 
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')
+        print('Adding attrib mnicoords, just added auxdat...')
+        self.ctm.addAttrib(self.mni, 'mnicoords')
         self.ctm.save(**kwargs)
 
         ctm = CTMfile(self.tf.name)
@@ -231,6 +245,7 @@ class DecimatedHemi(Hemi):
         self.aux[idxmap[mwidx], 0] = 1
         self.mask = mask
         self.idxmap = idxmap
+        self.mni = np.zeros((len(self.ctm), 4))
 
     def setFlat(self, pts):
         super(DecimatedHemi, self).setFlat(pts[self.mask])
@@ -242,8 +257,10 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
               decimate=False, disp_layers=['rois'],extra_disp=None):
     """Generates a cached CTM file"""
 
+    print 'In make_pack, outfile %s'%outfile
     ctm = BrainCTM(subj, decimate=decimate)
     ctm.addCurvature()
+    ctm.addMNI()
     for name in types:
         ctm.addSurf(name)
 
@@ -257,6 +274,7 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
                     extra_disp=extra_disp)
 
 def read_pack(ctmfile):
+    print('In read_pack, ctmfile: %s'%ctmfile)
     fname = os.path.splitext(ctmfile)[0]
     jsfile = json.load(open(fname+".json"))
     offset = jsfile['offsets']
@@ -275,5 +293,4 @@ def read_pack(ctmfile):
             ctm = CTMfile(tf.name, "r")
             pts, polys, norms = ctm.getMesh()
             meshes.append((pts, polys))
-
     return meshes
