@@ -203,6 +203,10 @@ var mriview = (function(module) {
     module.Viewer.prototype.load = function(ctminfo, callback) {
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
+            console.dir(geometries)
+            console.dir(materials)
+            console.dir(header)
+            //console.dir(json)
             geometries[0].computeBoundingBox();
             geometries[1].computeBoundingBox();
 
@@ -246,7 +250,9 @@ var mriview = (function(module) {
                     for (var i = 0, il = geometries[right].morphTargets.length; i < il; i++) {
                         posdata[name].push(geometries[right].morphTargets[i]);
                     }
+                    console.dir(geometries[right].attributes);
                     geometries[right].reorderVertices();
+                    console.dir(geometries[right].attributes);
                     geometries[right].dynamic = true;
 
                     //var geom = splitverts(geometries[right], name == "right" ? leftlen : 0);
@@ -302,6 +308,8 @@ var mriview = (function(module) {
             this.controls.addEventListener("undblpick", function(event) {
                 this.picker.undblpick();
             }.bind(this));
+
+            console.dir(this);
 
             this.setState("target", this.surfcenter);
             

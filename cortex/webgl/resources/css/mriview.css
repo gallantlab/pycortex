@@ -136,6 +136,28 @@ a:visited { color:white; }
     background:rgba(255,255,255,.4);
     font-weight:bold;
 }
+
+/***** MNI Coordinate box, top left, below dataname *********/
+#mnibox {
+    display:none;
+    position:absolute;
+    z-index:12;
+    float:left;
+    text-shadow:0px 2px 8px black, 0px 1px 8px black;
+    color:white;
+    font-size:24pt;
+    padding:10px;
+    margin:20px;
+    margin-top: 90px ;
+    border-radius:10px;
+    background:rgba(255,255,255,.4);
+    font-weight:bold;
+}
+
+#mnicoords, #mnisubmit {
+    z-index:13;
+}
+
 .datadesc {
     font-size:10pt;
     font-weight:normal;

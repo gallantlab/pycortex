@@ -93,6 +93,8 @@ THREE.CTMLoader.prototype.load = function( url, callback, useWorker, useBuffers,
 
 	var length = 0;
 
+	console.log(url)
+
 	xhr.onreadystatechange = function() {
 
 		if ( xhr.readyState === 4 ) {
@@ -200,6 +202,8 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 
 	var Model = function ( ) {
 
+		console.log(file);
+		console.log('createModelBuffers');
 		var scope = this;
 
 		scope.materials = [];
@@ -234,6 +238,8 @@ THREE.CTMLoader.prototype.createModelBuffers = function ( file, callback, header
 
 				attrname = file.body.attrMaps[ i ].name;
 				array = file.body.attrMaps[ i ].attr;
+				console.log(attrname)
+				console.log(array)
 
 				if (attrname.slice(0, 11) == "morphTarget") {
 
