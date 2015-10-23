@@ -164,9 +164,6 @@ def anat_to_mni(subject, xfmname, noclean=False):
         Subject identifier.
     xfmname : str
         String identifying the transform to be created.
-    anatimg : str
-        Path to a nibabel-readable image that will be used as the reference for this transform.
-        This should be a 3D anatomical volume.
     noclean : bool, optional
         If True intermediate files will not be removed from /tmp (this is useful for debugging things),
         and the returned value will be the name of the temp directory. Default False.
@@ -299,6 +296,8 @@ def anat_to_mni(subject, xfmname, noclean=False):
 
         mni_surfinfo_fn = db.get_paths(subject)['surfinfo'].format(type='mnicoords',opts='')
         np.savez(mni_surfinfo_fn,leftpts=left,rightpts=right)
+
+        return (pts, mni_coords)
 
     finally:
         pass
