@@ -152,7 +152,7 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed"):
 
     return retval
 
-def anat_to_mni(subject, xfmname, noclean=False):
+def anat_to_mni(subject, xfmname):
     """Create an automatic alignment of an anatomical image to the MNI standard.
 
     If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting 
@@ -170,7 +170,8 @@ def anat_to_mni(subject, xfmname, noclean=False):
 
     Returns
     -------
-    Nothing unless `noclean` is True.
+    pts : the vertices of the fiducial surface
+    mnipts : the mni coordinates of those vertices (same shape as pts)
     """
 
     import shlex
@@ -200,16 +201,16 @@ def anat_to_mni(subject, xfmname, noclean=False):
         reorient_anat = 'reorient_anat'
         reorient_cmd = '{fslpre}fslreorient2std {raw_anat} {adir}/{ra_raw}'.format(fslpre=fsl_prefix,raw_anat=raw_anat, adir=odir, ra_raw=reorient_anat)
         print('Reorienting anatomicals using fslreorient2std, cmd like: \n%s' % reorient_cmd)
-        #if sp.call(reorient_cmd, shell=True) != 0:
-        #    raise IOError('Error calling fslreorient2std on raw anatomical')
+        if sp.call(reorient_cmd, shell=True) != 0:
+            raise IOError('Error calling fslreorient2std on raw anatomical')
         reorient_cmd = '{fslpre}fslreorient2std {bet_anat} {adir}/{ra_raw}_brain'.format(fslpre=fsl_prefix,bet_anat=bet_anat, adir=odir, ra_raw=reorient_anat)
-        #if sp.call(reorient_cmd, shell=True) != 0:
-        #    raise IOError('Error calling fslreorient2std on brain-extracted anatomical')
+        if sp.call(reorient_cmd, shell=True) != 0:
+            raise IOError('Error calling fslreorient2std on brain-extracted anatomical')
 
         ra_betmask = reorient_anat + "_brainmask"
         reorient_cmd = '{fslpre}fslreorient2std {bet_anat} {adir}/{ra_betmask}'.format(fslpre=fsl_prefix,bet_anat=betmask_anat, adir=odir, ra_betmask=ra_betmask)
-        #if sp.call(reorient_cmd, shell=True) != 0:
-        #    raise IOError('Error calling fslreorient2std on brain-extracted mask')
+        if sp.call(reorient_cmd, shell=True) != 0:
+            raise IOError('Error calling fslreorient2std on brain-extracted mask')
         
         fsldir = os.environ['FSLDIR']
         standard = '%s/data/standard/MNI152_T1_1mm'%fsldir
@@ -221,18 +222,17 @@ def anat_to_mni(subject, xfmname, noclean=False):
         flirt_cmd = '{fslpre}flirt -in {bet_standard} -ref {adir}/{ra_raw}_brain -dof 6 -omat /tmp/{cout}_flirt'
         flirt_cmd = flirt_cmd.format(fslpre=fsl_prefix, ra_raw=reorient_anat, bet_standard=bet_standard, adir=odir, cout=cout)
         print('Running FLIRT to estimate initial affine transform with command:\n%s'%flirt_cmd)
-        #if sp.call(flirt_cmd, shell=True) != 0:
-        #    raise IOError('Error calling FLIRT with command: %s' % flirt_cmd)
+        if sp.call(flirt_cmd, shell=True) != 0:
+            raise IOError('Error calling FLIRT with command: %s' % flirt_cmd)
 
         # FNIRT mni-to-anat transform estimation cmd (does not apply any transform, but generates estimate [cout])
         cmd = '{fslpre}fnirt --in={standard} --ref={ad}/{ra_raw} --refmask={ad}/{refmask} --aff=/tmp/{cout}_flirt --cout={anat_dir}/{cout}_fnirt --fout={anat_dir}/{cout}_field --iout=/tmp/mni2anat_iout --config=T1_2_MNI152_2mm'
         cmd = cmd.format(fslpre=fsl_prefix, ra_raw=reorient_anat, standard=standard, refmask=ra_betmask, ad=odir, anat_dir=anat_dir, cout=cout)
         print('Running FNIRT to estimate transform, using the following command... this can take a while:\n%s'%cmd)
-        #if sp.call(cmd, shell=True) != 0:
-        #    raise IOError('Error calling fnirt with cmd: %s'%cmd)
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError('Error calling fnirt with cmd: %s'%cmd)
 
         [pts, polys] = db.get_surf(subject,"fiducial",merge="True")
-        # np.savetxt(cfile, pts, fmt='%g')
 
         #print('raw anatomical: %s\nbet anatomical: %s\nflirt cmd:%s\nfnirt cmd: %s\npts: %s' % (raw_anat,bet_anat,flirt_cmd,cmd,pts))
 
@@ -283,16 +283,16 @@ def anat_to_mni(subject, xfmname, noclean=False):
 
         # some debug output
         # print pts, mni_coords
-        print pts[0], mni_coords[0]
-        print len(pts), len(mni_coords)
-        print type(pts), type(pts[0][0]), type(mni_coords)
+        # print pts[0], mni_coords[0]
+        # print len(pts), len(mni_coords)
+        # print type(pts), type(pts[0][0]), type(mni_coords)
 
         # now split mni_coords into left and right arrays for saving
         nverts_L = len(warpverts_L)
-        print nverts_L
+        #print nverts_L
         left = mni_coords[:nverts_L]
         right = mni_coords[nverts_L:]
-        print len(left), len(right)
+        #print len(left), len(right)
 
         mni_surfinfo_fn = db.get_paths(subject)['surfinfo'].format(type='mnicoords',opts='')
         np.savez(mni_surfinfo_fn,leftpts=left,rightpts=right)
