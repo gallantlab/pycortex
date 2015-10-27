@@ -287,7 +287,15 @@ var disp_defaults = {{json_encode(disp_defaults)}};
 	<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
 	<div id='dataname'></div>
 	<div id='mnibox'>
-		<div id="mnicoords"><input type='text' name='mnicoords' id='mnicoords' value='XXXX' /><input type='submit' id='mnisubmit' name='mnisubmit' /></div>
+		<div id="mnicoords">
+		MNI coordinates
+		<form name='mniform' id='mniform' action="javascript:void(0);">
+		X: <input type='text' name='mniX' id='mniX' value='X' class='mniinput' />mm<br />
+		Y: <input type='text' name='mniY' id='mniY' value='Y' class='mniinput' />mm<br />
+		Z: <input type='text' name='mniZ' id='mniZ' value='Z' class='mniinput' />mm<br />
+		<input type='submit' id='mnisubmit' name='mnisubmit' />
+		</form>
+		</div>
 	</div>
 	<div id='braincover'></div>
 	<canvas id='brain'></canvas>

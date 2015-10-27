@@ -7,11 +7,14 @@ function FacePick(viewer, left, right) {
             return Math.sqrt((a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]));
         }
         kdt = new kdTree([], dist, [0, 1, 2]);
+        mni_kdt = new kdTree([], dist, [0, 1, 2]);
         kdt.root = e.data.kdt;
+        mni_kdt.root = e.data.mnikdt;
         this[e.data.name] = kdt;
+        this['mni_' + e.data.name] = mni_kdt;
     }.bind(this));
-    worker.postMessage({pos:left, name:"lkdt"});
-    worker.postMessage({pos:right, name:"rkdt"});
+    worker.postMessage({pos:left, name:"lkdt", mni:this.viewer.meshes.left.geometry.attributes.mnicoords.array});
+    worker.postMessage({pos:right, name:"rkdt", mni:this.viewer.meshes.right.geometry.attributes.mnicoords.array});
 
     this.axes = [];
 
@@ -143,7 +146,6 @@ FacePick.prototype = {
         var pos = world(xbuf, ybuf, zbuf);
         if (pos && this.lkdt && this.rkdt) {
             var left = this.lkdt.nearest([pos.x, pos.y, pos.z], 1)[0];
-            console.log(left);
             var right = this.rkdt.nearest([pos.x, pos.y, pos.z], 1)[0];
             if (left[1] < right[1])
                 return {hemi:"left", ptidx:left[0][3], dist:left[1], pos:pos};
@@ -167,29 +169,11 @@ FacePick.prototype = {
             mniy = hem.attributes.mnicoords.array[mniidx+1] ;
             mniz = hem.attributes.mnicoords.array[mniidx+2] ;
 
-            console.dir(p);
-            console.log("Clicked at " + x +"," + y + " and picked vertex "+p.ptidx+" in "+p.hemi+" hemisphere, distance="+p.dist+", pos=["+p.pos.x+","+p.pos.y+","+p.pos.z+"], voxel=["+vec.x+","+vec.y+","+vec.z+"]... \nMNI x index = " + mniidx + "mnix = " + mnix);
-            console.dir(hem);
-
             this.addMarker(p.hemi, p.ptidx, keep);
             $(this.viewer.object).find("#mnibox").show() ;
-            $(this.viewer.object).find("#mnibox").html("<form name='mnisubmit' id='mnisubmit' action='#' method='POST'><input type='text' name='mnicoords' id='mnicoords' value='"+mnix.toFixed(2)+","+mniy.toFixed(2)+","+mniz.toFixed(2)+"' /><input type='submit' id='mnisubmitbutton' name='mnisubmitbutton' value='Go to' /></form>");
-            // store reference to viewer so we can send a message to it within this binding function?
-            /*var vwr = this ;
-            $(this.viewer.object).find("#mnisubmit").submit(function() {
-                console.dir(this) ;
-                coordstr = this.firstChild.value ;
-                console.log(this.firstChild.value) ;
-                console.log(coordstr) ;
-                coords = coordstr.split(",") ;
-                sub_x = coords[0] ;
-                sub_y = coords[1] ;
-                sub_z = coords[2] ;
-                vwr.viewer.figure.notify("pick",vwr,vwr.viewer.uniforms.volxfm.value[0].multiplyVector3(THREE.Vector3(sub_x,sub_y,sub_z))) ;
-            }) ;*/
-            //$(this.viewer.object).find("#mnicoords").prop('disabled',false) ;
-            /*$(this.viewer.object).find("#mnicoords").show() ;
-            $(this.viewer.object).find("#mnicoords").value = ""+mnix.toFixed(2)+","+mniy.toFixed(2)+","+mniz.toFixed(2) ;*/
+            $(this.viewer.object).find("#mniX").val(mnix.toFixed(2)) ;
+            $(this.viewer.object).find("#mniY").val(mniy.toFixed(2)) ;
+            $(this.viewer.object).find("#mniZ").val(mniz.toFixed(2)) ;
             this.viewer.figure.notify("pick", this, [vec]);
             if (this.callback !== undefined)
                 this.callback(vec, p.hemi, p.ptidx);
@@ -198,6 +182,7 @@ FacePick.prototype = {
                 this.axes[i].obj.parent.remove(this.axes[i].obj);
             }
             this.axes = [];
+            $(this.viewer.object).find("#mnibox").hide() ;
             this.viewer.schedule();
         }
     },

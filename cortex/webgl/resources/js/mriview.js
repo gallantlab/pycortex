@@ -203,10 +203,6 @@ var mriview = (function(module) {
     module.Viewer.prototype.load = function(ctminfo, callback) {
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, header, json ) {
-            console.dir(geometries)
-            console.dir(materials)
-            console.dir(header)
-            //console.dir(json)
             geometries[0].computeBoundingBox();
             geometries[1].computeBoundingBox();
 
@@ -250,9 +246,7 @@ var mriview = (function(module) {
                     for (var i = 0, il = geometries[right].morphTargets.length; i < il; i++) {
                         posdata[name].push(geometries[right].morphTargets[i]);
                     }
-                    console.dir(geometries[right].attributes);
                     geometries[right].reorderVertices();
-                    console.dir(geometries[right].attributes);
                     geometries[right].dynamic = true;
 
                     //var geom = splitverts(geometries[right], name == "right" ? leftlen : 0);
@@ -308,8 +302,6 @@ var mriview = (function(module) {
             this.controls.addEventListener("undblpick", function(event) {
                 this.picker.undblpick();
             }.bind(this));
-
-            console.dir(this);
 
             this.setState("target", this.surfcenter);
             
@@ -1110,6 +1102,23 @@ var mriview = (function(module) {
                     1); 
             }.bind(this));            
         }
+
+        $(this.object).find("#mniform").submit(function() {
+                x = $(this.object).find("#mniX").val();
+                y = $(this.object).find("#mniY").val();
+                z = $(this.object).find("#mniZ").val();
+                
+                var left = this.picker.mni_lkdt.nearest([x, y, z], 1)[0];
+                var right = this.picker.mni_rkdt.nearest([x, y, z], 1)[0];
+                if (left[1] < right[1]) {
+                    this.picker.addMarker("left", left[0][3], false);
+                }
+                else {
+                    this.picker.addMarker("right", right[0][3], false);
+                }
+                return(0); //do not reload page
+        }.bind(this));
+
 
         // Setup controls for multiple overlays
         var updateOverlays = function() {

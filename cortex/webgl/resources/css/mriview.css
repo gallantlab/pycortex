@@ -154,6 +154,14 @@ a:visited { color:white; }
     font-weight:bold;
 }
 
+#mnibox input {
+    border: 0;
+    font-size: 16pt;
+    font-weight: bold ;
+    width: 100px ;
+    margin-right: 5px ;
+}
+
 #mnicoords, #mnisubmit {
     z-index:13;
 }
