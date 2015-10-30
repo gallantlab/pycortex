@@ -362,27 +362,18 @@ def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pix
         this function you are basically saying that you want an editable layer of vector 
         graphic ROIs on top of your image. `with_cutouts` is not functional yet.
     """
-    #from matplotlib import pyplot as plt
-    #data = dataset.normalize(braindata)
-    # ## Create quickflat image array
-    # im, extents = make(data, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
-    ## Write pre-composited PNG
     try:
         import cStringIO
         fp = cStringIO.StringIO()
     except:
         fp = io.StringIO()
     from matplotlib.pylab import imsave
-    # imsave(fp, im, cmap=data.cmap, vmin=data.vmin, vmax=data.vmax, **kwargs)
     to_cut = ['with_rois','cutouts']
     for cc in to_cut:
         if cc in kwargs: 
             _ = kwargs.pop(cc)
+    ## Render PNG file & retrieve image data
     make_png(fp,braindata,with_rois=False,**kwargs) #recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth, **kwargs)
-    #cmapdict = _has_cmap(data)
-    #kwargs.update(cmapdict)
-    #imsave(fp, im, **kwargs)
-    #pngdata = fp.getvalue()
     fp.seek(0)
     pngdata = binascii.b2a_base64(fp.read())
     ## Create and save SVG file
