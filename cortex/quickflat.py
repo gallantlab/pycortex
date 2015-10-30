@@ -159,30 +159,11 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     kwargs = dict(aspect='equal', 
         extent=extents, 
         origin='lower')
-    if not isinstance(dataview, (dataset.VolumeRGB, dataset.VertexRGB)):
-        # Get colormap from matplotlib or pycortex colormaps
-        ## -- redundant code, here and in cortex/dataset/views.py -- ##
-        if isinstance(dataview.cmap,(str,unicode)):
-            if not dataview.cmap in cm.__dict__:
-                # unknown colormap, test whether it's in pycortex colormaps
-                cmapdir = config.get('webgl', 'colormaps')
-                colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-                colormaps = dict(((os.path.split(c)[1][:-4],c) for c in colormaps))
-                if not dataview.cmap in colormaps:
-                    raise Exception('Unkown color map!')
-                I = plt.imread(colormaps[dataview.cmap])
-                cmap = colors.ListedColormap(np.squeeze(I))
-                # Register colormap while we're at it
-                cm.register_cmap(dataview.cmap,cmap)
-            else:
-                cmap = dataview.cmap
-        elif isinstance(dataview.cmap,colors.Colormap):
-            # Allow input of matplotlib colormap class
-            cmap = dataview.cmap
-        kwargs.update(
-            cmap=cmap, 
-            vmin=dataview.vmin, 
-            vmax=dataview.vmax)
+    
+    # Check whether dataview has a cmap instance
+    cmapdict = _has_cmap(dataview)
+    kwargs.update(cmapdict)
+
     ax = fig.add_axes((0,0,1,1))
     cimg = ax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]], **kwargs)
     ax.axis('off')
@@ -363,7 +344,10 @@ def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     except:
         fp = io.StringIO()
     from matplotlib.pylab import imsave
-    imsave(fp, im, cmap=dataview.cmap, vmin=dataview.vmin, vmax=dataview.vmax, **kwargs)
+    # imsave(fp, im, cmap=dataview.cmap, vmin=dataview.vmin, vmax=dataview.vmax, **kwargs)
+    cmapdict = _has_cmap(dataview)
+    kwargs.update(cmapdict)
+    imsave(fp, im, **kwargs)
     fp.seek(0)
     pngdata = binascii.b2a_base64(fp.read())
     ## Create and save SVG file
@@ -649,6 +633,44 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
         i, j, data = sampclass(fidcoords[valid], xfm.shape)
         csrshape = mask.sum(), np.prod(xfm.shape)
         return sparse.csr_matrix((data, (vidx[i], j)), shape=csrshape)
+
+
+def _has_cmap(dataview):
+    """Checks whether a given dataview has colormap (cmap) information as an
+    instance or is an RGB volume and does not have a cmap.
+    Returns a dictionary with cmap information for non RGB volumes"""
+
+    from matplotlib import colors,cm
+
+    cmapdict = dict()
+    if not isinstance(dataview, (dataset.VolumeRGB, dataset.VertexRGB)):
+        # Get colormap from matplotlib or pycortex colormaps
+        ## -- redundant code, here and in cortex/dataset/views.py -- ##
+        if isinstance(dataview.cmap,(str,unicode)):
+            if not dataview.cmap in cm.__dict__:
+                # unknown colormap, test whether it's in pycortex colormaps
+                cmapdir = config.get('webgl', 'colormaps')
+                colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
+                colormaps = dict(((os.path.split(c)[1][:-4],c) for c in colormaps))
+                if not dataview.cmap in colormaps:
+                    raise Exception('Unkown color map!')
+                I = plt.imread(colormaps[dataview.cmap])
+                cmap = colors.ListedColormap(np.squeeze(I))
+                # Register colormap while we're at it
+                cm.register_cmap(dataview.cmap,cmap)
+            else:
+                cmap = dataview.cmap
+        elif isinstance(dataview.cmap,colors.Colormap):
+            # Allow input of matplotlib colormap class
+            cmap = dataview.cmap
+
+        cmapdict.update(cmap=cmap, 
+                        vmin=dataview.vmin, 
+                        vmax=dataview.vmax)
+
+    return cmapdict
+
+
 
 def is_str(obj):
     try:
