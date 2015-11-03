@@ -252,7 +252,6 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
               decimate=False, disp_layers=['rois'],extra_disp=None):
     """Generates a cached CTM file"""
 
-    print 'In make_pack, outfile %s'%outfile
     ctm = BrainCTM(subj, decimate=decimate)
     ctm.addCurvature()
     ctm.addMNI()
@@ -269,7 +268,6 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
                     extra_disp=extra_disp)
 
 def read_pack(ctmfile):
-    print('In read_pack, ctmfile: %s'%ctmfile)
     fname = os.path.splitext(ctmfile)[0]
     jsfile = json.load(open(fname+".json"))
     offset = jsfile['offsets']
