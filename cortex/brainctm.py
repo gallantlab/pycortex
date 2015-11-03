@@ -112,8 +112,6 @@ class BrainCTM(object):
         svgname = path+".svg"
         jsname = path+".json"
 
-        print("In method save() of BrainCTM, ctmname: %s"%ctmname)
-
         # Save CTM concatenation
         (lpts, _, _), lbin = self.left.save(method=method, **kwargs)
         (rpts, _, _), rbin = self.right.save(method=method, **kwargs)
@@ -190,7 +188,6 @@ class Hemi(object):
 
     def addSurf(self, pts, name=None, renorm=True):
         '''Scales the in-between surfaces to be same scale as fiducial'''
-        print('In Hemi.addSurf()...')
         if name is None:
             name = 'morphTarget%d'%len(self.surfs)
 
@@ -202,7 +199,6 @@ class Hemi(object):
 
         attrib = np.hstack([rnorm, np.zeros((len(rnorm),1))])
         self.surfs[name] = attrib
-        print('Adding attrib %s'%name)
         self.ctm.addAttrib(attrib, name)
 
     def setFlat(self, pts):
@@ -211,7 +207,6 @@ class Hemi(object):
 
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')
-        print('Adding attrib mnicoords, just added auxdat...')
         self.ctm.addAttrib(self.mni, 'mnicoords')
         self.ctm.save(**kwargs)
 
