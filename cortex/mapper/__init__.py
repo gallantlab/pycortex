@@ -10,7 +10,7 @@ from .. import dataset
 
 def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     from ..database import db
-    from . import point, patch, volume, line, warp
+    from . import point, patch, volume, line
 
     mapcls = dict(
         nearest=point.PointNN,
