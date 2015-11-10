@@ -204,7 +204,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
          autoclose=True, open_browser=True, port=None, pickerfun=None,
-         disp_layers=['rois'], extra_disp=None, **kwargs):
+         disp_layers=['rois'], extra_disp=None, coord_disp=True, **kwargs):
     """Display a dynamic viewer using the given dataset. See cortex.webgl.make_static for help.
     """
     data = dataset.normalize(data)
@@ -314,6 +314,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                                       subjects=subjectjs,
                                       disp_layers=disp_layers+dl,
                                       disp_defaults=_make_disp_defaults(disp_layers+dl),
+                                      coord_disp=coord_disp,
                                       **viewopts)
             self.write(generated)
 

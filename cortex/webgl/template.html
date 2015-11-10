@@ -286,6 +286,7 @@ var disp_defaults = {{json_encode(disp_defaults)}};
 <div id='main'>
 	<div id='ctmload' class='loadmsg'><img src='resources/images/loading.gif'>Loading brain...</div>
 	<div id='dataname'></div>
+	{% if coord_disp %}
 	<div id='mnibox'>
 		<div id="mnicoords">
 		MNI coordinates
@@ -297,6 +298,7 @@ var disp_defaults = {{json_encode(disp_defaults)}};
 		</form>
 		</div>
 	</div>
+	{% end %}
 	<div id='braincover'></div>
 	<canvas id='brain'></canvas>
 </div>
