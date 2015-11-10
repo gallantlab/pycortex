@@ -269,7 +269,7 @@ def anat_to_mni(subject, do=True):
 
         # now do the mapping! this gets the warp field values at the corresponding points
         # (uses fiducial surface by default)
-        warpvd = wv.map(projection="nearest")
+        warpvd = wv.map(projection="lanczos")
 
         # reshape into something sensible
         warpverts_L = [vs for vs in np.swapaxes(warpvd.left,0,1)]
