@@ -152,26 +152,27 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed"):
 
     return retval
 
-def anat_to_mni(subject, xfmname):
+def anat_to_mni(subject, do=True):
     """Create an automatic alignment of an anatomical image to the MNI standard.
 
-    If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting 
-    transform called `xfmname` will be automatically stored in the database.
+    This function does the following:
+    1) Re-orders orientation labels on anatomical images using fslreorient2std (without modifying the existing files)
+    2) Calls FLIRT
+    3) Calls FNIRT with the transform estimated by FLIRT as the specified
+    4) Gets the resulting warp field, samples it at each vertex location, and calculates MNI coordinates.
+    5) Saves these coordinates as a surfinfo file in the db.
 
     Parameters
     ----------
     subject : str
         Subject identifier.
-    xfmname : str
-        String identifying the transform to be created.
-    noclean : bool, optional
-        If True intermediate files will not be removed from /tmp (this is useful for debugging things),
-        and the returned value will be the name of the temp directory. Default False.
+    do : bool
+        Actually execute the commands (True), or just print them (False, useful for debugging).
 
     Returns
     -------
     pts : the vertices of the fiducial surface
-    mnipts : the mni coordinates of those vertices (same shape as pts)
+    mnipts : the mni coordinates of those vertices (same shape as pts, corresponding indices)
     """
 
     import shlex
@@ -186,30 +187,30 @@ def anat_to_mni(subject, xfmname):
     from .dataset import Volume
 
     fsl_prefix = config.get("basic", "fsl_prefix")
-    schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
+    cache = tempfile.mkdtemp()
 
-    print('anat_to_mni, subject: %s, xfmname: %s' % (subject, xfmname))
+    print('anat_to_mni, subject: %s' % subject)
     
     try:
         raw_anat = db.get_anat(subject, type='raw').get_filename()
         bet_anat = db.get_anat(subject, type='brainmask').get_filename()
         betmask_anat = db.get_anat(subject, type='brainmask_mask').get_filename()
         anat_dir = os.path.dirname(raw_anat)
-        odir = anat_dir
+        odir = cache
 
         # stem for the reoriented-into-MNI anatomical images (required by FLIRT/FNIRT)
         reorient_anat = 'reorient_anat'
         reorient_cmd = '{fslpre}fslreorient2std {raw_anat} {adir}/{ra_raw}'.format(fslpre=fsl_prefix,raw_anat=raw_anat, adir=odir, ra_raw=reorient_anat)
         print('Reorienting anatomicals using fslreorient2std, cmd like: \n%s' % reorient_cmd)
-        if sp.call(reorient_cmd, shell=True) != 0:
+        if do and sp.call(reorient_cmd, shell=True) != 0:
             raise IOError('Error calling fslreorient2std on raw anatomical')
         reorient_cmd = '{fslpre}fslreorient2std {bet_anat} {adir}/{ra_raw}_brain'.format(fslpre=fsl_prefix,bet_anat=bet_anat, adir=odir, ra_raw=reorient_anat)
-        if sp.call(reorient_cmd, shell=True) != 0:
+        if do and sp.call(reorient_cmd, shell=True) != 0:
             raise IOError('Error calling fslreorient2std on brain-extracted anatomical')
 
         ra_betmask = reorient_anat + "_brainmask"
         reorient_cmd = '{fslpre}fslreorient2std {bet_anat} {adir}/{ra_betmask}'.format(fslpre=fsl_prefix,bet_anat=betmask_anat, adir=odir, ra_betmask=ra_betmask)
-        if sp.call(reorient_cmd, shell=True) != 0:
+        if do and sp.call(reorient_cmd, shell=True) != 0:
             raise IOError('Error calling fslreorient2std on brain-extracted mask')
         
         fsldir = os.environ['FSLDIR']
@@ -219,26 +220,33 @@ def anat_to_mni(subject, xfmname):
         cout = 'mni2anat' #stem of the filenames of the transform estimates
 
         # initial affine anatomical-to-standard registration using FLIRT. required, as the output xfm is used as a start by FNIRT.
-        flirt_cmd = '{fslpre}flirt -in {bet_standard} -ref {adir}/{ra_raw}_brain -dof 6 -omat /tmp/{cout}_flirt'
+        flirt_cmd = '{fslpre}flirt -in {bet_standard} -ref {adir}/{ra_raw}_brain -dof 6 -omat {adir}/{cout}_flirt'
         flirt_cmd = flirt_cmd.format(fslpre=fsl_prefix, ra_raw=reorient_anat, bet_standard=bet_standard, adir=odir, cout=cout)
         print('Running FLIRT to estimate initial affine transform with command:\n%s'%flirt_cmd)
-        if sp.call(flirt_cmd, shell=True) != 0:
+        if do and sp.call(flirt_cmd, shell=True) != 0:
             raise IOError('Error calling FLIRT with command: %s' % flirt_cmd)
 
         # FNIRT mni-to-anat transform estimation cmd (does not apply any transform, but generates estimate [cout])
-        cmd = '{fslpre}fnirt --in={standard} --ref={ad}/{ra_raw} --refmask={ad}/{refmask} --aff=/tmp/{cout}_flirt --cout={anat_dir}/{cout}_fnirt --fout={anat_dir}/{cout}_field --iout=/tmp/mni2anat_iout --config=T1_2_MNI152_2mm'
+        # the MNI152 2mm config is used even though we're referencing 1mm, per this FSL list post:
+        # https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=FSL;d14e5a9d.1105
+        cmd = '{fslpre}fnirt --in={standard} --ref={ad}/{ra_raw} --refmask={ad}/{refmask} --aff={ad}/{cout}_flirt --cout={ad}/{cout}_fnirt --fout={ad}/{cout}_field --iout={ad}/{cout}_iout --config=T1_2_MNI152_2mm'
         cmd = cmd.format(fslpre=fsl_prefix, ra_raw=reorient_anat, standard=standard, refmask=ra_betmask, ad=odir, anat_dir=anat_dir, cout=cout)
         print('Running FNIRT to estimate transform, using the following command... this can take a while:\n%s'%cmd)
-        if sp.call(cmd, shell=True) != 0:
+        if do and sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling fnirt with cmd: %s'%cmd)
 
         [pts, polys] = db.get_surf(subject,"fiducial",merge="True")
 
-        #print('raw anatomical: %s\nbet anatomical: %s\nflirt cmd:%s\nfnirt cmd: %s\npts: %s' % (raw_anat,bet_anat,flirt_cmd,cmd,pts))
+        print('raw anatomical: %s\nbet anatomical: %s\nflirt cmd:%s\nfnirt cmd: %s\npts: %s' % (raw_anat,bet_anat,flirt_cmd,cmd,pts))
 
         # take the reoriented anatomical, get its affine coord transform, invert this, and save it
         reo_xfmnm = 'reorient_inv'
-        re_anat = db.get_anat(subject,reorient_anat)
+        # need to change this line, as the reoriented anatomical is not in the db but in /tmp now
+        # re_anat = db.get_anat(subject,reorient_anat)
+        reo_anat_fn = '{odir}/{reorient_anat}.nii.gz'.format(odir=odir,reorient_anat=reorient_anat)
+        print(reo_anat_fn)
+        # since the reoriented anatomicals aren't stored in the db anymore, db.get_anat() will not work (?)
+        re_anat = nib.load(reo_anat_fn)
         reo_xfm = Transform(np.linalg.inv(re_anat.get_affine()),re_anat)
         reo_xfm.save(subject,reo_xfmnm,"coord")
 
@@ -247,7 +255,12 @@ def anat_to_mni(subject, xfmname):
         aqfinv = np.linalg.inv(aqf)
 
         # load the warp field data as a volume
-        warp = db.get_anat(subject,'%s_field'%cout)
+        # since it's not in the db anymore but in /tmp instead of:
+        # warp = db.get_anat(subject,'%s_field'%cout)
+        # it's this:
+        warp_fn = '{ad}/{cout}_field.nii.gz'.format(ad=odir,cout=cout)
+        print warp_fn
+        warp = nib.load(warp_fn)
         wd = warp.get_data()
         # need in (t,z,y,x) order
         wd = np.swapaxes(wd,0,3) # x <--> t
