@@ -93,8 +93,13 @@ class BrainCTM(object):
     def addMNI(self, **kwargs):
         print('Adding MNI coords...')
         npz = db.get_surfinfo(self.subject, type='mnicoords', **kwargs)
-        self.left.mni[:,:-1] = npz['leftpts']
-        self.right.mni[:,:-1] = npz['rightpts']
+        try:
+            self.left.mni[:,:-1] = npz['leftpts']
+            self.right.mni[:,:-1] = npz['rightpts']
+        except AttributeError:
+            self.left.mni = []
+            self.right.mni = []
+
 
     def save(self, path, method='mg2', disp_layers=['rois'], extra_disp=None, **kwargs):
         """Save CTM file for static html display. 
