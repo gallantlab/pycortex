@@ -159,21 +159,34 @@ FacePick.prototype = {
         var p = this._pick(x, y);
         if (p) {
             var vec = this.viewer.uniforms.volxfm.value[0].multiplyVector3(p.pos.clone());
-            mniidx = (p.ptidx)*4 ;
             if (p.hemi==="left")
                 hem = this.viewer.meshes.left.geometry ;
             if (p.hemi==="right")
                 hem = this.viewer.meshes.right.geometry ;
 
-            mnix = hem.attributes.mnicoords.array[mniidx] ;
-            mniy = hem.attributes.mnicoords.array[mniidx+1] ;
-            mniz = hem.attributes.mnicoords.array[mniidx+2] ;
+            space = $(this.viewer.object).find(".radio:checked").val();
+            if (space==="magnet") {
+                coordarray = hem.attributes.position ;
+                $(this.viewer.object).find("#coordsys_mag").prop('checked',true) ;
+            }
+            else { //mni or undefined
+                coordarray = hem.attributes.mnicoords ;
+                $(this.viewer.object).find("#coordsys_mni").prop('checked',true) ;
+            }
+
+            mniidx = (p.ptidx)*coordarray.itemSize  ;
+
+            mnix = coordarray.array[mniidx] ;
+            mniy = coordarray.array[mniidx+1] ;
+            mniz = coordarray.array[mniidx+2] ;
 
             this.addMarker(p.hemi, p.ptidx, keep);
             $(this.viewer.object).find("#mnibox").show() ;
             $(this.viewer.object).find("#mniX").val(mnix.toFixed(2)) ;
             $(this.viewer.object).find("#mniY").val(mniy.toFixed(2)) ;
             $(this.viewer.object).find("#mniZ").val(mniz.toFixed(2)) ;
+            $(this.viewer.object).find("#ptidx").val(p.ptidx) ;
+            $(this.viewer.object).find("#pthem").val(p.hemi) ;
             this.viewer.figure.notify("pick", this, [vec]);
             if (this.callback !== undefined)
                 this.callback(vec, p.hemi, p.ptidx);

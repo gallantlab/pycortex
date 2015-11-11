@@ -145,7 +145,7 @@ a:visited { color:white; }
     float:left;
     text-shadow:0px 2px 8px black, 0px 1px 8px black;
     color:white;
-    font-size:16pt;
+    font-size:12pt;
     padding:10px;
     margin:20px;
     margin-top: 80px ;
@@ -154,9 +154,9 @@ a:visited { color:white; }
     font-weight:bold;
 }
 
-#mnibox input {
+#mnibox input.mniinput {
     /*border: 0;*/
-    font-size: 12pt;
+    font-size: 10pt;
     font-weight: bold ;
     width: 70px ;
     margin-right: 5px ;

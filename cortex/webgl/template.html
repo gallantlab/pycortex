@@ -289,8 +289,13 @@ var disp_defaults = {{json_encode(disp_defaults)}};
 	{% if coord_disp %}
 	<div id='mnibox'>
 		<div id="mnicoords">
-		MNI coordinates
+		Coordinates
 		<form name='mniform' id='mniform' action="javascript:void(0);">
+		<span id='coordspace'>
+		<input type='radio' name='coordsys' id='coordsys_mni' value='mni' class='radio'>MNI</input>
+		<input type='radio' name='coordsys' id='coordsys_mag' value='magnet' class='radio'>Magnet</input><br /></span>
+		<input type='hidden' name='ptidx' id='ptidx' value='null'/>
+		<input type='hidden' name='pthem' id='pthem' value='null'/>
 		X: <input type='text' name='mniX' id='mniX' value='X' class='mniinput' />mm<br />
 		Y: <input type='text' name='mniY' id='mniY' value='Y' class='mniinput' />mm<br />
 		Z: <input type='text' name='mniZ' id='mniZ' value='Z' class='mniinput' />mm<br />

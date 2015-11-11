@@ -1103,6 +1103,37 @@ var mriview = (function(module) {
             }.bind(this));            
         }
 
+        $(this.object).find(".radio").change(function() { //the .radio class is specifically for coord space selection, not all radio buttons
+            space = $(this.object).find(".radio:checked").val();
+            ptidx = $(this.object).find("#ptidx").val();
+            pthem = $(this.object).find("#pthem").val();
+            if (pthem==="left")
+                h = this.meshes.left.geometry ;
+            else if (pthem==="right")
+                h = this.meshes.right.geometry ;
+
+            if (typeof h !== 'undefined') {
+                if (space==="magnet") {
+                    coordarray = h.attributes.position ;
+                    $(this.object).find("#coordsys_mag").prop('checked',true) ;
+                }
+                else { //mni or undefined
+                    coordarray = h.attributes.mnicoords ;
+                    $(this.object).find("#coordsys_mni").prop('checked',true) ;
+                }
+
+                mniidx = (ptidx)*coordarray.itemSize  ;
+
+                mnix = coordarray.array[mniidx] ;
+                mniy = coordarray.array[mniidx+1] ;
+                mniz = coordarray.array[mniidx+2] ;
+
+                $(this.object).find("#mniX").val(mnix.toFixed(2)) ;
+                $(this.object).find("#mniY").val(mniy.toFixed(2)) ;
+                $(this.object).find("#mniZ").val(mniz.toFixed(2)) ;
+            }
+        }.bind(this));
+
         $(this.object).find("#mniform").submit(function() {
                 x = $(this.object).find("#mniX").val();
                 y = $(this.object).find("#mniY").val();
