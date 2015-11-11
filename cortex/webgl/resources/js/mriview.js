@@ -1138,9 +1138,16 @@ var mriview = (function(module) {
                 x = $(this.object).find("#mniX").val();
                 y = $(this.object).find("#mniY").val();
                 z = $(this.object).find("#mniZ").val();
+                space = $(this.object).find(".radio:checked").val();
+                if (space==="magnet") {
+                    var left = this.picker.lkdt.nearest([x, y, z], 1)[0];
+                    var right = this.picker.rkdt.nearest([x, y, z], 1)[0];
+                }
+                else { //mni or undefined
+                    var left = this.picker.mni_lkdt.nearest([x, y, z], 1)[0];
+                    var right = this.picker.mni_rkdt.nearest([x, y, z], 1)[0];
+                }
                 
-                var left = this.picker.mni_lkdt.nearest([x, y, z], 1)[0];
-                var right = this.picker.mni_rkdt.nearest([x, y, z], 1)[0];
                 if (left[1] < right[1]) {
                     this.picker.addMarker("left", left[0][3], false);
                 }
