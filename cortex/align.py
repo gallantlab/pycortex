@@ -237,14 +237,14 @@ def anat_to_mni(subject, do=True):
 
         [pts, polys] = db.get_surf(subject,"fiducial",merge="True")
 
-        print('raw anatomical: %s\nbet anatomical: %s\nflirt cmd:%s\nfnirt cmd: %s\npts: %s' % (raw_anat,bet_anat,flirt_cmd,cmd,pts))
+        #print('raw anatomical: %s\nbet anatomical: %s\nflirt cmd:%s\nfnirt cmd: %s\npts: %s' % (raw_anat,bet_anat,flirt_cmd,cmd,pts))
 
         # take the reoriented anatomical, get its affine coord transform, invert this, and save it
         reo_xfmnm = 'reorient_inv'
         # need to change this line, as the reoriented anatomical is not in the db but in /tmp now
         # re_anat = db.get_anat(subject,reorient_anat)
         reo_anat_fn = '{odir}/{reorient_anat}.nii.gz'.format(odir=odir,reorient_anat=reorient_anat)
-        print(reo_anat_fn)
+        # print(reo_anat_fn)
         # since the reoriented anatomicals aren't stored in the db anymore, db.get_anat() will not work (?)
         re_anat = nib.load(reo_anat_fn)
         reo_xfm = Transform(np.linalg.inv(re_anat.get_affine()),re_anat)
@@ -259,7 +259,7 @@ def anat_to_mni(subject, do=True):
         # warp = db.get_anat(subject,'%s_field'%cout)
         # it's this:
         warp_fn = '{ad}/{cout}_field.nii.gz'.format(ad=odir,cout=cout)
-        print warp_fn
+        # print warp_fn
         warp = nib.load(warp_fn)
         wd = warp.get_data()
         # need in (t,z,y,x) order
@@ -308,6 +308,7 @@ def anat_to_mni(subject, do=True):
         #print len(left), len(right)
 
         mni_surfinfo_fn = db.get_paths(subject)['surfinfo'].format(type='mnicoords',opts='')
+        print('Saving mni coordinates as a surfinfo...')
         np.savez(mni_surfinfo_fn,leftpts=left,rightpts=right)
 
         return (pts, mni_coords)
