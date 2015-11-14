@@ -16,7 +16,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, cvmin=None,
                 cvmax=None, cvthr=None, fig=None, extra_hatch=None,
-                colorbar_ticks=None, **kwargs):
+                colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), **kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
     matplotlib's imshow command.
 
@@ -72,6 +72,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Default value is None.
     extra_hatch : tuple, optional
         Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple. 
+    colorbar_location : tuple, optional
+        Location of the colorbar! Not sure of what the numbers actually mean. Left, bottom, width, height, maybe?
 
     """
     from matplotlib import colors,cm, pyplot as plt
@@ -136,7 +138,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         iy,ix = ((0,-1),(0,-1))
     
     if with_curvature:
-        curv,ee = make(db.get_surfinfo(dataview.subject),recache=recache)
+        curv,ee = make(db.get_surfinfo(dataview.subject),recache=recache,height=height)
         if cutout: curv[co==0] = np.nan
         axcv = fig.add_axes((0,0,1,1))
         # Option to use thresholded curvature
@@ -191,7 +193,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
 
     if with_colorbar and not isinstance(dataview, dataset.Volume2D):
-        cbar = fig.add_axes((.4, .07, .2, .04))
+        cbar = fig.add_axes(colorbar_location)
         fig.colorbar(cimg, cax=cbar, orientation='horizontal',
                      ticks=colorbar_ticks)
 
