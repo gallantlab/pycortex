@@ -159,6 +159,7 @@ FacePick.prototype = {
         var p = this._pick(x, y);
         if (p) {
             var vec = this.viewer.uniforms.volxfm.value[0].multiplyVector3(p.pos.clone());
+            console.log("Picked vertex "+p.ptidx+" in "+p.hemi+" hemisphere, distance="+p.dist+", voxel=["+vec.x+","+vec.y+","+vec.z+"]");
             if (p.hemi==="left")
                 hem = this.viewer.meshes.left.geometry ;
             if (p.hemi==="right")
@@ -166,19 +167,19 @@ FacePick.prototype = {
 
             space = $(this.viewer.object).find(".radio:checked").val();
             if (space==="magnet") {
-                coordarray = hem.attributes.position ;
+                mnix = vec.x ;
+                mniy = vec.y ;
+                mniz = vec.z ;
                 $(this.viewer.object).find("#coordsys_mag").prop('checked',true) ;
             }
             else { //mni or undefined
                 coordarray = hem.attributes.mnicoords ;
+                mniidx = (p.ptidx)*coordarray.itemSize  ;
+                mnix = coordarray.array[mniidx] ;
+                mniy = coordarray.array[mniidx+1] ;
+                mniz = coordarray.array[mniidx+2] ;
                 $(this.viewer.object).find("#coordsys_mni").prop('checked',true) ;
             }
-
-            mniidx = (p.ptidx)*coordarray.itemSize  ;
-
-            mnix = coordarray.array[mniidx] ;
-            mniy = coordarray.array[mniidx+1] ;
-            mniz = coordarray.array[mniidx+2] ;
 
             this.addMarker(p.hemi, p.ptidx, keep);
             $(this.viewer.object).find("#mnibox").show() ;

@@ -1116,17 +1116,24 @@ var mriview = (function(module) {
                 if (space==="magnet") {
                     coordarray = h.attributes.position ;
                     $(this.object).find("#coordsys_mag").prop('checked',true) ;
+                    mniidx = (ptidx)*coordarray.itemSize  ;
+                    px = coordarray.array[mniidx] ;
+                    py = coordarray.array[mniidx+1] ;
+                    pz = coordarray.array[mniidx+2] ;
+                    var coord = new THREE.Vector3(px, py, pz);
+                    var vec = this.uniforms.volxfm.value[0].multiplyVector3(coord);
+                    mnix = vec.x ;
+                    mniy = vec.y ;
+                    mniz = vec.z ;
                 }
                 else { //mni or undefined
                     coordarray = h.attributes.mnicoords ;
                     $(this.object).find("#coordsys_mni").prop('checked',true) ;
+                    mniidx = (ptidx)*coordarray.itemSize  ;
+                    mnix = coordarray.array[mniidx] ;
+                    mniy = coordarray.array[mniidx+1] ;
+                    mniz = coordarray.array[mniidx+2] ;
                 }
-
-                mniidx = (ptidx)*coordarray.itemSize  ;
-
-                mnix = coordarray.array[mniidx] ;
-                mniy = coordarray.array[mniidx+1] ;
-                mniz = coordarray.array[mniidx+2] ;
 
                 $(this.object).find("#mniX").val(mnix.toFixed(2)) ;
                 $(this.object).find("#mniY").val(mniy.toFixed(2)) ;
