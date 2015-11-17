@@ -61,7 +61,6 @@ class BrainCTM(object):
                     fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
                     flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
                     hemi.aux[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
-                    hemi.mni[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
 
         #Find the flatmap limits
         if fleft is not None:
