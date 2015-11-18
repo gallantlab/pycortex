@@ -154,7 +154,7 @@ def flat_border(outfile, subject):
     
     np.savez(outfile, lines=lines, ismwalls=ismwalls)
 
-def mni_nl(outfile, subject, do=True, standardfile='', projection="lanczos"):
+def mni_nl(si_outfile, subject, do=True, standardfile='', projection="lanczos"):
     """Create an automatic alignment of an anatomical image to the MNI standard.
 
     This function does the following:
@@ -324,6 +324,6 @@ def mni_nl(outfile, subject, do=True, standardfile='', projection="lanczos"):
         right = mni_coords[nverts_L:]
         #print len(left), len(right)
 
-        print('Saving MNI coordinates as a surfinfo ({outfile})...'.format(outfile=outfile))
-        np.savez(outfile,leftpts=left,rightpts=right)
+        print('Saving MNI coordinates as a surfinfo ({si_outfile})...'.format(si_outfile=si_outfile))
+        np.savez(si_outfile,leftpts=left,rightpts=right)
 
