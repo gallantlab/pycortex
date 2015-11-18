@@ -7,11 +7,14 @@ function FacePick(viewer, left, right) {
             return Math.sqrt((a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]));
         }
         kdt = new kdTree([], dist, [0, 1, 2]);
+        mni_kdt = new kdTree([], dist, [0, 1, 2]);
         kdt.root = e.data.kdt;
+        mni_kdt.root = e.data.mnikdt;
         this[e.data.name] = kdt;
+        this['mni_' + e.data.name] = mni_kdt;
     }.bind(this));
-    worker.postMessage({pos:left, name:"lkdt"});
-    worker.postMessage({pos:right, name:"rkdt"});
+    worker.postMessage({pos:left, name:"lkdt", mni:this.viewer.meshes.left.geometry.attributes.mnicoords.array});
+    worker.postMessage({pos:right, name:"rkdt", mni:this.viewer.meshes.right.geometry.attributes.mnicoords.array});
 
     this.axes = [];
 
@@ -157,7 +160,34 @@ FacePick.prototype = {
         if (p) {
             var vec = this.viewer.uniforms.volxfm.value[0].multiplyVector3(p.pos.clone());
             console.log("Picked vertex "+p.ptidx+" in "+p.hemi+" hemisphere, distance="+p.dist+", voxel=["+vec.x+","+vec.y+","+vec.z+"]");
+            if (p.hemi==="left")
+                hem = this.viewer.meshes.left.geometry ;
+            if (p.hemi==="right")
+                hem = this.viewer.meshes.right.geometry ;
+
+            space = $(this.viewer.object).find(".radio:checked").val();
+            if (space==="magnet") {
+                mnix = vec.x ;
+                mniy = vec.y ;
+                mniz = vec.z ;
+                $(this.viewer.object).find("#coordsys_mag").prop('checked',true) ;
+            }
+            else { //mni or undefined
+                coordarray = hem.attributes.mnicoords ;
+                mniidx = (p.ptidx)*coordarray.itemSize  ;
+                mnix = coordarray.array[mniidx] ;
+                mniy = coordarray.array[mniidx+1] ;
+                mniz = coordarray.array[mniidx+2] ;
+                $(this.viewer.object).find("#coordsys_mni").prop('checked',true) ;
+            }
+
             this.addMarker(p.hemi, p.ptidx, keep);
+            $(this.viewer.object).find("#mnibox").show() ;
+            $(this.viewer.object).find("#mniX").val(mnix.toFixed(2)) ;
+            $(this.viewer.object).find("#mniY").val(mniy.toFixed(2)) ;
+            $(this.viewer.object).find("#mniZ").val(mniz.toFixed(2)) ;
+            $(this.viewer.object).find("#ptidx").val(p.ptidx) ;
+            $(this.viewer.object).find("#pthem").val(p.hemi) ;
             this.viewer.figure.notify("pick", this, [vec]);
             if (this.callback !== undefined)
                 this.callback(vec, p.hemi, p.ptidx);
@@ -166,6 +196,7 @@ FacePick.prototype = {
                 this.axes[i].obj.parent.remove(this.axes[i].obj);
             }
             this.axes = [];
+            $(this.viewer.object).find("#mnibox").hide() ;
             this.viewer.schedule();
         }
     },

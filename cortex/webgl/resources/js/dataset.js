@@ -247,7 +247,7 @@ var dataset = (function(module) {
                     volxfm: { type:'m4', value: new THREE.Matrix4() },
                     data:   { type: 't', value: 0, texture: null },
                 },
-                attributes: { flatpos: true, wm:true, auxdat:true, },
+                attributes: { flatpos: true, wm:true, auxdat:true, mnicoords:true},
             }),
             targets = {
                 left: new THREE.WebGLRenderTarget(res, res, {
@@ -262,7 +262,7 @@ var dataset = (function(module) {
                 }),
             }
         var hemi, geom, target, mesh, name, attr;
-        var names = ["position", "wm", "auxdat", "index"];
+        var names = ["position", "wm", "auxdat", "index", "mnicoords"];
         var limits = {top:-1000, bottom:1000};
         var xfm = shader.uniforms.volxfm.value;
         xfm.set.apply(xfm, this.xfm);

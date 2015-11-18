@@ -1103,6 +1103,68 @@ var mriview = (function(module) {
             }.bind(this));            
         }
 
+        $(this.object).find(".radio").change(function() { //the .radio class is specifically for coord space selection, not all radio buttons
+            space = $(this.object).find(".radio:checked").val();
+            ptidx = $(this.object).find("#ptidx").val();
+            pthem = $(this.object).find("#pthem").val();
+            if (pthem==="left")
+                h = this.meshes.left.geometry ;
+            else if (pthem==="right")
+                h = this.meshes.right.geometry ;
+
+            if (typeof h !== 'undefined') {
+                if (space==="magnet") {
+                    coordarray = h.attributes.position ;
+                    $(this.object).find("#coordsys_mag").prop('checked',true) ;
+                    mniidx = (ptidx)*coordarray.itemSize  ;
+                    px = coordarray.array[mniidx] ;
+                    py = coordarray.array[mniidx+1] ;
+                    pz = coordarray.array[mniidx+2] ;
+                    var coord = new THREE.Vector3(px, py, pz);
+                    var vec = this.uniforms.volxfm.value[0].multiplyVector3(coord);
+                    mnix = vec.x ;
+                    mniy = vec.y ;
+                    mniz = vec.z ;
+                }
+                else { //mni or undefined
+                    coordarray = h.attributes.mnicoords ;
+                    $(this.object).find("#coordsys_mni").prop('checked',true) ;
+                    mniidx = (ptidx)*coordarray.itemSize  ;
+                    mnix = coordarray.array[mniidx] ;
+                    mniy = coordarray.array[mniidx+1] ;
+                    mniz = coordarray.array[mniidx+2] ;
+                }
+
+                $(this.object).find("#mniX").val(mnix.toFixed(2)) ;
+                $(this.object).find("#mniY").val(mniy.toFixed(2)) ;
+                $(this.object).find("#mniZ").val(mniz.toFixed(2)) ;
+            }
+        }.bind(this));
+
+        $(this.object).find("#mniform").submit(function() {
+                x = $(this.object).find("#mniX").val();
+                y = $(this.object).find("#mniY").val();
+                z = $(this.object).find("#mniZ").val();
+                space = $(this.object).find(".radio:checked").val();
+                if (space==="magnet") {
+                    var left = this.picker.lkdt.nearest([x, y, z], 1)[0];
+                    var right = this.picker.rkdt.nearest([x, y, z], 1)[0];
+                }
+                else { //mni or undefined
+                    var left = this.picker.mni_lkdt.nearest([x, y, z], 1)[0];
+                    var right = this.picker.mni_rkdt.nearest([x, y, z], 1)[0];
+                }
+                
+                if (left[1] < right[1]) {
+                    this.picker.addMarker("left", left[0][3], false);
+                }
+                else {
+                    this.picker.addMarker("right", right[0][3], false);
+                }
+                return(0); //do not reload page
+        }.bind(this));
+
+
         // Setup controls for multiple overlays
         var updateOverlays = function() {
             this.roipack.update(this.renderer).done(function(tex){
