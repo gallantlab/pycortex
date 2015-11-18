@@ -378,13 +378,13 @@ def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pix
     for cc in to_cut:
         if cc in kwargs: 
             _ = kwargs.pop(cc)
-    make_png(fp,braindata,**kwargs) #recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth, **kwargs)
+    make_png(fp,braindata,with_rois=False,**kwargs) #recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth, **kwargs)
     #cmapdict = _has_cmap(data)
     #kwargs.update(cmapdict)
     #imsave(fp, im, **kwargs)
-    pngdata = fp.getvalue()
-    #fp.seek(0)
-    #pngdata = binascii.b2a_base64(fp.read())
+    #pngdata = fp.getvalue()
+    fp.seek(0)
+    pngdata = binascii.b2a_base64(fp.read())
     ## Create and save SVG file
     roipack = utils.get_roipack(braindata.subject)
     roipack.get_svg(fname, labels=with_labels, with_ims=[pngdata])
