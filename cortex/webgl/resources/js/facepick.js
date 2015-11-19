@@ -171,6 +171,7 @@ FacePick.prototype = {
                 mniy = vec.y ;
                 mniz = vec.z ;
                 $(this.viewer.object).find("#coordsys_mag").prop('checked',true) ;
+                $(this.viewer.object).find(".units").text("vox");
             }
             else { //mni or undefined
                 coordarray = hem.attributes.mnicoords ;
@@ -179,6 +180,7 @@ FacePick.prototype = {
                 mniy = coordarray.array[mniidx+1] ;
                 mniz = coordarray.array[mniidx+2] ;
                 $(this.viewer.object).find("#coordsys_mni").prop('checked',true) ;
+                $(this.viewer.object).find(".units").text("mm");
             }
 
             this.addMarker(p.hemi, p.ptidx, keep);
@@ -312,6 +314,7 @@ FacePick.prototype = {
     },
 
     addMarker: function(hemi, ptidx, keep) {
+        console.log('add marker: '+hemi+' idx: '+ptidx) ;
         var vert = this._getPos(hemi, ptidx);
         for (var i = 0; i < this.axes.length; i++) {
             if (keep === true) {
