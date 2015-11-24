@@ -36,6 +36,9 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     height : int
         Height of the image to render. Automatically scales the width for the aspect
         of the subject's flatmap
+    depth : float
+        Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
+        boundary, 1 = pial surface)
     with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature : bool, optional
         Display the rois, labels, colorbar, annotated flatmap borders, or cross-hatch dropout?
     cutout : str
@@ -293,6 +296,9 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     height : int
         Height of the image to render. Automatically scales the width for the aspect of
         the subject's flatmap
+    depth : float
+        Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
+        boundary, 1 = pial surface)        
     with_rois, with_labels, with_colorbar, with_borders, with_dropout : bool, optional
         Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?
 
@@ -301,6 +307,8 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     dpi : int
         DPI of the generated image. Only applies to the scaling of matplotlib elements,
         specifically the colormap
+    bgcolor : matplotlib colorspec
+        Color of background of image. `None` gives transparent background.
     linewidth : int, optional
         Width of ROI lines. Defaults to roi options in your local `options.cfg`
     linecolor : tuple of float, optional
@@ -331,30 +339,46 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     fig.clf()
     plt.close(fig)
 
-def make_svg(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024, thick=32, depth=0.5, **kwargs):
-    dataview = dataset.normalize(braindata)
-    if not isinstance(dataview, dataset.Dataview):
-        raise TypeError('Please provide a Dataview, not a Dataset')
-    if dataview.movie:
-        raise ValueError('Cannot flatten movie volumes')
-    ## Create quickflat image array
-    im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth)
-    ## Convert to PNG
+def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pixelwise=True, sampler='nearest', height=1024, thick=32, depth=0.5, 
+    """Save an svg file of the desired flatmap.
+
+    This function creates an SVG file with vector graphic ROIs overlaid on a single png image.
+    Ideally, this function would layer different images (curvature, data, dropout, etc), but 
+    that has been left to implement at a future date if anyone really wants it. 
+
+    Parameters
+    ----------
+    fname : string
+        file name to save
+    braindata : Dataview
+        the data you would like to plot on a flatmap
+    with_labels : bool
+        Whether to display text labels on ROIs
+
+    Other Parameters
+    ----------------
+    kwargs : see make_figure
+        All kwargs are passed to make_png. `with_rois` will be ignored, because by using 
+        this function you are basically saying that you want an editable layer of vector 
+        graphic ROIs on top of your image. `with_cutouts` is not functional yet.
+    """
     try:
         import cStringIO
         fp = cStringIO.StringIO()
     except:
         fp = io.StringIO()
     from matplotlib.pylab import imsave
-    # imsave(fp, im, cmap=dataview.cmap, vmin=dataview.vmin, vmax=dataview.vmax, **kwargs)
-    cmapdict = _has_cmap(dataview)
-    kwargs.update(cmapdict)
-    imsave(fp, im, **kwargs)
+    to_cut = ['with_rois','cutouts']
+    for cc in to_cut:
+        if cc in kwargs: 
+            _ = kwargs.pop(cc)
+    ## Render PNG file & retrieve image data
+    make_png(fp,braindata,with_rois=False,**kwargs) #recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth, **kwargs)
     fp.seek(0)
     pngdata = binascii.b2a_base64(fp.read())
     ## Create and save SVG file
-    roipack = utils.get_roipack(dataview.subject)
-    roipack.get_svg(fname, labels=True, with_ims=[pngdata])
+    roipack = utils.get_roipack(braindata.subject)
+    roipack.get_svg(fname, labels=with_labels, with_ims=[pngdata])
 
 def make(braindata, height=1024, recache=False, **kwargs):
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
@@ -642,7 +666,7 @@ def _has_cmap(dataview):
     instance or is an RGB volume and does not have a cmap.
     Returns a dictionary with cmap information for non RGB volumes"""
 
-    from matplotlib import colors,cm
+    from matplotlib import colors, cm, pyplot as plt
 
     cmapdict = dict()
     if not isinstance(dataview, (dataset.VolumeRGB, dataset.VertexRGB)):
