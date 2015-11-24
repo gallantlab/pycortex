@@ -91,10 +91,10 @@ class BrainCTM(object):
 
     def addMNI(self, **kwargs):
         print('Adding MNI coords...')
-        npz = db.get_surfinfo(self.subject, type='mnicoords', **kwargs)
+        npz = db.get_surfinfo(self.subject, type='mni_nl', **kwargs)
         try:
-            self.left.mni[:,:-1] = npz['left'].T
-            self.right.mni[:,:-1] = npz['right'].T
+            self.left.mni[:,:-1] = npz.left.T
+            self.right.mni[:,:-1] = npz.right.T
         except AttributeError:
             self.left.mni = []
             self.right.mni = []
