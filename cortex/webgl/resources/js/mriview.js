@@ -1103,6 +1103,7 @@ var mriview = (function(module) {
             }.bind(this));            
         }
 
+        //this fires when the radio button for selecting coord systems is changed
         $(this.object).find(".radio").change(function() { //the .radio class is specifically for coord space selection, not all radio buttons
             space = $(this.object).find(".radio:checked").val();
             ptidx = $(this.object).find("#ptidx").val();
@@ -1120,11 +1121,13 @@ var mriview = (function(module) {
                     px = coordarray.array[mniidx] ;
                     py = coordarray.array[mniidx+1] ;
                     pz = coordarray.array[mniidx+2] ;
+                    console.log('mm coords: '+px+', '+py+', '+pz) ;
                     var coord = new THREE.Vector3(px, py, pz);
                     var vec = this.uniforms.volxfm.value[0].multiplyVector3(coord);
                     mnix = vec.x ;
                     mniy = vec.y ;
                     mniz = vec.z ;
+                    $(this.object).find(".units").text("vox");
                 }
                 else { //mni or undefined
                     coordarray = h.attributes.mnicoords ;
@@ -1133,22 +1136,29 @@ var mriview = (function(module) {
                     mnix = coordarray.array[mniidx] ;
                     mniy = coordarray.array[mniidx+1] ;
                     mniz = coordarray.array[mniidx+2] ;
+                    $(this.object).find(".units").text("mm");
                 }
-
                 $(this.object).find("#mniX").val(mnix.toFixed(2)) ;
                 $(this.object).find("#mniY").val(mniy.toFixed(2)) ;
                 $(this.object).find("#mniZ").val(mniz.toFixed(2)) ;
             }
         }.bind(this));
 
+        //this fires when the coordinate entry form is submitted -- it's time to look up the nearest vertex
         $(this.object).find("#mniform").submit(function() {
                 x = $(this.object).find("#mniX").val();
                 y = $(this.object).find("#mniY").val();
                 z = $(this.object).find("#mniZ").val();
                 space = $(this.object).find(".radio:checked").val();
                 if (space==="magnet") {
-                    var left = this.picker.lkdt.nearest([x, y, z], 1)[0];
-                    var right = this.picker.rkdt.nearest([x, y, z], 1)[0];
+                    //do some conversions to eventually get mm coords, which are what's stored in the kdtree
+                    var coord = new THREE.Vector3(x, y, z);
+                    var xfm = this.uniforms.volxfm.value[0] ;
+                    var xfm_inv = new THREE.Matrix4() ;
+                    xfm_inv = xfm_inv.getInverse(xfm);
+                    xfm_inv.multiplyVector3(coord) ;
+                    var left = this.picker.lkdt.nearest([coord.x, coord.y, coord.z], 1)[0];
+                    var right = this.picker.rkdt.nearest([coord.x, coord.y, coord.z], 1)[0];
                 }
                 else { //mni or undefined
                     var left = this.picker.mni_lkdt.nearest([x, y, z], 1)[0];
@@ -1156,11 +1166,45 @@ var mriview = (function(module) {
                 }
                 
                 if (left[1] < right[1]) {
-                    this.picker.addMarker("left", left[0][3], false);
+                    ptidx = left[0][3] ;
+                    h = this.meshes.left.geometry ;
+                    hemi = "left" ;
                 }
                 else {
-                    this.picker.addMarker("right", right[0][3], false);
+                    ptidx = right[0][3] ;
+                    h = this.meshes.right.geometry ;
+                    hemi = "right" ;
                 }
+
+                this.picker.addMarker(hemi, ptidx, false);
+                
+                if (space==="magnet")
+                    coordarray = h.attributes.position ;
+                else //mni or undefined
+                    coordarray = h.attributes.mnicoords ;
+
+                mniidx = (ptidx)*coordarray.itemSize  ;
+                mnix = coordarray.array[mniidx] ;
+                mniy = coordarray.array[mniidx+1] ;
+                mniz = coordarray.array[mniidx+2] ;
+
+                //if we're in MNI space, we can just update the box with the coords. if not though, we need to get vox (not mm) coords...
+                if (space==="magnet") {
+                    var coord2 = new THREE.Vector3(mnix, mniy, mniz);
+                    var vec2 = this.uniforms.volxfm.value[0].multiplyVector3(coord2);
+                    mnix = vec2.x ;
+                    mniy = vec2.y ;
+                    mniz = vec2.z ;
+                }
+
+                //update the hidden fields ptidx and pthem with the picked vertex's info
+                $(this.object).find("#ptidx").val(ptidx) ;
+                $(this.object).find("#pthem").val(hemi) ;
+
+                //update coords
+                $(this.object).find("#mniX").val(mnix.toFixed(2)) ;
+                $(this.object).find("#mniY").val(mniy.toFixed(2)) ;
+                $(this.object).find("#mniZ").val(mniz.toFixed(2)) ;
                 return(0); //do not reload page
         }.bind(this));
 

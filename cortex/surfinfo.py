@@ -214,17 +214,17 @@ def mni_nl(outfile, subject, do=True, standardfile='', projection="lanczos"):
 
         # stem for the reoriented-into-MNI anatomical images (required by FLIRT/FNIRT)
         reorient_anat = 'reorient_anat'
-        outfile = os.path.join(odir, reorient_anat)
-        outfile_ext = outfile + ext
-        ra_betmask = outfile + "_brainmask"
+        tmpfile = os.path.join(odir, reorient_anat)
+        tmpfile_ext = tmpfile + ext
+        ra_betmask = tmpfile + "_brainmask"
 
         # START DOING THINGS
-        reorient_cmd = '{fslpre}fslreorient2std {raw_anat} {outfile}'.format(fslpre=fsl_prefix,raw_anat=raw_anat, outfile=outfile)
+        reorient_cmd = '{fslpre}fslreorient2std {raw_anat} {outfile}'.format(fslpre=fsl_prefix,raw_anat=raw_anat, outfile=tmpfile)
         print('Reorienting anatomicals using fslreorient2std, cmd like: \n%s' % reorient_cmd)
         if do and sp.call(reorient_cmd, shell=True) != 0:
             raise IOError('Error calling fslreorient2std on raw anatomical')
         
-        reorient_cmd = '{fslpre}fslreorient2std {bet_anat} {outfile}_brain'.format(fslpre=fsl_prefix,bet_anat=bet_anat, outfile=outfile)
+        reorient_cmd = '{fslpre}fslreorient2std {bet_anat} {outfile}_brain'.format(fslpre=fsl_prefix,bet_anat=bet_anat, outfile=tmpfile)
         if do and sp.call(reorient_cmd, shell=True) != 0:
             raise IOError('Error calling fslreorient2std on brain-extracted anatomical')
 
@@ -234,7 +234,7 @@ def mni_nl(outfile, subject, do=True, standardfile='', projection="lanczos"):
 
         # initial affine anatomical-to-standard registration using FLIRT. required, as the output xfm is used as a start by FNIRT.
         flirt_cmd = '{fslpre}flirt -in {bet_standard} -ref {outfile}_brain -dof 6 -omat {full_cout}_flirt'
-        flirt_cmd = flirt_cmd.format(fslpre=fsl_prefix, bet_standard=bet_standard, outfile=outfile, full_cout=full_cout)
+        flirt_cmd = flirt_cmd.format(fslpre=fsl_prefix, bet_standard=bet_standard, outfile=tmpfile, full_cout=full_cout)
         print('Running FLIRT to estimate initial affine transform with command:\n%s'%flirt_cmd)
         if do and sp.call(flirt_cmd, shell=True) != 0:
             raise IOError('Error calling FLIRT with command: %s' % flirt_cmd)
@@ -243,7 +243,7 @@ def mni_nl(outfile, subject, do=True, standardfile='', projection="lanczos"):
         # the MNI152 2mm config is used even though we're referencing 1mm, per this FSL list post:
         # https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=FSL;d14e5a9d.1105
         cmd = '{fslpre}fnirt --in={standard} --ref={outfile} --refmask={ra_betmask} --aff={full_cout}_flirt --cout={full_cout}_fnirt --fout={full_cout}_field --iout={full_cout}_iout --config=T1_2_MNI152_2mm'
-        cmd = cmd.format(fslpre=fsl_prefix, outfile=outfile, standard=standard, ra_betmask=ra_betmask, full_cout=full_cout)
+        cmd = cmd.format(fslpre=fsl_prefix, outfile=tmpfile, standard=standard, ra_betmask=ra_betmask, full_cout=full_cout)
         print('Running FNIRT to estimate transform, using the following command... this can take a while:\n%s'%cmd)
         if do and sp.call(cmd, shell=True) != 0:
             raise IOError('Error calling fnirt with cmd: %s'%cmd)
@@ -257,7 +257,7 @@ def mni_nl(outfile, subject, do=True, standardfile='', projection="lanczos"):
         # need to change this line, as the reoriented anatomical is not in the db but in /tmp now
         # re_anat = db.get_anat(subject,reorient_anat)
         # since the reoriented anatomicals aren't stored in the db anymore, db.get_anat() will not work (?)
-        re_anat = nib.load(outfile_ext) # remember, we set outfile to be the full path to the reoriented anat (and outfile_ext to that+.nii.gz)
+        re_anat = nib.load(tmpfile_ext) # remember, we set tmpfile to be the full path to the reoriented anat (and tmpfile_ext to that+.nii.gz)
         reo_xfm = Transform(np.linalg.inv(re_anat.get_affine()),re_anat)
         reo_xfm.save(subject,reo_xfmnm,"coord")
 
@@ -325,5 +325,5 @@ def mni_nl(outfile, subject, do=True, standardfile='', projection="lanczos"):
         #print len(left), len(right)
 
         print('Saving MNI coordinates as a surfinfo ({outfile})...'.format(outfile=outfile))
-        np.savez(outfile,leftpts=left,rightpts=right)
+        np.savez(outfile,left=left.T,right=right.T)
 
