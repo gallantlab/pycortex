@@ -97,6 +97,7 @@ var mriview = (function(module) {
                 curvAlpha:  { type:'f', value:1.},
                 curvScale:  { type:'f', value:2.0},//0.5 TEMP FIX!!
                 curvLim:    { type:'f', value:.2},
+		curvMean:   { type:'f', value:0.5},
                 dataAlpha:  { type:'f', value:1.0},
                 hatchAlpha: { type:'f', value:1.},
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
@@ -1174,6 +1175,10 @@ var mriview = (function(module) {
         }.bind(this)})
         $(this.object).find("#layer_curvlim").slider({ min:0, max:.5, step:.001, value:.2, slide:function(event, ui) {
             this.uniforms.curvLim.value = ui.value;
+            this.schedule();
+        }.bind(this)})
+	$(this.object).find("#layer_curvmean").slider({ min:0, max:1.0, step:.001, value:.5, slide:function(event, ui) {
+            this.uniforms.curvMean.value = ui.value;
             this.schedule();
         }.bind(this)})
         $(this.object).find("#layer_dataalpha").slider({ min:0, max:1, step:.001, value:1.0, slide:function(event, ui) {

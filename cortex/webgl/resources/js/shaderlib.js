@@ -215,6 +215,7 @@ var Shaderlib = (function() {
             "uniform float curvAlpha;",
             "uniform float curvScale;",
             "uniform float curvLim;",
+            "uniform float curvMean;",
             "uniform float hatchAlpha;",
             "uniform vec3 hatchColor;",
 
@@ -243,7 +244,7 @@ var Shaderlib = (function() {
 
         "#ifdef SUBJ_SURF",
                 //Curvature Underlay
-                "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
+                "float curv = clamp(vCurv / curvScale + 0.5, curvLim, 1.-curvLim) - 0.5 + curvMean;",
                 "vec4 cColor = vec4(vec3(curv) * curvAlpha, curvAlpha);",
         "#endif",
 

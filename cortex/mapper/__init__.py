@@ -35,15 +35,15 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
 
     try:
         if not recache and (xfmname == "identity" or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime):
-           return mapcls[type].from_cache(cachefile) 
+           return mapcls[type].from_cache(cachefile)
         raise Exception
     except Exception as e:
         return mapcls[type]._cache(cachefile, subject, xfmname, **kwargs)
 
 def _savecache(filename, left, right, shape):
-    np.savez(filename, 
-            left_data=left.data, 
-            left_indices=left.indices, 
+    np.savez(filename,
+            left_data=left.data,
+            left_indices=left.indices,
             left_indptr=left.indptr,
             left_shape=left.shape,
             right_data=right.data,
@@ -108,13 +108,13 @@ class Mapper(object):
         mapped = []
         for mask in self.masks:
             mapped.append(np.array(mask * volume).T)
-            
+
         if self.idxmap is not None:
             mapped[0] = mapped[0][:, self.idxmap[0]]
             mapped[1] = mapped[1][:, self.idxmap[1]]
 
         return dataset.Vertex(np.hstack(mapped).squeeze(), data.subject)
-        
+
     def backwards(self, verts, fast=True):
         '''Projects vertex data back into volume space
 
@@ -126,7 +126,7 @@ class Mapper(object):
         '''
         left = np.zeros((self.masks[0].shape[0],), dtype=bool)
         right = np.zeros((self.masks[1].shape[0],), dtype=bool)
-        
+
         if len(verts) > 0:
             if isinstance(verts, (list, tuple)) and len(verts) == 2:
                 if len(verts[0]) == len(left):
@@ -171,4 +171,3 @@ class Mapper(object):
 
         _savecache(filename, masks[0], masks[1], xfm.shape)
         return cls(masks[0], masks[1], xfm.shape)
-        

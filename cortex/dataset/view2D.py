@@ -65,8 +65,11 @@ class Dataview2D(Dataview):
         
         d1 = np.clip(norm1(data1), 0, 1)
         d2 = np.clip(1 - norm2(data2), 0, 1)
-        dim1 = np.round(d1 * (cmap.shape[1]-1)).astype(np.uint32)
-        dim2 = np.round(d2 * (cmap.shape[0]-1)).astype(np.uint32)
+        dim1 = np.round(d1 * (cmap.shape[1]-1))
+        # Nans in data seemed to cause weird interaction with conversion to uint32
+        dim1 = np.nan_to_num(dim1).astype(np.uint32) 
+        dim2 = np.round(d2 * (cmap.shape[0]-1))
+        dim2 = np.nan_to_num(dim2).astype(np.uint32)
 
         colored = cmap[dim2.ravel(), dim1.ravel()]
         r, g, b, a = colored.T
@@ -74,6 +77,9 @@ class Dataview2D(Dataview):
         g.shape = dim1.shape
         b.shape = dim1.shape
         a.shape = dim1.shape
+        # Preserve nan values as alpha = 0
+        aidx = np.logical_or(np.isnan(data1),np.isnan(data2))
+        a[aidx] = 0
         return r, g, b, a
 
     @property

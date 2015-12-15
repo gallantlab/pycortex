@@ -69,6 +69,9 @@ var jsplot = (function (module) {
         var h = $(this.object).height();
         this.dispatchEvent({type:'resize', width:w, height:h});
     }
+    module.Figure.prototype.close = function() {
+        window.close();
+    }
     module.Figure.prototype.add = function(axcls) {
         var args = Array.prototype.slice.call(arguments).slice(1);
         args.unshift(this);

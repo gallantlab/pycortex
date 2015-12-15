@@ -226,7 +226,7 @@ class Surface(object):
         lfac = sparse.dia_matrix((D,[0]), (npt,npt)) - factor * (W-V)
         goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
         lfac_solver = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
-        to_smooth = scalars
+        to_smooth = scalars.copy()
         for _ in range(iterations):
             from_smooth = lfac_solver((D * to_smooth)[goodrows])
             to_smooth[goodrows] = from_smooth
@@ -288,7 +288,7 @@ class Surface(object):
         squared Laplace-Beltrami operator is separated into left-hand-side (L2) and
         right-hand-side (Dinv) parts. If we write the L-B operator as the product of
         the stiffness matrix (V-W) and the inverse mass matrix (Dinv), the biharmonic
-        problem is as follows (with `\b` denoting non-boundary vertices)
+        problem is as follows (with `\\b` denoting non-boundary vertices)
 
         .. math::
         
@@ -418,6 +418,31 @@ class Surface(object):
         fe31 = np.cross(fnorms, ppts[:,0] - ppts[:,2])
         return fe12, fe23, fe31
 
+    def approx_geodesic_distance(self, verts, m=0.1):
+        npt = len(self.pts)
+        t = m * self.avg_edge_length ** 2 # time of heat evolution
+
+        if m not in self._rlfac_solvers:
+            B, D, W, V = self.laplace_operator
+            nLC = W - V # negative laplace matrix
+            spD = sparse.dia_matrix((D,[0]), (npt,npt)).tocsr() # lumped mass matrix
+            
+            lfac = spD - t * nLC # backward Euler matrix
+
+            # Exclude rows with zero weight (these break the sparse LU, that finicky fuck)
+            goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
+            self._goodrows = goodrows
+            self._rlfac_solvers[m] = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
+
+        # Solve system to get u, the heat values
+        u0 = np.zeros((npt,)) # initial heat values
+        u0[verts] = 1.0
+        goodu = self._rlfac_solvers[m](u0[self._goodrows])
+        u = np.zeros((npt,))
+        u[self._goodrows] = goodu
+
+        return -4 * t * np.log(u)
+
     def geodesic_distance(self, verts, m=1.0, fem=False):
         """Minimum mesh geodesic distance (in mm) from each vertex in surface to any
         vertex in the collection `verts`.
@@ -454,7 +479,7 @@ class Surface(object):
             vertex in `verts`.
         """
         npt = len(self.pts)
-        if m not in self._rlfac_solvers:
+        if m not in self._rlfac_solvers or m not in self._nLC_solvers:
             B, D, W, V = self.laplace_operator
             nLC = W - V # negative laplace matrix
             if not fem:
