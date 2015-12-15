@@ -161,7 +161,10 @@ class Mapper(object):
         masks = []
         xfm = db.get_xfm(subject, xfmname, xfmtype='coord')
         fid = db.get_surf(subject, 'fiducial', merge=False, nudge=False)
-        flat = db.get_surf(subject, 'flat', merge=False, nudge=False)
+        try:
+            flat = db.get_surf(subject, 'flat', merge=False, nudge=False)
+        except IOError:
+            flat = fid
 
         for (pts, _), (_, polys) in zip(fid, flat):
             masks.append(cls._getmask(xfm(pts), polys, xfm.shape, **kwargs))
