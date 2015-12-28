@@ -11,7 +11,7 @@ def manual(subject, xfmname, reference=None, **kwargs):
 
     <<ADD DETAILS ABOUT TRANSFORMATION MATRIX FORMAT HERE>>
 
-    When the GUI is closed, the transform will be saved into the pycortex database. The GUI requires 
+    When the GUI is closed, the transform will be saved into the pycortex database. The GUI requires
     Mayavi support.
 
     Parameters
@@ -38,47 +38,71 @@ def manual(subject, xfmname, reference=None, **kwargs):
         db.save_xfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', reference=reference)
         print("saved xfm")
 
+    def view_callback(aligner):
+        print('view-only mode! ignoring changes')
+
     # Check whether transform w/ this xfmname already exists
+    view_only_mode = False
     try:
         db.get_xfm(subject, xfmname)
         # Transform exists, make sure that reference is None
         if reference is not None:
             raise ValueError('Refusing to overwrite reference for existing transform %s, use reference=None to load stored reference' % xfmname)
+
+        # if masks have been cached, quit! user must remove them by hand
+        from glob import glob
+        if len(glob(db.get_paths(subject)['masks'].format(xfmname=xfmname, type='*'))):
+            print('Refusing to overwrite existing transform %s because there are cached masks. Delete the masks manually if you want to modify the transform.' % xfmname)
+            checked = False
+            while not checked:
+                resp = raw_input("Do you want to continue in view-only mode? (Y/N) ").lower().strip()
+                if resp in ["y", "yes", "n", "no"]:
+                    checked = True
+                    if resp in ["y", "yes"]:
+                        view_only_mode = True
+                        print("Continuing in view-only mode...")
+                    else:
+                        raise ValueError("Exiting...")
+                else:
+                    print("Didn't get that, please try again..")
     except IOError:
         # Transform does not exist, make sure that reference exists
         if reference is None or not os.path.exists(reference):
             raise ValueError('Reference image file (%s) does not exist' % reference)
 
+
+
+
     m = get_aligner(subject, xfmname, epifile=reference, **kwargs)
-    m.save_callback = save_callback
+    m.save_callback = view_callback if view_only_mode else save_callback
     m.configure_traits()
-    
+
     magnet = m.get_xfm("magnet")
     epi = os.path.abspath(m.epi_file.get_filename())
 
-    checked = False
-    while not checked:
-        resp = raw_input("Save? (Y/N) ").lower().strip()
-        if resp in ["y", "yes", "n", "no"]:
-            checked = True
-            if resp in ["y", "yes"]:
-                print("Saving...")
-                try:
-                    db.save_xfm(subject, xfmname, magnet, xfmtype='magnet', reference=reference)
-                except Exception as e:
-                    print("AN ERROR OCCURRED, THE TRANSFORM WAS NOT SAVED: %s"%e)
-                print("Complete!")
+    if not view_only_mode:
+        checked = False
+        while not checked:
+            resp = raw_input("Save? (Y/N) ").lower().strip()
+            if resp in ["y", "yes", "n", "no"]:
+                checked = True
+                if resp in ["y", "yes"]:
+                    print("Saving...")
+                    try:
+                        db.save_xfm(subject, xfmname, magnet, xfmtype='magnet', reference=reference)
+                    except Exception as e:
+                        print("AN ERROR OCCURRED, THE TRANSFORM WAS NOT SAVED: %s"%e)
+                    print("Complete!")
+                else:
+                    print("Cancelled... %s"%resp)
             else:
-                print("Cancelled... %s"%resp)
-        else:
-            print("Didn't get that, please try again..")
-    
+                print("Didn't get that, please try again..")
     return m
 
 def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed"):
-    """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL. 
+    """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.
 
-    If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting 
+    If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting
     transform called `xfmname` will be automatically stored in the database.
 
     It's good practice to open up this transform afterward in the manual aligner and check how it worked.
@@ -136,9 +160,9 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed"):
             raise IOError('Error calling BBR flirt')
 
         x = np.loadtxt(os.path.join(cache, "out.mat"))
-        # Pass transform as FROM epi TO anat; transform will be inverted 
-        # back to anat-to-epi, standard direction for pycortex internal 
-        # storage by from_fsl 
+        # Pass transform as FROM epi TO anat; transform will be inverted
+        # back to anat-to-epi, standard direction for pycortex internal
+        # storage by from_fsl
         xfm = Transform.from_fsl(x,absreference,raw)
         # Save as pycortex 'coord' transform
         xfm.save(subject,xfmname,'coord')
@@ -172,7 +196,7 @@ def autotweak(subject, xfmname):
     from .database import db
     from .xfm import Transform
     from .options import config
-    
+
     fsl_prefix = config.get("basic", "fsl_prefix")
     schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
 
@@ -193,9 +217,9 @@ def autotweak(subject, xfmname):
             raise IOError('Error calling BBR flirt')
 
         x = np.loadtxt(os.path.join(cache, "out.mat"))
-        # Pass transform as FROM epi TO anat; transform will be inverted 
-        # back to anat-to-epi, standard direction for pycortex internal 
-        # storage by from_fsl 
+        # Pass transform as FROM epi TO anat; transform will be inverted
+        # back to anat-to-epi, standard direction for pycortex internal
+        # storage by from_fsl
         Transform.from_fsl(x, epifile, raw).save(subject, xfmname+"_auto", 'coord')
         print('Saved transform as (%s, %s)'%(subject, xfmname+'_auto'))
     finally:
