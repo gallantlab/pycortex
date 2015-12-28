@@ -77,26 +77,6 @@ def manual(subject, xfmname, reference=None, **kwargs):
     m.save_callback = view_callback if view_only_mode else save_callback
     m.configure_traits()
 
-    magnet = m.get_xfm("magnet")
-    epi = os.path.abspath(m.epi_file.get_filename())
-
-    if not view_only_mode:
-        checked = False
-        while not checked:
-            resp = raw_input("Save? (Y/N) ").lower().strip()
-            if resp in ["y", "yes", "n", "no"]:
-                checked = True
-                if resp in ["y", "yes"]:
-                    print("Saving...")
-                    try:
-                        db.save_xfm(subject, xfmname, magnet, xfmtype='magnet', reference=reference)
-                    except Exception as e:
-                        print("AN ERROR OCCURRED, THE TRANSFORM WAS NOT SAVED: %s"%e)
-                    print("Complete!")
-                else:
-                    print("Cancelled... %s"%resp)
-            else:
-                print("Didn't get that, please try again..")
     return m
 
 def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed"):
