@@ -11,8 +11,25 @@ import numpy as np
 from . import database
 from . import anat
 
-def get_paths(subject, hemi, type="patch"):
-    base = os.path.join(os.environ['SUBJECTS_DIR'], subject)
+def get_paths(subject, hemi, type="patch", sub_dir=None):
+    """Retrive paths for all surfaces for a subject processed by freesurfer
+
+    Parameters
+    ----------
+    subject : string
+        Subject ID
+    hem : string ['lh'|'rh']
+        Left ('lh') or right ('rh') hemisphere
+    type : string ['patch'|'surf'|'curv']
+        Which type of files to return
+    sub_dir : string | None
+        Directory of freesurfer subjects. Defaults to the value for 
+        the environment variable 'SUBJECTS_DIR' (which should be set 
+        by freesurfer)
+    """
+    if sub_dir is None:
+        sub_dir = os.environ['SUBJECTS_DIR']
+    base = os.path.join(sub_dir,subject)
     if type == "patch":
         return os.path.join(base, "surf", hemi+".{name}.patch.3d")
     elif type == "surf":
