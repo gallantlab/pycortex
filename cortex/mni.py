@@ -170,7 +170,7 @@ def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
 
     # Save out relevant things
     affine = nibabel.load(template).get_affine()
-    nibabel.save(nibabel.Nifti1Image(volarray.get_data(), affine), mnispace_func_nii)
+    nibabel.save(nibabel.Nifti1Image(volarray, affine), mnispace_func_nii)
     _save_fsl_xfm(mni_to_func_xfm, np.linalg.inv(func_to_mni))
 
     # Use flirt to resample data to functional space
