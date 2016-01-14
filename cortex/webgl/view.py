@@ -222,7 +222,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             stims[sname] = view.attrs['stim']
 
     package = Package(data)
-    metadata = json.dumps(package.metadata())
+    metadata = package.metadata()
     images = package.images
     subjects = list(package.subjects)
 
@@ -306,7 +306,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             else:
                 dl = []
             print(disp_layers+dl)
-            generated = html.generate(data=metadata,
+            generated = html.generate(data=json.dumps(metadata),
                                       colormaps=colormaps,
                                       default_cmap=cmap,
                                       python_interface=True,
@@ -432,9 +432,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewers.addData")
-            new_meta, new_ims = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
-            metadata.update(new_meta)
-            images.update(new_ims)
+            data = dataset.Dataset(**kwargs)
+            package = Package(data)
+            metadata.update(package.metadata())
+            images.update(package.images)
             return Proxy(metadata)
 
         # Would like this to be here instead of in setState, but did

@@ -29,6 +29,11 @@ var mriview = (function(module) {
     module.MultiView.prototype = Object.create(jsplot.GridFigure.prototype);
     module.MultiView.prototype.constructor = module.MultiView;
     module.MultiView.prototype.addData = function(dataviews) {
+
+        if (dataviews.images !== undefined) {
+            dataviews = dataset.fromJSON(dataviews)
+        }
+        
         var data = {}, subj, view;
         for (var i = 0; i < dataviews.length; i++) {
             view = dataviews[i];
