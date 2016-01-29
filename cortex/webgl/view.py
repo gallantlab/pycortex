@@ -36,7 +36,8 @@ colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
-viewopts = dict(voxlines="false", voxline_color="#FFFFFF", voxline_width='.01' )
+viewopts = dict(voxlines="false", voxline_color="#FFFFFF",
+                voxline_width='.01', title="Brain")
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
                 template="static.html", layout=None, anonymize=False,
@@ -184,7 +185,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     print(disp_layers)
     loader = FallbackLoader(rootdirs)
     tpl = loader.load(templatefile)
-    kwargs.update(viewopts)
+    tpl_args = copy.deepcopy(viewopts)
+    tpl_args.update(kwargs)  # override viewopts with kwargs
     html = tpl.generate(data=json.dumps(metadata),
                         colormaps=colormaps,
                         default_cmap=cmap,
@@ -193,7 +195,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                         subjects=json.dumps(ctms),
                         disp_layers=disp_layers,
                         disp_defaults=_make_disp_defaults(disp_layers),
-                        **kwargs)
+                        **tpl_args)
     desthtml = os.path.join(outpath, "index.html")
     if html_embed:
         htmlembed.embed(html, desthtml, rootdirs)

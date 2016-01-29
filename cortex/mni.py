@@ -187,4 +187,3 @@ def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
                      "-out", funcspace_nii])
 
     return nibabel.load(funcspace_nii)
-    
