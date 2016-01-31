@@ -26,7 +26,7 @@ class Package(object):
         for brain in self.uniques:
             name = brain.name
             self.brains[name] = brain.to_json(simple=True)
-            if isinstance(brain, dataset.Vertex):
+            if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
                 encdata = brain.vertices
             else:
                 encdata = brain.volume
@@ -38,7 +38,7 @@ class Package(object):
                 self.brains[name]['raw'] = False
 
             #VertexData requires reordering, only save normalized version for now
-            if isinstance(brain, dataset.Vertex):
+            if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
                 self.images[name] = [encdata]
             else:
                 self.images[name] = [volume.mosaic(vol, show=False) for vol in encdata]
@@ -65,7 +65,7 @@ class Package(object):
     def reorder(self, subjects):
         indices = dict((k, np.load(os.path.splitext(v)[0]+".npz")) for k, v in subjects.items())
         for brain in self.uniques:
-            if isinstance(brain, dataset.Vertex):
+            if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
                 data = np.array(self.images[brain.name])[0]
                 npyform = cStringIO.StringIO()
                 if self.brains[brain.name]['raw']:

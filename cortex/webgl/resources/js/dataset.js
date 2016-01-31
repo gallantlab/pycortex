@@ -310,12 +310,25 @@ var dataset = (function(module) {
                 var left = data.subarray(0, this.split*(this.raw?4:1));
                 var right = data.subarray(this.split*(this.raw?4:1));
                 //Since the buffer probably got shuffled, we need to map it using indexMap
-                var sleft = new Float32Array(left.length);
-                var sright = new Float32Array(right.length);
+		var sleft = new Float32Array(left.length);
+		var sright = new Float32Array(right.length);
+		
                 var hemis = subjects[this.subject].hemis;
 
                 subjects[this.subject].loaded.done(function() {
                     if (this.raw) {
+			for (var i = 0; i < sleft.length / 4; i++) {
+			    sleft[i * 4] = left[hemis.left.reverseIndexMap[i] * 4] / 255;
+			    sleft[i * 4 + 1] = left[hemis.left.reverseIndexMap[i] * 4 + 1] / 255;
+			    sleft[i * 4 + 2] = left[hemis.left.reverseIndexMap[i] * 4 + 2] / 255;
+			    sleft[i * 4 + 3] = left[hemis.left.reverseIndexMap[i] * 4 + 3] / 255;
+			}
+			for (var i = 0; i < sright.length / 4; i++) {
+			    sright[i * 4] = right[hemis.right.reverseIndexMap[i] * 4] / 255;
+			    sright[i * 4 + 1] = right[hemis.right.reverseIndexMap[i] * 4 + 1] / 255;
+			    sright[i * 4 + 2] = right[hemis.right.reverseIndexMap[i] * 4 + 2] / 255;
+			    sright[i * 4 + 3] = right[hemis.right.reverseIndexMap[i] * 4 + 3] / 255;
+			}
 
                     } else {
                         for (var i = 0; i < sleft.length; i++) {
