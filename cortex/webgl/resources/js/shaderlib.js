@@ -322,6 +322,8 @@ var Shaderlib = (function() {
                 header += "#define CORTSHEET\n";
             if (opts.rois)
                 header += "#define ROI_RENDER\n";
+            if (opts.extratex)
+                header += "#define EXTRATEX\n"
             if (opts.halo) {
                 if (twod)
                     throw "Cannot use 2D colormaps with volume integration"
@@ -378,10 +380,7 @@ var Shaderlib = (function() {
         "#endif",
 
                 //Overlay
-            "#ifdef ROI_RENDER",
                 "vUv = uv;",
-            "#endif",
-
                 // "vDrop = dropout;",
                 "vMedial = auxdat.x;",
                 "vCurv = auxdat.y;",
@@ -404,10 +403,13 @@ var Shaderlib = (function() {
             //"#extension GL_OES_texture_float: enable",
 
             THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
-
+        
+        "varying vec2 vUv;",
         "#ifdef ROI_RENDER",
-            "varying vec2 vUv;",
             "uniform sampler2D overlay;",
+        "#endif",
+        "#ifdef EXTRATEX",
+            "uniform sampler2D extratex;",
         "#endif",
 
             "uniform float thickmix;",
@@ -549,12 +551,18 @@ var Shaderlib = (function() {
             "#ifdef ROI_RENDER",
                 "vec4 rColor = (1. - step(.001, vMedial)) * texture2D(overlay, vUv);",
             "#endif",
+            "#ifdef EXTRATEX",
+                "vec4 tColor = (1. - step(.001, vMedial)) * texture2D(extratex, vUv);",
+            "#endif",
 
                 "gl_FragColor = cColor;",
                 "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
                 // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "#ifdef ROI_RENDER",
                 "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
+            "#endif",
+            "#ifdef EXTRATEX",
+                "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
     "#endif",
@@ -587,6 +595,8 @@ var Shaderlib = (function() {
                 header += "#define CORTSHEET\n";
             if (opts.rois)
                 header += "#define ROI_RENDER\n";
+            if (opts.extratex)
+                header += "#define EXTRATEX\n";
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -648,10 +658,7 @@ var Shaderlib = (function() {
         "#endif",
 
                 //Overlay
-            "#ifdef ROI_RENDER",
                 "vUv = uv;",
-            "#endif",
-
                 // "vDrop = dropout;",
                 "vMedial = auxdat.x;",
                 "vCurv = auxdat.y;",
@@ -675,9 +682,12 @@ var Shaderlib = (function() {
 
             THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
+        "varying vec2 vUv;",
         "#ifdef ROI_RENDER",
-            "varying vec2 vUv;",
             "uniform sampler2D overlay;",
+        "#endif",
+        "#ifdef EXTRATEX",
+            "uniform sampler2D extratex;",
         "#endif",
 
             "uniform float curvAlpha;",
@@ -714,6 +724,9 @@ var Shaderlib = (function() {
             "#ifdef ROI_RENDER",
                 "vec4 rColor = (1. - step(.001, vMedial)) * texture2D(overlay, vUv);",
             "#endif",
+            "#ifdef EXTRATEX",
+                "vec4 tColor = (1. - step(.001, vMedial)) * texture2D(extratex, vUv);",
+            "#endif",
 
             // "#ifndef RGBCOLORS",
             //     "vec4 vColor = texture2D(colormap, vValue);",
@@ -726,6 +739,9 @@ var Shaderlib = (function() {
                 // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "#ifdef ROI_RENDER",
                 "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
+            "#endif",
+            "#ifdef EXTRATEX",
+                "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
             "}"
