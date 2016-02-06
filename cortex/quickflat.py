@@ -193,7 +193,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             dropout_data = utils.get_dropout(dataview.subject, dataview.xfmname,
                                              power=dropout_power)
         
-        hatchim = _make_hatch_image(dropout_data, height, sampler)
+        hatchim = _make_hatch_image(dropout_data, height, sampler, recache=recache)
         if cutout: hatchim[:,:,3]*=co
         dax = fig.add_axes((0,0,1,1))
         dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal",
@@ -201,7 +201,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     if extra_hatch is not None:
         hatch_data, hatch_color = extra_hatch
-        hatchim = _make_hatch_image(hatch_data, height, sampler)
+        hatchim = _make_hatch_image(hatch_data, height, sampler, recache=recache)
         hatchim[:,:,0] = hatch_color[0]
         hatchim[:,:,1] = hatch_color[1]
         hatchim[:,:,2] = hatch_color[2]
@@ -539,8 +539,8 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
 
     return pixmap
 
-def _make_hatch_image(dropout_data, height, sampler):
-    dmap, ee = make(dropout_data, height=height, sampler=sampler)
+def _make_hatch_image(dropout_data, height, sampler, recache=False):
+    dmap, ee = make(dropout_data, height=height, sampler=sampler, recache=recache)
     hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
     hatchspace = 4
     hatchpat = (hx+hy)%(2*hatchspace) < 2
