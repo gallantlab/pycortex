@@ -116,6 +116,7 @@ var mriview = (function(module) {
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
         }.bind(this));
+        this.postsvg = $.Deferred();
         this.cmapload = $.Deferred();
         this.labelshow = true;
         this._pivot = 0;
@@ -267,6 +268,7 @@ var mriview = (function(module) {
                     }.bind(this));
                     this.roipack.update(this.renderer).done(function(tex) {
                         this.uniforms.map.texture = tex; // New texture gotten here.
+                        this.postsvg.resolve();
                         this.schedule();
                     }.bind(this));
                 }.bind(this));
