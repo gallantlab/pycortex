@@ -694,7 +694,7 @@ try:
             print("Shapely error")
             return np.nanmean(pts, 0)
 
-except ImportError:
+except (ImportError, OSError):
     print("Cannot find shapely, using simple label placement")
     def _center_pts(pts):
         return pts.mean(0)
