@@ -69,7 +69,8 @@ def read_stl(str filename):
                 idx[tuple(pt)] = len(idx)
             polys[i, j] = idx[tuple(pt)]
 
-    return np.array(idx.keys()), polys
+    rev_idx = dict([(b,a) for a,b in idx.items()])
+    return np.array([rev_idx[i] for i in range(len(idx))]), polys
 
 @cython.boundscheck(False)
 def read_vtk(str filename):
