@@ -93,6 +93,7 @@ setup(name='pycortex',
                 'resources/js/*.js',
                 'resources/js/ctm/*.js',
                 'resources/css/*.css',
+                'resources/css/images/*',
                 'resources/css/ui-lightness/*.css',
                 'resources/css/ui-lightness/images/*',
                 'resources/images/*'
