@@ -58,6 +58,7 @@ var mriview = (function(module) {
                 curvAlpha:  { type:'f', value:1.},
                 curvScale:  { type:'f', value:.5},
                 curvLim:    { type:'f', value:.2},
+                extratex:   { type:'t', value:null},
 
                 // screen:     { type:'t', value:this.volumebuf},
                 // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
@@ -197,6 +198,8 @@ var mriview = (function(module) {
                 this.svg.loaded.done(function() { 
                     this.ui.addFolder("Overlays", true, this.svg.ui);
                 }.bind(this));
+            } else if (json.extratex !== undefined) { //extratex
+                this.uniforms.extratex.value = THREE.ImageUtils.loadTexture(json.extratex);
             } else {
                 this.loaded.resolve();
             }
@@ -262,6 +265,7 @@ var mriview = (function(module) {
                 morphs:this.names.length, 
                 volume:this.volume, 
                 rois:  this.svg instanceof svgoverlay.SVGOverlay,
+                extratex: this.uniforms.extratex.value !== null,
                 halo: false,
             });
             this.shaders[dataview.uuid] = shaders[0];
