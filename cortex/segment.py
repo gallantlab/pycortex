@@ -94,7 +94,7 @@ def fix_pia(subject):
 
     freesurfer.import_subj(subject)
 
-def cut_surface(subject, hemi, name='flatten', data=None):
+def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None, freesurfer_subject_dir=None):
     """Initializes an interface to cut the segmented surface for flatmapping.
     This function creates or opens a blend file in your filestore which allows
     surfaces to be cut along hand-defined seams. Blender will automatically 
@@ -107,33 +107,41 @@ def cut_surface(subject, hemi, name='flatten', data=None):
 
     Parameters
     ----------
-    subject : str
-        Name of the subject to edit
+    cx_subject : str
+        Name of the subject to edit (pycortex subject ID)
     hemi : str
         Which hemisphere to flatten. Should be "lh" or "rh"
     name : str, optional
         String name of the current flatten attempt. Defaults to "flatten"
     data : Dataview
         A data view object to display on the surface as a cutting guide.
+    fs_subject : str
+        Name of Freesurfer subject (if different from pycortex subject)
+        None defaults to `cx_subject`
+    freesurfer_subject_dir : str
+        Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR 
+        environment varible
     """
+    if fs_subject is None:
+        fs_subject = cx_subject
     opts = "[hemi=%s,name=%s]"%(hemi, name)
-    fname = db.get_paths(subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
+    fname = db.get_paths(cx_subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
 
     if not os.path.exists(fname):
-        blender.fs_cut(fname, subject, hemi)
+        blender.fs_cut(fname, fs_subject, hemi, freesurfer_subject_dir)
 
     if data is not None:
         blender.add_cutdata(fname, data, name=data.description)
 
     sp.call(shlex.split("blender %s"%fname))
-    patchpath = freesurfer.get_paths(subject, hemi).format(name=name)
+    patchpath = freesurfer.get_paths(fs_subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=name)
     blender.write_patch(fname, patchpath)
     
-    freesurfer.flatten(subject, hemi, patch=name)
+    freesurfer.flatten(fs_subject, hemi, patch=name, freesurfer_subject_dir=freesurfer_subject_dir)
     
-    other = freesurfer.get_paths(subject, "lh" if hemi == "rh" else "rh").format(name=name+".flat")
+    other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh").format(name=name+".flat")
     if os.path.exists(other):
-        freesurfer.import_flat(subject, name)
+        freesurfer.import_flat(fs_subject, name)
 
 def _cycle_surf(subject, surf):
     status = mp.Value('b', 1)

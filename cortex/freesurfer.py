@@ -11,7 +11,7 @@ import numpy as np
 from . import database
 from . import anat
 
-def get_paths(subject, hemi, type="patch", sub_dir=None):
+def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
     """Retrive paths for all surfaces for a subject processed by freesurfer
 
     Parameters
@@ -22,14 +22,14 @@ def get_paths(subject, hemi, type="patch", sub_dir=None):
         Left ('lh') or right ('rh') hemisphere
     type : string ['patch'|'surf'|'curv']
         Which type of files to return
-    sub_dir : string | None
+    freesurfer_subject_dir : string | None
         Directory of freesurfer subjects. Defaults to the value for 
         the environment variable 'SUBJECTS_DIR' (which should be set 
         by freesurfer)
     """
-    if sub_dir is None:
-        sub_dir = os.environ['SUBJECTS_DIR']
-    base = os.path.join(sub_dir,subject)
+    if freesurfer_subject_dir is None:
+        freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
+    base = os.path.join(freesurfer_subject_dir,subject)
     if type == "patch":
         return os.path.join(base, "surf", hemi+".{name}.patch.3d")
     elif type == "surf":
@@ -61,17 +61,25 @@ def autorecon(subject, type="all"):
     cmd = "recon-all -s {subj} -{cmd}".format(subj=subject, cmd=types[str(type)])
     sp.check_call(shlex.split(cmd))
 
-def flatten(subject, hemi, patch):
+def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
     resp = raw_input('Flattening takes approximately 2 hours! Continue? ')
     if resp.lower() in ('y', 'yes'):
-        inpath = get_paths(subject, hemi).format(name=patch)
-        outpath = get_paths(subject, hemi).format(name=patch+".flat")
+        inpath = get_paths(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch)
+        outpath = get_paths(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch+".flat")
         cmd = "mris_flatten -O fiducial {inpath} {outpath}".format(inpath=inpath, outpath=outpath)
         sp.check_call(shlex.split(cmd))
     else:
         print("Not going to flatten...")
 
-def import_subj(subject, sname=None):
+def import_subj(subject, sname=None, freesurfer_subject_dir=None):
+    """
+    Parameters
+    ----------
+    subject : string
+        Freesurfer subject name
+    sname : string
+        Pycortex subject name (These variable names should be changed)
+    """
     if sname is None:
         sname = subject
     database.db.make_subj(sname)
@@ -80,8 +88,10 @@ def import_subj(subject, sname=None):
     surfs = os.path.join(database.default_filestore, sname, "surfaces", "{name}_{hemi}.gii")
     anats = os.path.join(database.default_filestore, sname, "anatomicals", "{name}.nii.gz")
     surfinfo = os.path.join(database.default_filestore, sname, "surface-info", "{name}.npz")
-    fspath = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'mri')
-    curvs = os.path.join(os.environ['SUBJECTS_DIR'], subject, 'surf', '{hemi}.{name}')
+    if freesurfer_subject_dir is None:
+        freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
+    fspath = os.path.join(freesurfer_subject_dir, subject, 'mri')
+    curvs = os.path.join(freesurfer_subject_dir, subject, 'surf', '{hemi}.{name}')
 
     #import anatomicals
     for fsname, name in dict(T1="raw", aseg="aseg").items():
@@ -101,7 +111,7 @@ def import_subj(subject, sname=None):
     #import surfaces
     for fsname, name in [('smoothwm',"wm"), ('pial',"pia"), ('inflated',"inflated")]:
         for hemi in ("lh", "rh"):
-            pts, polys, _ = get_surf(subject, hemi, fsname)
+            pts, polys, _ = get_surf(subject, hemi, fsname, freesurfer_subject_dir=freesurfer_subject_dir)
             fname = surfs.format(subj=sname, name=name, hemi=hemi)
             formats.write_gii(fname, pts=pts + surfmove, polys=polys)
 
@@ -110,14 +120,14 @@ def import_subj(subject, sname=None):
         lh, rh = [parse_curv(curvs.format(hemi=hemi, name=curv)) for hemi in ['lh', 'rh']]
         np.savez(surfinfo.format(subj=sname, name=info), left=-lh, right=-rh)
 
-def import_flat(subject, patch, sname=None):
+def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     if sname is None:
         sname = subject
     surfs = os.path.join(database.default_filestore, sname, "surfaces", "flat_{hemi}.gii")
 
     from . import formats
     for hemi in ['lh', 'rh']:
-        pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat")
+        pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat", freesurfer_subject_dir=freesurfer_subject_dir)
         flat = pts[:,[1, 0, 2]]
         flat[:,1] = -flat[:,1]
         fname = surfs.format(hemi=hemi)
@@ -129,11 +139,11 @@ def import_flat(subject, patch, sname=None):
     shutil.rmtree(cache)
     os.makedirs(cache)
 
-def make_fiducial(subject):
+def make_fiducial(subject, freesurfer_subject_dir=None):
     for hemi in ['lh', 'rh']:
-        spts, polys, _ = get_surf(subject, hemi, "smoothwm")
-        ppts, _, _ = get_surf(subject, hemi, "pial")
-        fname = get_paths(subject, hemi, "surf").format(name="fiducial")
+        spts, polys, _ = get_surf(subject, hemi, "smoothwm", freesurfer_subject_dir=freesurfer_subject_dir)
+        ppts, _, _ = get_surf(subject, hemi, "pial", freesurfer_subject_dir=freesurfer_subject_dir)
+        fname = get_paths(subject, hemi, "surf", freesurfer_subject_dir=freesurfer_subject_dir).format(name="fiducial")
         write_surf(fname, (spts + ppts) / 2, polys)
 
 def parse_surf(filename):
@@ -171,17 +181,17 @@ def parse_patch(filename):
         assert len(data) == nverts
         return data
 
-def get_surf(subject, hemi, type, patch=None):
+def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
     if type == "patch":
         assert patch is not None
-        surf_file = get_paths(subject, hemi, 'surf').format(name='smoothwm')
+        surf_file = get_paths(subject, hemi, 'surf', freesurfer_subject_dir=freesurfer_subject_dir).format(name='smoothwm')
     else:
-        surf_file = get_paths(subject, hemi, 'surf').format(name=type)
+        surf_file = get_paths(subject, hemi, 'surf', freesurfer_subject_dir=freesurfer_subject_dir).format(name=type)
     
     pts, polys = parse_surf(surf_file)
 
     if patch is not None:
-        patch_file = get_paths(subject, hemi, 'patch').format(name=patch)
+        patch_file = get_paths(subject, hemi, 'patch', freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch)
         patch = parse_patch(patch_file)
         verts = patch[patch['vert'] > 0]['vert'] - 1
         edges = -patch[patch['vert'] < 0]['vert'] - 1
@@ -201,23 +211,25 @@ def get_surf(subject, hemi, type, patch=None):
             pts[edges, i] = patch[patch['vert'] < 0][x]
         return pts, polys, idx
 
-    return pts, polys, get_curv(subject, hemi)
+    return pts, polys, get_curv(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir)
 
-def get_curv(subject, hemi, type='wm'):
+def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):
     if type == "wm":
-        curv_file = get_paths(subject, hemi, 'curv').format(name='')
+        curv_file = get_paths(subject, hemi, 'curv', freesurfer_subject_dir=freesurfer_subject_dir).format(name='')
     else:
-        curv_file = get_paths(subject, hemi, 'curv').format(name='.'+type)
+        curv_file = get_paths(subject, hemi, 'curv', freesurfer_subject_dir=freesurfer_subject_dir).format(name='.'+type)
 
     return parse_curv(curv_file)
 
-def show_surf(subject, hemi, type, patch=None, curv=True):
+def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir=None):
+    """Show a surface from a Freesurfer subject directory
+    """
     from mayavi import mlab
     from tvtk.api import tvtk
 
-    pts, polys, idx = get_surf(subject, hemi, type, patch)
+    pts, polys, idx = get_surf(subject, hemi, type, patch, freesurfer_subject_dir=freesurfer_subject_dir)
     if curv:
-        curv = get_curv(subject, hemi)
+        curv = get_curv(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir)
     else:
         curv = idx
     

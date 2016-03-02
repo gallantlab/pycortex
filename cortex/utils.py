@@ -5,6 +5,7 @@ import numpy as np
 from importlib import import_module
 from .database import db
 from .volume import mosaic, unmask, anat2epispace
+from .options import config
 
 class DocLoader(object):
     def __init__(self, func, mod, package):
@@ -434,3 +435,22 @@ def vertex_to_voxel(subject):
     all_verts[pia_closer] = pia_verts[pia_closer]
 
     return all_verts
+
+def get_cmap(name):
+    import matplotlib.pyplot as plt
+    from matplotlib import colors
+    # unknown colormap, test whether it's in pycortex colormaps
+    cmapdir = config.get('webgl', 'colormaps')
+    colormaps = os.listdir(cmapdir)
+    colormaps = sorted([c for c in colormaps if '.png' in c])
+    colormaps = dict((c[:-4], os.path.join(cmapdir, c)) for c in colormaps)
+    if name in colormaps:
+        I = plt.imread(colormaps[name])
+        cmap = colors.ListedColormap(np.squeeze(I))
+        plt.cm.register_cmap(name,cmap)
+    else:
+        try: 
+            cmap = plt.cm.get_cmap(name)
+        except:
+            raise Exception('Unkown color map!')
+    return cmap
