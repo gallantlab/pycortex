@@ -338,7 +338,7 @@ var mriview = (function(module) {
         this.addEventListener("resize", surf._resize);
 
         if (surf.ui !== undefined) {
-            this.ui.addFolder("Surface", false, surf.ui);
+            this.ui.addFolder("surface", true, surf.ui);
         }
 
         this.schedule();
@@ -510,7 +510,7 @@ var mriview = (function(module) {
                 {state:'mix', idx:anim_speed, value:0},
                 {state:'camera.azimuth', idx:anim_speed, value:45},
                 {state:'camera.altitude', idx:anim_speed, value:75},
-                {state:'camera.radius', idx:anim_speed, value:250},
+                {state:'camera.radius', idx:anim_speed, value:400},
             ]);
         }.bind(this);
         var inflate = function() {

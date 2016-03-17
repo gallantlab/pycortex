@@ -309,13 +309,43 @@ function makeAxes(length, color) {
         v(0, -length, 0), v(0, length, 0), 
         v(0, 0, -length), v(0, 0, length)
     );
+    /*
+    camera = viewer.camera;
+    hNear = 2 * Math.tan(camera.fov / 2) * camera.near; // height
+    wNear = hNear * camera.aspect; // width
+    var ntr = new THREE.Vector3( wNear / 2, hNear / 2, -camera.near );
+    */
+    
+    //lineGeo.vertices.push(v(0, 0, 0), v(0, 0, 10))
     var lineMat = new THREE.LineBasicMaterial({ color: color, linewidth: 2});
     var axes = new THREE.Line(lineGeo, lineMat, THREE.LinePieces);
     axes.name = "marker_axes"
 
-    var vox = new THREE.BoxGeometry(1, 1, 1);
-    var voxMat = new THREE.MeshLambertMaterial({color:0xff0000, transparent:true, opacity:0.75});
+    var voxlines = new THREE.Geometry();
+    voxlines.vertices.push(
+	v(0.5, 0.5, 0.5), v(0.5, 0.5, -0.5),
+	v(0.5, 0.5, 0.5), v(0.5, -0.5, 0.5),
+	v(0.5, 0.5, -0.5), v(0.5, -0.5, -0.5),
+	v(0.5, -0.5, -0.5), v(0.5, -0.5, 0.5),
+
+	v(0.5, 0.5, 0.5), v(-0.5, 0.5, 0.5),
+	v(0.5, 0.5, -0.5), v(-0.5, 0.5, -0.5),
+	v(0.5, -0.5, -0.5), v(-0.5, -0.5, -0.5),
+	v(0.5, -0.5, 0.5), v(-0.5, -0.5, 0.5),
+
+	v(-0.5, 0.5, 0.5), v(-0.5, 0.5, -0.5),
+	v(-0.5, 0.5, 0.5), v(-0.5, -0.5, 0.5),
+	v(-0.5, 0.5, -0.5), v(-0.5, -0.5, -0.5),
+	v(-0.5, -0.5, -0.5), v(-0.5, -0.5, 0.5))
+
+    /*var vox = new THREE.BoxGeometry(1, 1, 1);
+    var voxMat = new THREE.MeshLambertMaterial({color:0xffffff, 
+						transparent:false, 
+					        wireframe:true,
+					        wireframeLinewidth:2});
     var voxmesh = new THREE.Mesh(vox, voxMat);
-    voxmesh.name = "marker_voxel";
+    //var voxmesh = new THREE.Mesh(vox, lineMat);
+    voxmesh.name = "marker_voxel";*/
+    var voxmesh = new THREE.Line(voxlines, lineMat, THREE.LinePieces);
     return {axes:axes, vox:voxmesh};
 }

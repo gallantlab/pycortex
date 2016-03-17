@@ -196,7 +196,7 @@ var mriview = (function(module) {
                     this.resize(evt.width, evt.height);
                 }.bind(this.svg));
                 this.svg.loaded.done(function() { 
-                    this.ui.addFolder("Overlays", true, this.svg.ui);
+                    this.ui.addFolder("overlays", true, this.svg.ui);
                 }.bind(this));
             } else if (json.extratex !== undefined) { //extratex
                 this.uniforms.extratex.value = THREE.ImageUtils.loadTexture(json.extratex);
