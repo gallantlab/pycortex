@@ -89,6 +89,17 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
+    def addMNI(self, **kwargs):
+        print('Adding MNI coords...')
+        npz = db.get_surfinfo(self.subject, type='mni_nl', **kwargs)
+        try:
+            self.left.mni[:,:-1] = npz.left.T
+            self.right.mni[:,:-1] = npz.right.T
+        except AttributeError:
+            self.left.mni = []
+            self.right.mni = []
+
+
     def save(self, path, method='mg2', disp_layers=['rois'], extra_disp=None, **kwargs):
         """Save CTM file for static html display. 
 
@@ -177,6 +188,7 @@ class Hemi(object):
         self.flat = None
         self.surfs = {}
         self.aux = np.zeros((len(self.ctm), 4))
+        self.mni = np.zeros((len(self.ctm), 4))
 
     def addSurf(self, pts, name=None, renorm=True):
         '''Scales the in-between surfaces to be same scale as fiducial'''
@@ -199,6 +211,7 @@ class Hemi(object):
 
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')
+        self.ctm.addAttrib(self.mni, 'mnicoords')
         self.ctm.save(**kwargs)
 
         ctm = CTMfile(self.tf.name)
@@ -231,6 +244,7 @@ class DecimatedHemi(Hemi):
         self.aux[idxmap[mwidx], 0] = 1
         self.mask = mask
         self.idxmap = idxmap
+        self.mni = np.zeros((len(self.ctm), 4))
 
     def setFlat(self, pts):
         super(DecimatedHemi, self).setFlat(pts[self.mask])
@@ -244,6 +258,7 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
 
     ctm = BrainCTM(subj, decimate=decimate)
     ctm.addCurvature()
+    ctm.addMNI()
     for name in types:
         ctm.addSurf(name)
 
@@ -275,5 +290,4 @@ def read_pack(ctmfile):
             ctm = CTMfile(tf.name, "r")
             pts, polys, norms = ctm.getMesh()
             meshes.append((pts, polys))
-
     return meshes
