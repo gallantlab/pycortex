@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-
 <svg
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
@@ -25,10 +23,14 @@
      style="display:inline">
   </g>
   <g inkscape:label="rois" inkscape:groupmode="layer"
-     id="roilayer" transform="translate(0,0)"
-     style="display:inline;" clip-path="url(#edgeclip)" />
-  <g inkscape:label="roilabels" inkscape:groupmode="layer"
-     id="roilabels" transform="translate(0,0)"
+     id="rois" transform="translate(0,0)"
      style="display:inline;">
+    <g inkscape:label="shapes" inkscape:groupmode="layer"
+       id="rois_shapes" transform="translate(0,0)"
+       style="display:inline;" clip-path="url(#edgeclip)" />
+    <g inkscape:label="labels" inkscape:groupmode="layer"
+       id="rois_labels" transform="translate(0,0)"
+       style="display:inline;">
+    </g>
   </g>
 </svg>

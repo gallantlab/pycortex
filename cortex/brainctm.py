@@ -40,7 +40,7 @@ class BrainCTM(object):
                 pleft, pright = db.get_surf(subject, "pia")
                 self.left = DecimatedHemi(left[0], left[1], fleft[1], pia=pleft[0])
                 self.right = DecimatedHemi(right[0], right[1], fright[1], pia=pright[0])
-                self.addSurf("wm", name="wm", addtype=False, renorm=False)
+                self.addSurf("wm", addtype=False, renorm=False)
             except IOError:
                 self.left = DecimatedHemi(left[0], left[1], fleft[1])
                 self.right = DecimatedHemi(right[0], right[1], fright[1])
@@ -50,7 +50,7 @@ class BrainCTM(object):
                 wleft, wright = db.get_surf(subject, "wm")
                 self.left = Hemi(pleft[0], left[1])
                 self.right = Hemi(pright[0], right[1])
-                self.addSurf("wm", name="wm", addtype=False, renorm=False)
+                self.addSurf("wm", addtype=False, renorm=False)
             except IOError:
                 self.left = Hemi(left[0], left[1])
                 self.right = Hemi(right[0], right[1])
@@ -58,9 +58,31 @@ class BrainCTM(object):
             if fleft is not None:
                 #set medial wall
                 for hemi, ptpoly in ([self.left, fleft], [self.right, fright]):
-                    fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
-                    flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
-                    hemi.aux[np.array(list(fidpolys - flatpolys)).astype(int), 0] = 1
+                    # fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
+                    # flatpolys = set(tuple(f) for f in polyutils.sort_polys(ptpoly[1]))
+                    # medial_verts = set(np.ravel(list(fidpolys - flatpolys)))
+                    medial_verts = set(hemi.polys.ravel()) - set(ptpoly[1].ravel())
+                    hemi.aux[list(medial_verts), 0] = 1
+
+                    connected = [set() for _ in range(len(ptpoly[0]))]
+                    for p1, p2, p3 in hemi.polys:
+                        if p1 not in medial_verts:
+                            connected[p2].add(p1)
+                            connected[p3].add(p1)
+                        if p2 not in medial_verts:
+                            connected[p1].add(p2)
+                            connected[p3].add(p2)
+                        if p3 not in medial_verts:
+                            connected[p1].add(p3)
+                            connected[p2].add(p3)
+
+                    #move the medial wall vertices out of the flatmap
+                    for vert in medial_verts:
+                        candidates = connected[vert]
+                        if len(candidates) > 0:
+                            ptpoly[0][vert] = ptpoly[0][candidates.pop()]
+                        else:
+                            ptpoly[0][vert] = 0
 
         #Find the flatmap limits
         if fleft is not None:
@@ -75,8 +97,8 @@ class BrainCTM(object):
 
     def addSurf(self, typename, addtype=True, **kwargs):
         left, right = db.get_surf(self.subject, typename, nudge=False, merge=False)
-        self.left.addSurf(left[0], **kwargs)
-        self.right.addSurf(right[0], **kwargs)
+        self.left.addSurf(left[0], typename, **kwargs)
+        self.right.addSurf(right[0], typename, **kwargs)
         if addtype:
             self.types.append(typename)
 
@@ -89,7 +111,7 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
-    def save(self, path, method='mg2', disp_layers=['rois'], extra_disp=None, **kwargs):
+    def save(self, path, method='mg2', **kwargs):
         """Save CTM file for static html display. 
 
         Parameters
@@ -104,6 +126,7 @@ class BrainCTM(object):
         ctmname = path+".ctm"
         svgname = path+".svg"
         jsname = path+".json"
+        mapname = path+".npz"
 
         # Save CTM concatenation
         (lpts, _, _), lbin = self.left.save(method=method, **kwargs)
@@ -136,33 +159,26 @@ class BrainCTM(object):
         else:
             ptmap = inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
+        np.savez(mapname, 
+            index=np.hstack([ptmap[0], ptmap[1]+len(ptmap[0])]), 
+            inverse=np.hstack([inverse[0], inverse[1]+len(inverse[0])]))
+
         # Save the SVG with remapped indices (map 2D flatmap locations to vertices)
         if self.left.flat is not None:
-            # add sulci & display layers
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            roipack = db.get_overlay(self.subject, pts=flatpts, otype=disp_layers)
-            # optionally add extra display layers
-            if not extra_disp is None:
-                esvgfile,elayerlist = extra_disp
-                eroipack = db.get_overlay(self.subject,pts=flatpts, otype='external',
-                    svgfile=esvgfile,layer=elayerlist)
-                roipack = roipack + eroipack
-            layers = roipack.setup_labels()
-            if not isinstance(layers, (tuple, list)):
-                layers = (layers,)
+            svg = db.get_overlay(self.subject, pts=flatpts)
             
             # assign coordinates in left hemisphere negative values
             with open(svgname, "w") as fp:
-                for layer in layers:
-                    for element in layer.findall(".//{http://www.w3.org/2000/svg}text"):
-                        idx = int(element.attrib["data-ptidx"])
-                        if idx < len(inverse[0]):
-                            idx = inverse[0][idx]
-                        else:
-                            idx -= len(inverse[0])
-                            idx = inverse[1][idx] + len(inverse[0])
-                        element.attrib["data-ptidx"] = str(idx)
-                fp.write(roipack.toxml())
+                for element in svg.svg.findall(".//{http://www.w3.org/2000/svg}text"):
+                    idx = int(element.attrib["data-ptidx"])
+                    if idx < len(inverse[0]):
+                        idx = inverse[0][idx]
+                    else:
+                        idx -= len(inverse[0])
+                        idx = inverse[1][idx] + len(inverse[0])
+                    element.attrib["data-ptidx"] = str(idx)
+                fp.write(svg.toxml())
         return ptmap
 
 class Hemi(object):
@@ -178,11 +194,8 @@ class Hemi(object):
         self.surfs = {}
         self.aux = np.zeros((len(self.ctm), 4))
 
-    def addSurf(self, pts, name=None, renorm=True):
+    def addSurf(self, pts, name, renorm=True):
         '''Scales the in-between surfaces to be same scale as fiducial'''
-        if name is None:
-            name = 'morphTarget%d'%len(self.surfs)
-
         if renorm:
             norm = (pts - pts.min(0)) / (pts.max(0) - pts.min(0))
             rnorm = norm * (self.pts.max(0) - self.pts.min(0)) + self.pts.min(0)
@@ -192,6 +205,7 @@ class Hemi(object):
         attrib = np.hstack([rnorm, np.zeros((len(rnorm),1))])
         self.surfs[name] = attrib
         self.ctm.addAttrib(attrib, name)
+        print name
 
     def setFlat(self, pts):
         self.ctm.addUV(pts[:,:2].astype(float), 'uv')
@@ -252,9 +266,7 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
 
     return ctm.save(os.path.splitext(outfile)[0],
                     method=method,
-                    level=level,
-                    disp_layers=disp_layers,
-                    extra_disp=extra_disp)
+                    level=level)
 
 def read_pack(ctmfile):
     fname = os.path.splitext(ctmfile)[0]

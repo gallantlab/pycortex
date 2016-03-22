@@ -6,13 +6,13 @@ self.onmessage = function( event ) {
 
 	for ( var i = 0; i < event.data.offsets.length; i ++ ) {
 
-		var stream = new CTM.Stream( event.data.data, event.data.offsets[ i ] );
+		var stream = new CTM.Stream( event.data.data );
+		stream.offset = event.data.offsets[ i ];
 
-		files[ i ] = new CTM.File( stream );
+		self.postMessage( new CTM.File( stream ) );
 
 	}
-
-	self.postMessage( files );
+	
 	self.close();
 
 }

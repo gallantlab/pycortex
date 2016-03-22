@@ -29,22 +29,20 @@ def get_roipack(*args, **kwargs):
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False,
-                decimate=False, disp_layers=['rois'],extra_disp=None):
+                decimate=False):
     """Creates ctm file for the specified input arguments.
 
     This is a cached file that specifies (1) the surfaces between which
     to interpolate (`types` argument), (2) the `method` to interpolate 
     between surfaces, (3) the display layers to include (rois, sulci, etc)
-    """   
+    """
     lvlstr = ("%dd" if decimate else "%d")%level
     # Generates different cache files for each combination of disp_layers
-    ctmcache = "%s_[{types}]_{method}_{level}_{layers}{extra}.json"%subject
+    ctmcache = "%s_[{types}]_{method}_{level}_v3.json"%subject
     # Mark any ctm file containing extra_disp as unique (will be over-written every time)
     ctmcache = ctmcache.format(types=','.join(types),
                                method=method,
-                               level=lvlstr,
-                               layers=repr(sorted(disp_layers)),
-                               extra='' if extra_disp is None else '_xx')
+                               level=lvlstr)
     ctmfile = os.path.join(db.get_cache(subject), ctmcache)
 
     if os.path.exists(ctmfile) and not recache: # and extra_disp is None:
@@ -58,9 +56,7 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
                                types=types,
                                method=method, 
                                level=level,
-                               decimate=decimate,
-                               disp_layers=disp_layers,
-                               extra_disp=extra_disp)
+                               decimate=decimate)
     return ctmfile
 
 def get_ctmmap(subject, **kwargs):
@@ -183,7 +179,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     if isinstance(dv, dataset.Dataset):
         raise TypeError("Please specify a data view")
 
-    rois = db.get_overlay(dv.subject)
+    svg = db.get_overlay(dv.subject)
     try:
         import cStringIO
         fp = cStringIO.StringIO()
@@ -192,10 +188,10 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
 
     quickflat.make_png(fp, dv, height=1024, with_rois=False, with_labels=False, **kwargs)
     fp.seek(0)
-    rois.add_roi(name, binascii.b2a_base64(fp.read()), add_path)
+    svg.rois.add_shape(name, binascii.b2a_base64(fp.read()), add_path)
     
     if open_inkscape:
-        return sp.call(["inkscape", '-f', rois.svgfile])
+        return sp.call(["inkscape", '-f', svg.svgfile])
 
 def get_roi_verts(subject, roi=None):
     """Return vertices for the given ROIs, or all ROIs if none are given.
@@ -216,7 +212,7 @@ def get_roi_verts(subject, roi=None):
         after left hemisphere vertex numbers.
     """
     # Get ROIpack
-    rois = db.get_overlay(subject)
+    svg = db.get_overlay(subject)
 
     # Get flat surface so we can figure out which verts are in medial wall
     # or in cuts
@@ -225,14 +221,14 @@ def get_roi_verts(subject, roi=None):
     goodpts = np.unique(polys)
 
     if roi is None:
-        roi = rois.names
+        roi = svg.rois.shapes.keys()
 
     roidict = dict()
     if isinstance(roi, str):
         roi = [roi]
 
     for name in roi:
-        roidict[name] = np.intersect1d(rois.get_roi(name), goodpts)
+        roidict[name] = np.intersect1d(svg.rois.get_mask(name), goodpts)
 
     return roidict
 

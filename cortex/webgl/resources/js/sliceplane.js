@@ -32,7 +32,7 @@ var sliceplane = (function(module) {
         this.uniforms.vmin.value = viewer.uniforms.vmin.value;
         this.uniforms.vmax.value = viewer.uniforms.vmax.value;
 
-        this.geometry = new THREE.PlaneGeometry();
+        this.geometry = new THREE.PlaneBufferGeometry();
         this.geometry.dynamic = true;
         this._makeShader(viewer.active);
         this.mesh = new THREE.Mesh(this.geometry, this.shader);

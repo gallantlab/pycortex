@@ -41,7 +41,7 @@ viewopts = dict(voxlines="false", voxline_color="#FFFFFF",
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
                 template="static.html", layout=None, anonymize=False,
-                disp_layers=['rois'], extra_disp=None, html_embed=True,
+                html_embed=True,
                 copy_ctmfiles=True, **kwargs):
     """Creates a static instance of the webGL MRI viewer that can easily be posted
     or shared.
@@ -65,8 +65,6 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     anonymize : bool, optional
         Whether to rename CTM and SVG files generically, for public distribution.
         Default False
-    disp_layers : list of strings | ['rois']
-        Which layers to include from rois.svg file.
     **kwargs : dict, optional
         All additional keyword arguments are passed to the template renderer.
 
@@ -103,12 +101,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     subjects = list(package.subjects)
 
     ctmargs = dict(method='mg2', level=9, recache=recache)
-    ctms = dict((subj, utils.get_ctmpack(subj,
-                                         types,
-                                         disp_layers=disp_layers,
-                                         extra_disp=extra_disp,
-                                         **ctmargs))
+    ctms = dict((subj, utils.get_ctmpack(subj,types,**ctmargs))
                 for subj in subjects)
+    package.reorder(ctms)
 
     db.auxfile = None
     if layout is None:
@@ -176,13 +171,6 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         ## Load system templates
         templatefile = template
         rootdirs = [serve.cwd]
-    # Add optional extra_layers to disp_layers if provided
-    if not extra_disp is None:
-        svgf,dl = extra_disp
-        if not isinstance(dl,(list,tuple)):
-            dl = [dl]
-        disp_layers+=dl
-    print(disp_layers)
     loader = FallbackLoader(rootdirs)
     tpl = loader.load(templatefile)
     tpl_args = copy.deepcopy(viewopts)
@@ -191,10 +179,10 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                         colormaps=colormaps,
                         default_cmap=cmap,
                         python_interface=False,
+                        leapmotion=True,
                         layout=layout,
                         subjects=json.dumps(ctms),
                         disp_layers=disp_layers,
-                        disp_defaults=_make_disp_defaults(disp_layers),
                         **tpl_args)
     desthtml = os.path.join(outpath, "index.html")
     if html_embed:
@@ -205,15 +193,15 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
-         autoclose=True, open_browser=True, port=None, pickerfun=None,
-         disp_layers=['rois'], extra_disp=None, **kwargs):
+         autoclose=True, open_browser=True, port=None, pickerfun=None, template="mixer.html",
+         **kwargs):
     """Display a dynamic viewer using the given dataset. See cortex.webgl.make_static for help.
     """
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
 
-    html = FallbackLoader([serve.cwd]).load("mixer.html")
+    html = FallbackLoader([serve.cwd]).load(template)
     db.auxfile = data
 
     #Extract the list of stimuli, for special-casing
@@ -229,12 +217,9 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     subjects = list(package.subjects)
 
     kwargs.update(dict(method='mg2', level=9, recache=recache))
-    ctms = dict((subj, utils.get_ctmpack(subj,
-                                         types,
-                                         disp_layers=disp_layers,
-                                         extra_disp=extra_disp,
-                                         **kwargs))
+    ctms = dict((subj, utils.get_ctmpack(subj,types,**kwargs))
                 for subj in subjects)
+    package.reorder(ctms)
 
     subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))
     db.auxfile = None
@@ -278,8 +263,23 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 frame = 0
 
             if dataname in images:
-                self.set_header("Content-Type", "image/png")
-                self.write(images[dataname][int(frame)])
+                dataimg = images[dataname][int(frame)]
+                if dataimg[1:6] == "NUMPY":
+                    self.set_header("Content-Type", "application/octet-stream")
+                else:
+                    self.set_header("Content-Type", "image/png")
+
+                if 'Range' in self.request.headers:
+                    self.set_status(206)
+                    rangestr = self.request.headers['Range'].split('=')[1]
+                    start, end = [ int(i) if len(i) > 0 else None for i in rangestr.split('-') ]
+
+                    clenheader = 'bytes %s-%s/%s' % (start, end or len(dataimg), len(dataimg) )
+                    self.set_header('Content-Range', clenheader)
+                    self.set_header('Content-Length', end-start+1)
+                    self.write(dataimg[start:end+1])
+                else:
+                    self.write(dataimg)
             else:
                 self.set_status(404)
                 self.write_error(404)
@@ -299,23 +299,13 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     class MixerHandler(web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
-
-            # Add optional extra_layers to disp_layers if provided
-            if not extra_disp is None:
-                svgf,dl = extra_disp
-                if not isinstance(dl,(list,tuple)):
-                    dl = [dl]
-            else:
-                dl = []
-            print(disp_layers+dl)
             generated = html.generate(data=metadata,
                                       colormaps=colormaps,
                                       default_cmap=cmap,
                                       python_interface=True,
+                                      leapmotion=True,
                                       layout=layout,
                                       subjects=subjectjs,
-                                      disp_layers=disp_layers+dl,
-                                      disp_defaults=_make_disp_defaults(disp_layers+dl),
                                       **viewopts)
             self.write(generated)
 
@@ -445,7 +435,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         #    Proxy = serve.JSProxy(self.send, "window.viewers.setData")
         #    return Proxy(name)
 
-        def saveIMG(self, filename,size=(None, None)):
+        def getImage(self, filename,size=(1920, 1080)):
             """Saves currently displayed view to a .png image file
 
             Parameters
@@ -456,7 +446,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 size (in pixels) of image to save.
             """
             post_name.put(filename)
-            Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
+            Proxy = serve.JSProxy(self.send, "window.viewer.getImage")
             return Proxy(size[0], size[1], "mixer.html")
 
         def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0,
@@ -510,9 +500,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             state = dict()
             # anim is a list of transitions between keyframes
             anim = []
+            setfunc = self.ui.set
             for f in sorted(animation, key=lambda x:x['idx']):
                 if f['idx'] == 0:
-                    self.setState(f['state'], f['value'])
+                    setfunc(f['state'], f['value'])
                     state[f['state']] = dict(idx=f['idx'], val=f['value'])
                 else:
                     if f['state'] not in state:
@@ -537,10 +528,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
                         val = func(np.array(start['value']), np.array(end['value']), idx)
                         if isinstance(val, np.ndarray):
-                            self.setState(start['state'], val.ravel().tolist())
+                            setfunc(start['state'], val.ravel().tolist())
                         else:
-                            self.setState(start['state'], val)
-                self.saveIMG(filename%(i+offset), size=size)
+                            setfunc(start['state'], val)
+                self.getImage(filename%(i+offset), size=size)
 
         def _get_anim_seq(self,keyframes,fps=30,interpolation='linear'):
             """Convert a list of keyframes to a list of EVERY frame in an animation.
@@ -661,10 +652,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         def get_client(self):
             self.connect.wait()
             self.connect.clear()
-            return JSMixer(self.send, "window.viewers")
+            return JSMixer(self.send, "window.viewer")
 
         def get_local_client(self):
-            return JSMixer(self.srvsend, "window.viewers")
+            return JSMixer(self.srvsend, "window.viewer")
 
     if port is None:
         port = random.randint(1024, 65536)
@@ -686,32 +677,3 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         return client
 
     return server
-
-def _make_disp_defaults(disp_layers):
-    # Useful function for transmitting colors..
-    def rgb_to_hex(rgb):
-        return '#%02x%02x%02x' % rgb
-
-    disp_defaults = dict()
-    for layer in disp_layers:
-        if layer in options.config.sections():
-            dlayer = layer
-        else:
-            # Unknown display layer; default to values for ROIs
-            import warnings
-            warnings.warn('No defaults set for display layer %s; Using defaults for ROIs in options.cfg file'%layer)
-            dlayer = 'rois'
-        disp_defaults[layer] = dict()
-        disp_defaults[layer]["line_width"] = options.config.get(dlayer, "line_width")
-
-        line_color = map(float, options.config.get(dlayer, "line_color").split(","))
-        fill_color = map(float, options.config.get(dlayer, "fill_color").split(","))
-
-        disp_defaults[layer]["line_color"] = rgb_to_hex(tuple(x*255 for x in line_color[:3]))
-        disp_defaults[layer]["fill_color"] = rgb_to_hex(tuple(x*255 for x in fill_color[:3]))
-
-        # Manually extract alpha values from line and fill color option strings
-        disp_defaults[layer]["line_alpha"] = line_color[3]
-        disp_defaults[layer]["fill_alpha"] = fill_color[3]
-
-    return disp_defaults

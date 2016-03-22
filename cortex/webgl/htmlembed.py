@@ -24,8 +24,8 @@ def _embed_css(cssfile, rootdirs):
         cssout = []
         for selector, content in cssparse.findall(css):
             for url in urlparse.findall(content):
-                if not url.strip().startswith('data:'):
-                    imgpath = _resolve_path(os.path.join(csspath, url), rootdirs)
+                if not url.strip("\"'").startswith('data:'):
+                    imgpath = _resolve_path(os.path.join(csspath, url.strip("\"'")), rootdirs)
                     content = re.sub(url, serve.make_base64(imgpath), content)
 
             cssout.append("%s {\n%s\n}"%(selector, content))
@@ -71,8 +71,10 @@ def _embed_worker(worker):
 
 def _embed_images(dom, rootdirs):
     for img in dom.getElementsByTagName("img"):
-        imgfile = _resolve_path(img.getAttribute("src"), rootdirs)
-        img.setAttribute("src", serve.make_base64(imgfile))
+        src = img.getAttribute("src")
+        if not src.strip("\"'").startswith("data:") and len(src) > 0:
+            imgfile = _resolve_path(img.getAttribute("src"), rootdirs)
+            img.setAttribute("src", serve.make_base64(imgfile))
 
 def embed(rawhtml, outfile, rootdirs=(serve.cwd,)):
     parser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))

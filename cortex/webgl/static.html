@@ -1,7 +1,7 @@
 {% autoescape None %}
 {% extends template.html %}
 {% block jsinit %}
-    var viewers, subjects, datasets, figure, sock, viewopts;
+    var viewer, subjects, datasets, figure, sock, viewopts;
 {% end %}
 {% block onload %}
 		viewopts = {
@@ -10,9 +10,14 @@
 			default_2Dcmap: "RdBu_covar",
 		};
 		
-		subjects = {{subjects}};
-		dataviews = dataset.fromJSON({{data}});
+	    subjects = {{subjects}};
+		for (var name in subjects) {
+			subjects[name] = new mriview.Surface(subjects[name]);
+		}
 
 		figure = new jsplot.W2Figure();
-		viewers = figure.add(mriview.MultiView, "main", true, {{ layout[0] }}, {{ layout[1] }}, dataviews);
+		viewer = figure.add(mriview.Viewer, "main", true);
+
+		dataviews = dataset.fromJSON({{data}});
+		viewer.addData(dataviews);
 {% end %}

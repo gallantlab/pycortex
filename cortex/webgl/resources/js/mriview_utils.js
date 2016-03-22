@@ -85,45 +85,206 @@ var mriview = (function(module) {
     }
     multiview_prototype(module.MultiView.prototype, ['getState', 'setState', 'setColormap', 'nextData']);
 
+    var glcanvas = document.createElement("canvas");
+    var glctx = glcanvas.getContext("2d");
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d");
+    ctx.scale(1,-1);
     module.getTexture = function(gl, renderbuf) {
-        var glcanvas = document.createElement("canvas");
         glcanvas.width = renderbuf.width;
         glcanvas.height = renderbuf.height;
-        var glctx = glcanvas.getContext("2d");
         var img = glctx.createImageData(renderbuf.width, renderbuf.height);
         gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
         gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         glctx.putImageData(img, 0, 0);
 
-        //This ridiculousness is necessary to flip the image...
-        var canvas = document.createElement("canvas");
+        // //This ridiculousness is necessary to flip the image...
         canvas.width = renderbuf.width;
         canvas.height = renderbuf.height;
-        var ctx = canvas.getContext("2d");
-        ctx.scale(1,-1);
         ctx.drawImage(glcanvas, 0,-renderbuf.height);
         return canvas;
     }
 
-    module.makeFlat = function(uv, flatlims, flatoff, right) {
-        var fmin = flatlims[0], fmax = flatlims[1];
-        var flat = new Float32Array(uv.length / 2 * 3);
-        var norms = new Float32Array(uv.length / 2 * 3);
-        for (var i = 0, il = uv.length / 2; i < il; i++) {
-            if (right) {
-                flat[i*3+1] = module.flatscale*uv[i*2] + flatoff[1];
-                norms[i*3] = 1;
-            } else {
-                flat[i*3+1] = module.flatscale*-uv[i*2] + flatoff[1];
-                norms[i*3] = -1;
+    module._cull_flatmap_vertices = function(indices, auxdat, offsets) {
+        var culled = new Uint16Array(indices.length), vA, vB, vC;
+        var newOffsets = [];
+        for ( j = 0, jl = offsets.length; j < jl; ++ j ) {
+
+            var start = offsets[ j ].start;
+            var count = offsets[ j ].count;
+            var index = offsets[ j ].index;
+            var nvert = 0;
+
+            for ( i = start, il = start + count; i < il; i += 3 ) {
+                vA = index + indices[ i ];
+                vB = index + indices[ i + 1 ];
+                vC = index + indices[ i + 2 ];
+
+                if (!auxdat[vA*4] && !auxdat[vB*4] && !auxdat[vC*4]) {
+                    culled[start + nvert*3 + 0] = indices[i];
+                    culled[start + nvert*3 + 1] = indices[i+1];
+                    culled[start + nvert*3 + 2] = indices[i+2];
+                    nvert++;
+                }
+
             }
-            flat[i*3+2] = module.flatscale*uv[i*2+1];
-            uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
-            uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
+            newOffsets.push({start:start, index:index, count:nvert*3});
         }
 
-        return {pos:flat, norms:norms};
+        return {indices:culled, offsets:newOffsets};
+    }
+
+    //Returns the world position of a vertex given the mix state
+    module.get_position = function(posdata, surfmix, thickmix, idx) {
+        var positions = posdata.positions;
+        var normals = posdata.normals;
+
+        var pos = new THREE.Vector3(
+            positions[0].array[idx*3+0],
+            positions[0].array[idx*3+1],
+            positions[0].array[idx*3+2]
+        )
+
+        var norm = new THREE.Vector3(
+            normals[0].array[idx*3+0],
+            normals[0].array[idx*3+1],
+            normals[0].array[idx*3+2]
+        )
+
+        if (posdata.wm) {
+            var stride = posdata.wm.itemSize;
+            pos.multiplyScalar(1 - thickmix).add(
+                (new THREE.Vector3(
+                    posdata.wm.array[idx*stride+0],
+                    posdata.wm.array[idx*stride+1],
+                    posdata.wm.array[idx*stride+2]
+                )).multiplyScalar(thickmix)
+            );
+            norm.multiplyScalar(1 - thickmix).add(
+                (new THREE.Vector3(
+                    posdata.wmnorm.array[idx*3+0],
+                    posdata.wmnorm.array[idx*3+1],
+                    posdata.wmnorm.array[idx*3+2]
+                )).multiplyScalar(thickmix)
+            );
+        }
+        var base = pos.clone();
+
+        var mix = surfmix * (positions.length-1);
+        //add the thickness factor
+        if (posdata.wm) {
+            var stride = posdata.wm.itemSize;
+            var dist = Math.pow(positions[0].array[idx*3+0] - posdata.wm.array[idx*stride+0], 2);
+            dist += Math.pow(positions[0].array[idx*3+1] - posdata.wm.array[idx*stride+1], 2);
+            dist += Math.pow(positions[0].array[idx*3+2] - posdata.wm.array[idx*stride+2], 2);
+
+            var offset = Math.max(0, Math.min(1, mix)) * .62 * (1 - thickmix) * Math.sqrt(dist);
+            pos.add(norm.clone().normalize().multiplyScalar(offset));
+        }
+        var factor = Math.max(0, Math.min(1, 1 - mix));
+        pos.multiplyScalar(factor);
+        norm.multiplyScalar(factor);
+        for (var i = 1; i < positions.length; i++) {
+            stride = positions[i].itemSize;
+            factor = Math.max(0, Math.min(1, 1-Math.abs(mix-i) ));
+            pos.add((new THREE.Vector3(
+                positions[i].array[idx*stride+0],
+                positions[i].array[idx*stride+1],
+                positions[i].array[idx*stride+2]
+            )).multiplyScalar(factor));
+            norm.add((new THREE.Vector3(
+                normals[i].array[idx*3+0],
+                normals[i].array[idx*3+1],
+                normals[i].array[idx*3+2]
+            )).multiplyScalar(factor));
+        }
+
+        return {pos:pos, norm:norm, base:base};
+    }
+
+    module.computeNormal = function(vertices, index, offsets) {
+        var i, il;
+        var j, jl;
+
+        var indices = index.array;
+        var positions = vertices.array;
+        var stride = vertices.itemSize;
+        var normals = new Float32Array( vertices.array.length / vertices.itemSize * 3 );
+
+        var vA, vB, vC, x, y, z,
+            pA = new THREE.Vector3(),
+            pB = new THREE.Vector3(),
+            pC = new THREE.Vector3(),
+
+            cb = new THREE.Vector3(),
+            ab = new THREE.Vector3();
+
+        for ( j = 0, jl = offsets.length; j < jl; ++ j ) {
+
+            var start = offsets[ j ].start;
+            var count = offsets[ j ].count;
+            var index = offsets[ j ].index;
+
+            for ( i = start, il = start + count; i < il; i += 3 ) {
+
+                vA = index + indices[ i ];
+                vB = index + indices[ i + 1 ];
+                vC = index + indices[ i + 2 ];
+
+                x = positions[ vA * stride ];
+                y = positions[ vA * stride + 1 ];
+                z = positions[ vA * stride + 2 ];
+                pA.set( x, y, z );
+
+                x = positions[ vB * stride ];
+                y = positions[ vB * stride + 1 ];
+                z = positions[ vB * stride + 2 ];
+                pB.set( x, y, z );
+
+                x = positions[ vC * stride ];
+                y = positions[ vC * stride + 1 ];
+                z = positions[ vC * stride + 2 ];
+                pC.set( x, y, z );
+
+                cb.subVectors( pC, pB );
+                ab.subVectors( pA, pB );
+                cb.cross( ab );
+
+                normals[ vA * 3 ]     += cb.x;
+                normals[ vA * 3 + 1 ] += cb.y;
+                normals[ vA * 3 + 2 ] += cb.z;
+
+                normals[ vB * 3 ]     += cb.x;
+                normals[ vB * 3 + 1 ] += cb.y;
+                normals[ vB * 3 + 2 ] += cb.z;
+
+                normals[ vC * 3 ]     += cb.x;
+                normals[ vC * 3 + 1 ] += cb.y;
+                normals[ vC * 3 + 2 ] += cb.z;
+
+            }
+
+        }
+
+        var x, y, z, n;
+
+        for ( var i = 0, il = normals.length; i < il; i += 3 ) {
+
+            x = normals[ i ];
+            y = normals[ i + 1 ];
+            z = normals[ i + 2 ];
+
+            n = 1.0 / Math.sqrt( x * x + y * y + z * z );
+
+            normals[ i ]     *= n;
+            normals[ i + 1 ] *= n;
+            normals[ i + 2 ] *= n;
+
+        }
+        var attr = new THREE.BufferAttribute(normals, 3);
+        attr.needsUpdate = true;
+        return attr;
     }
 
     //Generates a hatch texture in canvas
@@ -160,27 +321,17 @@ var mriview = (function(module) {
     };
 
     //Still possibly useful? splits the faces into independent vertices
-    module.splitverts = function(geom, left_off) {
+    module.splitverts = function(geom) {
         var o, ol, i, il, j, jl, k, n = 0, stride, mpts, faceidx, attr, idx, pos;
         var npolys = geom.attributes.index.array.length;
+
         var newgeom = new THREE.BufferGeometry();
         for (var name in geom.attributes) {
-            if (name != "index") {
-                attr = geom.attributes[name];
-                newgeom.attributes[name] = {itemSize:attr.itemSize, stride:attr.itemSize};
-                newgeom.attributes[name].array = new Float32Array(npolys*attr.itemSize);
-            }
+            var type = geom.attributes[name].array.constructor;
+            var size = geom.attributes[name].itemSize;
+            newgeom.addAttribute(name, new THREE.BufferAttribute(new type(npolys*size), size));
         }
-        newgeom.attributes.index = {itemSize:1, array:new Uint16Array(npolys), stride:1};
-        newgeom.attributes.face = {itemSize:1, array:new Float32Array(npolys), stride:1};
-        newgeom.attributes.bary = {itemSize:3, array:new Float32Array(npolys*3), stride:3};
-        newgeom.attributes.vert = {itemSize:3, array:new Float32Array(npolys*3), stride:3};
-        newgeom.morphTargets = [];
-        newgeom.morphNormals = [];
-        for (i = 0, il = geom.morphTargets.length; i < il; i++) {
-            newgeom.morphTargets.push({itemSize:3, array:new Float32Array(npolys*3), stride:3});
-            newgeom.morphNormals.push(new Float32Array(npolys*3));
-        }
+
         newgeom.offsets = []
         for (i = 0, il = npolys; i < il; i += 65535) {
             newgeom.offsets.push({start:i, index:i, count:Math.min(65535, il - i)});
@@ -201,32 +352,21 @@ var mriview = (function(module) {
                         if (name != "index") {
                             attr = geom.attributes[name];
                             for (i = 0, il = attr.itemSize; i < il; i++)
-                                newgeom.attributes[name].array[n*il+i] = attr.array[idx*attr.stride+i];
+                                newgeom.attributes[name].array[n*il+i] = attr.array[idx*attr.itemSize+i];
                         }
                     }
 
-                    for (i = 0, il = geom.morphTargets.length; i < il; i++) {
-                        stride = geom.morphTargets[i].stride;
-                        newgeom.morphTargets[i].array[n*3+0] = geom.morphTargets[i].array[idx*stride+0];
-                        newgeom.morphTargets[i].array[n*3+1] = geom.morphTargets[i].array[idx*stride+1];
-                        newgeom.morphTargets[i].array[n*3+2] = geom.morphTargets[i].array[idx*stride+2];
-                        newgeom.morphNormals[i][n*3+0] = geom.morphNormals[i][idx*3+0];
-                        newgeom.morphNormals[i][n*3+1] = geom.morphNormals[i][idx*3+1];
-                        newgeom.morphNormals[i][n*3+2] = geom.morphNormals[i][idx*3+2];
-                    }
+                    // newgeom.attributes.vert.array[n*3+0] = left_off + index + geom.attributes.index.array[j+0];
+                    // newgeom.attributes.vert.array[n*3+1] = left_off + index + geom.attributes.index.array[j+1];
+                    // newgeom.attributes.vert.array[n*3+2] = left_off + index + geom.attributes.index.array[j+2];
+                    // newgeom.attributes.bary.array[n*3+k] = 1;
 
-                    newgeom.attributes.vert.array[n*3+0] = left_off + index + geom.attributes.index.array[j+0];
-                    newgeom.attributes.vert.array[n*3+1] = left_off + index + geom.attributes.index.array[j+1];
-                    newgeom.attributes.vert.array[n*3+2] = left_off + index + geom.attributes.index.array[j+2];
-
-                    newgeom.attributes.face.array[n] = j / 3;
-                    newgeom.attributes.bary.array[n*3+k] = 1;
+                    newgeom.attributes.face.array[n] = Math.floor(j / 3);
                     newgeom.attributes.index.array[n] = n % 65535;
                     n++;
                 }
             }
         }
-        newgeom.computeBoundingBox();
         return newgeom;
     }
 

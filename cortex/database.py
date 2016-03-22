@@ -312,39 +312,30 @@ class Database(object):
             return Vertex(verts, subject)
         return npz
 
-    def get_overlay(self, subject, otype='rois', **kwargs):
-        from . import svgroi
+    def get_overlay(self, subject, **kwargs):
+        from . import svgoverlay
         pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
-        if otype in ["rois", "cutouts", "sulci"] or isinstance(otype, (list,tuple)):
-            # Assumes that all lists or tuples will only consist of "rois","cutouts",and "sulci"...
-            # Prevents combining external files with sulci, e.g. 
-            svgfile = self.get_paths(subject)["rois"]
-            if self.auxfile is not None:
-                try:
-                    tf = self.auxfile.get_overlay(subject, otype) # kwargs??
-                    svgfile = tf.name
-                except (AttributeError, IOError):
-                    # NOTE: This is better error handling, but does not account for
-                    # case in which self.auxfile is None - when is that?? I (ML) think
-                    # it only comes up with new svg layer variants in extra_layers branch...
-                    # svgfile = self.get_paths(subject)["rois"]
-                    # Layer type does not exist or has been temporarily removed
-                    pass                    
-            if 'pts' in kwargs:
-                pts = kwargs['pts']
-                del kwargs['pts']
-            return svgroi.get_roipack(svgfile, pts, polys, layer=otype, **kwargs)
-        if otype == "external":
-            layer = kwargs['layer']
-            del kwargs['layer']
-            svgfile = kwargs["svgfile"]
-            del kwargs["svgfile"]
-            if 'pts' in kwargs:
-                pts = kwargs['pts']
-                del kwargs['pts']
-            return svgroi.get_roipack(svgfile, pts, polys, layer=layer,**kwargs)
 
-        raise TypeError('Invalid overlay type')
+        paths = self.get_paths(subject)
+        if self.auxfile is not None:
+            try:
+                tf = self.auxfile.get_overlay(subject) # kwargs??
+                svgfile = tf.name
+            except (AttributeError, IOError):
+                # NOTE: This is better error handling, but does not account for
+                # case in which self.auxfile is None - when is that?? I (ML) think
+                # it only comes up with new svg layer variants in extra_layers branch...
+                # svgfile = self.get_paths(subject)["rois"]
+                # Layer type does not exist or has been temporarily removed
+                pass
+        if 'pts' in kwargs:
+            pts = kwargs['pts']
+            del kwargs['pts']
+            
+        if os.path.exists(paths['rois']) and not os.path.exists(paths['overlays']):
+            svgoverlay.import_roi(paths['rois'], paths['overlays'])
+
+        return svgoverlay.get_overlay(paths['overlays'], pts, polys, **kwargs)
     
     def save_xfm(self, subject, name, xfm, xfmtype="magnet", reference=None):
         """
@@ -603,6 +594,7 @@ class Database(object):
             surfinfo=os.path.join(self.filestore, subject, "surface-info", '{type}{opts}.npz'),
             masks=os.path.join(self.filestore, subject, 'transforms', '{xfmname}', 'mask_{type}.nii.gz'),
             rois=os.path.join(self.filestore, subject, "rois.svg").format(subj=subject),
+            overlays=os.path.join(self.filestore, subject, "overlays.svg").format(subj=subject),
             views=sorted([os.path.splitext(f)[0] for f in views]),
         )
 
@@ -612,6 +604,8 @@ class Database(object):
         if os.path.exists(os.path.join(self.filestore, subject)):
             if raw_input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
                 shutil.rmtree(os.path.join(self.filestore, subject))
+            else:
+                raise ValueError('Do not overwrite')
 
         for dirname in ['transforms', 'anatomicals', 'cache', 'surfaces', 'surface-info','views']:
             try:

@@ -1,0 +1,87 @@
+{% autoescape None %}
+{% extends demo.html %}
+{% block jsinit %}
+    var viewer, subjects, datasets, figure, sock, viewopts;
+{% end %}
+{% block extrahtml %}
+	<div id="display_cover">
+  	<div id="swipe_right" class="swipe_helper">
+  		<img src="resources/explo_demo/swipe_right.svg" /> 
+  		Twirl left for intro
+  	</div>
+  	<div id="swipe_left" class="swipe_helper">
+  		<img src="resources/explo_demo/swipe_left.svg" /> 
+  		Twirl right <span id="swipe_left_text">to continue</span>
+  	</div>
+    <div id="gestures">
+      <p id="gesture_name">Rotate</p>
+      <img id="gesture_1" />
+      <img id="gesture_2" />
+    </div>
+    <div id="intro_frame">
+    </div>
+  </div>
+  <div id="attribution">
+    <p> Visit this at home at tinyurl.com/pycortex</p>
+    <p> pycortex software by James Gao</p>
+    <p> Introduction by Natalia Bilenko</p>
+    <p> Instruction graphics by Helene Moorman</p>
+    <p> Categories &amp; movement data by Mark Lescroart</p>
+    <p> Decoding by Natalia Bilenko, Valkyrie Savage, &amp; Shinji Nishimoto</p>
+    <p>Funding support from NEI-EY019684 &amp; NSF-0939370 grant awards to Jack Gallant, University of California at Berkeley. </p>
+  </div>
+
+{% end %}
+{% block onload %}
+  try {
+		viewopts = {
+			voxlines: {{voxlines}},
+			voxline_width: {{voxline_width}},
+			default_2Dcmap: "RdBu_covar",
+		};
+		
+	    subjects = {{subjects}};
+		for (var name in subjects) {
+			subjects[name] = new mriview.Surface(subjects[name]);
+		}
+
+		figure = new jsplot.W2Figure();
+		viewer = figure.add(mriview.Viewer, "main", true);
+    var drawer = viewer.drawView.bind(viewer);
+    viewer.drawView = function(scene, idx) {
+      try {
+        drawer(scene, idx);
+      } catch(e) {
+        document.location.reload(true);
+      }
+    }
+    var setData = viewer.setData.bind(viewer);
+    viewer.setData = function(name) {
+      try {
+        setData(name);
+      } catch (e) {
+        document.location.reload(true);
+      }
+    }
+    viewer.addEventListener("stimulus", function(evt) {
+      var video = evt.object.movie;
+      setTimeout(function() {
+        if (video.networkState == video.NETWORK_NO_SOURCE) {
+          document.location.reload(true);
+        }
+      }, 2000);
+    })
+
+		dataviews = dataset.fromJSON({{data}});
+		viewer.addData(dataviews);
+    $("#display_cover").on("click", demo.advance.bind(demo));
+    if (leapcontrol.connected) {
+      demo.setLeap();
+    }
+    viewer.loaded.done(function() {
+      setTimeout(viewer.playpause.bind(viewer), 1000);
+    });
+  } catch (e) {
+    document.location.reload(true);
+  }
+{% end %}

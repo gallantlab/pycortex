@@ -95,19 +95,12 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
                        height=height, thick=thick, depth=depth)
+    svg = db.get_overlay(dataview.subject)
 
     if cutout:
-        roi = db.get_overlay(dataview.subject,
-                             otype='cutouts',
-                             roifill=(0.,0.,0.,0.),
-                             linecolor=(0.,0.,0.,0.),
-                             linewidth=0.)
-
         # Set ONLY desired cutout to be white
-        roi.rois[cutout].set(roifill=(1.,1.,1.,1.),
-                             linewidth=2.,
-                             linecolor=(1.,1.,1.,1.))
-        roitex = roi.get_texture(height, labels=False)
+        svg.cutout.set(fill="white",stroke="white", **{'stroke-width':'2'})
+        roitex = svg.get_texture(height, labels=False)
         roitex.seek(0)
         co = plt.imread(roitex)[:,:,0] # Cutout image
         if not np.any(co):
@@ -210,6 +203,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal",
                    interpolation="nearest", extent=extents, origin='lower')
     
+#<<<<<<< HEAD
     if with_borders:
         border = _gen_flat_border(dataview.subject, im.shape[0])
         bax = fig.add_axes((0,0,1,1))
@@ -236,6 +230,14 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                               labelsize=labelsize,
                               labelcolor=labelcolor)
         overlays.append(sulc)
+
+    #if with_rois or with_sulci:
+    #    svg.rois.visible = with_rois
+    #    if hasattr(svg,'sulci'):
+    #        svg.sulci.visible = with_sulci
+    #    tex = svg.get_texture(height, labels=with_labels)
+    #    tex.seek(0)
+
     if not extra_disp is None:
         svgfile,layer = extra_disp
         if not isinstance(layer,(list,tuple)):
@@ -253,16 +255,18 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     for oo in overlays:
         roitex = oo.get_texture(height, labels=with_labels, size=labelsize)
         roitex.seek(0)
+#=======
+#>>>>>>> glrework
         oax = fig.add_axes((0,0,1,1))
-        roi_im = plt.imread(roitex)
+        im = plt.imread(tex)
         if cutout: 
             # STUPID BUT NECESSARY 1-PIXEL CHECK:
-            if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,roi_im.shape)]):
+            if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,im.shape)]):
                 from scipy.misc import imresize
-                co = imresize(co,roi_im.shape[:2]).astype(np.float32)/255.
-            roi_im[:,:,3]*=co
+                co = imresize(co,im.shape[:2]).astype(np.float32)/255.
+            im[:,:,3]*=co
 
-        oimg = oax.imshow(roi_im[iy[1]:iy[0]:-1,ix[0]:ix[1]],
+        oimg = oax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]],
             aspect='equal', 
             interpolation='bicubic', 
             extent=extents, 
@@ -389,7 +393,7 @@ def make(braindata, height=1024, recache=False, **kwargs):
                                height=height,
                                recache=recache,
                                **kwargs)
-        data = braindata.vertices
+        
         if isinstance(braindata, dataset.Vertex2D):
             data = braindata.raw.vertices
         else:

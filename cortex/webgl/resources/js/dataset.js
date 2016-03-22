@@ -15,6 +15,21 @@ var dataset = (function(module) {
 
     module.brains = {}; //Singleton containing all BrainData objects
 
+    module.fromJSON = function(dataset) {
+        for (var name in dataset.data) {
+            if (dataset.data[name].mosaic === undefined)
+                module.brains[name] = new module.VertexData(dataset.data[name], dataset.images);
+            else
+                module.brains[name] = new module.VolumeData(dataset.data[name], dataset.images);
+        }
+        var dataviews = [];
+        for (var i = 0; i < dataset.views.length; i++) {
+            dataviews.push(new module.DataView(dataset.views[i]));
+        }
+        return dataviews;
+    }
+
+
     module.makeFrom = function(dvx, dvy) {
         //Generate a new DataView given two existing ones
         var json = {};
@@ -31,6 +46,7 @@ var dataset = (function(module) {
     };
 
     module.DataView = function(json) {
+        this.uuid = THREE.Math.generateUUID();
         this.data = [];
         //Do not handle muliviews for now!
         for (var i = 0; i < json.data.length; i++) {
@@ -43,12 +59,10 @@ var dataset = (function(module) {
         }
         this.name = json.name;
         this.description = json.desc;
-
-        //Still no multiviews!
-        this.xfm = json.xfm[0];
-        this.cmap = json.cmap[0];
-        this.vmin = json.vmin[0];
-        this.vmax = json.vmax[0];
+        this.frames = this.data[0].frames;
+        this.length = this.frames / this.rate;
+        this.vertex = this.data[0].mosaic === undefined;
+        this.frame = 0;
 
         this.attrs = json.attrs;
         this.state = json.state;
@@ -59,50 +73,28 @@ var dataset = (function(module) {
         if (json.attrs.stim !== undefined)
             this.stim = "stim/"+json.attrs.stim;
 
-        this.frames = this.data[0].frames
-        this.length = this.frames / this.rate;
-    }
-    module.DataView.prototype.init = function(uniforms, meshes, rois, frames) {
-        if (this.loaded.state() == "pending")
-            $("#dataload").show();
-        frames = frames || 0;
+        this.cmap = [{type:'t', value:colormaps[json.cmap[0]]}];
+        this.vmin = [{type:'fv1', value:json.vmin[0] instanceof Array? json.vmin[0] : [json.vmin[0], 0]}];
+        this.vmax = [{type:'fv1', value:json.vmax[0] instanceof Array? json.vmax[0] : [json.vmax[0],0]}];
 
-        var sampler = module.samplers[this.filter];
-        var shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, uniforms.nsamples.value, rois);
-        this.shader = new THREE.ShaderMaterial({ 
-            vertexShader:"#define SUBJ_SURF\n"+shaders.vertex,
-            fragmentShader:"#define SUBJ_SURF\n"+shaders.fragment,
-            uniforms: uniforms,
-            attributes: { wm:true, auxdat:true },
-            morphTargets:true, 
-            morphNormals:true, 
-            lights:true, 
-            blending:THREE.CustomBlending,
-        });
-        this.shader.map = true;
-        this.shader.metal = true;
-
-        if (uniforms.nsamples.value > 1) {
-            shaders = Shaders.main(sampler, this.data[0].raw, this.data.length > 1, viewopts.voxlines, 1, rois);
-            this.fastshader = new THREE.ShaderMaterial({
-                vertexShader:"#define SUBJ_SURF\n"+shaders.vertex,
-                fragmentShader:"#define SUBJ_SURF\n"+shaders.fragment,
-                uniforms: uniforms,
-                attributes: { wm:true, auxdat:true },
-                morphTargets:true, 
-                morphNormals:true, 
-                lights:true, 
-                blending:THREE.CustomBlending,
-            });
-            this.fastshader.map = true;
-            this.fastshader.metal = true;
-        } else {
-            this.fastshader = null;
+        this.uniforms = {
+            framemix:   { type:'f',   value:0},
+            dataAlpha:  { type:'f', value:1.0},
         }
 
-        meshes.left.material = this.shader;
-        meshes.right.material = this.shader;
+        if (!this.vertex) {
+            //no multiviews yet
+            this.xfm = json.xfm[0];
+            //dataview contains volume data
+            this.uniforms.data   = { type:'tv',  value:[null, null, null, null]};
+            this.uniforms.mosaic = { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]};
+            this.uniforms.dshape = { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]};
+            this.uniforms.volxfm = { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] };
+        }
 
+        this._dispatch = this.dispatchEvent.bind(this);
+
+        //Aggregate all Volume/VertexData deferreds to determine when to resolve
         var allready = [];
         for (var i = 0; i < this.data.length; i++) {
             allready.push(false);
@@ -111,20 +103,14 @@ var dataset = (function(module) {
         var deferred = this.data.length == 1 ? 
             $.when(this.data[0].loaded) : 
             $.when(this.data[0].loaded, this.data[1].loaded);
-        deferred.done(function() {
-            this.loaded.resolve();
+        deferred
+        .progress(function(available) {
             for (var i = 0; i < this.data.length; i++) {
-                this.data[i].init(uniforms, i);
-                this.data[i].setFilter(this.filter);
-                this.data[i].set(uniforms, i, 0);
-            }
-        }.bind(this)).progress(function() {
-            for (var i = 0; i < this.data.length; i++) {
-                if (this.data[i].textures.length > this.delay && !allready[i]) {
-                    this.data[i].setFilter(this.filter);
-                    this.data[i].set(uniforms, i, 0);
+                //TODO: fix this load order
+                if (available > this.delay && !allready[i]) {
                     allready[i] = true;
 
+                    //Resolve this deferred if ALL the BrainData objects are loaded (for multiviews)
                     var test = true;
                     for (var i = 0; i < allready.length; i++)
                         test = test && allready[i];
@@ -132,26 +118,102 @@ var dataset = (function(module) {
                         this.loaded.resolve();
                 }
             }
+        }.bind(this))
+        .done(function() {
+            this.loaded.resolve();
         }.bind(this));
     }
-    module.DataView.prototype.set = function(uniforms, time) {
-        var xfm;
+    THREE.EventDispatcher.prototype.apply(module.DataView.prototype);
+    module.DataView.prototype.setVminmax = function(min, max, dim, idx) {
+        if (dim === undefined)
+            dim = 0;
+
+        if (idx === undefined) {
+            for (var i = 0; i < this.data.length; i++) {
+                this.vmin[i].value[dim] = min;
+                this.vmax[i].value[dim] = max;
+            }
+        } else {
+            this.vmin[idx].value[dim] = min;
+            this.vmax[idx].value[dim] = max;
+        }
+    }
+    module.DataView.prototype.setColormap = function(cmap, idx) {
+        if (idx === undefined) {
+            for (var i = 0; i < this.data.length; i++) {
+                this.cmap[i].value = colormaps[cmap];
+            }
+        } else {
+            this.cmap[idx].value = colormaps[cmap];
+        }
+    }
+
+    module.DataView.prototype.getShader = function(shaderfunc, uniforms, opts) {
+        if (this.loaded.state() == "pending")
+            $("#dataload").show();
+
+        //This only kind of supports multiviews
+        //TODO: hash the multiview as a separate object
+        var shaders = [];
+        for (var i = 0; i < this.data.length; i++) {
+            //Run a shallow merge on the uniform variables
+            var merge = {
+                colormap: this.cmap[i],
+                vmin:     this.vmin[i],
+                vmax:     this.vmax[i]
+            }
+            for (var name in this.uniforms)
+                merge[name] = this.uniforms[name];
+            for (var name in uniforms)
+                merge[name] = uniforms[name];
+
+            opts.sampler = module.samplers[this.filter];
+            opts.rgb = this.data[0].raw;
+            opts.twod = this.data.length > 1;
+            opts.voxline = viewopts.voxlines;
+            var shadecode = shaderfunc(opts);
+            var shader = new THREE.ShaderMaterial({ 
+                vertexShader:shadecode.vertex,
+                fragmentShader:shadecode.fragment,
+                attributes: shadecode.attrs,
+                uniforms: merge,
+                //side:THREE.DoubleSide,
+                lights:true,
+                depthTest:opts.depthTest === undefined ? true : opts.depthTest,
+                depthWrite:opts.depthWrite === undefined ? true : opts.depthWrite,
+                transparent:opts.transparent === undefined ? false : opts.transparent,
+                blending:opts.blending === undefined ? THREE.NormalBlending : opts.blending,
+                lights:opts.lights === undefined ? true : opts.lights,
+            });
+            shaders.push(shader);
+        }
+
+        return shaders;
+    };
+    module.DataView.prototype.set = function() {
+        for (var i = 0; i < this.data.length; i++) {
+            this.data[i].init(this.uniforms, i, this.xfm, this.filter);
+        }
+        this.setFrame(0);
+    };
+    module.DataView.prototype.setFrame = function(time) {
+        this.frame = time;
         var frame = ((time + this.delay) * this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
-        uniforms.framemix.value = frame - fframe;
+        this.uniforms.framemix.value = frame - fframe;
         for (var i = 0; i < this.data.length; i++) {
-            this.data[i].set(uniforms, i, fframe);
-            xfm = uniforms.volxfm.value[i];
-            xfm.set.apply(xfm, this.xfm.length != 16 ? this.xfm[i] : this.xfm);
+            this.data[i].set(this.uniforms, i, fframe, this._dispatch);
         }
-    };
+    }
     module.DataView.prototype.setFilter = function(interp) {
         this.filter = interp;
         for (var i = 0; i < this.data.length; i++)
             this.data[i].setFilter(interp);
-    }
+        //force a shader update for all surfaces using this dataview
+        this.dispatchEvent({type:"update", dataview:this});
+    };
 
-    module.BrainData = function(json, images) {
+    module.VolumeData = function(json, images) {
         this.loaded = $.Deferred();
         this.subject = json.subject;
         this.movie = images[json.name].length > 1;
@@ -160,7 +222,7 @@ var dataset = (function(module) {
         this.max = json.max;
         this.mosaic = json.mosaic;
         this.name = json.name;
-
+        this.shape = json.shape;
         this.data = images[json.name];
         this.frames = images[json.name].length;
 
@@ -202,125 +264,100 @@ var dataset = (function(module) {
 
         loadmosaic(0);
     };
-    module.BrainData.prototype.setFilter = function(interp) {
-        //this.filter = interp;
+    module.VolumeData.prototype.setFilter = function(interp) {
         for (var i = 0, il = this.textures.length; i < il; i++) {
             this.textures[i].minFilter = module.filtertypes[interp];
             this.textures[i].magFilter = module.filtertypes[interp];
             this.textures[i].needsUpdate = true;
         }
     };
-    module.BrainData.prototype.init = function(uniforms, dim) {
+    module.VolumeData.prototype.init = function(uniforms, dim, xfm, filter) {
         uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
         uniforms.dshape.value[dim].set(this.shape[0], this.shape[1]);
+        var volxfm = uniforms.volxfm.value[dim];
+        volxfm.set.apply(volxfm, xfm.length != 16 ? xfm[dim] : xfm);
+        this.setFilter(filter);
     };
-    module.BrainData.prototype.set = function(uniforms, dim, fframe) {
-        if (uniforms.data.texture[dim*2] !== this.textures[fframe]) {
-            uniforms.data.texture[dim*2] = this.textures[fframe];
+
+    module.VolumeData.prototype.set = function(uniforms, dim, fframe) {
+        if (uniforms.data.value[dim*2] !== this.textures[fframe]) {
+            uniforms.data.value[dim*2] = this.textures[fframe];
             if (this.frames > 1) {
-                uniforms.data.texture[dim*2+1] = this.textures[(fframe+1).mod(this.frames)];
+                uniforms.data.value[dim*2+1] = this.textures[(fframe+1).mod(this.frames)];
             } else {
-                uniforms.data.texture[dim*2+1] = null;
+                uniforms.data.value[dim*2+1] = null;
             }
         }
     }
-    module.fromJSON = function(dataset) {
-        for (var name in dataset.data) {
-            module.brains[name] = new module.BrainData(dataset.data[name], dataset.images);
-        }
-        var dataviews = [];
-        for (var i = 0; i < dataset.views.length; i++) {
-            dataviews.push(new module.DataView(dataset.views[i]));
-        }
-        return dataviews
+
+    module.VertexData = function(json, images) {
+        this.loaded = $.Deferred();
+        this.subject = json.subject;
+        this.split = json.split;
+        this.movie = json.frames > 1;
+        this.raw = json.raw;
+        this.min = json.min;
+        this.max = json.max;
+        this.name = json.name;
+
+        this.data = images[json.name];
+        this.frames = json.frames;
+
+        this.verts = [];
+        NParray.fromURL(this.data[0], function(array) {
+            array.loaded.progress(function(available){
+                var data = array.view(available-1).data;
+                var left = data.subarray(0, this.split*(this.raw?4:1));
+                var right = data.subarray(this.split*(this.raw?4:1));
+                //Since the buffer probably got shuffled, we need to map it using indexMap
+		var sleft = new Float32Array(left.length);
+		var sright = new Float32Array(right.length);
+		
+                var hemis = subjects[this.subject].hemis;
+
+                subjects[this.subject].loaded.done(function() {
+                    if (this.raw) {
+			for (var i = 0; i < sleft.length / 4; i++) {
+			    sleft[i * 4] = left[hemis.left.reverseIndexMap[i] * 4] / 255;
+			    sleft[i * 4 + 1] = left[hemis.left.reverseIndexMap[i] * 4 + 1] / 255;
+			    sleft[i * 4 + 2] = left[hemis.left.reverseIndexMap[i] * 4 + 2] / 255;
+			    sleft[i * 4 + 3] = left[hemis.left.reverseIndexMap[i] * 4 + 3] / 255;
+			}
+			for (var i = 0; i < sright.length / 4; i++) {
+			    sright[i * 4] = right[hemis.right.reverseIndexMap[i] * 4] / 255;
+			    sright[i * 4 + 1] = right[hemis.right.reverseIndexMap[i] * 4 + 1] / 255;
+			    sright[i * 4 + 2] = right[hemis.right.reverseIndexMap[i] * 4 + 2] / 255;
+			    sright[i * 4 + 3] = right[hemis.right.reverseIndexMap[i] * 4 + 3] / 255;
+			}
+
+                    } else {
+                        for (var i = 0; i < sleft.length; i++) {
+                            sleft[i] = left[hemis.left.reverseIndexMap[i]];
+                        }
+                        for (var i = 0; i < sright.length; i++) {
+                            sright[i] = right[hemis.right.reverseIndexMap[i]];
+                        }
+                    }
+                    var lattr = new THREE.BufferAttribute(sleft, this.raw?4:1);
+                    var rattr = new THREE.BufferAttribute(sright, this.raw?4:1);
+                    lattr.needsUpdate = true;
+                    rattr.needsUpdate = true;
+                    this.verts.push([lattr, rattr]);
+                    this.loaded.notify(available);
+                }.bind(this));
+            }.bind(this)).done(function(){
+                this.loaded.resolve();
+            }.bind(this))
+        }.bind(this));
     }
-
-    module.render = function(viewer, res) {
-        //Function is not finished yet
-        var scene = new THREE.Scene(), 
-            camera = new THREE.OrthographicCamera(-100, 100, -100, 100, -100, 100),
-            shaders = Shaders.data(),
-            shader = new THREE.ShaderMaterial( {
-                vertexShader: "#define SUBJ_SURF\n"+shaders.vertex,
-                fragmentShader: "#define SUBJ_SURF\n"+shaders.fragment,
-                uniforms: {
-                    volxfm: { type:'m4', value: new THREE.Matrix4() },
-                    data:   { type: 't', value: 0, texture: null },
-                },
-                attributes: { flatpos: true, wm:true, auxdat:true, },
-            }),
-            targets = {
-                left: new THREE.WebGLRenderTarget(res, res, {
-                    minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
-                    stencilBuffer:false,
-                    generateMipmaps:true,
-                }),
-                right: new THREE.WebGLRenderTarget(res, res, {
-                    minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
-                    stencilBuffer:false,
-                    generateMipmaps:true,
-                }),
-            }
-        var hemi, geom, target, mesh, name, attr;
-        var names = ["position", "wm", "auxdat", "index"];
-        var limits = {top:-1000, bottom:1000};
-        var xfm = shader.uniforms.volxfm.value;
-        xfm.set.apply(xfm, this.xfm);
-        scene.add(camera);
-        camera.up.set(0, 0, 1);
-        camera.position.set(0,-100,0);
-        camera.lookAt(scene.position);
-
-        for (hemi in targets) {
-            target = targets[hemi];
-            geom = new THREE.BufferGeometry();
-            for (var i = 0; i < names.length; i++) {
-                name = names[i];
-                attr = viewer.meshes[hemi].geometry.attributes[name];
-                if (attr !== undefined)
-                    geom.attributes[name] = attr;
-            }
-            geom.offsets = viewer.meshes[hemi].geometry.offsets;
-            var mt = viewer.meshes[hemi].geometry.morphTargets;
-            geom.attributes.flatpos = mt[mt.length-1];
-
-            var min = [1000, 1000, 1000], max=[0,0,0];
-            for (var i = 0, il = geom.attributes.flatpos.array.length; i < il; i+=3) {
-                for (var j = 0; j < 3; j++) {
-                    min[j] = Math.min(min[j], geom.attributes.flatpos.array[i+j]);
-                    max[j] = Math.max(max[j], geom.attributes.flatpos.array[i+j]);
-                }
-            }
-            limits[hemi] = max[1] - min[1];
-            limits.top = Math.max(max[2], limits.top);
-            limits.bottom = Math.min(min[2], limits.bottom);
-
-            mesh = new THREE.Mesh(geom, shader);
-            mesh.position.y = -min[1];
-            mesh.doubleSided = true;
-            mesh.updateMatrix();
-            obj = new THREE.Object3D();
-            obj.rotation.z = hemi == "left" ? Math.PI / 2. : -Math.PI / 2.;
-            obj.add(mesh);
-            scene.add(obj);
-        }
-
-        var aspect = (limits.right - limits.left) / (limits.top - limits.bottom);
-
-        
-        camera.left = -limits.left;
-        camera.right = limits.right;
-        camera.top = limits.top;
-        camera.bottom = limits.bottom;
-
-        for (var frame = 0; frame < this.textures.length; frame++) {
-
-        }
-
-        camera.updateProjectionMatrix();
-        viewer.renderer.render(scene, camera);
-        return {scene:scene, camera:camera};
-    };
+    module.VertexData.prototype.init = function(uniforms, dim) {
+        //nothing to set...
+    }
+    module.VertexData.prototype.set = function(uniforms, dim, fframe, dispatch) {
+        var name = dim == 0 ? "data0":"data2";
+        dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
+        dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.verts.length)]});
+    }
 
     return module;
 }(dataset || {}));

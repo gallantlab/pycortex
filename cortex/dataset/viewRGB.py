@@ -58,7 +58,6 @@ class DataviewRGB(Dataview):
             sdict['subject'] = self.subject
             sdict['min'] = 0
             sdict['max'] = 255
-            sdict['shape'] = self.red.shape
         else:
             sdict['data'] = [self.name]
             sdict['cmap'] = [default_cmap]
@@ -104,7 +103,9 @@ class VolumeRGB(DataviewRGB):
 
     def to_json(self, simple=False):
         sdict = super(VolumeRGB, self).to_json(simple=simple)
-        if not simple:
+        if simple:
+            sdict['shape'] = self.red.shape
+        else:
             sdict['xfm'] = [list(np.array(db.get_xfm(self.subject, self.xfmname, 'coord').xfm).ravel())]
 
         return sdict
@@ -197,6 +198,14 @@ class VertexRGB(DataviewRGB):
             verts.append(vert)
 
         return np.array(verts).transpose([1, 2, 0])
+
+    def to_json(self, simple=False):
+        sdict = super(VertexRGB, self).to_json(simple=simple)
+        
+        if simple:
+            sdict.update(dict(split=self.red.llen, frames=self.vertices.shape[0]))
+
+        return sdict
 
     @property
     def left(self):

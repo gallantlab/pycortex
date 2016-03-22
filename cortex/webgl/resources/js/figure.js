@@ -1,3 +1,11 @@
+//monkeypatch a remove folder command
+dat.GUI.prototype.removeFolder = function(name) {
+    this.__folders[name].close();
+    this.__folders[name].domElement.parentNode.parentNode.removeChild(this.__folders[name].domElement.parentNode);
+    this.__folders[name] = undefined;
+    this.onResize();
+}
+
 var jsplot = (function (module) {
     module.Color = function(data) {
         this.color = Color.colors[data];
@@ -21,11 +29,10 @@ var jsplot = (function (module) {
     }
 
     module.Figure = function(parent) {
-        THREE.EventTarget.call(this);
-
         this._notifying = false;
         this.axes = [];
         this.ax = null;
+        this._registrations = {};
 
         this.object = document.createElement("div");
         this.object.className = 'jsplot_figure';
@@ -37,16 +44,38 @@ var jsplot = (function (module) {
         } else {
             parent.addEventListener('resize', this.resize.bind(this));
         }
+
+        this.gui = new dat.GUI({autoPlace:false});
+        this.gui.close();
+        this.ui_element = document.createElement("div");
+        this.ui_element.id = "figure_ui";
+        this.object.appendChild(this.ui_element);
+        this.ui_element.appendChild(this.gui.domElement);
     }
+    THREE.EventDispatcher.prototype.apply(module.Figure.prototype);
+
     module.Figure.prototype.init = function() {}
     module.Figure.prototype.register = function(eventType, self, func) {
         if (this.parent && this.parent instanceof module.Figure) {
             this.parent.register(eventType, self, func);
         } else {
-            this.addEventListener(eventType, function(evt) { 
+            if (!(this._registrations[eventType] instanceof Array))
+                this._registrations[eventType] = [];
+
+            var register = function(evt) { 
                 if (evt.self != self)
                     func.apply(self, evt.args);
-            }.bind(this));
+            }.bind(this);
+            this._registrations[eventType].push([self, register]);
+
+            this.addEventListener(eventType, register);
+        }
+    }
+    module.Figure.prototype.unregister = function(eventType, self) {
+        var objects = this._registrations[eventType];
+        for (var i = 0; i < objects.length; i++) {
+            if (objects[i][0] === self)
+                this.removeEventListener(eventType,objects[i][1]);
         }
     }
     module.Figure.prototype.notify = function(eventType, self, arguments) {
@@ -78,6 +107,8 @@ var jsplot = (function (module) {
         this.ax = module.construct(axcls, args);
         this.axes.push(this.ax);
         $(this.parent.object).append(this.ax.object);
+        if (this.ax.ui !== undefined)
+            this.ax.ui.init(this.gui);
     }
 
     var w2fig_layer = 0;
@@ -114,14 +145,20 @@ var jsplot = (function (module) {
     module.W2Figure.prototype.add = function(axcls, where, instant) {
         var args = Array.prototype.slice.call(arguments).slice(3);
         args.unshift(this);
-        this.ax = module.construct(axcls, args);
-        this.axes[where] = this.ax;
+
+        var axes = module.construct(axcls, args);
         this.w2obj.show(where, instant);
-        this.w2obj.content(where, this.ax.object);
-        if (this.ax instanceof module.Figure) {
-            this.ax.init();
+        this.w2obj.content(where, axes.object);
+        if (axes instanceof module.Figure) {
+            axes.init();
         }
-        return this.ax;
+        this.axes[where] = axes;
+        this.ax = axes;
+
+        if (this.ax.ui !== undefined)
+            this.ax.ui.init(this.gui);
+
+        return axes;
     }
     module.W2Figure.prototype.show = function(where, instant) {
         this.w2obj.show(where, instant);
@@ -181,15 +218,16 @@ var jsplot = (function (module) {
 
 
     module.Axes = function(figure) {
-        THREE.EventTarget.call(this);
         this.figure = figure;
-        this.object = document.createElement("div");
-        this.object.className = "jsplot_axes";
+        if (this.object === undefined) {
+            this.object = document.createElement("div");
+            this.object.className = "jsplot_axes";
 
-        this.figure.addEventListener("resize", this.resize.bind(this));
+            this.figure.addEventListener("resize", this.resize.bind(this));
+        }
     }
+    THREE.EventDispatcher.prototype.apply(module.Axes.prototype);
     module.Axes.prototype.resize = function() {}
-
 
     module.MovieAxes = function(figure, url) {
         module.Axes.call(this, figure);
@@ -208,7 +246,10 @@ var jsplot = (function (module) {
         this.loadmsg = $(this.object).find("div.movie_load");
         this.movie = $(this.object).find("video")[0];
 
-        this.movie.addEventListener("progress", function() {
+        this._update_func = function() {
+            this.figure.notify("playsync", this, [this.movie.currentTime]);
+        }.bind(this);
+        this._progress_func = function() {
             if (this._target != null && 
                 this.movie.seekable.length > 0 && 
                 this.movie.seekable.end(0) >= this._target &&
@@ -225,16 +266,19 @@ var jsplot = (function (module) {
                 }.bind(this);
                 func();
             }
-        }.bind(this));
-
-        this.movie.addEventListener("timeupdate", function() {
-            this.figure.notify("playsync", this, [this.movie.currentTime]);
-        }.bind(this));
+        }.bind(this);
+        this.movie.addEventListener("timeupdate", this._update_func);
+        this.movie.addEventListener("progress", this._progress_func);
         this.figure.register("playtoggle", this, this.playtoggle.bind(this));
         this.figure.register("setFrame", this, this.setFrame.bind(this));
     }
     module.MovieAxes.prototype = Object.create(module.Axes.prototype);
     module.MovieAxes.prototype.constructor = module.MovieAxes;
+    module.MovieAxes.prototype.destroy = function() {
+        this.figure.unregister("playtoggle", this);
+        this.figure.unregister("setFrame", this);
+        this.movie.removeEventListener("timeupdate", this._update_func);
+    }
     module.MovieAxes.prototype.setFrame = function(time) {
         if (this.movie.seekable.length > 0 && 
             this.movie.seekable.end(0) >= time) {
@@ -245,12 +289,12 @@ var jsplot = (function (module) {
             this.loadmsg.show()
         }
     }
-    module.MovieAxes.prototype.playtoggle = function() {
-        if (this.movie.paused)
-            this.movie.play();
-        else
+    module.MovieAxes.prototype.playtoggle = function(state) {
+        if (!this.movie.paused && state == "pause")
             this.movie.pause();
-        this.figure.notify("playtoggle", this);
+        else
+            this.movie.play();
+        this.figure.notify("playtoggle", this, [this.movie.paused?"pause":"play"]);
     }
 
     module.ImageAxes = function(figure) {

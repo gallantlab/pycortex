@@ -9,11 +9,12 @@ dict(
 """
 import os
 import json
+import cStringIO
 import numpy as np
 
 from .. import dataset
 from .. import volume
-
+#TODO: How to package multiviews?
 class Package(object):
     """Package the data into a form usable by javascript"""
     def __init__(self, data):
@@ -25,18 +26,26 @@ class Package(object):
         for brain in self.uniques:
             name = brain.name
             self.brains[name] = brain.to_json(simple=True)
-            voldata = brain.volume
+            if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
+                encdata = brain.vertices
+            else:
+                encdata = brain.volume
             if isinstance(brain, (dataset.VolumeRGB, dataset.VertexRGB)):
-                voldata = voldata.astype(np.uint8)
+                encdata = encdata.astype(np.uint8)
                 self.brains[name]['raw'] = True
             else:
-                voldata = voldata.astype(np.float32)
+                encdata = encdata.astype(np.float32)
                 self.brains[name]['raw'] = False
-            self.images[name] = [volume.mosaic(vol, show=False) for vol in voldata]
-            if len(set([shape for m, shape in self.images[name]])) != 1:
-                raise ValueError('Internal error in mosaic')
-            self.brains[name]['mosaic'] = self.images[name][0][1]
-            self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
+
+            #VertexData requires reordering, only save normalized version for now
+            if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
+                self.images[name] = [encdata]
+            else:
+                self.images[name] = [volume.mosaic(vol, show=False) for vol in encdata]
+                if len(set([shape for m, shape in self.images[name]])) != 1:
+                    raise ValueError('Internal error in mosaic')
+                self.brains[name]['mosaic'] = self.images[name][0][1]
+                self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
 
     @property
     def views(self):
@@ -52,6 +61,22 @@ class Package(object):
     @property
     def subjects(self):
         return set(braindata.subject for braindata in self.uniques)
+
+    def reorder(self, subjects):
+        indices = dict((k, np.load(os.path.splitext(v)[0]+".npz")) for k, v in subjects.items())
+        for brain in self.uniques:
+            if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
+                data = np.array(self.images[brain.name])[0]
+                npyform = cStringIO.StringIO()
+                if self.brains[brain.name]['raw']:
+                    data = data[..., indices[brain.subject]['index'], :]
+                else:
+                    data = data[..., indices[brain.subject]['index']]
+                np.save(npyform, np.ascontiguousarray(data))
+                npyform.seek(0)
+                self.images[brain.name] = [npyform.read()]
+        for npz in indices.values():
+            npz.close()
 
     def metadata(self, **kwargs):
         return dict(views=self.views, data=self.brains, images=self.image_names(**kwargs))
