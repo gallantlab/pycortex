@@ -102,15 +102,18 @@ var svgoverlay = (function(module) {
     module.SVGOverlay.prototype.update = function() {
         this.svg.toDataURL("image/png", {renderer:"native", callback:function(dataurl) {
             var img = new Image();
-            img.src = dataurl;
-            var tex = new THREE.Texture(img);
-            tex.needsUpdate = true;
-            //tex.anisotropy = 16;
-            //tex.mipmaps[0] = tex.image;
-            //tex.generateMipmaps = true;
-            tex.premultiplyAlpha = true;
-            tex.flipY = true;
-            this.dispatchEvent({type:"update", texture:tex});
+            //img.src = dataurl;
+	    img.onload = function () {
+		var tex = new THREE.Texture(img);
+		tex.needsUpdate = true;
+		//tex.anisotropy = 16;
+		//tex.mipmaps[0] = tex.image;
+		//tex.generateMipmaps = true;
+		tex.premultiplyAlpha = true;
+		tex.flipY = true;
+		this.dispatchEvent({type:"update", texture:tex});
+	    }.bind(this);
+	    img.src = dataurl;
         }.bind(this)});
     }, 
     module.SVGOverlay.prototype.prerender = function(renderer, scene, camera) {
