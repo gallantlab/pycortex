@@ -448,7 +448,7 @@ var Shaderlib = (function() {
 
             "void main() {",
                 //Curvature Underlay
-                "float curv = clamp(vCurv / curvScale + 0.5, curvLim, 1.-curvLim) - 0.5 + curvMean;",
+                "float curv = clamp(vCurv / curvScale + 0.5, curvLim, 1.-curvLim);",
                 "vec4 cColor = vec4(vec3(curv) * curvAlpha, curvAlpha);",
 
                 "vec3 coord_x, coord_y;",
