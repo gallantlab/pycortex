@@ -73,7 +73,9 @@ var svgoverlay = (function(module) {
         this.ui = new jsplot.Menu();
         for (var i = 0; i < layers.length; i++) {
             var name = layers[i].getAttribute("inkscape:label");
-            this[name] = new module.Overlay(layers[i], this.posdata);
+	    var layer_hidden = viewopts.overlays_visible.indexOf(name) == -1;
+	    var labels_hidden = viewopts.labels_visible.indexOf(name) == -1;
+            this[name] = new module.Overlay(layers[i], this.posdata, layer_hidden, labels_hidden);
             this.layers[name] = this[name];
             this.labels.left.add(this[name].labels.meshes.left);
             this.labels.right.add(this[name].labels.meshes.right);
@@ -82,15 +84,10 @@ var svgoverlay = (function(module) {
             var labels = this.layers[name].labels;
             var setshape = this[name].set.bind(this[name]);
             var setlabel = labels.set.bind(labels);
-	    if (viewopts.overlays_visible.indexOf(name) == -1) {
-		this[name].hide();
-	    }
-	    if (viewopts.labels_visible.indexOf(name) == -1) {
-		this[name].labels.hide();
-	    }
             this.ui.addFolder(name, true).add({
                 visible: {action:[this[name], "showhide"], },
                 labels:  {action:[this[name].labels, "showhide"], },
+
             });
         }
 
@@ -223,10 +220,14 @@ var svgoverlay = (function(module) {
         }
     }
 
-    module.Overlay = function(layer, posdata) {
+    module.Overlay = function(layer, posdata, layer_hidden, labels_hidden) {
         this.name = layer.id;
         this.layer = layer;
         this.shapes = {};
+
+	if (layer_hidden) {
+	    this.layer.style.display = "none";
+	}
 
         var shapes = layer.parentNode.getElementById(this.name+"_shapes");
         for (var i = 0 ; i < shapes.children.length; i++) {
@@ -235,9 +236,9 @@ var svgoverlay = (function(module) {
         }
 
         var labels = layer.parentNode.getElementById(this.name+"_labels");
-        this.labels = new module.Labels(labels, posdata, this.layer.style.display == "none");
+	this.labels = new module.Labels(labels, posdata, labels_hidden);
 
-        this._hidden = this.layer.style.display == "none" || shapes.style.display == "none";
+	this._hidden = layer_hidden;
         this.showhide = function(state) {
             if (state === undefined)
                 return !this._hidden;
