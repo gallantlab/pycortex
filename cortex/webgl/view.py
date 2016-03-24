@@ -41,8 +41,8 @@ viewopts = dict(voxlines="false", voxline_color="#FFFFFF",
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
                 template="static.html", layout=None, anonymize=False,
-                html_embed=True,
-                copy_ctmfiles=True, **kwargs):
+                html_embed=True, overlays_visible=('rois', 'sulci'), labels_visible=('rois',),
+                overlay_file=None, copy_ctmfiles=True, **kwargs):
     """Creates a static instance of the webGL MRI viewer that can easily be posted
     or shared.
 
@@ -65,13 +65,21 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     anonymize : bool, optional
         Whether to rename CTM and SVG files generically, for public distribution.
         Default False
+    overlays_visible : tuple, optional. Default ('rois', 'sulci')
+        The listed overlay layers will be set visible by default. Layers not listed
+        here will be hidden by default (but can be enabled in the viewer GUI).
+    labels_visible : tuple, optional. Default ('rois',)
+        Labels for the listed layers will be set visible by default. Labels for
+        layers not listed here will be hidden by default (but can be enabled in
+        the viewer GUI).
     **kwargs : dict, optional
         All additional keyword arguments are passed to the template renderer.
 
     Other parameters
     ----------------
-    extra_disp : tuple
-        (filename,[layers]) for display of layers from external svg file
+    overlay_file : str, optional
+        Totally replace the overlays.svg file for this subject with the given
+        file (if not None).
     html_embed : bool, optional
         Whether to embed the webgl resources in the html output.  Default 'True'.
         If 'False', the webgl resources must be served by your web server.
@@ -86,6 +94,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     You'll probably need a real web server to view this, since file:// paths
     don't handle xsrf correctly
     """
+    if overlay_file is not None:
+        raise NotImplementedError("External overlay_file not supported yet, sorry!")
+    
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
         os.makedirs(outpath)
@@ -182,7 +193,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                         leapmotion=True,
                         layout=layout,
                         subjects=json.dumps(ctms),
-                        disp_layers=disp_layers,
+                        overlays_visible=json.dumps(overlays_visible),
+                        labels_visible=json.dumps(labels_visible),
                         **tpl_args)
     desthtml = os.path.join(outpath, "index.html")
     if html_embed:
@@ -194,9 +206,13 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
          autoclose=True, open_browser=True, port=None, pickerfun=None, template="mixer.html",
+         overlays_visible=('rois', 'sulci'), labels_visible=('rois',), overlay_file=None,
          **kwargs):
     """Display a dynamic viewer using the given dataset. See cortex.webgl.make_static for help.
     """
+    if overlay_file is not None:
+        raise NotImplementedError("External overlay_file not supported yet, sorry!")
+    
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
@@ -306,6 +322,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                                       leapmotion=True,
                                       layout=layout,
                                       subjects=subjectjs,
+                                      overlays_visible=json.dumps(overlays_visible),
+                                      labels_visible=json.dumps(labels_visible),
                                       **viewopts)
             self.write(generated)
 

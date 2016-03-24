@@ -82,7 +82,13 @@ var svgoverlay = (function(module) {
             var labels = this.layers[name].labels;
             var setshape = this[name].set.bind(this[name]);
             var setlabel = labels.set.bind(labels);
-            this.ui.addFolder(name).add({
+	    if (viewopts.overlays_visible.indexOf(name) == -1) {
+		this[name].hide();
+	    }
+	    if (viewopts.labels_visible.indexOf(name) == -1) {
+		this[name].labels.hide();
+	    }
+            this.ui.addFolder(name, true).add({
                 visible: {action:[this[name], "showhide"], },
                 labels:  {action:[this[name].labels, "showhide"], },
             });
