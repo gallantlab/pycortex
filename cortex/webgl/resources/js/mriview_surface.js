@@ -70,6 +70,7 @@ var mriview = (function(module) {
             pivot: {action:[this, "setPivot", -180, 180]},
             shift: {action:[this, "setShift", 0, 200]},
             depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
+	    specularity: {action:[this, "setSpecular", 0, 1]},
         });
         this.ui.addFolder("curvature", true).add({
             alpha: {action:[this.uniforms.curvAlpha, "value", 0, 1]},
@@ -403,7 +404,14 @@ var mriview = (function(module) {
         this.pivots.left.front.position.x = -val;
         this.pivots.right.front.position.x = val;
     };
+    module.Surface.prototype.setSpecular = function(val) {
+        if (val === undefined)
+            return this._specular;
 
+        this._specular = val;
+	this.uniforms.specularStrength.value = this._specular * (1-_last_clipped);
+        
+    };
     module.Surface.prototype._makeMesh = function(geom, shader) {
         //Creates the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);
