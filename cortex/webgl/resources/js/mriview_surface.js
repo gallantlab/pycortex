@@ -30,7 +30,7 @@ var mriview = (function(module) {
         this.volume = 0;
         this._pivot = 0;
         this._shift = 0;
-        this._specular = 1;
+        this._specular = parseFloat(viewopts.specularity);
         this.shaders = {};
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
@@ -44,7 +44,7 @@ var mriview = (function(module) {
                 specular:   { type:'v3', value:new THREE.Vector3( .005,.005,.005 )},
                 emissive:   { type:'v3', value:new THREE.Vector3( .2,.2,.2 )},
                 shininess:  { type:'f',  value:1000},
-                specularStrength:{ type:'f',  value:1},
+                specularStrength:{ type:'f',  value:this._specular},
 
                 thickmix:   { type:'f',  value:0.5},
                 surfmix:    { type:'f',  value:0},
@@ -55,9 +55,9 @@ var mriview = (function(module) {
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
 
                 overlay:    { type:'t', value:null },
-                curvAlpha:  { type:'f', value:1.},
-                curvScale:  { type:'f', value:.5},
-                curvLim:    { type:'f', value:.2},
+                curvAlpha:  { type:'f', value:parseFloat(viewopts.curvalpha)},
+                curvScale:  { type:'f', value:parseFloat(viewopts.curvscale)},
+                curvLim:    { type:'f', value:parseFloat(viewopts.curvlim)},
                 extratex:   { type:'t', value:null},
 
                 // screen:     { type:'t', value:this.volumebuf},
@@ -66,16 +66,16 @@ var mriview = (function(module) {
         ]);
         
         this.ui = (new jsplot.Menu()).add({
-            mix: {action:[this, "setMix", 0., 1.]},
+            unfold: {action:[this, "setMix", 0., 1.]},
             pivot: {action:[this, "setPivot", -180, 180]},
             shift: {action:[this, "setShift", 0, 200]},
             depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
 	    specularity: {action:[this, "setSpecular", 0, 1]},
         });
         this.ui.addFolder("curvature", true).add({
-            alpha: {action:[this.uniforms.curvAlpha, "value", 0, 1]},
-            scale: {action:[this.uniforms.curvScale, "value", 0, 1]},
-            limit: {action:[this.uniforms.curvScale, "value", 0, 1]},
+            brightness: {action:[this.uniforms.curvAlpha, "value", 0, 1]},
+            contrast: {action:[this.uniforms.curvLim, "value", 0, 0.5]},
+            smoothness: {action:[this.uniforms.curvScale, "value", 0, 1]},
         });
         
         var loader = new THREE.CTMLoader(false);

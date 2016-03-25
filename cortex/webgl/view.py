@@ -36,13 +36,10 @@ colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
-viewopts = dict(voxlines="false", voxline_color="#FFFFFF",
-                voxline_width='.01', title="Brain")
-
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
                 template="static.html", layout=None, anonymize=False,
                 html_embed=True, overlays_visible=('rois', 'sulci'), labels_visible=('rois',),
-                overlay_file=None, copy_ctmfiles=True, **kwargs):
+                overlay_file=None, copy_ctmfiles=True, title='Brain', **kwargs):
     """Creates a static instance of the webGL MRI viewer that can easily be posted
     or shared.
 
@@ -184,8 +181,15 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         rootdirs = [serve.cwd]
     loader = FallbackLoader(rootdirs)
     tpl = loader.load(templatefile)
-    tpl_args = copy.deepcopy(viewopts)
-    tpl_args.update(kwargs)  # override viewopts with kwargs
+
+    # Put together all view options
+    my_viewopts = dict(options.config.items('webgl_viewopts'))
+    my_viewopts['overlays_visible'] = overlays_visible
+    my_viewopts['labels_visible'] = labels_visible
+    for sec in options.config.sections():
+        if 'paths' in sec or 'labels' in sec:
+            my_viewopts[sec] = dict(options.config.items(sec))
+
     html = tpl.generate(data=json.dumps(metadata),
                         colormaps=colormaps,
                         default_cmap=cmap,
@@ -193,9 +197,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                         leapmotion=True,
                         layout=layout,
                         subjects=json.dumps(ctms),
-                        overlays_visible=json.dumps(overlays_visible),
-                        labels_visible=json.dumps(labels_visible),
-                        **tpl_args)
+                        viewopts=json.dumps(my_viewopts),
+                        title=title,
+                        **kwargs)
     desthtml = os.path.join(outpath, "index.html")
     if html_embed:
         htmlembed.embed(html, desthtml, rootdirs)
@@ -207,7 +211,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
          autoclose=True, open_browser=True, port=None, pickerfun=None, template="mixer.html",
          overlays_visible=('rois', 'sulci'), labels_visible=('rois',), overlay_file=None,
-         **kwargs):
+         title='Brain', **kwargs):
     """Display a dynamic viewer using the given dataset. See cortex.webgl.make_static for help.
     """
     if overlay_file is not None:
@@ -232,8 +236,8 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     images = package.images
     subjects = list(package.subjects)
 
-    kwargs.update(dict(method='mg2', level=9, recache=recache))
-    ctms = dict((subj, utils.get_ctmpack(subj,types,**kwargs))
+    ctmargs = dict(method='mg2', level=9, recache=recache)
+    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
                 for subj in subjects)
     package.reorder(ctms)
 
@@ -251,6 +255,14 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     )
 
     post_name = Queue.Queue()
+
+    # Put together all view options
+    my_viewopts = dict(options.config.items('webgl_viewopts'))
+    my_viewopts['overlays_visible'] = overlays_visible
+    my_viewopts['labels_visible'] = labels_visible
+    for sec in options.config.sections():
+        if 'paths' in sec or 'labels' in sec:
+            my_viewopts[sec] = dict(options.config.items(sec))
 
     if pickerfun is None:
         pickerfun = lambda a,b: None
@@ -322,9 +334,12 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                                       leapmotion=True,
                                       layout=layout,
                                       subjects=subjectjs,
-                                      overlays_visible=json.dumps(overlays_visible),
-                                      labels_visible=json.dumps(labels_visible),
-                                      **viewopts)
+                                      viewopts=json.dumps(my_viewopts),
+                                      title=title,
+                                      **kwargs)
+                                      #overlays_visible=json.dumps(overlays_visible),
+                                      #labels_visible=json.dumps(labels_visible),
+                                      #**viewopts)
             self.write(generated)
 
         def post(self):

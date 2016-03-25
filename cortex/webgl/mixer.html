@@ -4,13 +4,7 @@
     var viewer, subjects, datasets, figure, sock, viewopts;
 {% end %}
 {% block onload %}
-		viewopts = {
-			voxlines: {{voxlines}},
-			voxline_width: {{voxline_width}},
-			default_2Dcmap: "RdBu_covar",
-                        overlays_visible: {{overlays_visible}},
-                        labels_visible: {{labels_visible}},
-		};
+                viewopts = {{viewopts}};
 		
 	        subjects = {{subjects}};
 		for (var name in subjects) {

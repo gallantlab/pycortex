@@ -170,7 +170,7 @@ var dataset = (function(module) {
             opts.sampler = module.samplers[this.filter];
             opts.rgb = this.data[0].raw;
             opts.twod = this.data.length > 1;
-            opts.voxline = viewopts.voxlines;
+            opts.voxline = (viewopts.voxlines==='true');
             var shadecode = shaderfunc(opts);
             var shader = new THREE.ShaderMaterial({ 
                 vertexShader:shadecode.vertex,

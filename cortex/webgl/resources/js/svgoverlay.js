@@ -89,9 +89,20 @@ var svgoverlay = (function(module) {
                 labels:  {action:[this[name].labels, "showhide"], },
 
             });
+	    
+	    if (name+"_paths" in viewopts) {
+		this[name].set(viewopts[name+"_paths"]);
+	    } else {
+		this[name].set(viewopts.paths_default);
+	    }
+	    if (name+"_labels" in viewopts) {
+		this[name].labels.set(viewopts[name+"_labels"]);
+	    } else {
+		this[name].labels.set(viewopts.labels_default);
+	    }
         }
 
-        this.setHeight(Math.min(4096, max_tex_size) / this.aspect);
+        this.setHeight(Math.min(4096, max_tex_size) / this.aspect * parseFloat(viewopts.overlayscale));
         this.resize(this.surf.width, this.surf.height);
         this.update();
         this.loaded.resolve();
