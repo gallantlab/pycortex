@@ -102,7 +102,7 @@ var svgoverlay = (function(module) {
 	    }
         }
 
-        this.setHeight(Math.min(4096, max_tex_size) / this.aspect * parseFloat(viewopts.overlayscale));
+        this.setHeight(Math.min(4096 * parseFloat(viewopts.overlayscale), max_tex_size) / this.aspect);
         this.resize(this.surf.width, this.surf.height);
         this.update();
         this.loaded.resolve();
@@ -114,6 +114,7 @@ var svgoverlay = (function(module) {
         this.svg.setAttribute("height", this.height);
     }, 
     module.SVGOverlay.prototype.update = function() {
+	console.log("Updating overlay!");
         this.svg.toDataURL("image/png", {renderer:"native", callback:function(dataurl) {
             var img = new Image();
             //img.src = dataurl;
