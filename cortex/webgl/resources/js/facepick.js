@@ -9,8 +9,14 @@ function PickPosition(surf, posdata) {
         kdt.root = e.data.kdt;
         this[e.data.name] = kdt;
     }.bind(this));
-    worker.postMessage({pos:left.attributes.position.array, name:"lkdt"});
-    worker.postMessage({pos:right.attributes.position.array, name:"rkdt"});
+    var lmsg = {pos:left.attributes.position.array, name:"lkdt"};
+    var rmsg = {pos:right.attributes.position.array, name:"rkdt"};
+    if (left.attributes.wm !== undefined) {
+        lmsg.wm = left.attributes.wm.array;
+        rmsg.wm = right.attributes.wm.array;
+    }
+    worker.postMessage(lmsg);
+    worker.postMessage(rmsg);
     
     surf.addEventListener("mix", this.setMix.bind(this));
 
