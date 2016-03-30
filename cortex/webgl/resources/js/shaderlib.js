@@ -813,9 +813,11 @@ var Shaderlib = (function() {
             "#ifdef CORTSHEET",
                     "vec3 mpos = mix(position, wm.xyz, thickmix);",
                     "vec3 mnorm = mix(normal, wmnorm, thickmix);",
+                    "vPos = mix(position, wm.xyz, 0.5);",
             "#else",
                     "vec3 mpos = position;",
                     "vec3 mnorm = normal;",
+                    "vPos = position;",
             "#endif",
 
                     "vec3 pos, norm;",
@@ -824,8 +826,6 @@ var Shaderlib = (function() {
                 "#ifdef CORTSHEET",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
                 "#endif",
-
-                    "vPos = position;",
 
                     "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
                 "}",
