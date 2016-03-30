@@ -10,7 +10,7 @@ function PickPosition(surf, posdata) {
         this[e.data.name] = kdt;
     }.bind(this));
     var lmsg = {pos:left.attributes.position.array, name:"lkdt"};
-    var rmsg = {pos:right.attributes.position.array, name:"lkdt"};
+    var rmsg = {pos:right.attributes.position.array, name:"rkdt"};
     if (left.attributes.wm !== undefined) {
         lmsg.wm = left.attributes.wm.array;
         rmsg.wm = right.attributes.wm.array;
