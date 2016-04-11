@@ -4,7 +4,7 @@ var jsplot = (function (module) {
 		this.target = new THREE.Vector3();
 		this.azimuth = 45;
 		this.altitude = 75;
-		this.radius = 250;
+		this.radius = 400;
 
 		this.mix = 0;
 

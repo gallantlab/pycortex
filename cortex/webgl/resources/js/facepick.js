@@ -190,19 +190,31 @@ PickPosition.prototype = {
         // DISABLE MULTI-CURSORS to make linking to voxels easy
         this.draw(renderer, scene);
         var p = this._pick(x, y, renderer.context);
-        if (p) {
-            var vec = p.pos.clone().applyMatrix4(this.xfm);
+	if (p) {
+	    var vec = p.pos.clone().applyMatrix4(this.xfm);
             var idx = this.revIndex[p.hemi][p.ptidx];
-            console.log("Picked vertex "+idx+" in "+p.hemi+" hemisphere, voxel=["+vec.x+","+vec.y+","+vec.z+"]");
-            this.addMarker(p.hemi, p.ptidx, keep);
-            if (this.callback !== undefined)
-                this.callback(vec, p.hemi, p.ptidx);
-        } else {
-            for (var i = 0; i < this.axes.length; i++) {
-                this.markers[this.axes[i].hemi].remove(this.axes[i].group);
-            }
-            this.axes = [];
+            console.log("Picked vertex "+idx+" (orig "+p.ptidx+") in "+p.hemi+" hemisphere, voxel=["+vec.x+","+vec.y+","+vec.z+"]");
+	    this.process_pick(vec, p.hemi, p.ptidx, keep);
+	}
+	else {
+	    this.process_nonpick();
+	}
+    },
+    
+    process_pick: function(vec, hemi, ptidx, keep) {
+        this.addMarker(hemi, ptidx, keep);
+        if (this.callback !== undefined)
+            this.callback(vec, hemi, ptidx);
+    },
+
+    process_nonpick: function() {
+        for (var i = 0; i < this.axes.length; i++) {
+            this.markers[this.axes[i].hemi].remove(this.axes[i].group);
         }
+        this.axes = [];
+	
+	if (this.callback_nonpick !== undefined)
+	    this.callback_nonpick();
     },
     
     dblpick: function(x, y, keep) {
