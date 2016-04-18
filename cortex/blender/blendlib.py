@@ -113,8 +113,8 @@ def write_patch(filename, pts, edges=None):
 
 def save_patch(fname, mesh='hemi'):
     if isinstance(mesh, str):
-        mesh = D.meshes[mesh]
         ob = D.objects[mesh]
+        mesh = D.meshes[mesh]
     else:
         # blender mesh object passed 
         ob = [x for x in C.scene.objects if x.data==mesh][0]
