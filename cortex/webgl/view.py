@@ -206,14 +206,23 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
          autoclose=True, open_browser=True, port=None, pickerfun=None,
-         disp_layers=['rois'], extra_disp=None, **kwargs):
+         disp_layers=['rois'], extra_disp=None, template='mixer.html', **kwargs):
     """Display a dynamic viewer using the given dataset. See cortex.webgl.make_static for help.
     """
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
 
-    html = FallbackLoader([serve.cwd]).load("mixer.html")
+    if os.path.exists(template):
+        ## Load locally
+        templatedir, templatefile = os.path.split(os.path.abspath(template))
+        rootdirs = [templatedir, serve.cwd]
+    else:
+        ## Load system templates
+        templatefile = template
+        rootdirs = [serve.cwd]
+ 
+    html = FallbackLoader(rootdirs).load(templatefile)
     db.auxfile = data
 
     #Extract the list of stimuli, for special-casing
@@ -295,6 +304,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             else:
                 self.root, fname = os.path.split(stims[path])
                 super(StimHandler, self).get(fname)
+
+    class StaticHandler(web.StaticFileHandler):
+        def initialize(self):
+            self.root = ''
 
     class MixerHandler(web.RequestHandler):
         def get(self):
@@ -457,7 +470,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             """
             post_name.put(filename)
             Proxy = serve.JSProxy(self.send, "window.viewers.saveIMG")
-            return Proxy(size[0], size[1], "mixer.html")
+            return Proxy(size[0], size[1], template)
 
         def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0,
                       fps=30, size=(1920, 1080), interpolation="linear"):
@@ -673,14 +686,15 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             (r'/ctm/(.*)', CTMHandler),
             (r'/data/(.*)', DataHandler),
             (r'/stim/(.*)', StimHandler),
-            (r'/mixer.html', MixerHandler),
+            (r'/'+template, MixerHandler),
             (r'/picker', PickerHandler),
             (r'/', MixerHandler),
+            (r'/static/(.*)', StaticHandler),
         ], port)
     server.start()
     print("Started server on port %d"%server.port)
     if open_browser:
-        webbrowser.open("http://%s:%d/mixer.html"%(serve.hostname, server.port))
+        webbrowser.open("http://%s:%d/%s"%(serve.hostname, server.port, template))
         client = server.get_client()
         client.server = server
         return client
