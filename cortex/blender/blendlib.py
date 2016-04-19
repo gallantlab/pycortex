@@ -113,9 +113,17 @@ def write_patch(filename, pts, edges=None):
 
 def save_patch(fname, mesh='hemi'):
     if isinstance(mesh, str):
+        ob = D.objects[mesh]
         mesh = D.meshes[mesh]
-
+    else:
+        # blender mesh object passed 
+        ob = [x for x in C.scene.objects if x.data==mesh][0]
     bpy.ops.object.mode_set(mode='OBJECT')
+    # Make sure brain mesh is selected
+    bpy.ops.object.select_all(action='DESELECT')
+    ob.select = True
+    C.scene.objects.active = ob
+    # bpy.context.scene.objects.active = Ob
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='DESELECT')
     C.tool_settings.mesh_select_mode = False, True, False
