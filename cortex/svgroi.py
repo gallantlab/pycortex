@@ -912,7 +912,7 @@ try:
         print("unable to find zero centroid...")
         return list(poly.buffer(-100).centroid.coords)[0] * max + min
 
-except ImportError:
+except (ImportError, OSError):
     print("Cannot find shapely, using simple label placement")
     def _center_pts(pts):
         return pts.mean(0)

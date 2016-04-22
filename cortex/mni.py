@@ -7,6 +7,8 @@ import numpy as np
 from . import options
 from . import db
 
+import shlex
+
 fslprefix = options.config.get("basic", "fsl_prefix")
 fsldir = os.getenv("FSLDIR")
 if fsldir is None:
@@ -47,13 +49,15 @@ def compute_mni_transform(subject, xfm,
     anat_filename = db.get_anat(subject, "brainmask").get_filename()
     
     # First use flirt to align masked subject anatomical to MNI template
-    subprocess.call(["{fslprefix}flirt".format(fslprefix=fslprefix),
+    cmd = shlex.split(" ".join(["{fslprefix}flirt".format(fslprefix=fslprefix),
                      "-searchrx -180 180",
                      "-searchry -180 180",
                      "-searchrz -180 180",
                      "-ref", template,
                      "-in", anat_filename,
-                     "-omat", anat_to_mni_xfm])
+                     "-omat", anat_to_mni_xfm]))
+    
+    subprocess.call(cmd)
 
     # Then load that transform and concatenate it with the functional to anatomical transform
     anat_to_mni = np.loadtxt(anat_to_mni_xfm)
@@ -170,7 +174,7 @@ def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
 
     # Save out relevant things
     affine = nibabel.load(template).get_affine()
-    nibabel.save(nibabel.Nifti1Image(volarray.get_data(), affine), mnispace_func_nii)
+    nibabel.save(nibabel.Nifti1Image(volarray, affine), mnispace_func_nii)
     _save_fsl_xfm(mni_to_func_xfm, np.linalg.inv(func_to_mni))
 
     # Use flirt to resample data to functional space

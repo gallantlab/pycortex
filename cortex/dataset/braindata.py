@@ -122,10 +122,10 @@ class VolumeData(BrainData):
         return sdict
 
     @classmethod
-    def empty(cls, subject, xfmname, **kwargs):
+    def empty(cls, subject, xfmname, value=0, **kwargs):
         xfm = db.get_xfm(subject, xfmname)
         shape = xfm.shape
-        return cls(np.zeros(shape), subject, xfmname, **kwargs)
+        return cls(np.ones(shape)*value, subject, xfmname, **kwargs)
 
     @classmethod
     def random(cls, subject, xfmname, **kwargs):
@@ -266,13 +266,13 @@ class VertexData(BrainData):
         self._set_data(data)
 
     @classmethod
-    def empty(cls, subject, **kwargs):
+    def empty(cls, subject, value=0, **kwargs):
         try:
             left, right = db.get_surf(subject, "wm")
         except IOError:
             left, right = db.get_surf(subject, "fiducial")
         nverts = len(left[0]) + len(right[0])
-        return cls(np.zeros((nverts,)), subject, **kwargs)
+        return cls(np.ones((nverts,))*value, subject, **kwargs)
 
     @classmethod
     def random(cls, subject, **kwargs):
