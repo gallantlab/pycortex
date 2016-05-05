@@ -155,7 +155,7 @@ def parse_surf(filename):
         print(comment)
         verts, faces = struct.unpack('>2I', fp.read(8))
         pts = np.fromstring(fp.read(4*3*verts), dtype='f4').byteswap()
-        polys = np.fromstring(fp.read(4*3*faces), dtype='I4').byteswap()
+        polys = np.fromstring(fp.read(4*3*faces), dtype='i4').byteswap()
 
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
