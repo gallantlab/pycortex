@@ -95,7 +95,9 @@ PickPosition.prototype = {
             var inv = (new THREE.Matrix4()).getInverse(this.xfm);
             var vox = vert.base.clone().applyMatrix4(this.xfm);
             var voxpos = new THREE.Vector3(Math.round(vox.x), Math.round(vox.y), Math.round(vox.z));
+	    ax.vox.applyMatrix(ax.lastxfm);
             ax.vox.applyMatrix(inv);
+	    ax.lastxfm = this.xfm;
             ax.vox.position.copy(voxpos.applyMatrix4(inv).sub(vert.base));
 
             ax.vox.visible = this.uniforms.surfmix.value == 0;
@@ -313,7 +315,7 @@ PickPosition.prototype = {
         group.add(axes.axes);
         group.add(axes.vox);
         this.markers[hemi].add(group);
-        this.axes.push({idx:ptidx, group:group, vox:axes.vox, axes:axes.axes, hemi:hemi});
+        this.axes.push({idx:ptidx, group:group, vox:axes.vox, axes:axes.axes, hemi:hemi, lastxfm:(new THREE.Matrix4())});
         this.apply();
     }
 }
