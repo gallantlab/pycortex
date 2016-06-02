@@ -128,7 +128,10 @@ class Volume2D(Dataview2D):
             r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
         else:
             r, g, b, a = self._to_raw(self.dim1.volume, self.dim2.volume)
-        
+        if 'alpha'  in self.attrs:
+            # Over-write alpha from colormap with alpha arg if provided.
+            # Question: Might it be important tokeep alpha as an attr?
+            a = self.attrs.pop('alpha')
         return VolumeRGB(r, g, b, alpha=a, subject=self.dim1.subject, xfmname=self.dim1.xfmname, 
             state=self.state, description=self.description, **self.attrs)
 
