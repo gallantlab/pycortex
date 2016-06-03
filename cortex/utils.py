@@ -300,7 +300,7 @@ def get_roi_masks(subject,xfmname,roi_list=None,dst=2,fail_for_missing_rois=Fals
     shape = db.get_xfm(subject, xfmname).shape
     
     # Get 3D coordinates
-    coords = np.vstack(db.get_coords(subject, xfmname)) # UGH. Replace with a mapper object (IDK what this comment is...)
+    coords = np.vstack(db.get_coords(subject, xfmname)) # Replace with a mapper object; get_coords is deprecated
     n_verts = np.max(coords.shape)
     coords = coords[vert_idx]
     n_valid_vertices = np.max(coords.shape)

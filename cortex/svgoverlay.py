@@ -49,7 +49,7 @@ class SVGOverlay(object):
             coords /= coords.max(0)
         #Renormalize coordinates to shape of svg
         self.coords = coords * self.svgshape
-        self.kdt = cKDTree(self.coords)
+        self.kdt = cKDTree(self.coords) # THIS LINE IS FUCKING ME.
 
         for layer in self:
             for name in layer.labels.elements:
@@ -86,7 +86,7 @@ class SVGOverlay(object):
     def toxml(self, pretty=True):
         return etree.tostring(self.svg, pretty_print=pretty)
 
-    def get_svg(self, filename=None, labels=True, with_ims=None, **kwargs):
+    def get_svg(self, filename=None, labels=True, with_ims=None): # This did nothing - why?:, **kwargs):
         """Returns an SVG with the included images."""
         self.labels.visible = labesl
         
@@ -117,7 +117,7 @@ class SVGOverlay(object):
         '''Renders the current roimap as a png'''
         #set the current size of the texture
         w, h = self.svgshape
-        dpi = texres / h * 72
+        dpi = texres / h * 72 # 72 is screen resolution assumption for svg files
 
         if background is not None:
             img = E.image(

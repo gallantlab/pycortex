@@ -237,8 +237,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     subjects = list(package.subjects)
 
     ctmargs = dict(method='mg2', level=9, recache=recache)
+    print "GETTING CTMS!"
     ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
                 for subj in subjects)
+    print "GOT CTMS!"
     package.reorder(ctms)
 
     subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))

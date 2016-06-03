@@ -123,10 +123,10 @@ class BrainCTM(object):
         extra_disp : tuple
             (svgfile,[layers]) - tuple of (external display .svg filename, [list_of,layers_in_file,to_display])
         """
-        ctmname = path+".ctm"
-        svgname = path+".svg"
-        jsname = path+".json"
-        mapname = path+".npz"
+        ctmname = path + ".ctm"
+        svgname = path + ".svg"
+        jsname = path + ".json"
+        mapname = path + ".npz"
 
         # Save CTM concatenation
         (lpts, _, _), lbin = self.left.save(method=method, **kwargs)
@@ -166,7 +166,7 @@ class BrainCTM(object):
         # Save the SVG with remapped indices (map 2D flatmap locations to vertices)
         if self.left.flat is not None:
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            svg = db.get_overlay(self.subject, pts=flatpts)
+            svg = db.get_overlay(self.subject, pts=flatpts) # PROBLEM HERE
             
             # assign coordinates in left hemisphere negative values
             with open(svgname, "w") as fp:
@@ -253,17 +253,18 @@ class DecimatedHemi(Hemi):
         super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
 
 def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
-              decimate=False, disp_layers=['rois'],extra_disp=None):
+              decimate=False, disp_layers=['rois'], extra_disp=None):
     """Generates a cached CTM file"""
 
     ctm = BrainCTM(subj, decimate=decimate)
+    print "CREATED CTM"
     ctm.addCurvature()
     for name in types:
         ctm.addSurf(name)
 
     if not os.path.exists(os.path.split(outfile)[0]):
         os.makedirs(os.path.split(outfile)[0])
-
+    print('TRYING TO SAVE %s'%outfile)
     return ctm.save(os.path.splitext(outfile)[0],
                     method=method,
                     level=level)
