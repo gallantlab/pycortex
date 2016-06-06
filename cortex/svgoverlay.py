@@ -122,9 +122,11 @@ class SVGOverlay(object):
             with open(filename, "w") as outfile:
                 outfile.write(etree.tostring(outsvg))
         
-    def get_texture(self, texres, name=None, background=None, labels=True, bits=32, **kwargs):
-        '''Renders the current roimap as a png'''
-        #set the current size of the texture
+    def get_texture(self, layer_name, texres, name=None, background=None, labels=True, bits=32, **kwargs):
+        '''Renders the current roimap as a png
+
+        '''
+        #set the size of the texture
         w, h = self.svgshape
         dpi = texres / h * 72 # 72 is screen resolution assumption for svg files
 
@@ -138,6 +140,13 @@ class SVGOverlay(object):
             self.svg.getroot().insert(0, img)
 
         for layer in self:
+            if layer.name==layer_name:
+                layer.visible = True
+                if len(kwargs)>0:
+                    print('Setting: %r'%repr(kwargs))
+                layer.set(**kwargs)
+            else:
+                layer.visible = False
             layer.labels.visible = labels
 
         pngfile = name
@@ -155,12 +164,13 @@ class SVGOverlay(object):
 
         if name is None:
             png.seek(0)
+            #im = plt.imread(png)
             return png
 
 class Overlay(object):
-    def __init__(self, pack, layer):
-        self.pack = pack
-        self.svg = pack.svg
+    def __init__(self, svgobject, layer):
+        self.svgobject = svgobject
+        self.svg = svgobject.svg
         self.layer = layer
         self.name = layer.attrib['{%s}label'%inkns]
         self.layer.attrib['class'] = 'display_layer'
@@ -170,7 +180,7 @@ class Overlay(object):
         self.shapes = dict()
         for layer in _find_layer(layer, "shapes").findall("{%s}g"%svgns):
             override = locked not in layer.attrib or layer.attrib[locked] == "false"
-            shape = Shape(layer, self.pack.svgshape[1], override_style=override)
+            shape = Shape(layer, self.svgobject.svgshape[1], override_style=override)
             self.shapes[shape.name] = shape
 
         self.labels = Labels(self)
@@ -194,12 +204,12 @@ class Overlay(object):
             shape.set(**kwargs)
 
     def get_mask(self, name):
-        return self.shapes[name].get_mask(self.pack.coords)
+        return self.shapes[name].get_mask(self.svgobject.coords)
 
     def add_shape(self, name, pngdata=None, add_path=True):
         """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
         #self.svg deletes the images -- we want to save those, so let's load it again
-        svg = etree.parse(self.pack.svgfile, parser=parser)
+        svg = etree.parse(self.svgobject.svgfile, parser=parser)
         imglayer = _find_layer(svg, "data")
         if add_path:
             layer = _find_layer(svg, self.name)
@@ -213,11 +223,11 @@ class Overlay(object):
         layer.append(E.image(
             {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%pngdata},
             id="image_%s"%name, x="0", y="0",
-            width=str(self.pack.svgshape[0]),
-            height=str(self.pack.svgshape[1]),
+            width=str(self.svgobject.svgshape[0]),
+            height=str(self.svgobject.svgshape[1]),
         ))
 
-        with open(self.pack.svgfile, "w") as xml:
+        with open(self.svgobject.svgfile, "w") as xml:
             xml.write(etree.tostring(svg, pretty_print=True))
 
 class Labels(object):
@@ -659,6 +669,13 @@ class Shape(object):
 
         return splines
 
+    @property
+    def visible(self):
+        return 'none' not in self.layer.attrib['style']
+    @visible.setter
+    def visible(self, value):
+        style = "display:inline;" if value else "display:none;"
+        self.layer.attrib['style'] = style
 
 ###################################################################################
 # SVG Helper functions

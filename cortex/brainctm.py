@@ -257,14 +257,12 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
     """Generates a cached CTM file"""
 
     ctm = BrainCTM(subj, decimate=decimate)
-    print "CREATED CTM"
     ctm.addCurvature()
     for name in types:
         ctm.addSurf(name)
 
     if not os.path.exists(os.path.split(outfile)[0]):
         os.makedirs(os.path.split(outfile)[0])
-    print('TRYING TO SAVE %s'%outfile)
     return ctm.save(os.path.splitext(outfile)[0],
                     method=method,
                     level=level)
