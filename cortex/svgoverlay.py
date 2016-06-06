@@ -47,9 +47,18 @@ class SVGOverlay(object):
         if np.any(coords.max(0) > 1) or np.any(coords.min(0) < 0):
             coords -= coords.min(0)
             coords /= coords.max(0)
-        #Renormalize coordinates to shape of svg
+        # Renormalize coordinates to shape of svg
         self.coords = coords * self.svgshape
-        self.kdt = cKDTree(self.coords) # THIS LINE IS FUCKING ME.
+        # Update of scipy (0.16+) means that cKDTree hangs / takes absurdly long to compute with new default
+        # balanced_tree=True. Seems only to be true on Mac OS, for whatever reason. Possibly a broken
+        # C library, unclear. Setting balanced_tree=False seems to resolve the issue, thus going with that for now
+        # See http://stackoverflow.com/questions/31819778/scipy-spatial-ckdtree-running-slowly
+        try:
+            # not compatible with scipy version < 0.16
+            self.kdt = cKDTree(self.coords, balanced_tree=False) 
+        except:
+            # Older call signature
+            self.kdt = cKDTree(self.coords)
 
         for layer in self:
             for name in layer.labels.elements:
