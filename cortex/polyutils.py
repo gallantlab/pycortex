@@ -986,7 +986,7 @@ def measure_volume(pts, polys):
     return mp.volume
 
 def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
-    import tvtk
+    from tvtk.api import tvtk
     imgdata = tvtk.ImageData(dimensions=volume.shape)
     imgdata.point_data.scalars = volume.flatten('F')
 
