@@ -159,16 +159,16 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         axcv.set_xlim(extents[0], extents[1])
         axcv.set_ylim(extents[2], extents[3])
 
-    kwargs = dict(aspect='equal', 
+    imkws = dict(aspect='equal', 
         extent=extents, 
         origin='lower')
     
     # Check whether dataview has a cmap instance
     cmapdict = _has_cmap(dataview)
-    kwargs.update(cmapdict)
+    imkws.update(cmapdict)
 
     ax = fig.add_axes((0,0,1,1))
-    cimg = ax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]], **kwargs)
+    cimg = ax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]], **imkws)
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
     ax.set_ylim(extents[2], extents[3])
@@ -218,30 +218,22 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     overlays = []
     if with_rois:
         #co = svgobject.get_texture(height, 'cutouts', labels=False)
-        roi = svgobject.get_texture('rois', height, labels=with_labels, **kwargs)
-                                    # linewidth=linewidth,
-                                    # linecolor=linecolor,
-                                    # roifill=roifill,
-                                    # shadow=shadow,
-                                    # labelsize=labelsize,
-                                    # labelcolor=labelcolor)
+        roi = svgobject.get_texture('rois', height, labels=with_labels, #**kwargs)
+                                    linewidth=linewidth,
+                                    linecolor=linecolor,
+                                    roifill=roifill,
+                                    shadow=shadow,
+                                    labelsize=labelsize,
+                                    labelcolor=labelcolor)
         overlays.append(roi)
     if with_sulci:
-        sulc = svgobject.get_texture('sulci', height, labels=with_labels, **kwargs)
-                              # labels=with_labels,
-                              # linewidth=linewidth,
-                              # linecolor=linecolor,
-                              # shadow=shadow,
-                              # labelsize=labelsize,
-                              # labelcolor=labelcolor)
+        sulc = svgobject.get_texture('sulci', height, labels=with_labels, #**kwargs)
+                                     linewidth=linewidth,
+                                     linecolor=linecolor,
+                                     shadow=shadow,
+                                     labelsize=labelsize,
+                                     labelcolor=labelcolor)
         overlays.append(sulc)
-
-    #if with_rois or with_sulci:
-    #    svgobject.rois.visible = with_rois
-    #    if hasattr(svg,'sulci'):
-    #        svgobject.sulci.visible = with_sulci
-    #    tex = svgobject.get_texture(height, labels=with_labels)
-    #    tex.seek(0)
 
     if not extra_disp is None:
         raise NotImplementedError("Not yet!")
@@ -261,6 +253,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             #                   layer=extralayer,
             #                   svgfile=svgfile)
             overlays.append(disp)
+
     for oo in overlays:
         #roitex = oo.get_texture(height, labels=with_labels, size=labelsize)
         oo.seek(0)
@@ -271,7 +264,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,im.shape)]):
                 from scipy.misc import imresize
                 co = imresize(co,im.shape[:2]).astype(np.float32)/255.
-            im[:,:,3]*=co
+            im[:,:,3] *= co
 
         oimg = oax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]],
             aspect='equal', 

@@ -557,7 +557,12 @@ class Database(object):
             hashname = "pycx_%s"%hashlib.md5(self.auxfile.h5.filename).hexdigest()[-8:]
             cachedir = os.path.join(tempfile.gettempdir(), hashname, subject)
         except (AttributeError, IOError):
-            cachedir = os.path.join(self.filestore, subject, "cache")
+            try:
+                # Get cache dir from config file
+                cachedir = os.path.join(options.config.get('basic', 'cache'), subject, 'cache')
+            except NoOptionError:
+                # If not defined, go with default cache
+                cachedir = os.path.join(self.filestore, subject, "cache")
             
         if not os.path.exists(cachedir):
             os.makedirs(cachedir)

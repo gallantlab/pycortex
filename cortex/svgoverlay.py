@@ -123,7 +123,7 @@ class SVGOverlay(object):
                 outfile.write(etree.tostring(outsvg))
         
     def get_texture(self, layer_name, texres, name=None, background=None, labels=True, bits=32, **kwargs):
-        '''Renders the current roimap as a png
+        '''Renders a specific layer of this svgobject as a png
 
         '''
         #set the size of the texture
@@ -342,6 +342,11 @@ class Shape(object):
     # boundaries found before the vertex means 'inside' the region or 'True' in the array
     #
     # This is all implemented with 1d and nd arrays manipulations, so the math is very algebraic.
+    #
+    # NOTE: Look into replacing these with matplotlib functions. 
+    # http://matplotlib.org/1.2.1/api/path_api.html#matplotlib.path.Path.contains_points
+    # For parsing svg files to matplotlib paths, see: 
+    # https://github.com/rougier/LinuxMag-HS-2014/blob/master/matplotlib/firefox.py
     ###
     def get_mask(self, vts):
         all_splines = self.splines #all_splines is a list of generally two roi paths, one for each hemisphere
