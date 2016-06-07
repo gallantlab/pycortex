@@ -698,8 +698,14 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         client = server.get_client()
         client.server = server
         return client
-
-    return server
+    else:
+        try:
+            from IPython.display import display, HTML
+            link = "http://%s:%d/%s" % (serve.hostname, server.port, template)
+            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(link)))
+        except:
+            pass
+        return server
 
 def _make_disp_defaults(disp_layers):
     # Useful function for transmitting colors..

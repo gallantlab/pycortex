@@ -16,7 +16,9 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, cvmin=None,
                 cvmax=None, cvthr=None, fig=None, extra_hatch=None,
-                colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), **kwargs):
+                colorbar_ticks=None, colorbar_ticklabels=None,
+                colorbar_ticklabelsize=None, colorbar_location=(.4, .07, .2, .04),
+                **kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
     matplotlib's imshow command.
 
@@ -77,7 +79,12 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple. 
     colorbar_location : tuple, optional
         Location of the colorbar! Not sure of what the numbers actually mean. Left, bottom, width, height, maybe?
-
+    colorbar_ticks: list of float, optional
+        Location of of colorbar ticks
+    colorbar_ticklabels: list of str, optional
+        Labels to use at each colorbar tick
+    colorbar_ticklabelsize: int, optional
+        Fontsize of colorbarticklabels
     """
     from matplotlib import colors,cm, pyplot as plt
     from matplotlib.collections import LineCollection
@@ -177,9 +184,13 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
 
     if with_colorbar and not isinstance(dataview, dataset.Volume2D):
-        cbar = fig.add_axes(colorbar_location)
-        fig.colorbar(cimg, cax=cbar, orientation='horizontal',
+        cbar_axis = fig.add_axes(colorbar_location)
+        cbar = fig.colorbar(cimg, cax=cbar_axis, orientation='horizontal',
                      ticks=colorbar_ticks)
+        if colorbar_ticklabels is not None:
+            cbar.set_ticklabels(colorbar_ticklabels)
+        if colorbar_ticklabelsize is not None:
+            cbar.ax.tick_params(labelsize=colorbar_ticklabelsize)
 
     if with_dropout is not False:
         if isinstance(with_dropout, dataset.Dataview):
