@@ -47,9 +47,18 @@ class SVGOverlay(object):
         if np.any(coords.max(0) > 1) or np.any(coords.min(0) < 0):
             coords -= coords.min(0)
             coords /= coords.max(0)
-        #Renormalize coordinates to shape of svg
+        # Renormalize coordinates to shape of svg
         self.coords = coords * self.svgshape
-        self.kdt = cKDTree(self.coords)
+        # Update of scipy (0.16+) means that cKDTree hangs / takes absurdly long to compute with new default
+        # balanced_tree=True. Seems only to be true on Mac OS, for whatever reason. Possibly a broken
+        # C library, unclear. Setting balanced_tree=False seems to resolve the issue, thus going with that for now
+        # See http://stackoverflow.com/questions/31819778/scipy-spatial-ckdtree-running-slowly
+        try:
+            # not compatible with scipy version < 0.16
+            self.kdt = cKDTree(self.coords, balanced_tree=False) 
+        except:
+            # Older call signature
+            self.kdt = cKDTree(self.coords)
 
         for layer in self:
             for name in layer.labels.elements:
@@ -86,7 +95,7 @@ class SVGOverlay(object):
     def toxml(self, pretty=True):
         return etree.tostring(self.svg, pretty_print=pretty)
 
-    def get_svg(self, filename=None, labels=True, with_ims=None, **kwargs):
+    def get_svg(self, filename=None, labels=True, with_ims=None): # This did nothing - why?:, **kwargs):
         """Returns an SVG with the included images."""
         self.labels.visible = labesl
         
@@ -113,11 +122,13 @@ class SVGOverlay(object):
             with open(filename, "w") as outfile:
                 outfile.write(etree.tostring(outsvg))
         
-    def get_texture(self, texres, name=None, background=None, labels=True, bits=32, **kwargs):
-        '''Renders the current roimap as a png'''
-        #set the current size of the texture
+    def get_texture(self, layer_name, texres, name=None, background=None, labels=True, bits=32, **kwargs):
+        '''Renders a specific layer of this svgobject as a png
+
+        '''
+        #set the size of the texture
         w, h = self.svgshape
-        dpi = texres / h * 72
+        dpi = texres / h * 72 # 72 is screen resolution assumption for svg files
 
         if background is not None:
             img = E.image(
@@ -129,6 +140,13 @@ class SVGOverlay(object):
             self.svg.getroot().insert(0, img)
 
         for layer in self:
+            if layer.name==layer_name:
+                layer.visible = True
+                if len(kwargs)>0:
+                    print('Setting: %r'%repr(kwargs))
+                layer.set(**kwargs)
+            else:
+                layer.visible = False
             layer.labels.visible = labels
 
         pngfile = name
@@ -146,12 +164,13 @@ class SVGOverlay(object):
 
         if name is None:
             png.seek(0)
+            #im = plt.imread(png)
             return png
 
 class Overlay(object):
-    def __init__(self, pack, layer):
-        self.pack = pack
-        self.svg = pack.svg
+    def __init__(self, svgobject, layer):
+        self.svgobject = svgobject
+        self.svg = svgobject.svg
         self.layer = layer
         self.name = layer.attrib['{%s}label'%inkns]
         self.layer.attrib['class'] = 'display_layer'
@@ -161,7 +180,7 @@ class Overlay(object):
         self.shapes = dict()
         for layer in _find_layer(layer, "shapes").findall("{%s}g"%svgns):
             override = locked not in layer.attrib or layer.attrib[locked] == "false"
-            shape = Shape(layer, self.pack.svgshape[1], override_style=override)
+            shape = Shape(layer, self.svgobject.svgshape[1], override_style=override)
             self.shapes[shape.name] = shape
 
         self.labels = Labels(self)
@@ -185,12 +204,12 @@ class Overlay(object):
             shape.set(**kwargs)
 
     def get_mask(self, name):
-        return self.shapes[name].get_mask(self.pack.coords)
+        return self.shapes[name].get_mask(self.svgobject.coords)
 
     def add_shape(self, name, pngdata=None, add_path=True):
         """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
         #self.svg deletes the images -- we want to save those, so let's load it again
-        svg = etree.parse(self.pack.svgfile, parser=parser)
+        svg = etree.parse(self.svgobject.svgfile, parser=parser)
         imglayer = _find_layer(svg, "data")
         if add_path:
             layer = _find_layer(svg, self.name)
@@ -204,11 +223,11 @@ class Overlay(object):
         layer.append(E.image(
             {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%pngdata},
             id="image_%s"%name, x="0", y="0",
-            width=str(self.pack.svgshape[0]),
-            height=str(self.pack.svgshape[1]),
+            width=str(self.svgobject.svgshape[0]),
+            height=str(self.svgobject.svgshape[1]),
         ))
 
-        with open(self.pack.svgfile, "w") as xml:
+        with open(self.svgobject.svgfile, "w") as xml:
             xml.write(etree.tostring(svg, pretty_print=True))
 
 class Labels(object):
@@ -323,6 +342,11 @@ class Shape(object):
     # boundaries found before the vertex means 'inside' the region or 'True' in the array
     #
     # This is all implemented with 1d and nd arrays manipulations, so the math is very algebraic.
+    #
+    # NOTE: Look into replacing these with matplotlib functions. 
+    # http://matplotlib.org/1.2.1/api/path_api.html#matplotlib.path.Path.contains_points
+    # For parsing svg files to matplotlib paths, see: 
+    # https://github.com/rougier/LinuxMag-HS-2014/blob/master/matplotlib/firefox.py
     ###
     def get_mask(self, vts):
         all_splines = self.splines #all_splines is a list of generally two roi paths, one for each hemisphere
@@ -650,6 +674,13 @@ class Shape(object):
 
         return splines
 
+    @property
+    def visible(self):
+        return 'none' not in self.layer.attrib['style']
+    @visible.setter
+    def visible(self, value):
+        style = "display:inline;" if value else "display:none;"
+        self.layer.attrib['style'] = style
 
 ###################################################################################
 # SVG Helper functions

@@ -84,6 +84,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     dataview = dataset.normalize(braindata)
     if not isinstance(dataview, dataset.Dataview):
+        # Unclear what this means. Clarify error.
         raise TypeError('Please provide a Dataview, not a Dataset')
     
     if fig is None:
@@ -95,14 +96,18 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
                        height=height, thick=thick, depth=depth)
-    svg = db.get_overlay(dataview.subject)
+
+    svgobject = db.get_overlay(dataview.subject)
 
     if cutout:
         # Set ONLY desired cutout to be white
-        svg.cutout.set(fill="white",stroke="white", **{'stroke-width':'2'})
-        roitex = svg.get_texture(height, labels=False)
-        roitex.seek(0)
-        co = plt.imread(roitex)[:,:,0] # Cutout image
+        svgobject.cutout.set(fill="white",stroke="white", **{'stroke-width':'2'})
+        for co_name, co_shape in svgobject.cutouts.shapes.items():
+            sh.visible = co_name == cutout
+        #roitex = svgobject.get_texture(height, labels=False)
+        #roitex.seek(0)
+        co = svgobject.get_texture(height, 'cutouts', labels=False)
+        #co = plt.imread(roitex)[:,:,0] # Cutout image
         if not np.any(co):
             raise Exception('No pixels in cutout region %s!'%cutout)
 
@@ -134,7 +139,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         iy,ix = ((0,-1),(0,-1))
     
     if with_curvature:
-        curv,ee = make(db.get_surfinfo(dataview.subject),recache=recache,height=height)
+        curv,ee = make(db.get_surfinfo(dataview.subject), recache=recache, height=height)
         if cutout: curv[co==0] = np.nan
         axcv = fig.add_axes((0,0,1,1))
         # Option to use thresholded curvature
@@ -154,16 +159,16 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         axcv.set_xlim(extents[0], extents[1])
         axcv.set_ylim(extents[2], extents[3])
 
-    kwargs = dict(aspect='equal', 
+    imkws = dict(aspect='equal', 
         extent=extents, 
         origin='lower')
     
     # Check whether dataview has a cmap instance
     cmapdict = _has_cmap(dataview)
-    kwargs.update(cmapdict)
+    imkws.update(cmapdict)
 
     ax = fig.add_axes((0,0,1,1))
-    cimg = ax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]], **kwargs)
+    cimg = ax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]], **imkws)
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
     ax.set_ylim(extents[2], extents[3])
@@ -203,68 +208,63 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal",
                    interpolation="nearest", extent=extents, origin='lower')
     
-#<<<<<<< HEAD
     if with_borders:
         border = _gen_flat_border(dataview.subject, im.shape[0])
         bax = fig.add_axes((0,0,1,1))
         blc = LineCollection(border[0], linewidths=3.0,
                              colors=[['r','b'][mw] for mw in border[1]])
         bax.add_collection(blc)
-    
+    #O = db.get_overlay(dataview.subject)
     overlays = []
     if with_rois:
-        roi = db.get_overlay(dataview.subject,
-                             linewidth=linewidth,
-                             linecolor=linecolor,
-                             roifill=roifill,
-                             shadow=shadow,
-                             labelsize=labelsize,
-                             labelcolor=labelcolor)
+        #co = svgobject.get_texture(height, 'cutouts', labels=False)
+        roi = svgobject.get_texture('rois', height, labels=with_labels, #**kwargs)
+                                    linewidth=linewidth,
+                                    linecolor=linecolor,
+                                    roifill=roifill,
+                                    shadow=shadow,
+                                    labelsize=labelsize,
+                                    labelcolor=labelcolor)
         overlays.append(roi)
     if with_sulci:
-        sulc = db.get_overlay(dataview.subject,
-                              otype='sulci',
-                              linewidth=linewidth,
-                              linecolor=linecolor,
-                              shadow=shadow,
-                              labelsize=labelsize,
-                              labelcolor=labelcolor)
+        sulc = svgobject.get_texture('sulci', height, labels=with_labels, #**kwargs)
+                                     linewidth=linewidth,
+                                     linecolor=linecolor,
+                                     shadow=shadow,
+                                     labelsize=labelsize,
+                                     labelcolor=labelcolor)
         overlays.append(sulc)
 
-    #if with_rois or with_sulci:
-    #    svg.rois.visible = with_rois
-    #    if hasattr(svg,'sulci'):
-    #        svg.sulci.visible = with_sulci
-    #    tex = svg.get_texture(height, labels=with_labels)
-    #    tex.seek(0)
-
     if not extra_disp is None:
+        raise NotImplementedError("Not yet!")
         svgfile,layer = extra_disp
         if not isinstance(layer,(list,tuple)):
             layer = [layer]
         for extralayer in layer:
             # Allow multiple extra layer overlays
-            disp = db.get_overlay(dataview.subject,
-                              otype='external',
-                              shadow=shadow,
-                              labelsize=labelsize,
-                              labelcolor=labelcolor,
-                              layer=extralayer,
-                              svgfile=svgfile)
+            pts_, polys_ = (0,0)
+            O = svgoverlay.get_overlay(svgfile, pts_, polys_)
+            disp = None
+            # disp = svgoverlay.get_overlay(dataview.subject,
+            #                   otype='external',
+            #                   shadow=shadow,
+            #                   labelsize=labelsize,
+            #                   labelcolor=labelcolor,
+            #                   layer=extralayer,
+            #                   svgfile=svgfile)
             overlays.append(disp)
+
     for oo in overlays:
-        roitex = oo.get_texture(height, labels=with_labels, size=labelsize)
-        roitex.seek(0)
-#=======
-#>>>>>>> glrework
+        #roitex = oo.get_texture(height, labels=with_labels, size=labelsize)
+        oo.seek(0)
         oax = fig.add_axes((0,0,1,1))
-        im = plt.imread(tex)
+        im = plt.imread(oo)
         if cutout: 
             # STUPID BUT NECESSARY 1-PIXEL CHECK:
             if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,im.shape)]):
                 from scipy.misc import imresize
                 co = imresize(co,im.shape[:2]).astype(np.float32)/255.
-            im[:,:,3]*=co
+            im[:,:,3] *= co
 
         oimg = oax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]],
             aspect='equal', 
@@ -425,6 +425,7 @@ def make(braindata, height=1024, recache=False, **kwargs):
 
         return img.T[::-1], extents
 
+# Delete me? Not used anywhere else, I think...
 def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
     import shlex
     import subprocess as sp

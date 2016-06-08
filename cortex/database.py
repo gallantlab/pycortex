@@ -158,8 +158,8 @@ class Database(object):
         self.auxfile = None
     
     def __repr__(self):
-        subjs = ", ".join(sorted(self.subjects.keys()))
-        return """Pycortex database\n    Subjects:  {subjs}""".format(subjs=subjs)
+        subjs = "\n   ".join(sorted(self.subjects.keys()))
+        return """Pycortex database\n  Subjects:\n   {subjs}""".format(subjs=subjs)
     
     def __getattr__(self, attr):
         if attr in self.subjects:
@@ -170,7 +170,7 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo",
+        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", # "get_paths", # Add?
                 "get_mask", "get_overlay","get_cache", "get_view","save_view"] + list(self.subjects.keys())
 
     def loadXfm(self, *args, **kwargs):
@@ -557,7 +557,12 @@ class Database(object):
             hashname = "pycx_%s"%hashlib.md5(self.auxfile.h5.filename).hexdigest()[-8:]
             cachedir = os.path.join(tempfile.gettempdir(), hashname, subject)
         except (AttributeError, IOError):
-            cachedir = os.path.join(self.filestore, subject, "cache")
+            try:
+                # Get cache dir from config file
+                cachedir = os.path.join(options.config.get('basic', 'cache'), subject, 'cache')
+            except NoOptionError:
+                # If not defined, go with default cache
+                cachedir = os.path.join(self.filestore, subject, "cache")
             
         if not os.path.exists(cachedir):
             os.makedirs(cachedir)
