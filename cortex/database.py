@@ -560,7 +560,7 @@ class Database(object):
             try:
                 # Get cache dir from config file
                 cachedir = os.path.join(options.config.get('basic', 'cache'), subject, 'cache')
-            except NoOptionError:
+            except options.configparser.NoOptionError:
                 # If not defined, go with default cache
                 cachedir = os.path.join(self.filestore, subject, "cache")
             
