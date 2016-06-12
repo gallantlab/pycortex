@@ -259,7 +259,7 @@ def get_aseg_mask(subject, xfmname, aseg_id, **kwargs):
         mask = aseg == aseg_id
     return anat2epispace(mask.astype(float), subject, xfmname, **kwargs)
 
-def get_roi_masks(subject,xfmname,roi_list=None,dst=2,fail_for_missing_rois=False):
+def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=False):
     '''Return a numbered mask + dictionary of roi numbers
 
     This function returns a single 3D array with a separate numerical index for each ROI, 
@@ -310,7 +310,7 @@ def get_roi_masks(subject,xfmname,roi_list=None,dst=2,fail_for_missing_rois=Fals
     vox_dst,vox_idx = get_vox_dist(subject,xfmname)
     vox_idx_flat = vox_idx.flatten()
     # Get L,R hem separately
-    L,R = db.get_surf(subject, "flat", merge=False, nudge=True)
+    L, R = db.get_surf(subject, "flat", merge=False, nudge=True)
     nL = len(np.unique(L[1]))
     # Mask for left hemisphere
     Lmask = (vox_idx < nL).flatten()
@@ -319,13 +319,13 @@ def get_roi_masks(subject,xfmname,roi_list=None,dst=2,fail_for_missing_rois=Fals
         cx_mask = db.get_mask(subject,xfmname,dst).flatten()
     else:
         cx_mask = (vox_dst < dst).flatten()
-    
+    roi_names_all = rois.rois.shapes.keys()
     if roi_list is None:
-        roi_list = rois.names
+        roi_list = roi_names_all
     else:
-        roi_list = [r for r in roi_list if r in ['Cortex','cortex']+rois.names]
+        roi_list = [r for r in roi_list if r in ['Cortex','cortex']+roi_names_all]
         if fail_for_missing_rois:
-            fails = [r for r in roi_list if not r in ['Cortex','cortex']+rois.names]
+            fails = [r for r in roi_list if not r in ['Cortex','cortex']+roi_names_all]
             if any(fails):
                 for f in fails:
                     print("No ROI exists for %s"%f)
@@ -340,24 +340,33 @@ def get_roi_masks(subject,xfmname,roi_list=None,dst=2,fail_for_missing_rois=Fals
         if roi.lower()=='cortex':
             roi_idx_bin3 = np.ones(Lmask.shape)>0
         else:
+            print('BOOGERS!')
+            # This step is the time-consuming step, which can't be avoided.
+            #roi_idx_sub1 = rois.get_roi(roi) # substitution index 1 (in valid vertex space) # OLD
+            roi_idx_sub1 = get_roi_verts(subject, roi=roi)[roi] # NEW
+            # New
+            print n_valid_vertices
+            print n_verts
+            1/0
+            roi_idx_bin1 = np.zeros((n_valid_vertices,),np.bool) # binary index 1
+
+            # Old
             # Complicated indexing to remove vertices/voxels on the medial wall
             roi_idx_bin1 = np.zeros((n_valid_vertices,),np.bool) # binary index 1
-            # This step is the time-consuming step, which can't be avoided.
-            roi_idx_sub1 = rois.get_roi(roi) # substitution index 1 (in valid vertex space)
             roi_idx_bin1[roi_idx_sub1] = True
             roi_idx_bin2 = np.zeros((n_verts,),np.bool) # binary index 2
             roi_idx_bin2[vert_idx] = roi_idx_bin1
             roi_idx_sub2 = np.nonzero(roi_idx_bin2)[0] # substitution index 2 (in ALL fiducial vertex space)
             roi_idx_bin3 = np.in1d(vox_idx_flat,roi_idx_sub2) # binary index to 3D volume (flattened, though)
-        tmp_mask[:,ir,0] = np.all(np.array([roi_idx_bin3,Lmask,cx_mask]),axis=0)
-        tmp_mask[:,ir,1] = np.all(np.array([roi_idx_bin3,Rmask,cx_mask]),axis=0)
+        tmp_mask[:,ir,0] = np.all(np.array([roi_idx_bin3, Lmask, cx_mask]), axis=0)
+        tmp_mask[:,ir,1] = np.all(np.array([roi_idx_bin3, Rmask, cx_mask]), axis=0)
         if not np.any(tmp_mask[:,ir]):
             drop_roi += [ir]
     # Cull rois with no voxels
-    keep_roi = np.array([not ir in drop_roi for ir in range(len(roi_list))],dtype=np.bool)
+    keep_roi = np.array([not ir in drop_roi for ir in range(len(roi_list))], dtype=np.bool)
     # Cull rois requested, but not avialable in pycortex
     roi_list_L = [r for ir,r in enumerate(roi_list) if not ir in drop_roi]
-    tmp_mask = tmp_mask[:,keep_roi,:]
+    tmp_mask = tmp_mask[:, keep_roi, :]
     # Kill all overlap btw. "cortex" and other ROIs
     roi_list_L_lower = [xx.lower() for xx in roi_list_L]
     if 'cortex' in roi_list_L_lower:
