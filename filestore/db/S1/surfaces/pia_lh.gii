@@ -10,7 +10,7 @@
 	Dim0="152893"
 	Dim1="3"
 	Encoding="GZipBase64Binary"
-	Endian="GIFTI_ENDIAN_LITTLE"
+	Endian="LittleEndian"
 	ExternalFileName=""
 	ExternalFileOffset="">
 <MetaData/>
@@ -29395,7 +29395,7 @@ Qs6xecFEvaLBBhSAQigRd8EbLKLBDviAQvgXc8Ehs6jB4muAQmBDesGZfBHCOZWNQq2+pcEwZBDC
 	Dim0="305782"
 	Dim1="3"
 	Encoding="GZipBase64Binary"
-	Endian="GIFTI_ENDIAN_LITTLE"
+	Endian="LittleEndian"
 	ExternalFileName=""
 	ExternalFileOffset="">
 <MetaData/>
