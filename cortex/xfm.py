@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from six import string_types # for python 3 compatibility
 
 class Transform(object):
     '''
@@ -101,8 +102,8 @@ class Transform(object):
         inv = npl.inv
 
         # Load transform from text file, if string is provided
-        if isinstance(xfm,(str,unicode)):
-            with open(xfm,'r') as fid:
+        if isinstance(xfm, string_types):
+            with open(xfm, 'r') as fid:
                 L = fid.readlines()
             xfm  = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
 

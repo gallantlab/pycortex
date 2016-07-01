@@ -2,7 +2,6 @@ import os
 import glob
 import copy
 import json
-import Queue
 import shutil
 import random
 import functools
@@ -11,7 +10,13 @@ import mimetypes
 import threading
 import webbrowser
 import numpy as np
-
+try: 
+    # Python 3 compatibility:
+    import Queue as queue
+    from ConfigParser import NoOptionError
+except ImportError:
+    import queue
+    from configparser import NoOptionError
 from tornado import web
 from .FallbackLoader import FallbackLoader
 
@@ -20,7 +25,6 @@ from ..database import db
 
 from . import serve
 from .data import Package
-from ConfigParser import NoOptionError
 
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
@@ -258,7 +262,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
 
-    post_name = Queue.Queue()
+    post_name = queue.Queue()
 
     if pickerfun is None:
         pickerfun = lambda a,b: None

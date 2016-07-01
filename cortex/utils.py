@@ -2,6 +2,7 @@ import io
 import os
 import binascii
 import numpy as np
+from six import string_types # for python 3 compatibility
 from importlib import import_module
 from .database import db
 from .volume import mosaic, unmask, anat2epispace
@@ -319,7 +320,7 @@ def get_roi_masks(subject,xfmname,roi_list=None,dst=2,fail_for_missing_rois=Fals
     # Mask for left hemisphere
     Lmask = (vox_idx < nL).flatten()
     Rmask = np.logical_not(Lmask)
-    if type(dst) in (str,unicode):
+    if isinstance(dst, string_types):
         cx_mask = db.get_mask(subject,xfmname,dst).flatten()
     else:
         cx_mask = (vox_dst < dst).flatten()
@@ -335,7 +336,7 @@ def get_roi_masks(subject,xfmname,roi_list=None,dst=2,fail_for_missing_rois=Fals
                     print("No ROI exists for %s"%f)
                 raise ValueError("Invalid ROIs requested!")
 
-    if isinstance(roi_list, str):
+    if isinstance(roi_list, string_types):
         roi_list = [roi_list]
     # First: get all roi voxels into 4D volume
     tmp_mask = np.zeros((np.prod(shape),len(roi_list),2),np.bool)

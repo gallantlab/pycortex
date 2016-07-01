@@ -205,7 +205,7 @@ class Dataview(object):
         import glob, os
         # Get colormap from matplotlib or pycortex colormaps
         ## -- redundant code, here and in cortex/quicklflat.py -- ##
-        if isinstance(self.cmap,(str,unicode)):
+        if isinstance(self.cmap, string_types):
             if not self.cmap in cm.__dict__:
                 # unknown colormap, test whether it's in pycortex colormaps
                 cmapdir = options.config.get('webgl', 'colormaps')
@@ -219,7 +219,7 @@ class Dataview(object):
                 cm.register_cmap(self.cmap,cmap)
             else:
                 cmap = cm.get_cmap(self.cmap)
-        elif isinstance(self.cmap,colors.Colormap):
+        elif isinstance(self.cmap, colors.Colormap):
             cmap = self.cmap
         # Normalize colors according to vmin, vmax
         norm = colors.Normalize(self.vmin, self.vmax) 

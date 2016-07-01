@@ -4,15 +4,19 @@ import time
 import json
 import stat
 import email
-import Queue
 import struct
 import socket
 import logging
 import binascii
+import base64 # NEW
 import datetime
 import mimetypes
 import threading
-
+try: 
+    # Python 3 compatibility:
+    import Queue as queue
+except ImportError:
+    import queue
 import numpy as np
 import tornado.web
 import tornado.ioloop
@@ -24,9 +28,15 @@ cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
 def make_base64(imgfile):
-    with open(imgfile) as img:
+    with open(imgfile, mode='rb') as img:
         mtype = mimetypes.guess_type(imgfile)[0]
-        data = binascii.b2a_base64(img.read()).strip()
+        # data = binascii.b2a_base64(img.read()).strip() # Original
+        # data = img.read().encode('ascii').strip() # attempted, failed
+        #data = str(img.read(), encoding='ascii').strip() # attempt #2
+        #imbytes = img.read()
+        #data = imbytes.decode().strip() # attempted, failed
+        imbytes = base64.encodestring(img.read())
+        data = imbytes.decode('utf-8').strip()
         return "data:{mtype};base64,{data}".format(mtype=mtype, data=data)
 
 class NPEncode(json.JSONEncoder):
@@ -42,6 +52,7 @@ class NPEncode(json.JSONEncoder):
                 dtype=obj.dtype.descr[0][1], 
                 shape=obj.shape, 
                 data=binascii.b2a_base64(obj.tostring()))
+                #data=)
         elif isinstance(obj, (np.int64, np.int32, np.int16, np.int8, np.uint64, np.uint32, np.uint16, np.uint8)):
             return int(obj)
         elif isinstance(obj, (np.float64, np.float32)):
@@ -78,7 +89,7 @@ class WebApp(threading.Thread):
             (r"/(.*)", tornado.web.StaticFileHandler, dict(path=cwd)),
         ]
         self.port = port
-        self.response = Queue.Queue()
+        self.response = queue.Queue()
         self.connect = threading.Event()
         self.sockets = []
 
