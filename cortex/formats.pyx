@@ -160,3 +160,12 @@ def write_gii(filename, object pts, object polys):
     polys_darray = gifti.GiftiDataArray.from_array(polys, "triangle")
     gii = gifti.GiftiImage(darrays=[pts_darray, polys_darray])
     gifti.write(gii, filename)
+
+def write_obj(filename, object pts, object polys):
+    with open(filename, 'w') as fp:
+        fp.write("o Object\n")
+        for pt in pts:
+            fp.write("v %0.6f %0.6f %0.6f\n"%pt)
+        fp.write("s off")
+        for f in polys:
+            fp.write("f %d %d %d\n"%(f+1))
