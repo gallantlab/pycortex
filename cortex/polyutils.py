@@ -987,11 +987,13 @@ def measure_volume(pts, polys):
 
 def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
     from tvtk.api import tvtk
+    from tvtk.common import configure_input
     imgdata = tvtk.ImageData(dimensions=volume.shape)
     imgdata.point_data.scalars = volume.flatten('F')
 
-    contours = tvtk.ContourFilter(input=imgdata, number_of_contours=1)
+    contours = tvtk.ContourFilter(number_of_contours=1)
     contours.set_value(0, 1)
+    configure_input(contours, imgdata)
 
     if smooth:
         smoothargs = dict(number_of_iterations=40, feature_angle = 90, pass_band=.05)
@@ -1005,3 +1007,18 @@ def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
     polys = contours.output.polys.to_array().reshape(-1, 4)[:,1:]
     return pts, polys
 
+
+def deduplicate(pts, polys):
+    npts = []
+    dpts = dict()
+    i = 0
+    for p in pts:
+        if tuple(p) not in dpts:
+            dpts[tuple(p)] = i
+            i += 1
+            npts.append(p)
+    
+    newpolys = np.zeros_like(polys)
+    for i, pts in enumerate(pts[polys]):
+        newpolys[i] = dpts[tuple(pts[0])], dpts[tuple(pts[1])], dpts[tuple(pts[2])]
+    return np.array(npts), np.array(newpolys)

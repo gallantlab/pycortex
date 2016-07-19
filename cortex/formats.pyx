@@ -165,7 +165,7 @@ def write_obj(filename, object pts, object polys):
     with open(filename, 'w') as fp:
         fp.write("o Object\n")
         for pt in pts:
-            fp.write("v %0.6f %0.6f %0.6f\n"%pt)
+            fp.write("v %0.6f %0.6f %0.6f\n"%tuple(pt))
         fp.write("s off")
         for f in polys:
-            fp.write("f %d %d %d\n"%(f+1))
+            fp.write("f %d %d %d\n"%tuple((f+1)))
