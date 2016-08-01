@@ -96,8 +96,8 @@ class ROIpack(object):
                 warnings.warn('No defaults set for display layer %s; Using defaults for ROIs in options.cfg file'%layer)
                 dlayer = 'rois'                
             self.linewidth = float(config.get(dlayer, "line_width")) if linewidth is None else linewidth
-            self.linecolor = tuple(map(float, config.get(dlayer, "line_color").split(','))) if linecolor is None else linecolor
-            self.roifill = tuple(map(float, config.get(dlayer, "fill_color").split(','))) if roifill is None else roifill
+            self.linecolor = tuple([float(x) for x in config.get(dlayer, "line_color").split(',')]) if linecolor is None else linecolor
+            self.roifill = tuple([float(x) for x in config.get(dlayer, "fill_color").split(',')]) if roifill is None else roifill
             self.shadow = float(config.get(dlayer, "shadow")) if shadow is None else shadow
 
             # For dashed lines, default to WYSIWYG from rois.svg
@@ -658,7 +658,7 @@ class ROIpack(object):
         if size is None:
             size = config.get(dlayer, "labelsize")
         if color is None:
-            color = tuple(map(float, config.get(dlayer, "labelcolor").split(",")))
+            color = tuple([float(x) for x in config.get(dlayer, "labelcolor").split(",")])
         if shadow is None:
             shadow = self.shadow
 
@@ -725,7 +725,7 @@ class ROI(object):
         if data.pop(0).lower() != "m":
             raise ValueError("Unknown path format")
         #offset = np.array([float(x) for x in data[1].split(',')])
-        offset = np.array(map(float, [data.pop(0), data.pop(0)]))
+        offset = np.array([float(x) for x in [data.pop(0), data.pop(0)]])
         mode = "l"
         pts = [[offset[0], offset[1]]]
         
@@ -743,15 +743,15 @@ class ROI(object):
                 mode = data.pop(0)
                 continue
             if mode == "l":
-                offset += list(map(float, [data.pop(0), data.pop(0)]))
+                offset += list([float(x) for x in [data.pop(0), data.pop(0)]])
             elif mode == "L":
-                offset = np.array(list(map(float, [data.pop(0), data.pop(0)])))
+                offset = np.array([float(x) for x in [data.pop(0), data.pop(0)]])
             elif mode == "c":
                 data = data[4:]
-                offset += list(map(float, [data.pop(0), data.pop(0)]))
+                offset += [float(x) for x in [data.pop(0), data.pop(0)]]
             elif mode == "C":
                 data = data[4:]
-                offset = np.array(list(map(float, [data.pop(0), data.pop(0)])))
+                offset = np.array([float(x) for x in [data.pop(0), data.pop(0)]])
 
             ## Check to see if nothing has happened, and, if so, fail
             if len(data) == lastlen:

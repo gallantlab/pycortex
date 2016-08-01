@@ -100,7 +100,7 @@ class ROIpack(object):
         # Construct polygon adjacency graph for each surface
         polygraphs = [lsurf.poly_graph, rsurf.poly_graph]
         for roi in self.rois.keys():
-            print "Adding %s.." % roi
+            print("Adding %s.." % roi)
             masks = self.rois[roi].left, self.rois[roi].right
             mmpts = svgmpts[:len(masks[0])], svgmpts[len(masks[0]):]
             roilayer = _make_layer(_find_layer(svg, "rois"), roi)

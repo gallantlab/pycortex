@@ -647,22 +647,22 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
         #     wmcoords[:,0] < xfm.shape[2],
         #     wmcoords[:,1] < xfm.shape[1],
         #     wmcoords[:,2] < xfm.shape[0]])
-        import pdb
-        pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
         valid_p = np.array([np.all((0 <= piacoords), axis=1), 
             piacoords[:,0] < xfm.shape[2], 
             piacoords[:,1] < xfm.shape[1], 
             piacoords[:,2] < xfm.shape[0]])
-        print(valid_p.shape)
+        #print(valid_p.shape)
         valid_p = np.all(valid_p, axis=0)
-        print(valid_p.shape)
+        #print(valid_p.shape)
         valid_w = np.array([np.all((0 <= wmcoords), axis=1), 
             wmcoords[:,0] < xfm.shape[2],
             wmcoords[:,1] < xfm.shape[1],
             wmcoords[:,2] < xfm.shape[0]])
-        print(valid_w.shape)
+        #print(valid_w.shape)
         valid_w = np.all(valid_w, axis=0)
-        print(valid_w.shape)
+        #print(valid_w.shape)
 
         valid = np.logical_and(valid_p, valid_w)
         vidx = np.nonzero(valid)[0]

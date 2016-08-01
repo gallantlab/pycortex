@@ -14,15 +14,17 @@ uv
   in javascript, in the load function
 '''
 import os
+import sys
 import json
 import tempfile
+from six import string_types
 import numpy as np
 from scipy.spatial import cKDTree
 
 from .database import db
 from .utils import get_cortical_mask, get_mapper, get_dropout
 from . import polyutils
-from openctm import CTMfile
+from .openctm import CTMfile
 
 class BrainCTM(object):
     def __init__(self, subject, decimate=False):
@@ -168,6 +170,9 @@ class BrainCTM(object):
 class Hemi(object):
     def __init__(self, pts, polys, norms=None):
         self.tf = tempfile.NamedTemporaryFile()
+        if sys.version_info[0]>2:
+            print("Converting tf.name to bytes")
+            self.tf.name = bytes(self.tf.name, 'ascii')
         self.ctm = CTMfile(self.tf.name, "w")
 
         self.ctm.setMesh(pts.astype(np.float32), polys.astype(np.uint32), norms=norms)
@@ -200,7 +205,6 @@ class Hemi(object):
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')
         self.ctm.save(**kwargs)
-
         ctm = CTMfile(self.tf.name)
         return ctm.getMesh(), self.tf.read()
 
