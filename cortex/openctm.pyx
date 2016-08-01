@@ -158,7 +158,9 @@ cdef class CTMfile:
 
 		for name, attrib in self.attribs.items():
 			pts = attrib
-			err = openctm.ctmAddAttribMap(self.ctx, <float*> pts.data, <char*>name)
+			bytename = name.encode('utf-8')
+
+			err = openctm.ctmAddAttribMap(self.ctx, <float*> pts.data, <char*> bytename)
 			if err == openctm.CTM_NONE:
 				err = openctm.ctmGetError(self.ctx)
 				raise Exception(openctm.ctmErrorString(err))
@@ -167,7 +169,9 @@ cdef class CTMfile:
 			if fname is not None:
 				cname = fname
 			pts = uv
-			err = openctm.ctmAddUVMap(self.ctx, <float*>pts.data, <char*>name, cname)
+			bytename = name.encode('utf-8')
+
+			err = openctm.ctmAddUVMap(self.ctx, <float*>pts.data, <char*>bytename, cname)
 			if err == openctm.CTM_NONE:
 				err = openctm.ctmGetError(self.ctx)
 				raise Exception(openctm.ctmErrorString(err))

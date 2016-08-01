@@ -112,7 +112,7 @@ class BrainCTM(object):
         (rpts, _, _), rbin = self.right.save(method=method, **kwargs)
 
         offsets = [0]
-        with open(path+'.ctm', 'w') as fp:
+        with open(path+'.ctm', 'wb') as fp:
             fp.write(lbin)
             offsets.append(fp.tell())
             fp.write(rbin)
