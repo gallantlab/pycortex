@@ -68,7 +68,8 @@ class BrainCTM(object):
         if fleft is not None:
             flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
             fmin, fmax = flatmerge.min(0), flatmerge.max(0)
-            self.flatlims = map(float, -fmin), map(float, fmax-fmin)
+            #self.flatlims = map(float, -fmin), map(float, fmax-fmin) # Removed for python 3 compatibility
+            self.flatlims = [float(x) for x in -fmin], [float(x) for x in fmax-fmin]
 
             self.left.setFlat(fleft[0])
             self.right.setFlat(fright[0])
@@ -171,7 +172,7 @@ class Hemi(object):
     def __init__(self, pts, polys, norms=None):
         self.tf = tempfile.NamedTemporaryFile()
         if sys.version_info[0]>2:
-            print("Converting tf.name to bytes")
+            print("Converting tf.name to bytes for python 3")
             self.tf.name = bytes(self.tf.name, 'ascii')
         self.ctm = CTMfile(self.tf.name, "w")
 

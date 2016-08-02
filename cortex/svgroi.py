@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import copy
 import shlex
 import tempfile
@@ -707,7 +708,11 @@ class ROIpack(object):
         return layer
 
     def toxml(self, pretty=True):
-        return etree.tostring(self.svg, pretty_print=pretty)
+        if sys.version_info[0] > 2:
+            kw = dict(encoding=str)
+        else:
+            kw = {}
+        return etree.tostring(self.svg, pretty_print=pretty, **kw)
 
 
 class ROI(object):

@@ -728,11 +728,11 @@ def _make_disp_defaults(disp_layers):
         disp_defaults[layer] = dict()
         disp_defaults[layer]["line_width"] = options.config.get(dlayer, "line_width")
 
-        line_color = map(float, options.config.get(dlayer, "line_color").split(","))
-        fill_color = map(float, options.config.get(dlayer, "fill_color").split(","))
+        line_color = [float(x) for x in options.config.get(dlayer, "line_color").split(",")]
+        fill_color = [float(x) for x in options.config.get(dlayer, "fill_color").split(",")]
 
-        disp_defaults[layer]["line_color"] = rgb_to_hex(tuple(x*255 for x in line_color[:3]))
-        disp_defaults[layer]["fill_color"] = rgb_to_hex(tuple(x*255 for x in fill_color[:3]))
+        disp_defaults[layer]["line_color"] = rgb_to_hex(tuple(int(x*255) for x in line_color[:3]))
+        disp_defaults[layer]["fill_color"] = rgb_to_hex(tuple(int(x*255) for x in fill_color[:3]))
 
         # Manually extract alpha values from line and fill color option strings
         disp_defaults[layer]["line_alpha"] = line_color[3]

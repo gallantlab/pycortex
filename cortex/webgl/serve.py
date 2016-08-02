@@ -132,6 +132,9 @@ class JSProxy(object):
         self.attrs = self.send(method='query', params=[self.name])[0]
     
     def __getattr__(self, attr):
+        #import pdb
+        #pdb.set_trace()
+        # what is this attrs business? why are attrs[whatever] 2-tuples? (or lists?) 
         assert attr in self.attrs
         if self.attrs[attr][0] in ["object", "function"]:
             return JSProxy(self.send, "%s.%s"%(self.name, attr))
