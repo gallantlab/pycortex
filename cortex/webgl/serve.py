@@ -27,6 +27,9 @@ from tornado.web import HTTPError
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
+# DEBUGGING BS:
+ct = 0
+
 def make_base64(imgfile):
     with open(imgfile, mode='rb') as img:
         mtype = mimetypes.guess_type(imgfile)[0]
@@ -127,14 +130,27 @@ class WebApp(threading.Thread):
 
 class JSProxy(object):
     def __init__(self, sendfunc, name="window"):
-        self.send = sendfunc
-        self.name = name
+        #print('Trying to set "send" at top of __init__...')
+        #self.send = sendfunc # Recurse 01
+        super(JSProxy, self).__setattr__('send', sendfunc)
+        #print('Set "send"; trying to set "name"')
+        #self.name = name
+        super(JSProxy, self).__setattr__('name', name)
+        #print('Set "name"; trying to set "attrs"')
         self.attrs = self.send(method='query', params=[self.name])[0]
+        #print('Set "attrs"')
     
     def __getattr__(self, attr):
-        #import pdb
-        #pdb.set_trace()
-        # what is this attrs business? why are attrs[whatever] 2-tuples? (or lists?) 
+        if attr=='attrs':
+            #print("tried to get self.attrs; returned:")
+            out = self.send(method='query', params=[self.name])[0]
+            #print(out)
+            return out
+        #print("Tried to get %s in __getattr__"%attr)
+        #global ct
+        #ct+=1
+        #if ct > 3:
+        #    raise Exception("STOP, stop, for the love of God!")
         assert attr in self.attrs
         if self.attrs[attr][0] in ["object", "function"]:
             return JSProxy(self.send, "%s.%s"%(self.name, attr))
@@ -142,9 +158,11 @@ class JSProxy(object):
             return self.attrs[attr][1]
 
     def __setattr__(self, attr, value):
+        #print("Very tip-top of __setattr__, I swear i was updated")
         if not hasattr(self, "attrs") or attr not in self.attrs:
+            #print("attempting fucky __setattr__ b/c no 'attrs' field or %s not in self.attrs"%attr)
             return super(JSProxy, self).__setattr__(attr, value)
-
+        #print("In __setattr__, trying to see if %s is in self.attrs"%attr)
         assert self.attrs[attr] not in ["object", "function"]
         resp = self.send(method='set', params=["%s.%s"%(self.name, attr), value])
         if isinstance(resp[0], dict) and "error" in resp[0]:

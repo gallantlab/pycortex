@@ -279,7 +279,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 if mtype is None:
                     mtype = "application/octet-stream"
                 self.set_header("Content-Type", mtype)
-                self.write(open(os.path.join(fpath, path)).read())
+                #with open(os.path.join(fpath, path), mode='rb') as fid:
+                #    wtf = fid.read()
+                #print(wtf)
+                self.write(open(os.path.join(fpath, path), mode='rb').read())
 
     class DataHandler(web.RequestHandler):
         def get(self, path):
