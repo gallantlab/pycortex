@@ -221,7 +221,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
 
-    html = FallbackLoader([serve.cwd]).load(template)
+    html = FallbackLoader([os.path.split(os.path.abspath(template))[0], serve.cwd]).load(template)
     db.auxfile = data
 
     #Extract the list of stimuli, for special-casing
@@ -323,6 +323,10 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             else:
                 self.root, fname = os.path.split(stims[path])
                 super(StimHandler, self).get(fname)
+
+    class StaticHandler(web.StaticFileHandler):
+        def initialize(self):
+            self.root = ''
 
     class MixerHandler(web.RequestHandler):
         def get(self):
@@ -700,6 +704,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             (r'/mixer.html', MixerHandler),
             (r'/picker', PickerHandler),
             (r'/', MixerHandler),
+            (r'/static/(.*)', StaticHandler),
         ], port)
     server.start()
     print("Started server on port %d"%server.port)

@@ -490,6 +490,10 @@ var mriview = (function(module) {
         this.schedule();
     };
 
+    module.Viewer.prototype.close = function() {
+        window.close();
+    };
+
     var _bound = false;
     module.Viewer.prototype._bindUI = function() {
         $(window).scrollTop(0);
