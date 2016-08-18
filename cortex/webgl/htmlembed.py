@@ -26,7 +26,7 @@ def _embed_css(cssfile, rootdirs):
             for url in urlparse.findall(content):
                 if not url.strip().startswith('data:'):
                     imgpath = _resolve_path(os.path.join(csspath, url), rootdirs)
-                    content = re.sub(url, serve.make_base64(imgpath), content)
+                    content = re.sub(url, serve.make_base64(imgpath).replace('\n',''), content)
 
             cssout.append("%s {\n%s\n}"%(selector, content))
         return '\n'.join(cssout)
@@ -50,7 +50,7 @@ def _embed_js(dom, script, rootdirs):
         for src in aparse.findall(jssrc):
             if not src.strip().startswith("data:"):
                 jspath = _resolve_path(src.strip('\'"'), rootdirs)
-                jssrc = jssrc.replace(src, "%s"%serve.make_base64(jspath))
+                jssrc = jssrc.replace(src, "%s"%serve.make_base64(jspath).replace('\n',''))
 
         script.removeAttribute("src")
         script.appendChild(dom.createTextNode(jssrc.decode('utf-8')))
@@ -72,7 +72,7 @@ def _embed_worker(worker):
 def _embed_images(dom, rootdirs):
     for img in dom.getElementsByTagName("img"):
         imgfile = _resolve_path(img.getAttribute("src"), rootdirs)
-        img.setAttribute("src", serve.make_base64(imgfile))
+        img.setAttribute("src", serve.make_base64(imgfile).replace('\n',''))
 
 def embed(rawhtml, outfile, rootdirs=(serve.cwd,)):
     parser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))

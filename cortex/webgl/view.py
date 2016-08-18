@@ -43,6 +43,7 @@ colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
 
 viewopts = dict(voxlines="false", voxline_color="#FFFFFF",
                 voxline_width='.01', title="Brain")
+webgl_output = options.config.get("webgl", "output")
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
                 template="static.html", layout=None, anonymize=False,
@@ -210,7 +211,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
-         autoclose=True, open_browser=None, port=None, pickerfun=None, output='notebook',
+         autoclose=True, open_browser=None, port=None, pickerfun=None, output=webgl_output,
          disp_layers=['rois'], extra_disp=None, template='mixer.html', **kwargs):
     """Display a dynamic viewer using the given dataset. 
 
