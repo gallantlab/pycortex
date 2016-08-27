@@ -17,7 +17,12 @@ $ sudo pip install nibabel
 This should work on Mac or Linux PCs. If you using Ubuntu, you can skip Anaconda and use the following command instead, which will install all python prerequisites for pycortex.
 
 ```
-$ sudo apt-get install python-pip python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib mayavi2 inkscape blender
+$ sudo apt-get install python-pip python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib mayavi2 inkscape blender cython
+```
+
+Using pip, install numexpr (and IPython or [Jupyter](https://jupyter.readthedocs.io/en/latest/install.html) if needed):
+```
+$ sudo pip install numexpr jupyter 
 ```
 
 To install from the github repository, call the following commands. For both commands, replace `<your_directory>` with the folder where you would like to store the pycortex source code.
