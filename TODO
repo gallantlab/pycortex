@@ -1,2 +1,1 @@
 1. fix volume display bug which the smallest dimension must be in the last.
-2. add build_ext option for setup.py.
