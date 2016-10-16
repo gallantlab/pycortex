@@ -575,9 +575,10 @@ def _make_flatmask(subject, height=1024):
             break
     if len(bound_list) > 2:
         print 'Warning: be careful! parts of the flat surfaces may have errors.'
-        # remove bound which has fewest edges
-        bound_size = [len(bound) for bound in bound_list]
-        bound_list.pop(np.argmin(bound_size))
+        while len(bound_list) > 2:
+            # remove bound which has fewest edges
+            bound_size = [len(bound) for bound in bound_list]
+            bound_list.pop(np.argmin(bound_size))
     left, right = bound_list[0], bound_list[1]
     #left, right = bounds.next(), bounds.next()
     aspect = (height / (pts.max(0) - pts.min(0))[1])
