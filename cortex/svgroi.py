@@ -990,6 +990,7 @@ def make_svg(pts, polys):
         except:
             break
     if len(poly_list) > 2:
+        print 'Warning: be careful! parts of the flat surfaces may have errors.'
         poly_size = [len(poly) for poly in poly_list]
         poly_list.pop(np.argmin(poly_size))
 

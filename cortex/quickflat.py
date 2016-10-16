@@ -574,6 +574,7 @@ def _make_flatmask(subject, height=1024):
         except:
             break
     if len(bound_list) > 2:
+        print 'Warning: be careful! parts of the flat surfaces may have errors.'
         # remove bound which has fewest edges
         bound_size = [len(bound) for bound in bound_list]
         bound_list.pop(np.argmin(bound_size))
