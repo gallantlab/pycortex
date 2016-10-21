@@ -212,7 +212,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
          autoclose=True, open_browser=None, port=None, pickerfun=None, output=webgl_output,
-         disp_layers=['rois'], extra_disp=None, template='mixer.html', **kwargs):
+         disp_layers=['rois'], extra_disp=None, template='mixer.html', url=None, **kwargs):
     """Display a dynamic viewer using the given dataset. 
 
     See cortex.webgl.make_static for more help.
@@ -717,9 +717,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         if url is None:
             # Need a more general way to set this - this is specific to data8 class proxy setup
             _, user = os.path.split(os.path.expanduser('~'))
-            url_base = os.path.abspath(os.curdir).replace('/home', 'https://data8.berkeley.edu/user')
-            url_base = url_base.replace(user, user+'/notebooks')
-            url = url_base+"/proxy:%d/%s"%(server.port, template)
+            url = 'https://data8.berkeley.edu/user/%s/proxy/%d'%(user, server.port)
             print(url)
     else:
         url = "http://%s:%d/%s"%(serve.hostname, server.port, template)
@@ -728,7 +726,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         if open_browser:
             output='new_browser'
         else:
-            output='None'
+            output='none'
     if output in ('new_browser', 'proxy_browser'):
         webbrowser.open(url)
         client = server.get_client()
