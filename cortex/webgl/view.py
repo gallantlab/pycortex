@@ -225,6 +225,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         which server port is running the web page) This argument replaces `open_browser`,
         which still works (2016.08.17) but is deprecated.
     """
+    print('Testing new webshow...')
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
@@ -712,14 +713,23 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         ], port)
     server.start()
     print("Started server on port %d"%server.port)
-    url = "http://%s:%d/%s"%(serve.hostname, server.port, template)
+    if output=='proxy_browser':
+        if url is None:
+            # Need a more general way to set this - this is specific to data8 class proxy setup
+            _, user = os.path.split(os.path.expanduser('~'))
+            url_base = os.path.abspath(os.curdir).replace('/home', 'https://data8.berkeley.edu/user')
+            url_base = url_base.replace(user, user+'/notebooks')
+            url = url_base+"/proxy:%d/%s"%(server.port, template)
+            print(url)
+    else:
+        url = "http://%s:%d/%s"%(serve.hostname, server.port, template)
     if open_browser is not None:
         warnings.warn("`open_browser` input is deprecated! Use output=X, where X is one of ['new_browser', 'notebook', 'none']")
         if open_browser:
             output='new_browser'
         else:
             output='None'
-    if output=='new_browser':
+    if output in ('new_browser', 'proxy_browser'):
         webbrowser.open(url)
         client = server.get_client()
         client.server = server
@@ -735,6 +745,16 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         try:
             from IPython.display import display, IFrame
             cell_ht = 500 # Reasonable default... make configurable?
+            # Currently borked. Need to make sure definitions are correct / in the right context
+            # This is supposed to spit back a string URL. 
+            # html = """
+            # <script>
+            # define(['jquery', 'base/js/utils'], function ($, utils) {
+            #     $('<iframe>').attr('src', utils.get_body_data('baseUrl') + '/proxy/' + {port} + '/mixer.html')
+            # });
+            # </script>
+            # """.format(port=port)
+            # display(HTML(html))
             display(IFrame(url, '100%', cell_ht))  #return?
             client = server.get_client()
             return client
