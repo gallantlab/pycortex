@@ -88,7 +88,7 @@ class WebApp(threading.Thread):
     def __init__(self, handlers, port):
         super(WebApp, self).__init__()
         self.handlers = handlers + [
-            (r"/wsconnect/", ClientSocket, dict(parent=self)),
+            (r"/wssconnect/", ClientSocket, dict(parent=self)),
             (r"/(.*)", tornado.web.StaticFileHandler, dict(path=cwd)),
         ]
         self.port = port

@@ -717,7 +717,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         if url is None:
             # Need a more general way to set this - this is specific to data8 class proxy setup
             _, user = os.path.split(os.path.expanduser('~'))
-            url = 'https://data8.berkeley.edu/user/%s/proxy/%d'%(user, server.port)
+            url = 'https://data8.berkeley.edu/user/%s/proxy/%d/%s'%(user, server.port, template)
             print(url)
     else:
         url = "http://%s:%d/%s"%(serve.hostname, server.port, template)
