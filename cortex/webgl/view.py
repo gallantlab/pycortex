@@ -727,11 +727,19 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             output='new_browser'
         else:
             output='none'
-    if output in ('new_browser', 'proxy_browser'):
+    if output == 'new_browser':
         webbrowser.open(url)
         client = server.get_client()
         client.server = server
         return client
+    elif output=='proxy_browser':
+        try:
+            from IPython.display import display, HTML
+            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
+        except:
+            pass
+        webbrowser.open(url)
+        return server
     elif output=='none':
         try:
             from IPython.display import display, HTML
