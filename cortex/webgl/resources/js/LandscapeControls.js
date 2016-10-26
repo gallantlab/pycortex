@@ -24,7 +24,7 @@ THREE.LandscapeControls = function ( cover, camera ) {
     // Constants
     this.rotateSpeed = .4;
     this.zoomSpeed = .002;
-    this.maxRadius = 400; // makes sure axes & flatmat don't merge in depth buffer
+    this.maxRadius = 800; // makes sure axes & flatmat don't merge in depth buffer
     this.minRadius = function(mix){return 101*mix}; // limits zoom for flatmap, which disappears at r=100
     this.panSpeed = 0.3;
     this.clickTimeout = 200; // milliseconds
