@@ -56,7 +56,7 @@ class Package(object):
     def metadata(self, **kwargs):
         return dict(views=self.views, data=self.brains, images=self.image_names(**kwargs))
 
-    def image_names(self, fmt="/data/{name}/{frame}/"):
+    def image_names(self, fmt="data/{name}/{frame}/"):
         names = dict()
         for name, imgs in self.images.items():
             names[name] = [fmt.format(name=name, frame=i) for i in range(len(imgs))]
