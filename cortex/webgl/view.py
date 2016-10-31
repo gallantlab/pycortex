@@ -707,20 +707,20 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         _, user = os.path.split(os.path.expanduser('~'))
         url_stub = 'https://data8.berkeley.edu/user/%s/proxy/%d'%(user, port)
         if url is None:
-            url = stub+'/%s'%(template)
+            url = url_stub+'/%s'%(template)
             print(url)
     else:
         url_stub = ''
         url = "http://%s:%d/%s"%(serve.hostname, port, template)
 
     server = WebApp([
-            (url_stub + r'/ctm/(.*)', CTMHandler),
-            (url_stub + r'/data/(.*)', DataHandler),
-            (url_stub + r'/stim/(.*)', StimHandler),
-            (url_stub + r'/' + template, MixerHandler),
-            (url_stub + r'/picker', PickerHandler),
-            (url_stub + r'/', MixerHandler),
-            (url_stub + r'/static/(.*)', StaticHandler),
+            (r'/ctm/(.*)', CTMHandler),
+            (r'/data/(.*)', DataHandler),
+            (r'/stim/(.*)', StimHandler),
+            (r'/' + template, MixerHandler),
+            (r'/picker', PickerHandler),
+            (r'/', MixerHandler),
+            (r'/static/(.*)', StaticHandler),
         ], port)
     server.start()
     print("Started server on port %d"%server.port)
