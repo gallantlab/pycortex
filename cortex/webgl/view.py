@@ -467,7 +467,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewers.addData")
-            new_meta, new_ims = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
+            new_meta, new_ims = _convert_dataset(Dataset(**kwargs), path='data/', fmt='%s_%d.png')
             metadata.update(new_meta)
             images.update(new_ims)
             return Proxy(metadata)
