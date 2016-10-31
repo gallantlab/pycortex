@@ -262,7 +262,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                                          **kwargs))
                 for subj in subjects)
 
-    subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))
+    subjectjs = json.dumps(dict((subj, "ctm/%s/"%subj) for subj in subjects))
     db.auxfile = None
 
     if layout is None:
@@ -702,45 +702,41 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     if port is None:
         port = random.randint(1024, 65536)
 
+    if output=='proxy_browser':
+        # Need a more general way to set this - this is specific to data8 class proxy setup
+        _, user = os.path.split(os.path.expanduser('~'))
+        url_stub = 'https://data8.berkeley.edu/user/%s/proxy/%d'%(user, port)
+        if url is None:
+            url = stub+'/%s'%(template)
+            print(url)
+    else:
+        url_stub = ''
+        url = "http://%s:%d/%s"%(serve.hostname, port, template)
+
     server = WebApp([
-            (r'/ctm/(.*)', CTMHandler),
-            (r'/data/(.*)', DataHandler),
-            (r'/stim/(.*)', StimHandler),
-            (r'/'+template, MixerHandler),
-            (r'/picker', PickerHandler),
-            (r'/', MixerHandler),
-            (r'/static/(.*)', StaticHandler),
+            (url_stub + r'/ctm/(.*)', CTMHandler),
+            (url_stub + r'/data/(.*)', DataHandler),
+            (url_stub + r'/stim/(.*)', StimHandler),
+            (url_stub + r'/' + template, MixerHandler),
+            (url_stub + r'/picker', PickerHandler),
+            (url_stub + r'/', MixerHandler),
+            (url_stub + r'/static/(.*)', StaticHandler),
         ], port)
     server.start()
     print("Started server on port %d"%server.port)
-    if output=='proxy_browser':
-        if url is None:
-            # Need a more general way to set this - this is specific to data8 class proxy setup
-            _, user = os.path.split(os.path.expanduser('~'))
-            url = 'https://data8.berkeley.edu/user/%s/proxy/%d/%s'%(user, server.port, template)
-            print(url)
-    else:
-        url = "http://%s:%d/%s"%(serve.hostname, server.port, template)
+
     if open_browser is not None:
         warnings.warn("`open_browser` input is deprecated! Use output=X, where X is one of ['new_browser', 'notebook', 'none']")
         if open_browser:
-            output='new_browser'
+            output = 'new_browser'
         else:
-            output='none'
+            output = 'none'
     if output == 'new_browser':
         webbrowser.open(url)
         client = server.get_client()
         client.server = server
         return client
-    elif output=='proxy_browser':
-        try:
-            from IPython.display import display, HTML
-            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
-        except:
-            pass
-        webbrowser.open(url)
-        return server
-    elif output=='none':
+    elif output in ('proxy_browser', 'none'):
         try:
             from IPython.display import display, HTML
             display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
@@ -751,22 +747,16 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
         try:
             from IPython.display import display, IFrame
             cell_ht = 500 # Reasonable default... make configurable?
-            # Currently borked. Need to make sure definitions are correct / in the right context
-            # This is supposed to spit back a string URL. 
-            # html = """
-            # <script>
-            # define(['jquery', 'base/js/utils'], function ($, utils) {
-            #     $('<iframe>').attr('src', utils.get_body_data('baseUrl') + '/proxy/' + {port} + '/mixer.html')
-            # });
-            # </script>
-            # """.format(port=port)
-            # display(HTML(html))
             display(IFrame(url, '100%', cell_ht))  #return?
             client = server.get_client()
             return client
         except:
             print("'notebook' output is only available from jupyter notebook!")
-            pass
+            try:
+                from IPython.display import display, HTML
+                display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
+            except:
+                pass
             return server
 
 
