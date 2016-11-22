@@ -23,8 +23,8 @@ def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
     type : string ['patch'|'surf'|'curv']
         Which type of files to return
     freesurfer_subject_dir : string | None
-        Directory of freesurfer subjects. Defaults to the value for 
-        the environment variable 'SUBJECTS_DIR' (which should be set 
+        Directory of freesurfer subjects. Defaults to the value for
+        the environment variable 'SUBJECTS_DIR' (which should be set
         by freesurfer)
     """
     if freesurfer_subject_dir is None:
@@ -38,7 +38,7 @@ def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
         return os.path.join(base, "surf", hemi+".curv{name}")
 
 def autorecon(subject, type="all"):
-    types = { 
+    types = {
         'all':'autorecon-all',
         '1':"autorecon1",
         '2':"autorecon2",
@@ -48,16 +48,16 @@ def autorecon(subject, type="all"):
         'pia':"autorecon2-pial"}
 
     times = {
-        'all':"12 hours", 
-        '2':"6 hours", 
-        'cp':"8 hours", 
+        'all':"12 hours",
+        '2':"6 hours",
+        'cp':"8 hours",
         'wm':"4 hours"
         }
     if str(type) in times:
         resp = raw_input("recon-all will take approximately %s to run! Continue? "%times[str(type)])
         if resp.lower() not in ("yes", "y"):
             return
-            
+
     cmd = "recon-all -s {subj} -{cmd}".format(subj=subject, cmd=types[str(type)])
     sp.check_call(shlex.split(cmd))
 
@@ -94,8 +94,13 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None):
     curvs = os.path.join(freesurfer_subject_dir, subject, 'surf', '{hemi}.{name}')
 
     #import anatomicals
-    for fsname, name in dict(T1="raw", aseg="aseg").items():
-        path = os.path.join(fspath, "{fsname}.mgz").format(fsname=fsname)
+    for fsname, name in dict(rawavg="raw", aseg="aseg").items():
+        path_pattern = os.path.join(fspath, "{fsname}.mgz")
+        if fsname == 'rawavg' and (not os.path.exists(path_pattern.format(fsname=fsname))):
+            # no `rawavg` available, default to T1
+            fsname = 'T1'
+
+        path = path_pattern.format(fsname=fsname)
         out = anats.format(subj=sname, name=name)
         cmd = "mri_convert {path} {out}".format(path=path, out=out)
         sp.call(shlex.split(cmd))
@@ -187,7 +192,7 @@ def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
         surf_file = get_paths(subject, hemi, 'surf', freesurfer_subject_dir=freesurfer_subject_dir).format(name='smoothwm')
     else:
         surf_file = get_paths(subject, hemi, 'surf', freesurfer_subject_dir=freesurfer_subject_dir).format(name=type)
-    
+
     pts, polys = parse_surf(surf_file)
 
     if patch is not None:
@@ -232,7 +237,7 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
         curv = get_curv(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir)
     else:
         curv = idx
-    
+
     fig = mlab.figure()
     src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, scalars=curv, figure=fig)
     norms = mlab.pipeline.poly_data_normals(src, figure=fig)
@@ -325,7 +330,7 @@ class SpringLayout(object):
             pinmask[pins] = True
         self.pins = pinmask
         self.neighbors = [set() for _ in range(len(pts))]
-        
+
         for i, j, k in polys:
             self.neighbors[i].add(j)
             self.neighbors[i].add(k)
