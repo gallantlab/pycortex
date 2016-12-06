@@ -68,7 +68,8 @@ def compute_mni_transform(subject, xfm,
     return func_to_mni
 
 def transform_to_mni(volumedata, func_to_mni, 
-                     template=default_template):
+                     template=default_template,
+                     use_flirt=True):
     """Transform data in `volumedata` to MNI space, resample at 1mm resolution.
 
     Parameters
@@ -87,23 +88,39 @@ def transform_to_mni(volumedata, func_to_mni,
     mni_volumedata : nibabel.nifti1.Nifti1Image
         `volumedata` after transformation to MNI space.
     """
-    # Set up paths
-    func_nii = tempfile.mktemp(".nii.gz")
-    func_to_mni_xfm = tempfile.mktemp(".mat")
-    func_in_mni = tempfile.mktemp(".nii.gz")
+    if use_flirt:
+        # Set up paths
+        func_nii = tempfile.mktemp(".nii.gz")
+        func_to_mni_xfm = tempfile.mktemp(".mat")
+        func_in_mni = tempfile.mktemp(".nii.gz")
 
-    # Save out relevant things
-    volumedata.save_nii(func_nii)
-    _save_fsl_xfm(func_to_mni_xfm, func_to_mni)
-    
-    # Use flirt to resample functional data
-    subprocess.call(["{fslprefix}flirt".format(fslprefix=fslprefix),
-                     "-in", func_nii,
-                     "-ref", template,
-                     "-applyxfm", "-init", func_to_mni_xfm,
-                     "-out", func_in_mni])
+        # Save out relevant things
+        volumedata.save_nii(func_nii)
+        _save_fsl_xfm(func_to_mni_xfm, func_to_mni)
+        
+        # Use flirt to resample functional data
+        subprocess.call(["{fslprefix}flirt".format(fslprefix=fslprefix),
+                         "-in", func_nii,
+                         "-ref", template,
+                         "-applyxfm", "-init", func_to_mni_xfm,
+                         "-out", func_in_mni])
 
-    return nibabel.load(func_in_mni)
+        return nibabel.load(func_in_mni)
+    else:
+        from nipy.algorithms.registration import resample
+        from . import xfm
+        func_xfm = db.get_xfm(volumedata.subject, volumedata.xfmname)
+        #xfm = cortex.db.get_mnixfm("AHfs", "AHfs_auto1")
+        nof_xfm = xfm.Transform.from_fsl(func_to_mni, 
+                                         func_xfm.reference.get_filename(), 
+                                         template)
+        resampled = resample(func_xfm.reference, 
+                             nof_xfm.xfm, 
+                             reference=nibabel.load(template), 
+                             mov_voxel_coords=True,
+                             interp_order=1)
+        return resampled
+
 
 def transform_surface_to_mni(subject, surfname):
     """Transform the surface named `surfname` for subject called `subject` into
