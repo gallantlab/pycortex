@@ -111,10 +111,12 @@ def transform_to_mni(volumedata, func_to_mni,
         from . import xfm
         func_xfm = db.get_xfm(volumedata.subject, volumedata.xfmname)
         #xfm = cortex.db.get_mnixfm("AHfs", "AHfs_auto1")
+        affine = func_xfm.reference.get_affine()
+        volumedata_nii = nibabel.Nifti1Image(volumedata.volume.T, affine)
         nof_xfm = xfm.Transform.from_fsl(func_to_mni, 
                                          func_xfm.reference.get_filename(), 
                                          template)
-        resampled = resample(func_xfm.reference, 
+        resampled = resample(volumedata_nii, 
                              nof_xfm.xfm, 
                              reference=nibabel.load(template), 
                              mov_voxel_coords=True,
