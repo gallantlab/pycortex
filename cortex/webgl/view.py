@@ -261,7 +261,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     post_name = Queue.Queue()
 
     if pickerfun is None:
-        pickerfun = lambda a,b: None
+        pickerfun = lambda a: None
 
     class CTMHandler(web.RequestHandler):
         def get(self, path):
@@ -667,7 +667,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
     class PickerHandler(web.RequestHandler):
         def get(self):
-            pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
+            pickerfun(map(float, self.get_argument("voxel").split(",")))
 
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose

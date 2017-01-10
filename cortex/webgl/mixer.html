@@ -16,5 +16,10 @@
 		figure = new jsplot.W2Figure();
 		viewers = figure.add(mriview.MultiView, "main", true, {{ layout[0] }}, {{ layout[1] }}, dataviews);
 
+		figure.addEventListener("pick", function(evt) {
+			$.get("/picker?voxel="+evt.args.pos.x+","+evt.args.pos.y+","+evt.args.pos.z)
+		});
+
+
 		sock = new Websock();
 {% end %}
