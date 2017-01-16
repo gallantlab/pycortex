@@ -367,11 +367,7 @@ class JSProxy(object):
 
     def __getitem__(self, idx):
         assert not isinstance(idx, (slice, list, tuple, np.ndarray))
-        resp = self.send(method='index', params=[self.name, args])
-        if isinstance(resp[0], dict) and "error" in resp[0]:
-            raise Exception(resp[0]['error'])
-        else:
-            return resp
+        return JSProxy(self.send, "%s.%d"%(self.name, idx))
 
 if __name__ == "__main__":
     app = WebApp([], 8888)

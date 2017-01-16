@@ -226,10 +226,14 @@ var dataset = (function(module) {
         this.data = images[json.name];
         this.frames = images[json.name].length;
 
+        this._interp = "nearest";
         this.textures = [];
         var loadmosaic = function(idx) {
             var img = new Image();
             img.addEventListener("load", function() {
+                this._width = img.width;
+                this._height = img.height;
+
                 var tex;
                 if (this.raw) {
                     tex = new THREE.Texture(img);
@@ -245,8 +249,8 @@ var dataset = (function(module) {
                     tex = new THREE.DataTexture(arr, img.width, img.height, THREE.LuminanceFormat, THREE.FloatType);
                     tex.premultiplyAlpha = false;
                 }
-                tex.minFilter = module.filtertypes['nearest'];
-                tex.magfilter = module.filtertypes['nearest'];
+                tex.minFilter = module.filtertypes[this._interp];
+                tex.magfilter = module.filtertypes[this._interp];
                 tex.needsUpdate = true;
                 tex.flipY = false;
                 this.shape = [((img.width-1) / this.mosaic[0])-1, ((img.height-1) / this.mosaic[1])-1];
@@ -270,6 +274,7 @@ var dataset = (function(module) {
             this.textures[i].magFilter = module.filtertypes[interp];
             this.textures[i].needsUpdate = true;
         }
+        this._interp = interp;
     };
     module.VolumeData.prototype.init = function(uniforms, dim, xfm, filter) {
         uniforms.mosaic.value[dim].set(this.mosaic[0], this.mosaic[1]);
@@ -288,6 +293,16 @@ var dataset = (function(module) {
                 uniforms.data.value[dim*2+1] = null;
             }
         }
+    }
+    module.VolumeData.prototype._setData = function(fframe, data) {
+        if (!(data instanceof NParray) || this.raw) throw "Invalid Datatype";
+        var tex = new THREE.DataTexture(data.data, this._width, this._height, THREE.LuminanceFormat, THREE.FloatType);
+        tex.premultiplyAlpha = false;
+        tex.minFilter = module.filtertypes[this._interp];
+        tex.magfilter = module.filtertypes[this._interp];
+        tex.needsUpdate = true;
+        tex.flipY = false;
+        this.textures[fframe] = tex;
     }
 
     module.VertexData = function(json, images) {
