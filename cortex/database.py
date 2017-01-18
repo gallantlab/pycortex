@@ -376,7 +376,7 @@ class Database(object):
         if os.path.exists(fname):
             jsdict = json.load(open(fname))
         else:
-            os.mkdir(path)
+            os.makedirs(path)
             if reference is None:
                 raise ValueError("Please specify a reference")
             fpath = os.path.join(path, "reference.nii.gz")
@@ -569,7 +569,7 @@ class Database(object):
             if options.config.has_option("basic", "cache"):
                 local_cache = os.path.expanduser(options.config.get("basic", "cache"))
                 if not os.path.exists(local_cache):
-                    os.mkdir(local_cache)
+                    os.makedirs(local_cache)
                 cachedir = os.path.join(local_cache, subject)
             else:
                 cachedir = os.path.join(self.filestore, subject, "cache")
