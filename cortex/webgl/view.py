@@ -38,7 +38,7 @@ colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
                 template="static.html", layout=None, anonymize=False,
-                html_embed=True, overlays_visible=('rois', 'sulci'), labels_visible=('rois',),
+                html_embed=True, overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
                 overlay_file=None, copy_ctmfiles=True, title='Brain', **kwargs):
     """Creates a static instance of the webGL MRI viewer that can easily be posted
     or shared.
@@ -52,7 +52,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         Dataset object containing all the data you wish to plot
     types : tuple, optional
         Types of surfaces to include. Fiducial and flat surfaces are automatically
-        included. Default ('inflated',)
+        included. Default ('inflated', )
     recache : bool, optional
         Whether to recreate CTM and SVG files for surfaces. Default False
     cmap : string, optional
@@ -65,7 +65,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     overlays_visible : tuple, optional. Default ('rois', 'sulci')
         The listed overlay layers will be set visible by default. Layers not listed
         here will be hidden by default (but can be enabled in the viewer GUI).
-    labels_visible : tuple, optional. Default ('rois',)
+    labels_visible : tuple, optional. Default ('rois', )
         Labels for the listed layers will be set visible by default. Labels for
         layers not listed here will be hidden by default (but can be enabled in
         the viewer GUI).
@@ -109,13 +109,13 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     subjects = list(package.subjects)
 
     ctmargs = dict(method='mg2', level=9, recache=recache)
-    ctms = dict((subj, utils.get_ctmpack(subj,types,**ctmargs))
+    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
                 for subj in subjects)
     package.reorder(ctms)
 
     db.auxfile = None
     if layout is None:
-        layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
+        layout = [None, (1, 1), (2, 1), (3, 1), (2, 2), (3, 2), (3, 2), (3, 3), (3, 3), (3, 3)][len(subjects)]
 
     ## Rename files to anonymize?
     submap = dict()
@@ -129,7 +129,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
             newfname = fname
         ctms[subj] = newfname+".json"
 
-        for ext in ['json','ctm', 'svg']:
+        for ext in ['json', 'ctm', 'svg']:
             srcfile = os.path.join(oldpath, "%s.%s"%(fname, ext))
             newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
             if os.path.exists(newfile):
@@ -208,9 +208,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
             htmlfile.write(html)
 
 
-def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
+def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
          autoclose=True, open_browser=True, port=None, pickerfun=None, template="mixer.html",
-         overlays_visible=('rois', 'sulci'), labels_visible=('rois',), overlay_file=None,
+         overlays_visible=('rois', 'sulci'), labels_visible=('rois', ), overlay_file=None,
          title='Brain', **kwargs):
     """Display a dynamic viewer using the given dataset. See cortex.webgl.make_static for help.
     """
@@ -245,12 +245,12 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
     db.auxfile = None
 
     if layout is None:
-        layout = [None, (1,1), (2,1), (3,1), (2,2), (3,2), (3,2), (3,3), (3,3), (3,3)][len(subjects)]
+        layout = [None, (1, 1), (2, 1), (3, 1), (2, 2), (3, 2), (3, 2), (3, 3), (3, 3), (3, 3)][len(subjects)]
 
     linear = lambda x, y, m: (1.-m)*x + m*y
     mixes = dict(
         linear=linear,
-        smoothstep=(lambda x, y, m: linear(x,y,3*m**2 - 2*m**3)),
+        smoothstep=(lambda x, y, m: linear(x, y, 3*m**2 - 2*m**3)),
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
 
@@ -265,7 +265,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             my_viewopts[sec] = dict(options.config.items(sec))
 
     if pickerfun is None:
-        pickerfun = lambda a,b: None
+        pickerfun = lambda a, b: None
 
     class CTMHandler(web.RequestHandler):
         def get(self, path):
@@ -360,39 +360,60 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 svgfile.write(data)
 
     class JSMixer(serve.JSProxy):
-        def _set_view(self,**kwargs):
+        # Enumerated list of properties settable for views. There may be a way to get this
+        # from the javascript object, but I (ML) don't know how.
+        # Old properites (some of which still need re-implementing in javascript)
+        # view_props = ['altitude', 'azimuth', 'target', 'mix', 'radius', 'pivot',
+        #     'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection',
+        #     'volume_vis', 'frame', 'slices']
+        @property
+        def view_props(self):
+            _camera_props = ['camera.%s'%k for k in self.ui.camera._controls.attrs.keys()]
+            _subject = self.ui.surface._folders.attrs.keys()[0]
+            _surface = getattr(self.ui.surface, _subject)
+            _surface_props = ['surface.{subject}.%s'%k for k in _surface._controls.attrs.keys()]
+            #view_props = _camera_props + _surface_props
+            return _camera_props + _surface_props
+            #['camera.altitude', 'camera.azimuth', 'camera.target', 'camera.radius', 
+            #'surface.{subject}.unfold', 'surface.{subject}.pivot', 'surface.{subject}.depth',
+            #'surface.{subject}.shift', 'surface.{subject}.left', 'surface.{subject}.right']
+            #'surface.{subject}.specularity', 'frame', 'bg_alpha'
+            #'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection', 
+            #'volume_vis', 'frame', 'slices']
+
+        def _set_view(self, **kwargs):
             """Low-level command: sets view parameters in the current viewer
 
             Sets each the state of each keyword argument provided. View parameters
-            that can be set include:
+            that can be set include all parameters in the data.gui in the html view.
 
-            altitude, azimuth, target, mix, radius, visL, visR, pivot,
-            (L/R hemisphere visibility), alpha (background alpha),
-            rotationL, rotationR (L/R hemisphere rotation, [x,y,z])
+            # OLD delete me :
+            #altitude, azimuth, target, mix, radius, visL, visR, pivot,
+            #(L/R hemisphere visibility), alpha (background alpha),
+            #rotationL, rotationR (L/R hemisphere rotation, [x, y, z])
 
             Notes
             -----
+            [the following is no longer true, I think - but check on this before deleting]
             Args must be lists instead of scalars, e.g. `azimuth`=[90]
             This could be changed, but this is a hidden function, called by
             higher-level functions that load .json files, which have the
             parameters in lists by default. So it's annoying either way.
             """
-            props = ['altitude','azimuth','target','mix','radius','pivot',
-                'visL','visR','alpha','rotationR','rotationL','projection',
-                'volume_vis','frame','slices']
-            # Set mix first, as it interacts with other arguments
-            if 'mix' in kwargs:
-                mix = kwargs.pop('mix')
-                self.setState('mix',mix)
-            for k in kwargs.keys():
-                if not k in props:
-                    if k=='time':
+            # Set unfolding level first, as it interacts with other arguments
+            subject_list = self.ui.surface._folders.attrs.keys()
+            for subject in subject_list:
+                if 'surface.{subject}.unfold' in kwargs:
+                    unfold = kwargs.pop('surface.{subject}.unfold')
+                    self.ui.set('surface.{subject}.unfold'.format(subject=subject), unfold)
+                for k, v in kwargs.items():
+                    if not k in self.view_props:
+                        print('Unknown parameter %s!'%k)
                         continue
-                    print('Unknown parameter %s!'%k)
-                    continue
-                self.setState(k,kwargs[k][0])
+                    else:
+                        self.ui.set(k.format(subject=subject) if '{subject}' in k else k, v)
 
-        def _capture_view(self,time=None):
+        def _capture_view(self, time=None):
             """Low-level command: returns a dict of current view parameters
 
             Retrieves the following view parameters from current viewer:
@@ -401,18 +422,24 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             rotationR, rotationL, projection, pivot
 
             `time` appends a 'time' key into the view (for use in animations)
+
+            If multiple subjects are present, only retrieves view for first subject.
             """
-            props = ['altitude','azimuth','target','mix','radius','pivot',
-                'visL','visR','alpha','rotationR','rotationL','projection',
-                'volume_vis','frame','slices']
             view = {}
-            for p in props:
-                view[p] = self.getState(p)[0]
+            subject = self.ui.surface._folders.attrs.keys()[0]
+            for p in self.view_props:
+                try:
+                    view[p] = self.ui.get(p.format(subject=subject) if '{subject}' in p else p)[0]
+                except Exception as err:
+                    # TO DO: Fix this hack with an error class in serve.py & catch it here 
+                    msg = "Cannot read property 'undefined'"
+                    if err.message[:len(msg)] != msg:
+                        raise err
             if not time is None:
                 view['time'] = time
             return view
 
-        def save_view(self,subject,name,is_overwrite=False):
+        def save_view(self, subject, name, is_overwrite=False):
             """Saves current view parameters to pycortex database
 
             Parameters
@@ -426,16 +453,16 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
             Notes
             -----
-            Equivalent to call to cortex.db.save_view(subject,vw,name)
+            Equivalent to call to cortex.db.save_view(subject, vw, name)
             For a list of the view parameters saved, see viewer._capture_view
 
             See Also
             --------
             viewer methods get_view, _set_view, _capture_view
             """
-            db.save_view(self,subject,name,is_overwrite)
+            db.save_view(self, subject, name, is_overwrite)
 
-        def get_view(self,subject,name):
+        def get_view(self, subject, name):
             """Get saved view from pycortex database.
 
             Retrieves named view from pycortex database and sets current
@@ -450,14 +477,14 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
             Notes
             -----
-            Equivalent to call to cortex.db.get_view(subject,vw,name)
+            Equivalent to call to cortex.db.get_view(subject, vw, name)
             For a list of the view parameters set, see viewer._capture_view
 
             See Also
             --------
             viewer methods save_view, _set_view, _capture_view
             """
-            view = db.get_view(self,subject,name)
+            view = db.get_view(self, subject, name)
 
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewers.addData")
@@ -466,20 +493,14 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             images.update(new_ims)
             return Proxy(metadata)
 
-        # Would like this to be here instead of in setState, but did
-        # not know how to make that work...
-        #def setData(self,name):
-        #    Proxy = serve.JSProxy(self.send, "window.viewers.setData")
-        #    return Proxy(name)
-
-        def getImage(self, filename,size=(1920, 1080)):
+        def getImage(self, filename, size=(1920, 1080)):
             """Saves currently displayed view to a .png image file
 
             Parameters
             ----------
             filename : string
                 duh.
-            size : tuple (x,y)
+            size : tuple (x, y)
                 size (in pixels) of image to save.
             """
             post_name.put(filename)
@@ -496,7 +517,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             the dictionaries as keyframes for the animation.
 
             Mesh display parameters that can be animated include 'elevation',
-            'azimuth','mix','radius','target' (more?)
+            'azimuth', 'mix', 'radius', 'target' (more?)
 
 
             Parameters
@@ -504,7 +525,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             animation : list of dicts
                 Each dict should have keys `idx`, `state`, and `value`.
                 `idx` is the time (in seconds) at which you want to set `state` to `value`
-                `state` is the parameter to animate (e.g. 'altitude','azimuth')
+                `state` is the parameter to animate (e.g. 'altitude', 'azimuth')
                 `value` is the value to set for `state`
             filename : string path name
                 Must contain '%d' (or some variant thereof) to account for frame
@@ -514,21 +535,21 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 animations.
             fps : int
                 Frame rate of resultant movie
-            size : tuple (x,y)
+            size : tuple (x, y)
                 Size (in pixels) of resulting movie
-            interpolation : {"linear","smoothstep","smootherstep"}
+            interpolation : {"linear", "smoothstep", "smootherstep"}
                 Interpolation method for values between keyframes.
 
             Example
             -------
             # Called after a call of the form: js_handle = cortex.webgl.show(DataViewObject)
             # Start with left hemisphere view
-            js_handle._setView(azimuth=[90],altitude=[90.5],mix=[0])
+            js_handle._setView(azimuth=[90], altitude=[90.5], mix=[0])
             # Initialize list
             animation = []
             # Append 5 key frames for a simple rotation
-            for az,idx in zip([90,180,270,360,450],[0,.5,1.0,1.5,2.0]):
-                animation.append({'state':'azimuth','idx':idx,'value':[az]})
+            for az, idx in zip([90, 180, 270, 360, 450], [0, .5, 1.0, 1.5, 2.0]):
+                animation.append({'state':'azimuth', 'idx':idx, 'value':[az]})
             # Animate! (use default settings)
             js_handle.makeMovie(animation)
             """
@@ -570,7 +591,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                             setfunc(start['state'], val)
                 self.getImage(filename%(i+offset), size=size)
 
-        def _get_anim_seq(self,keyframes,fps=30,interpolation='linear'):
+        def _get_anim_seq(self, keyframes, fps=30, interpolation='linear'):
             """Convert a list of keyframes to a list of EVERY frame in an animation.
 
             Utility function called by make_movie; separated out so that individual
@@ -582,7 +603,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             fr = 0
             a = np.array
             func = mixes[interpolation]
-            skip_props = ['projection','visR','visL',]
+            skip_props = ['surface.{subject}.right', 'surface.{subject}.left', ] #'projection', 
             # Get keyframes
             keyframes = sorted(keyframes, key=lambda x:x['time'])
             # Normalize all time to frame rate
@@ -592,7 +613,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 t = np.round(t/fs)*fs
                 keyframes[k]['time'] = t
             allframes = []
-            for start,end in zip(keyframes[:-1],keyframes[1:]):
+            for start, end in zip(keyframes[:-1], keyframes[1:]):
                 t0 = start['time']
                 t1 = end['time']
                 tdif = float(t1-t0)
@@ -601,14 +622,14 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 nvalues = np.round(tdif/fs)
                 if use_endpoint:
                     nvalues +=1
-                fr_time = np.linspace(0,1,nvalues,endpoint=use_endpoint)
+                fr_time = np.linspace(0, 1, nvalues, endpoint=use_endpoint)
                 # Interpolate between values
                 for t in fr_time:
                     frame = {}
                     for prop in start.keys():
                         if prop=='time':
                             continue
-                        if (prop in skip_props) or (start[prop][0] is None):
+                        if (prop in skip_props) or (start[prop] is None):
                             frame[prop] = start[prop]
                             continue
                         val = func(a(start[prop]), a(end[prop]), t)
@@ -620,7 +641,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             return allframes
 
         def make_movie_views(self, animation, filename="brainmovie%07d.png", offset=0,
-                      fps=30, size=(1920, 1080), interpolation="linear"):
+                      fps=30, size=(1920, 1080), alpha=1, interpolation="linear"):
             """Renders movie frames for animation of mesh movement
 
             Makes an animation (for example, a transition between inflated and
@@ -629,7 +650,7 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             the dictionaries as keyframes for the animation.
 
             Mesh display parameters that can be animated include 'elevation',
-            'azimuth','mix','radius','target' (more?)
+            'azimuth', 'mix', 'radius', 'target' (more?)
 
 
             Parameters
@@ -649,9 +670,9 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
                 animations.
             fps : int
                 Frame rate of resultant movie
-            size : tuple (x,y)
+            size : tuple (x, y)
                 Size (in pixels) of resulting movie
-            interpolation : {"linear","smoothstep","smootherstep"}
+            interpolation : {"linear", "smoothstep", "smootherstep"}
                 Interpolation method for values between keyframes.
 
             Notes
@@ -664,21 +685,24 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
             -------
             # Called after a call of the form: js_handle = cortex.webgl.show(DataViewObject)
             # Start with left hemisphere view
-            js_handle._setView(azimuth=[90],altitude=[90.5],mix=[0])
+            js_handle._setView(azimuth=[90], altitude=[90.5], mix=[0])
             # Initialize list
             animation = []
             # Append 5 key frames for a simple rotation
-            for az,t in zip([90,180,270,360,450],[0,.5,1.0,1.5,2.0]):
-                animation.append({'time':t,'azimuth':[az]})
+            for az, t in zip([90, 180, 270, 360, 450], [0, .5, 1.0, 1.5, 2.0]):
+                animation.append({'time':t, 'azimuth':[az]})
             # Animate! (use default settings)
             js_handle.make_movie(animation)
             """
             import time
-            allframes = self._get_anim_seq(animation,fps,interpolation)
-            for fr,frame in enumerate(allframes):
+            allframes = self._get_anim_seq(animation, fps, interpolation)
+            for fr, frame in enumerate(allframes):
                 self._set_view(**frame)
-                self.saveIMG(filename%(fr+offset+1), size=size)
-                time.sleep(.01)
+                # Set background alpha, color??
+                #self.renderer.setClearColor([0,0,0], alpha)
+                #self.saveIMG(filename%(fr+offset+1), size=size)
+                self.getImage(filename%(fr+offset+1), size=size)
+                time.sleep(0.01)
 
     class PickerHandler(web.RequestHandler):
         def get(self):

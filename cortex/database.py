@@ -483,7 +483,8 @@ class Database(object):
 
         try:
             from . import formats
-            return formats.read(os.path.splitext(files[type][hemi])[0])
+            fnm = str(os.path.splitext(files[type][hemi])[0])
+            return formats.read(fnm)
         except KeyError:
             raise IOError
 
@@ -563,7 +564,7 @@ class Database(object):
             except options.configparser.NoOptionError:
                 # If not defined, go with default cache
                 cachedir = os.path.join(self.filestore, subject, "cache")
-            
+        cachedir = os.path.expanduser(cachedir)
         if not os.path.exists(cachedir):
             os.makedirs(cachedir)
         return cachedir

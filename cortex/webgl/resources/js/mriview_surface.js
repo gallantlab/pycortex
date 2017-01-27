@@ -31,6 +31,8 @@ var mriview = (function(module) {
         this._pivot = 0;
         this._shift = 0;
         this._specular = parseFloat(viewopts.specularity);
+        this._leftvis = true;
+        this._rightvis = true;
         this.shaders = {};
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
@@ -70,7 +72,9 @@ var mriview = (function(module) {
             pivot: {action:[this, "setPivot", -180, 180]},
             shift: {action:[this, "setShift", 0, 200]},
             depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
-	    specularity: {action:[this, "setSpecular", 0, 1]},
+            left: {action:[this, "setLeftVis"]},
+            right: {action:[this, "setRightVis"]},
+	        specularity: {action:[this, "setSpecular", 0, 1]},
         });
         this.ui.addFolder("curvature", true).add({
             brightness: {action:[this.uniforms.curvAlpha, "value", 0, 1]},
@@ -410,8 +414,22 @@ var mriview = (function(module) {
 
         this._specular = val;
 	this.uniforms.specularStrength.value = this._specular * (1-_last_clipped);
-        
+    
     };
+    module.Surface.prototype.setLeftVis = function(val) {
+        if (val === undefined)
+            return this._leftvis
+        this._leftvis = val;
+        //this.surfs[0].surf.pivots.left.front.visible = val;
+        this.pivots.left.front.visible = val;
+    };
+    module.Surface.prototype.setRightVis = function(val) {
+        if (val === undefined)
+            return this._rightvis
+        this._rightvis = val;
+        //this.surfs[0].surf.pivots.right.front.visible = val;
+        this.pivots.right.front.visible = val;
+    };    
     module.Surface.prototype._makeMesh = function(geom, shader) {
         //Creates the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);
