@@ -703,12 +703,12 @@ def show(data, types=("inflated",), recache=False, cmap='RdBu_r', layout=None,
 
     if output=='proxy_browser':
         # Need a more general way to set this - this is specific to data8 class proxy setup
-        _, user = os.path.split(os.path.expanduser('~'))
-        url_stub = 'https://data8.berkeley.edu/user/%s/proxy/%d'%(user, port)
+        #_, user = os.path.split(os.path.expanduser('~'))
+        url_stub = 'http://datahub.berkeley.edu/user/user-redirect/proxy/%d'%(port)
         if url is None:
             url = url_stub+'/%s'%(template)
     else:
-        url_stub = ''
+        #url_stub = ''
         url = "http://%s:%d/%s"%(serve.hostname, port, template)
 
     server = WebApp([

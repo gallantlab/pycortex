@@ -10,7 +10,7 @@ from .database import db
 from .options import config
 
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
-                height=500, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
+                height=500, dpi=100, depth=0.5, with_rois=False, with_sulci=False,
                 with_labels=True, with_colorbar=True, with_borders=False, 
                 with_dropout=False, with_curvature=False, extra_disp=None, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
