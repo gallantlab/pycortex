@@ -21,7 +21,10 @@ Websock.prototype.get = function(name) {
     var names = name.split(".");
     for (var i = 1; i < names.length; i++) {
         last = o;
-        o = o[names[i]];
+        if (!(o[names[i]] instanceof Object || o[names[i]] instanceof Function))
+            o = names[i]
+        else 
+            o = o[names[i]];
     }
     return [last, o];
 }
