@@ -195,6 +195,6 @@ def write_obj(filename, object pts, object polys, object colors=None):
         else:
             for pt in pts:
                 fp.write("v %0.6f %0.6f %0.6f\n"%tuple(pt))
-        fp.write("s off")
+        fp.write("s off\n")
         for f in polys:
             fp.write("f %d %d %d\n"%tuple((f+1)))
