@@ -12,17 +12,19 @@ usercfg = os.path.join(userdir, "options.cfg")
 config = configparser.ConfigParser()
 config.readfp(open(os.path.join(cwd, 'defaults.cfg')))
 
+config_changed = False
 if len(config.read(usercfg)) == 0:
     os.makedirs(userdir)
-    with open(usercfg, 'w') as fp:
-        config.write(fp)
+    config_changed = True
         
 #set default path in case the module is imported from the source code directory
 if not config.has_option("basic", "filestore"):
     config.set("basic", "filestore", os.path.join(cwd, os.pardir, "filestore/db"))
+    config_changed = True
 
-if not config.has_option("basic", "filestore"):
+if not config.has_option("webgl", "colormaps"):
     config.set("webgl", "colormaps", os.path.join(cwd, os.pardir, "filestore/colormaps"))
+    config_changed = True
 
 # For backward compatibility with pre-sulci versions: 
 if not config.has_section('sulci'):
@@ -38,5 +40,8 @@ if not config.has_section('sulci'):
     del k,v
     print('Automatically added sulci section to options.config...')
     # Write / warn that this has been added? 
+    config_changed = True
+
+if config_changed:
     with open(usercfg, 'w') as fp:
         config.write(fp)
