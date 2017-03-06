@@ -511,6 +511,7 @@ class Masker(object):
         return VolumeData(self.ds.volume[mask], s, x, mask=masktype)
 
 def normalize(data):
+    """Standardize a variety of input types into pycortex objects"""
     if isinstance(data, (VolumeData, VertexData, Dataset)):
         return data
     elif isinstance(data, dict):

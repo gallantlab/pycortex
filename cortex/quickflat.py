@@ -11,8 +11,9 @@ from .options import config
 
 
 
-def add_curvature(subject, fig, threshold=None, contrast=None):
-    """
+def add_curvature(subject, fig, threshold=None, contrast=None, recache=False, height=1024, cmap=plt.cm.gray):
+    """Add curvature layer to figure
+
     Parameters
     ----------
     threshold : 
@@ -22,7 +23,8 @@ def add_curvature(subject, fig, threshold=None, contrast=None):
     cmap : (?)
     """
     curv,ee = make(db.get_surfinfo(subject), recache=recache, height=height)
-    if cutout: curv[co==0] = np.nan
+    #if cutout: 
+    #    curv[co==0] = np.nan
     axcv = fig.add_axes((0,0,1,1))
     # Option to use thresholded curvature
     use_threshold_curvature = config.get('curvature','threshold').lower() in ('true','t','1','y','yes') if threshold is None else threshold
@@ -41,8 +43,9 @@ def add_curvature(subject, fig, threshold=None, contrast=None):
     axcv.set_xlim(extents[0], extents[1])
     axcv.set_ylim(extents[2], extents[3])
 
-def add_data(braindata, pixelwise=True, thick=32, sampler='nearest',):
-    """
+def add_data(braindata, pixelwise=True, thick=32, sampler='nearest', height=1024, depth=0.5):
+    """Add data to quickflat plot
+
     Parameters
     ----------
     braindata : Dataview
@@ -63,8 +66,12 @@ def add_data(braindata, pixelwise=True, thick=32, sampler='nearest',):
         # (please provide a [cortex.dataset.Dataview or whatever] instance)
         raise TypeError('Please provide a Dataview, not a Dataset')
 
+    im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
+                       height=height, thick=thick, depth=depth)
 
-def add_rois():
+    
+
+def add_rois(fig, dataview, ):
     """
     Parameters
     ----------
@@ -77,12 +84,26 @@ def add_rois():
     shadow : int, optional
         Standard deviation of the gaussian shadow. Set to 0 if you want no shadow    
     """
+    svgobject = db.get_overlay(dataview.subject)
     pass
 
-def add_sulci():
-    """
+def add_sulci(fig, linewidth=None, linecolor=None, with_labels=True, labelsize=None, labelcolor=None, shadow=None):
+    """Add sulci layer to figure
+
     Parameters
     ----------
+    linewidth : 
+
+    linecolor : 
+
+    with_labels : 
+
+    labelsize : 
+
+    labelcolor : 
+
+    shadow : 
+
     """
     svgobject = db.get_overlay(dataview.subject)
     sulc = svgobject.get_texture('sulci', height, labels=with_labels, #**kwargs)
@@ -94,11 +115,12 @@ def add_sulci():
 
     pass
 
-def add_dropout(dataview, with_dropout):
+def add_dropout(fig, dataview, with_dropout):
     """Add dropout 
 
     Parameters
-    ----------    
+    ----------
+
     """
     if isinstance(with_dropout, dataset.Dataview):
         dropout_data = with_dropout
@@ -122,7 +144,7 @@ def add_dropout(dataview, with_dropout):
                interpolation="nearest", extent=extents, origin='lower')    
     pass
 
-def add_labels(labelsize=None, labelcolor=None, ):
+def add_labels(fig, labelsize=None, labelcolor=None, ):
     """
     Parameters
     ----------
@@ -130,15 +152,18 @@ def add_labels(labelsize=None, labelcolor=None, ):
 
     pass
 
-def add_colorbar(colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04),):
+def add_colorbar(fig, colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04),):
     """
     Parameters
     ----------
     """
+    cbar = fig.add_axes(colorbar_location)
+    fig.colorbar(cimg, cax=cbar, orientation='horizontal',
+                     ticks=colorbar_ticks)    
     pass
 
-def add_custom(svgfile=None, layer=None, ):
-    """WIP: CURRENTLY BROKEN
+def add_custom(fig, svgfile=None, layer=None, ):
+    """
     Parameters
     ----------
     """
@@ -172,7 +197,7 @@ def add_cutout(): # Not really "adding" ...
     if not np.any(co):
         raise Exception('No pixels in cutout region %s!'%cutout)
 
-    # STUPID BUT NECESSARY 1-PIXEL CHECK:
+    # Reconcile occasional 1-pixel difference between flatmap generation methods
     if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,co.shape)]):
         from scipy.misc import imresize
         co = imresize(co,im.shape[:2]).astype(np.float32)/255.
@@ -217,6 +242,17 @@ def make_flatmap():
     else:
         fig_resize = False
         fig = plt.figure(fig.number)
+
+    # Add curvature
+    # Add data
+    # Add rois
+    # Add sulci
+    # Add custom
+    # Add dropout
+    # Add cutouts
+
+##
+
 
 
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
@@ -595,6 +631,25 @@ def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pix
     roipack.get_svg(fname, labels=with_labels, with_ims=[pngdata])
 
 def make(braindata, height=1024, recache=False, **kwargs):
+    """Generate flatmap image from volumetric brain data
+
+    Parameters
+    ----------
+    braindata : 
+
+    height : 
+
+    recache : 
+
+    kwargs : wtf
+
+    Returns
+    -------
+    image : 
+
+    extents :
+
+    """
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
     
     if not hasattr(braindata, "xfmname"):
@@ -662,12 +717,13 @@ def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
         return fp
 
 def show(*args, **kwargs):
-    raise DeprecationWarning("Use quickflat.make_figure instead")
+    """Wrapper for make_figure()"""
     return make_figure(*args, **kwargs)
 
 def make_movie(name, data, subject, xfmname, recache=False, height=1024,
                sampler='nearest', dpi=100, tr=2, interp='linear', fps=30,
                vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
+    """Create a movie of an 4D data set"""
     raise NotImplementedError
     import sys
     import shlex
