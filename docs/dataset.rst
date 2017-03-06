@@ -159,3 +159,11 @@ API Documentation
 .. autoclass:: VolumeRGB
     :members:
 .. autoclass:: Vertex
+
+.. automodule:: cortex.dataset.braindata
+.. autoclass:: BrainData
+    :members:
+.. autoclass:: VolumeData
+    :members:
+.. autoclass:: VertexData
+    :members:

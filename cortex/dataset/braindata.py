@@ -5,6 +5,17 @@ import h5py
 from ..database import db
 
 class BrainData(object):
+    """
+    Abstract base class for brain data.
+
+    Parameters
+    ----------
+    data : ndarray or str
+        The data array (size depends on specific use case) or path to file 
+        readable by nibabel.
+    subject : str
+        Subject identifier. Must exist in the pycortex database.
+    """
     def __init__(self, data, subject, **kwargs):
         if isinstance(data, str):
             import nibabel
@@ -30,15 +41,19 @@ class BrainData(object):
 
     @property
     def name(self):
-        '''Name of this BrainData, according to its hash'''
+        """Name of this BrainData, computed from hash of data.
+        TODO:WHAT THE FUCK IS THIS USEFUL FOR
+        """
         return "__%s"%_hash(self.data)[:16]
 
     def exp(self):
-        """Copy of this object with data exponentiated.
+        """Return copy of this brain data with data exponentiated.
         """
         return self.copy(np.exp(self.data))
 
     def uniques(self, collapse=False):
+        """TODO: WHAT THE FUCK IS THIS
+        """
         yield self
 
     def __hash__(self):
@@ -58,6 +73,8 @@ class BrainData(object):
         return node
 
     def to_json(self, simple=False):
+        """Creates JSON description of this brain data.
+        """
         sdict = super(BrainData, self).to_json(simple=simple)
         if simple:
             sdict.update(dict(name=self.name,
@@ -68,7 +85,7 @@ class BrainData(object):
         return sdict
 
     @classmethod
-    def add_numpy_methods(cls):
+    def _add_numpy_methods(cls):
         """Adds numpy operator methods (+, -, etc.) to this class to allow
         simple manipulation of the data, e.g. with VolumeData v:
         v + 1 # Returns new VolumeData with 1 added to data
@@ -88,16 +105,30 @@ class BrainData(object):
             opfun.__name__ = op
             setattr(cls, opfun.__name__, opfun)
 
-BrainData.add_numpy_methods()
+BrainData._add_numpy_methods()
 
 class VolumeData(BrainData):
+    """
+    Abstract base class for all volumetric brain data.
+
+    Parameters
+    ----------
+    data : ndarray
+        The data. Can be 3D with shape (z,y,x), 1D with shape (v,) for masked data,
+        4D with shape (t,z,y,x), or 2D with shape (t,v). For masked data, if the
+        size of the given array matches any of the existing masks in the database,
+        that mask will automatically be loaded. If it does not, an error will be 
+        raised.
+    subject : str
+        Subject identifier. Must exist in the pycortex database.
+    xfmname : str
+        Transform name. Must exist in the pycortex database.
+    mask : ndarray, optional
+        Binary 3D array with shape (z,y,x) showing which voxels are selected.
+        If masked data is given, the mask will automatically be loaded if it 
+        exists in the pycortex database.
+    """
     def __init__(self, data, subject, xfmname, mask=None, **kwargs):
-        """Three possible variables: volume, movie, vertex. Enumerated with size:
-        volume movie: (t, z, y, x)
-        volume image: (z, y, x)
-        linear movie: (t, v)
-        linear image: (v,)
-        """
         if self.__class__ == VolumeData:
             raise TypeError('Cannot directly instantiate VolumeData objects')
         super(VolumeData, self).__init__(data, subject, **kwargs)
@@ -111,6 +142,8 @@ class VolumeData(BrainData):
         self.masked = _masker(self)
 
     def to_json(self, simple=False):
+        """Creates JSON description of this brain data.
+        """
         if simple:
             sdict = super(VolumeData, self).to_json(simple=simple)
             sdict["shape"] = self.shape
@@ -123,12 +156,47 @@ class VolumeData(BrainData):
 
     @classmethod
     def empty(cls, subject, xfmname, value=0, **kwargs):
+        """
+        Create a constant-valued VolumeData for the given subject and xfmname.
+        Often useful for testing purposes.
+
+        Parameters
+        ----------
+        subject : str
+            Subject identifier. Must exist in the pycortex database.
+        xfmname : str
+            Transform name. Must exist in the pycortex database.
+        value : float, optional
+            Value that the VolumeData will be filled with.
+
+        Returns
+        -------
+        VolumeData subclass
+            A VolumeData subclass object whose data is constant, equal to value.
+        """
         xfm = db.get_xfm(subject, xfmname)
         shape = xfm.shape
         return cls(np.ones(shape)*value, subject, xfmname, **kwargs)
 
     @classmethod
     def random(cls, subject, xfmname, **kwargs):
+        """
+        Create a random-valued VolumeData for the given subject and xfmname.
+        Random values are from gaussian distribution with mean 0, s.d. 1.
+        Often useful for testing purposes.
+
+        Parameters
+        ----------
+        subject : str
+            Subject identifier. Must exist in the pycortex database.
+        xfmname : str
+            Transform name. Must exist in the pycortex database.
+
+        Returns
+        -------
+        VolumeData subclass
+            A VolumeData subclass object whose data is random.
+        """
         xfm = db.get_xfm(subject, xfmname)
         shape = xfm.shape
         return cls(np.random.randn(*shape), subject, xfmname, **kwargs)
@@ -164,7 +232,18 @@ class VolumeData(BrainData):
             self.shape = shape
 
     def map(self, projection="nearest"):
-        """Convert this VolumeData into a VertexData using the given sampler
+        """Convert this VolumeData into VertexData using the given projection 
+        method.
+
+        Parameters
+        ----------
+        projection : str, optional
+            Type of projection to use. Default: nearest.
+
+        Returns
+        -------
+        VertexData subclass
+            Vertex valued version of this VolumeData.
         """
         from .. import utils
         mapper = utils.get_mapper(self.subject, self.xfmname, projection)
@@ -188,7 +267,9 @@ class VolumeData(BrainData):
 
     @property
     def volume(self):
-        """Standardizes the VolumeData, ensuring that masked data are unmasked"""
+        """Returns a 3D or 4D volume for this VolumeData, automatically unmasking
+        masked data.
+        """
         from .. import volume
         if self.linear:
             data = volume.unmask(self.mask, self.data[:])
@@ -201,7 +282,7 @@ class VolumeData(BrainData):
         return data
 
     def save(self, filename, name=None):
-        """Save the dataset into an hdf file with the provided name
+        """Save the dataset into an hdf file with the provided name.
         """
         import os
         if isinstance(filename, str):
@@ -234,7 +315,7 @@ class VolumeData(BrainData):
 
     def save_nii(self, filename):
         """Save as a nifti file at the given filename. Nifti headers are
-        copied from the reference nifti file.
+        copied from the reference image for this VolumeData's transform.
         """
         xfm = db.get_xfm(self.subject, self.xfmname)
         affine = xfm.reference.get_affine()
