@@ -147,3 +147,15 @@ The saved out HDF5 format has the following structure::
     /views
         name1[dataref, desc, cmap, vmin, vmax, state]
         name2[dataref, desc, cmap, vmin, vmax, state]
+
+
+API Documentation
+-----------------
+.. automodule:: cortex.dataset
+.. autoclass:: Volume
+    :members:
+.. autoclass:: Volume2D
+    :members:
+.. autoclass:: VolumeRGB
+    :members:
+.. autoclass:: Vertex

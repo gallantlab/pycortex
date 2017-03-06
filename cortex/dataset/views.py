@@ -242,6 +242,44 @@ class Multiview(Dataview):
                 yield sv
 
 class Volume(VolumeData, Dataview):
+    """
+    Encapsulates a 3D volume or 4D volumetric movie. Includes information on how
+    the volume should be colormapped for display purposes.
+
+    Parameters
+    ----------
+    data : ndarray
+        The data. Can be 3D with shape (z,y,x), 1D with shape (v,) for masked data,
+        4D with shape (t,z,y,x), or 2D with shape (t,v). For masked data, if the
+        size of the given array matches any of the existing masks in the database,
+        that mask will automatically be loaded. If it does not, an error will be 
+        raised.
+    subject : str
+        Subject identifier. Must exist in the pycortex database.
+    xfmname : str
+        Transform name. Must exist in the pycortex database.
+    mask : ndarray, optional
+        Binary 3D array with shape (z,y,x) showing which voxels are selected.
+        If masked data is given, the mask will automatically be loaded if it 
+        exists in the pycortex database.
+    cmap : str or matplotlib colormap, optional
+        Colormap (or colormap name) to use. If not given defaults to matplotlib
+        default colormap.
+    vmin : float, optional
+        Minimum value in colormap. If not given, defaults to TODO:WHAT
+    vmax : float, optional
+        Maximum value in colormap. If not given defaults to TODO:WHAT
+    description : str, optional
+        String describing this dataset. Displayed in webgl viewer.
+
+    All additional arguments in kwargs are passed to the VolumeData and Dataview
+
+    Methods
+    -------
+    raw()
+        Returns VolumeRGB instance with colormapped data.
+
+    """
     def __init__(self, data, subject, xfmname, mask=None, 
         cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Volume, self).__init__(data, subject, xfmname, mask=mask, 
