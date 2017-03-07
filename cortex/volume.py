@@ -83,10 +83,9 @@ def detrend_poly(data, polyorder = 10, mask=None):
         return detrended.reshape(*s)
 
 def mosaic(data, dim=0, show=True, **kwargs):
-    """mosaic(data, dim=0, show=True)
-
+    """
     Turns volume data into a mosaic, useful for quickly viewing volumetric data
-    IN RADIOLOGICAL COORDINATES (LEFT SIDE OF FIGURE IS RIGHT SIDE OF SUBJECT)
+    with radiological convention (left side of figure is right side of subject).
 
     Parameters
     ----------
