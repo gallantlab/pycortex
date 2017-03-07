@@ -105,7 +105,7 @@ def mosaic(data, dim=0, show=True, **kwargs):
     aspect = width / float(height)
     square = np.sqrt(slices / aspect)
     nwide = int(np.ceil(square))
-    ntall = int(np.ceil(slices*aspect / nwide))
+    ntall = int(np.ceil(float(slices) / nwide))
 
     shape = (ntall * (height+1) + 1, nwide * (width+1) + 1)
     if data.dtype == np.uint8:
