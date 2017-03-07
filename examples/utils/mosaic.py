@@ -35,5 +35,3 @@ cortex.mosaic(volume_arr, cmap=plt.cm.gray, vmin=0, vmax=1500)
 # here show=False so we don't generate another plot
 mosaic_arr, (nwide, ntall) = cortex.mosaic(volume_arr, show=False)
 # mosaic_arr is 607 x 607, with nwide = 6, ntall = 6
-
-plt.show()
