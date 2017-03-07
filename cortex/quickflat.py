@@ -9,41 +9,48 @@ from . import dataset
 from .database import db
 from .options import config
 
+# Fucking up dependencies:
+import matplotlib.pyplot as plt
 
-
-def add_curvature(subject, fig, threshold=None, contrast=None, recache=False, height=1024, cmap=plt.cm.gray):
+def add_curvature(fig, dataview, extents, threshold=None, contrast=None, height=1024, cmap='gray',
+                  recache=False):
     """Add curvature layer to figure
 
     Parameters
     ----------
-    threshold : 
-        None defaults to config value
+    fig : figure
+        figure into which to plot image of curvature
+    dataview : cortex.Dataview object
+        dataview containing subject, 
+    threshold : boolean or None
+        Whether to apply a threshold to the curvature values for stark differences
+        `None` defaults to value specified in the config file
     contrast : float, [0-1]
         None defaults to config value
     cmap : (?)
     """
-    curv,ee = make(db.get_surfinfo(subject), recache=recache, height=height)
-    #if cutout: 
-    #    curv[co==0] = np.nan
-    axcv = fig.add_axes((0,0,1,1))
+    # Get curvature map as image
+    curv, ee = make(db.get_surfinfo(dataview.subject), recache=recache, height=height)
     # Option to use thresholded curvature
     use_threshold_curvature = config.get('curvature','threshold').lower() in ('true','t','1','y','yes') if threshold is None else threshold
     if use_threshold_curvature:
         curvT = (curv>0).astype(np.float32)
         curvT[np.isnan(curv)] = np.nan
         curv = curvT
-    cvimg = axcv.imshow(curv[iy[1]:iy[0]:-1,ix[0]:ix[1]], 
+    # TODO: Compute min / max for display of curvature based on `contrast` input
+    cvmin, cvmax = None, None
+    ax = fig.gca()
+    cvimg = ax.imshow(curv, 
             aspect='equal', 
             extent=extents, 
-            cmap='gray', # Will this work? # plt.cm.gray,
+            cmap=cmap, 
             vmin=float(config.get('curvature','min')) if cvmin is None else cvmin,
             vmax=float(config.get('curvature','max')) if cvmax is None else cvmax,
-            origin='lower')
-    axcv.axis('off')
-    axcv.set_xlim(extents[0], extents[1])
-    axcv.set_ylim(extents[2], extents[3])
+            origin='lower',
+            zorder=0)
+    return cvimg 
 
-def add_data(braindata, pixelwise=True, thick=32, sampler='nearest', height=1024, depth=0.5):
+def add_data(fig, braindata, pixelwise=True, thick=32, sampler='nearest', height=1024, depth=0.5, recache=False):
     """Add data to quickflat plot
 
     Parameters
@@ -65,13 +72,18 @@ def add_data(braindata, pixelwise=True, thick=32, sampler='nearest', height=1024
         # Unclear what this means. Clarify error in terms of pycortex classes 
         # (please provide a [cortex.dataset.Dataview or whatever] instance)
         raise TypeError('Please provide a Dataview, not a Dataset')
-
+    # NOTE: make() function handles color mapping (dataview has .cmap, .vmin, .vmax properties)
     im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
                        height=height, thick=thick, depth=depth)
+    ax = fig.gca()
+    img = ax.imshow(im, 
+            aspect='equal', 
+            extent=extents, 
+            origin='lower')
+    return img, extents
 
-    
-
-def add_rois(fig, dataview, ):
+def add_rois(fig, subject, height, extents, linewidth=None, linecolor=None,
+             roifill=None, shadow=None, labelsize=None, labelcolor=None, with_labels=True):
     """
     Parameters
     ----------
@@ -80,14 +92,31 @@ def add_rois(fig, dataview, ):
     linecolor : tuple of float, optional
         (R, G, B, A) specification of line color
     roifill : tuple of float, optional # CHANGE TO FILLCOLOR - OR, leave as is, to be a unique kwarg...
-        (R, G, B, A) sepcification for the fill of each ROI region
+        (R, G, B, A) specification for the fill of each ROI region
     shadow : int, optional
         Standard deviation of the gaussian shadow. Set to 0 if you want no shadow    
     """
-    svgobject = db.get_overlay(dataview.subject)
-    pass
+    svgobject = db.get_overlay(subject)
+    roi = svgobject.get_texture('rois', height, labels=with_labels, #**kwargs)
+                                    linewidth=linewidth,
+                                    linecolor=linecolor,
+                                    roifill=roifill,
+                                    shadow=shadow,
+                                    labelsize=labelsize,
+                                    labelcolor=labelcolor)
+    
+    roi.seek(0)
+    im = plt.imread(roi)
+    ax = plt.gca()
+    img = ax.imshow(im,
+        aspect='equal', 
+        interpolation='bicubic', 
+        extent=extents, 
+        zorder=3,
+        origin='lower')    
+    return img
 
-def add_sulci(fig, linewidth=None, linecolor=None, with_labels=True, labelsize=None, labelcolor=None, shadow=None):
+def add_sulci(fig, subject, extents, linewidth=None, linecolor=None, with_labels=True, labelsize=None, labelcolor=None, shadow=None):
     """Add sulci layer to figure
 
     Parameters
@@ -106,45 +135,58 @@ def add_sulci(fig, linewidth=None, linecolor=None, with_labels=True, labelsize=N
 
     """
     svgobject = db.get_overlay(dataview.subject)
-    sulc = svgobject.get_texture('sulci', height, labels=with_labels, #**kwargs)
+    sulc = _render_svglayer('sulci', height, 
+                                 labels=with_labels,
                                  linewidth=linewidth,
                                  linecolor=linecolor,
                                  shadow=shadow,
                                  labelsize=labelsize,
                                  labelcolor=labelcolor)
+    ax = fig.gca()
+    img = ax.imshow(sulc,
+                     aspect='equal', 
+                     interpolation='bicubic', 
+                     extent=extents, 
+                     origin='lower')
+    return img
 
-    pass
+def add_border(fig, dataview, layers, linewidth=3.0):
+    """Add border around image
 
-def add_dropout(fig, dataview, with_dropout):
-    """Add dropout 
+    Only works if there is no cutout
 
     Parameters
     ----------
 
     """
-    if isinstance(with_dropout, dataset.Dataview):
-        dropout_data = with_dropout
-    else:
-        if with_dropout is True:
-            dropout_power = 20 # default
-        else:
-            dropout_power = with_dropout
+    # Pull last top image from stack
+    im = layers[-1].get_array()
+    border = _gen_flat_border(dataview.subject, im.shape[0])
+    #bax = fig.add_axes((0,0,1,1))
+    ax = fig.gca()
+    blc = LineCollection(border[0], linewidths=linewidth,
+                         colors=[['r','b'][mw] for mw in border[1]])
+    bcol = ax.add_collection(blc)
+    return bcol # necessary?
 
+def add_dropout(fig, dataview, extents, dropout_power=20, dropout_data=None, recache=False):
+    """Add dropout image to figure
+
+    Parameters
+    ----------
+
+    """
+    if dropout_data is None:
         dropout_data = utils.get_dropout(dataview.subject, dataview.xfmname,
                                          power=dropout_power)
-    
     hatchim = _make_hatch_image(dropout_data, height, sampler, recache=recache)
-    # APPLY TO ALL IMAGES AT ONCE / IN A LOOP ? 
-    if cutout: 
-        hatchim[:,:,3]*=co
+    # Plot image
+    ax = fig.gca()
+    img = ax.imshow(hatchim, aspect="equal", interpolation="nearest", 
+                    extent=extents, origin='lower')
+    return img
 
-    # ADD AXES TO FIGURE (REPLACE??)
-    dax = fig.add_axes((0,0,1,1))
-    dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal",
-               interpolation="nearest", extent=extents, origin='lower')    
-    pass
-
-def add_labels(fig, labelsize=None, labelcolor=None, ):
+def add_labels(fig, dataview, extents, labelsize=None, labelcolor=None, ):
     """
     Parameters
     ----------
@@ -162,68 +204,104 @@ def add_colorbar(fig, colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04),
                      ticks=colorbar_ticks)    
     pass
 
-def add_custom(fig, svgfile=None, layer=None, ):
+def add_custom(fig, subject, height, extents, svgfile, layer, labelsize=None, labelcolor=None,
+               shadow=None):
     """
     Parameters
     ----------
+    fig
+
+    extents : 
+
+    svgfile : 
+
+    layer : 
+
+    labelsize : 
+
+    labelcolor : 
+
     """
-    svgfile,layer = extra_disp
     if not isinstance(layer,(list,tuple)):
         layer = [layer]
-    for extralayer in layer:
+    ax = fig.gca()
+    out = []
+    for layer_name in layer:
         # Allow multiple extra layer overlays
         pts_, polys_ = (0,0)
         O = svgoverlay.get_overlay(svgfile, pts_, polys_)
-        disp = None
-        # disp = svgoverlay.get_overlay(dataview.subject,
-        #                   otype='external',
-        #                   shadow=shadow,
-        #                   labelsize=labelsize,
-        #                   labelcolor=labelcolor,
-        #                   layer=extralayer,
-        #                   svgfile=svgfile)
-        overlays.append(disp)
+        im = _render_svglayer(fig, subject, height, extents, layer_name, 
+                              linewidth=linweidth, 
+                              linecolor=linecolor,
+                              shadow=None, 
+                              labelsize=None, 
+                              labelcolor=None)
+        img = ax.imshow(im, extent=extents, ) # more? 
+        out.append(img)
+    return out
 
-def add_cutout(): # Not really "adding" ...
-    
-    # Set ONLY desired cutout to be white
+
+def add_cutout(fig, name, dataview, layers):
+    """Apply a cutout mask to extant layers in flatmap figure
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    svgobject = db.get_overlay(dataview.subject)
+    # Set all cutouts to be filled w/ white
     svgobject.cutout.set(fill="white",stroke="white", **{'stroke-width':'2'})
+    # Set other cutouts to be invisible
     for co_name, co_shape in svgobject.cutouts.shapes.items():
-        sh.visible = co_name == cutout
-    #roitex = svgobject.get_texture(height, labels=False)
-    #roitex.seek(0)
+        sh.visible = co_name == name
+    # Get cutout image (now all white = 1, black = 0)
     co = svgobject.get_texture(height, 'cutouts', labels=False)
-    #co = plt.imread(roitex)[:,:,0] # Cutout image
     if not np.any(co):
-        raise Exception('No pixels in cutout region %s!'%cutout)
+        raise Exception('No pixels in cutout region %s!'%name)
+    # Clip each layer to this cutout
+    for im_layer in layers:
+        im = im_layer.get_array()
+        # Reconcile occasional 1-pixel difference between flatmap image layers 
+        # that are generated by different functions
+        if any([np.abs(aa - bb) > 0 and np.abs(aa - bb) < 2 for aa, bb in zip(im.shape, co.shape)]):
+            from scipy.misc import imresize
+            co = imresize(co, im.shape[:2]).astype(np.float32)/255.
+        # Alpha
+        if im.dtype == np.uint8:
+            im = np.cast['float32'](im) / 255.
+            im[:,:,3]*=co
+            h, w, cdim = [float(v) for v in im.shape]
+        else:
+            im[co==0] = np.nan
+            h,w = [float(v) for v in im.shape]
+        # Set extents
+        y,x = np.nonzero(co)
+        l, r, t, b = extents
+        extents = [x.min() / w * (l - r) + l,
+                    x.max() / w * (l - r) + l,
+                    y.min() / h * (t - b) + b,
+                    y.max() / h * (t - b) + b]
+        # bounding box indices
+        iy,ix = ((y.min(),y.max()),(x.min(),x.max()))
+        # ========
+        # WIP CODE
+        im = im[co]
+        # SET ME
+        image.set_extent([left, right, top, bottom])
+        image.set_array(tmp)
+        # ========
 
-    # Reconcile occasional 1-pixel difference between flatmap generation methods
-    if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,co.shape)]):
-        from scipy.misc import imresize
-        co = imresize(co,im.shape[:2]).astype(np.float32)/255.
-
-    # Alpha
-    if im.dtype == np.uint8:
-        im = np.cast['float32'](im)/255.
-        im[:,:,3]*=co
-        h,w,cdim = [float(v) for v in im.shape]
-    else:
-        im[co==0] = np.nan
-        h,w = [float(v) for v in im.shape]
-
-    # set extents
-    y,x = np.nonzero(co)
-    l,r,t,b = extents
-    extents = [x.min()/w * (l-r)+l,
-                x.max()/w * (l-r)+l,
-                y.min()/h * (t-b)+b,
-                y.max()/h * (t-b)+b]
-
-    # bounding box indices
-    iy,ix = ((y.min(),y.max()),(x.min(),x.max()))
-    #else: iy,ix = ((0,-1),(0,-1))
-
-def make_flatmap():
+def make_flatmap(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
+                height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
+                with_labels=True, with_colorbar=True, with_borders=False, 
+                with_dropout=False, with_curvature=False, extra_disp=None, 
+                linewidth=None, linecolor=None, roifill=None, shadow=None,
+                labelsize=None, labelcolor=None, cutout=None, cvmin=None,
+                cvmax=None, cvthr=None, fig=None, extra_hatch=None,
+                colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), **kwargs):
     """
     Parameters
     ----------
@@ -242,17 +320,47 @@ def make_flatmap():
     else:
         fig_resize = False
         fig = plt.figure(fig.number)
-
-    # Add curvature
+    ax = fig.add_axes((0, 0, 1, 1))
     # Add data
-    # Add rois
-    # Add sulci
-    # Add custom
+    data_im, extents = add_data(fig, dataview, pixelwise=pixelwise, thick=thick, sampler=sampler, 
+                       height=height, depth=depth, recache=recache)
+    layers = [data_im]
+    # Add curvature
+    if add_curvature:
+        curv_im = add_curvature(fig, dataview, extents)
+        layers.append(curv_im)
     # Add dropout
+    if with_dropout is not False:
+        # Support clunky old api:
+        if isinstance(with_dropout, dataset.Dataview):
+            dd = with_dropout
+        else:
+            dp = 20 if with_dropout is True else with_dropout
+        drop_im = add_dropout(fig, dataview, extents, dropout_data=dd, dropout_power=dp)
+        layers.append(drop_im)
+    # Add rois
+    if with_rois:
+        roi_im = add_rois(fig, dataview.subject, height, extents, linewidth=linewidth, linecolor=linecolor,
+             roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels)
+        layers.append(roi_im)
+    # Add sulci
+    if with_sulci:
+        sulc_im = add_sulci(fig, dataview, extents, )
+        layers.append(sulc_im)
+    # Add custom
+    if extra_disp is not None:
+        svgfile, layer = extra_disp
+        custom_layers = add_custom(fig, dataview.subject, extents, svgfile, layer, 
+                                    )
+        layers += custom_layers
     # Add cutouts
-
-##
-
+    if cutout is not None:
+        # to come - complicated
+        pass
+    ax.axis('off')
+    ax.set_xlim(extents[0], extents[1])
+    ax.set_ylim(extents[2], extents[3])
+    return fig
 
 
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
@@ -325,7 +433,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Location of the colorbar! Not sure of what the numbers actually mean. Left, bottom, width, height, maybe?
 
     """
-    from matplotlib import colors,cm, pyplot as plt
+    from matplotlib import colors, cm, pyplot as plt
     from matplotlib.collections import LineCollection
 
     dataview = dataset.normalize(braindata)
@@ -810,29 +918,30 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
 
     return pixmap
 
-def _render_svglayer(oo, fig, extents, cutout=None): # Change oo variable name
+def _get_images(ax):
+    """Get all images in a given matplotlib axis"""
+    import matplotlib
+    images = [x for x in ax.get_children() if isinstance(x, matplotlib.image.AxesImage)]
+    return images
+
+def _render_svglayer(fig, subject, height, extents, layer_name, linewidth=None, linecolor=None,
+             shadow=None, labelsize=None, labelcolor=None):  # add: fillcolor?
     """
     Parameters
     ----------
     """
-    oo.seek(0)
-    oax = fig.add_axes((0,0,1,1))
-    im = plt.imread(oo)
-    if not cutout is None: 
-        # Size of image can be off by 1 pixel due to ... (???)
-        # So check it. This should not be necessary, worth possibly looking into how to
-        # avoid having to do this check.
-        if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape, im.shape)]):
-            from scipy.misc import imresize
-            cutout = imresize(cutout, im.shape[:2]).astype(np.float32)/255.
-        im[:,:,3] *= cutout
-
-    oimg = oax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]],
-        aspect='equal', 
-        interpolation='bicubic', 
-        extent=extents, 
-        zorder=3,
-        origin='lower')
+    import matplotlib.pyplot as plt
+    svgobject = db.get_overlay(subject) # replace subject as input with svgobject?
+    tex = svgobject.get_texture(layer_name, height, 
+                                labels=with_labels,
+                                linewidth=linewidth,
+                                linecolor=linecolor,
+                                shadow=shadow,
+                                labelsize=labelsize,
+                                labelcolor=labelcolor)
+    tex.seek(0)
+    im = plt.imread(tex)
+    return im
 
 def _make_hatch_image(dropout_data, height, sampler, recache=False):
     dmap, ee = make(dropout_data, height=height, sampler=sampler, recache=recache)
