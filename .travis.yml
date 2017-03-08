@@ -3,9 +3,10 @@ python:
   - 3.5
 
 sudo: false
+
 env:
   global:
-    secure: "<your secure key from doctr here>"
+    - secure: "fumoc9CFl8Nypi9iMRuJAkDv4gHptcikEFlkiPOUz6wBiCyKj+w7Hl917wMOLqKuNGM0gT4suFG06quLI6hDTUhmWwulsWNXpRaql5ukhvCFMyqIx+kkuQGYe1aKcRmeDZqYsc3KEvSb2MOoeLIvsfqxjj3mvZwgaN4zaUthnZM="
 
 script:
   - set -e
