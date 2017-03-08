@@ -37,20 +37,20 @@ test1 = np.hstack((np.arange(num_verts[0]), np.arange(num_verts[1])))
 
 # Picking a different vertex in each hemisphere to create another fake
 # gradient away from that vertex
-second_verts = [n/4 for n in num_verts]
-test2 = np.hstack((np.abs(np.arange(num_verts[0])-second_verts[0]),
-                   np.abs(np.arange(num_verts[1])-second_verts[1])))
+second_verts = [n / 4 for n in num_verts]
+test2 = np.hstack((np.abs(np.arange(num_verts[0]) - second_verts[0]),
+                   np.abs(np.arange(num_verts[1]) - second_verts[1])))
 
 # Creating a third dataset that is random stripes
-third_verts = np.random.randint(num_verts[0]+num_verts[1], size=(20,))
-test3 = np.zeros(num_verts[0]+num_verts[1])
+third_verts = np.random.randint(num_verts[0] + num_verts[1], size=(20,))
+test3 = np.zeros(num_verts[0] + num_verts[1])
 for v in third_verts:
-    test3[v-1000:v+1000] = 1
+    test3[v-1000 : v+1000] = 1
 
 # Scaling the three datasets to be between 0-255
-test1_scaled = test1/np.max(test1)*255
-test2_scaled = test2/np.max(test2)*255
-test3_scaled = test3/np.max(test3)*255
+test1_scaled = test1 / np.max(test1) * 255
+test2_scaled = test2 / np.max(test2) * 255
+test3_scaled = test3 / np.max(test3) * 255
 
 # Creating three cortex.Volume objects with the test data as np.uint8
 red = cortex.Vertex(test1_scaled, subject)
@@ -59,7 +59,7 @@ blue = cortex.Vertex(test3_scaled, subject)
 
 # This creates a 2D Vertex object with both of our test datasets for the 
 # given subject
-dv = cortex.VertexRGB(red, green, blue, subject)
-cortex.quickshow(dv, with_colorbar=False)
+vertex_data = cortex.VertexRGB(red, green, blue, subject)
+cortex.quickshow(vertex_data, with_colorbar=False)
 plt.show()
 

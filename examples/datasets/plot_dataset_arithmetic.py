@@ -24,17 +24,17 @@ test_data = np.random.randn(31,100,100)
 
 # This creates a Volume object for our test dataset for the given subject
 # and transform
-dv = cortex.Volume(test_data, subject, xfm, vmin=-2, vmax=2)
-cortex.quickshow(dv)
+vol_data = cortex.Volume(test_data, subject, xfm, vmin=-2, vmax=2)
+cortex.quickshow(vol_data)
 plt.show()
 
 # Now you can do arithmetic with the Volume 
-dv_plus = dv + 1
-cortex.quickshow(dv_plus)
+vol_plus = vol_data + 1
+cortex.quickshow(vol_plus)
 plt.show()
 
 # You can also do multiplication
-dv_mult = dv * 4
-cortex.quickshow(dv_mult)
+vol_mult = vol_data * 4
+cortex.quickshow(vol_mult)
 plt.show()
 

@@ -38,9 +38,9 @@ num_verts = surfs[0].pts.shape[0] + surfs[1].pts.shape[0]
 test_data = np.random.randn(num_verts)
 
 # This creates a Vertex object for our subject and test dataset
-dv = cortex.Vertex(test_data, subject)
+vertex_data = cortex.Vertex(test_data, subject)
 # And now we can display it on a flatmap
-cortex.quickshow(dv)
+cortex.quickshow(vertex_data)
 plt.show()
 
 # We can also plot just the left hemisphere data
@@ -48,7 +48,7 @@ numl = surfs[0].pts.shape[0]
 # This creates a Vertex object with an array only as long as the number of
 # vertices in the left hemisphere, and the right hemisphere will be filled
 # in with zeros
-dv_left = cortex.Vertex(test_data[:numl], subject)
-cortex.quickshow(dv_left)
+vertex_data_left = cortex.Vertex(test_data[:numl], subject)
+cortex.quickshow(vertex_data_left)
 plt.show()
 

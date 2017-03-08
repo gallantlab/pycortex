@@ -27,14 +27,14 @@ xfm = "fullhead"
 # one entry for this voxel
 # The first two are gradients going in different directions across the brain
 # and the third is random
-test1 = np.arange(31.*100*100).reshape((31,100,100), order='C')
-test2 = np.arange(31.*100*100).reshape((31,100,100), order='F')
-test3 = np.random.randn(31*100*100).reshape((31,100,100))
+test1 = np.arange(31. * 100 * 100).reshape((31,100,100), order='C')
+test2 = np.arange(31. * 100 * 100).reshape((31,100,100), order='F')
+test3 = np.random.randn(31 * 100 * 100).reshape((31,100,100))
 
 # Scaling the three datasets to be between 0-255
-test1_scaled = test1/np.max(test1)*255
-test2_scaled = test2/np.max(test2)*255
-test3_scaled = test3/np.max(test3)*255
+test1_scaled = test1 / np.max(test1) * 255
+test2_scaled = test2 / np.max(test2) * 255
+test3_scaled = test3 / np.max(test3) * 255
 
 # Creating three cortex.Volume objects with the test data as np.uint8
 red = cortex.Volume(test1_scaled.astype(np.uint8), 'S1', 'fullhead')
@@ -45,7 +45,7 @@ blue = cortex.Volume(test3_scaled.astype(np.uint8), 'S1', 'fullhead')
 # this subject
 # Note that you do not need to specify the transform when creating this as it
 # is already specified in the red, green, and blue channels
-dv = cortex.VolumeRGB(red, green, blue, subject)
-cortex.quickshow(dv, with_colorbar=False)
+vol_data = cortex.VolumeRGB(red, green, blue, subject)
+cortex.quickshow(vol_data, with_colorbar=False)
 plt.show()
 

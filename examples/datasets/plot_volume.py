@@ -31,18 +31,18 @@ test_data = np.random.randn(31,100,100)
 
 # This creates a Volume object for our test dataset for the given subject
 # and transform
-dv = cortex.Volume(test_data, subject, xfm)
-cortex.quickshow(dv)
+vol_data = cortex.Volume(test_data, subject, xfm)
+cortex.quickshow(vol_data)
 plt.show()
 
 # Can also alter the minimum and maximum values shown on the colorbar
-dv_thresh = cortex.Volume(test_data, subject, xfm, vmin=-1, vmax=1)
-cortex.quickshow(dv_thresh)
+vol_data_thresh = cortex.Volume(test_data, subject, xfm, vmin=-1, vmax=1)
+cortex.quickshow(vol_data_thresh)
 plt.show()
 
 # If you have NaN values, those voxels show up transparent on the brain
 test_data[10:15,:,:] = np.nan
-dv_nan = cortex.Volume(test_data, subject, xfm)
-cortex.quickshow(dv)
+vol_data_nan = cortex.Volume(test_data, subject, xfm)
+cortex.quickshow(vol_data_nan)
 plt.show()
 

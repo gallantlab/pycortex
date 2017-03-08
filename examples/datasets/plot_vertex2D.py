@@ -36,13 +36,13 @@ test_data1 = np.hstack((np.arange(num_verts[0]), np.arange(num_verts[1])))
 
 # Picking a different vertex in each hemisphere to create another fake
 # gradient away from that vertex
-second_verts = [n/4 for n in num_verts]
-test_data2 = np.hstack((np.abs(np.arange(num_verts[0])-second_verts[0]),
-                        np.abs(np.arange(num_verts[1])-second_verts[1])))
+second_verts = [n / 4 for n in num_verts]
+test_data2 = np.hstack((np.abs(np.arange(num_verts[0]) - second_verts[0]),
+                        np.abs(np.arange(num_verts[1]) - second_verts[1])))
 
 # This creates a 2D Vertex object with both of our test datasets for the 
 # given subject
-dv = cortex.Vertex2D(test_data1, test_data2, subject)
-cortex.quickshow(dv, with_colorbar=False)
+vertex_data = cortex.Vertex2D(test_data1, test_data2, subject)
+cortex.quickshow(vertex_data, with_colorbar=False)
 plt.show()
 

@@ -27,25 +27,25 @@ xfm = "fullhead"
 # transform with one entry for each voxel
 # The matrices have just been reordered in different ways so that they make
 # gradients across the brain in different directions
-test_data1 = np.arange(31*100*100).reshape((31,100,100), order='C')
-test_data2 = np.arange(31*100*100).reshape((31,100,100), order='F')
+test_data1 = np.arange(31 * 100 * 100).reshape((31,100,100), order='C')
+test_data2 = np.arange(31 * 100 * 100).reshape((31,100,100), order='F')
 
 # This creates a 2D Volume object for both of our test datasets for the given
 # subject and transform
-dv = cortex.Volume2D(test_data1, test_data2, subject, xfm)
-cortex.quickshow(dv, with_colorbar=False)
+vol_data = cortex.Volume2D(test_data1, test_data2, subject, xfm)
+cortex.quickshow(vol_data, with_colorbar=False)
 plt.show()
 
 # You can alter the minimum and maximum values shown on the colorbar and this
 # can be done separately for the two different datasets
-dv = cortex.Volume2D(test_data1, test_data2, subject, xfm, 
-                     vmin=np.mean(test_data1), vmax=np.max(test_data1),
-                     vmin2=np.min(test_data2), vmax2=np.mean(test_data2))
-cortex.quickshow(dv, with_colorbar=False)
+vol_data = cortex.Volume2D(test_data1, test_data2, subject, xfm, 
+                           vmin=np.mean(test_data1), vmax=np.max(test_data1),
+                           vmin2=np.min(test_data2), vmax2=np.mean(test_data2))
+cortex.quickshow(vol_data, with_colorbar=False)
 plt.show()
 
 # To change the colormap, you have to create a new Volume2D object
-dv_color = cortex.Volume2D(test_data1, test_data2, subject, xfm, 
-                           cmap="GreenWhiteBlue_2D")
-cortex.quickshow(dv_color, with_colorbar=False)
+vol_color = cortex.Volume2D(test_data1, test_data2, subject, xfm, 
+                            cmap="GreenWhiteBlue_2D")
+cortex.quickshow(vol_color, with_colorbar=False)
 plt.show()
