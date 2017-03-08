@@ -30,6 +30,8 @@ Contents:
    dataset
    rois
    transforms
+   auto_examples/index
+              
 
 Indices and tables
 ==================
