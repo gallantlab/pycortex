@@ -11,7 +11,12 @@ from .views import normalize as _vnorm
 from .views import Dataview
 
 class Dataset(object):
-    """Wrapper class for 
+    """
+    Wrapper for multiple data objects. This often does not need to be used 
+    explicitly--for example, if a dictionary of data objects is passed to 
+    `cortex.webshow`, it will automatically be converted into a `Dataset`.
+
+    All kwargs should be `BrainData` or `Dataset` objects.
     """
     def __init__(self, **kwargs):
         self.h5 = None
@@ -20,6 +25,9 @@ class Dataset(object):
         self.append(**kwargs)
 
     def append(self, **kwargs):
+        """Add the `BrainData` or `Dataset` objects in `kwargs` into this 
+        dataset.
+        """
         for name, data in kwargs.items():
             norm = normalize(data)
 
@@ -178,6 +186,9 @@ class Dataset(object):
         raise TypeError('Unknown overlay type')
 
     def prepend(self, prefix):
+        """Adds the given `prefix` to the name of every data object and returns
+        a new Dataset.
+        """
         ds = dict()
         for name, data in self:
             ds[prefix+name] = data
