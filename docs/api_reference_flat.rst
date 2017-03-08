@@ -49,6 +49,7 @@ dataset
 
 .. autosummary::
 	:toctree:generated/
+	:template:class.rst
 
 	Volume
 	Volume2D
@@ -204,6 +205,7 @@ polyutils
 
 .. autosummary::
 	:toctree:generated/
+	:template:class.rst
 
 	Surface
 	Distortion
