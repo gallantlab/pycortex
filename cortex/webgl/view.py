@@ -2,7 +2,7 @@ import os
 import glob
 import copy
 import json
-import Queue
+import queue
 import shutil
 import random
 import functools
@@ -318,7 +318,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
 
-    post_name = Queue.Queue()
+    post_name = queue.Queue()
 
     # Put together all view options
     my_viewopts = dict(options.config.items('webgl_viewopts'))
