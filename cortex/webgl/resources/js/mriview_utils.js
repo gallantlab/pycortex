@@ -22,7 +22,7 @@ var mriview = (function(module) {
             viewer.load(window.subjects[snames[i]]);
             this[snames[i]] = viewer;
         }
-        
+
         this.subjects = snames;
         this.addData(dataviews);
     }
@@ -87,52 +87,40 @@ var mriview = (function(module) {
 
     var glcanvas = document.createElement("canvas");
     var glctx = glcanvas.getContext("2d");
-    var canvas = document.createElement("canvas");
-    var ctx = canvas.getContext("2d");
-    ctx.scale(1,-1);
-    module.getTexture = function(gl, renderbuf) {
+    module.getTexture = function(renderer, renderbuf) {
         glcanvas.width = renderbuf.width;
         glcanvas.height = renderbuf.height;
         var img = glctx.createImageData(renderbuf.width, renderbuf.height);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
-        gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        renderer.readRenderTargetPixels(renderbuf, 0, 0, renderbuf.width, renderbuf.height, new Uint8Array(img.data.buffer));
         glctx.putImageData(img, 0, 0);
 
         // //This ridiculousness is necessary to flip the image...
+        var canvas = document.createElement("canvas");
+        var ctx = canvas.getContext("2d");
         canvas.width = renderbuf.width;
         canvas.height = renderbuf.height;
-        ctx.drawImage(glcanvas, 0,-renderbuf.height);
+        ctx.translate(0, renderbuf.height);
+        ctx.scale(1,-1);
+        ctx.drawImage(glcanvas, 0,0);
         return canvas;
     }
 
-    module._cull_flatmap_vertices = function(indices, auxdat, offsets) {
-        var culled = new Uint16Array(indices.length), vA, vB, vC;
-        var newOffsets = [];
-        for ( j = 0, jl = offsets.length; j < jl; ++ j ) {
+    module._cull_flatmap_vertices = function(indices, auxdat) {
+        var culled = new Uint32Array(indices.length), vA, vB, vC;
+        var nvert = 0;
+        for ( i = 0, il = indices.length; i < il; i += 3 ) {
+            vA = indices[ i ];
+            vB = indices[ i + 1 ];
+            vC = indices[ i + 2 ];
 
-            var start = offsets[ j ].start;
-            var count = offsets[ j ].count;
-            var index = offsets[ j ].index;
-            var nvert = 0;
-
-            for ( i = start, il = start + count; i < il; i += 3 ) {
-                vA = index + indices[ i ];
-                vB = index + indices[ i + 1 ];
-                vC = index + indices[ i + 2 ];
-
-                if (!auxdat[vA*4] && !auxdat[vB*4] && !auxdat[vC*4]) {
-                    culled[start + nvert*3 + 0] = indices[i];
-                    culled[start + nvert*3 + 1] = indices[i+1];
-                    culled[start + nvert*3 + 2] = indices[i+2];
-                    nvert++;
-                }
-
+            if (!auxdat[vA*4] && !auxdat[vB*4] && !auxdat[vC*4]) {
+                culled[ nvert*3 + 0] = indices[i];
+                culled[ nvert*3 + 1] = indices[i+1];
+                culled[ nvert*3 + 2] = indices[i+2];
+                nvert++;
             }
-            newOffsets.push({start:start, index:index, count:nvert*3});
         }
-
-        return {indices:culled, offsets:newOffsets};
+        return new THREE.BufferAttribute(culled, 1);
     }
 
     //Returns the world position of a vertex given the mix state
@@ -203,7 +191,7 @@ var mriview = (function(module) {
         return {pos:pos, norm:norm, base:base};
     }
 
-    module.computeNormal = function(vertices, index, offsets) {
+    module.computeNormal = function(vertices, index) {
         var i, il;
         var j, jl;
 
@@ -220,50 +208,43 @@ var mriview = (function(module) {
             cb = new THREE.Vector3(),
             ab = new THREE.Vector3();
 
-        for ( j = 0, jl = offsets.length; j < jl; ++ j ) {
 
-            var start = offsets[ j ].start;
-            var count = offsets[ j ].count;
-            var index = offsets[ j ].index;
+        for ( i = 0, il = vertices.array.length; i < il; i += 3 ) {
 
-            for ( i = start, il = start + count; i < il; i += 3 ) {
+            vA = indices[ i ];
+            vB = indices[ i + 1 ];
+            vC = indices[ i + 2 ];
 
-                vA = index + indices[ i ];
-                vB = index + indices[ i + 1 ];
-                vC = index + indices[ i + 2 ];
+            x = positions[ vA * stride ];
+            y = positions[ vA * stride + 1 ];
+            z = positions[ vA * stride + 2 ];
+            pA.set( x, y, z );
 
-                x = positions[ vA * stride ];
-                y = positions[ vA * stride + 1 ];
-                z = positions[ vA * stride + 2 ];
-                pA.set( x, y, z );
+            x = positions[ vB * stride ];
+            y = positions[ vB * stride + 1 ];
+            z = positions[ vB * stride + 2 ];
+            pB.set( x, y, z );
 
-                x = positions[ vB * stride ];
-                y = positions[ vB * stride + 1 ];
-                z = positions[ vB * stride + 2 ];
-                pB.set( x, y, z );
+            x = positions[ vC * stride ];
+            y = positions[ vC * stride + 1 ];
+            z = positions[ vC * stride + 2 ];
+            pC.set( x, y, z );
 
-                x = positions[ vC * stride ];
-                y = positions[ vC * stride + 1 ];
-                z = positions[ vC * stride + 2 ];
-                pC.set( x, y, z );
+            cb.subVectors( pC, pB );
+            ab.subVectors( pA, pB );
+            cb.cross( ab );
 
-                cb.subVectors( pC, pB );
-                ab.subVectors( pA, pB );
-                cb.cross( ab );
+            normals[ vA * 3 ]     += cb.x;
+            normals[ vA * 3 + 1 ] += cb.y;
+            normals[ vA * 3 + 2 ] += cb.z;
 
-                normals[ vA * 3 ]     += cb.x;
-                normals[ vA * 3 + 1 ] += cb.y;
-                normals[ vA * 3 + 2 ] += cb.z;
+            normals[ vB * 3 ]     += cb.x;
+            normals[ vB * 3 + 1 ] += cb.y;
+            normals[ vB * 3 + 2 ] += cb.z;
 
-                normals[ vB * 3 ]     += cb.x;
-                normals[ vB * 3 + 1 ] += cb.y;
-                normals[ vB * 3 + 2 ] += cb.z;
-
-                normals[ vC * 3 ]     += cb.x;
-                normals[ vC * 3 + 1 ] += cb.y;
-                normals[ vC * 3 + 2 ] += cb.z;
-
-            }
+            normals[ vC * 3 ]     += cb.x;
+            normals[ vC * 3 + 1 ] += cb.y;
+            normals[ vC * 3 + 2 ] += cb.z;
 
         }
 
@@ -319,56 +300,6 @@ var mriview = (function(module) {
         tex.minFilter = THREE.LinearMipMapLinearFilter;
         return tex;
     };
-
-    //Still possibly useful? splits the faces into independent vertices
-    module.splitverts = function(geom) {
-        var o, ol, i, il, j, jl, k, n = 0, stride, mpts, faceidx, attr, idx, pos;
-        var npolys = geom.attributes.index.array.length;
-
-        var newgeom = new THREE.BufferGeometry();
-        for (var name in geom.attributes) {
-            var type = geom.attributes[name].array.constructor;
-            var size = geom.attributes[name].itemSize;
-            newgeom.addAttribute(name, new THREE.BufferAttribute(new type(npolys*size), size));
-        }
-
-        newgeom.offsets = []
-        for (i = 0, il = npolys; i < il; i += 65535) {
-            newgeom.offsets.push({start:i, index:i, count:Math.min(65535, il - i)});
-        }
-
-        for (o = 0, ol = geom.offsets.length; o < ol; o++) {
-            var start = geom.offsets[o].start;
-            var count = geom.offsets[o].count;
-            var index = geom.offsets[o].index;
-
-            //For each face
-            for (j = start, jl = start+count; j < jl; j+=3) {
-                //For each vertex
-                for (k = 0; k < 3; k++) {
-                    idx = index + geom.attributes.index.array[j+k];
-
-                    for (var name in geom.attributes) {
-                        if (name != "index") {
-                            attr = geom.attributes[name];
-                            for (i = 0, il = attr.itemSize; i < il; i++)
-                                newgeom.attributes[name].array[n*il+i] = attr.array[idx*attr.itemSize+i];
-                        }
-                    }
-
-                    // newgeom.attributes.vert.array[n*3+0] = left_off + index + geom.attributes.index.array[j+0];
-                    // newgeom.attributes.vert.array[n*3+1] = left_off + index + geom.attributes.index.array[j+1];
-                    // newgeom.attributes.vert.array[n*3+2] = left_off + index + geom.attributes.index.array[j+2];
-                    // newgeom.attributes.bary.array[n*3+k] = 1;
-
-                    newgeom.attributes.face.array[n] = Math.floor(j / 3);
-                    newgeom.attributes.index.array[n] = n % 65535;
-                    n++;
-                }
-            }
-        }
-        return newgeom;
-    }
 
     return module;
 }(mriview || {}));

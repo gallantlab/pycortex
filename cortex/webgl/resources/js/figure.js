@@ -52,8 +52,7 @@ var jsplot = (function (module) {
         this.object.appendChild(this.ui_element);
         this.ui_element.appendChild(this.gui.domElement);
     }
-    THREE.EventDispatcher.prototype.apply(module.Figure.prototype);
-
+    Object.assign( module.Figure.prototype, THREE.EventDispatcher.prototype );
     module.Figure.prototype.init = function() {}
     module.Figure.prototype.register = function(eventType, self, func) {
         if (this.parent && this.parent instanceof module.Figure) {
@@ -62,7 +61,7 @@ var jsplot = (function (module) {
             if (!(this._registrations[eventType] instanceof Array))
                 this._registrations[eventType] = [];
 
-            var register = function(evt) { 
+            var register = function(evt) {
                 if (evt.self != self)
                     func.apply(self, evt.args);
             }.bind(this);
@@ -82,7 +81,7 @@ var jsplot = (function (module) {
         if (this.parent && this.parent instanceof module.Figure) {
             this.parent.notify(eventType, self, arguments);
         } else {
-            if (!this._notifying) { 
+            if (!this._notifying) {
                 this._notifying = true;
                 this.dispatchEvent({type:eventType, self:self, args:arguments});
                 this._notifying = false;
@@ -226,15 +225,15 @@ var jsplot = (function (module) {
             this.figure.addEventListener("resize", this.resize.bind(this));
         }
     }
-    THREE.EventDispatcher.prototype.apply(module.Axes.prototype);
+    Object.assign( module.Axes.prototype, THREE.EventDispatcher.prototype );
     module.Axes.prototype.resize = function() {}
 
     module.MovieAxes = function(figure, url) {
         module.Axes.call(this, figure);
         $(this.object).html($("#movieaxes_html").html());
         this._target = null;
-        var types = { 
-            ogv: 'video/ogg; codecs="theora, vorbis"', 
+        var types = {
+            ogv: 'video/ogg; codecs="theora, vorbis"',
             webm: 'video/webm; codecs="vp8, vorbis"',
             mp4: 'video/mp4; codecs="h264, aac"'
         }
@@ -250,8 +249,8 @@ var jsplot = (function (module) {
             this.figure.notify("playsync", this, [this.movie.currentTime]);
         }.bind(this);
         this._progress_func = function() {
-            if (this._target != null && 
-                this.movie.seekable.length > 0 && 
+            if (this._target != null &&
+                this.movie.seekable.length > 0 &&
                 this.movie.seekable.end(0) >= this._target &&
                 this.movie.parentNode != null) {
                 var func = function() {
@@ -280,7 +279,7 @@ var jsplot = (function (module) {
         this.movie.removeEventListener("timeupdate", this._update_func);
     }
     module.MovieAxes.prototype.setFrame = function(time) {
-        if (this.movie.seekable.length > 0 && 
+        if (this.movie.seekable.length > 0 &&
             this.movie.seekable.end(0) >= time) {
             this.movie.currentTime = time;
             this.loadmsg.hide()

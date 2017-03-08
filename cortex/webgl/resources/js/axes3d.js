@@ -19,11 +19,11 @@ var jsplot = (function (module) {
         this.controls.bind(this.canvas[0]);
         this.controls.addEventListener("pick", this.pick.bind(this));
         this.controls.addEventListener("change", this.schedule.bind(this));
-        
+
         //These lights approximately match what's done by vtk
         this.lights = [
-            new THREE.DirectionalLight(0xffffff, .47), 
-            new THREE.DirectionalLight(0xffffff, .29), 
+            new THREE.DirectionalLight(0xffffff, .47),
+            new THREE.DirectionalLight(0xffffff, .29),
             new THREE.DirectionalLight(0xffffff, .24)
         ];
         this.lights[0].position.set( 1, -1, -1 ).normalize();
@@ -36,12 +36,13 @@ var jsplot = (function (module) {
         this.views = [];
 
         // renderer
-        this.renderer = new THREE.WebGLRenderer({ 
+        this.renderer = new THREE.WebGLRenderer({
             alpha:true,
-            antialias: retina_scale == 1, 
-            preserveDrawingBuffer:true, 
+            antialias: retina_scale == 1,
+            preserveDrawingBuffer:true,
             canvas:this.canvas[0],
         });
+        this.renderer.setPixelRatio( window.devicePixelRatio );
         this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
         this.renderer.sortObjects = true;
 
@@ -83,8 +84,8 @@ var jsplot = (function (module) {
         this.height = h;
 
         this.renderer.setSize( w , h );
-        this.renderer.domElement.style.width = w + 'px'; 
-        this.renderer.domElement.style.height = h + 'px'; 
+        this.renderer.domElement.style.width = w + 'px';
+        this.renderer.domElement.style.height = h + 'px';
 
         this.camera.aspect = aspect;
         this.camera.updateProjectionMatrix();
@@ -102,7 +103,7 @@ var jsplot = (function (module) {
         var now = new Date();
         if (this.state == "play")
             this.setFrame((now - this._startplay) / 1000);
-        
+
         if (this._animation) {
             var atime = (now - this._animation.start) / 1000;
             if (!(this._animate(atime)))
@@ -122,14 +123,14 @@ var jsplot = (function (module) {
 
                 this.renderer.setViewport( left, bottom, width, height );
                 this.renderer.setScissor( left, bottom, width, height );
-                this.renderer.enableScissorTest ( true );
+                this.renderer.setScissorTest ( true );
 
                 this.camera.aspect = width / height;
                 this.camera.updateProjectionMatrix();
                 this.drawView(this.views[i].scene, i);
             }
         } else if (this.views.length > 0) {
-            this.renderer.enableScissorTest(false);
+            this.renderer.setScissorTest(false);
             this.drawView(this.views[0].scene, 0);
         }
         this._scheduled = false;
@@ -226,7 +227,7 @@ var jsplot = (function (module) {
                     else {
                         return (startval * (1-idx) + (endval-360) * idx + 360) % 360;
                     }
-                } 
+                }
                 else {
                     return (startval * (1-idx) + endval * idx);
                 }
@@ -270,7 +271,7 @@ var jsplot = (function (module) {
     module.Axes3D.prototype.getImage = function(width, height, post) {
         if (width === undefined)
             width = this.canvas.width();
-        
+
         if (height === undefined)
             height = width * this.canvas.height() / this.canvas.width();
 
@@ -295,7 +296,8 @@ var jsplot = (function (module) {
         this.camera.aspect = oldw / oldh;
         this.camera.updateProjectionMatrix();
 
-        var img = mriview.getTexture(this.renderer.context, renderbuf)
+        var img = mriview.getTexture(this.renderer, renderbuf);
+
         if (post !== undefined)
             $.post(post, {png:img.toDataURL()});
         return img;

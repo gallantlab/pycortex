@@ -21,8 +21,7 @@ var jsplot = (function (module) {
 		this._momentum = {change:[0,0]};
 		this._state = STATE.NONE;
 	}
-	THREE.EventDispatcher.prototype.apply(module.LandscapeControls.prototype);
-
+	Object.assign( module.LandscapeControls.prototype, THREE.EventDispatcher.prototype );
 	module.LandscapeControls.prototype._position = function() {
 		var altrad = this.altitude*Math.PI / 180;
 		var azirad = (this.azimuth+90)*Math.PI / 180;
@@ -66,9 +65,9 @@ var jsplot = (function (module) {
 	module.LandscapeControls.prototype.rotate = function(x, y) {
 		var mix = Math.pow(this.mix, 2);
 		this.pan(x * mix, y * mix);
-		
+
 		var rx = x  * (1 - mix), ry = y * (1 - mix);
-		this.setAzimuth(this.azimuth - this.rotateSpeed * rx);		
+		this.setAzimuth(this.azimuth - this.rotateSpeed * rx);
 		this.setAltitude(this.altitude - this.rotateSpeed * ry);
 
 		this._momentum.change = [x, y];

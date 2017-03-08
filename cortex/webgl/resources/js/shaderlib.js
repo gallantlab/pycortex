@@ -185,7 +185,7 @@ var Shaderlib = (function() {
             //sampler: which sampler to use, IE nearest or trilinear
             //raw: whether the dataset is raw or not
             //voxline: whether to show the voxel lines
-            
+
             var sampler = opts.sampler;
             var header = "";
             if (opts.voxline)
@@ -226,7 +226,7 @@ var Shaderlib = (function() {
                 "vec4 sample = vec4(position, 1.);",
         "#else",
                 "vec4 sample = modelMatrix * vec4(position, 1.);",
-        "#endif", 
+        "#endif",
                 "vPos_x = (volxfm[0]*sample).xyz;",
         "#ifdef TWOD",
                 "vPos_y = (volxfm[1]*sample).xyz;",
@@ -239,7 +239,6 @@ var Shaderlib = (function() {
             ].join("\n");
 
             var fragShade = [
-            "#extension GL_OES_standard_derivatives: enable",
 
             "uniform vec3 voxlineColor;",
             "uniform float voxlineWidth;",
@@ -257,9 +256,9 @@ var Shaderlib = (function() {
         "#ifndef NOLIGHTS",
             THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
         "#endif",
-            
+
             utils.standard_frag_vars,
-            utils.rand,
+            //utils.rand,
             utils.edge,
             utils.colormap,
             utils.samplers,
@@ -270,7 +269,7 @@ var Shaderlib = (function() {
             "#else",
                 "vec4 values = vec4(0.);",
             "#endif",
-        
+
         "#ifdef RGBCOLORS",
                 "color[0] += "+sampler+"_x(data[0], vPos_x);",
                 "color[1] += "+sampler+"_x(data[1], vPos_x);",
@@ -331,7 +330,10 @@ var Shaderlib = (function() {
             }
 
             var vertShade =  [
-            THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+            THREE.ShaderChunk.common,
+            THREE.ShaderChunk.bsdfs,
+            THREE.ShaderChunk.lights_pars,
+            THREE.ShaderChunk.lights_phong_pars_vertex,
             "uniform mat4 volxfm[2];",
             "uniform float thickmix;",
 
@@ -339,7 +341,7 @@ var Shaderlib = (function() {
             "attribute vec3 wmnorm;",
             "attribute vec4 auxdat;",
             // "attribute float dropout;",
-            
+
             "varying vec3 vViewPosition;",
             "varying vec3 vNormal;",
             "varying vec2 vUv;",
@@ -399,11 +401,11 @@ var Shaderlib = (function() {
             ].join("\n");
 
             var fragHead = [
-            "#extension GL_OES_standard_derivatives: enable",
-            //"#extension GL_OES_texture_float: enable",
+            THREE.ShaderChunk.common,
+            THREE.ShaderChunk.bsdfs,
+            THREE.ShaderChunk.lights_pars,
+            THREE.ShaderChunk.lights_phong_pars_fragment,
 
-            THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
-        
         "varying vec2 vUv;",
         "#ifdef ROI_RENDER",
             "uniform sampler2D overlay;",
@@ -438,9 +440,9 @@ var Shaderlib = (function() {
 
             "varying float vCurv;",
             "varying float vMedial;",
-            
+
             utils.standard_frag_vars,
-            utils.rand,
+            //utils.rand,
             utils.edge,
             utils.colormap,
             utils.pack,
@@ -461,7 +463,7 @@ var Shaderlib = (function() {
             ].join("\n");
 
             //Create samplers for texture volume sampling
-            var fragMid = "";      
+            var fragMid = "";
             var factor = volume > 1 ? (1/volume).toFixed(6) : "1.";
             var sampling = [
         "#ifdef RGBCOLORS",
@@ -506,7 +508,7 @@ var Shaderlib = (function() {
                         "coord_y = mix(vPos_y[0], vPos_y[1], randval);",
                     "#endif",
                         sampling,
-                        "", 
+                        "",
                     ].join("\n");
                 }
             }
@@ -564,7 +566,8 @@ var Shaderlib = (function() {
             "#ifdef EXTRATEX",
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
-                THREE.ShaderChunk[ "lights_phong_fragment" ],
+
+                //THREE.ShaderChunk[ "lights_phong_fragment" ],
     "#endif",
             "}"
             ].join("\n");
@@ -621,7 +624,7 @@ var Shaderlib = (function() {
             "attribute vec3 wmnorm;",
             "attribute vec4 auxdat;",
             // "attribute float dropout;",
-            
+
             "varying vec3 vViewPosition;",
             "varying vec3 vNormal;",
             "varying vec2 vUv;",
@@ -677,8 +680,6 @@ var Shaderlib = (function() {
             ].join("\n");
 
             var fragShade = [
-            "#extension GL_OES_standard_derivatives: enable",
-            //"#extension GL_OES_texture_float: enable",
 
             THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
 
@@ -791,7 +792,7 @@ var Shaderlib = (function() {
             ].join("\n");
             return {vertex:vertShade, fragment:fragShade, attrs:{}};
         },
-        
+
         pick: function(opts) {
             var header = "";
             var morphs = opts.morphs;
@@ -842,7 +843,7 @@ var Shaderlib = (function() {
                 "varying vec3 vPos;",
                 utils.pack,
                 "void main() {",
-                    "float norm = (vPos."+dim+" - min."+dim+") / (max."+dim+" - min."+dim+");", 
+                    "float norm = (vPos."+dim+" - min."+dim+") / (max."+dim+" - min."+dim+");",
                     "gl_FragColor = pack_float(norm);",
                 "}"
                 ].join("\n");
@@ -899,7 +900,7 @@ var Shaderlib = (function() {
             var fragShade = [
                 "uniform vec3 min;",
                 "uniform vec3 max;",
-                
+
                 utils.pack,
                 "void main() {",
                     "gl_FragColor = pack_float(gl_FragCoord.z);",

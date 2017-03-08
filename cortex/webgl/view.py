@@ -93,7 +93,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     """
     if overlay_file is not None:
         raise NotImplementedError("External overlay_file not supported yet, sorry!")
-    
+
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
         os.makedirs(outpath)
@@ -216,7 +216,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     """
     if overlay_file is not None:
         raise NotImplementedError("External overlay_file not supported yet, sorry!")
-    
+
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
@@ -349,7 +349,9 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         def post(self):
             data = self.get_argument("svg", default=None)
             png = self.get_argument("png", default=None)
-            with open(post_name.get(), "wb") as svgfile:
+            filename = post_name.get()
+            print(filename)
+            with open(filename, "wb") as svgfile:
                 if png is not None:
                     data = png[22:].strip()
                     try:
@@ -374,11 +376,11 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             _surface_props = ['surface.{subject}.%s'%k for k in _surface._controls.attrs.keys()]
             #view_props = _camera_props + _surface_props
             return _camera_props + _surface_props
-            #['camera.altitude', 'camera.azimuth', 'camera.target', 'camera.radius', 
+            #['camera.altitude', 'camera.azimuth', 'camera.target', 'camera.radius',
             #'surface.{subject}.unfold', 'surface.{subject}.pivot', 'surface.{subject}.depth',
             #'surface.{subject}.shift', 'surface.{subject}.left', 'surface.{subject}.right']
             #'surface.{subject}.specularity', 'frame', 'bg_alpha'
-            #'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection', 
+            #'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection',
             #'volume_vis', 'frame', 'slices']
 
         def _set_view(self, **kwargs):
@@ -431,7 +433,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 try:
                     view[p] = self.ui.get(p.format(subject=subject) if '{subject}' in p else p)[0]
                 except Exception as err:
-                    # TO DO: Fix this hack with an error class in serve.py & catch it here 
+                    # TO DO: Fix this hack with an error class in serve.py & catch it here
                     msg = "Cannot read property 'undefined'"
                     if err.message[:len(msg)] != msg:
                         raise err
@@ -603,7 +605,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             fr = 0
             a = np.array
             func = mixes[interpolation]
-            skip_props = ['surface.{subject}.right', 'surface.{subject}.left', ] #'projection', 
+            skip_props = ['surface.{subject}.right', 'surface.{subject}.left', ] #'projection',
             # Get keyframes
             keyframes = sorted(keyframes, key=lambda x:x['time'])
             # Normalize all time to frame rate

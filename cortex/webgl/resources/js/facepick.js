@@ -17,7 +17,7 @@ function PickPosition(surf, posdata) {
     }
     worker.postMessage(lmsg);
     worker.postMessage(rmsg);
-    
+
     surf.addEventListener("mix", this.setMix.bind(this));
 
     this.xfm = new THREE.Matrix4();
@@ -25,18 +25,17 @@ function PickPosition(surf, posdata) {
     this.scene.children.push(surf.object);
 
     this.posdata = posdata;
-    this.revIndex = {left:surf.hemis.left.reverseIndexMap, right:surf.hemis.right.reverseIndexMap};
 
     this.axes = [];
 
     var lbound = left.boundingBox;
     var rbound = right.boundingBox;
     var min = new THREE.Vector3(
-        Math.min(lbound.min.x, rbound.min.x), 
+        Math.min(lbound.min.x, rbound.min.x),
         Math.min(lbound.min.y, rbound.min.y),
         Math.min(lbound.min.z, rbound.min.z));
     var max = new THREE.Vector3(
-        Math.max(lbound.max.x, rbound.max.x), 
+        Math.max(lbound.max.x, rbound.max.x),
         Math.max(lbound.max.y, rbound.max.y),
         Math.max(lbound.max.z, rbound.max.z));
 
@@ -53,7 +52,7 @@ function PickPosition(surf, posdata) {
         vertexShader: shaders.vertex,
         fragmentShader: shaders.fragment[0],
         uniforms: this.uniforms,
-        attributes: shaders.attrs,
+        //attributes: shaders.attrs,
         blending: THREE.CustomBlending,
         blendSrc: THREE.OneFactor,
         blendDst: THREE.ZeroFactor,
@@ -62,7 +61,7 @@ function PickPosition(surf, posdata) {
         vertexShader: shaders.vertex,
         fragmentShader: shaders.fragment[1],
         uniforms: this.uniforms,
-        attributes: shaders.attrs,
+        //attributes: shaders.attrs,
         blending: THREE.CustomBlending,
         blendSrc: THREE.OneFactor,
         blendDst: THREE.ZeroFactor,
@@ -71,7 +70,7 @@ function PickPosition(surf, posdata) {
         vertexShader: shaders.vertex,
         fragmentShader: shaders.fragment[2],
         uniforms: this.uniforms,
-        attributes: shaders.attrs,
+        //attributes: shaders.attrs,
         blending: THREE.CustomBlending,
         blendSrc: THREE.OneFactor,
         blendDst: THREE.ZeroFactor,
@@ -87,9 +86,9 @@ PickPosition.prototype = {
 
         for (var i = 0; i < this.axes.length; i++) {
             var ax = this.axes[i];
-            var vert = mriview.get_position(this.posdata[ax.hemi], 
-                this.uniforms.surfmix.value, 
-                this.uniforms.thickmix.value, 
+            var vert = mriview.get_position(this.posdata[ax.hemi],
+                this.uniforms.surfmix.value,
+                this.uniforms.thickmix.value,
                 ax.idx);
 
             var inv = (new THREE.Matrix4()).getInverse(this.xfm);
@@ -112,7 +111,7 @@ PickPosition.prototype = {
             this.y.dispose();
             this.z.dispose();
         }
-        
+
         this.height = h;
         this.x = new THREE.WebGLRenderTarget(w, h, {
             minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
@@ -199,10 +198,10 @@ PickPosition.prototype = {
 					    this.uniforms.thickmix.value,
 					    p.ptidx);
 	    var vec_float = vert.base.clone().applyMatrix4(this.xfm);
-	    var vec = new THREE.Vector3(Math.round(vec_float.x), 
+	    var vec = new THREE.Vector3(Math.round(vec_float.x),
 					Math.round(vec_float.y),
 					Math.round(vec_float.z));
-            var idx = this.revIndex[p.hemi][p.ptidx];
+
             console.log("Picked vertex "+idx+" (orig "+p.ptidx+") in "+p.hemi+" hemisphere, voxel=["+vec.x+","+vec.y+","+vec.z+"]");
 	    this.process_pick(vec, p.hemi, p.ptidx, keep);
 	}
@@ -210,7 +209,7 @@ PickPosition.prototype = {
 	    this.process_nonpick();
 	}
     },
-    
+
     process_pick: function(vec, hemi, ptidx, keep) {
         this.addMarker(hemi, ptidx, keep);
         if (this.callback !== undefined)
@@ -222,11 +221,11 @@ PickPosition.prototype = {
             this.markers[this.axes[i].hemi].remove(this.axes[i].group);
         }
         this.axes = [];
-	
+
 	if (this.callback_nonpick !== undefined)
 	    this.callback_nonpick();
     },
-    
+
     dblpick: function(x, y, keep) {
         var speed = 0.6;
         var p = this._pick(x, y);
@@ -267,11 +266,11 @@ PickPosition.prototype = {
                     newpivot = 0;
                 }
             }
-            
-            viewer.animate([{idx:speed, state:"mix", value:0}, 
-                {idx:speed, state:"radius", value:200}, 
-                {idx:speed, state:"target", value:[nx,ny,nz]}, 
-                {idx:speed, state:"azimuth", value:newaz}, 
+
+            viewer.animate([{idx:speed, state:"mix", value:0},
+                {idx:speed, state:"radius", value:200},
+                {idx:speed, state:"target", value:[nx,ny,nz]},
+                {idx:speed, state:"azimuth", value:newaz},
                 {idx:speed, state:"altitude", value:newel},
                 {idx:speed, state:"pivot", value:newpivot}
                    ]);
@@ -308,7 +307,7 @@ PickPosition.prototype = {
 
         if (!keep)
             this.axes = [];
-	
+
 	    // Create axes
         var axes = makeAxes(500, 0xffffff);
         var group = new THREE.Group();
@@ -328,13 +327,13 @@ function addFlatNorm(pos, norm, flatmix) {
 }
 
 function makeAxes(length, color) {
-    function v(x,y,z){ 
-        return new THREE.Vector3(x,y,z); 
+    function v(x,y,z){
+        return new THREE.Vector3(x,y,z);
     }
     var lineGeo = new THREE.Geometry();
     lineGeo.vertices.push(
-        v(-length, 0, 0), v(length, 0, 0), 
-        v(0, -length, 0), v(0, length, 0), 
+        v(-length, 0, 0), v(length, 0, 0),
+        v(0, -length, 0), v(0, length, 0),
         v(0, 0, -length), v(0, 0, length)
     );
     /*
@@ -343,10 +342,10 @@ function makeAxes(length, color) {
     wNear = hNear * camera.aspect; // width
     var ntr = new THREE.Vector3( wNear / 2, hNear / 2, -camera.near );
     */
-    
+
     //lineGeo.vertices.push(v(0, 0, 0), v(0, 0, 10))
     var lineMat = new THREE.LineBasicMaterial({ color: color, linewidth: 2});
-    var axes = new THREE.Line(lineGeo, lineMat, THREE.LinePieces);
+    var axes = new THREE.Line(lineGeo, lineMat, THREE.LineSegments);
     axes.name = "marker_axes"
 
     var voxlines = new THREE.Geometry();
@@ -367,13 +366,13 @@ function makeAxes(length, color) {
 	v(-0.5, -0.5, -0.5), v(-0.5, -0.5, 0.5))
 
     /*var vox = new THREE.BoxGeometry(1, 1, 1);
-    var voxMat = new THREE.MeshLambertMaterial({color:0xffffff, 
-						transparent:false, 
+    var voxMat = new THREE.MeshLambertMaterial({color:0xffffff,
+						transparent:false,
 					        wireframe:true,
 					        wireframeLinewidth:2});
     var voxmesh = new THREE.Mesh(vox, voxMat);
     //var voxmesh = new THREE.Mesh(vox, lineMat);
     voxmesh.name = "marker_voxel";*/
-    var voxmesh = new THREE.Line(voxlines, lineMat, THREE.LinePieces);
+    var voxmesh = new THREE.Line(voxlines, lineMat, THREE.LineSegments);
     return {axes:axes, vox:voxmesh};
 }

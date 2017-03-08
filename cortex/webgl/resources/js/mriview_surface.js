@@ -2,8 +2,8 @@ var mriview = (function(module) {
     var flatscale = 0.3;
 
     function makeAxes(length, color) {
-        function v(x,y,z){ 
-            return new THREE.Vector3(x,y,z); 
+        function v(x,y,z){
+            return new THREE.Vector3(x,y,z);
         }
         var lineGeo = new THREE.Geometry();
         lineGeo.vertices.push(
@@ -66,7 +66,7 @@ var mriview = (function(module) {
                 // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
         ]);
-        
+
         this.ui = (new jsplot.Menu()).add({
             unfold: {action:[this, "setMix", 0., 1.]},
             pivot: {action:[this, "setPivot", -180, 180]},
@@ -81,7 +81,7 @@ var mriview = (function(module) {
             contrast: {action:[this.uniforms.curvLim, "value", 0, 0.5]},
             smoothness: {action:[this.uniforms.curvScale, "value", 0, 1]},
         });
-        
+
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, json ) {
             geometries[0].computeBoundingBox();
@@ -93,7 +93,7 @@ var mriview = (function(module) {
                     Math.abs(geometries[0].boundingBox.min.x),
                     Math.abs(geometries[1].boundingBox.max.x)
                 ) / 3, Math.min(
-                    geometries[0].boundingBox.min.y, 
+                    geometries[0].boundingBox.min.y,
                     geometries[1].boundingBox.min.y
                 )];
 
@@ -109,27 +109,26 @@ var mriview = (function(module) {
 
             var names = {left:0, right:1};
             var posdata = {
-                left :{positions:[], normals:[]}, 
+                left :{positions:[], normals:[]},
                 right:{positions:[], normals:[]},
             };
             for (var name in names) {
                 var hemi = geometries[names[name]];
-                posdata[name].map = hemi.indexMap;
                 posdata[name].positions.push(hemi.attributes.position);
                 posdata[name].normals.push(hemi.attributes.normal);
                 hemi.name = "hemi_"+name;
 
                 //Put attributes in the correct locations for the shader
-                if (hemi.attributesKeys.indexOf('wm') != -1) {
+                if (hemi.attributes.wm !== undefined) {
                     this.volume = 1;
-                    hemi.addAttribute("wmnorm", module.computeNormal(hemi.attributes['wm'], hemi.attributes.index, hemi.offsets) );
+                    hemi.addAttribute("wmnorm", module.computeNormal(hemi.attributes['wm'], hemi.getIndex()) );
                     posdata[name].wm = hemi.attributes.wm;
                     posdata[name].wmnorm = hemi.attributes.wmnorm;
                 }
                 //Rename the actual surfaces to match shader variable names
                 for (var i = 0; i < json.names.length; i++ ) {
                     hemi.attributes['mixSurfs'+i] = hemi.attributes[json.names[i]];
-                    hemi.addAttribute('mixNorms'+i, module.computeNormal(hemi.attributes[json.names[i]], hemi.attributes.index, hemi.offsets) );
+                    hemi.addAttribute('mixNorms'+i, module.computeNormal(hemi.attributes[json.names[i]], hemi.getIndex()) );
                     posdata[name].positions.push(hemi.attributes['mixSurfs'+i]);
                     posdata[name].normals.push(hemi.attributes['mixNorms'+i])
                     delete hemi.attributes[json.names[i]];
@@ -146,9 +145,8 @@ var mriview = (function(module) {
                 }
 
                 //Generate an index list that has culled non-flatmap vertices
-                var culled = module._cull_flatmap_vertices(hemi.attributes.index.array, hemi.attributes.auxdat.array, hemi.offsets);
-                hemi.culled = { index: new THREE.BufferAttribute(culled.indices, 3), offsets:culled.offsets };
-                hemi.fullind = { index: hemi.attributes.index, offsets:hemi.offsets };
+                hemi.culled = module._cull_flatmap_vertices(hemi.getIndex().array, hemi.attributes.auxdat.array);
+                hemi.fullind = hemi.getIndex();
 
                 //Queue blank data attributes for vertexdata
                 hemi.addAttribute("data0", new THREE.BufferAttribute(new Float32Array(), 1));
@@ -200,7 +198,7 @@ var mriview = (function(module) {
                 this.addEventListener("resize", function(evt) {
                     this.resize(evt.width, evt.height);
                 }.bind(this.svg));
-                this.svg.loaded.done(function() { 
+                this.svg.loaded.done(function() {
                     this.ui.addFolder("overlays", true, this.svg.ui);
                 }.bind(this));
             } else if (json.extratex !== undefined) { //extratex
@@ -211,7 +209,7 @@ var mriview = (function(module) {
 
         }.bind(this), {useWorker:true});
     };
-    THREE.EventDispatcher.prototype.apply(module.Surface.prototype);
+    Object.assign( module.Surface.prototype, THREE.EventDispatcher.prototype );
     module.Surface.prototype.resize = function(evt) {
     //     this.volumebuf = new THREE.WebGLRenderTarget(width, height, {
     //         minFilter: THREE.LinearFilter,
@@ -228,7 +226,7 @@ var mriview = (function(module) {
         }.bind(this));
         this.dispatchEvent({type:"resize", width:evt.width, height:evt.height});
     };
-    module.Surface.prototype.init = function(dataview) { 
+    module.Surface.prototype.init = function(dataview) {
         this.loaded.done(function() {
             var shaders = [];
             // Halo rendering code, ignore for now
@@ -267,8 +265,8 @@ var mriview = (function(module) {
                 var shade_cls = Shaders.surface_pixel;
             }
             var shaders = dataview.getShader(shade_cls, this.uniforms, {
-                morphs:this.names.length, 
-                volume:this.volume, 
+                morphs:this.names.length,
+                volume:this.volume,
                 rois:  this.svg instanceof svgoverlay.SVGOverlay,
                 extratex: this.uniforms.extratex.value !== null,
                 halo: false,
@@ -367,15 +365,11 @@ var mriview = (function(module) {
 
         //Swap out the polys array between the culled and full when flattening
         if (clipped > 0 && _last_clipped == 0) {
-            this.hemis.left.attributes.index = this.hemis.left.culled.index;
-            this.hemis.left.offsets = this.hemis.left.culled.offsets;
-            this.hemis.right.attributes.index = this.hemis.right.culled.index;
-            this.hemis.right.offsets = this.hemis.right.culled.offsets;
+            this.hemis.left.setIndex(this.hemis.left.culled);
+            this.hemis.right.setIndex(this.hemis.right.culled);
         } else if (clipped == 0 && _last_clipped > 0) {
-            this.hemis.left.attributes.index = this.hemis.left.fullind.index;
-            this.hemis.left.offsets = this.hemis.left.fullind.offsets;
-            this.hemis.right.attributes.index = this.hemis.right.fullind.index;
-            this.hemis.right.offsets = this.hemis.right.fullind.offsets;
+            this.hemis.left.setIndex(this.hemis.left.fullind);
+            this.hemis.right.setIndex(this.hemis.right.fullind);
         }
         _last_clipped = clipped;
 
@@ -414,7 +408,7 @@ var mriview = (function(module) {
 
         this._specular = val;
 	this.uniforms.specularStrength.value = this._specular * (1-_last_clipped);
-    
+
     };
     module.Surface.prototype.setLeftVis = function(val) {
         if (val === undefined)
@@ -429,7 +423,7 @@ var mriview = (function(module) {
         this._rightvis = val;
         //this.surfs[0].surf.pivots.right.front.visible = val;
         this.pivots.right.front.visible = val;
-    };    
+    };
     module.Surface.prototype._makeMesh = function(geom, shader) {
         //Creates the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);
@@ -481,7 +475,7 @@ var mriview = (function(module) {
         this.surf = subjects[subj];
         this.surf.init(dataview);
         this.object.add(this.surf.object);
-        
+
         this.ui.addFolder(subj, false, this.surf.ui);
 
         for (var name in this._listeners)
@@ -547,7 +541,7 @@ var mriview = (function(module) {
         this.setSheets(30);
         this.update(dataview);
     }
-    THREE.EventDispatcher.prototype.apply(module.VolumeSheets.prototype);
+    Object.assign( module.VolumeSheets.prototype, THREE.EventDispatcher.prototype );
     module.VolumeSheets.prototype.update = function(dataview) {
         var shaders = dataview.getShader(Shaders.main, this.uniforms, {
             viewspace:true,
@@ -601,7 +595,7 @@ var mriview = (function(module) {
         this.sheets.addAttribute("index", index);
         this.sheets.addAttribute("normal", normal);
 
-        this.debug_shade = new THREE.MeshBasicMaterial({color:0xffcccc, 
+        this.debug_shade = new THREE.MeshBasicMaterial({color:0xffcccc,
             side:THREE.DoubleSide,
             transparent:true,
             opacity:.1,

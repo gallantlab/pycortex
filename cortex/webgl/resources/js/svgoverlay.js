@@ -1,12 +1,12 @@
 var svgoverlay = (function(module) {
-    var svgdoctype = document.implementation.createDocumentType("svg", 
+    var svgdoctype = document.implementation.createDocumentType("svg",
             "-//W3C//DTD SVG 1.0//EN", "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd");
     var svgns = "http://www.w3.org/2000/svg";
 
     var padding = 8; //Width of the padding around text
 
     var gl = document.createElement("canvas").getContext("experimental-webgl");
-    var max_tex_size = gl.getParameter(gl.MAX_TEXTURE_SIZE); 
+    var max_tex_size = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 
     var retina_scale = window.devicePixelRatio || 1;
 
@@ -44,13 +44,13 @@ var svgoverlay = (function(module) {
             volume:surf.volume,
         });
         this.depthshade = new THREE.ShaderMaterial({
-            vertexShader: shader.vertex, 
-            fragmentShader: shader.fragment, 
+            vertexShader: shader.vertex,
+            fragmentShader: shader.fragment,
             uniforms: {
                 thickmix:surf.uniforms.thickmix,
                 surfmix:surf.uniforms.surfmix,
             },
-            attributes: shader.attrs,
+            //attributes: shader.attrs,
             blending: THREE.CustomBlending,
             blendSrc: THREE.OneFactor,
             blendDst: THREE.ZeroFactor,
@@ -58,7 +58,7 @@ var svgoverlay = (function(module) {
 
         $.get(svgpath, null, this.init.bind(this));
     }
-    THREE.EventDispatcher.prototype.apply(module.SVGOverlay.prototype);
+    Object.assign( module.SVGOverlay.prototype, THREE.EventDispatcher.prototype );
     module.SVGOverlay.prototype.init = function(svgdoc) {
         this.doc = svgdoc
         this.svg = svgdoc.getElementsByTagName("svg")[0];
@@ -89,7 +89,7 @@ var svgoverlay = (function(module) {
                 labels:  {action:[this[name].labels, "showhide"], },
 
             });
-	    
+
 	    if (name+"_paths" in viewopts) {
 		this[name].set(viewopts[name+"_paths"]);
 	    } else {
@@ -112,25 +112,25 @@ var svgoverlay = (function(module) {
         this.width = this.height * this.aspect;
         this.svg.setAttribute("width", this.width);
         this.svg.setAttribute("height", this.height);
-    }, 
+    },
     module.SVGOverlay.prototype.update = function() {
-	console.log("Updating overlay!");
+        console.log("Updating overlay!");
         this.svg.toDataURL("image/png", {renderer:"native", callback:function(dataurl) {
             var img = new Image();
             //img.src = dataurl;
-	    img.onload = function () {
-		var tex = new THREE.Texture(img);
-		tex.needsUpdate = true;
-		//tex.anisotropy = 16;
-		//tex.mipmaps[0] = tex.image;
-		//tex.generateMipmaps = true;
-		tex.premultiplyAlpha = true;
-		tex.flipY = true;
-		this.dispatchEvent({type:"update", texture:tex});
-	    }.bind(this);
-	    img.src = dataurl;
+            img.onload = function () {
+                var tex = new THREE.Texture(img);
+                tex.needsUpdate = true;
+                //tex.anisotropy = 16;
+                //tex.mipmaps[0] = tex.image;
+                //tex.generateMipmaps = true;
+                tex.premultiplyAlpha = true;
+                tex.flipY = true;
+                this.dispatchEvent({type:"update", texture:tex});
+            }.bind(this);
+            img.src = dataurl;
         }.bind(this)});
-    }, 
+    },
     module.SVGOverlay.prototype.prerender = function(renderer, scene, camera) {
         var needed = false;
         for (var name in this.layers) {
@@ -161,7 +161,7 @@ var svgoverlay = (function(module) {
 
         for (var name in this.layers) {
             var uniforms = this.layers[name].labels.shader.uniforms;
-            uniforms.depth.value = this.depth;
+            uniforms.depth.value = this.depth.texture;
             uniforms.scale.value.set(1 / width, 1 / height);
         }
     }
@@ -178,7 +178,7 @@ var svgoverlay = (function(module) {
         newsvg.appendChild(svg);
 
         var img = newsvg.createElement("image");
-        img.setAttribute("id", "flatdata");   
+        img.setAttribute("id", "flatdata");
         img.setAttribute("x", "0");
         img.setAttribute("y", "0");
         img.setAttribute("height", this.height);
@@ -223,7 +223,7 @@ var svgoverlay = (function(module) {
 
         var svgxml = (new XMLSerializer()).serializeToString(newsvg);
         if (posturl == undefined) {
-            var anchor = document.createElement("a"); 
+            var anchor = document.createElement("a");
             anchor.href = "data:image/svg+xml;utf8,"+svgxml;
             anchor.download = "flatmap.svg";
             anchor.click()
@@ -237,9 +237,9 @@ var svgoverlay = (function(module) {
         this.layer = layer;
         this.shapes = {};
 
-	if (layer_hidden) {
-	    this.layer.style.display = "none";
-	}
+        if (layer_hidden) {
+            this.layer.style.display = "none";
+        }
 
         var shapes = layer.parentNode.getElementById(this.name+"_shapes");
         for (var i = 0 ; i < shapes.children.length; i++) {
@@ -248,9 +248,9 @@ var svgoverlay = (function(module) {
         }
 
         var labels = layer.parentNode.getElementById(this.name+"_labels");
-	this.labels = new module.Labels(labels, posdata, labels_hidden);
+        this.labels = new module.Labels(labels, posdata, labels_hidden);
 
-	this._hidden = layer_hidden;
+        this._hidden = layer_hidden;
         this.showhide = function(state) {
             if (state === undefined)
                 return !this._hidden;
@@ -259,7 +259,7 @@ var svgoverlay = (function(module) {
             else this.hide();
         }.bind(this);
     }
-    THREE.EventDispatcher.prototype.apply(module.Overlay.prototype);
+    Object.assign( module.Overlay.prototype, THREE.EventDispatcher.prototype );
     module.Overlay.prototype.set = function(options) {
         for (var name in this.shapes) {
             var paths = this.shapes[name].getElementsByTagNameNS(svgns, "path");
@@ -308,11 +308,11 @@ var svgoverlay = (function(module) {
             //store the vertex information that matches this label
             var idx = parseInt(labels[i].getAttribute("data-ptidx"));
             if (idx < leftlen) {
-                this.indices.left.verts.push(this.posdata.left.map[idx]);
+                this.indices.left.verts.push(idx);
                 this.indices.left.text.push(name);
             } else {
                 idx -= leftlen;
-                this.indices.right.verts.push(this.posdata.right.map[idx]);
+                this.indices.right.verts.push(idx);
                 this.indices.right.text.push(name);
             }
         }
@@ -357,16 +357,15 @@ var svgoverlay = (function(module) {
                 depth: { type:'t', value:null },
                 text:  { type:'t', value:null },
             },
-            attributes: {
-                offset:{type:'v2', value:null}
-            },
+            //attributes: { offset:{type:'v2', value:null}},
+            extensions:{derivatives:true},
             blending: THREE.NormalBlending,
             depthTest:false,
             depthWrite:false,
             transparent:true,
         });
-        this.meshes.left = new THREE.PointCloud(this.geometry.left, this.shader);
-        this.meshes.right = new THREE.PointCloud(this.geometry.right, this.shader);
+        this.meshes.left = new THREE.Points(this.geometry.left, this.shader);
+        this.meshes.right = new THREE.Points(this.geometry.right, this.shader);
     }
 
     module.Labels.prototype.update = function() {
@@ -575,7 +574,7 @@ var svgoverlay = (function(module) {
                 //"float d = unpack_depth(texture2D(depth, ndc.xy));",
                 //"alpha = 1. - step(d, ndc.z);",
                 //"alpha = 200.*abs(ndc.z - d);",
-                //"debug = texture2D(depth, ndc.xy).rgb;", 
+                //"debug = texture2D(depth, ndc.xy).rgb;",
                 "alpha = sample_depth(ndc.xy);",
             "}",
             ].join("\n"),

@@ -1,7 +1,7 @@
 var mriview = (function(module) {
     var anim_speed = 2;
     var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
-    module.Viewer = function(figure) { 
+    module.Viewer = function(figure) {
         jsplot.Axes.call(this, figure);
 
         //mix function to attach to surface when it's added
@@ -46,7 +46,7 @@ var mriview = (function(module) {
         this._bindUI();
     }
     module.Viewer.prototype = Object.create(jsplot.Axes3D.prototype);
-    THREE.EventDispatcher.prototype.apply(module.Viewer.prototype);
+    Object.assign( module.Viewer.prototype, THREE.EventDispatcher.prototype );
     module.Viewer.prototype.constructor = module.Viewer;
 
     module.Viewer.prototype.drawView = function(scene, idx) {
@@ -75,7 +75,7 @@ var mriview = (function(module) {
         }
         this.schedule();
     }
-    
+
     module.Viewer.prototype.animate = function(animation) {
         var state = {};
         var anim = [];
@@ -150,7 +150,7 @@ var mriview = (function(module) {
                     else {
                         return (startval * (1-idx) + (endval-360) * idx + 360) % 360;
                     }
-                } 
+                }
                 else {
                     return (startval * (1-idx) + endval * idx);
                 }
@@ -163,8 +163,8 @@ var mriview = (function(module) {
     // module.Viewer.prototype.saveflat = function(height, posturl) {
     //     var width = height * this.flatlims[1][0] / this.flatlims[1][1];;
     //     var roistate = $(this.object).find("#roishow").attr("checked");
-    //     this.screenshot(width, height, function() { 
-    //         this.reset_view(false, height); 
+    //     this.screenshot(width, height, function() {
+    //         this.reset_view(false, height);
     //         $(this.object).find("#roishow").attr("checked", false);
     //         $(this.object).find("#roishow").change();
     //     }.bind(this), function(png) {
@@ -173,7 +173,7 @@ var mriview = (function(module) {
     //         this.controls.target.set(0,0,0);
     //         this.roipack.saveSVG(png, posturl);
     //     }.bind(this));
-    // }; 
+    // };
 
     module.Viewer.prototype.addData = function(data) {
         if (!(data instanceof Array))
@@ -194,7 +194,7 @@ var mriview = (function(module) {
             if (!found)
                 $(this.object).find("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
         }
-        
+
         this.setData(data[0].name);
     };
 
@@ -241,7 +241,7 @@ var mriview = (function(module) {
                 this.active.addEventListener("attribute", this.surfs[i]._attrib);
             }
         }
-        this.active.loaded.done(function() { 
+        this.active.loaded.done(function() {
             this.active.set();
         }.bind(this));
 
@@ -278,7 +278,7 @@ var mriview = (function(module) {
             // }
 
             this.setupStim();
-            
+
             $(this.object).find("#datasets li").each(function() {
                 if ($(this).text() == name)
                     $(this).addClass("ui-selected");
@@ -354,7 +354,7 @@ var mriview = (function(module) {
                 this.surfs[i].removeEventListener("mix", this._mix);
 
                 this.root.remove(this.surfs[i].object);
-            } else 
+            } else
                 newsurfs.push(this.surfs[i]);
         }
         this.surfs = newsurfs;
@@ -438,7 +438,7 @@ var mriview = (function(module) {
         cm = $(this.object).find("#colormap"),
         sb = $(this.object).find("#cmapsearchbox"),
         v = this;
-        
+
         sb.val("");
         sb.css("width", cm.css("width"));
         sb.css("height", cm.css("height"));
@@ -548,8 +548,8 @@ var mriview = (function(module) {
 
 
         if ($(this.object).find("#colormap_category").length > 0) {
-            $(this.object).find("#colormap").ddslick({ width:296, height:350, 
-                onSelected: function() { 
+            $(this.object).find("#colormap").ddslick({ width:296, height:350,
+                onSelected: function() {
                     var name = $(this.object).find("#colormap .dd-selected-text").text();
                     if (this.active) {
                         this.active.setColormap(name);
@@ -561,53 +561,53 @@ var mriview = (function(module) {
                 this.startCmapSearch();
             }.bind(this));
 
-            $(this.object).find("#vrange").slider({ 
+            $(this.object).find("#vrange").slider({
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1],
-                slide: function(event, ui) { 
+                slide: function(event, ui) {
                     $(this.object).find("#vmin").val(ui.values[0]);
                     $(this.object).find("#vmax").val(ui.values[1]);
                     this.active.setVminmax(ui.values[0], ui.values[1]);
                     this.schedule();
                 }.bind(this)
             });
-            $(this.object).find("#vmin").change(function() { 
+            $(this.object).find("#vmin").change(function() {
                 this.active.setVminmax(
-                    parseFloat($(this.object).find("#vmin").val()), 
+                    parseFloat($(this.object).find("#vmin").val()),
                     parseFloat($(this.object).find("#vmax").val())
-                ); 
+                );
                 this.schedule();
             }.bind(this));
-            $(this.object).find("#vmax").change(function() { 
+            $(this.object).find("#vmax").change(function() {
                 this.active.setVminmax(
-                    parseFloat($(this.object).find("#vmin").val()), 
+                    parseFloat($(this.object).find("#vmin").val()),
                     parseFloat($(this.object).find("#vmax").val())
-                    ); 
+                    );
                 this.schedule();
             }.bind(this));
 
-            $(this.object).find("#vrange2").slider({ 
+            $(this.object).find("#vrange2").slider({
                 range:true, width:200, min:0, max:1, step:.001, values:[0,1], orientation:"vertical",
-                slide: function(event, ui) { 
+                slide: function(event, ui) {
                     $(this.object).find("#vmin2").value(ui.values[0]);
                     $(this.object).find("#vmax2").value(ui.values[1]);
                     this.active.setVminmax(ui.values[0], ui.values[1], 1);
                     this.schedule();
                 }.bind(this)
             });
-            $(this.object).find("#vmin2").change(function() { 
+            $(this.object).find("#vmin2").change(function() {
                 this.active.setVminmax(
-                    parseFloat($(this.object).find("#vmin2").val()), 
+                    parseFloat($(this.object).find("#vmin2").val()),
                     parseFloat($(this.object).find("#vmax2").val()),
                     1);
                 this.schedule();
             }.bind(this));
-            $(this.object).find("#vmax2").change(function() { 
+            $(this.object).find("#vmax2").change(function() {
                 this.active.setVminmax(
-                    parseFloat($(this.object).find("#vmin2").val()), 
-                    parseFloat($(this.object).find("#vmax2").val()), 
-                    1); 
+                    parseFloat($(this.object).find("#vmin2").val()),
+                    parseFloat($(this.object).find("#vmax2").val()),
+                    1);
                 this.schedule();
-            }.bind(this));            
+            }.bind(this));
         }
         //Dataset box
         var setdat = function(event, ui) {
@@ -616,7 +616,7 @@ var mriview = (function(module) {
             this.setData(names);
         }.bind(this)
         $(this.object).find("#datasets")
-            .sortable({ 
+            .sortable({
                 handle: ".handle",
                 stop: setdat,
              })
@@ -639,15 +639,15 @@ var mriview = (function(module) {
         // $(this.object).find("#moviecontrol").click(this.playpause.bind(this));
 
         // $(this.object).find("#movieprogress>div").slider({min:0, max:1, step:.001,
-        //     slide: function(event, ui) { 
-        //         this.setFrame(ui.value); 
+        //     slide: function(event, ui) {
+        //         this.setFrame(ui.value);
         //         this.figure.notify("setFrame", this, [ui.value]);
         //     }.bind(this)
         // });
         // $(this.object).find("#movieprogress>div").append("<div class='ui-slider-range ui-widget-header'></div>");
 
-        // $(this.object).find("#movieframe").change(function() { 
-        //     _this.setFrame(this.value); 
+        // $(this.object).find("#movieframe").change(function() {
+        //     _this.setFrame(this.value);
         //     _this.figure.notify("setFrame", _this, [this.value]);
         // });
     };

@@ -1,9 +1,9 @@
 var dataset = (function(module) {
-    module.filtertypes = { 
-        nearest: THREE.NearestFilter, 
-        trilinear: THREE.LinearFilter, 
-        nearlin: THREE.LinearFilter, 
-        debug: THREE.NearestFilter 
+    module.filtertypes = {
+        nearest: THREE.NearestFilter,
+        trilinear: THREE.LinearFilter,
+        nearlin: THREE.LinearFilter,
+        debug: THREE.NearestFilter
     };
 
     module.samplers = {
@@ -77,10 +77,14 @@ var dataset = (function(module) {
         this.vmin = [{type:'fv1', value:json.vmin[0] instanceof Array? json.vmin[0] : [json.vmin[0], 0]}];
         this.vmax = [{type:'fv1', value:json.vmax[0] instanceof Array? json.vmax[0] : [json.vmax[0],0]}];
 
-        this.uniforms = {
+        this.uniforms = THREE.UniformsUtils.merge([
+            THREE.UniformsLib.common,
+            THREE.UniformsLib.lights,
+            {
             framemix:   { type:'f',   value:0},
             dataAlpha:  { type:'f', value:1.0},
-        }
+            },
+        ])
 
         if (!this.vertex) {
             //no multiviews yet
@@ -100,8 +104,8 @@ var dataset = (function(module) {
             allready.push(false);
         }
 
-        var deferred = this.data.length == 1 ? 
-            $.when(this.data[0].loaded) : 
+        var deferred = this.data.length == 1 ?
+            $.when(this.data[0].loaded) :
             $.when(this.data[0].loaded, this.data[1].loaded);
         deferred
         .progress(function(available) {
@@ -123,7 +127,7 @@ var dataset = (function(module) {
             this.loaded.resolve();
         }.bind(this));
     }
-    THREE.EventDispatcher.prototype.apply(module.DataView.prototype);
+    Object.assign( module.DataView.prototype, THREE.EventDispatcher.prototype );
     module.DataView.prototype.setVminmax = function(min, max, dim, idx) {
         if (dim === undefined)
             dim = 0;
@@ -172,10 +176,11 @@ var dataset = (function(module) {
             opts.twod = this.data.length > 1;
             opts.voxline = (viewopts.voxlines==='true');
             var shadecode = shaderfunc(opts);
-            var shader = new THREE.ShaderMaterial({ 
+            var shader = new THREE.ShaderMaterial({
                 vertexShader:shadecode.vertex,
                 fragmentShader:shadecode.fragment,
-                attributes: shadecode.attrs,
+                extensions:{derivatives:true},
+                //attributes: shadecode.attrs,
                 uniforms: merge,
                 //side:THREE.DoubleSide,
                 lights:true,
@@ -249,6 +254,8 @@ var dataset = (function(module) {
                     tex = new THREE.DataTexture(arr, img.width, img.height, THREE.LuminanceFormat, THREE.FloatType);
                     tex.premultiplyAlpha = false;
                 }
+                tex.wrapS = THREE.ClampToEdgeWrapping;
+                tex.wrapT = THREE.ClampToEdgeWrapping;
                 tex.minFilter = module.filtertypes[this._interp];
                 tex.magfilter = module.filtertypes[this._interp];
                 tex.needsUpdate = true;
@@ -327,7 +334,7 @@ var dataset = (function(module) {
                 //Since the buffer probably got shuffled, we need to map it using indexMap
 		var sleft = new Float32Array(left.length);
 		var sright = new Float32Array(right.length);
-		
+
                 var hemis = subjects[this.subject].hemis;
 
                 subjects[this.subject].loaded.done(function() {

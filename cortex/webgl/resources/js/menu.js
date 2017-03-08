@@ -9,7 +9,7 @@ var jsplot = (function (module) {
             this.dispatchEvent({type:"update"});
         }.bind(this);
     }
-    THREE.EventDispatcher.prototype.apply(module.Menu.prototype);
+    Object.assign( module.Menu.prototype, THREE.EventDispatcher.prototype );
     module.Menu.prototype.init = function(gui) {
         this._gui = gui;
         for (var name in this._desc) {
@@ -31,7 +31,7 @@ var jsplot = (function (module) {
             var action = this._desc[n].action;
             if (action[0][action[1]] instanceof Function)
                 action[0][action[1]].call(action[0], value)
-            else 
+            else
                 action[0][action[1]] = value;
         } else {
             this[n] = value;
@@ -111,7 +111,7 @@ var jsplot = (function (module) {
         if (desc.action instanceof Function) {
             //A button that runs a function (IE Reset)
             this[name] = desc.action;
-            if (!desc.hidden) 
+            if (!desc.hidden)
                 gui.add(desc, "action").name(name);
         } else if ( desc.action instanceof Array) {
             var obj = desc.action[0][desc.action[1]];
@@ -131,14 +131,14 @@ var jsplot = (function (module) {
                         parent[method](this[name]);
                         this.dispatchEvent({type:"update"});
                     }.bind(this, name));
-                    
+
                     //replace the function so that calling it will update the control
                     ctrl._oldfunc = parent[method]; //store original so we can replace
                     var func = parent[method].bind(parent);
                     parent[method] = function(name, val) {
                         if (val === undefined)
                             return func();
-                        
+
                         func(val);
                         this[name] = val;
                         ctrl.updateDisplay();
