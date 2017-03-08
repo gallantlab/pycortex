@@ -19,8 +19,12 @@ The viewer directory must be hosted by a server such as nginx
 import numpy as np
 import cortex
 
-data = np.random.randn(31, 100, 100)
-# viewer_path = '/auto/k1/storm/www/test/static'
+# gather data Volume
+volume = cortex.Volume(data=data, subject='S1', xfmname='fullhead')
+
+# select path for static viewer on disk
 viewer_path = '/path/to/store/viewer'
-volume = cortex.Volume(data=data, subject="S1", xfmname="fullhead")
+# viewer_path = '/auto/k1/storm/www/test/static'
+
+# create viewer
 cortex.webgl.make_static(outpath=viewer_path, data=volume)
