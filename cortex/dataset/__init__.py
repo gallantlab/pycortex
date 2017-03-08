@@ -1,5 +1,5 @@
-"""Module for representing brain data in both voxel and vertex forms
+"""Contains classes for representing brain data in either volumetric or vertex (surface-based) formats for visualization.
 """
 
-from .views import Volume, Vertex, VolumeRGB, VertexRGB, Volume2D, Vertex2D, Dataview, _from_hdf_data
+from .views import Volume, Vertex, VolumeRGB, VertexRGB, Volume2D, Vertex2D, _from_hdf_data
 from .dataset import Dataset, normalize
