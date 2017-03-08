@@ -127,6 +127,8 @@ class VolumeData(BrainData):
         Binary 3D array with shape (z,y,x) showing which voxels are selected.
         If masked data is given, the mask will automatically be loaded if it 
         exists in the pycortex database.
+    **kwargs
+        Other keyword arguments are passed to superclass inits.
     """
     def __init__(self, data, subject, xfmname, mask=None, **kwargs):
         if self.__class__ == VolumeData:
@@ -168,6 +170,9 @@ class VolumeData(BrainData):
             Transform name. Must exist in the pycortex database.
         value : float, optional
             Value that the VolumeData will be filled with.
+        **kwargs
+            Other keyword arguments are passed to the init function for this 
+            class.
 
         Returns
         -------
@@ -191,6 +196,9 @@ class VolumeData(BrainData):
             Subject identifier. Must exist in the pycortex database.
         xfmname : str
             Transform name. Must exist in the pycortex database.
+        **kwargs
+            Other keyword arguments are passed to the init function for this 
+            class.
 
         Returns
         -------
@@ -336,6 +344,8 @@ class VertexData(BrainData):
         hemisphere will be filled with zeros.
     subject : str
         Subject identifier. Must exist in the pycortex database.
+    **kwargs
+        Other keyword arguments are passed to the superclass init function.
     """
     def __init__(self, data, subject, **kwargs):
         if self.__class__ == VertexData:
@@ -361,6 +371,9 @@ class VertexData(BrainData):
             Subject identifier. Must exist in the pycortex database.
         value : float, optional
             Value that the VertexData will be filled with.
+        **kwargs
+            Other keyword arguments are passed to the init function for this 
+            class.
 
         Returns
         -------
@@ -385,6 +398,9 @@ class VertexData(BrainData):
         ----------
         subject : str
             Subject identifier. Must exist in the pycortex database.
+        **kwargs
+            Other keyword arguments are passed to the init function for this 
+            class.
 
         Returns
         -------
@@ -452,8 +468,8 @@ class VertexData(BrainData):
         projection : str, optional
             The type of projection method to use. See the docs for `mapper` for
             possibilities. Default: nearest.
-
-        kwargs are passed to the `mapper.backwards` function.
+        **kwargs 
+            Other keyword args are passed to the `mapper.backwards` function.
 
         Returns
         -------
