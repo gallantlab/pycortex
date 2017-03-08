@@ -3,15 +3,19 @@
 Plot Volume Data
 ================
 
-This plots example data onto an example subject, S1
+This plots example vertex data onto an example subject, S1, onto a flatmap
+using quickflat. In order for this to run, you have to have a flatmap for
+this subject in the pycortex filestore.
 
-Instead of the random test data, you can replace this with any numpy array
-that is the correct dimensionality for this brain and transform
+The cortex.Volume object is instantiated with a numpy array of the same size
+as the scan for this subject and transform. Instead of the random test data, 
+you can replace this with any numpy array of the correct dimensionality.
 
-By changing the parameters vmin and vmax, you get thresholded data 
+By changing the parameters vmin and vmax, you get thresholded data, as shown
+in the colorbar for the figure. 
 
 If you have NaN values within your array, those voxels show up transparent
-on the brain
+on the brain.
 """
 
 import cortex
