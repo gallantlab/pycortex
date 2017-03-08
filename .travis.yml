@@ -13,9 +13,10 @@ script:
   - set -e
   - # Command to build your docs
   - pip install -r requirements.txt
-  - pip install sphinx doctr numpydoc sphinx_gallery
+  - pip install sphinx numpydoc sphinx_gallery
+  - pip install git+https://github.com/r-b-g-b/doctr.git@deploy-to-any-branch
   - python setup.py build_ext --inplace
   - cd docs
   - make html
   - cd ..
-  - doctr deploy --deploy-repo gallantlab/gallantlab.github.io --no-require-master
+  - doctr deploy --deploy-repo gallantlab/gallantlab.github.io --deploy-branch-name master --no-require-master
