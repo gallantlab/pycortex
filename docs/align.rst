@@ -57,12 +57,12 @@ Note: if you are fixing a transform you had previous used for things, you will n
 You will see a window like this pop up:
 
 .. image:: ./aligner/snapshot1.png
-	:scale: 66 %
+	:width: 600 px
 
 There's weird gray blobs - click anywhere to get rid of them.
 
 .. image:: ./aligner/snapshot2.png
-	:scale: 66 %
+	:width: 600 px
 
 Here you see 4 different views, showing the saggital, coronal, and transverse slices, and also the three slices in 3D.
 The background image is the reference image, and the mesh that you see is the surface that you will be aligning.
@@ -76,38 +76,38 @@ Changing the views
 You can change the color scale for the images with the color map option:
 
 .. image:: ./aligner/colormap.png
-	:scale: 66 %
+	:width: 600 px
 
 Here, we've set it to the red-blue color map.
 
 .. image:: ./aligner/snapshot4.png
-	:scale: 66 %
+	:width: 600 px
 
 ``Fliplut`` can be used to reverse the color map.
 
 .. image:: ./aligner/flipcolor.png
-	:scale: 66 %
+	:width: 600 px
 
 You can also use the ``contrast`` and ``brightness`` sliders to adjust the colors.
 
 .. image:: ./aligner/contrast.png
-	:scale: 66 %
+	:width: 600 px
 
 The ``Outline color`` and ``Outline rep`` can be used to change the surface color, and the surface from a mesh (the default), to points only, to a solid surface.
 Also, the sliders can be used to chane line and point weights.
 Here, we changed it to a green points only representation, with smaller points.
 
 .. image:: ./aligner/surface.png
-	:scale: 66 %
+	:width: 600 px
 
 You will notice two black lines in each view. You can click anywhere in a view to select a different voxel.
 Selecting another voxel will update all the other views to show the slices that particular voxel belongs to.
 
 .. image:: ./aligner/lines1.png
-	:scale: 66 %
+	:width: 600 px
 
 .. image:: ./aligner/snapshot13.png
-	:scale: 66 %
+	:width: 600 px
 
 Use these views to change the slices of the brain that you're looking at, to line things up.
 
@@ -119,7 +119,7 @@ Click and drag the center ball to translate in each view, and use the ball on th
 It will take a few seconds for the aligner to update the mesh position.
 
 .. image:: ./aligner/adjring.png
-	:scale: 66 %
+	:width: 600 px
 	
 **Note**: you should not use the ring to make adjustments. There is no way to fix the scaling, and the ring will screw the scaling up.
 
@@ -134,7 +134,7 @@ The aligner will apply the transformation in whatever view currently under your 
 To save the alignment, just click the ``Save Transform`` button and close the window.
 
 .. image:: ./aligner/save.png
-	:scale: 66 %
+	:width: 600 px
 
 Tips for aligning the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
