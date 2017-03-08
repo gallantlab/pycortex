@@ -282,7 +282,7 @@ class VolumeData(BrainData):
         return data
 
     def save(self, filename, name=None):
-        """Save the dataset into an hdf file with the provided name.
+        """Save the dataset into the hdf file `filename` with the provided name.
         """
         import os
         if isinstance(filename, str):
@@ -324,17 +324,20 @@ class VolumeData(BrainData):
         nibabel.save(new_nii, filename)
 
 class VertexData(BrainData):
+    """
+    Abstract base class for all vertex-wise brain data (i.e. in surface space).
+
+    Parameters
+    ----------
+    data : ndarray
+        The data. Can be 1D with shape (v,), or 2D with shape (t,v). Here, v can
+        be the number of vertices in both hemispheres, or the number of vertices
+        in either one of the hemispheres. In that case, the data for the other 
+        hemisphere will be filled with zeros.
+    subject : str
+        Subject identifier. Must exist in the pycortex database.
+    """
     def __init__(self, data, subject, **kwargs):
-        """Represents `data` at each vertex on a `subject`s cortex.
-        `data` shape possibilities:
-
-        reg linear movie: (t, v)
-        reg linear image: (v,)
-        None: creates zero-filled VertexData
-
-        where t is the number of time points, c is colors (i.e. RGB), and v is the
-        number of vertices (either in both hemispheres or one hemisphere).
-        """
         if self.__class__ == VertexData:
             raise TypeError('Cannot directly instantiate VertexData objects')
         super(VertexData, self).__init__(data, subject, **kwargs)
@@ -348,6 +351,22 @@ class VertexData(BrainData):
 
     @classmethod
     def empty(cls, subject, value=0, **kwargs):
+        """
+        Create a constant-valued VertexData for the given subject.
+        Often useful for testing purposes.
+
+        Parameters
+        ----------
+        subject : str
+            Subject identifier. Must exist in the pycortex database.
+        value : float, optional
+            Value that the VertexData will be filled with.
+
+        Returns
+        -------
+        VertexData subclass
+            A VertexData subclass object whose data is constant, equal to value.
+        """
         try:
             left, right = db.get_surf(subject, "wm")
         except IOError:
@@ -357,6 +376,21 @@ class VertexData(BrainData):
 
     @classmethod
     def random(cls, subject, **kwargs):
+        """
+        Create a random-valued VertexData for the given subject.
+        Random values are from gaussian distribution with mean 0, s.d. 1.
+        Often useful for testing purposes.
+
+        Parameters
+        ----------
+        subject : str
+            Subject identifier. Must exist in the pycortex database.
+
+        Returns
+        -------
+        VertexData subclass
+            A VertexData subclass object with random data.
+        """
         try:
             left, right = db.get_surf(subject, "wm")
         except IOError:
@@ -365,7 +399,8 @@ class VertexData(BrainData):
         return cls(np.random.randn(nverts), subject, **kwargs)
 
     def _set_data(self, data):
-        """Stores data for this VertexData. Also sets flags if `data` appears to
+        """
+        Stores data for this VertexData. Also sets flags if `data` appears to
         be in 'movie' or 'raw' format. See __init__ for `data` shape possibilities.
         """
         if data is None:
@@ -393,9 +428,38 @@ class VertexData(BrainData):
             raise ValueError('Invalid number of vertices for subject (given %d, should be %d for left hem, %d for right hem, or %d for both)' % (self.nverts, self.llen, self.rlen, self.llen+self.rlen))
 
     def copy(self, data):
+        """
+        Return a new VertexData object for the same subject but with data
+        replaced by the given `data`. 
+
+        This is useful for efficiently creating many VertexData objects, since 
+        it doesn't require reloading the surfaces from the database to check 
+        numbers of vertices, etc.
+        """
         return super(VertexData, self).copy(data, self.subject)
 
     def volume(self, xfmname, projection='nearest', **kwargs):
+        """
+        Map this VertexData back to volume space, creating a VolumeData object.
+        This uses the `mapper.backwards` function, which is not particularly
+        accurate.
+
+        Parameters
+        ----------
+        xfmname : str
+            Transform name for the volume space that this vertex data will be 
+            projected into. Must exist in the pycortex database.
+        projection : str, optional
+            The type of projection method to use. See the docs for `mapper` for
+            possibilities. Default: nearest.
+
+        kwargs are passed to the `mapper.backwards` function.
+
+        Returns
+        -------
+        VolumeData
+            Volume containing the back-projected vertex data.
+        """
         import warnings
         warnings.warn('Inverse mapping cannot be accurate')
         from .. import utils
@@ -409,6 +473,9 @@ class VertexData(BrainData):
         return "<Vertex %sdata for %s>"%(maskstr, self.subject)
 
     def __getitem__(self, idx):
+        """Get the VertexData for the given time index. Only works for movie (2D)
+        vertex data.
+        """
         if not self.movie:
             raise TypeError("Cannot index non-movie data")
         
@@ -434,6 +501,8 @@ class VertexData(BrainData):
 
     @property
     def left(self):
+        """Data for only the left hemisphere vertices.
+        """
         if self.movie:
             return self.data[:,:self.llen]
         else:
@@ -441,6 +510,8 @@ class VertexData(BrainData):
 
     @property
     def right(self):
+        """Data for only the right hemisphere vertices.
+        """
         if self.movie:
             return self.data[:,self.llen:]
         else:
