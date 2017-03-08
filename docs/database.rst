@@ -2,7 +2,7 @@ Surface Database
 ================
 
 
-Anatomicals
+``/anatomicals``
 ^^^^^^^^^^^
 
 ``/cache``
@@ -33,58 +33,59 @@ Anatomicals
 
 Here is an example entry into the filestore...
 
-```
-S1
-├── anatomicals
-│   ├── brainmask_mask.nii.gz
-│   ├── brainmask.nii.gz
-│   ├── raw.nii.gz
-│   ├── voxelize.nii.gz
-│   ├── voxelize[surf=wm].nii.gz
-│   └── whitematter.nii.gz
-├── cache
-│   ├── flatmask_1024.npz
-│   ├── flatpixel_fullhead_1024_nearest_d0.5.npz
-│   ├── flatpixel_fullhead_1024_nearest_l32.npz
-│   ├── flatpixel_retinotopy_1024_nearest_l32.npz
-│   ├── flatverts_1024.npz
-│   ├── fullhead_pointnn.npz
-│   ├── S1_[inflated]_mg2_9.ctm
-│   ├── S1_[inflated]_mg2_9.json
-│   ├── S1_[inflated]_mg2_9.json~
-│   ├── S1_[inflated]_mg2_9_['rois'].ctm
-│   ├── S1_[inflated]_mg2_9_['rois'].json
-│   ├── S1_[inflated]_mg2_9_['rois'].svg
-│   ├── S1_[inflated]_mg2_9.svg
-│   ├── S1_[inflated]_mg2_9_v3.ctm
-│   ├── S1_[inflated]_mg2_9_v3.json
-│   ├── S1_[inflated]_mg2_9_v3.npz
-│   ├── S1_[inflated]_mg2_9_v3.svg
-│   ├── S1_[inflated]_raw_0_['rois'].ctm
-│   └── S1_[inflated]_raw_0_['rois'].json
-├── overlays.svg
-├── rois.svg
-├── surface-info
-│   └── curvature.npz
-├── surfaces
-│   ├── flat_lh.npz
-│   ├── flat_rh.npz
-│   ├── inflated_lh.npz
-│   ├── inflated_rh.npz
-│   ├── pia_lh.npz
-│   ├── pia_rh.npz
-│   ├── wm_lh.npz
-│   └── wm_rh.npz
-├── transforms
-│   └── fullhead
-│       ├── mask_cortical.nii.gz
-│       ├── mask_rand_mask.nii.gz
-│       ├── mask_thick.nii.gz
-│       ├── mask_thin.nii.gz
-│       ├── matrices.xfm
-│       └── reference.nii.gz
-└── views
-```
+.. code-block:: shell
+
+    S1
+    ├── anatomicals
+    │   ├── brainmask_mask.nii.gz
+    │   ├── brainmask.nii.gz
+    │   ├── raw.nii.gz
+    │   ├── voxelize.nii.gz
+    │   ├── voxelize[surf=wm].nii.gz
+    │   └── whitematter.nii.gz
+    ├── cache
+    │   ├── flatmask_1024.npz
+    │   ├── flatpixel_fullhead_1024_nearest_d0.5.npz
+    │   ├── flatpixel_fullhead_1024_nearest_l32.npz
+    │   ├── flatpixel_retinotopy_1024_nearest_l32.npz
+    │   ├── flatverts_1024.npz
+    │   ├── fullhead_pointnn.npz
+    │   ├── S1_[inflated]_mg2_9.ctm
+    │   ├── S1_[inflated]_mg2_9.json
+    │   ├── S1_[inflated]_mg2_9.json~
+    │   ├── S1_[inflated]_mg2_9_['rois'].ctm
+    │   ├── S1_[inflated]_mg2_9_['rois'].json
+    │   ├── S1_[inflated]_mg2_9_['rois'].svg
+    │   ├── S1_[inflated]_mg2_9.svg
+    │   ├── S1_[inflated]_mg2_9_v3.ctm
+    │   ├── S1_[inflated]_mg2_9_v3.json
+    │   ├── S1_[inflated]_mg2_9_v3.npz
+    │   ├── S1_[inflated]_mg2_9_v3.svg
+    │   ├── S1_[inflated]_raw_0_['rois'].ctm
+    │   └── S1_[inflated]_raw_0_['rois'].json
+    ├── overlays.svg
+    ├── rois.svg
+    ├── surface-info
+    │   └── curvature.npz
+    ├── surfaces
+    │   ├── flat_lh.npz
+    │   ├── flat_rh.npz
+    │   ├── inflated_lh.npz
+    │   ├── inflated_rh.npz
+    │   ├── pia_lh.npz
+    │   ├── pia_rh.npz
+    │   ├── wm_lh.npz
+    │   └── wm_rh.npz
+    ├── transforms
+    │   └── fullhead
+    │       ├── mask_cortical.nii.gz
+    │       ├── mask_rand_mask.nii.gz
+    │       ├── mask_thick.nii.gz
+    │       ├── mask_thin.nii.gz
+    │       ├── matrices.xfm
+    │       └── reference.nii.gz
+    └── views
+
 
 The surface database for pycortex holds all the VTK files and transforms required to plot data on a cortical sheet.
 
