@@ -41,7 +41,7 @@ cortex.quickshow(vol_data_thresh)
 plt.show()
 
 # If you have NaN values, those voxels show up transparent on the brain
-test_data[10:15,:,:] = np.nan
+test_data[10:15, :, :] = np.nan
 vol_data_nan = cortex.Volume(test_data, subject, xfm)
 cortex.quickshow(vol_data_nan)
 plt.show()
