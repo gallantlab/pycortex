@@ -11,7 +11,7 @@ script:
   - set -e
   - # Command to build your docs
   - pip install -r requirements.txt
-  - pip install sphinx doctr
+  - pip install sphinx doctr numpydoc
   - python setup.py build_ext --inplace
   - cd docs
   - make html
