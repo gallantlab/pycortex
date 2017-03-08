@@ -26,18 +26,28 @@ import matplotlib.pyplot as plt
 
 subject = 'S1'
 
+# In order to get the number of vertices in this subject's cortical surface
+# we have to load in their surfaces and get the number of points in each
 surfs = [cortex.polyutils.Surface(*d) 
          for d in cortex.db.get_surf(subject, "fiducial")]
 
+# This is the total number of vertices in both hemispheres combined
 num_verts = surfs[0].pts.shape[0] + surfs[1].pts.shape[0]
+
+# Creating a random dataset with one entry for each vertex
 test_data = np.random.randn(num_verts)
 
+# This creates a Vertex object for our subject and test dataset
 dv = cortex.Vertex(test_data, subject)
+# And now we can display it on a flatmap
 cortex.quickshow(dv)
 plt.show()
 
-# Now we can plot just the left hemisphere data
+# We can also plot just the left hemisphere data
 numl = surfs[0].pts.shape[0]
+# This creates a Vertex object with an array only as long as the number of
+# vertices in the left hemisphere, and the right hemisphere will be filled
+# in with zeros
 dv_left = cortex.Vertex(test_data[:numl], subject)
 cortex.quickshow(dv_left)
 plt.show()

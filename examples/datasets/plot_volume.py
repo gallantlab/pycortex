@@ -25,8 +25,12 @@ import matplotlib.pyplot as plt
 subject = 'S1'
 xfm = 'fullhead'
 
+# Creating a random dataset that is the shape for this transform with one 
+# entry for each voxel
 test_data = np.random.randn(31,100,100)
 
+# This creates a Volume object for our test dataset for the given subject
+# and transform
 dv = cortex.Volume(test_data, subject, xfm)
 cortex.quickshow(dv)
 plt.show()
