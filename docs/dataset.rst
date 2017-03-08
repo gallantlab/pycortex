@@ -151,7 +151,6 @@ The saved out HDF5 format has the following structure::
 
 API Documentation
 -----------------
-.. automodule:: cortex.dataset
 .. autoclass:: Volume
     :members:
 .. autoclass:: Volume2D
@@ -159,11 +158,10 @@ API Documentation
 .. autoclass:: VolumeRGB
     :members:
 .. autoclass:: Vertex
-
-.. automodule:: cortex.dataset.braindata
-.. autoclass:: BrainData
     :members:
-.. autoclass:: VolumeData
+.. autoclass:: Vertex2D
     :members:
-.. autoclass:: VertexData
+.. autoclass:: VertexRGB
+    :members:
+.. autoclass:: Dataset
     :members:
