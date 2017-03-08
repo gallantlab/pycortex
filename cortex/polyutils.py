@@ -559,6 +559,45 @@ class Surface(object):
 
         return phi
 
+    def geodesic_path(self, a, b, **kwargs):
+        """Finds the shortest path between two points `a` and `b`.
+
+        This shortest path is based on geodesic distances across the surface.
+        The path starts at point `a` and selects the neighbor of `a` in the 
+        graph that is closest to `b`. This is done iteratively with the last
+        vertex in the path until the last point in the path is `b`.
+
+        Other Parameters in kwargs are passed to the geodesic_distance 
+        function to alter how geodesic distances are actually measured
+
+        Parameters
+        ----------
+        a : int
+            Vertex that is the start of the path
+        b : int
+            Vertex that is the end of the path
+        
+        Other Parameters
+        ----------------
+        m : float, optional
+            Reverse Euler step length. The optimal value is likely between 0.5 and 1.5.
+            Default is 1.0, which should be fine for most cases.
+        fem : bool, optional
+            Whether to use Finite Element Method lumped mass matrix. Wasn't used in 
+            Crane 2012 paper. Doesn't seem to help any.
+
+        Returns
+        -------
+        path : list
+            List of the vertices in the path from a to b
+        """
+        path = [a]
+        d = self.geodesic_distance([b], **kwargs)
+        while path[-1] != b:
+            n = self.graph.neighbors(path[-1])
+            path.append(n[d[n].argmin()])
+        return path
+
     @property
     @_memo
     def _cot_edge(self):
