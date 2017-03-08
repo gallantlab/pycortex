@@ -32,9 +32,11 @@ Pycortex has a built-in manual aligner; to start it, call
 Not: if you are fixing a transform you had previous used for things, you will need to delete the mask files in the transform's folder.
 
 You will see a window like this pop up:
+
 .. image:: snapshot1.png
 
 There's weird gray blobs - click anywhere to get rid of them.
+
 .. image:: snapshot1.png
 
 Here you see 4 different views, showing the saggital, coronal, and transverse slices, and also the three slices in 3D.
@@ -47,25 +49,32 @@ Changing the views
 ~~~~~~~~~~~~~~~~~~
 
 You can change the color scale for the images with the color map option:
+
 .. image:: colormap.png
 
 Here, we've set it to the red-blue color map.
+
 .. image:: snapshot4.png
 
 ``Fliplut`` can be used to reverse the color map.
+
 .. image:: flipcolor.png
 
 You can also use the ``contrast`` and ``brightness`` sliders to adjust the colors.
+
 .. image:: contrast.png
 
 The ``Outline color`` and ``Outline rep`` can be used to change the surface color, and the surface from a mesh (the default), to points only, to a solid surface.
 Also, the sliders can be used to chane line and point weights.
 Here, we changed it to a green points only representation, with smaller points.
+
 .. image:: surface.png
 
 You will notice two black lines in each view. You can click anywhere in a view to select a different voxel.
 Selecting another voxel will update all the other views to show the slices that particular voxel belongs to.
+
 .. image:: lines1.png
+
 .. image:: snapshot13.png
 
 Use these views to change the slices of the brain that you're looking at, to line things up.
@@ -76,16 +85,19 @@ Manually aligning the brain
 On each view, there is a ball surrounded by a ring. These can be used to adjust the brain using the mouse.
 Click and drag the center ball to translate in each view, and use the ball on the ring to rotate and scale.
 It will take a few seconds for the aligner to update the mesh position.
+
 .. image::adjring.png
 **Note**: you should not use the ring to make adjustments. There is no way to fix the scaling, and the ring will screw the scaling up.
 
 You can also use the keyboard to make adjustments.
 Holding down the shift key allows you to make fine adjustments.
 The aligner will apply the transformation in whatever view currently under your mouse cursor.
+
 .. image::key-controls.png
 **Note**: you shouldn't touch the keys outlined in red.
 
 To save the alignment, just click the ``Save Transform`` button and close the window.
+
 .. image::save.png
 
 Tips for aligning the brain
