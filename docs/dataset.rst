@@ -1,5 +1,5 @@
-Data input format
-=================
+Pycortex Data Structures
+========================
 
 .. currentmodule:: cortex.dataset
 
@@ -148,20 +148,3 @@ The saved out HDF5 format has the following structure::
         name1[dataref, desc, cmap, vmin, vmax, state]
         name2[dataref, desc, cmap, vmin, vmax, state]
 
-
-API Documentation
------------------
-.. autoclass:: Volume
-    :members:
-.. autoclass:: Volume2D
-    :members:
-.. autoclass:: VolumeRGB
-    :members:
-.. autoclass:: Vertex
-    :members:
-.. autoclass:: Vertex2D
-    :members:
-.. autoclass:: VertexRGB
-    :members:
-.. autoclass:: Dataset
-    :members:
