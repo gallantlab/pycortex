@@ -25,17 +25,15 @@ class Surface(object):
     etc.
 
     Implements some useful functions for dealing with functions across surfaces.
+
+    Parameters
+    ----------
+    pts : 2D ndarray, shape (total_verts, 3)
+        Location of each vertex in space (mm). Order is x, y, z.
+    polys : 2D ndarray, shape (total_polys, 3)
+        Indices of the vertices in each triangle in the surface.
     """
     def __init__(self, pts, polys):
-        """Initialize Surface.
-
-        Parameters
-        ----------
-        pts : 2D ndarray, shape (total_verts, 3)
-            Location of each vertex in space (mm). Order is x, y, z.
-        polys : 2D ndarray, shape (total_polys, 3)
-            Indices of the vertices in each triangle in the surface.
-        """
         self.pts = pts.astype(np.double)
         self.polys = polys
 
@@ -278,8 +276,8 @@ class Surface(object):
             return (self.connected.dot(gradu).T / self.connected.sum(1).A.squeeze()).T
         return gradu
 
-    def _create_biharmonic_solver(self, boundary_verts, clip_D=0.1):
-        """Set up biharmonic equation with Dirichlet boundary conditions on the cortical
+    def create_biharmonic_solver(self, boundary_verts, clip_D=0.1):
+        r"""Set up biharmonic equation with Dirichlet boundary conditions on the cortical
         mesh and precompute Cholesky factorization for solving it. The vertices listed in
         `boundary_verts` are considered part of the boundary, and will not be included in
         the factorization.
@@ -288,13 +286,16 @@ class Surface(object):
         squared Laplace-Beltrami operator is separated into left-hand-side (L2) and
         right-hand-side (Dinv) parts. If we write the L-B operator as the product of
         the stiffness matrix (V-W) and the inverse mass matrix (Dinv), the biharmonic
-        problem is as follows (with `\\b` denoting non-boundary vertices)
+        problem is as follows (with `u` denoting non-boundary vertices)
 
         .. math::
-        
-            L^2_{\\b} \phi = -\rho_{\\b} \\
-            \left[ D^{-1} (V-W) D^{-1} (V-W) \right]_{\\b} \phi = -\rho_{\\b} \\
-            \left[ (V-W) D^{-1} (V-W) \right]_{\\b} \phi = -\left[D \rho\right]_{\\b}
+            :nowrap:
+            
+            \begin{eqnarray}
+            L^2_{u} \phi &=& -\rho_{u} \\
+            \left[ D^{-1} (V-W) D^{-1} (V-W) \right]_{u} \phi &=& -\rho_{u} \\
+            \left[ (V-W) D^{-1} (V-W) \right]_{u} \phi &=& -\left[D \rho\right]_{u}
+            \end{eqnarray}
 
         Parameters
         ----------
@@ -344,7 +345,7 @@ class Surface(object):
             Indices of vertices that will serve as knot points for interpolation.
         bhsolver : (lhs, rhs, Dinv, lhsfac, notboundary), optional
             A 5-tuple representing a biharmonic equation solver. This structure
-            is created by _create_biharmonic_solver.
+            is created by create_biharmonic_solver.
         
         Returns
         -------
@@ -354,7 +355,7 @@ class Surface(object):
             number of dimensions can be interpolated simultaneously.
         """
         if bhsolver is None:
-            lhs, D, Dinv, lhsfac, notb = self._create_biharmonic_solver(verts)
+            lhs, D, Dinv, lhsfac, notb = self.create_biharmonic_solver(verts)
         else:
             lhs, D, Dinv, lhsfac, notb = bhsolver
         
@@ -392,7 +393,7 @@ class Surface(object):
         create an interpolator function using _create_interp, and then call that function.
         In fact, that's exactly what this function does.
 
-        See _create_biharmonic_solver for math details.
+        See create_biharmonic_solver for math details.
 
         Parameters
         ----------
@@ -419,6 +420,32 @@ class Surface(object):
         return fe12, fe23, fe31
 
     def approx_geodesic_distance(self, verts, m=0.1):
+        """Computes approximate geodesic distance (in mm) from each vertex in 
+        the surface to any vertex in the collection `verts`. This approximation
+        is computed using Varadhan's formula for geodesic distance based on the
+        heat kernel. This is very fast (quite a bit faster than `geodesic_distance`)
+        but very inaccurate. Use with care.
+
+        In short, we let heat diffuse across the surface from sources at `verts`,
+        and then look at the resulting heat levels in every other vertex to 
+        approximate how far they are from the sources. In theory, this should
+        be very accurate as the duration of heat diffusion goes to zero. In 
+        practice, short duration leads to numerical instability and error.
+
+        Parameters
+        ----------
+        verts : 1D array-like of ints
+            Set of vertices to compute distance from. This function returns the shortest
+            distance to any of these vertices from every vertex in the surface.
+        m : float, optional
+            Scalar on the duration of heat propagation. Default 0.1.
+
+        Returns
+        -------
+        1D ndarray, shape (total_verts,)
+            Approximate geodesic distance (in mm) from each vertex in the 
+            surface to the closest vertex in `verts`.
+        """
         npt = len(self.pts)
         t = m * self.avg_edge_length ** 2 # time of heat evolution
 
@@ -474,7 +501,7 @@ class Surface(object):
 
         Returns
         -------
-        dist : 1D ndarray, shape (total_verts,)
+        1D ndarray, shape (total_verts,)
             Geodesic distance (in mm) from each vertex in the surface to the closest
             vertex in `verts`.
         """
@@ -723,21 +750,19 @@ class _quadset(object):
             yield [quad[0], quad[2], quad[3]]
 
 class Distortion(object):
-    """Object that computes distortion metrics between fiducial and another (e.g. flat)
+    """Used to compute distortion metrics between fiducial and another (e.g. flat)
     surface.
+
+    Parameters
+    ----------
+    flat : 2D ndarray, shape (total_verts, 3)
+        Location of each vertex in flatmap space.
+    ref : 2D ndarray, shape (total_verts, 3)
+        Location of each vertex in fiducial (reference) space.
+    polys : 2D ndarray, shape (total_polys, 3)
+        Triangle vertex indices in both `flat` and `ref`.
     """
     def __init__(self, flat, ref, polys):
-        """Initialize Distortion object.
-
-        Parameters
-        ----------
-        flat : 2D ndarray, shape (total_verts, 3)
-            Location of each vertex in flatmap space.
-        ref : 2D ndarray, shape (total_verts, 3)
-            Location of each vertex in fiducial (reference) space.
-        polys : 2D ndarray, shape (total_polys, 3)
-            Triangle vertex indices in both `flat` and `ref`.
-        """
         self.flat = flat
         self.ref = ref
         self.polys = polys
