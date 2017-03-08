@@ -3,3 +3,4 @@ Cython
 scipy
 h5py
 nibabel
+matplotlib
