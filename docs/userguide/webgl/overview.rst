@@ -19,9 +19,11 @@ Keyboard Shortcuts
 There are many keyboard shortcuts that allow for more fluid interaction witht he WebGL viewer. A complete list of keyboard shortcuts and also be displayed in the viewer by pressing the `h` key.
 
 
+=== ====================================
 Key Action
---- ------------------------------------
+=== ====================================
 f   flatten brain
 i 	inflate brain
 r   fold brain into original coordinates
 +/-	switch between datasets
+=== ====================================
