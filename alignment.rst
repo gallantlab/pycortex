@@ -37,7 +37,7 @@ You will see a window like this pop up:
 
 There's weird gray blobs - click anywhere to get rid of them.
 
-.. image:: snapshot1.png
+.. image:: snapshot2.png
 
 Here you see 4 different views, showing the saggital, coronal, and transverse slices, and also the three slices in 3D.
 The background image is the reference image, and the mesh that you see is the surface that you will be aligning.
@@ -86,19 +86,19 @@ On each view, there is a ball surrounded by a ring. These can be used to adjust 
 Click and drag the center ball to translate in each view, and use the ball on the ring to rotate and scale.
 It will take a few seconds for the aligner to update the mesh position.
 
-.. image::adjring.png
+.. image:: adjring.png
 **Note**: you should not use the ring to make adjustments. There is no way to fix the scaling, and the ring will screw the scaling up.
 
 You can also use the keyboard to make adjustments.
 Holding down the shift key allows you to make fine adjustments.
 The aligner will apply the transformation in whatever view currently under your mouse cursor.
 
-.. image::key-controls.png
+.. image:: key-controls.png
 **Note**: you shouldn't touch the keys outlined in red.
 
 To save the alignment, just click the ``Save Transform`` button and close the window.
 
-.. image::save.png
+.. image:: save.png
 
 Tips for aligning the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
