@@ -1,5 +1,7 @@
 Alignments
 ==========
+The ``pycortex.align`` module.
+
 Aligning functional data, or finding where the brain is.
 
 The subject's brain is most likely not going to be in the same place and orientation between experiments, so we need to account for that.
@@ -7,7 +9,8 @@ To correctly visualise data, the brain surface in the functional images need to 
 This alignment is a rigid body transform, i.e. 6 degrees of freedom in translation and rotation, but no scaling, skewing, or non-linear warping.
 
 Pycortex can automatically try to align the brain, and there is also a manual mode.
-To get started, you need a reference image from the functional run as a nifti file. In most cases, this would be the temporal mean image. (You can also use something else like the first image, or whatever.)
+To get started, you need a reference image from the functional run in a nibabel-readable format.
+In most cases, this would be the temporal mean image. (You can also use something else like the first image, or whatever.)
 Let's say the subject is ``S1``, this transform is ``example-transform``, and the reference image is ``ref-image.nii.gz``.
 
 Automatic Alignment
@@ -16,17 +19,26 @@ To have pycortex automagically align the brain, simply call
 ::
 	cortex.align.automatic('S1', 'example-transform', './ref-image.nii.gz')
 
-And the alignment should be done!
+And the alignment should be done! This is done using FSL.
 If you look in the pycortex store in ``S1/transforms/example-transform``, you will find the following files:
 	* ``matrices.xfm``, which stores the transformation parameters
 	* ``reference.nii.gz``, the reference image you used
 
+Automatically Tweaking Alignments
+---------------------------------
+In theory, an alignment can be tweaked automatically.
+Like the automatic alignment, this is done via FSL.
+However, in practice, the search range is too big to be pratically useful, and tweaking should be done using manual alignment instead.
+::
+	cortex.align.autotweak('S1', 'example-transform')
+
 Manual Alignment
 ----------------
-**NOTE**: As of right now, the aligner only works on 14.04. Ubuntu 16.04 changed things up
+**NOTE**: As of right now, the aligner only works on 14.04. Ubuntu 16.04 changed things up and Mayavi doesn't work.
 
-Unfortunately, the automatic alignment only gets you like 95% of the way to a good alignment. To do the final 5%, you need to manually fix it up.
-Pycortex has a built-in manual aligner; to start it, call
+Unfortunately, the automatic alignment only gets you like 95% of the way to a good alignment.
+To do the final 5%, you need to manually fix it up.
+Pycortex has a built-in manual aligner, built using Mayavi; to start it, call
 ::
 	cortex.align.manual('S1', 'example-transform')
 Not: if you are fixing a transform you had previous used for things, you will need to delete the mask files in the transform's folder.
@@ -104,4 +116,5 @@ Tips for aligning the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * The really deep sulci work great as landmarks to align stuff up.
 * Changing the color map, brightness, and contrast really helps highlight the sulci.
-* To check how well the brain is aligned, make a flatmap out of the reference image using the transformation. A good alignment results in a smooth color gradient across the brain; bad ones will have a lot of voxels that are starkly different from their neighbours.
+* To check how well the brain is aligned, make a flatmap out of the reference image using the transformation.
+A good alignment results in a smooth color gradient across the brain; bad ones will have a lot of voxels that are starkly different from their neighbours.
