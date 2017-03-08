@@ -138,6 +138,7 @@ To save the alignment, just click the ``Save Transform`` button and close the wi
 
 Tips for aligning the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* Holding down the shift key while using the keyboard controls will let you move the brain in fine-tuned, smaller increments.
 * The really deep sulci work great as landmarks to align stuff up.
 * Changing the color map, brightness, and contrast really helps highlight the sulci.
 * To check how well the brain is aligned, make a flatmap out of the reference image using the transformation. A good alignment results in a smooth color gradient across the brain; bad ones will have a lot of voxels that are starkly different from their neighbours.
