@@ -21,8 +21,8 @@ To have pycortex automagically align the brain, simply call
 
 And the alignment should be done! This is done using FSL.
 If you look in the pycortex store in ``S1/transforms/example-transform``, you will find the following files:
-	* ``matrices.xfm``, which stores the transformation parameters
-	* ``reference.nii.gz``, the reference image you used
+* ``matrices.xfm``, which stores the transformation parameters
+* ``reference.nii.gz``, the reference image you used
 
 Automatically Tweaking Alignments
 ---------------------------------
@@ -106,7 +106,7 @@ Holding down the shift key allows you to make fine adjustments.
 The aligner will apply the transformation in whatever view currently under your mouse cursor.
 
 .. image:: key-controls.png
-**Note**: you shouldn't touch the keys outlined in red.
+**Note**: you shouldn't touch the keys outlined in red. There is no reason to stretch the brain.
 
 To save the alignment, just click the ``Save Transform`` button and close the window.
 
@@ -116,5 +116,4 @@ Tips for aligning the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * The really deep sulci work great as landmarks to align stuff up.
 * Changing the color map, brightness, and contrast really helps highlight the sulci.
-* To check how well the brain is aligned, make a flatmap out of the reference image using the transformation.
-A good alignment results in a smooth color gradient across the brain; bad ones will have a lot of voxels that are starkly different from their neighbours.
+* To check how well the brain is aligned, make a flatmap out of the reference image using the transformation. A good alignment results in a smooth color gradient across the brain; bad ones will have a lot of voxels that are starkly different from their neighbours.
