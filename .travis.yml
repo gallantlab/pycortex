@@ -1,0 +1,22 @@
+language: python
+python:
+  -2.7
+  - 3.5
+
+sudo: false
+env:
+  global:
+    secure: "<your secure key from doctr here>"
+
+script:
+  - set -e
+  - # Command to build your docs
+  - pip install sphinx doctr
+  - python setup.py build_ext --inplace
+  - cd docs
+  - make html
+  - cd ..
+  - doctr deploy --deploy-repo gallantlab/gallantlab.github.io
+
+
+
