@@ -1,10 +1,5 @@
 """
-Surface database functions
-==========================
-
-This module creates a singleton object surfs_ which allows easy access to surface files in the filestore.
-
-.. _surfs: :class:`Database`
+Contains a singleton object `db` of type `Database` which allows easy access to surface files, anatomical images, and transforms that are stored in the pycortex filestore.
 """
 import os
 import re

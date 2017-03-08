@@ -1,27 +1,23 @@
-.. pycortex documentation master file, created by
-   sphinx-quickstart on Thu Sep 13 19:15:55 2012.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Pycortex Documentation
+======================
 
-Welcome to pycortex!
-====================
+.. image:: 3dhead.png
+    :width: 85%
+    :align: center
 
-.. image:: wn_med.png
-    :width: 100%
+Pycortex is a software package for generating beautiful interactive 3D visualizations of fMRI data projected onto cortical surface models. It can also generate high quality 2D flattened cortical visualizations.
 
-pycortex is a package that allows interactive visualization of cortical fMRI data.
+This documentation is still under development. Please report errors or bugs at https://github.com/gallantlab/pycortex/issues.
 
-This documentation is still under development, and may contain inaccurate information. If you find anything that appears to be documented incorrectly or appears to be a bug, please let us know on github at https://github.com/jamesgao/pycortex/issues.
 
-For example::
-    
-    import cortex
-    im = cortex.quickshow((np.random.randn(31, 100, 100), "S1", "fullhead"))
+Quickstart
+-----------
 
-Contents:
 
+User Guide
+----------
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    
    install
    segmentation
@@ -30,8 +26,25 @@ Contents:
    dataset
    rois
    transforms
-   auto_examples/index
-              
+
+Example Gallery
+---------------
+.. toctree::
+    :maxdepth: 3
+    
+    auto_examples/index
+
+API Reference
+-------------
+.. toctree::
+    api_reference_flat
+
+Citation
+--------
+If you use pycortex in published work, please cite the `pycortex paper <http://dx.doi.org/10.3389/fninf.2015.00023>`_:
+
+*Gao JS, Huth AG, Lescroart MD and Gallant JL (2015) Pycortex: an interactive surface visualizer for fMRI. Front. Neuroinform. 9:23. doi: 10.3389/fninf.2015.00023*
+
 
 Indices and tables
 ==================
