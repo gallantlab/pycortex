@@ -25,6 +25,7 @@ To have pycortex automagically align the brain, simply call
 
 And the alignment should be done! This is done using FSL.
 If you look in the pycortex store in ``S1/transforms/example-transform``, you will find the following files:
+
 * ``matrices.xfm``, which stores the transformation parameters
 * ``reference.nii.gz``, the reference image you used
 
@@ -51,15 +52,17 @@ Pycortex offers a GUI aligner, built using Mayavi.
 To start the manual aligner, call
 ::
 	cortex.align.manual('S1', 'example-transform')
-Not: if you are fixing a transform you had previous used for things, you will need to delete the mask files in the transform's folder.
+Note: if you are fixing a transform you had previous used for things, you will need to delete the mask files in the transform's folder.
 
 You will see a window like this pop up:
 
 .. image:: ./aligner/snapshot1.png
+	:scale: 66 %
 
 There's weird gray blobs - click anywhere to get rid of them.
 
 .. image:: ./aligner/snapshot2.png
+	:scale: 66 %
 
 Here you see 4 different views, showing the saggital, coronal, and transverse slices, and also the three slices in 3D.
 The background image is the reference image, and the mesh that you see is the surface that you will be aligning.
@@ -73,31 +76,38 @@ Changing the views
 You can change the color scale for the images with the color map option:
 
 .. image:: ./aligner/colormap.png
+	:scale: 66 %
 
 Here, we've set it to the red-blue color map.
 
 .. image:: ./aligner/snapshot4.png
+	:scale: 66 %
 
 ``Fliplut`` can be used to reverse the color map.
 
 .. image:: ./aligner/flipcolor.png
+	:scale: 66 %
 
 You can also use the ``contrast`` and ``brightness`` sliders to adjust the colors.
 
 .. image:: ./aligner/contrast.png
+	:scale: 66 %
 
 The ``Outline color`` and ``Outline rep`` can be used to change the surface color, and the surface from a mesh (the default), to points only, to a solid surface.
 Also, the sliders can be used to chane line and point weights.
 Here, we changed it to a green points only representation, with smaller points.
 
 .. image:: ./aligner/surface.png
+	:scale: 66 %
 
 You will notice two black lines in each view. You can click anywhere in a view to select a different voxel.
 Selecting another voxel will update all the other views to show the slices that particular voxel belongs to.
 
 .. image:: ./aligner/lines1.png
+	:scale: 66 %
 
 .. image:: ./aligner/snapshot13.png
+	:scale: 66 %
 
 Use these views to change the slices of the brain that you're looking at, to line things up.
 
@@ -109,6 +119,8 @@ Click and drag the center ball to translate in each view, and use the ball on th
 It will take a few seconds for the aligner to update the mesh position.
 
 .. image:: ./aligner/adjring.png
+	:scale: 66 %
+	
 **Note**: you should not use the ring to make adjustments. There is no way to fix the scaling, and the ring will screw the scaling up.
 
 You can also use the keyboard to make adjustments.
@@ -116,12 +128,13 @@ Holding down the shift key allows you to make fine adjustments.
 The aligner will apply the transformation in whatever view currently under your mouse cursor.
 
 .. image:: ./aligner/key-controls.png
-	:scale: 50%
+	:scale: 50 %
 **Note**: you shouldn't touch the keys outlined in red. There is no reason to stretch the brain.
 
 To save the alignment, just click the ``Save Transform`` button and close the window.
 
 .. image:: ./aligner/save.png
+	:scale: 66 %
 
 Tips for aligning the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
