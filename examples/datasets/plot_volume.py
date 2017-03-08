@@ -3,7 +3,7 @@
 Plot Volume Data
 ================
 
-This plots example vertex data onto an example subject, S1, onto a flatmap
+This plots example volume data onto an example subject, S1, onto a flatmap
 using quickflat. In order for this to run, you have to have a flatmap for
 this subject in the pycortex filestore.
 
