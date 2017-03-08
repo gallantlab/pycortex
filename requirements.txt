@@ -1,0 +1,5 @@
+numpy
+Cython
+scipy
+h5py
+nibabel
