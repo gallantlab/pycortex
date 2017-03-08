@@ -163,6 +163,21 @@ volume
 	anat2epispace_fsl
 
 
+surfinfo
+--------
+
+.. automodule:: cortex.surfinfo
+
+.. autosummary::
+	:toctree:generated/
+
+	curvature
+	distortion
+	thickness
+	tissots_indicatrix
+	flat_border
+
+
 anat
 ------
 
