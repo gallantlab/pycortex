@@ -87,6 +87,41 @@ class Dataview2D(Dataview):
         return self.dim1.subject
 
 class Volume2D(Dataview2D):
+    """
+    Contains two 3D volumes for simultaneous visualization. Includes information
+    on how the volumes should be jointly colormapped.
+
+    Parameters
+    ----------
+    dim1 : ndarray or Volume
+        The first volume. Can be a 1D or 3D array (see Volume for details), or
+        a Volume.
+    dim2 : ndarray or Volume
+        The second volume. Can be a 1D or 3D array (see Volume for details), or
+        a Volume.
+    subject : str, optional
+        Subject identifier. Must exist in the pycortex database. If not given,
+        dim1 must be a Volume from which the subject can be extracted.
+    xfmname : str, optional
+        Transform name. Must exist in the pycortex database. If not given,
+        dim1 must be a Volume from which the subject can be extracted.
+    description : str, optional
+        String describing this dataset. Displayed in webgl viewer.
+    cmap : str, optional
+        Colormap (or colormap name) to use. If not given defaults to the 
+        `default_cmap2d` in your pycortex options.cfg file.
+    vmin : float, optional
+        Minimum value in colormap for dim1. If not given defaults to TODO:WHAT
+    vmax : float, optional
+        Maximum value in colormap for dim1. If not given defaults to TODO:WHAT
+    vmin2 : float, optional
+        Minimum value in colormap for dim2. If not given defaults to TODO:WHAT
+    vmax2 : float, optional
+        Maximum value in colormap for dim2. If not given defaults to TODO:WHAT
+    **kwargs
+        All additional arguments in kwargs are passed to the VolumeData and Dataview
+
+    """
     _cls = VolumeData
     def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", cmap=None,
         vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
@@ -118,7 +153,8 @@ class Volume2D(Dataview2D):
 
     @property
     def raw(self):
-        """Implement 2D colormapping for quickflat"""
+        """VolumeRGB object containing the colormapped data from this object.
+        """
         if self.dim1.xfmname != self.dim2.xfmname:
             raise ValueError("Both Volumes must have same xfmname to generate single raw volume")
 
@@ -137,6 +173,38 @@ class Volume2D(Dataview2D):
         return self.dim1.xfmname
 
 class Vertex2D(Dataview2D):
+    """
+    Contains two vertex maps for simultaneous visualization. Includes information
+    on how the maps should be jointly colormapped.
+
+    Parameters
+    ----------
+    dim1 : ndarray or Vertex
+        The first vertex map. Can be a 1D array (see Vertex for details), or
+        a Vertex.
+    dim2 : ndarray or Vertex
+        The second vertex map. Can be a 1D array (see Vertex for details), or
+        a Vertex.
+    subject : str, optional
+        Subject identifier. Must exist in the pycortex database. If not given,
+        dim1 must be a Vertex from which the subject can be extracted.
+    description : str, optional
+        String describing this dataset. Displayed in webgl viewer.
+    cmap : str, optional
+        Colormap (or colormap name) to use. If not given defaults to the 
+        `default_cmap2d` in your pycortex options.cfg file.
+    vmin : float, optional
+        Minimum value in colormap for dim1. If not given defaults to TODO:WHAT
+    vmax : float, optional
+        Maximum value in colormap for dim1. If not given defaults to TODO:WHAT
+    vmin2 : float, optional
+        Minimum value in colormap for dim2. If not given defaults to TODO:WHAT
+    vmax2 : float, optional
+        Maximum value in colormap for dim2. If not given defaults to TODO:WHAT
+    **kwargs
+        All additional arguments in kwargs are passed to the VolumeData and Dataview
+
+    """
     _cls = VertexData
     def __init__(self, dim1, dim2, subject=None, description="", cmap=None,
         vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
@@ -162,6 +230,8 @@ class Vertex2D(Dataview2D):
 
     @property
     def raw(self):
+        """VertexRGB object containing the colormapped data from this object.
+        """
         r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
         return VertexRGB(r, g, b, alpha=a, subject=self.dim1.subject)
 
