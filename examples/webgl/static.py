@@ -20,11 +20,10 @@ import numpy as np
 import cortex
 
 # gather data Volume
-volume = cortex.Volume(data=data, subject='S1', xfmname='fullhead')
+volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
 
 # select path for static viewer on disk
 viewer_path = '/path/to/store/viewer'
-# viewer_path = '/auto/k1/storm/www/test/static'
 
 # create viewer
 cortex.webgl.make_static(outpath=viewer_path, data=volume)
