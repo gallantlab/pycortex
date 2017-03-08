@@ -36,6 +36,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx_gallery.gen_gallery']
 
 autosummary_generate = True
+numpydoc_show_class_members=False 
 
 # Sphinx-gallery
 sphinx_gallery_conf = {

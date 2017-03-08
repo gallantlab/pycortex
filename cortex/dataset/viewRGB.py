@@ -9,6 +9,8 @@ from .. import options
 default_cmap = options.config.get("basic", "default_cmap")
 
 class DataviewRGB(Dataview):
+    """Abstract base class for RGB data views.
+    """
     def __init__(self, subject=None, alpha=None, description="", state=None, **kwargs):
         self.alpha = alpha
         self.subject = self.red.subject
@@ -66,6 +68,45 @@ class DataviewRGB(Dataview):
         return sdict
 
 class VolumeRGB(DataviewRGB):
+    """
+    Contains RGB (or RGBA) colors for each voxel in a volumetric dataset. 
+    Includes information about the subject and transform for the data.
+
+    Each color channel is represented as a separate Volume object (these can 
+    either be supplied explicitly as Volume objects or implicitly as numpy 
+    arrays). The vmin for each Volume will be mapped to the minimum value for
+    that color channel, and the vmax will be mapped to the maximum value.
+
+    Parameters
+    ----------
+    red : ndarray or Volume
+        Array or Volume that represents the red component of the color for each 
+        voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.
+    green : ndarray or Volume
+        Array or Volume that represents the green component of the color for each 
+        voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.
+    blue : ndarray or Volume
+        Array or Volume that represents the blue component of the color for each 
+        voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.
+    subject : str, optional
+        Subject identifier. Must exist in the pycortex database. If not given,
+        red must be a Volume from which the subject can be extracted.
+    xfmname : str, optional
+        Transform name. Must exist in the pycortex database. If not given,
+        red must be a Volume from which the subject can be extracted.
+    alpha : ndarray or Volume, optional
+        Array or Volume that represents the alpha component of the color for each 
+        voxel. Can be a 1D or 3D array (see Volume for details), or a Volume. If
+        None, all voxels will be assumed to have alpha=1.0.
+    description : str, optional
+        String describing this dataset. Displayed in webgl viewer.
+    state : optional
+        TODO: WHAT THE FUCK IS THIS
+    **kwargs
+        All additional arguments in kwargs are passed to the VolumeData and 
+        Dataview.
+
+    """
     _cls = VolumeData
     def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description="", 
         state=None, **kwargs):
@@ -112,7 +153,9 @@ class VolumeRGB(DataviewRGB):
 
     @property
     def volume(self):
-
+        """5-dimensional volume (t, z, y, x, rgba) with data that has been mapped
+        into 8-bit unsigned integers that correspond to colors.
+        """
         volume = []
         for dv in (self.red, self.green, self.blue, self.alpha):
             vol = dv.volume.copy()
@@ -148,6 +191,42 @@ class VolumeRGB(DataviewRGB):
         return super(VolumeRGB, self)._write_hdf(h5, name=name, xfmname=[self.xfmname])
 
 class VertexRGB(DataviewRGB):
+    """
+    Contains RGB (or RGBA) colors for each vertex in a surface dataset. 
+    Includes information about the subject.
+
+    Each color channel is represented as a separate Vertex object (these can 
+    either be supplied explicitly as Vertex objects or implicitly as numpy 
+    arrays). The vmin for each Vertex will be mapped to the minimum value for
+    that color channel, and the vmax will be mapped to the maximum value.
+
+    Parameters
+    ----------
+    red : ndarray or Vertex
+        Array or Vertex that represents the red component of the color for each 
+        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.
+    green : ndarray or Vertex
+        Array or Vertex that represents the green component of the color for each 
+        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.
+    blue : ndarray or Vertex
+        Array or Vertex that represents the blue component of the color for each 
+        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.
+    subject : str, optional
+        Subject identifier. Must exist in the pycortex database. If not given,
+        red must be a Vertex from which the subject can be extracted.
+    alpha : ndarray or Vertex, optional
+        Array or Vertex that represents the alpha component of the color for each 
+        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex. If
+        None, all vertices will be assumed to have alpha=1.0.
+    description : str, optional
+        String describing this dataset. Displayed in webgl viewer.
+    state : optional
+        TODO: WHAT THE FUCK IS THIS
+    **kwargs
+        All additional arguments in kwargs are passed to the VertexData and 
+        Dataview.
+
+    """
     _cls = VertexData
     def __init__(self, red, green, blue, subject=None, alpha=None, description="", 
         state=None, **kwargs):
@@ -172,6 +251,9 @@ class VertexRGB(DataviewRGB):
 
     @property
     def vertices(self):
+        """3-dimensional volume (t, v, rgba) with data that has been mapped
+        into 8-bit unsigned integers that correspond to colors.
+        """
         alpha = self.alpha
         if alpha is None:
             alpha = np.ones_like(self.red.data)

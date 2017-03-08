@@ -22,7 +22,7 @@ var mriview = (function(module) {
             viewer.load(window.subjects[snames[i]]);
             this[snames[i]] = viewer;
         }
-        
+
         this.subjects = snames;
         this.addData(dataviews);
     }
@@ -87,9 +87,6 @@ var mriview = (function(module) {
 
     var glcanvas = document.createElement("canvas");
     var glctx = glcanvas.getContext("2d");
-    var canvas = document.createElement("canvas");
-    var ctx = canvas.getContext("2d");
-    ctx.scale(1,-1);
     module.getTexture = function(gl, renderbuf) {
         glcanvas.width = renderbuf.width;
         glcanvas.height = renderbuf.height;
@@ -100,9 +97,13 @@ var mriview = (function(module) {
         glctx.putImageData(img, 0, 0);
 
         // //This ridiculousness is necessary to flip the image...
+        var canvas = document.createElement("canvas");
+        var ctx = canvas.getContext("2d");
         canvas.width = renderbuf.width;
         canvas.height = renderbuf.height;
-        ctx.drawImage(glcanvas, 0,-renderbuf.height);
+        ctx.translate(0, renderbuf.height);
+        ctx.scale(1,-1);
+        ctx.drawImage(glcanvas, 0,0);
         return canvas;
     }
 

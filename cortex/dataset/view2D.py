@@ -9,6 +9,8 @@ from .braindata import VolumeData, VertexData
 default_cmap2D = options.config.get("basic", "default_cmap2D")
 
 class Dataview2D(Dataview):
+    """Abstract base class for 2-dimensional data views.
+    """
     def __init__(self, description="", cmap=None, vmin=None, vmax=None, vmin2=None, vmax2=None, state=None, **kwargs):
         self.cmap = cmap or default_cmap2D
         self.vmin = vmin
