@@ -35,7 +35,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.githubpages',
               'sphinx_gallery.gen_gallery']
 
-#autosummary_generate = True
+autosummary_generate = True
 
 # Sphinx-gallery
 sphinx_gallery_conf = {
