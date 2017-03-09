@@ -992,14 +992,14 @@ def trace_poly(edges):
 def rasterize(poly, shape=(256, 256)):
     #ImageDraw sucks at its job, so we'll use imagemagick to do rasterization
     import subprocess as sp
-    import cStringIO
+    from io import StringIO
     import shlex
     from PIL import Image
     
     polygon = " ".join(["%0.3f,%0.3f"%tuple(p[::-1]) for p in np.array(poly)-(.5, .5)])
     cmd = 'convert -size %dx%d xc:black -fill white -stroke none -draw "polygon %s" PNG32:-'%(shape[0], shape[1], polygon)
     proc = sp.Popen(shlex.split(cmd), stdout=sp.PIPE)
-    png = cStringIO.StringIO(proc.communicate()[0])
+    png = StringIO(proc.communicate()[0])
     im = Image.open(png)
 
     # For PNG8:
