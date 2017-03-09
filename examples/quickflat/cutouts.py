@@ -6,7 +6,7 @@ Display a previously defined cutout on the flatmap
 Cutouts are manually generated cuts of the cortical surface to highlight
 a region of interest.
 
-The option `cutout` for the `quickflat.make_figure` method takes a name of a
+The parameter `cutout` of the `quickflat.make_figure` method takes a name of a
 flatmap cutout.
 
 This cutout name should be the name of a sub-layer of the 'cutouts' layer
