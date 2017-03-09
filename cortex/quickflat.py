@@ -760,6 +760,8 @@ def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pix
 def make(braindata, height=1024, recache=False, **kwargs):
     """Generate flatmap image from volumetric brain data
 
+    This 
+
     Parameters
     ----------
     braindata : 
@@ -802,7 +804,7 @@ def make(braindata, height=1024, recache=False, **kwargs):
             data = braindata.volume
 
     if data.shape[0] > 1:
-        raise ValueError("Cannot flatten movie views")
+        raise ValueError("Cannot flatten movie views - please provide 3D Volume or 2D Vertex data, not 4D data")
 
     if data.dtype == np.uint8:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
