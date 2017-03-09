@@ -28,7 +28,7 @@ xfm = "fullhead"
 # and the third is stripes across certain slices of the brain
 test1 = np.arange(31. * 100 * 100).reshape((31, 100, 100), order='C')
 test2 = np.arange(31. * 100 * 100).reshape((31, 100, 100), order='F')
-test3 = np.zeros(31, 100, 100)
+test3 = np.zeros((31, 100, 100))
 test3[::3, :, :] = 1
 
 # Scaling the three datasets to be between 0-255
