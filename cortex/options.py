@@ -21,5 +21,5 @@ if len(config.read(usercfg)) == 0:
 if not config.has_option("basic", "filestore"):
     config.set("basic", "filestore", os.path.join(cwd, os.pardir, "filestore/db"))
 
-if not config.has_option("basic", "filestore"):
+if not config.has_option("webgl", "colormaps"):
     config.set("webgl", "colormaps", os.path.join(cwd, os.pardir, "filestore/colormaps"))
