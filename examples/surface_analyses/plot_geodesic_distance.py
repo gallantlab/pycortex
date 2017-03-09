@@ -3,9 +3,9 @@
 Plotting Geodesic Distances
 ===========================
 
-This plots the distances between a vertex or set of vertices and all other
-vertices on a surface. These two operations take the exact same amount of
-time to run.
+This plots the distances (in mm) between a vertex or set of vertices and
+all other vertices on a surface. These two operations take the exact same
+amount of time to run.
 
 To look at the distance to a single point, just supply the index of that
 vertex. To look at the distance to a set of points, supply a numpy array of

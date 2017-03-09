@@ -40,5 +40,5 @@ for v in path:
 
 # And now plot these distances onto the cortical surface
 path_verts = cortex.Vertex(path_data, subject, cmap="Blues_r")
-cortex.quickshow(path_verts)
+cortex.quickshow(path_verts, with_colorbar=False)
 plt.show()
