@@ -12,8 +12,7 @@ one for each of the three color channels. Ideally, the data in the Volume
 objects will be scaled to be between 0-255 and be np.uint8 type.
 
 Here, two datasets are generated to look like gradients across the brain and
-a third dataset makes a salt and pepper organization across the brain. You can
-use any cortex.Volume objects in their place though.
+a third dataset makes a series of stripes across the brain.
 """
 
 import cortex
@@ -26,10 +25,11 @@ xfm = "fullhead"
 # Creating three test datasets that are the same shape as this transform with
 # one entry for this voxel
 # The first two are gradients going in different directions across the brain
-# and the third is random
+# and the third is stripes across certain slices of the brain
 test1 = np.arange(31. * 100 * 100).reshape((31, 100, 100), order='C')
 test2 = np.arange(31. * 100 * 100).reshape((31, 100, 100), order='F')
-test3 = np.random.randn(31 * 100 * 100).reshape((31, 100, 100))
+test3 = np.zeros(31, 100, 100)
+test3[::3, :, :] = 1
 
 # Scaling the three datasets to be between 0-255
 test1_scaled = test1 / np.max(test1) * 255
