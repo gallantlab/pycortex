@@ -12,8 +12,15 @@ size as the scan for this subject and transform. Here, there are two datasets
 that have been generated to look like gradients across the brain, but you can
 replace these with any numpy arrays of the correct dimensionality.
 
+The colormap used in the first two flatmaps is
+.. image:: ../../filestore/RdBu_covar.png
+
 As with a 1D Volume, you can change vmin and vmax to threshold, but here
 they can be manipulated individually for the two arrays.
+
+You can also change the colormap when creating a new 2D volume.  The colormap
+used in the last flatmap is
+.. image:: ../../filestore/GreenWhiteBlue_2D.png
 """
 
 import cortex
