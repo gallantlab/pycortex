@@ -97,7 +97,7 @@ class SVGOverlay(object):
 
     def get_svg(self, filename=None, labels=True, with_ims=None): # This did nothing - why?:, **kwargs):
         """Returns an SVG with the included images."""
-        self.labels.visible = labesl
+        self.labels.visible = labels
         
         outsvg = copy.deepcopy(self.svg)
         if with_ims is not None:
@@ -126,6 +126,7 @@ class SVGOverlay(object):
         '''Renders a specific layer of this svgobject as a png
 
         '''
+        import matplotlib.pyplot as plt
         #set the size of the texture
         w, h = self.svgshape
         dpi = texres / h * 72 # 72 is screen resolution assumption for svg files
@@ -141,21 +142,23 @@ class SVGOverlay(object):
 
         for layer in self:
             if layer.name==layer_name:
-                layer.visible = True
                 if len(kwargs)>0:
                     print('Setting: %r'%repr(kwargs))
                 layer.set(**kwargs)
+                layer.visible = True
+                layer.labels.visible = labels
             else:
                 layer.visible = False
-            layer.labels.visible = labels
+                layer.labels.visible = False
 
         pngfile = name
         if name is None:
             png = tempfile.NamedTemporaryFile(suffix=".png")
             pngfile = png.name
 
-        cmd = "convert -background none -density {dpi} SVG:- PNG{bits}:{outfile}"
-        cmd = cmd.format(dpi=dpi, outfile=pngfile, bits=bits)
+        #cmd = "convert -background none -density {dpi} SVG:- PNG{bits}:{outfile}"
+        cmd = "inkscape -z -d {dpi} -e {outfile} /dev/stdin"
+        cmd = cmd.format(dpi=dpi, outfile=pngfile) #, bits=bits)
         proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
         proc.communicate(etree.tostring(self.svg))
         
@@ -164,8 +167,8 @@ class SVGOverlay(object):
 
         if name is None:
             png.seek(0)
-            #im = plt.imread(png)
-            return png
+            im = plt.imread(png)
+            return im
 
 class Overlay(object):
     def __init__(self, svgobject, layer):
@@ -194,6 +197,7 @@ class Overlay(object):
     @property
     def visible(self):
         return 'none' not in self.layer.attrib['style']
+
     @visible.setter
     def visible(self, value):
         style = "display:inline;" if value else "display:none;"
@@ -285,6 +289,7 @@ class Labels(object):
     @property
     def visible(self):
         return self.text_style['display'] != "none"
+
     @visible.setter
     def visible(self, value):
         if value:
@@ -677,6 +682,7 @@ class Shape(object):
     @property
     def visible(self):
         return 'none' not in self.layer.attrib['style']
+
     @visible.setter
     def visible(self, value):
         style = "display:inline;" if value else "display:none;"

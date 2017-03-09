@@ -12,8 +12,8 @@ from .options import config
 # Fucking up dependencies:
 import matplotlib.pyplot as plt
 
-def add_curvature(fig, dataview, extents, threshold=None, contrast=None, height=1024, cmap='gray',
-                  recache=False):
+def add_curvature(fig, dataview, extents, height=1024, threshold=None, contrast=None,
+                  cmap='gray', recache=False):
     """Add curvature layer to figure
 
     Parameters
@@ -32,13 +32,17 @@ def add_curvature(fig, dataview, extents, threshold=None, contrast=None, height=
     # Get curvature map as image
     curv, ee = make(db.get_surfinfo(dataview.subject), recache=recache, height=height)
     # Option to use thresholded curvature
-    use_threshold_curvature = config.get('curvature','threshold').lower() in ('true','t','1','y','yes') if threshold is None else threshold
+    default_threshold = config.get('curvature','threshold').lower() in ('true','t','1','y','yes')
+    use_threshold_curvature = default_threshold if threshold is None else threshold
     if use_threshold_curvature:
         curvT = (curv>0).astype(np.float32)
         curvT[np.isnan(curv)] = np.nan
         curv = curvT
     # TODO: Compute min / max for display of curvature based on `contrast` input
-    cvmin, cvmax = None, None
+    if contrast is not None:
+        cvmin, cvmax = -contrast, contrast
+    else:
+        cvmin, cvmax = None, None
     ax = fig.gca()
     cvimg = ax.imshow(curv, 
             aspect='equal', 
@@ -50,7 +54,8 @@ def add_curvature(fig, dataview, extents, threshold=None, contrast=None, height=
             zorder=0)
     return cvimg 
 
-def add_data(fig, braindata, pixelwise=True, thick=32, sampler='nearest', height=1024, depth=0.5, recache=False):
+def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True, 
+             sampler='nearest', recache=False):
     """Add data to quickflat plot
 
     Parameters
@@ -72,19 +77,27 @@ def add_data(fig, braindata, pixelwise=True, thick=32, sampler='nearest', height
         # Unclear what this means. Clarify error in terms of pycortex classes 
         # (please provide a [cortex.dataset.Dataview or whatever] instance)
         raise TypeError('Please provide a Dataview, not a Dataset')
-    # NOTE: make() function handles color mapping (dataview has .cmap, .vmin, .vmax properties)
+    # Generate image (2D array, maybe 3D array)
     im, extents = make(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
                        height=height, thick=thick, depth=depth)
+    # Check whether dataview has a cmap instance
+    cmapdict = _has_cmap(dataview)
+    # Plot
     ax = fig.gca()
     img = ax.imshow(im, 
             aspect='equal', 
             extent=extents, 
-            origin='lower')
+            origin='lower',
+            zorder=1,
+            **cmapdict)
     return img, extents
 
-def add_rois(fig, subject, height, extents, linewidth=None, linecolor=None,
+def add_rois(fig, dataview, extents, height=1024, linewidth=None, linecolor=None,
              roifill=None, shadow=None, labelsize=None, labelcolor=None, with_labels=True):
     """
+
+    NOTE: zorder for rois is 2
+
     Parameters
     ----------
     linewidth : int, optional
@@ -96,27 +109,27 @@ def add_rois(fig, subject, height, extents, linewidth=None, linecolor=None,
     shadow : int, optional
         Standard deviation of the gaussian shadow. Set to 0 if you want no shadow    
     """
-    svgobject = db.get_overlay(subject)
-    roi = svgobject.get_texture('rois', height, labels=with_labels, #**kwargs)
-                                    linewidth=linewidth,
-                                    linecolor=linecolor,
-                                    roifill=roifill,
-                                    shadow=shadow,
-                                    labelsize=labelsize,
-                                    labelcolor=labelcolor)
-    
-    roi.seek(0)
-    im = plt.imread(roi)
+    svgobject = db.get_overlay(dataview.subject)
+    im = svgobject.get_texture('rois', height, 
+                               labels=with_labels,
+                               linewidth=linewidth,
+                               linecolor=linecolor,
+                               roifill=roifill,
+                               shadow=shadow,
+                               labelsize=labelsize,
+                               labelcolor=labelcolor)
+
     ax = plt.gca()
     img = ax.imshow(im,
         aspect='equal', 
         interpolation='bicubic', 
         extent=extents, 
-        zorder=3,
-        origin='lower')    
+        zorder=2,
+        origin='lower')
     return img
 
-def add_sulci(fig, subject, extents, linewidth=None, linecolor=None, with_labels=True, labelsize=None, labelcolor=None, shadow=None):
+def add_sulci(fig, dataview, extents, height=1024, linewidth=None, linecolor=None, 
+              with_labels=True, labelsize=None, labelcolor=None, shadow=None):
     """Add sulci layer to figure
 
     Parameters
@@ -135,19 +148,21 @@ def add_sulci(fig, subject, extents, linewidth=None, linecolor=None, with_labels
 
     """
     svgobject = db.get_overlay(dataview.subject)
-    sulc = _render_svglayer('sulci', height, 
+    sulc = svgobject.get_texture('sulci', height, 
                                  labels=with_labels,
                                  linewidth=linewidth,
                                  linecolor=linecolor,
                                  shadow=shadow,
                                  labelsize=labelsize,
                                  labelcolor=labelcolor)
+    print(sulc.shape)
     ax = fig.gca()
     img = ax.imshow(sulc,
                      aspect='equal', 
                      interpolation='bicubic', 
                      extent=extents, 
-                     origin='lower')
+                     origin='lower',
+                     zorder=4)
     return img
 
 def add_border(fig, dataview, layers, linewidth=3.0):
@@ -161,11 +176,10 @@ def add_border(fig, dataview, layers, linewidth=3.0):
     """
     # Pull last top image from stack
     im = layers[-1].get_array()
-    border = _gen_flat_border(dataview.subject, im.shape[0])
-    #bax = fig.add_axes((0,0,1,1))
+    border, order = _gen_flat_border(dataview.subject, im.shape[0])
     ax = fig.gca()
-    blc = LineCollection(border[0], linewidths=linewidth,
-                         colors=[['r','b'][mw] for mw in border[1]])
+    blc = LineCollection(border, linewidths=linewidth,
+                         colors=[['r','b'][mw] for mw in order])
     bcol = ax.add_collection(blc)
     return bcol # necessary?
 
@@ -202,7 +216,7 @@ def add_colorbar(fig, colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04),
     cbar = fig.add_axes(colorbar_location)
     fig.colorbar(cimg, cax=cbar, orientation='horizontal',
                      ticks=colorbar_ticks)    
-    pass
+    return
 
 def add_custom(fig, subject, height, extents, svgfile, layer, labelsize=None, labelcolor=None,
                shadow=None):
@@ -324,14 +338,15 @@ def make_flatmap(braindata, recache=False, pixelwise=True, thick=32, sampler='ne
     # Add data
     data_im, extents = add_data(fig, dataview, pixelwise=pixelwise, thick=thick, sampler=sampler, 
                        height=height, depth=depth, recache=recache)
+
     layers = [data_im]
     # Add curvature
-    if add_curvature:
+    if with_curvature:
         curv_im = add_curvature(fig, dataview, extents)
         layers.append(curv_im)
     # Add dropout
     if with_dropout is not False:
-        # Support clunky old api:
+        # Support old api:
         if isinstance(with_dropout, dataset.Dataview):
             dd = with_dropout
         else:
@@ -340,12 +355,13 @@ def make_flatmap(braindata, recache=False, pixelwise=True, thick=32, sampler='ne
         layers.append(drop_im)
     # Add rois
     if with_rois:
-        roi_im = add_rois(fig, dataview.subject, height, extents, linewidth=linewidth, linecolor=linecolor,
+        roi_im = add_rois(fig, dataview, extents, height=height, linewidth=linewidth, linecolor=linecolor,
              roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels)
         layers.append(roi_im)
     # Add sulci
     if with_sulci:
-        sulc_im = add_sulci(fig, dataview, extents, )
+        sulc_im = add_sulci(fig, dataview, extents, height=height, linewidth=linewidth, linecolor=linecolor,
+             shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels)
         layers.append(sulc_im)
     # Add custom
     if extra_disp is not None:
@@ -359,7 +375,12 @@ def make_flatmap(braindata, recache=False, pixelwise=True, thick=32, sampler='ne
         pass
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
-    ax.set_ylim(extents[2], extents[3])
+    ax.set_ylim(extents[3], extents[2])
+
+    if fig_resize:
+        imsize = fig.get_axes()[0].get_images()[0].get_size()
+        fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
+
     return fig
 
 
@@ -373,7 +394,6 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), **kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
     matplotlib's imshow command.
-
     Parameters
     ----------
     braindata : Dataview
@@ -398,7 +418,6 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     cutout : str
         Name of flatmap cutout with which to clip the full flatmap. Should be the name
         of a sub-layer of the 'cutouts' layer in <filestore>/<subject>/rois.svg
-
     Other Parameters
     ----------------
     dpi : int
@@ -431,9 +450,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple. 
     colorbar_location : tuple, optional
         Location of the colorbar! Not sure of what the numbers actually mean. Left, bottom, width, height, maybe?
-
     """
-    from matplotlib import colors, cm, pyplot as plt
+    from matplotlib import colors,cm, pyplot as plt
     from matplotlib.collections import LineCollection
 
     dataview = dataset.normalize(braindata)
@@ -520,6 +538,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     # Check whether dataview has a cmap instance
     cmapdict = _has_cmap(dataview)
     imkws.update(cmapdict)
+    print(imkws)
 
     ax = fig.add_axes((0,0,1,1))
     cimg = ax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]], **imkws)
@@ -799,30 +818,30 @@ def make(braindata, height=1024, recache=False, **kwargs):
         return img.T[::-1], extents
 
 # Delete me? Not used anywhere else, I think...
-def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
-    import shlex
-    import subprocess as sp
-    from matplotlib.pylab import imsave
+# def overlay_rois(im, subject, name=None, height=1024, labels=True, **kwargs):
+#     import shlex
+#     import subprocess as sp
+#     from matplotlib.pylab import imsave
 
-    if name is None:
-        name = 'png:-'
+#     if name is None:
+#         name = 'png:-'
 
-    key = (subject, labels)
-    if key not in rois:
-        print("loading %s"%subject)
-        rois[key] = utils.get_roipack(subject).get_texture(height, labels=labels)
-    cmd = "composite {rois} - {name}".format(rois=rois[key].name, name=name)
-    proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
+#     key = (subject, labels)
+#     if key not in rois:
+#         print("loading %s"%subject)
+#         rois[key] = utils.get_roipack(subject).get_texture(height, labels=labels)
+#     cmd = "composite {rois} - {name}".format(rois=rois[key].name, name=name)
+#     proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
 
-    fp = io.StringIO()
-    imsave(fp, im, **kwargs)
-    fp.seek(0)
-    out, err = proc.communicate(fp.read())
-    if len(out) > 0:
-        fp = io.StringIO()
-        fp.write(out)
-        fp.seek(0)
-        return fp
+#     fp = io.StringIO()
+#     imsave(fp, im, **kwargs)
+#     fp.seek(0)
+#     out, err = proc.communicate(fp.read())
+#     if len(out) > 0:
+#         fp = io.StringIO()
+#         fp.write(out)
+#         fp.seek(0)
+#         return fp
 
 def show(*args, **kwargs):
     """Wrapper for make_figure()"""
@@ -918,14 +937,15 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
 
     return pixmap
 
-def _get_images(ax):
-    """Get all images in a given matplotlib axis"""
-    import matplotlib
-    images = [x for x in ax.get_children() if isinstance(x, matplotlib.image.AxesImage)]
-    return images
+# Delete me - not used after all
+# def _get_images(ax):
+#     """Get all images in a given matplotlib axis"""
+#     import matplotlib
+#     images = [x for x in ax.get_children() if isinstance(x, matplotlib.image.AxesImage)]
+#     return images
 
-def _render_svglayer(fig, subject, height, extents, layer_name, linewidth=None, linecolor=None,
-             shadow=None, labelsize=None, labelcolor=None):  # add: fillcolor?
+def _render_svglayer(subject, height, extents, layer_name, labels=False, linewidth=None, # add: fillcolor?
+                     linecolor=None, shadow=None, labelsize=None, labelcolor=None):                       
     """
     Parameters
     ----------
@@ -933,7 +953,7 @@ def _render_svglayer(fig, subject, height, extents, layer_name, linewidth=None, 
     import matplotlib.pyplot as plt
     svgobject = db.get_overlay(subject) # replace subject as input with svgobject?
     tex = svgobject.get_texture(layer_name, height, 
-                                labels=with_labels,
+                                labels=labels,
                                 linewidth=linewidth,
                                 linecolor=linecolor,
                                 shadow=shadow,
@@ -1090,7 +1110,7 @@ def _has_cmap(dataview):
                 cm.register_cmap(dataview.cmap,cmap)
             else:
                 cmap = dataview.cmap
-        elif isinstance(dataview.cmap,colors.Colormap):
+        elif isinstance(dataview.cmap, colors.Colormap):
             # Allow input of matplotlib colormap class
             cmap = dataview.cmap
 
@@ -1101,9 +1121,9 @@ def _has_cmap(dataview):
     return cmapdict
 
 
-
-def is_str(obj):
-    try:
-        return isinstance(obj, basestring)
-    except NameError:
-        return isinstance(obj, str)
+# Delete me?
+# def is_str(obj):
+#     try:
+#         return isinstance(obj, basestring)
+#     except NameError:
+#         return isinstance(obj, str)
