@@ -224,3 +224,17 @@ polyutils
 
 	Surface
 	Distortion
+
+
+mni
+---
+
+.. automodule:: cortex.mni
+
+.. autosummary::
+	:toctree:generated/
+
+	compute_mni_transform
+	transform_to_mni
+	transform_surface_to_mni
+	transform_mni_to_subject
