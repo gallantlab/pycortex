@@ -6,7 +6,7 @@ Map from Volume to Vertex Data
 In order to move from Volume data to Vertex data, you start with data from
 voxels and then create a cortex.Volume object. Then, you get a mapper to go
 between voxels and vertices for the specific subject and transform you are
-working with. Pass the voxel volume through the mapper and you get out a 
+working with. Pass the voxel volume through the mapper and you get out a
 vertex mapping of that data. You can plot both of these as you normally would.
 """
 
@@ -19,7 +19,7 @@ subject = 'S1'
 xfm = 'fullhead'
 
 # First create example voxel data for this subject and transform
-voxel_data = np.random.randn(31,100,100)
+voxel_data = np.random.randn(31, 100, 100)
 voxel_vol = cortex.Volume(voxel_data, subject, xfm)
 
 # Then we have to get a mapper from voxels to vertices for this transform
@@ -33,4 +33,3 @@ cortex.quickshow(voxel_vol)
 plt.show()
 cortex.quickshow(vertex_map)
 plt.show()
-

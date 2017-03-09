@@ -8,14 +8,14 @@ using quickflat. In order for this to run, you have to have a flatmap for
 this subject in the pycortex filestore.
 
 The cortex.Vertex object is instantiated with a numpy array of the same size
-as the total number of vertices in that subject's flatmap. Each pixel is 
+as the total number of vertices in that subject's flatmap. Each pixel is
 colored according to the value given for the nearest vertex in the flatmap.
 
 Instead of the random test data, you can replace this with any array that is
 the length of all of the vertices in the subject.
 
 Additionally, if you create a Vertex object using only the number of vertices
-that exists in the left hemisphere of the brain, the right hemisphere is 
+that exists in the left hemisphere of the brain, the right hemisphere is
 filled in with zeros.
 """
 
@@ -28,7 +28,7 @@ subject = 'S1'
 
 # In order to get the number of vertices in this subject's cortical surface
 # we have to load in their surfaces and get the number of points in each
-surfs = [cortex.polyutils.Surface(*d) 
+surfs = [cortex.polyutils.Surface(*d)
          for d in cortex.db.get_surf(subject, "fiducial")]
 
 # This is the total number of vertices in both hemispheres combined
@@ -51,4 +51,3 @@ numl = surfs[0].pts.shape[0]
 vertex_data_left = cortex.Vertex(test_data[:numl], subject)
 cortex.quickshow(vertex_data_left)
 plt.show()
-
