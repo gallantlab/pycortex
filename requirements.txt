@@ -5,3 +5,4 @@ h5py
 nibabel
 matplotlib
 Pillow
+numexpr
