@@ -142,9 +142,15 @@ class SVGOverlay(object):
 
         for layer in self:
             if layer.name==layer_name:
-                if len(kwargs)>0:
-                    print('Setting: %r'%repr(kwargs))
-                layer.set(**kwargs)
+                #if len(kwargs)>0:
+                #    print('Setting: %r'%repr(kwargs))
+                # old option:
+                #layer.set(**kwargs)
+                # new option:
+                for k, v in kwargs.items():
+                    if v is not None:
+                        print('Setting %s = %r'%(k, repr(v)))
+                        layer.set(k=v)
                 layer.visible = True
                 layer.labels.visible = labels
             else:
