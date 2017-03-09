@@ -8,7 +8,7 @@ is a region with very low EPI signal.
 
 The crosshatches are created using the reference nifti image file
 with a threshold.
-Setting the `with_dropout=True` option in `quickflat.make_figure`
+Setting the `with_dropout=True` parameter in `quickflat.make_figure`
 takes the reference nifti image file and computes a tresholded version
 of this using the following formula:
 
