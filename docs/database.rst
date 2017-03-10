@@ -27,34 +27,27 @@ Overlays are stored as SVG_'s. This is where surface ROIs are defined. Since the
 ``/rois.svg``
 -------------
 
+
 ``/surface-info``
 -----------------
+
 
 ``/surfaces``
 -------------
 
+surfaces: formatted as ``{type}_{hemisphere}.{format}``
 
-surfaces: formatted as ``{type}_{hemi}.{format}``
+Surfaces may be stored in any one of **OFF**, **VTK**, or **npz** formats. The highest performance is achieved with **npz** since it is binary and compressed. VTK is also efficient, having a `Cython` module to read files.
 
-Surfaces may be stored in any one of OFF, VTK, or npz formats. The highest performance is achieved with NPZ since it is binary and compressed. VTK is also efficient, having a cython module to read files.
+Pycortex fundamentally operates on triangular mesh geometry computed from a subject's anatomy. Surface geometries are usually created from a `marching cubes`_ reconstruction of the segmented cortical sheet. This undistorted reconstruction in the original anatomical space is known as the fiducial surface. The fiducial surface is inflated and cut along anatomical and functional boundaries and is morphed by an energy metric to be on a flattened 2D surface.
 
-
-To access surface reconstructions::
-
-    from cortex import surfs
-    pts, poly = surfs.getSurf("AH", "fiducial", merge=True)
-    # pts is a (p, 3) array, p = number of vertices
-    # polys is a (f, 3) array, f = number of faces
-
-Pycortex fundamentally operates on triangular mesh geometry computed from a subject's anatomy. Surface geometries are usually created from a `marching cubes`_ reconstruction of the segmented cortical sheet. This undistorted reconstruction in the original anatomical space is known as the fiducial surface. The fiducial surface is inflated and cut along anatomical and functional boundaries, and is morphed by an energy metric to be on a flattened 2D surface.
-
-Unfortunately, pycortex currently has no way of generating or editing these geometries directly. The recommended software for doing segmentation and flattening is Freesurfer_. Another package which is generally more user friendly is Caret_. pycortex includes some utility functions to interact with Freesurfer_, documented '''HERE'''.
+Unfortunately, pycortex currently has no way of generating or editing these geometries directly. The recommended software for doing segmentation and flattening is Freesurfer_. Another package which is generally more user-friendly is Caret_. pycortex includes some utility functions to interact with Freesurfer_, documented '''HERE'''.
 
 A surface in pycortex is any file specifying the triangular mesh geometry of a subject. Surfaces generally have three variables associated:
 
-    * **Subject** : a unique identifier for the subject whom this surface belongs,
-    * **Type** : the identifier for the type of geometry. These generally fall in three categories: Fiducial, inflated, and flat.
-    * **Hemisphere** : which hemisphere the surface belongs to.
+    * **Subject** : a unique subject identifier
+    * **Type** : the identifier for the type of geometry, **fiducial**, **inflated**, or **flat**
+    * **Hemisphere** : the brain hemisphere of the surface, **lh** or **rh**
 
 The surface files for a specific subject and hemisphere must have the same number of vertices across all the different types. Without this information, the mapping from fiducial to flatmap is not preserved, and there is no way to display data on the flatmap. Freesurfer_ surfaces preserve this relationship, and can be automatically imported into the database. pycortex does not check the validity of surfaces, and will break in unexpected ways if the number of vertices do not match! It is your job to make sure that all surfaces are valid.
 
@@ -64,18 +57,19 @@ In order to plot cortical data for a subject, at least the fiducial and flat geo
 .. _Caret: http://brainvis.wustl.edu/wiki/index.php/Main_Page
 .. _Freesurfer: http://surfer.nmr.mgh.harvard.edu/
 
+
 Accessing surfaces
 ~~~~~~~~~~~~~~~~~~
-Two methods exist for accessing the surface data once they are committed to the database: direct command access, or via a convienient tab complete interface.
+Two methods exist for accessing the surface data once they are committed to the database: direct command access, or via a convienient tab completion interface.
 
 Command access
 ~~~~~~~~~~~~~~
 For the direct command access, there are two call signatures::
 
-    from cortex import surfs
-    pts, polys = surfs.getSurf('AH', 'fiducial', merge=True)
+    import cortex
+    pts, polys = cortex.db.get_surf('AH', 'fiducial', merge=True)
 
-This returns the points and polygons of the given subject and surface type. Hemisphere defaults to "both", and since merge is true, they are vertically stacked **left, then right**. The polygon indices are shifted up for the right hemisphere to make a single unified geometry.
+This returns the points and polygons of the given subject and surface type. Hemisphere defaults to "both", and since ``merge`` is true, they are vertically stacked **left, then right**. The polygon indices are shifted up for the right hemisphere to make a single unified geometry.
 
 With merge=False, the return looks different::
 
@@ -121,7 +115,7 @@ Finally, selecting one surface type will give you two new functions: get, and sh
 
 Adding new surfaces
 ~~~~~~~~~~~~~~~~~~~
-Surface management is implemented through your file manager. To add a new surface to an existing subject, copy the surface file into ``{$FILESTORE}/{$SUBJECT}/surfaces/`` with the format ``{type}_{hemi}.{format}``, where hemi is lh or rh, and format is one of **OFF**, **VTK**, or an **npz** file with keys 'pts' and 'polys'. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.
+Surface management is implemented through your file manager. To add a new surface to an existing subject, copy the surface file into ``{$FILESTORE}/{$SUBJECT}/surfaces/`` with the format ``{type}_{hemisphere}.{format}``, where ``hemisphere`` is **lh** or **rh**, and format is one of **OFF**, **VTK**, or an **npz** file with keys 'pts' and 'polys'. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.
 
 In order to adequately utilize all the functions in pycortex, please add the fiducial, inflated, and flat geometries for both hemispheres. Again, make sure that all the surface types for a given subject and hemisphere have the same number of vertices, otherwise unexpected things may happen!
 
@@ -204,56 +198,37 @@ Here is an example entry into the filestore...
 
 .. code-block:: shell
 
-    S1
-    ├── anatomicals
-    │   ├── brainmask_mask.nii.gz
-    │   ├── brainmask.nii.gz
-    │   ├── raw.nii.gz
-    │   ├── voxelize.nii.gz
-    │   ├── voxelize[surf=wm].nii.gz
-    │   └── whitematter.nii.gz
-    ├── cache
-    │   ├── flatmask_1024.npz
-    │   ├── flatpixel_fullhead_1024_nearest_d0.5.npz
-    │   ├── flatpixel_fullhead_1024_nearest_l32.npz
-    │   ├── flatpixel_retinotopy_1024_nearest_l32.npz
-    │   ├── flatverts_1024.npz
-    │   ├── fullhead_pointnn.npz
-    │   ├── S1_[inflated]_mg2_9.ctm
-    │   ├── S1_[inflated]_mg2_9.json
-    │   ├── S1_[inflated]_mg2_9.json~
-    │   ├── S1_[inflated]_mg2_9_['rois'].ctm
-    │   ├── S1_[inflated]_mg2_9_['rois'].json
-    │   ├── S1_[inflated]_mg2_9_['rois'].svg
-    │   ├── S1_[inflated]_mg2_9.svg
-    │   ├── S1_[inflated]_mg2_9_v3.ctm
-    │   ├── S1_[inflated]_mg2_9_v3.json
-    │   ├── S1_[inflated]_mg2_9_v3.npz
-    │   ├── S1_[inflated]_mg2_9_v3.svg
-    │   ├── S1_[inflated]_raw_0_['rois'].ctm
-    │   └── S1_[inflated]_raw_0_['rois'].json
-    ├── overlays.svg
-    ├── rois.svg
-    ├── surface-info
-    │   └── curvature.npz
-    ├── surfaces
-    │   ├── flat_lh.npz
-    │   ├── flat_rh.npz
-    │   ├── inflated_lh.npz
-    │   ├── inflated_rh.npz
-    │   ├── pia_lh.npz
-    │   ├── pia_rh.npz
-    │   ├── wm_lh.npz
-    │   └── wm_rh.npz
-    ├── transforms
-    │   └── fullhead
-    │       ├── mask_cortical.nii.gz
-    │       ├── mask_rand_mask.nii.gz
-    │       ├── mask_thick.nii.gz
-    │       ├── mask_thin.nii.gz
-    │       ├── matrices.xfm
-    │       └── reference.nii.gz
-    └── views
+    filestore/db
+    └── S1
+        ├── anatomicals
+        │   └── raw.nii.gz
+        ├── cache
+        │   ├── flatmask_1024.npz
+        │   ├── flatpixel_fullhead_1024_nearest_l32.npz
+        │   ├── flatverts_1024.npz
+        │   └── fullhead_linenn.npz
+        ├── overlays.svg
+        ├── rois.svg
+        ├── surface-info
+        │   ├── distortion[dist_type=areal].npz
+        │   └── distortion[dist_type=metric].npz
+        ├── surfaces
+        │   ├── flat_lh.gii
+        │   ├── flat_rh.gii
+        │   ├── inflated_lh.gii
+        │   ├── inflated_rh.gii
+        │   ├── pia_lh.gii
+        │   ├── pia_rh.gii
+        │   ├── wm_lh.gii
+        │   └── wm_rh.gii
+        ├── transforms
+        │   ├── fullhead
+        │   │   ├── matrices.xfm
+        │   │   └── reference.nii.gz
+        │   └── retinotopy
+        │       ├── matrices.xfm
+        │       └── reference.nii.gz
+        └── views
 
 
 
