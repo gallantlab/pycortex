@@ -528,6 +528,15 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     sp.call(shlex.split(fcmd))
 
 def vertex_to_voxel(subject):
+	"""
+	Parameters
+	----------
+	subject : str
+		Name of subject
+		
+	Returns
+	-------
+	"""
     max_thickness = db.get_surfinfo(subject, "thickness").data.max()
 
     # Get distance from each voxel to each vertex on each surface
