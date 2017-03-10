@@ -13,10 +13,15 @@ script:
   - set -e
   - # Command to build your docs
   - pip install -r requirements.txt
-  - pip install sphinx numpydoc sphinx_gallery
-  - pip install git+https://github.com/r-b-g-b/doctr.git@deploy-to-any-branch
+  - pip install sphinx numpydoc sphinx_gallery virtualenv
   - python setup.py build_ext --inplace
+
+  - virtualenv venv --python=python2.7
+  - source venv/bin/activate
   - cd docs
   - make html
   - cd ..
+  - deactivate
+
+  - pip install git+https://github.com/r-b-g-b/doctr.git@deploy-to-any-branch  
   - doctr deploy --deploy-repo gallantlab/gallantlab.github.io --deploy-branch-name master --gh-pages-docs / --no-require-master
