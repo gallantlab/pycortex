@@ -83,10 +83,9 @@ def detrend_poly(data, polyorder = 10, mask=None):
         return detrended.reshape(*s)
 
 def mosaic(data, dim=0, show=True, **kwargs):
-    """mosaic(data, dim=0, show=True)
-
+    """
     Turns volume data into a mosaic, useful for quickly viewing volumetric data
-    IN RADIOLOGICAL COORDINATES (LEFT SIDE OF FIGURE IS RIGHT SIDE OF SUBJECT)
+    with radiological convention (left side of figure is right side of subject).
 
     Parameters
     ----------
@@ -105,7 +104,7 @@ def mosaic(data, dim=0, show=True, **kwargs):
     aspect = width / float(height)
     square = np.sqrt(slices / aspect)
     nwide = int(np.ceil(square))
-    ntall = int(np.ceil(slices*aspect / nwide))
+    ntall = int(np.ceil(float(slices) / nwide))
 
     shape = (ntall * (height+1) + 1, nwide * (width+1) + 1)
     if data.dtype == np.uint8:

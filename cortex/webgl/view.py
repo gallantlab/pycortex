@@ -40,55 +40,63 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                 template="static.html", layout=None, anonymize=False,
                 html_embed=True, overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
                 overlay_file=None, copy_ctmfiles=True, title='Brain', **kwargs):
-    """Creates a static instance of the webGL MRI viewer that can easily be posted
-    or shared.
+    """
+    Creates a static webGL MRI viewer in your filesystem so that it can easily 
+    be posted publically for sharing or just saved for later viewing.
 
     Parameters
     ----------
     outpath : string
         The directory where the static viewer will be saved. Will be created if it
         doesn't already exist.
-    data : Dataset object
-        Dataset object containing all the data you wish to plot
-    types : tuple, optional
-        Types of surfaces to include. Fiducial and flat surfaces are automatically
-        included. Default ('inflated', )
+    data : Dataset object or implicit Dataset
+        Dataset object containing all the data you wish to plot. Can be any type
+        of implicit dataset, such as a single Volume, Vertex, etc. object or a
+        dictionary of Volume, Vertex. etc. objects.
     recache : bool, optional
-        Whether to recreate CTM and SVG files for surfaces. Default False
-    cmap : string, optional
-        Name of default colormap used to show data. Default 'RdBu_r'
+        Force recreation of CTM and SVG files for surfaces. Default False
     template : string, optional
         Name of template HTML file. Default 'static.html'
     anonymize : bool, optional
         Whether to rename CTM and SVG files generically, for public distribution.
         Default False
-    overlays_visible : tuple, optional. Default ('rois', 'sulci')
+    overlays_visible : tuple, optional
         The listed overlay layers will be set visible by default. Layers not listed
         here will be hidden by default (but can be enabled in the viewer GUI).
-    labels_visible : tuple, optional. Default ('rois', )
+        Default ('rois', 'sulci')
+    labels_visible : tuple, optional
         Labels for the listed layers will be set visible by default. Labels for
         layers not listed here will be hidden by default (but can be enabled in
-        the viewer GUI).
-    **kwargs : dict, optional
+        the viewer GUI). Default ('rois', )
+    **kwargs
         All additional keyword arguments are passed to the template renderer.
 
     Other parameters
     ----------------
+    types : tuple, optional
+        Types of surfaces to include in addition to the original (fiducial, pial,
+        and white matter) and flat surfaces. Default ('inflated', )
+    cmap : string, optional
+        Name of default colormap. Default 'RdBu_r'
+        TODO: WHAT THE FUCK GOOD DOES THIS DO ANYMORE?
     overlay_file : str, optional
         Totally replace the overlays.svg file for this subject with the given
-        file (if not None).
+        file (if not None). Default None.
     html_embed : bool, optional
         Whether to embed the webgl resources in the html output.  Default 'True'.
         If 'False', the webgl resources must be served by your web server.
     copy_ctmfiles : bool, optional
         Whether to copy the CTM files to the static directory.  Default 'True'.
         In some use cases, the same CTM data will be used in many static views. To
-         avoid duplication of files, set to 'False'.  (The datastore cache must
-         then be served with your web server).
+        avoid duplication of files, set to 'False'.  (The datastore cache must
+        then be served with your web server).
+    title : str, optional
+        The title that is displayed on the viewer website when it is loaded in
+        a browser.
 
     Notes
     -----
-    You'll probably need a real web server to view this, since file:// paths
+    You will need a real web server to view this, since `file://` paths
     don't handle xsrf correctly
     """
     if overlay_file is not None:
@@ -212,7 +220,63 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
          autoclose=True, open_browser=True, port=None, pickerfun=None, template="mixer.html",
          overlays_visible=('rois', 'sulci'), labels_visible=('rois', ), overlay_file=None,
          title='Brain', **kwargs):
-    """Display a dynamic viewer using the given dataset. See cortex.webgl.make_static for help.
+    """
+    Creates a webGL MRI viewer that is dynamically served by a tornado server
+    running inside the current python process.
+
+    Parameters
+    ----------
+    data : Dataset object or implicit Dataset
+        Dataset object containing all the data you wish to plot. Can be any type
+        of implicit dataset, such as a single Volume, Vertex, etc. object or a
+        dictionary of Volume, Vertex. etc. objects.
+    autoclose : bool, optional
+        If True, the tornado server will automatically be destroyed when the last
+        web client has disconnected. If False, the server will stay open, 
+        allowing more connections. Default True
+    open_browser : bool, optional
+        If True, uses the webbrowser library to open the viewer in the default
+        local browser. Default True
+    port : int or None, optional
+        The port that will be used by the server. If None, a random port will be
+        selected from the range 1024-65536. Default None
+    pickerfun : funcion or None, optional
+        Should be a function that takes two arguments, a voxel index and a vertex
+        index. Is called whenever a location on the surface is clicked in the 
+        viewer. This can be used to print information about individual voxels or
+        vertices, plot receptive fields, or many other uses. Default None
+    recache : bool, optional
+        Force recreation of CTM and SVG files for surfaces. Default False
+    template : string, optional
+        Name of template HTML file. Default 'mixer.html'
+    overlays_visible : tuple, optional
+        The listed overlay layers will be set visible by default. Layers not listed
+        here will be hidden by default (but can be enabled in the viewer GUI).
+        Default ('rois', 'sulci')
+    labels_visible : tuple, optional
+        Labels for the listed layers will be set visible by default. Labels for
+        layers not listed here will be hidden by default (but can be enabled in
+        the viewer GUI). Default ('rois', )
+    **kwargs
+        All additional keyword arguments are passed to the template renderer.
+
+    Other parameters
+    ----------------
+    types : tuple, optional
+        Types of surfaces to include in addition to the original (fiducial, pial,
+        and white matter) and flat surfaces. Default ('inflated', )
+    cmap : string, optional
+        Name of default colormap. Default 'RdBu_r'
+        TODO: WHAT THE FUCK GOOD DOES THIS DO ANYMORE?
+    overlay_file : str or None, optional
+        Totally replace the overlays.svg file for this subject with the given
+        file (if not None). Default None.
+    title : str, optional
+        The title that is displayed on the viewer website when it is loaded in
+        a browser.
+    layout : (int, int), optional
+        The layout of the viewer subwindows for showing multiple subjects.
+        Default None, which selects the layout based on the number of subjects.
     """
     if overlay_file is not None:
         raise NotImplementedError("External overlay_file not supported yet, sorry!")

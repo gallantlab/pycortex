@@ -4,6 +4,11 @@ from .database import db
 from .utils import *
 from .quickflat import make_figure as quickshow
 
+try:
+	from . import formats
+except ImportError:
+	raise ImportError("You are running pycortex from the source directory. Don't do that!")
+
 load = Dataset.from_file
 
 try:

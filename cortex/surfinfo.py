@@ -1,3 +1,8 @@
+"""
+Contains functions for computing various surface properties. Mostly wrappers
+for functions in `polyutils.Surface` and `polyutils.Distortion`.
+"""
+
 import os
 import shlex
 import shutil
@@ -11,7 +16,20 @@ from . import polyutils
 from .database import db
 from .xfm import Transform
 
-def curvature(outfile, subject, smooth=20, **kwargs):
+def curvature(outfile, subject, smooth=20):
+    """
+    Compute smoothed mean curvature of the fiducial surface for the given 
+    subject and save it to `outfile`.
+
+    Parameters
+    ----------
+    outfile : str
+        Path where the curvature map will be saved as an npz file.
+    subject : str
+        Subject in the pycortex database for whom curvature will be computed.
+    smooth : float, optional
+        Amount of smoothing to apply to the curvature map. Default 20.
+    """
     curvs = []
     for pts, polys in db.get_surf(subject, "fiducial"):
         surf = polyutils.Surface(pts, polys)
@@ -19,9 +37,10 @@ def curvature(outfile, subject, smooth=20, **kwargs):
         curvs.append(curv)
     np.savez(outfile, left=curvs[0], right=curvs[1])
 
-def distortion(outfile, subject, type='areal', smooth=20):
-    """Computes distortion of flatmap relative to fiducial surface. Several different
-    types of distortion are available:
+def distortion(outfile, subject, dist_type='areal', smooth=20):
+    """
+    Compute distortion of flatmap relative to fiducial surface and save it
+    at `outfile`. Several different types of distortion are available:
     
     'areal': computes the areal distortion for each triangle in the flatmap, defined as the
     log ratio of the area in the fiducial mesh to the area in the flat mesh. Returns
@@ -31,6 +50,18 @@ def distortion(outfile, subject, type='areal', smooth=20):
     'metric': computes the linear distortion for each vertex in the flatmap, defined as
     the mean squared difference between distances in the fiducial map and distances in
     the flatmap, for each pair of neighboring vertices. See Fishl, Sereno, and Dale, 1999.
+
+    Parameters
+    ----------
+    outfile : str
+        Path where the distortion map will be saved as an npz file.
+    subject : str
+        Subject in the pycortex database for whom distortion will be computed.
+    dist_type : ['areal', 'metric'], optional
+        Type of distortion to compute. Default 'areal'.
+    smooth : float, optional
+        Amount of smoothing to apply to the distortion map before returning.
+        Default 20.
     """
     distortions = []
     for hem in ["lh", "rh"]:
@@ -38,20 +69,53 @@ def distortion(outfile, subject, type='areal', smooth=20):
         flatvert, flattri = db.get_surf(subject, "flat", hem)
         surf = polyutils.Surface(fidvert, fidtri)
 
-        dist = getattr(polyutils.Distortion(flatvert, fidvert, flattri), type)
+        dist = getattr(polyutils.Distortion(flatvert, fidvert, flattri), dist_type)
         smdist = surf.smooth(dist, smooth)
         distortions.append(smdist)
 
     np.savez(outfile, left=distortions[0], right=distortions[1])
 
 def thickness(outfile, subject):
+    """
+    Compute cortical thickness as the distance between corresponding pial and 
+    white matter vertices for the given subject. Note that this is slightly
+    different than the method used by Freesurfer, and will yield ever-so-slightly
+    different results.
+
+    Parameters
+    ----------
+    outfile : str
+        Path where the thickness map will be saved.
+    subject : str
+        Subject in the pycortex database for whom cortical thickness will be 
+        computed.
+    """
     pl, pr = db.get_surf(subject, "pia")
     wl, wr = db.get_surf(subject, "wm")
     left = np.sqrt(((pl[0] - wl[0])**2).sum(1))
     right = np.sqrt(((pr[0] - wr[0])**2).sum(1))
     np.savez(outfile, left=left, right=right)
 
-def tissots_indicatrix(outfile, sub, radius=10, spacing=50, maxfails=100): 
+def tissots_indicatrix(outfile, sub, radius=10, spacing=50):
+    """
+    Compute a Tissot's indicatrix for the given subject and save the result to
+    a file. This involves randomly filling in discs of fixed geodesic radius
+    on the fiducial surface.
+
+    See https://en.wikipedia.org/wiki/Tissot's_indicatrix for more info.
+
+    Parameters
+    ----------
+    outfile : str
+        Path where the indicatrix map will be saved.
+    sub : str
+        Subject in the pycortex database for whom the indicatrix will be 
+        computed.
+    radius : float, optional
+        The geodesic radius of each disc in mm. Default 10.
+    spacing : float, optional
+        The minimum distance between disc centers in mm. Default 50.
+    """
     tissots = []
     allcenters = []
     for hem in ["lh", "rh"]:

@@ -8,11 +8,11 @@ using quickflat. In order for this to run, you have to have a flatmap for
 this subject in the pycortex filestore.
 
 The cortex.Volume object is instantiated with a numpy array of the same size
-as the scan for this subject and transform. Instead of the random test data, 
+as the scan for this subject and transform. Instead of the random test data,
 you can replace this with any numpy array of the correct dimensionality.
 
 By changing the parameters vmin and vmax, you get thresholded data, as shown
-in the colorbar for the figure. 
+in the colorbar for the figure.
 
 If you have NaN values within your array, those voxels show up transparent
 on the brain.
@@ -25,9 +25,9 @@ import matplotlib.pyplot as plt
 subject = 'S1'
 xfm = 'fullhead'
 
-# Creating a random dataset that is the shape for this transform with one 
+# Creating a random dataset that is the shape for this transform with one
 # entry for each voxel
-test_data = np.random.randn(31,100,100)
+test_data = np.random.randn(31, 100, 100)
 
 # This creates a Volume object for our test dataset for the given subject
 # and transform
@@ -45,4 +45,3 @@ test_data[10:15, :, :] = np.nan
 vol_data_nan = cortex.Volume(test_data, subject, xfm)
 cortex.quickshow(vol_data_nan)
 plt.show()
-

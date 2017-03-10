@@ -26,15 +26,26 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.mathjax', 'sphinx.ext.viewcode', "sphinx.ext.autosummary", "numpydoc", "sphinx.ext.githubpages"]
-#autosummary_generate = True
+extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.todo',
+              'sphinx.ext.mathjax',
+              'sphinx.ext.viewcode',
+              'sphinx.ext.autosummary',
+              'numpydoc',
+              'sphinx.ext.githubpages',
+              'sphinx_gallery.gen_gallery']
+
+autosummary_generate = True
+numpydoc_show_class_members=False 
 
 # Sphinx-gallery
-# sphinx_gallery_conf = {
-#     # path to your examples scripts
-#     'examples_dirs' : '../../examples',
-#     # path where to save gallery generated examples
-#     'gallery_dirs'  : 'auto_examples'}
+sphinx_gallery_conf = {
+    # path to your examples scripts
+    'examples_dirs' : '../examples',
+    # path where to save gallery generated examples
+    'gallery_dirs'  : 'auto_examples',
+    # which files to execute? only those starting with "plot_"
+    'filename_pattern' : '/plot_'}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -100,12 +111,16 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+html_theme = 'alabaster'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+    # 'logo': 'logo.png',
+    'github_user': 'gallantlab',
+    'github_repo': 'pycortex',
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -141,6 +156,15 @@ html_static_path = ['_static']
 
 # Custom sidebar templates, maps document names to template names.
 #html_sidebars = {}
+html_sidebars = {
+    '**': [
+        'about.html',
+        'navigation.html',
+        'relations.html',
+        'searchbox.html',
+        'donate.html',
+    ]
+}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
