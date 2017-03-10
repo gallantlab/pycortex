@@ -23,6 +23,7 @@ This can be helpful if you think there is no reason that the
 
 """
 import cortex
+import matplotlib.pyplot as plt
 
 # Create a random pycortex Volume
 volume = cortex.Volume.random(subject='S1', xfmname='retinotopy')
@@ -53,3 +54,5 @@ _ = cortex.quickflat.make_figure(volume,
 _ = cortex.quickflat.make_figure(volume,
                                  with_curvature=True,
                                  with_colorbar=False)
+
+plt.show()
