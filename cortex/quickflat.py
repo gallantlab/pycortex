@@ -1,3 +1,6 @@
+"""Makes flattened views of volumetric data on the cortical surface.
+"""
+
 import io
 import os
 import glob
@@ -14,7 +17,7 @@ from .svgoverlay import get_overlay
 ### --- Individual compositing functions --- ###
 
 # for all: 
-"""    linewidth : int, optional
+""" linewidth : int, optional
         Width of ROI lines. Defaults to roi options in your local `options.cfg`
     linecolor : tuple of float, optional
         (R, G, B, A) specification of line color
@@ -997,9 +1000,9 @@ def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
 
     height : 
 
-    recache : 
-
-    kwargs : wtf
+    recache : bool
+        Recache intermediate files? Doing so is slower but can potentially resolve some problems.
+    kwargs : ???
 
     Returns
     -------
@@ -1049,7 +1052,16 @@ def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
         return img.T[::-1], extents
 
 def get_flatmask(subject, height=1024, recache=False):
-    """FARK"""
+    """
+    Parameters
+    ----------
+    subject : str
+        Name of subject in pycortex store
+    height : int
+        Height in pixels to generate the image
+    recache : bool
+        Recache the intermediate files? 
+    """
     cachedir = db.get_cache(subject)
     cachefile = os.path.join(cachedir, "flatmask_{h}.npz".format(h=height))
 
@@ -1065,7 +1077,29 @@ def get_flatmask(subject, height=1024, recache=False):
 
 def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
                   recache=False, height=1024, depth=0.5):
-    """DEDARK"""
+    """
+    
+    Parameters
+    ----------
+    subject : str
+        Subject name in pycortex db
+    xfmname : str
+        Name of transform for subject
+    pixelwise : bool
+    
+    thick : int
+    
+    sampler : 
+    
+    recache : bool
+        Recache intermediate files? Doing so is slower but can resolve some errors.
+    height : int
+        Height in pixels of image to generated
+    depth : float
+    
+    Returns
+    -------
+    """
     cachedir = db.get_cache(subject)
     cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
     if pixelwise and xfmname is not None:
