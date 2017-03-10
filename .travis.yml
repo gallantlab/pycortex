@@ -9,10 +9,18 @@ env:
   global:
     - secure: "fumoc9CFl8Nypi9iMRuJAkDv4gHptcikEFlkiPOUz6wBiCyKj+w7Hl917wMOLqKuNGM0gT4suFG06quLI6hDTUhmWwulsWNXpRaql5ukhvCFMyqIx+kkuQGYe1aKcRmeDZqYsc3KEvSb2MOoeLIvsfqxjj3mvZwgaN4zaUthnZM="
 
+virtualenv:
+  system_site_packages: true
+
+before_install:
+  - apt-get update -qq
+  - apt-get -y -qq install python-numpy python-scipy python-matplotlib python-h5py cython python-pil python-numexpr python-tornado python-lxml python-networkx
+
+instal
+  - pip install nibabel
+  
 script:
   - set -e
-
-  - pip install -r requirements.txt
   - pip install sphinx numpydoc sphinx_gallery
   - python setup.py build_ext --inplace
 
