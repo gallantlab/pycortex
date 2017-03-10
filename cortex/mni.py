@@ -147,7 +147,7 @@ def transform_surface_to_mni(subject, surfname):
 
     # Transform anatomical space points to MNI space
     mni_lpts, mni_rpts = [np.dot(mni_xfm, np.hstack([p, np.ones((p.shape[0],1))]).T).T[:,:3]
-                          for p in anat_lpts, anat_rpts]
+                          for p in (anat_lpts, anat_rpts)]
 
     return [(mni_lpts, lpolys), (mni_rpts, rpolys)]
 
