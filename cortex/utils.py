@@ -400,9 +400,9 @@ def get_dropout(subject, xfmname, power=20):
     is very low.
     """
     xfm = db.get_xfm(subject, xfmname)
-    rawdata = xfm.reference.get_data().T
+    rawdata = xfm.reference.get_data().T.astype(np.float32)
 
-    ## Collapse epi across time if it's 4D
+    # Collapse epi across time if it's 4D
     if rawdata.ndim > 3:
         rawdata = rawdata.mean(0)
 
