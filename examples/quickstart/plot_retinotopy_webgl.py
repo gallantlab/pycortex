@@ -11,9 +11,16 @@ dataset_.
 
 S1 is the example subject that comes with pycortex, but if you want to plot
 data onto a different subject, you will need to have them in your filestore.
+
+This demo will not actually open the web viewer for you, but if you run it
+yourself you will get a viewer showing something like the following.
+
+.. image:: ../../webgl/angle_left.png
+
 """
 
-import cortex
+# To run the demo, uncomment the following three lines
 
-ret_data = cortex.load("S1_retinotopy.hdf")
-cortex.webshow(ret_data)
+# import cortex
+# ret_data = cortex.load("S1_retinotopy.hdf")
+# cortex.webshow(ret_data)
