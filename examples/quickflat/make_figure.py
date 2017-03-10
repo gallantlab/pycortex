@@ -32,6 +32,10 @@ volume = cortex.Volume.random(subject='S1', xfmname='retinotopy')
 # Also a colorbar will be added
 _ = cortex.quickflat.make_figure(volume)
 
+# The cortex.quickshow method is a pointer to quickflat.make_figure
+# and will plot exactly the same as the above plot
+_ = cortex.quickshow(volume)
+
 # Highlight the curvature
 _ = cortex.quickflat.make_figure(volume, with_curvature=True)
 
