@@ -6,11 +6,11 @@ Display a previously defined cutout on the flatmap
 Cutouts are manually generated cuts of the cortical surface to highlight
 a region of interest.
 
-The parameter `cutout` of the `quickflat.make_figure` method takes a name of a
-flatmap cutout.
+Cutouts are defined as sub-layers of the `cutouts` layer
+in <filestore>/<subject>/rois.svg.
 
-This cutout name should be the name of a sub-layer of the 'cutouts' layer
-in <filestore>/<subject>/rois.svg
+The parameter `cutout` of the `quickflat.make_figure` method should be the
+name of the flatmap cutout defined in the `rois.svg` file.
 
 """
 import cortex
