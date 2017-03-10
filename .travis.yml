@@ -34,5 +34,5 @@ script:
   - virtualenv venv --python=python3.5
   - source venv/bin/activate
   - pip install git+https://github.com/r-b-g-b/doctr.git@deploy-to-any-branch  
-  - sudo doctr deploy --deploy-repo gallantlab/gallantlab.github.io --deploy-branch-name master --gh-pages-docs / --no-require-master
+  - sudo "PATH=$PATH" doctr deploy --deploy-repo gallantlab/gallantlab.github.io --deploy-branch-name master --gh-pages-docs / --no-require-master
   - deactivate
