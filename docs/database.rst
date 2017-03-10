@@ -110,20 +110,20 @@ Adding new surfaces
 ~~~~~~~~~~~~~~~~~~~
 Surface management is implemented through your file manager. To add a new surface to an existing subject, copy the surface file into ``{$FILESTORE}/{$SUBJECT}/surfaces/`` with the format ``{type}_{hemisphere}.{format}``, where ``hemisphere`` is **lh** or **rh**, and format is one of **OFF**, **VTK**, or an **npz** file with keys 'pts' and 'polys'. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.
 
-In order to adequately utilize all the functions in pycortex, please add the fiducial, inflated, and flat geometries for both hemispheres. Again, make sure that all the surface types for a given subject and hemisphere have the same number of vertices, otherwise unexpected things may happen!
+In order to adequately utilize all the functions in pycortex, please add the **fiducial**, **inflated**, and **flat** geometries for both hemispheres. Again, make sure that all the surface types for a given subject and hemisphere have the same number of vertices, otherwise unexpected things may happen!
 
 
 
-``/transforms``
----------------
+``Transforms``
+--------------
 
 Transformations in pycortex are stored as **affine** matrices encoded in magnet isocenter space, as defined in the Nifti_ headers.
 
 Each transform is stored in its own subdirectory containing two files: ``matrices.xfm``, and ``reference.nii.gz``. Masks are also stored in the transforms directory.
 
-Transforms are saved as json-encoded text files. They have the format ``{subject}_{transform}.xfm``. There are four fields in this JSON structure: ``subject``, ``epifile``, ``coord``, ``magnet``. ``epifile`` gives the filename of the functional volume (EPI) that served as the reference for this transform. ``coord`` stores the transform from fiducial to coordinate space (for fast index lookups). ``magnet`` stores the transform from the fiducial to the magnet space, as defined in the return of ``nibabel.get_affine()``.
+Transforms are saved as JSON-encoded text files. They have the format ``{subject}_{transform}.xfm``. There are four fields in this JSON structure: ``subject``, ``epifile``, ``coord``, ``magnet``. ``epifile`` gives the filename of the functional volume (EPI) that served as the reference for this transform. ``coord`` stores the transform from fiducial to coordinate space (for fast index lookups). ``magnet`` stores the transform from the fiducial to the magnet space, as defined in the return of ``nibabel.get_affine()``.
 
-Reference volumes are typically in Nifti_ format (*.nii), but can be any format that is understood by nibabel_. These are stored to ensure that we know what the reference for any transform was. This makes it possible to visually verify and tweak alignments as well as keep a static store of images for future coregistrations.
+Reference volumes are typically in Nifti_ format (*.nii), but can be any format that nibabel_ understands. These are stored to ensure that we know what the reference for any transform was. This makes it possible to visually verify and tweak alignments as well as keep a static store of images for future coregistrations.
 
 .. _nibabel: http://nipy.sourceforge.net/nibabel/
 .. _Nifti: http://nifti.nimh.nih.gov/nifti-1/
@@ -132,35 +132,41 @@ Reference volumes are typically in Nifti_ format (*.nii), but can be any format 
 Accessing transforms
 ^^^^^^^^^^^^^^^^^^^^
 Similar to the surfaces, transforms can be access through two methods: direct command access, and the tab interface.
-To retrieve a transform::
-
-    xfm = surfs.getXfm("AH", "AH_huth", xfmtype='coord')
 
 Command access looks like this::
 
-    from cortex import surfs
-    xfm = surfs.getXfm("AH", "AH_huth", xfmtype='coord')
+    import cortex
+    xfm = cortex.db.get_xfm('AH', 'AH_huth', xfmtype='coord')
 
 Tab complete looks like this::
 
-    In [1]: from cortex import surfs
-    In [2]: surfs.AH.transforms
-    Out[2]: Transforms: [AH_shinji,AH_huth]
+    In [1]: import cortex
+    In [2]: cortex.db.S1.transforms
+    Out[2]: Transforms: [fullhead,retinotopy]
 
-    In [3]: surfs.AH.transforms['AH_huth'].coord
-    Out[5]: 
-    array([[ -0.42912749,   0.00749045,   0.00749159,  48.7721599 ],
-           [ -0.00681025,  -0.42757105,   0.03740662,  47.36464665],
-           [  0.00457734,   0.0210264 ,   0.24117264,  10.44101855],
-           [ -0.        ,   0.        ,   0.        ,   1.        ]])
+    In [3]: cortex.db.S1.transforms['fullhead'].coord.xfm
+    Out[3]: 
+     [[-0.44486981846094426,
+       -0.0021363672818559996,
+       -0.03721181986487324,
+       46.62686084588364],
+      [0.005235315303737166,
+       -0.44485768384714863,
+       -0.03704886912935894,
+       60.165881316857195],
+      [-0.02001550497747565,
+       -0.020260819840215893,
+       0.24044994416882276,
+       12.698317611104553],
+      [0.0, 0.0, 0.0, 1.0]]
 
 
 Adding new transforms
 ^^^^^^^^^^^^^^^^^^^^^
 Transforms from anatomical space to functional space are notoriously tricky. Automated algorithms generally give results optimized for various global energy metrics, but do not attempt to target the alignments for your ROIs. It is highly recommended that you use the included aligner to make your affine transforms. To add a transform, either directly create a transform json in ``{$FILESTORE}/transforms/``, or use this command::
 
-    from cortex import surfs
-    surfs.loadXfm(subject, xfmname, xfm, xfmtype='magnet', reference='path_to_functional.nii')
+    import cortex
+    cortex.db.load_xfm(subject, xfmname, xfm, xfmtype='magnet', reference='path_to_functional.nii')
 
 .. _database-masks:
 
