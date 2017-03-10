@@ -14,10 +14,10 @@ virtualenv:
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get -y -qq install python-numpy python-scipy python-matplotlib python-h5py cython python-pil python-numexpr python-tornado python-lxml python-networkx
+  - sudo apt-get -y -qq install python-numpy python-scipy python-matplotlib python-h5py cython python-numexpr python-tornado python-lxml python-networkx
 
 install:
-  - pip install nibabel
+  - pip install nibabel Pillow
   
 script:
   - set -e
