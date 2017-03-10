@@ -22,7 +22,7 @@ the original.
 """
 
 import cortex
-from cortex.polyutils import Surface, Distortion
+from cortex.polyutils import Distortion
 
 subject = "S1"
 
