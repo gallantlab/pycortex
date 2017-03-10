@@ -11,7 +11,7 @@ onto the cortical surfaces.
 This demo will use randomly generated data and plot a flatmap. Different
 options to visualize the data will be demonstrated.
 
-*Some words on the `rechache` parameter before we begin:*
+**Some words on the `rechache` parameter before we begin:**
 
 Setting the `recache=True` parameter recaches the flatmap cache located in
 <filestore>/<subject>/cache. By default intermediate steps for a flatmap are
