@@ -144,22 +144,22 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     return img, extents
 
 def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_list=None, **kwargs):
-    """
+    """Add ROIs layer to a figure
 
     NOTE: zorder for rois is 3
 
     Parameters
     ----------
-    fig : 
-
+    fig : figure
+		figure on to which to plot the ROIs
     dataview : 
 
     extents : 
 
-    height : 
-
-    with_labels : 
-
+    height : int
+		Height of image. None defaults to the figure height.
+    with_labels : bool
+		Also show ROI names next to outlines?
     roi_list : 
 
     kwargs : 
@@ -188,12 +188,16 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
 
     Parameters
     ----------
+	fig : figure
+		figure to which to add sulci layer
+	dataview :
+	
     linewidth : 
 
     linecolor : 
 
-    with_labels : 
-
+    with_labels : bool
+		Add labels along with sulci?
     labelsize : 
 
     labelcolor : 
@@ -292,17 +296,26 @@ def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(.4, .07, .2,
 
 def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_labels=False, 
     shape_list=None, **kwargs):
-    """
+    """Add a custom data layer
+	
     Parameters
     ----------
-    fig
-
+    fig : figure
+		figure to which to add the data
     dataview : 
 
     svgfile : 
 
     layer : 
 
+	extents :
+	
+	height : int
+		height of iamge in pixels. None defaults to image size
+	with_labels : bool
+	
+	shape_list :
+	
     labelsize : 
 
     labelcolor : 
@@ -334,6 +347,17 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
 
     Parameters
     ----------
+	fig : figure
+		figure to which to add cutouts
+	name : str
+	
+	dataview : 
+	
+	layers :
+	
+	height : int
+	
+	extents :
 
     Returns
     -------
