@@ -16,7 +16,7 @@ before_install:
   - apt-get update -qq
   - apt-get -y -qq install python-numpy python-scipy python-matplotlib python-h5py cython python-pil python-numexpr python-tornado python-lxml python-networkx
 
-instal
+install:
   - pip install nibabel
   
 script:
