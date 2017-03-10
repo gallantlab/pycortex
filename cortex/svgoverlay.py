@@ -7,7 +7,7 @@ import tempfile
 import itertools
 import numpy as np
 import subprocess as sp
-from svgsplines import LineSpline, QuadBezSpline, CubBezSpline, ArcSpline
+from .svgsplines import LineSpline, QuadBezSpline, CubBezSpline, ArcSpline
 
 from scipy.spatial import cKDTree
 

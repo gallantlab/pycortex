@@ -10,7 +10,6 @@ The viewer is stored in a directory that stores html, javascript, data, etc
 The viewer directory must be hosted by a server such as nginx
 """
 
-import numpy as np
 import cortex
 
 # gather data Volume
@@ -21,3 +20,5 @@ viewer_path = '/path/to/store/viewer'
 
 # create viewer
 cortex.webgl.make_static(outpath=viewer_path, data=volume)
+
+# a webserver such as nginx can then be used to host the static viewer

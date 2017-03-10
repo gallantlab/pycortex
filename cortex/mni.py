@@ -1,3 +1,8 @@
+"""
+Functions for finding MNI transforms for individual subjects and transforming
+functional data and surfaces to and from MNI space.
+"""
+
 import os
 import nibabel
 import tempfile
@@ -26,7 +31,8 @@ def _load_fsl_xfm(filename):
 
 def compute_mni_transform(subject, xfm,
                           template=default_template):
-    """Compute transform from the space specified by `xfm` to MNI standard space.
+    """
+    Compute transform from the space specified by `xfm` to MNI standard space.
 
     Parameters
     ----------
@@ -39,7 +45,7 @@ def compute_mni_transform(subject, xfm,
 
     Returns
     -------
-    func_to_mni : numpy.ndarray
+    numpy.ndarray
         Transformation matrix from the space specified by `xfm` to MNI space.
     """
     # Set up some paths
@@ -69,7 +75,9 @@ def compute_mni_transform(subject, xfm,
 
 def transform_to_mni(volumedata, func_to_mni, 
                      template=default_template):
-    """Transform data in `volumedata` to MNI space, resample at 1mm resolution.
+    """
+    Transform data in `volumedata` to MNI space, resample at the resolution of 
+    the atlas image.
 
     Parameters
     ----------
@@ -77,14 +85,14 @@ def transform_to_mni(volumedata, func_to_mni,
         Data to be transformed to MNI space.
     func_to_mni : numpy.ndarray
         Transformation matrix from the space of `volumedata` to MNI space. Get this
-        from compute_mni_transform.
+        from `compute_mni_transform`.
     template : str, optional
         Path to MNI template volume, used as reference for flirt. Defaults to FSL's 
         MNI152_T1_1mm_brain.
 
     Returns
     -------
-    mni_volumedata : nibabel.nifti1.Nifti1Image
+    nibabel.nifti1.Nifti1Image
         `volumedata` after transformation to MNI space.
     """
     # Set up paths
@@ -106,7 +114,8 @@ def transform_to_mni(volumedata, func_to_mni,
     return nibabel.load(func_in_mni)
 
 def transform_surface_to_mni(subject, surfname):
-    """Transform the surface named `surfname` for subject called `subject` into
+    """
+    Transform the surface named `surfname` for subject called `subject` into
     MNI coordinates. Returns [(lpts, lpolys), (rpts, rpolys)].
 
     Parameters
@@ -118,7 +127,7 @@ def transform_surface_to_mni(subject, surfname):
 
     Returns
     -------
-    mni_surface : [(ndarray, ndarray), (ndarray, ndarray)]
+    [(mni_lpts, lpolys), (mni_rpts, rpolys)]
         MNI-transformed surface in same format returned by db.get_surf.
     """
     # Get MNI affine transform
@@ -138,13 +147,14 @@ def transform_surface_to_mni(subject, surfname):
 
     # Transform anatomical space points to MNI space
     mni_lpts, mni_rpts = [np.dot(mni_xfm, np.hstack([p, np.ones((p.shape[0],1))]).T).T[:,:3]
-                          for p in anat_lpts, anat_rpts]
+                          for p in (anat_lpts, anat_rpts)]
 
     return [(mni_lpts, lpolys), (mni_rpts, rpolys)]
 
 def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
                              template=default_template):
-    """Transform data in `volarray` from MNI space to functional space specified by `xfm`.
+    """
+    Transform data in `volarray` from MNI space to functional space specified by `xfm`.
 
     Parameters
     ----------
@@ -163,7 +173,7 @@ def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
 
     Returns
     -------
-    xfm_volumedata : nibabel.nifti1.Nifti1Image
+    nibabel.nifti1.Nifti1Image
         `volarray` after transformation from MNI space to space specified by `xfm`.
 
     """

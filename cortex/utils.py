@@ -345,8 +345,8 @@ def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=
             #roi_idx_sub1 = rois.get_roi(roi) # substitution index 1 (in valid vertex space) # OLD
             roi_idx_sub1 = get_roi_verts(subject, roi=roi)[roi] # NEW
             # New
-            print n_valid_vertices
-            print n_verts
+            print(n_valid_vertices)
+            print(n_verts)
             1/0
             roi_idx_bin1 = np.zeros((n_valid_vertices,),np.bool) # binary index 1
 

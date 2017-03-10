@@ -25,17 +25,15 @@ class Surface(object):
     etc.
 
     Implements some useful functions for dealing with functions across surfaces.
+
+    Parameters
+    ----------
+    pts : 2D ndarray, shape (total_verts, 3)
+        Location of each vertex in space (mm). Order is x, y, z.
+    polys : 2D ndarray, shape (total_polys, 3)
+        Indices of the vertices in each triangle in the surface.
     """
     def __init__(self, pts, polys):
-        """Initialize Surface.
-
-        Parameters
-        ----------
-        pts : 2D ndarray, shape (total_verts, 3)
-            Location of each vertex in space (mm). Order is x, y, z.
-        polys : 2D ndarray, shape (total_polys, 3)
-            Indices of the vertices in each triangle in the surface.
-        """
         self.pts = pts.astype(np.double)
         self.polys = polys
 
@@ -278,8 +276,8 @@ class Surface(object):
             return (self.connected.dot(gradu).T / self.connected.sum(1).A.squeeze()).T
         return gradu
 
-    def _create_biharmonic_solver(self, boundary_verts, clip_D=0.1):
-        """Set up biharmonic equation with Dirichlet boundary conditions on the cortical
+    def create_biharmonic_solver(self, boundary_verts, clip_D=0.1):
+        r"""Set up biharmonic equation with Dirichlet boundary conditions on the cortical
         mesh and precompute Cholesky factorization for solving it. The vertices listed in
         `boundary_verts` are considered part of the boundary, and will not be included in
         the factorization.
@@ -288,13 +286,16 @@ class Surface(object):
         squared Laplace-Beltrami operator is separated into left-hand-side (L2) and
         right-hand-side (Dinv) parts. If we write the L-B operator as the product of
         the stiffness matrix (V-W) and the inverse mass matrix (Dinv), the biharmonic
-        problem is as follows (with `\\b` denoting non-boundary vertices)
+        problem is as follows (with `u` denoting non-boundary vertices)
 
         .. math::
-        
-            L^2_{\\b} \phi = -\rho_{\\b} \\
-            \left[ D^{-1} (V-W) D^{-1} (V-W) \right]_{\\b} \phi = -\rho_{\\b} \\
-            \left[ (V-W) D^{-1} (V-W) \right]_{\\b} \phi = -\left[D \rho\right]_{\\b}
+            :nowrap:
+            
+            \begin{eqnarray}
+            L^2_{u} \phi &=& -\rho_{u} \\
+            \left[ D^{-1} (V-W) D^{-1} (V-W) \right]_{u} \phi &=& -\rho_{u} \\
+            \left[ (V-W) D^{-1} (V-W) \right]_{u} \phi &=& -\left[D \rho\right]_{u}
+            \end{eqnarray}
 
         Parameters
         ----------
@@ -315,9 +316,11 @@ class Surface(object):
             Indices of non-boundary vertices
         """
         try:
-            from sksparse.sparse.cholmod import cholesky
-        except ImportError:
             from scikits.sparse.cholmod import cholesky
+            factorize = lambda x: cholesky(x).solve_A
+        except ImportError:
+            factorize = sparse.linalg.dsolve.factorized
+            
         B, D, W, V = self.laplace_operator
         npt = len(D)
 
@@ -330,7 +333,8 @@ class Surface(object):
         L = Dinv.dot((V-W)) # construct Laplace-Beltrami operator
         
         lhs = (V-W).dot(L) # construct left side, almost squared L-B operator
-        lhsfac = cholesky(lhs[notboundary][:,notboundary]) # factorize
+        #lhsfac = cholesky(lhs[notboundary][:,notboundary]) # factorize
+        lhsfac = factorize(lhs[notboundary][:,notboundary]) # factorize
         
         return lhs, D, Dinv, lhsfac, notboundary
 
@@ -344,7 +348,7 @@ class Surface(object):
             Indices of vertices that will serve as knot points for interpolation.
         bhsolver : (lhs, rhs, Dinv, lhsfac, notboundary), optional
             A 5-tuple representing a biharmonic equation solver. This structure
-            is created by _create_biharmonic_solver.
+            is created by create_biharmonic_solver.
         
         Returns
         -------
@@ -354,7 +358,7 @@ class Surface(object):
             number of dimensions can be interpolated simultaneously.
         """
         if bhsolver is None:
-            lhs, D, Dinv, lhsfac, notb = self._create_biharmonic_solver(verts)
+            lhs, D, Dinv, lhsfac, notb = self.create_biharmonic_solver(verts)
         else:
             lhs, D, Dinv, lhsfac, notb = bhsolver
         
@@ -371,8 +375,9 @@ class Surface(object):
             vr = lhs.dot(r)
             
             #phi = lhsfac.solve_A(-vr.todense()[notb]) # 29.9ms
-            phi = lhsfac.solve_A(-vr[notb].todense()) # 28.2ms
-            # phi = lhsfac.solve_A(-vr[notb]).todense() # 29.3ms
+            #phi = lhsfac.solve_A(-vr[notb]).todense() # 29.3ms
+            #phi = lhsfac.solve_A(-vr[notb].todense()) # 28.2ms
+            phi = lhsfac(-vr[notb].todense())
             
             tphi = np.zeros((npt,nd))
             tphi[notb] = phi
@@ -392,7 +397,7 @@ class Surface(object):
         create an interpolator function using _create_interp, and then call that function.
         In fact, that's exactly what this function does.
 
-        See _create_biharmonic_solver for math details.
+        See create_biharmonic_solver for math details.
 
         Parameters
         ----------
@@ -419,6 +424,32 @@ class Surface(object):
         return fe12, fe23, fe31
 
     def approx_geodesic_distance(self, verts, m=0.1):
+        """Computes approximate geodesic distance (in mm) from each vertex in 
+        the surface to any vertex in the collection `verts`. This approximation
+        is computed using Varadhan's formula for geodesic distance based on the
+        heat kernel. This is very fast (quite a bit faster than `geodesic_distance`)
+        but very inaccurate. Use with care.
+
+        In short, we let heat diffuse across the surface from sources at `verts`,
+        and then look at the resulting heat levels in every other vertex to 
+        approximate how far they are from the sources. In theory, this should
+        be very accurate as the duration of heat diffusion goes to zero. In 
+        practice, short duration leads to numerical instability and error.
+
+        Parameters
+        ----------
+        verts : 1D array-like of ints
+            Set of vertices to compute distance from. This function returns the shortest
+            distance to any of these vertices from every vertex in the surface.
+        m : float, optional
+            Scalar on the duration of heat propagation. Default 0.1.
+
+        Returns
+        -------
+        1D ndarray, shape (total_verts,)
+            Approximate geodesic distance (in mm) from each vertex in the 
+            surface to the closest vertex in `verts`.
+        """
         npt = len(self.pts)
         t = m * self.avg_edge_length ** 2 # time of heat evolution
 
@@ -474,7 +505,7 @@ class Surface(object):
 
         Returns
         -------
-        dist : 1D ndarray, shape (total_verts,)
+        1D ndarray, shape (total_verts,)
             Geodesic distance (in mm) from each vertex in the surface to the closest
             vertex in `verts`.
         """
@@ -531,6 +562,45 @@ class Surface(object):
         phi[verts] = 0.0
 
         return phi
+
+    def geodesic_path(self, a, b, **kwargs):
+        """Finds the shortest path between two points `a` and `b`.
+
+        This shortest path is based on geodesic distances across the surface.
+        The path starts at point `a` and selects the neighbor of `a` in the 
+        graph that is closest to `b`. This is done iteratively with the last
+        vertex in the path until the last point in the path is `b`.
+
+        Other Parameters in kwargs are passed to the geodesic_distance 
+        function to alter how geodesic distances are actually measured
+
+        Parameters
+        ----------
+        a : int
+            Vertex that is the start of the path
+        b : int
+            Vertex that is the end of the path
+        
+        Other Parameters
+        ----------------
+        m : float, optional
+            Reverse Euler step length. The optimal value is likely between 0.5 and 1.5.
+            Default is 1.0, which should be fine for most cases.
+        fem : bool, optional
+            Whether to use Finite Element Method lumped mass matrix. Wasn't used in 
+            Crane 2012 paper. Doesn't seem to help any.
+
+        Returns
+        -------
+        path : list
+            List of the vertices in the path from a to b
+        """
+        path = [a]
+        d = self.geodesic_distance([b], **kwargs)
+        while path[-1] != b:
+            n = self.graph.neighbors(path[-1])
+            path.append(n[d[n].argmin()])
+        return path
 
     @property
     @_memo
@@ -723,21 +793,19 @@ class _quadset(object):
             yield [quad[0], quad[2], quad[3]]
 
 class Distortion(object):
-    """Object that computes distortion metrics between fiducial and another (e.g. flat)
+    """Used to compute distortion metrics between fiducial and another (e.g. flat)
     surface.
+
+    Parameters
+    ----------
+    flat : 2D ndarray, shape (total_verts, 3)
+        Location of each vertex in flatmap space.
+    ref : 2D ndarray, shape (total_verts, 3)
+        Location of each vertex in fiducial (reference) space.
+    polys : 2D ndarray, shape (total_polys, 3)
+        Triangle vertex indices in both `flat` and `ref`.
     """
     def __init__(self, flat, ref, polys):
-        """Initialize Distortion object.
-
-        Parameters
-        ----------
-        flat : 2D ndarray, shape (total_verts, 3)
-            Location of each vertex in flatmap space.
-        ref : 2D ndarray, shape (total_verts, 3)
-            Location of each vertex in fiducial (reference) space.
-        polys : 2D ndarray, shape (total_polys, 3)
-            Triangle vertex indices in both `flat` and `ref`.
-        """
         self.flat = flat
         self.ref = ref
         self.polys = polys

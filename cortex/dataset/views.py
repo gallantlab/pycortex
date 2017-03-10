@@ -89,18 +89,7 @@ def _from_hdf_view(h5, data, xfmname=None, vmin=None, vmax=None,  **kwargs):
         raise ValueError("Invalid Dataview specification")
 
 class Dataview(object):
-    def __init__(self, cmap=None, vmin=None, vmax=None, description="", state=None, 
-        cvmin=None,cvmax=None,cvthr=False,**kwargs):
-        """
-        MOAR HELP PLEASE. or maybe not. Is this even visible in inherited classes?
-
-        cvmin : float,optional
-            Minimum value for curvature colormap. Defaults to config file value.
-        cvmax : float, optional
-            Maximum value for background curvature colormap. Defaults to config file value.
-        cvthr : bool,optional
-            Apply threshold to background curvature
-        """
+    def __init__(self, cmap=None, vmin=None, vmax=None, description="", state=None, **kwargs):
         if self.__class__ == Dataview:
             raise TypeError('Cannot directly instantiate Dataview objects')
 
@@ -271,13 +260,8 @@ class Volume(VolumeData, Dataview):
         Maximum value in colormap. If not given defaults to TODO:WHAT
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
-
-    All additional arguments in kwargs are passed to the VolumeData and Dataview
-
-    Methods
-    -------
-    raw()
-        Returns VolumeRGB instance with colormapped data.
+    **kwargs
+        All additional arguments in kwargs are passed to the VolumeData and Dataview
 
     """
     def __init__(self, data, subject, xfmname, mask=None, 
@@ -298,6 +282,32 @@ class Volume(VolumeData, Dataview):
             description=self.description, state=self.state, **self.attrs)
 
 class Vertex(VertexData, Dataview):
+    """
+    Encapsulates a 1D vertex map or 2D vertex movie. Includes information on how
+    the data should be colormapped for display purposes.
+
+    Parameters
+    ----------
+    data : ndarray
+        The data. Can be 1D with shape (v,), or 2D with shape (t,v). Here, v can
+        be the number of vertices in both hemispheres, or the number of vertices
+        in either one of the hemispheres. In that case, the data for the other 
+        hemisphere will be filled with zeros.
+    subject : str
+        Subject identifier. Must exist in the pycortex database.
+    cmap : str or matplotlib colormap, optional
+        Colormap (or colormap name) to use. If not given defaults to matplotlib
+        default colormap.
+    vmin : float, optional
+        Minimum value in colormap. If not given, defaults to TODO:WHAT
+    vmax : float, optional
+        Maximum value in colormap. If not given defaults to TODO:WHAT
+    description : str, optional
+        String describing this dataset. Displayed in webgl viewer.
+    **kwargs
+        All additional arguments in kwargs are passed to the VolumeData and Dataview
+
+    """
     def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
             description=description, **kwargs)
