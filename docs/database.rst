@@ -6,34 +6,28 @@ Pycortex creates and maintains a simple flat-file database store all the data re
 Within the filestore, each subject has their own directory containing all associated data.
 
 
-
-``/anatomicals``
-----------------
-
+``Anatomical scans``
+--------------------
 
 
-``/cache``
-----------
 
-The cache holds the sequence of files necessary for the webgl viewer. OpenCTM_ is a geometry specification that allows very small files to reduce bandwidth. Files are stored with the format ``{subject}_{transform}_[{types}]_{compression}_{level}.{suffix}``. Each subject and transform is associated with a triplet of files called a "ctmpack". Each ctmpack contains a json file specifying the limits of the data, a ctm file consisting of concatenated left and right hemispheres, and an SVG consisting of the roi's with the data layers deleted. There is a unique ctmpack for each subject, transform, and set of included inflations. Raw CTMs are generated for view.webshow, whereas MG2 CTM's are generated for static WebGL views. These files are considered disposable, and are generated on demand.
+``Cache``
+---------
+
+The cache holds the sequence of files necessary for the webgl viewer. OpenCTM_ is a geometry specification that allows very small files to reduce bandwidth. Files are stored with the format ``{subject}_{transform}_[{types}]_{compression}_{level}.{suffix}``. Each subject and transform is associated with a triplet of files called a "ctmpack". Each ctmpack contains a json file specifying the limits of the data, a ctm file consisting of concatenated left and right hemispheres, and an SVG_ consisting of the roi's with the data layers deleted. There is a unique ctmpack for each subject, transform, and set of included inflations. Raw CTMs are generated for view.webshow, whereas MG2 CTM's are generated for static WebGL views. These files are considered disposable, and are generated on demand.
 
 The flatcache holds the voxel indices for quickly generating a flatmap. They have the format ``{subject}_{transform}_{height}_{date}.pkl``. A different flatcache must be generated for each datamap height. These files are also disposable and are generated on demand. This cache allows quickflat to satisfy its namesake.
 
-``/overlays.svg``
------------------
-
-Overlays are stored as SVG_'s. This is where surface ROIs are defined. Since these surface ROIs are invariant to transform, only one ROI map is needed for each subject. These SVGs are automatically created for a subject if you call ``cortex.add_roi``. ROI overlays are created and edited in Inkscape_. For more information, see :module:`svgroi.py`.
-
-``/rois.svg``
--------------
+.. _OpenCTM: http://openctm.sourceforge.net/
+.. _SVG: http://en.wikipedia.org/wiki/Scalable_Vector_Graphics
 
 
-``/surface-info``
------------------
+``Surface info``
+----------------
 
 
-``/surfaces``
--------------
+``Surfaces``
+------------
 
 surfaces: formatted as ``{type}_{hemisphere}.{format}``
 
@@ -71,45 +65,44 @@ For the direct command access, there are two call signatures::
 
 This returns the points and polygons of the given subject and surface type. Hemisphere defaults to "both", and since ``merge`` is true, they are vertically stacked **left, then right**. The polygon indices are shifted up for the right hemisphere to make a single unified geometry.
 
-With merge=False, the return looks different::
+With ``merge=False``, the return looks different::
 
-    left, right = surfs.getSurf('AH', 'fiducial', merge=False)
+    left, right = cortex.db.get_surf('AH', 'fiducial', merge=False)
     lpts, lpolys = left
     rpts, rpolys = right
 
-If you only specify hemisphere="left" or "right", only one hemisphere will be returned, and the return will again be only points, polygons, and normals.
+If you only specify ``hemisphere='left'`` or ``'right'``, only one hemisphere will be returned, and the return will again be only points, polygons, and normals.
 
 Tab interface
 ~~~~~~~~~~~~~
 An alternate way to browse the database is using ipython_ and its tab completion feature. If you type the following::
 
-    In [1]: from cortex import surfs
-    In [2]: surfs.
+    In [1]: import cortex
+    In [2]: cortex.db.
 
-Then press tab, a list of subjects will appear. For example::
+Then press <<TAB>>, a list of subjects will appear. For example::
 
-    In [2]: surfs.
-    surfs.AH         surfs.getFiles   surfs.JG         surfs.MO         surfs.TC
-    surfs.AV         surfs.getVTK     surfs.loadVTK    surfs.NB         surfs.TN
-    surfs.DS         surfs.getXfm     surfs.loadXfm    surfs.NB1        surfs.WH
-    surfs.getCoords  surfs.JG         surfs.ML         surfs.SN         surfs.WH1
+    In [3]: cortex.db.
+     cortex.db.get_anat     cortex.db.get_overlay  cortex.db.get_view     cortex.db.save_view
+     cortex.db.get_cache    cortex.db.get_surf     cortex.db.get_xfm      cortex.db.save_xfm
+     cortex.db.get_mask     cortex.db.get_surfinfo cortex.db.S1
 
-Selecting the subject **AH** and tabbing gives you additional choices::
+Selecting the subject **S1** and pressing <<TAB>> gives you additional choices::
 
-    In [3]: surfs.AH.
-    surfs.AH.anatomical  surfs.AH.surfaces    surfs.AH.transforms
+    In [4]: cortex.db.S1.
+     cortex.db.S1.filestore  cortex.db.S1.surfaces
+     cortex.db.S1.subject    cortex.db.S1.transforms
 
-    In [4]: surfs.AH.surfaces.
-    surfs.AH.surfaces.ellipsoid      surfs.AH.surfaces.inflated
-    surfs.AH.surfaces.fiducial       surfs.AH.surfaces.raw
-    surfs.AH.surfaces.flat           surfs.AH.surfaces.superinflated
+    In [5]: cortex.db.AH.surfaces.
+     cortex.db.S1.surfaces.flat     cortex.db.S1.surfaces.pia
+     cortex.db.S1.surfaces.inflated cortex.db.S1.surfaces.wm
 
-Selecting "surfaces" gives you a list of all surface types associated with that subject. Here, we see that the subject "AH" has surfaces from almost every stage of flattening: raw, fiducial, inflated, superinflated, ellipsoid, and flat.
+Selecting "surfaces" gives you a list of all surface types associated with that subject.
 
 Finally, selecting one surface type will give you two new functions: get, and show::
     
-    In [5]: left, right = surfs.AH.surfaces.fiducial.get()
-    In [6]: surfs.AH.surfaces.fiducial.show()
+    In [6]: left, right = cortex.db.AH.surfaces.inflated.get()
+    In [7]: cortex.db.AH.surfaces.fiducial.show()
 
 .. _ipython: http://ipython.org/
 
@@ -131,6 +124,10 @@ Each transform is stored in its own subdirectory containing two files: ``matrice
 Transforms are saved as json-encoded text files. They have the format ``{subject}_{transform}.xfm``. There are four fields in this JSON structure: ``subject``, ``epifile``, ``coord``, ``magnet``. ``epifile`` gives the filename of the functional volume (EPI) that served as the reference for this transform. ``coord`` stores the transform from fiducial to coordinate space (for fast index lookups). ``magnet`` stores the transform from the fiducial to the magnet space, as defined in the return of ``nibabel.get_affine()``.
 
 Reference volumes are typically in Nifti_ format (*.nii), but can be any format that is understood by nibabel_. These are stored to ensure that we know what the reference for any transform was. This makes it possible to visually verify and tweak alignments as well as keep a static store of images for future coregistrations.
+
+.. _nibabel: http://nipy.sourceforge.net/nibabel/
+.. _Nifti: http://nifti.nimh.nih.gov/nifti-1/
+
 
 Accessing transforms
 ^^^^^^^^^^^^^^^^^^^^
@@ -190,9 +187,25 @@ If you use a custom mask for any reason, it is highly recommended that you load 
     surfs.loadMask(subject, xfmname, masktype, mask)
 
 
-    
-``/views``
-----------
+``Views``
+---------
+
+
+``overlays.svg``
+----------------
+
+Overlays are stored as SVG_'s. This is where surface ROIs are defined. Since these surface ROIs are invariant to transform, only one ROI map is needed for each subject. These SVGs are automatically created for a subject if you call ``cortex.add_roi``. ROI overlays are created and edited in Inkscape_. For more information, see :module:`svgroi.py`.
+
+.. _SVG: http://en.wikipedia.org/wiki/Scalable_Vector_Graphics
+.. _Inkscape: http://inkscape.org/
+
+
+``rois.svg``
+------------
+
+
+Example subject database entry
+==============================
 
 Here is an example entry into the filestore...
 
@@ -229,18 +242,3 @@ Here is an example entry into the filestore...
         │       ├── matrices.xfm
         │       └── reference.nii.gz
         └── views
-
-
-
-For a slightly flashier way to view the database immediately::
-
-    surfs.AH.surfaces.fiducial.show()
-
-References
-==========
-
-.. _OpenCTM: http://openctm.sourceforge.net/
-.. _SVG: http://en.wikipedia.org/wiki/Scalable_Vector_Graphics
-.. _Inkscape: http://inkscape.org/
-.. _Nifti: http://nifti.nimh.nih.gov/nifti-1/
-.. _nibabel: http://nipy.sourceforge.net/nibabel/
