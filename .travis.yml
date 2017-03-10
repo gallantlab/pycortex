@@ -1,7 +1,7 @@
 language: python
 
 python:
-  - 2.7.12
+  - 2.7
 
 sudo: true
 
@@ -17,10 +17,13 @@ before_install:
   - sudo apt-get -y -qq install python-numpy python-scipy python-h5py cython python-numexpr python-tornado python-lxml python-networkx
 
 install:
-  - pip install nibabel Pillow matplotlib>=1.5.1
+  - pip install --upgrade pip
+  - pip install nibabel Pillow matplotlib==1.5.1
+  - python -c "import matplotlib; print (matplotlib.__version__)"
   
 script:
   - set -e
+
   - pip install sphinx numpydoc sphinx_gallery
   - python setup.py build_ext --inplace
 
