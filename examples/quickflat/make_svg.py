@@ -15,6 +15,8 @@ any of the intermediate steps changes, the flatmap generation may fail.
 This can be helpful if you think there is no reason that the
 `quickflat.make_figure` to fail but it nevertheless fails. Try it, it's magic!
 
+The default background is set to be a transparent image. If you want to change
+that use the parameter `bgcolor`.
 """
 import cortex
 
