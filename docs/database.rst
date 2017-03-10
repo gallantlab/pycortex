@@ -1,43 +1,36 @@
 Surface Database
 ================
 
-Pycortex creates and maintains a simple flat-file database store all the data required to plot data on a cortical sheet (surfaces, transforms, masks, regions-of-interest, etc.). By default, the filestore is in ``INSTALL_DATA/share/pycortex/``. This location can be customized in your ``options.cfg`` file.
+Pycortex creates and maintains a simple flat-file database store all the data required to plot data on a cortical sheet (surfaces, transforms, masks, regions-of-interest, etc.). By default, the filestore is in ``INSTALL_DATA/share/pycortex/``. This location can be customized in your ``options.cfg`` file. You can find the filestore directory by running::
+
+    import cortex
+    cortex.database.default_filestore
 
 Within the filestore, each subject has their own directory containing all associated data.
 
 
-``Anatomical scans``
---------------------
+Anatomical scans
+----------------
+
+Each subject must have an anatomical scan.
 
 
-
-``Cache``
----------
+Cache
+-----
 
 The cache holds the sequence of files necessary for the webgl viewer. OpenCTM_ is a geometry specification that allows very small files to reduce bandwidth. Files are stored with the format ``{subject}_{transform}_[{types}]_{compression}_{level}.{suffix}``. Each subject and transform is associated with a triplet of files called a "ctmpack". Each ctmpack contains a json file specifying the limits of the data, a ctm file consisting of concatenated left and right hemispheres, and an SVG_ consisting of the roi's with the data layers deleted. There is a unique ctmpack for each subject, transform, and set of included inflations. Raw CTMs are generated for view.webshow, whereas MG2 CTM's are generated for static WebGL views. These files are considered disposable, and are generated on demand.
 
 The flatcache holds the voxel indices for quickly generating a flatmap. They have the format ``{subject}_{transform}_{height}_{date}.pkl``. A different flatcache must be generated for each datamap height. These files are also disposable and are generated on demand. This cache allows quickflat to satisfy its namesake.
 
-.. _OpenCTM: http://openctm.sourceforge.net/
-.. _SVG: http://en.wikipedia.org/wiki/Scalable_Vector_Graphics
 
-
-``Surface info``
-----------------
-
-
-``Surfaces``
-------------
-
-surfaces: formatted as ``{type}_{hemisphere}.{format}``
-
-Surfaces may be stored in any one of **OFF**, **VTK**, or **npz** formats. The highest performance is achieved with **npz** since it is binary and compressed. VTK is also efficient, having a `Cython` module to read files.
+Surfaces
+--------
 
 Pycortex fundamentally operates on triangular mesh geometry computed from a subject's anatomy. Surface geometries are usually created from a `marching cubes`_ reconstruction of the segmented cortical sheet. This undistorted reconstruction in the original anatomical space is known as the fiducial surface. The fiducial surface is inflated and cut along anatomical and functional boundaries and is morphed by an energy metric to be on a flattened 2D surface.
 
 Unfortunately, pycortex currently has no way of generating or editing these geometries directly. The recommended software for doing segmentation and flattening is Freesurfer_. Another package which is generally more user-friendly is Caret_. pycortex includes some utility functions to interact with Freesurfer_, documented '''HERE'''.
 
-A surface in pycortex is any file specifying the triangular mesh geometry of a subject. Surfaces generally have three variables associated:
+A surface in pycortex is any file specifying the triangular mesh geometry of a subject. Surfaces may be stored in any one of **OFF**, **VTK**, or **npz** formats. The highest performance is achieved with **npz** since it is binary and compressed. VTK is also efficient, having a `Cython` module to read files. Inside the filestore, surface names are formatted as ``{type}_{hemisphere}.{format}``. Surfaces generally have three variables associated:
 
     * **Subject** : a unique subject identifier
     * **Type** : the identifier for the type of geometry, **fiducial**, **inflated**, or **flat**
@@ -46,10 +39,6 @@ A surface in pycortex is any file specifying the triangular mesh geometry of a s
 The surface files for a specific subject and hemisphere must have the same number of vertices across all the different types. Without this information, the mapping from fiducial to flatmap is not preserved, and there is no way to display data on the flatmap. Freesurfer_ surfaces preserve this relationship, and can be automatically imported into the database. pycortex does not check the validity of surfaces, and will break in unexpected ways if the number of vertices do not match! It is your job to make sure that all surfaces are valid.
 
 In order to plot cortical data for a subject, at least the fiducial and flat geometries must be available for that subject. Surfaces must be stored in VTK v. 1 format (also known as the ASCII format).
-
-.. _marching cubes: http://en.wikipedia.org/wiki/Marching_cubes
-.. _Caret: http://brainvis.wustl.edu/wiki/index.php/Main_Page
-.. _Freesurfer: http://surfer.nmr.mgh.harvard.edu/
 
 
 Accessing surfaces
@@ -104,7 +93,6 @@ Finally, selecting one surface type will give you two new functions: get, and sh
     In [6]: left, right = cortex.db.AH.surfaces.inflated.get()
     In [7]: cortex.db.AH.surfaces.fiducial.show()
 
-.. _ipython: http://ipython.org/
 
 Adding new surfaces
 ~~~~~~~~~~~~~~~~~~~
@@ -114,8 +102,8 @@ In order to adequately utilize all the functions in pycortex, please add the **f
 
 
 
-``Transforms``
---------------
+Transforms
+----------
 
 Transformations in pycortex are stored as **affine** matrices encoded in magnet isocenter space, as defined in the Nifti_ headers.
 
@@ -193,8 +181,23 @@ If you use a custom mask for any reason, it is highly recommended that you load 
     cortex.db.load_mask(subject, xfmname, masktype, mask)
 
 
-``Views``
----------
+Surface info
+------------
+
+The filestore also manages several important quantifications about the surfaces. These include Tissot's Indicatrix and the flatmap surface distortion. There are stored in the ``/surface_info`` directory.
+
+
+Views
+-----
+
+It is often useful to be able to store, recall, and share specific perspectives onto a 3D model of the brain. The filestore stores these "views" as JSON files containing parameters such as altitude, radius, target, and azimuth. After opening a webgl viewer and manipulating the brain using the browser GUI, a view can be stored by calling::
+
+    viewer = cortex.webgl.show(volume)
+    viewer.save_view(subject, name)
+
+Where, ``'subject'`` is the subject identifier and ``'name'`` is a unique name for the stored view. A previously saved view can be applied to a webgl viewer using::
+
+    viewer.get_view(viewer, subject, name)
 
 
 ``overlays.svg``
@@ -202,16 +205,13 @@ If you use a custom mask for any reason, it is highly recommended that you load 
 
 Overlays are stored as SVG_'s. This is where surface ROIs are defined. Since these surface ROIs are invariant to transform, only one ROI map is needed for each subject. These SVGs are automatically created for a subject if you call ``cortex.add_roi``. ROI overlays are created and edited in Inkscape_. For more information, see :module:`svgroi.py`.
 
-.. _SVG: http://en.wikipedia.org/wiki/Scalable_Vector_Graphics
-.. _Inkscape: http://inkscape.org/
-
 
 ``rois.svg``
 ------------
 
 
 Example subject database entry
-==============================
+------------------------------
 
 Here is an example entry into the filestore...
 
@@ -248,3 +248,13 @@ Here is an example entry into the filestore...
         │       ├── matrices.xfm
         │       └── reference.nii.gz
         └── views
+
+
+.. _OpenCTM: http://openctm.sourceforge.net/
+.. _SVG: http://en.wikipedia.org/wiki/Scalable_Vector_Graphics
+.. _marching cubes: http://en.wikipedia.org/wiki/Marching_cubes
+.. _Caret: http://brainvis.wustl.edu/wiki/index.php/Main_Page
+.. _Freesurfer: http://surfer.nmr.mgh.harvard.edu/
+.. _ipython: http://ipython.org/
+.. _SVG: http://en.wikipedia.org/wiki/Scalable_Vector_Graphics
+.. _Inkscape: http://inkscape.org/
