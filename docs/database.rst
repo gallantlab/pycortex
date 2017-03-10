@@ -174,23 +174,23 @@ Masks
 ^^^^^
 One of the fundamental reasons for carefully aligning surfaces is to allow the creation and use of cortical masks. This limits the number of voxels you need to model. Traditionally, these masks are created by selecting the set of nearest neighbor voxels for each vertex on the transformed surface. Unfortunately, pycortex's advanced per-pixel mapping precludes the use of this simple mask, since faces could potentially intersect with voxel corners which are not in this simple mask. Thus, the default masks in pycortex use a distance metric to compute mask membership.
 
-Masks were added into pycortex in May 2013, due to previous issues with masked data and the addition of the per-pixel mapping. Masked datasets are further discussed in the Datasets_ page.
+Masks were added into pycortex in May 2013, due to previous issues with masked data and the addition of the per-pixel mapping. Masked datasets are further discussed in the datasets page.
 
 Retrieving a mask
 """""""""""""""""
-A mask is specified by three variables: subject name, transform name, and mask type. pycortex defines two named masks for each transform by default. These are the ``thick`` and the ``thin`` masks. They correspond to a distance of 8 mm and 2 mm, respectively, from any given cortical vertex. If the subject has both pial and white matter surfaces, all voxels of exactly the cortical thickness distance from each vertex are selected from the fiducial surface. To retrieve the ``thick`` mask::
+A mask is specified by three variables: **subject**, **transform**, and **mask type**. pycortex defines two named masks for each transform by default. These are the ``'thick'`` and the ``'thin'`` masks. They correspond to a distance of 8 mm and 2 mm, respectively, from any given cortical vertex. Additionally, masks corresponding to known mapper types (such as ``'nearest'`` and ``'trilinear'``) are available. If the subject has both pial and white matter surfaces, all voxels of exactly the cortical thickness distance from each vertex are selected from the fiducial surface. To retrieve the thick mask for S1 using the fullhead transform::
 
-    from cortex import surfs
-    mask = surfs.getMask(subject, xfmname, "thick")
+    import cortex
+    mask = cortex.db.get_mask('S1', 'fullhead', 'thick')
 
-Additionally, masks corresponding to known mapper types (such as 'nearest' and 'trilinear') will also be automatically generated and recorded by the database when requested.
+The first time you load a mask, it will be generated and stored inside the folder for the associated transform.
 
 Loading a mask
 """"""""""""""
-If you use a custom mask for any reason, it is highly recommended that you load it into the database for future reference. It will allow more seamless Datasets_ integration, and will prevent it from being lost. To add a custom mask to the database::
+If you use a custom mask for any reason, it is highly recommended that you load it into the database for future reference. It will allow more seamless integration with ``Datasets``, and will prevent it from being lost. To add a custom mask to the database::
 
-    from cortex import surfs
-    surfs.loadMask(subject, xfmname, masktype, mask)
+    import cortex
+    cortex.db.load_mask(subject, xfmname, masktype, mask)
 
 
 ``Views``
