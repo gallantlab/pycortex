@@ -2,7 +2,12 @@ import os
 import glob
 import copy
 import json
-import queue
+
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+    
 import shutil
 import random
 import functools

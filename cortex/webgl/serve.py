@@ -4,7 +4,12 @@ import time
 import json
 import stat
 import email
-import queue
+
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+
 import struct
 import socket
 import logging
