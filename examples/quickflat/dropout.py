@@ -3,8 +3,8 @@
 Display potential dropout regions on the flatmap.
 =================================================
 
-A crosshatch is used to display a dropout region. A dropout region
-is a region with very low EPI signal.
+A dropout region is a region with very low EPI signal. In pycortex a
+crosshatch is used to display such dropout regions.
 
 The crosshatches are created using the reference nifti image file
 with a threshold.
