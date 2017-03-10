@@ -29,7 +29,7 @@ surfs = [cortex.polyutils.Surface(*d)
          for d in cortex.db.get_surf(subject, "fiducial")]
 
 # This is the total number of vertices in the left and right hemispheres
-num_verts = [np.float(s.pts.shape[0]) for s in surfs]
+num_verts = [s.pts.shape[0] for s in surfs]
 
 # Creating one fake dataset that is basically a gradient across each
 # hemisphere based on vertex number
