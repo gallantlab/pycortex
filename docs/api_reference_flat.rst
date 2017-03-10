@@ -25,19 +25,19 @@ quickflat
 .. autosummary::
     :toctree:generated/
 
-	add_curvature
-	add_data
-	add_rois
-	add_sulci
-	add_hatch
-	add_colorbar
-	add_custom
-	add_cutout
+    add_curvature
+    add_data
+    add_rois
+    add_sulci
+    add_hatch
+    add_colorbar
+    add_custom
+    add_cutout
     make_figure
     make_png
-	make_svg
-	get_flatmask
-	get_flatcache
+    make_svg
+    get_flatmask
+    get_flatcache
 
 
 webgl
@@ -58,16 +58,16 @@ dataset
 .. automodule:: cortex.dataset
 
 .. autosummary::
-	:toctree:generated/
-	:template:class.rst
+    :toctree:generated/
+    :template:class.rst
 
-	Volume
-	Volume2D
-	VolumeRGB
-	Vertex
-	Vertex2D
-	VertexRGB
-	Dataset
+    Volume
+    Volume2D
+    VolumeRGB
+    Vertex
+    Vertex2D
+    VertexRGB
+    Dataset
 
 
 database
@@ -76,10 +76,10 @@ database
 .. automodule:: cortex.database
 
 .. autosummary::
-	:toctree:generated/
-	:template:class.rst
+    :toctree:generated/
+    :template:class.rst
 
-	Database
+    Database
 
 
 mapper
@@ -88,10 +88,10 @@ mapper
 .. automodule:: cortex.mapper
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	Mapper
-	get_mapper
+    Mapper
+    get_mapper
 
 
 svgroi
@@ -100,11 +100,11 @@ svgroi
 .. automodule:: cortex.svgroi
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	ROIPack
-	ROI
-	get_roipack
+    ROIPack
+    ROI
+    get_roipack
 
 
 utils
@@ -113,19 +113,19 @@ utils
 .. automodule:: cortex.utils
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	anat2epispace
-	get_aseg_mask
-	get_cortical_mask
-	get_ctmmap
-	get_ctmpack
-	get_dropout
-	get_hemi_masks
-	get_roi_masks
-	get_roi_mask
-	get_roi_verts
-	get_vox_dist
+    anat2epispace
+    get_aseg_mask
+    get_cortical_mask
+    get_ctmmap
+    get_ctmpack
+    get_dropout
+    get_hemi_masks
+    get_roi_masks
+    get_roi_mask
+    get_roi_verts
+    get_vox_dist
 
 
 segment
@@ -134,12 +134,12 @@ segment
 .. automodule:: cortex.segment
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	init_subject
-	fix_wm
-	fix_pia
-	cut_surface
+    init_subject
+    fix_wm
+    fix_pia
+    cut_surface
 
 
 freesurfer
@@ -148,14 +148,14 @@ freesurfer
 .. automodule:: cortex.freesurfer
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	get_paths
-	autorecon
-	flatten
-	import_subj
-	import_flat
-	show_surf
+    get_paths
+    autorecon
+    flatten
+    import_subj
+    import_flat
+    show_surf
 
 
 volume
@@ -164,14 +164,14 @@ volume
 .. automodule:: cortex.volume
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	unmask
-	mosaic
-	epi2anatspace
-	anat2epispace
-	epi2anatspace_fsl
-	anat2epispace_fsl
+    unmask
+    mosaic
+    epi2anatspace
+    anat2epispace
+    epi2anatspace_fsl
+    anat2epispace_fsl
 
 
 surfinfo
@@ -180,13 +180,13 @@ surfinfo
 .. automodule:: cortex.surfinfo
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	curvature
-	distortion
-	thickness
-	tissots_indicatrix
-	flat_border
+    curvature
+    distortion
+    thickness
+    tissots_indicatrix
+    flat_border
 
 
 anat
@@ -195,10 +195,10 @@ anat
 .. automodule:: cortex.anat
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	voxelize
-	
+    voxelize
+    
 
 xfm
 ------
@@ -206,9 +206,9 @@ xfm
 .. automodule:: cortex.xfm
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	Transform
+    Transform
 
 
 align
@@ -217,11 +217,11 @@ align
 .. automodule:: cortex.align
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	manual
-	automatic
-	autotweak
+    manual
+    automatic
+    autotweak
 
 
 polyutils
@@ -230,11 +230,11 @@ polyutils
 .. automodule:: cortex.polyutils
 
 .. autosummary::
-	:toctree:generated/
-	:template:class.rst
+    :toctree:generated/
+    :template:class.rst
 
-	Surface
-	Distortion
+    Surface
+    Distortion
 
 
 mni
@@ -243,9 +243,9 @@ mni
 .. automodule:: cortex.mni
 
 .. autosummary::
-	:toctree:generated/
+    :toctree:generated/
 
-	compute_mni_transform
-	transform_to_mni
-	transform_surface_to_mni
-	transform_mni_to_subject
+    compute_mni_transform
+    transform_to_mni
+    transform_surface_to_mni
+    transform_mni_to_subject

@@ -151,15 +151,15 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
     Parameters
     ----------
     fig : figure
-		figure on to which to plot the ROIs
+        figure on to which to plot the ROIs
     dataview : 
 
     extents : 
 
     height : int
-		Height of image. None defaults to the figure height.
+        Height of image. None defaults to the figure height.
     with_labels : bool
-		Also show ROI names next to outlines?
+        Also show ROI names next to outlines?
     roi_list : 
 
     kwargs : 
@@ -188,16 +188,16 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
 
     Parameters
     ----------
-	fig : figure
-		figure to which to add sulci layer
-	dataview :
-	
+    fig : figure
+        figure to which to add sulci layer
+    dataview :
+    
     linewidth : 
 
     linecolor : 
 
     with_labels : bool
-		Add labels along with sulci?
+        Add labels along with sulci?
     labelsize : 
 
     labelcolor : 
@@ -297,25 +297,25 @@ def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(.4, .07, .2,
 def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_labels=False, 
     shape_list=None, **kwargs):
     """Add a custom data layer
-	
+    
     Parameters
     ----------
     fig : figure
-		figure to which to add the data
+        figure to which to add the data
     dataview : 
 
     svgfile : 
 
     layer : 
 
-	extents :
-	
-	height : int
-		height of iamge in pixels. None defaults to image size
-	with_labels : bool
-	
-	shape_list :
-	
+    extents :
+    
+    height : int
+        height of iamge in pixels. None defaults to image size
+    with_labels : bool
+    
+    shape_list :
+    
     labelsize : 
 
     labelcolor : 
@@ -347,17 +347,17 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
 
     Parameters
     ----------
-	fig : figure
-		figure to which to add cutouts
-	name : str
-	
-	dataview : 
-	
-	layers :
-	
-	height : int
-	
-	extents :
+    fig : figure
+        figure to which to add cutouts
+    name : str
+    
+    dataview : 
+    
+    layers :
+    
+    height : int
+    
+    extents :
 
     Returns
     -------
