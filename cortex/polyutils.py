@@ -316,9 +316,11 @@ class Surface(object):
             Indices of non-boundary vertices
         """
         try:
-            from sksparse.sparse.cholmod import cholesky
-        except ImportError:
             from scikits.sparse.cholmod import cholesky
+            factorize = lambda x: cholesky(x).solve_A
+        except ImportError:
+            factorize = sparse.linalg.dsolve.factorized
+            
         B, D, W, V = self.laplace_operator
         npt = len(D)
 
@@ -331,7 +333,8 @@ class Surface(object):
         L = Dinv.dot((V-W)) # construct Laplace-Beltrami operator
         
         lhs = (V-W).dot(L) # construct left side, almost squared L-B operator
-        lhsfac = cholesky(lhs[notboundary][:,notboundary]) # factorize
+        #lhsfac = cholesky(lhs[notboundary][:,notboundary]) # factorize
+        lhsfac = factorize(lhs[notboundary][:,notboundary]) # factorize
         
         return lhs, D, Dinv, lhsfac, notboundary
 
@@ -372,8 +375,9 @@ class Surface(object):
             vr = lhs.dot(r)
             
             #phi = lhsfac.solve_A(-vr.todense()[notb]) # 29.9ms
-            phi = lhsfac.solve_A(-vr[notb].todense()) # 28.2ms
-            # phi = lhsfac.solve_A(-vr[notb]).todense() # 29.3ms
+            #phi = lhsfac.solve_A(-vr[notb]).todense() # 29.3ms
+            #phi = lhsfac.solve_A(-vr[notb].todense()) # 28.2ms
+            phi = lhsfac(-vr[notb].todense())
             
             tphi = np.zeros((npt,nd))
             tphi[notb] = phi

@@ -26,8 +26,8 @@ surfs = [cortex.polyutils.Surface(*d)
 numl = surfs[0].pts.shape[0]
 
 # Now we need to pick the start and end points of the line we will draw
-pt_a = np.random.randint(numl)
-pt_b = np.random.randint(numl)
+pt_a = 100
+pt_b = 50000
 
 # Then we find the geodesic path between these points
 path = surfs[0].geodesic_path(pt_a, pt_b)

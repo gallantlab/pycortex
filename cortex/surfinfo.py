@@ -37,7 +37,7 @@ def curvature(outfile, subject, smooth=20):
         curvs.append(curv)
     np.savez(outfile, left=curvs[0], right=curvs[1])
 
-def distortion(outfile, subject, type='areal', smooth=20):
+def distortion(outfile, subject, dist_type='areal', smooth=20):
     """
     Compute distortion of flatmap relative to fiducial surface and save it
     at `outfile`. Several different types of distortion are available:
@@ -57,7 +57,7 @@ def distortion(outfile, subject, type='areal', smooth=20):
         Path where the distortion map will be saved as an npz file.
     subject : str
         Subject in the pycortex database for whom distortion will be computed.
-    type : ['areal', 'metric'], optional
+    dist_type : ['areal', 'metric'], optional
         Type of distortion to compute. Default 'areal'.
     smooth : float, optional
         Amount of smoothing to apply to the distortion map before returning.
@@ -69,7 +69,7 @@ def distortion(outfile, subject, type='areal', smooth=20):
         flatvert, flattri = db.get_surf(subject, "flat", hem)
         surf = polyutils.Surface(fidvert, fidtri)
 
-        dist = getattr(polyutils.Distortion(flatvert, fidvert, flattri), type)
+        dist = getattr(polyutils.Distortion(flatvert, fidvert, flattri), dist_type)
         smdist = surf.smooth(dist, smooth)
         distortions.append(smdist)
 
