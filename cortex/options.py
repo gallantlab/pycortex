@@ -10,9 +10,10 @@ userdir = appdirs.user_data_dir("pycortex", "JamesGao")
 usercfg = os.path.join(userdir, "options.cfg")
 
 config = configparser.ConfigParser()
-config.readfp(open(os.path.join(cwd, 'defaults.cfg')))
+config.read(os.path.join(cwd, 'defaults.cfg'))
 
-if len(config.read(usercfg)) == 0:
+files_successfully_read = config.read(usercfg)
+if len(files_successfully_read) == 0:
     os.makedirs(userdir)
     with open(usercfg, 'w') as fp:
         config.write(fp)
