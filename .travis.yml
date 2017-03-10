@@ -1,7 +1,7 @@
 language: python
 
 python:
-  - 3.5
+  - 2.7
 
 sudo: false
 
@@ -12,10 +12,6 @@ env:
 script:
   - set -e
 
-  - pip install virtualenv
-  - virtualenv venv --python=python2.7
-  - source venv/bin/activate
-
   - pip install -r requirements.txt
   - pip install sphinx numpydoc sphinx_gallery
   - python setup.py build_ext --inplace
@@ -24,7 +20,8 @@ script:
   - make html
   - cd ..
   
-  - deactivate
-
+  - virtualenv venv --python=python3.5
+  - source venv/bin/activate
   - pip install git+https://github.com/r-b-g-b/doctr.git@deploy-to-any-branch  
   - doctr deploy --deploy-repo gallantlab/gallantlab.github.io --deploy-branch-name master --gh-pages-docs / --no-require-master
+  - deactivate
