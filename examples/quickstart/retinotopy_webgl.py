@@ -20,11 +20,13 @@ yourself you will get a viewer showing something like the following.
 
 """
 
-# To run the demo, uncomment the following lines
+import cortex
+import urllib
 
-# import cortex
-# import urllib
-# _ = urllib.urlretrieve("http://gallantlab.org/pycortex/S1_retinotopy.hdf",
-#                        "S1_retinotopy.hdf")
-# ret_data = cortex.load("S1_retinotopy.hdf")
-# cortex.webshow(ret_data)
+# Download and load in retinotopy data
+_ = urllib.urlretrieve("http://gallantlab.org/pycortex/S1_retinotopy.hdf",
+                       "S1_retinotopy.hdf")
+ret_data = cortex.load("S1_retinotopy.hdf")
+
+# Open the webviewer
+cortex.webshow(ret_data)
