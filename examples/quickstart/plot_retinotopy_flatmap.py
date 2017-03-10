@@ -27,9 +27,9 @@ ret_data = cortex.load("S1_retinotopy.hdf")
 
 # The retinotopy data has to be divided into left and right hemispheres
 left_data = ret_data.angle_left
-cortex.quickshow(left_data)
+cortex.quickshow(left_data, with_curvature=True, cvmin=-5., cvmax=5., cvthr=True)
 plt.show()
 
 right_data = ret_data.angle_right
-cortex.quickshow(right_data)
+cortex.quickshow(right_data, with_curvature=True, cvmin=-5., cvmax=5., cvthr=True)
 plt.show()
