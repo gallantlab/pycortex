@@ -17,7 +17,7 @@ before_install:
   - sudo apt-get -y -qq install python-numpy python-scipy python-h5py cython python-numexpr python-tornado python-lxml python-networkx
 
 install:
-  - pip install nibabel Pillow matplotlib
+  - pip install nibabel Pillow matplotlib>=2.0.0
   
 script:
   - set -e
