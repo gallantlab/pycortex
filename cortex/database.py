@@ -166,7 +166,7 @@ class Database(object):
     
     def __dir__(self):
         return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", # "get_paths", # Add?
-                "get_mask", "get_overlay","get_cache", "get_view","save_view"] + list(self.subjects.keys())
+                "get_mask", "get_overlay","get_cache", "get_view", "save_view", "get_mnixfm"] + list(self.subjects.keys())
 
     def loadXfm(self, *args, **kwargs):
         warnings.warn("loadXfm is deprecated, use save_xfm instead", Warning)

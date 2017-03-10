@@ -67,6 +67,7 @@ database
 
 .. autosummary::
 	:toctree:generated/
+	:template:class.rst
 
 	Database
 
