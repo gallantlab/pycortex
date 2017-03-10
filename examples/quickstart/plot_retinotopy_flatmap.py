@@ -5,7 +5,9 @@ Plot Example Retinotopy Flatmaps
 
 This demo shows how to plot example retinotopy data onto a subject's brain
 on a flatmap. In order for this demo to work, you need to download this
-dataset_.
+dataset_, but that can also be done automatically through the `urllib`
+command that is included.
+
 
 .. _dataset: http://gallantlab.org/pycortex/S1_retinotopy.hdf
 
@@ -16,7 +18,11 @@ and you will also need a flatmap for them.
 
 import cortex
 import matplotlib.pyplot as plt
+import urllib
 
+# Download the dataset and load it
+_ = urllib.urlretrieve("http://gallantlab.org/pycortex/S1_retinotopy.hdf",
+                       "S1_retinotopy.hdf")
 ret_data = cortex.load("S1_retinotopy.hdf")
 
 # The retinotopy data has to be divided into left and right hemispheres
