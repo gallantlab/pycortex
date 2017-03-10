@@ -229,6 +229,9 @@ volume
     anat2epispace
     epi2anatspace_fsl
     anat2epispace_fsl
+    show_slice
+    show_mip
+    show_glass
     
 
 xfm
