@@ -19,6 +19,7 @@ from cortex.options import config
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
 sodins = "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+
 parser = etree.XMLParser(remove_blank_text=True, huge_tree=True)
 
 cwd = os.path.abspath(os.path.split(__file__)[0])
@@ -36,7 +37,7 @@ class SVGOverlay(object):
         h = float(self.svg.getroot().get("height"))
         self.svgshape = w, h
 
-        #grab relevant layers
+        # Grab relevant layers
         self.layers = dict()
         for layer in self.svg.getroot().findall("{%s}g"%svgns):
             layer = Overlay(self, layer)
@@ -97,7 +98,7 @@ class SVGOverlay(object):
 
     def get_svg(self, filename=None, labels=True, with_ims=None): # This did nothing - why?:, **kwargs):
         """Returns an SVG with the included images."""
-        self.labels.visible = labesl
+        self.labels.visible = labels
         
         outsvg = copy.deepcopy(self.svg)
         if with_ims is not None:
@@ -122,14 +123,16 @@ class SVGOverlay(object):
             with open(filename, "w") as outfile:
                 outfile.write(etree.tostring(outsvg))
         
-    def get_texture(self, layer_name, texres, name=None, background=None, labels=True, bits=32, **kwargs):
+    def get_texture(self, layer_name, texres, name=None, background=None, labels=True, bits=32, 
+        shape_list=None, **kwargs):
         '''Renders a specific layer of this svgobject as a png
 
         '''
-        #set the size of the texture
-        w, h = self.svgshape
-        dpi = texres / h * 72 # 72 is screen resolution assumption for svg files
-
+        import matplotlib.pyplot as plt
+        # Set the size of the texture
+        # !Not necessary w/ new inkscape command instead of ImageMagick convert
+        #w, h = self.svgshape
+        #dpi = texres / h * 72 # 72 is screen resolution assumption for svg files
         if background is not None:
             img = E.image(
                 {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%background},
@@ -142,20 +145,28 @@ class SVGOverlay(object):
         for layer in self:
             if layer.name==layer_name:
                 layer.visible = True
-                if len(kwargs)>0:
-                    print('Setting: %r'%repr(kwargs))
+                layer.labels.visible = labels
+                # Maybe necessary?
+                #kwbs = dict((k,v) for k, v in kwargs.items() if v is not None)
+                if shape_list is not None:
+                    for name_, shape_ in layer.shapes.items():
+                        shape_.visible = name_ in shape_list
+
                 layer.set(**kwargs)
             else:
                 layer.visible = False
-            layer.labels.visible = labels
+                layer.labels.visible = False
 
         pngfile = name
         if name is None:
             png = tempfile.NamedTemporaryFile(suffix=".png")
             pngfile = png.name
 
-        cmd = "convert -background none -density {dpi} SVG:- PNG{bits}:{outfile}"
-        cmd = cmd.format(dpi=dpi, outfile=pngfile, bits=bits)
+        # Old command: (Using ImageMagick function `convert`)
+        #cmd = "convert -background none -density {dpi} SVG:- PNG{bits}:{outfile}"
+        #cmd = "inkscape -z -d {dpi} -e {outfile} /dev/stdin"
+        cmd = "inkscape -z -h {height} -e {outfile} /dev/stdin"
+        cmd = cmd.format(height=texres, outfile=pngfile) #, bits=bits)
         proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
         proc.communicate(etree.tostring(self.svg))
         
@@ -164,8 +175,8 @@ class SVGOverlay(object):
 
         if name is None:
             png.seek(0)
-            #im = plt.imread(png)
-            return png
+            im = plt.imread(png)
+            return im
 
 class Overlay(object):
     def __init__(self, svgobject, layer):
@@ -175,12 +186,12 @@ class Overlay(object):
         self.name = layer.attrib['{%s}label'%inkns]
         self.layer.attrib['class'] = 'display_layer'
 
-        #check to see if the layer is locked, to see if we need to override the style
+        # Check to see if the layer is locked, to see if we need to override the style
         locked = '{%s}insensitive'%sodins
         self.shapes = dict()
-        for layer in _find_layer(layer, "shapes").findall("{%s}g"%svgns):
-            override = locked not in layer.attrib or layer.attrib[locked] == "false"
-            shape = Shape(layer, self.svgobject.svgshape[1], override_style=override)
+        for layer_ in _find_layer(layer, "shapes").findall("{%s}g"%svgns):
+            override = locked not in layer_.attrib or layer_.attrib[locked] == "false"
+            shape = Shape(layer_, self.svgobject.svgshape[1], override_style=override)
             self.shapes[shape.name] = shape
 
         self.labels = Labels(self)
@@ -194,6 +205,7 @@ class Overlay(object):
     @property
     def visible(self):
         return 'none' not in self.layer.attrib['style']
+
     @visible.setter
     def visible(self, value):
         style = "display:inline;" if value else "display:none;"
@@ -202,20 +214,27 @@ class Overlay(object):
     def set(self, **kwargs):
         for shape in list(self.shapes.values()):
             shape.set(**kwargs)
+        # (add shape_list=None to def line)
+        # # By default, set all
+        # if shape_list is None:
+        #     shape_list = list(self.shapes.values())
+        # for shape in list(self.shapes.values()):
+        #     if shape in shape_list:
+        #         shape.set(**kwargs)
 
     def get_mask(self, name):
         return self.shapes[name].get_mask(self.svgobject.coords)
 
     def add_shape(self, name, pngdata=None, add_path=True):
         """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
-        #self.svg deletes the images -- we want to save those, so let's load it again
+        # self.svg deletes the images -- we want to save those, so let's load it again
         svg = etree.parse(self.svgobject.svgfile, parser=parser)
         imglayer = _find_layer(svg, "data")
         if add_path:
             layer = _find_layer(svg, self.name)
             _make_layer(_find_layer(layer, "shapes"), name)
 
-        #Hide all the other layers in the image
+        # Hide all the other layers in the image
         for layer in imglayer.findall(".//{%s}g"%svgns):
             layer.attrib["style"] = "display:hidden;"
 
@@ -285,6 +304,7 @@ class Labels(object):
     @property
     def visible(self):
         return self.text_style['display'] != "none"
+
     @visible.setter
     def visible(self, value):
         if value:
@@ -677,6 +697,7 @@ class Shape(object):
     @property
     def visible(self):
         return 'none' not in self.layer.attrib['style']
+
     @visible.setter
     def visible(self, value):
         style = "display:inline;" if value else "display:none;"
