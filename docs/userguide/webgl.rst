@@ -23,6 +23,23 @@ Using the WebGL Viewer
 There are two ways to create a WebGL viewer. A **dynamic viewer** is temporary viewer that is hosted by the pyhton process that generated it. A **static viewer** is a viewer that is saved permanently to disk and will persist beyond the lifetime of the python process. Using a static viewer requires hosting the created directory with a webserver such as nginx.
 
 
+Keyboard Shortcuts
+^^^^^^^^^^^^^^^^^^
+
+There are many keyboard shortcuts that allow for more fluid interaction with the WebGL viewer. A complete list of keyboard shortcuts and also be displayed in the viewer by pressing the **h** key.
+
+=== ====================================
+Key Action
+=== ====================================
+f   flatten brain
+i 	inflate brain
+r   fold brain into original coordinates
+l   toggle labels
+h   toggle keyboard shortcut overview
++/-	switch between datasets
+=== ====================================
+
+
 View Controls
 ^^^^^^^^^^^^^
 
@@ -70,25 +87,8 @@ labels  toggle roi labels
 ======= ===================
 
 
-Keyboard Shortcuts
-^^^^^^^^^^^^^^^^^^
-
-There are many keyboard shortcuts that allow for more fluid interaction with the WebGL viewer. A complete list of keyboard shortcuts and also be displayed in the viewer by pressing the **h** key.
-
-=== ====================================
-Key Action
-=== ====================================
-f   flatten brain
-i 	inflate brain
-r   fold brain into original coordinates
-l   toggle labels
-h   toggle keyboard shortcut overview
-+/-	switch between datasets
-=== ====================================
-
-
-WebGL Viewers Tehcnical Details
--------------------------------
+WebGL Viewer Technical Details
+------------------------------
 
 Pycortex uses custom shaders that implement pixel-based mapping. During 3D graphics rendering, the color of each pixel is determined by some predefined code at the fragment shading step. Under a traditional fixed-function pipeline, fragment shading is performed by a rasterizer that implements vertex-based mapping (Woo et al., 1999). In contrast, the fragment shader in pycortex projects each pixel into the functional space in 3D, and then samples the underlying volume data by reading from a texture. Nearest-neighbor or trilinear sampling is automatically performed by OpenGL when the data is read from the texture. This generates a fully interactive and accurate real-time visualization.
 
