@@ -3,13 +3,13 @@
 Get ROI Voxel Mask
 ==================
 
-Select all of the voxels within a named ROI and then plot them onto a 
+Select all of the voxels within a named ROI and then plot them onto a
 flatmap. In order for this to work, you have to have this ROI in your
 svg file for this subject.
 """
 
 import cortex
-import matlotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 subject = "S1"
 xfm = "fullhead"
