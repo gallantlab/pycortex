@@ -94,10 +94,10 @@ mapper
     get_mapper
 
 
-svgroi
+svgoverlay
 ------
 
-.. automodule:: cortex.svgroi
+.. automodule:: cortex.svgoverlay
 
 .. autosummary::
     :toctree:generated/

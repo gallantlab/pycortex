@@ -996,10 +996,10 @@ def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
 
     Parameters
     ----------
-    braindata : 
-
-    height : 
-
+    braindata : dataview
+		Pycortex volumetric dataset
+    height : int
+		Height in pixels for the image
     recache : bool
         Recache intermediate files? Doing so is slower but can potentially resolve some problems.
     kwargs : ???
@@ -1060,7 +1060,7 @@ def get_flatmask(subject, height=1024, recache=False):
     height : int
         Height in pixels to generate the image
     recache : bool
-        Recache the intermediate files? 
+        Recache the intermediate files? Can resolve some issues but is slower.
     """
     cachedir = db.get_cache(subject)
     cachefile = os.path.join(cachedir, "flatmask_{h}.npz".format(h=height))

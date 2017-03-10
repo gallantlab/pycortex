@@ -1,4 +1,4 @@
-"""Makes an interactive viewer for viewing in a browser
+"""Makes an interactive viewer for viewing data in a browser
 """
 from ..utils import DocLoader
 
