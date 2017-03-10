@@ -25,7 +25,11 @@ from ..database import db
 
 from . import serve
 from .data import Package
-from configparser import NoOptionError
+
+try:
+    from configparser import NoOptionError
+except ImportError:
+    from ConfigParser import NoOptionError
 
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
