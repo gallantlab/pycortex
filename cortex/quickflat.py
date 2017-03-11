@@ -13,18 +13,6 @@ from .svgoverlay import get_overlay
 
 ### --- Individual compositing functions --- ###
 
-# for all: 
-"""    linewidth : int, optional
-        Width of ROI lines. Defaults to roi options in your local `options.cfg`
-    linecolor : tuple of float, optional
-        (R, G, B, A) specification of line color
-    roifill : tuple of float, optional # CHANGE TO FILLCOLOR - OR, leave as is, to be a unique kwarg...
-        (R, G, B, A) specification for the fill of each ROI region
-    shadow : int, optional
-        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow    
-"""
-
-
 def add_curvature(fig, dataview, extents=None, height=None, threshold=None, contrast=None,
                   brightness=None, cmap='gray', recache=False):
     """Add curvature layer to figure
@@ -45,7 +33,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=None, cont
         (one shade for positive curvature, one shade for negative). `None` defaults to value 
         specified in the config file
     contrast : float, [0-1] or None 
-        TBD: None defaults to config value
+        WIP: None defaults to config value
     brightness : float
         How bright to make average value of curvature. This is not raw brightness (for now); this 
         scales the minimum and maximum of the color scale for curvature, so the units are in curvature.
@@ -56,6 +44,12 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=None, cont
     recache : boolean
         Whether or not to recache intermediate files. Takes longer to plot this way, potentially
         resolves some errors. 
+
+    Returns
+    -------
+    img : matplotlib.image.AxesImage
+        matplotlib axes image object for plotted data
+
     """
     if height is None:
         height = _get_height(fig)
@@ -100,14 +94,15 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     Parameters
     ----------
     fig : figure
-        figure into which to plot image of curvature
+        Figure into which to plot image of curvature
     braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview)
-        object containing containing data to be plotted, subject (surface identifier), 
+        Object containing containing data to be plotted, subject (surface identifier), 
         and transform.
     height : scalar 
         Height of image. None defaults to height of images already present in figure. 
-    recache : bool
-        If True, recache the flatmap cache. Useful if you've made changes to the alignment
+    recache : boolean
+        Whether or not to recache intermediate files. Takes longer to plot this way, potentially
+        resolves some errors. Useful if you've made changes to the alignment
     pixelwise : bool
         Use pixel-wise mapping
     thick : int
@@ -118,9 +113,10 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
 
     Returns
     -------
-    img : 
-
-    extents : 
+    img : matplotlib.image.AxesImage
+        matplotlib axes image object for plotted data
+    extents : list
+        Extents of image [left, right, top, bottom] in figure coordinates
     """    
     dataview = dataset.normalize(braindata)
     if not isinstance(dataview, dataset.Dataview):
@@ -144,27 +140,29 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     return img, extents
 
 def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_list=None, **kwargs):
-    """
-
-    NOTE: zorder for rois is 3
+    """Add rois to a flatmap plot
 
     Parameters
     ----------
-    fig : 
-
-    dataview : 
-
-    extents : 
-
-    height : 
-
-    with_labels : 
-
+    fig : figure
+        figure into which to plot image of curvature
+    dataview : cortex.Dataview object
+        dataview containing data to be plotted, subject (surface identifier), and transform.
+    extents : array-like
+        4 values for [Left, Right, Top, Bottom] extents of image plotted. None defaults to 
+        extents of images already present in figure.
+    height : scalar 
+        Height of image. None defaults to height of images already present in figure. 
+    with_labels : bool
+        Whether to display text labels on ROIs
     roi_list : 
 
     kwargs : 
 
-
+    Returns
+    -------
+    img : matplotlib.image.AxesImage
+        matplotlib axes image object for plotted data
     """
     if extents is None:
         extents = _get_extents(fig)
@@ -188,20 +186,28 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
 
     Parameters
     ----------
-    linewidth : 
+    fig : figure
+        figure into which to plot image of curvature
+    dataview : cortex.Dataview object
+        dataview containing data to be plotted, subject (surface identifier), and transform.
+    extents : array-like
+        4 values for [Left, Right, Top, Bottom] extents of image plotted. None defaults to 
+        extents of images already present in figure.
+    height : scalar 
+        Height of image. None defaults to height of images already present in figure. 
+    with_labels : bool
+        Whether to display text labels for sulci
 
-    linecolor : 
-
-    with_labels : 
-
-    labelsize : 
-
-    labelcolor : 
-
-    shadow : 
-
-    kwargs : 
-
+    Other Parameters
+    ----------------
+    kwargs : keyword arguments
+        Keywords args govern line appearance in final plot. Allowable kwargs are : linewidth,
+        linecolor, 
+    
+    Returns
+    -------
+    img : matplotlib.image.AxesImage
+        matplotlib axes image object for plotted data
     """
     svgobject = db.get_overlay(dataview.subject)
     svg_kws = _convert_svg_kwargs(kwargs)
@@ -220,9 +226,7 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
 
 def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4, hatch_color=(0,0,0),
     sampler='nearest', recache=False):
-    """Add hatching to figure at locations specified in hatch_data
-
-    TODO: add hatch_width, hatch_offset arguments.
+    """Add hatching to figure at locations specified in hatch_data    
 
     Parameters
     ----------
@@ -246,6 +250,15 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4, hatch_c
     recache : boolean
         Whether or not to recache intermediate files. Takes longer to plot this way, potentially
         resolves some errors. 
+
+    Returns
+    -------
+    img : matplotlib.image.AxesImage
+        matplotlib axes image object for plotted hatch image
+
+    Notes
+    -----
+    Possibly to add: add hatch_width, hatch_offset arguments.
     """
     if extents is None:
         extents = _get_extents(fig)
@@ -295,17 +308,34 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     """
     Parameters
     ----------
-    fig
-
-    dataview : 
-
-    svgfile : 
-
+    fig : matplotlib figure
+        Figure into which to plot the hatches. Should have pycortex flatmap image in it already.
+    dataview : cortex.Volume
+        cortex.Volume object containing 
+    svgfile : string
+        filepath for custom svg file to use. Must be formatted identically to overlays.svg
+        file for subject in `dataview`
     layer : 
+        layer within custom svg file to display
+    extents : array-like
+        4 values for [Left, Right, Top, Bottom] extents of image plotted. If None, defaults to 
+        extents of images already present in figure.
+    height : scalar 
+        Height of image. if None, defaults to height of images already present in figure. 
+    with_labels : bool
+        Whether to display text labels on ROIs
+    shape_list : list
+        list of paths/shapes within svg layer to render, if only a subset of the paths/
+        shapes within the layer are desired.
 
-    labelsize : 
+    Other Parameters
+    ----------------
+    kwargs
 
-    labelcolor : 
+    Returns
+    -------
+    img : matplotlib.image.AxesImage
+        matplotlib axes image object for plotted data
 
     """
     if height is None:
@@ -334,9 +364,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
 
     Parameters
     ----------
-
-    Returns
-    -------
+    fig 
 
     """
     if layers is None:
@@ -346,8 +374,6 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
     if extents is None:
         extents  = _get_extents(fig)
     svgobject = db.get_overlay(dataview.subject)
-    # Set all cutouts to be filled w/ white
-    #svgobject.cutouts.set(fill="white", stroke="white", **{'stroke-width':'2'})
     # Set other cutouts to be invisible
     for co_name, co_shape in svgobject.cutouts.shapes.items():
         co_shape.visible = co_name == name
@@ -359,24 +385,11 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
     co = svgobject.get_texture('cutouts', height, labels=False, **svg_kws)[..., 0]
     if not np.any(co):
         raise Exception('No pixels in cutout region {}}!'.format(name))
-    # print('orig_extents: {}'.format(extents))
-    # l, r, t, b = extents
-    # x_span = np.abs(l-r)
-    # y_span = np.abs(t-b)
-    # y, x = np.nonzero(co)
-    # extents_new = [l + x.min() / w * x_span,
-    #             l + x.max() / w * x_span,
-    #             t + y.min() / h * y_span,
-    #             t + y.max() / h * y_span]    
 
-    # # Set extents        
-    # print('tmp extents: {}'.format(extents_new))
-    # # Bounding box indices
-
+    # Bounding box indices
     LL, RR, TT, BB = np.nan, np.nan, np.nan, np.nan
     # Clip each layer to this cutout
     for layer_name, im_layer in layers.items():
-        #print('\n=== Clipping %s... ==='%layer_name)
         im = im_layer.get_array()
         # Reconcile occasional 1-pixel difference between flatmap image layers 
         # that are generated by different functions
@@ -403,20 +416,13 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
                 im[layer_cutout==0] = np.nan
                 h, w = [float(v) for v in im.shape]
         y, x = np.nonzero(layer_cutout)
-        #print('orig_extents: {}'.format(extents))
-        #print('Fak cutout extents are: {}'.format((x.min(), x.max(), y.min(), y.max())))
-        #print('height, width: {}'.format((h,w)))
-        #print('Cutout shape: {} - {}'.format(co.shape, layer_cutout.shape))
         l, r, t, b = extents
         x_span = np.abs(l-r)
         y_span = np.abs(t-b)
         extents_new = [l + x.min() / w * x_span,
                     l + x.max() / w * x_span,
                     t + y.min() / h * y_span,
-                    t + y.max() / h * y_span]    
-
-        # Set extents        
-        #print('tmp extents: {}'.format(extents_new))
+                    t + y.max() / h * y_span]
         # Bounding box indices
         iy, ix = ((y.min(), y.max()), (x.min(), x.max()))
         tmp = im[iy[0]:iy[1], ix[0]:ix[1]]
@@ -427,25 +433,14 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
         RR = np.nanmax([extents_new[1], RR])
         BB = np.nanmax([extents_new[2], BB])
         TT = np.nanmin([extents_new[3], TT])
-        #print('new extents: {}'.format((LL, RR, BB, TT)))
-        imsize = (np.abs(np.diff(iy))[0], np.abs(np.diff(ix))[0])#fig.get_axes()[0].get_images()[0].get_size()
-        #print('image size for this cutout: {}'.format(imsize))
+        imsize = (np.abs(np.diff(iy))[0], np.abs(np.diff(ix))[0])
     # Re-set figure limits
     ax = fig.gca()
-    #print('setting limits to: ')
-    #print(LL, RR)
-    #print(TT, BB)
     ax.set_xlim(LL, RR)
-    ax.set_ylim(TT, BB)
-    #
-    #if fig_resize:
-    #imsize = fig.get_axes()[0].get_images()[0].get_size()
-    
-    dpi = 100
-    inch_size = np.array(imsize)[::-1] / float(dpi)
-    #print('Size in inches: ', inch_size)
+    ax.set_ylim(TT, BB)    
+    inch_size = np.array(imsize)[::-1] / float(fig.dpi)
     fig.set_size_inches(inch_size[0], inch_size[1])
-    return #[LL, RR, BB, TT]
+    return
         
 
 ### --- Main functions --- ###
@@ -464,8 +459,9 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     ----------
     braindata : Dataview
         the data you would like to plot on a flatmap
-    recache : bool
-        If True, recache the flatmap cache. Useful if you've made changes to the alignment
+    recache : boolean
+        Whether or not to recache intermediate files. Takes longer to plot this way, potentially
+        resolves some errors. Useful if you've made changes to the alignment
     pixelwise : bool
         Use pixel-wise mapping
     thick : int
@@ -814,8 +810,9 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
         Filename for where to save the PNG file
     braindata : Dataview
         the data you would like to plot on a flatmap
-    recache : bool
-        If True, recache the flatmap cache. Useful if you've made changes to the alignment
+    recache : boolean
+        Whether or not to recache intermediate files. Takes longer to plot this way, potentially
+        resolves some errors. Useful if you've made changes to the alignment
     pixelwise : bool
         Use pixel-wise mapping
     thick : int
@@ -969,13 +966,16 @@ def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
 
     Parameters
     ----------
-    braindata : 
-
-    height : 
-
-    recache : 
-
-    kwargs : wtf
+    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview)
+        Object containing containing data to be plotted, subject (surface identifier), 
+        and transform.
+    height : scalar 
+        Height of image. None defaults to height of images already present in figure. 
+    recache : boolean
+        Whether or not to recache intermediate files. Takes longer to plot this way, potentially
+        resolves some errors. Useful if you've made changes to the alignment.
+    kwargs : idk
+        idk
 
     Returns
     -------
@@ -1087,15 +1087,15 @@ def _convert_svg_kwargs(kwargs):
         lw='stroke-width',
         linecolor='stroke',
         lc='stroke',
-        #labelcolor='',
-        #labelsize='',
+        #labelcolor='', # FIX ME
+        #labelsize='', # FIX ME
         linealpha='stroke-opacity',
-        fillcolor='fill',
         roifill='fill',
+        fillcolor='fill',
         fillalpha='fill-opacity',
         dashes='stroke-dasharray'
-        #dash_capstyle
-        #dash_joinstyle
+        #dash_capstyle # ADD ME?
+        #dash_joinstyle # ADD ME?
         )  
     svg_style_value_mapping = dict(
         linewidth=lambda x: x,
@@ -1103,13 +1103,15 @@ def _convert_svg_kwargs(kwargs):
         linecolor=lambda x: _color2hex(x), 
         lc=lambda x: _color2hex(x), 
         labelcolor=lambda x: _color2hex(x), 
+        labelsize=lambda x: x,
         linealpha=lambda x: x,
         roifill=lambda x: _color2hex(x),
         fillcolor=lambda x: _color2hex(x),
         fillalpha=lambda x: x,
         dashes=lambda x: '{}, {}'.format(*x),
+        #dash_capstyle # ADD ME?
+        #dash_joinstyle # ADD ME?
         )
-
     out = dict((svg_style_key_mapping[k], svg_style_value_mapping[k](v)) 
                for k,v in kwargs.items() if v is not None)
     return out
