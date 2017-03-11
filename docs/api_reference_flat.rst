@@ -15,7 +15,8 @@ These are the classes and functions in pycortex.
 
 .. currentmodule:: cortex
 
-
+These are the ones used most often
+==================================
 
 quickflat
 ---------
@@ -69,6 +70,8 @@ dataset
     VertexRGB
     Dataset
 
+These are all the other modules
+===============================
 
 align
 ------
