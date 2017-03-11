@@ -1,7 +1,7 @@
 """
-=================================================
-Display sulci on the flatmap.
-=================================================
+=========================
+Plot sulci on the flatmap
+=========================
 
 The sulci are defined in a sub-layer of the sulci layer in
 <filestore>/<subject>/rois.svg.

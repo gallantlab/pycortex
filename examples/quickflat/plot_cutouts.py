@@ -1,7 +1,7 @@
 """
-=====================================================
-Display a previously defined cutout on the flatmap
-=====================================================
+===========================
+Plot cutouts on the flatmap
+===========================
 
 Cutouts are manually generated cuts of the cortical surface to highlight
 a region of interest.
