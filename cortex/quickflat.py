@@ -259,7 +259,10 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                               labelsize=labelsize,
                               labelcolor=labelcolor,
                               layer=extralayer,
-                              svgfile=svgfile)
+                              svgfile=svgfile,
+                              linewidth=linewidth,
+                              linecolor=linecolor,
+                              roifill=roifill)
             overlays.append(disp)
     for oo in overlays:
         roitex = oo.get_texture(height, labels=with_labels, size=labelsize)

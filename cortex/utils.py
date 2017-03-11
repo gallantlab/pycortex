@@ -29,7 +29,7 @@ def get_roipack(*args, **kwargs):
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False,
-                decimate=False, disp_layers=['rois'],extra_disp=None):
+                decimate=False, disp_layers=['rois'],extra_disp=None,**kwargs):
     """Creates ctm file for the specified input arguments.
 
     This is a cached file that specifies (1) the surfaces between which
@@ -60,7 +60,8 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
                                level=level,
                                decimate=decimate,
                                disp_layers=disp_layers,
-                               extra_disp=extra_disp)
+                               extra_disp=extra_disp,
+                               **kwargs)
     return ctmfile
 
 def get_ctmmap(subject, **kwargs):
