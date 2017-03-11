@@ -122,7 +122,7 @@ freesurfer
     show_surf
 	make_fiducial
 	parse_surf
-	parse_cruv
+	parse_curv
 	parse_patch
 	get_surf
 	get_curv
