@@ -15,8 +15,8 @@ These are the classes and functions in pycortex.
 
 .. currentmodule:: cortex
 
-These are the ones used most often
-==================================
+Most commonly used modules
+==========================
 
 quickflat
 ---------
@@ -70,8 +70,8 @@ dataset
     VertexRGB
     Dataset
 
-These are all the other modules
-===============================
+All the other modules
+=====================
 
 align
 ------
@@ -94,6 +94,8 @@ anat
 .. autosummary::
     :toctree:generated/
 
+	brainmask
+	whitematter
     voxelize
 
 
