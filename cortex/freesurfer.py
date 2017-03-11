@@ -184,7 +184,7 @@ def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     os.makedirs(cache)
 
 def make_fiducial(subject, freesurfer_subject_dir=None):
-    """TODO: Write this
+    """  
     """
     for hemi in ['lh', 'rh']:
         spts, polys, _ = get_surf(subject, hemi, "smoothwm", freesurfer_subject_dir=freesurfer_subject_dir)
@@ -193,7 +193,7 @@ def make_fiducial(subject, freesurfer_subject_dir=None):
         write_surf(fname, (spts + ppts) / 2, polys)
 
 def parse_surf(filename):
-    """TODO: Write this
+    """  
     """
     with open(filename, 'rb') as fp:
         #skip magic
@@ -208,7 +208,7 @@ def parse_surf(filename):
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
 def write_surf(filename, pts, polys, comment=''):
-    """TODO: Write this
+    """  
     """
     with open(filename, 'wb') as fp:
         fp.write('\xff\xff\xfe')
@@ -219,14 +219,14 @@ def write_surf(filename, pts, polys, comment=''):
         fp.write('\n')
 
 def parse_curv(filename):
-    """TODO: Write this
+    """  
     """
     with open(filename, 'rb') as fp:
         fp.seek(15)
         return np.fromstring(fp.read(), dtype='>f4').byteswap().newbyteorder()
 
 def parse_patch(filename):
-    """TODO: Write this
+    """  
     """
     with open(filename, 'rb') as fp:
         header, = struct.unpack('>i', fp.read(4))
@@ -236,7 +236,7 @@ def parse_patch(filename):
         return data
 
 def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
-    """TODO: Write this
+    """  
     """
     if type == "patch":
         assert patch is not None
@@ -270,7 +270,7 @@ def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
     return pts, polys, get_curv(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir)
 
 def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):
-    """TODO: Write this
+    """  
     """
     if type == "wm":
         curv_file = get_paths(subject, hemi, 'curv', freesurfer_subject_dir=freesurfer_subject_dir).format(name='')
@@ -335,7 +335,7 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
     return fig, surf
 
 def write_dot(fname, pts, polys, name="test"):
-    """TODO: Write this
+    """  
     """
     import networkx as nx
     def iter_surfedges(tris):
@@ -357,7 +357,7 @@ def write_dot(fname, pts, polys, name="test"):
         fp.write("}")
 
 def read_dot(fname, pts):
-    """TODO: Write this
+    """  
     """
     import re
     parse = re.compile(r'\s(\d+)\s\[label="", pos="([\d\.]+),([\d\.]+)".*];')
@@ -375,7 +375,7 @@ def read_dot(fname, pts):
     return data
 
 def write_decimated(path, pts, polys):
-    """TODO: Write this
+    """  
     """
     from .polyutils import decimate, boundary_edges
     dpts, dpolys = decimate(pts, polys)
@@ -394,7 +394,7 @@ def write_decimated(path, pts, polys):
 
 import copy
 class SpringLayout(object):
-    """TODO: Write this
+    """  
     """
     def __init__(self, pts, polys, dpts=None, pins=None, stepsize=1, neighborhood=0):
         self.pts = pts
@@ -483,7 +483,7 @@ class SpringLayout(object):
         self.figure.mlab_source.set(x=self.pts[:,0], y=self.pts[:,1], z=self.pts[:,2])
 
 def stretch_mwall(pts, polys, mwall):
-    """TODO: Write this
+    """  
     """
     inflated = pts.copy()
     center = pts[mwall].mean(0)
