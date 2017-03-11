@@ -1,7 +1,8 @@
+from functools import reduce
+import io
 import os
 import tempfile
 import binascii
-import cStringIO
 import numpy as np
 
 import networkx as nx
@@ -57,7 +58,7 @@ class ROIpack(object):
     def to_npz(self, filename):
         """Saves npz file containing ROI masks.
         """
-        roidata = dict([(name,vd.data) for name,vd in self.rois.iteritems()])
+        roidata = dict([(name,vd.data) for name,vd in self.rois.items()])
         np.savez(filename, **roidata)
 
     def to_svg(self, open_inkscape=False, filename=None):
@@ -80,7 +81,7 @@ class ROIpack(object):
         # Add curvature
         from matplotlib import cm
         curv = VertexData(np.hstack(get_curvature(self.subject)), self.subject)
-        fp = cStringIO.StringIO()
+        fp = io.BytesIO()
         curvim = quickflat.make_png(fp, curv, height=1024, with_rois=False, with_labels=False,
                                     with_colorbar=False, cmap=cm.gray,recache=True)
         fp.seek(0)

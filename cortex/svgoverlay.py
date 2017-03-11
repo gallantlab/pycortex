@@ -793,7 +793,7 @@ try:
 
         #probably don't need more than 20 points, reduce detail of the polys
         if len(pts) > 20:
-            pts = pts[::len(pts)/20]
+            pts = pts[::len(pts)//20]
 
         try:
             poly = Polygon([tuple(p) for p in pts])

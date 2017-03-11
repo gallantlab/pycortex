@@ -21,11 +21,15 @@ yourself you will get a viewer showing something like the following.
 """
 
 import cortex
-import urllib
+try: #  python 2
+    from urllib import urlretrieve
+except ImportError:  # python 3
+    from urllib.request import urlretrieve
+
 
 # Download and load in retinotopy data
-_ = urllib.urlretrieve("http://gallantlab.org/pycortex/S1_retinotopy.hdf",
-                       "S1_retinotopy.hdf")
+_ = urlretrieve("http://gallantlab.org/pycortex/S1_retinotopy.hdf",
+                "S1_retinotopy.hdf")
 ret_data = cortex.load("S1_retinotopy.hdf")
 
 # Open the webviewer

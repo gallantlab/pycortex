@@ -516,7 +516,8 @@ class Database(object):
         except (AttributeError, IOError):
             try:
                 # Get cache dir from config file
-                cachedir = os.path.join(options.config.get('basic', 'cache'), subject, 'cache')
+                cachedir = os.path.join(options.config.get('basic', 'cache'),
+                                        subject, 'cache')
             except options.configparser.NoOptionError:
                 # If not defined, go with default cache
                 cachedir = os.path.join(self.filestore, subject, "cache")

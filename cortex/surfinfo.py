@@ -180,7 +180,7 @@ def flat_border(outfile, subject):
     
     g = make_surface_graph(fidonlypolys)
     fog = g.subgraph(fidonlyverts)
-    badverts = np.array([v for v,d in fog.degree().iteritems() if d<2])
+    badverts = np.array([v for v,d in fog.degree().items() if d<2])
     g.remove_nodes_from(badverts)
     fog.remove_nodes_from(badverts)
     mwallset = set.union(*(set(g[v]) for v in fog.nodes())) & set(allbounds)

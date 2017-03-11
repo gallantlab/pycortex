@@ -7,7 +7,7 @@ import numpy as np
 from six import string_types
 from importlib import import_module
 from .database import db
-from .volume import mosaic, unmask, anat2epispace
+from .volume import anat2epispace
 from .options import config
 from .freesurfer import fs_aseg_dict
 
@@ -382,8 +382,6 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
         mask = mask > threshold
     return mask
 
-
-from six import string_types
 
 def get_roi_masks(subject, xfmname, dst='cortical', roi_list=None, fail_for_missing_rois=False, 
                   split_lr=False, allow_overlap=False, return_dict=True):

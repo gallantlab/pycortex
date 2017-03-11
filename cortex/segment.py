@@ -141,9 +141,11 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None, fr
     
     freesurfer.flatten(fs_subject, hemi, patch=name, freesurfer_subject_dir=freesurfer_subject_dir)
     
-    other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh").format(name=name+".flat")
+    other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
+                                 freesurfer_subject_dir=freesurfer_subject_dir).format(name=name+".flat")
+    
     if os.path.exists(other):
-        freesurfer.import_flat(fs_subject, name)
+        freesurfer.import_flat(fs_subject, name, sname=cx_subject, freesurfer_subject_dir=freesurfer_subject_dir)
 
 def _cycle_surf(subject, surf):
     status = mp.Value('b', 1)
