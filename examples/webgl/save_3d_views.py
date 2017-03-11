@@ -19,7 +19,7 @@ volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
 image_path = '/path/to/save/images'
 
 # pattern of the saved images names
-file_pattern = "{base}_{view}_{surface}.png"
+file_pattern = '{base}_{view}_{surface}.png'
 # in this case, let's use 'test' as a base name:
 base_str = 'test'
 
@@ -77,7 +77,7 @@ for view,vparams in views.items():
         time.sleep(0.5)
         try:
             import subprocess
-            subprocess.call(["convert", "-trim", output_path, output_path])
+            subprocess.call(['convert', '-trim', output_path, output_path])
         except:
             pass
         
