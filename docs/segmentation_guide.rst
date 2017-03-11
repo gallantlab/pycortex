@@ -37,7 +37,7 @@ If possible, you want to proceed with MEMPRAGE RMS data.
 
 
 Starting & Setting up Freesurfer
-================================
+##################################
 
 
 To open freesurfer:
@@ -51,7 +51,8 @@ Create a “subjects” directory. If a "subjects" directory doesn't exist, make
 
 
 
-**Importing Data Into Freesurfer**
+Importing Data Into Freesurfer
+#################################
 
 After you've unpacked the raw data, there are 2 ways to choose from to import your data to into freesurfer:
 
@@ -72,7 +73,8 @@ The ‘-s Subject’ portion creates a folder, in this case a folder titled "Sub
 
 
 
-**Creating Pial & White Matter Surfaces**
+Creating Pial & White Matter Surfaces
+###########################################
 
 Now that the anatomical data for your subject has been imported into Freesurfer and a new
 directory has been created, you next want to run a command called autorecon1 to separate
@@ -82,7 +84,9 @@ pial surface as well as the white matter. This is done using the command autorec
 Following this, you will manually make edits to these newly created surfaces.
 
 
-**Autorecon1: Separating Brain from Other Anatomy**
+Autorecon1: Separating Brain from Other Anatomy
+***************************************************
+
 The autorecon1 command motion corrects and conforms, normalizes, computes the Talairach transform, and strips the skull. Keep in mind that this command takes approximately 30-40 minutes, so make sure you're ready before running it. To use the command type:
 
     ``recon-all -autorecon1 -s <subject_name>``
@@ -91,7 +95,8 @@ For example:
     ``recon-all -autorecon1 -s Subject``
 
 
-**Manual Edits to the Anatomical**
+Manual Edits to the Anatomical
+--------------------------------
 
 At this stage, you just want to make sure that autorecon1 ran successfully and that large parts
 of non-brain anatomy were not left behind. If big chunks of eye or skull were left behind, it is
@@ -173,7 +178,8 @@ If you are finished with the mask, enter 1. Otherwise enter 3.
 
 
 
-**Autorecon2: Creating Surfaces**
+Autorecon2: Creating Surfaces
+***********************************8
 
 Here, you will be creating both white and gray matter surfaces using the autorecon2
 command. When the command is complete, there will be outlines on the brain indicating that
