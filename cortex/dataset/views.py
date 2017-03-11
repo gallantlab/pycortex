@@ -140,18 +140,18 @@ class Dataview(object):
 
     @staticmethod
     def from_hdf(node):
-        data = json.loads(node[0])
+        data = json.loads(node[0].decode('utf-8'))
         desc = node[1]
         try:
             cmap = json.loads(node[2])
         except:
             cmap = node[2]
-        vmin = json.loads(node[3])
-        vmax = json.loads(node[4])
-        state = json.loads(node[5])
-        attrs = json.loads(node[6])
+        vmin = json.loads(node[3].decode('utf-8'))
+        vmax = json.loads(node[4].decode('utf-8'))
+        state = json.loads(node[5].decode('utf-8'))
+        attrs = json.loads(node[6].decode('utf-8'))
         try:
-            xfmname = json.loads(node[7])
+            xfmname = json.loads(node[7].decode('utf-8'))
         except ValueError:
             xfmname = None
 
@@ -194,7 +194,7 @@ class Dataview(object):
         import glob, os
         # Get colormap from matplotlib or pycortex colormaps
         ## -- redundant code, here and in cortex/quicklflat.py -- ##
-        if isinstance(self.cmap,(str,unicode)):
+        if isinstance(self.cmap, string_types):
             if not self.cmap in cm.__dict__:
                 # unknown colormap, test whether it's in pycortex colormaps
                 cmapdir = options.config.get('webgl', 'colormaps')
@@ -208,7 +208,7 @@ class Dataview(object):
                 cm.register_cmap(self.cmap,cmap)
             else:
                 cmap = cm.get_cmap(self.cmap)
-        elif isinstance(self.cmap,colors.Colormap):
+        elif isinstance(self.cmap, colors.Colormap):
             cmap = self.cmap
         # Normalize colors according to vmin, vmax
         norm = colors.Normalize(self.vmin, self.vmax) 

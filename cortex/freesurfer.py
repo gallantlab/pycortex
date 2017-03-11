@@ -101,7 +101,7 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None):
         sp.call(shlex.split(cmd))
 
     if not os.path.exists(curvs.format(hemi="lh", name="fiducial")):
-        make_fiducial(subject)
+        make_fiducial(subject, freesurfer_subject_dir=freesurfer_subject_dir)
 
     #Freesurfer uses FOV/2 for center, let's set the surfaces to use the magnet isocenter
     trans = nibabel.load(out).get_affine()[:3, -1]

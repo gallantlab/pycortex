@@ -1,3 +1,4 @@
+from functools import reduce
 import io
 import os
 import glob
@@ -5,6 +6,7 @@ import copy
 import binascii
 import numpy as np
 
+from six import string_types
 from . import utils
 from . import dataset
 from .database import db
@@ -894,11 +896,7 @@ def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pix
         this function you are basically saying that you want an editable layer of vector 
         graphic ROIs on top of your image. `with_cutouts` is not functional yet.
     """
-    try:
-        import cStringIO
-        fp = cStringIO.StringIO()
-    except:
-        fp = io.StringIO()
+    fp = io.BytesIO()
     from matplotlib.pylab import imsave
     to_cut = ['with_rois','cutouts']
     for cc in to_cut:
@@ -1178,7 +1176,11 @@ def _make_flatmask(subject, height=1024):
     from PIL import Image, ImageDraw
     pts, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
-    left, right = bounds.next(), bounds.next()
+    try:
+        # python2
+        left, right = bounds.next(), bounds.next()
+    except:
+        left, right = next(bounds), next(bounds)
     aspect = (height / (pts.max(0) - pts.min(0))[1])
     lpts = (pts[left] - pts.min(0)) * aspect
     rpts = (pts[right] - pts.min(0)) * aspect
@@ -1246,14 +1248,18 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
         piacoords = xfm((pia[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
         wmcoords = xfm((wm[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
 
-        valid_p = reduce(np.logical_and, [reduce(np.logical_and, (0 <= piacoords).T), 
-            piacoords[:,0] < xfm.shape[2], 
-            piacoords[:,1] < xfm.shape[1], 
-            piacoords[:,2] < xfm.shape[0]])
-        valid_w = reduce(np.logical_and, [reduce(np.logical_and, (0 <= wmcoords).T), 
-            wmcoords[:,0] < xfm.shape[2],
-            wmcoords[:,1] < xfm.shape[1],
-            wmcoords[:,2] < xfm.shape[0]])
+        valid_p = np.array([np.all((0 <= piacoords), axis=1),
+                            piacoords[:,0] < xfm.shape[2],
+                            piacoords[:,1] < xfm.shape[1],
+                            piacoords[:,2] < xfm.shape[0]])
+        valid_p = np.all(valid_p, axis=0)
+
+        valid_w = np.array([np.all((0 <= wmcoords), axis=1),
+                            wmcoords[:,0] < xfm.shape[2],
+                            wmcoords[:,1] < xfm.shape[1],
+                            wmcoords[:,2] < xfm.shape[0]])
+        valid_w = np.all(valid_w, axis=0)
+        
         valid = np.logical_and(valid_p, valid_w)
         vidx = np.nonzero(valid)[0]
         mapper = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
@@ -1295,7 +1301,7 @@ def _has_cmap(dataview):
     if not isinstance(dataview, (dataset.VolumeRGB, dataset.VertexRGB)):
         # Get colormap from matplotlib or pycortex colormaps
         ## -- redundant code, here and in cortex/dataset/views.py -- ##
-        if isinstance(dataview.cmap,(str,unicode)):
+        if isinstance(dataview.cmap, string_types):
             if not dataview.cmap in cm.__dict__:
                 # unknown colormap, test whether it's in pycortex colormaps
                 cmapdir = config.get('webgl', 'colormaps')

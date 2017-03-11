@@ -2,6 +2,7 @@ import io
 import os
 import binascii
 import numpy as np
+from six import string_types
 from importlib import import_module
 from .database import db
 from .volume import mosaic, unmask, anat2epispace
@@ -180,11 +181,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
         raise TypeError("Please specify a data view")
 
     svg = db.get_overlay(dv.subject)
-    try:
-        import cStringIO
-        fp = cStringIO.StringIO()
-    except:
-        fp = io.StringIO()
+    fp = io.BytesIO()
 
     quickflat.make_png(fp, dv, height=1024, with_rois=False, with_labels=False, **kwargs)
     fp.seek(0)
@@ -224,7 +221,7 @@ def get_roi_verts(subject, roi=None):
         roi = svg.rois.shapes.keys()
 
     roidict = dict()
-    if isinstance(roi, str):
+    if isinstance(roi, string_types):
         roi = [roi]
 
     for name in roi:
@@ -315,7 +312,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=
     # Mask for left hemisphere
     Lmask = (vox_idx < nL).flatten()
     Rmask = np.logical_not(Lmask)
-    if type(dst) in (str,unicode):
+    if isinstance(dst, string_types):
         cx_mask = db.get_mask(subject,xfmname,dst).flatten()
     else:
         cx_mask = (vox_dst < dst).flatten()
@@ -323,6 +320,8 @@ def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=
     if roi_list is None:
         roi_list = roi_names_all
     else:
+        # Idiot-proofing
+        assert len(set(roi_list))==len(roi_list), 'Duplicate ROI found in list!'
         roi_list = [r for r in roi_list if r in ['Cortex','cortex']+roi_names_all]
         if fail_for_missing_rois:
             fails = [r for r in roi_list if not r in ['Cortex','cortex']+roi_names_all]

@@ -1,10 +1,13 @@
+import functools
+import io
 from collections import OrderedDict
+
 import numpy as np
+import numexpr as ne
 from scipy.spatial import distance, Delaunay
 from scipy import sparse
 import scipy.sparse.linalg
-import functools
-import numexpr as ne
+
 
 def _memo(fn):
     """Helper decorator memoizes the given zero-argument function.
@@ -996,14 +999,13 @@ def trace_poly(edges):
 def rasterize(poly, shape=(256, 256)):
     #ImageDraw sucks at its job, so we'll use imagemagick to do rasterization
     import subprocess as sp
-    import cStringIO
     import shlex
     from PIL import Image
     
     polygon = " ".join(["%0.3f,%0.3f"%tuple(p[::-1]) for p in np.array(poly)-(.5, .5)])
     cmd = 'convert -size %dx%d xc:black -fill white -stroke none -draw "polygon %s" PNG32:-'%(shape[0], shape[1], polygon)
     proc = sp.Popen(shlex.split(cmd), stdout=sp.PIPE)
-    png = cStringIO.StringIO(proc.communicate()[0])
+    png = io.BytesIO(proc.communicate()[0])
     im = Image.open(png)
 
     # For PNG8:

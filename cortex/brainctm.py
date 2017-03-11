@@ -14,15 +14,17 @@ uv
   in javascript, in the load function
 '''
 import os
+import sys
 import json
 import tempfile
+from six import string_types
 import numpy as np
 from scipy.spatial import cKDTree
 
 from .database import db
 from .utils import get_cortical_mask, get_mapper, get_dropout
 from . import polyutils
-from openctm import CTMfile
+from .openctm import CTMfile
 
 class BrainCTM(object):
     def __init__(self, subject, decimate=False):
@@ -88,7 +90,7 @@ class BrainCTM(object):
         if fleft is not None:
             flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
             fmin, fmax = flatmerge.min(0), flatmerge.max(0)
-            self.flatlims = map(float, -fmin), map(float, fmax-fmin)
+            self.flatlims = [float(x) for x in -fmin], [float(x) for x in fmax-fmin]
 
             self.left.setFlat(fleft[0])
             self.right.setFlat(fright[0])
@@ -133,7 +135,7 @@ class BrainCTM(object):
         (rpts, _, _), rbin = self.right.save(method=method, **kwargs)
 
         offsets = [0]
-        with open(path+'.ctm', 'w') as fp:
+        with open(path+'.ctm', 'wb') as fp:
             fp.write(lbin)
             offsets.append(fp.tell())
             fp.write(rbin)
@@ -184,9 +186,14 @@ class BrainCTM(object):
 class Hemi(object):
     def __init__(self, pts, polys, norms=None):
         self.tf = tempfile.NamedTemporaryFile()
+        if six.PY3:
+            print("Converting tf.name to bytes for python 3")
+            self.tf.name = bytes(self.tf.name, 'ascii')
         self.ctm = CTMfile(self.tf.name, "w")
 
-        self.ctm.setMesh(pts.astype(np.float32), polys.astype(np.uint32), norms=norms)
+        self.ctm.setMesh(pts.astype(np.float32),
+                         polys.astype(np.uint32),
+                         norms=norms)
 
         self.pts = pts
         self.polys = polys
@@ -214,7 +221,6 @@ class Hemi(object):
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')
         self.ctm.save(**kwargs)
-
         ctm = CTMfile(self.tf.name)
         return ctm.getMesh(), self.tf.read()
 

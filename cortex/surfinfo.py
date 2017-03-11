@@ -152,10 +152,10 @@ def tissots_indicatrix(outfile, sub, radius=10, spacing=50):
 
 def flat_border(outfile, subject):
     flatpts, flatpolys = db.get_surf(subject, "flat", merge=True, nudge=True)
-    flatpolyset = set(map(tuple, flatpolys))
+    flatpolyset = set([tuple(x) for x in flatpolys])
     
     fidpts, fidpolys = db.get_surf(subject, "fiducial", merge=True, nudge=True)
-    fidpolyset = set(map(tuple, fidpolys))
+    fidpolyset = set([tuple(x) for x in fidpolys])
     fidonlypolys = fidpolyset - flatpolyset
     fidonlypolyverts = np.unique(np.array(list(fidonlypolys)).ravel())
     
@@ -178,7 +178,7 @@ def flat_border(outfile, subject):
     
     g = make_surface_graph(fidonlypolys)
     fog = g.subgraph(fidonlyverts)
-    badverts = np.array([v for v,d in fog.degree().iteritems() if d<2])
+    badverts = np.array([v for v,d in fog.degree().items() if d<2])
     g.remove_nodes_from(badverts)
     fog.remove_nodes_from(badverts)
     mwallset = set.union(*(set(g[v]) for v in fog.nodes())) & set(allbounds)

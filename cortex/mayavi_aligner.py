@@ -8,6 +8,10 @@ from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 from tvtk.api import tvtk
 from tvtk.pyface.scene import Scene
 
+from six import string_types
+from matplotlib.colors import ColorConverter
+cc = ColorConverter()
+
 from mayavi import mlab
 from mayavi.core.ui import lut_manager
 from mayavi.core.api import PipelineBase, Source, Filter, Module
@@ -502,7 +506,10 @@ class Axis(HasTraits):
 
     def _outline_color_changed(self):
         try:
-            color = tuple([c/255. for c in tuple(self.outline_color)])
+            if isinstance(self.outline_color, string_types):
+                color = cc.to_rgb(self.outline_color)
+            else:
+                color = tuple([c/255. for c in tuple(self.outline_color)])
         except TypeError:
             color = self.outline_color.getRgbF()[:3]
         self.surf.children[0].children[0].actor.property.color = color
