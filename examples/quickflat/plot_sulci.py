@@ -13,7 +13,7 @@ displaying the sulci on the surface.
 import cortex
 
 # Create a random pycortex Volume
-volume = cortex.Volume.random(subject='S1', xfmname='retinotopy')
+volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
 
 # Plot a flatmap with the data projected onto the surface
 # Highlight the curvature and display the sulci
