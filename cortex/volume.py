@@ -1,3 +1,5 @@
+"""Contains functions for working with volume data
+"""
 import os
 import numpy as np
 
@@ -238,6 +240,24 @@ def epi2anatspace(volumedata, order=1):
                             cval=np.nan, order=order).T
 
 def anat2epispace(anatdata, subject, xfmname, order=1):
+    """Resamples data from anatomical space into epi space
+    
+    Parameters
+    ----------
+    anatdata : ndarray
+        data in anatomical space
+    subject : str
+        Name of subject
+    xfmname : str
+        Name of transform
+    order : int
+        Order of spline interpolation
+        
+    Returns
+    -------
+    epidata : ndarray
+        data in EPI space
+    """
     from scipy.ndimage.interpolation import affine_transform
     anatref = db.get_anat(subject)
     target = db.get_xfm(subject, xfmname, "coord")
