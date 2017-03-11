@@ -10,7 +10,6 @@ captured into '.png' images after a dynamic viewer is instantiated.
 
 import os
 import time
-import numpy as np
 import cortex
 
 # gather data Volume
