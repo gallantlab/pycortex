@@ -25,6 +25,19 @@ parser = etree.XMLParser(remove_blank_text=True, huge_tree=True)
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
 class SVGOverlay(object):
+    """Object to represent all vector graphic overlays (rois, sulci, etc) stored in an svg file
+    
+    This object facilitates interaction with the information in the overlays.svg files 
+    that exist for each subject in the pycortex database. 
+
+    Parameters
+    ----------
+    svgfile : string
+        svg file to read in. Must be formatted like the overlays.svg files in pycortex's
+        filestore
+    coords : array-like
+        (Unclear...)
+    """
     def __init__(self, svgfile, coords=None):
         self.svgfile = svgfile
         self.reload()
@@ -32,6 +45,10 @@ class SVGOverlay(object):
             self.set_coords(coords)
 
     def reload(self):
+        """Initial load of data from svgfile
+
+        Strips out `data` layer of svg file, saves only layers consisting of vector paths.
+        """
         self.svg = scrub(self.svgfile)
         w = float(self.svg.getroot().get("width"))
         h = float(self.svg.getroot().get("height"))
@@ -44,6 +61,7 @@ class SVGOverlay(object):
             self.layers[layer.name] = layer
 
     def set_coords(self, coords):
+        """Unclear what this does. James??"""
         # Normalize coordinates 0-1
         if np.any(coords.max(0) > 1) or np.any(coords.min(0) < 0):
             coords -= coords.min(0)
@@ -83,6 +101,11 @@ class SVGOverlay(object):
         return iter(self.layers.values())
 
     def add_layer(self, name):
+        """Add a layer to the svgfile on which this object is based
+
+        Adds a new layer named `name` to the svgfile by the SVGOverlay object, and
+        overwrites the original file (incorporating the new layer).
+        """
         svg = etree.parse(self.svgfile, parser=parser)
         layer = _make_layer(svg.getroot(), name)
         shapes = _make_layer(layer, "shapes")
@@ -94,10 +117,22 @@ class SVGOverlay(object):
         self.reload()
 
     def toxml(self, pretty=True):
+        """Return a string xml version of the SVGOverlay object"""
         return etree.tostring(self.svg, pretty_print=pretty)
 
-    def get_svg(self, filename=None, labels=True, with_ims=None): # This did nothing - why?:, **kwargs):
-        """Returns an SVG with the included images."""
+    def get_svg(self, filename=None, labels=True, with_ims=None):
+        """Returns a new SVG file with images embedded
+
+        Parameters
+        ----------
+        filename : string
+            File path to which to write new svg
+        labels : boolean
+            Whether labels should be visible or not
+        with_ims : list
+            list of images to incorporate into new svg file. The first image 
+            listed will be on the uppermost layer, the last will be lowest.
+        """
         self.labels.visible = labels
         
         outsvg = copy.deepcopy(self.svg)
@@ -123,16 +158,45 @@ class SVGOverlay(object):
             with open(filename, "w") as outfile:
                 outfile.write(etree.tostring(outsvg))
         
-    def get_texture(self, layer_name, texres, name=None, background=None, labels=True, bits=32, 
+    def get_texture(self, layer_name, height, name=None, background=None, labels=True,
         shape_list=None, **kwargs):
-        '''Renders a specific layer of this svgobject as a png
+        """Renders a specific layer of this svgobject as a png
+        
+        Parameters
+        ----------
+        layer_name : string
+            Name of layer of svg file to be rendered
+        height : scalar
+            Height of image to be generated
+        name : string
+            If `background` is specified, provides a name for the background image
+        background : idkwtf
+            An image? Unclear.
+        labels : boolean
+            Whether to render labels for paths in the svg file
+        shape_list : list
+            list of string names for path/shape elements in this layer to be rendered 
+            (any elements not on this list will be set to invisible, if this list is
+            provided)
+        kwargs : keyword arguments
+            keywords to specify display properties of svg path objects, e.g. {'stroke':'white',
+            'stroke-width':2} etc. See inkscape help for names for properties. This function
+            is used extensively by quickflat.py, which provides dictionaries to map between 
+            more matplotlib-like properties (linecolor->stroke, linewidth->stroke-width) for a
+            more easy-to-use API.
 
-        '''
+        Returns
+        -------
+        image : array
+            Rendered image of svg layer with specified parameters
+
+        Notes
+        -----
+        missing bits=32 keyword input argument, did not seeme necessary to specify
+        png bits.
+        """
         import matplotlib.pyplot as plt
         # Set the size of the texture
-        # !Not necessary w/ new inkscape command instead of ImageMagick convert
-        #w, h = self.svgshape
-        #dpi = texres / h * 72 # 72 is screen resolution assumption for svg files
         if background is not None:
             img = E.image(
                 {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%background},
@@ -146,12 +210,9 @@ class SVGOverlay(object):
             if layer.name==layer_name:
                 layer.visible = True
                 layer.labels.visible = labels
-                # Maybe necessary?
-                #kwbs = dict((k,v) for k, v in kwargs.items() if v is not None)
                 if shape_list is not None:
                     for name_, shape_ in layer.shapes.items():
                         shape_.visible = name_ in shape_list
-
                 layer.set(**kwargs)
             else:
                 layer.visible = False
@@ -164,9 +225,8 @@ class SVGOverlay(object):
 
         # Old command: (Using ImageMagick function `convert`)
         #cmd = "convert -background none -density {dpi} SVG:- PNG{bits}:{outfile}"
-        #cmd = "inkscape -z -d {dpi} -e {outfile} /dev/stdin"
         cmd = "inkscape -z -h {height} -e {outfile} /dev/stdin"
-        cmd = cmd.format(height=texres, outfile=pngfile) #, bits=bits)
+        cmd = cmd.format(height=height, outfile=pngfile) #, bits=bits)
         proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
         proc.communicate(etree.tostring(self.svg))
         
@@ -179,6 +239,8 @@ class SVGOverlay(object):
             return im
 
 class Overlay(object):
+    """Class to represent a single layer of an SVG file
+    """
     def __init__(self, svgobject, layer):
         self.svgobject = svgobject
         self.svg = svgobject.svg
@@ -214,19 +276,12 @@ class Overlay(object):
     def set(self, **kwargs):
         for shape in list(self.shapes.values()):
             shape.set(**kwargs)
-        # (add shape_list=None to def line)
-        # # By default, set all
-        # if shape_list is None:
-        #     shape_list = list(self.shapes.values())
-        # for shape in list(self.shapes.values()):
-        #     if shape in shape_list:
-        #         shape.set(**kwargs)
 
     def get_mask(self, name):
         return self.shapes[name].get_mask(self.svgobject.coords)
 
     def add_shape(self, name, pngdata=None, add_path=True):
-        """Adds projected data for defining a new ROI to the saved rois.svg file in a new layer"""
+        """Adds projected data for defining a new ROI to the saved overlays.svg file in a new layer"""
         # self.svg deletes the images -- we want to save those, so let's load it again
         svg = etree.parse(self.svgobject.svgfile, parser=parser)
         imglayer = _find_layer(svg, "data")
