@@ -1,5 +1,5 @@
 Surface Analysis Examples
 ------------------------------
 
-Examples demonstrating operations and analysis done on brain surfaces.
+Examples demonstrating operations and analyses done on brain surfaces.
 
