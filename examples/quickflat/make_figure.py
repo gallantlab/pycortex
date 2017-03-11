@@ -51,8 +51,8 @@ _ = cortex.quickflat.make_figure(volume,
                                  with_rois=False)
 
 # Remove the colorbar from the plot
-_ = cortex.quickflat.make_figure(volume,
-                                 with_curvature=True,
-                                 with_colorbar=False)
+cortex.quickflat.make_figure(volume,
+                             with_curvature=True,
+                             with_colorbar=False)
 
 plt.show()
