@@ -23,9 +23,10 @@ User Guide
    segmentation
    database
    align
-   dataset
+   .. dataset
    rois
    transforms
+   colormaps
 
 Example Gallery
 ---------------
