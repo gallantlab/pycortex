@@ -1,3 +1,5 @@
+"""Contains functions for interfacing with freesurfer
+"""
 import os
 import shutil
 import struct
@@ -38,6 +40,17 @@ def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
         return os.path.join(base, "surf", hemi+".curv{name}")
 
 def autorecon(subject, type="all"):
+    """
+    
+    Parameters
+    ----------
+    subject : 
+    
+    type : 
+    
+    Returns
+    -------
+    """
     types = { 
         'all':'autorecon-all',
         '1':"autorecon1",
@@ -62,6 +75,21 @@ def autorecon(subject, type="all"):
     sp.check_call(shlex.split(cmd))
 
 def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
+    """Flattens a brain
+    
+    Parameters
+    ----------
+    subject : 
+    
+    hemi : 
+    
+    patch : 
+    
+    freesurfer_subject_dir :
+    
+    Returns
+    -------
+    """
     resp = raw_input('Flattening takes approximately 2 hours! Continue? ')
     if resp.lower() in ('y', 'yes'):
         inpath = get_paths(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch)
@@ -72,7 +100,8 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
         print("Not going to flatten...")
 
 def import_subj(subject, sname=None, freesurfer_subject_dir=None):
-    """
+    """Imports a subject from freesurfer
+    
     Parameters
     ----------
     subject : string
@@ -121,6 +150,21 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None):
         np.savez(surfinfo.format(subj=sname, name=info), left=-lh, right=-rh)
 
 def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
+    """Imports a flat brain from freesurfer
+    
+    Parameters
+    ----------
+    subject : str
+        Freesurfer subject name
+    patch : 
+    
+    sname : str
+        Pycortex subject name3
+    freesurfer_subject_dir : str
+    
+    Returns
+    -------
+    """
     if sname is None:
         sname = subject
     surfs = os.path.join(database.default_filestore, sname, "surfaces", "flat_{hemi}.gii")
@@ -140,6 +184,8 @@ def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     os.makedirs(cache)
 
 def make_fiducial(subject, freesurfer_subject_dir=None):
+    """  
+    """
     for hemi in ['lh', 'rh']:
         spts, polys, _ = get_surf(subject, hemi, "smoothwm", freesurfer_subject_dir=freesurfer_subject_dir)
         ppts, _, _ = get_surf(subject, hemi, "pial", freesurfer_subject_dir=freesurfer_subject_dir)
@@ -147,6 +193,8 @@ def make_fiducial(subject, freesurfer_subject_dir=None):
         write_surf(fname, (spts + ppts) / 2, polys)
 
 def parse_surf(filename):
+    """  
+    """
     with open(filename, 'rb') as fp:
         #skip magic
         fp.seek(3)
@@ -160,6 +208,8 @@ def parse_surf(filename):
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
 def write_surf(filename, pts, polys, comment=''):
+    """  
+    """
     with open(filename, 'wb') as fp:
         fp.write('\xff\xff\xfe')
         fp.write(comment+'\n\n')
@@ -169,11 +219,15 @@ def write_surf(filename, pts, polys, comment=''):
         fp.write('\n')
 
 def parse_curv(filename):
+    """  
+    """
     with open(filename, 'rb') as fp:
         fp.seek(15)
         return np.fromstring(fp.read(), dtype='>f4').byteswap().newbyteorder()
 
 def parse_patch(filename):
+    """  
+    """
     with open(filename, 'rb') as fp:
         header, = struct.unpack('>i', fp.read(4))
         nverts, = struct.unpack('>i', fp.read(4))
@@ -182,6 +236,8 @@ def parse_patch(filename):
         return data
 
 def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
+    """  
+    """
     if type == "patch":
         assert patch is not None
         surf_file = get_paths(subject, hemi, 'surf', freesurfer_subject_dir=freesurfer_subject_dir).format(name='smoothwm')
@@ -214,6 +270,8 @@ def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
     return pts, polys, get_curv(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir)
 
 def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):
+    """  
+    """
     if type == "wm":
         curv_file = get_paths(subject, hemi, 'curv', freesurfer_subject_dir=freesurfer_subject_dir).format(name='')
     else:
@@ -223,6 +281,20 @@ def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):
 
 def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir=None):
     """Show a surface from a Freesurfer subject directory
+    
+    Parameters
+    ----------
+    subject : str
+        Freesurfer subject name
+    hemi : 
+    
+    type : 
+    
+    patch : 
+    
+    curv : bool
+    
+    freesurfer_subject_dir :
     """
     from mayavi import mlab
     from tvtk.api import tvtk
@@ -263,6 +335,8 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
     return fig, surf
 
 def write_dot(fname, pts, polys, name="test"):
+    """  
+    """
     import networkx as nx
     def iter_surfedges(tris):
         for a,b,c in tris:
@@ -283,6 +357,8 @@ def write_dot(fname, pts, polys, name="test"):
         fp.write("}")
 
 def read_dot(fname, pts):
+    """  
+    """
     import re
     parse = re.compile(r'\s(\d+)\s\[label="", pos="([\d\.]+),([\d\.]+)".*];')
     data = np.zeros((len(pts), 2))
@@ -299,6 +375,8 @@ def read_dot(fname, pts):
     return data
 
 def write_decimated(path, pts, polys):
+    """  
+    """
     from .polyutils import decimate, boundary_edges
     dpts, dpolys = decimate(pts, polys)
     write_surf(path+'.smoothwm', dpts, dpolys)
@@ -316,6 +394,8 @@ def write_decimated(path, pts, polys):
 
 import copy
 class SpringLayout(object):
+    """  
+    """
     def __init__(self, pts, polys, dpts=None, pins=None, stepsize=1, neighborhood=0):
         self.pts = pts
         self.polys = polys
@@ -403,6 +483,8 @@ class SpringLayout(object):
         self.figure.mlab_source.set(x=self.pts[:,0], y=self.pts[:,1], z=self.pts[:,2])
 
 def stretch_mwall(pts, polys, mwall):
+    """  
+    """
     inflated = pts.copy()
     center = pts[mwall].mean(0)
     radius = max((pts.max(0) - pts.min(0))[1:])

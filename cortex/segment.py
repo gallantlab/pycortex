@@ -1,3 +1,5 @@
+"""Controls functions for segmentation of white/gray matter and other things in the brain.
+"""
 import os
 import time
 import shlex
