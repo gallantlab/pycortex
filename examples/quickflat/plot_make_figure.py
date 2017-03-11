@@ -1,7 +1,7 @@
 """
-=====================================================
-Plot a 2D static flatmap using the quickflat module
-=====================================================
+========================
+Plot a 2D static flatmap
+========================
 
 quickflat visualizations use matplotlib to generate figure-quality 2D flatmaps.
 
