@@ -13,14 +13,14 @@ import matplotlib.pyplot as plt
 
 subject = "S1"
 xfm = "fullhead"
-roi = "IPS"
+roi = "EBA"
 
 # Get the map of which voxels are inside of our ROI
-ips_map = cortex.utils.get_roi_mask(subject, xfm, roi)[roi]
+eba_map = cortex.utils.get_roi_mask(subject, xfm, roi)[roi]
 # And then threshold
-ips_mask = ips_map > 1
+eba_mask = eba_map > 2
 
 # Now we can just plot this onto a flatmap
-ips_data = cortex.Volume(ips_mask, subject, xfm, cmap="Blues_r")
-cortex.quickshow(ips_data)
+roi_data = cortex.Volume(eba_mask, subject, xfm, cmap="Blues_r")
+cortex.quickshow(roi_data)
 plt.show()
