@@ -1,7 +1,7 @@
 """
-=====================================================
-Save a 2D static flatmap using the quickflat module
-=====================================================
+===============================
+Save a 2D static flatmap as PNG
+===============================
 
 Plot a 2D static flatmap and save it as PNG file.
 
@@ -20,12 +20,14 @@ that use the parameter `bgcolor`.
 
 """
 import cortex
+import matplotlib.pyplot as plt
 
 # Create a random pycortex Volume
 volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
 
 # Plot a flatmap with the data projected onto the surface
 _ = cortex.quickflat.make_figure(volume)
+plt.show()
 
 # Save this flatmap
 filename = "./my_flatmap.png"
