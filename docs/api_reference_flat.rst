@@ -120,6 +120,17 @@ freesurfer
     import_subj
     import_flat
     show_surf
+	make_fiducial
+	parse_surf
+	parse_cruv
+	parse_patch
+	get_surf
+	get_curv
+	write_dot
+	read_dot
+	write_decimated
+	SpringLayout
+	stretch_mwall
 
 
 mapper

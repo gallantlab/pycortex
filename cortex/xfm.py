@@ -1,3 +1,5 @@
+"""Affine transformation class
+"""
 import os
 import numpy as np
 
