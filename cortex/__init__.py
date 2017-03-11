@@ -32,3 +32,10 @@ class dep(object):
 		warnings.warn("cortex.surfs is deprecated, use cortex.db instead", Warning)
 		return db.__dir__()
 surfs = dep()
+
+import sys
+if sys.version_info.major == 2:
+        stdout = sys.stdout
+        reload(sys)
+        sys.setdefaultencoding('utf8')
+        sys.stdout = stdout
