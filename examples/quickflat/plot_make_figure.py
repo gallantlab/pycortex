@@ -31,28 +31,28 @@ volume = cortex.Volume.random(subject='S1', xfmname='retinotopy')
 # Plot a flatmap with the data projected onto the surface
 # By default ROIs and their labels will be overlaid to the plot
 # Also a colorbar will be added
-cortex.quickflat.make_figure(volume)
+_ = cortex.quickflat.make_figure(volume)
 plt.show()
 
 # The cortex.quickshow method is a pointer to quickflat.make_figure
 # and will plot exactly the same as the above plot
-cortex.quickshow(volume)
+_ = cortex.quickshow(volume)
 plt.show()
 
 # Highlight the curvature
-cortex.quickflat.make_figure(volume, with_curvature=True)
+_ = cortex.quickflat.make_figure(volume, with_curvature=True)
 plt.show()
 
 # Remove ROI labels from the plot
-cortex.quickflat.make_figure(volume,
-                             with_curvature=True,
-                             with_labels=False)
+_ = cortex.quickflat.make_figure(volume,
+                                 with_curvature=True,
+                                 with_labels=False)
 plt.show()
 
 # Remove ROIs from the plot
-cortex.quickflat.make_figure(volume,
-                             with_curvature=True,
-                             with_rois=False)
+_ = cortex.quickflat.make_figure(volume,
+                                 with_curvature=True,
+                                 with_rois=False)
 plt.show()
 
 # Remove the colorbar from the plot
