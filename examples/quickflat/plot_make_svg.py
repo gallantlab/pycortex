@@ -1,9 +1,9 @@
 """
-=====================================================
-Save a 2D static flatmap using the quickflat module
-=====================================================
+===============================
+Save a 2D static flatmap as SVG
+===============================
 
-Plot a 2D static flatmap and save it as PNG file.
+Plot a 2D static flatmap and save it as SVG file.
 
 **Some words on the `rechache` parameter before we begin:**
 
@@ -17,16 +17,17 @@ This can be helpful if you think there is no reason that the
 
 The default background is set to be a transparent image. If you want to change
 that use the parameter `bgcolor`.
-
 """
 import cortex
+import matplotlib.pyplot as plt
 
 # Create a random pycortex Volume
 volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
 
 # Plot a flatmap with the data projected onto the surface
 _ = cortex.quickflat.make_figure(volume)
+plt.show()
 
 # Save this flatmap
-filename = "./my_flatmap.png"
+filename = "./my_flatmap.svg"
 _ = cortex.quickflat.make_png(filename, volume, recache=False)

@@ -1,7 +1,7 @@
 """
-=================================================
-Display potential dropout regions on the flatmap.
-=================================================
+===================================
+Plot dropout regions on the flatmap
+===================================
 
 A dropout region is a region with very low EPI signal. In pycortex a
 crosshatch is used to display such dropout regions.

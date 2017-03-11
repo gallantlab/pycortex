@@ -1,7 +1,7 @@
 """
-=====================================================
-Create a 2D static flatmap using the quickflat module
-=====================================================
+========================
+Plot a 2D static flatmap
+========================
 
 quickflat visualizations use matplotlib to generate figure-quality 2D flatmaps.
 
@@ -23,6 +23,7 @@ This can be helpful if you think there is no reason that the
 
 """
 import cortex
+import matplotlib.pyplot as plt
 
 # Create a random pycortex Volume
 volume = cortex.Volume.random(subject='S1', xfmname='retinotopy')
@@ -31,21 +32,32 @@ volume = cortex.Volume.random(subject='S1', xfmname='retinotopy')
 # By default ROIs and their labels will be overlaid to the plot
 # Also a colorbar will be added
 _ = cortex.quickflat.make_figure(volume)
+plt.show()
+
+# The cortex.quickshow method is a pointer to quickflat.make_figure
+# and will plot exactly the same as the above plot
+_ = cortex.quickshow(volume)
+plt.show()
 
 # Highlight the curvature
 _ = cortex.quickflat.make_figure(volume, with_curvature=True)
+plt.show()
 
 # Remove ROI labels from the plot
 _ = cortex.quickflat.make_figure(volume,
                                  with_curvature=True,
                                  with_labels=False)
+plt.show()
 
 # Remove ROIs from the plot
 _ = cortex.quickflat.make_figure(volume,
                                  with_curvature=True,
                                  with_rois=False)
+plt.show()
 
 # Remove the colorbar from the plot
-_ = cortex.quickflat.make_figure(volume,
-                                 with_curvature=True,
-                                 with_colorbar=False)
+cortex.quickflat.make_figure(volume,
+                             with_curvature=True,
+                             with_colorbar=False)
+
+plt.show()
