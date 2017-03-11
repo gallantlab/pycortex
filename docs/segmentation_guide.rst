@@ -1,6 +1,6 @@
-=====================
-How to Flatten Brains
-=====================
+===================================
+Surface Segmentation and Flattening
+===================================
 
 
 Welcome! This is a guide for the full process of making flatmaps, which allow us to visualize brain data in a more intuitive way than voxelized 3D images of brain data. There are three main phases of the process:
@@ -179,7 +179,7 @@ If you are finished with the mask, enter 1. Otherwise enter 3.
 
 
 Autorecon2: Creating Surfaces
-***********************************8
+***********************************
 
 Here, you will be creating both white and gray matter surfaces using the autorecon2
 command. When the command is complete, there will be outlines on the brain indicating that
