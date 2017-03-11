@@ -26,6 +26,7 @@ User Guide
    dataset
    rois
    transforms
+   colormaps
 
 Example Gallery
 ---------------
