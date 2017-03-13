@@ -39,7 +39,6 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     lvlstr = ("%dd" if decimate else "%d")%level
     # Generates different cache files for each combination of disp_layers
     ctmcache = "%s_[{types}]_{method}_{level}_v3.json"%subject
-    # Mark any ctm file containing extra_disp as unique (will be over-written every time)
     ctmcache = ctmcache.format(types=','.join(types),
                                method=method,
                                level=lvlstr)

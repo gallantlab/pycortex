@@ -21,6 +21,11 @@ develop-eggs
 lib
 lib64
 
+# Cached files in filestore
+# NOTE: the filestore really should never be in the git repo... Needs work.
+filestore/db/*/cache
+filestore/db/*/surface-info
+
 # Installer logs
 pip-log.txt
 

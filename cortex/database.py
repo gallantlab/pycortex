@@ -482,7 +482,7 @@ class Database(object):
         ----------
         subject : str
             Name of the subject
-        name : str
+        xfmname : str
             Name of the transform
         hemisphere : str, optional
             Which hemisphere to return. If "both", return concatenated. Defaults to "both".
