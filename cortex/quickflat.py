@@ -91,7 +91,6 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=None, cont
             cmap=cmap, 
             vmin=cvmin, #float(config.get('curvature','min')) if cvmin is None else cvmin,
             vmax=cvmax, #float(config.get('curvature','max')) if cvmax is None else cvmax,
-            origin='lower',
             label='curvature',
             zorder=0)
     return cvimg
@@ -140,7 +139,6 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     img = ax.imshow(im, 
             aspect='equal', 
             extent=extents, 
-            origin='lower',
             label='data',
             zorder=1,
             **cmapdict)
@@ -181,7 +179,6 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
         aspect='equal', 
         interpolation='bicubic', 
         extent=extents, 
-        origin='lower',
         label='rois',
         zorder=4)
     return img
@@ -220,7 +217,6 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
                      aspect='equal', 
                      interpolation='bicubic', 
                      extent=extents, 
-                     origin='lower',
                      label='sulci',
                      zorder=5)
     return img
@@ -269,7 +265,6 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4, hatch_c
                     aspect="equal", 
                     interpolation="bicubic", 
                     extent=extents, 
-                    origin='lower',
                     label='hatch',
                     zorder=2)
     return img
@@ -339,8 +334,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     img = ax.imshow(im, 
                     aspect="equal", 
                     interpolation="nearest", 
-                    extent=extents, 
-                    origin='lower', 
+                    extent=extents,  
                     label='custom',
                     zorder=6)
     return img
@@ -386,21 +380,9 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
     co = svgobject.get_texture('cutouts', height, labels=False, **svg_kws)[..., 0]
     if not np.any(co):
         raise Exception('No pixels in cutout region {}}!'.format(name))
-    # print('orig_extents: {}'.format(extents))
-    # l, r, t, b = extents
-    # x_span = np.abs(l-r)
-    # y_span = np.abs(t-b)
-    # y, x = np.nonzero(co)
-    # extents_new = [l + x.min() / w * x_span,
-    #             l + x.max() / w * x_span,
-    #             t + y.min() / h * y_span,
-    #             t + y.max() / h * y_span]    
 
-    # # Set extents        
-    # print('tmp extents: {}'.format(extents_new))
-    # # Bounding box indices
-
-    LL, RR, TT, BB = np.nan, np.nan, np.nan, np.nan
+    # Bounding box indices
+    LL, RR, BB, TT = np.nan, np.nan, np.nan, np.nan
     # Clip each layer to this cutout
     for layer_name, im_layer in layers.items():
         #print('\n=== Clipping %s... ==='%layer_name)
@@ -434,8 +416,8 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
         #print('Fak cutout extents are: {}'.format((x.min(), x.max(), y.min(), y.max())))
         #print('height, width: {}'.format((h,w)))
         #print('Cutout shape: {} - {}'.format(co.shape, layer_cutout.shape))
-        l, r, t, b = extents
-        x_span = np.abs(l-r)
+        l, r, b, t = extents
+        x_span = np.abs(r-l)
         y_span = np.abs(t-b)
         extents_new = [l + x.min() / w * x_span,
                     l + x.max() / w * x_span,
@@ -443,7 +425,6 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
                     t + y.max() / h * y_span]    
 
         # Set extents        
-        #print('tmp extents: {}'.format(extents_new))
         # Bounding box indices
         iy, ix = ((y.min(), y.max()), (x.min(), x.max()))
         tmp = im[iy[0]:iy[1], ix[0]:ix[1]]
@@ -452,8 +433,8 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
         # Track maxima / minima for figure
         LL = np.nanmin([extents_new[0], LL])
         RR = np.nanmax([extents_new[1], RR])
-        BB = np.nanmax([extents_new[2], BB])
-        TT = np.nanmin([extents_new[3], TT])
+        BB = np.nanmin([extents_new[2], BB])
+        TT = np.nanmax([extents_new[3], TT])
         #print('new extents: {}'.format((LL, RR, BB, TT)))
         imsize = (np.abs(np.diff(iy))[0], np.abs(np.diff(ix))[0])#fig.get_axes()[0].get_images()[0].get_size()
         #print('image size for this cutout: {}'.format(imsize))
@@ -609,7 +590,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
-    ax.set_ylim(extents[3], extents[2])
+    ax.set_ylim(extents[2], extents[3])
 
     if fig_resize:
         imsize = fig.get_axes()[0].get_images()[0].get_size()
