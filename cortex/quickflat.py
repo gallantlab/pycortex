@@ -456,7 +456,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
     # Re-set figure limits
     ax = fig.gca()
     ax.set_xlim(LL, RR)
-    ax.set_ylim(TT, BB)    
+    ax.set_ylim(BB, TT)    
     inch_size = np.array(imsize)[::-1] / float(fig.dpi)
     fig.set_size_inches(inch_size[0], inch_size[1])
 
