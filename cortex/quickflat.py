@@ -1,3 +1,6 @@
+"""Makes flattened views of volumetric data on the cortical surface.
+"""
+
 import io
 import os
 import glob
@@ -12,6 +15,7 @@ from .options import config
 from .svgoverlay import get_overlay
 
 ### --- Individual compositing functions --- ###
+
 
 def add_curvature(fig, dataview, extents=None, height=None, threshold=None, contrast=None,
                   brightness=None, cmap='gray', recache=False):
@@ -82,7 +86,6 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=None, cont
             cmap=cmap, 
             vmin=cvmin, #float(config.get('curvature','min')) if cvmin is None else cvmin,
             vmax=cvmax, #float(config.get('curvature','max')) if cvmax is None else cvmax,
-            origin='lower',
             label='curvature',
             zorder=0)
     return cvimg
@@ -133,14 +136,15 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     img = ax.imshow(im, 
             aspect='equal', 
             extent=extents, 
-            origin='lower',
             label='data',
             zorder=1,
             **cmapdict)
     return img, extents
 
 def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_list=None, **kwargs):
-    """Add rois to a flatmap plot
+    """Add ROIs layer to a figure
+
+    NOTE: zorder for rois is 3
 
     Parameters
     ----------
@@ -176,7 +180,6 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
         aspect='equal', 
         interpolation='bicubic', 
         extent=extents, 
-        origin='lower',
         label='rois',
         zorder=4)
     return img
@@ -219,7 +222,6 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
                      aspect='equal', 
                      interpolation='bicubic', 
                      extent=extents, 
-                     origin='lower',
                      label='sulci',
                      zorder=5)
     return img
@@ -275,7 +277,6 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4, hatch_c
                     aspect="equal", 
                     interpolation="bicubic", 
                     extent=extents, 
-                    origin='lower',
                     label='hatch',
                     zorder=2)
     return img
@@ -305,7 +306,8 @@ def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(.4, .07, .2,
 
 def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_labels=False, 
     shape_list=None, **kwargs):
-    """
+    """Add a custom data layer
+    
     Parameters
     ----------
     fig : matplotlib figure
@@ -313,12 +315,12 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     dataview : cortex.Volume
         cortex.Volume object containing 
     svgfile : string
-        filepath for custom svg file to use. Must be formatted identically to overlays.svg
+        Filepath for custom svg file to use. Must be formatted identically to overlays.svg
         file for subject in `dataview`
-    layer : 
-        layer within custom svg file to display
+    layer : string
+        Layer name within custom svg file to display
     extents : array-like
-        4 values for [Left, Right, Top, Bottom] extents of image plotted. If None, defaults to 
+        4 values for [Left, Right, Bottom, Top] extents of image plotted. If None, defaults to 
         extents of images already present in figure.
     height : scalar 
         Height of image. if None, defaults to height of images already present in figure. 
@@ -330,7 +332,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
 
     Other Parameters
     ----------------
-    kwargs
+    kwargs : 
 
     Returns
     -------
@@ -353,8 +355,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     img = ax.imshow(im, 
                     aspect="equal", 
                     interpolation="nearest", 
-                    extent=extents, 
-                    origin='lower', 
+                    extent=extents,  
                     label='custom',
                     zorder=6)
     return img
@@ -364,7 +365,20 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
 
     Parameters
     ----------
-    fig 
+    fig : figure
+        figure to which to add cutouts
+    name : str
+        name of cutout shape within cutouts layer to use to crop the rest of the figure
+    dataview : 
+    
+    layers :
+    
+    height : int
+    
+    extents :
+
+    Returns
+    -------
 
     """
     if layers is None:
@@ -387,10 +401,11 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
         raise Exception('No pixels in cutout region {}}!'.format(name))
 
     # Bounding box indices
-    LL, RR, TT, BB = np.nan, np.nan, np.nan, np.nan
+    LL, RR, BB, TT = np.nan, np.nan, np.nan, np.nan
     # Clip each layer to this cutout
     for layer_name, im_layer in layers.items():
         im = im_layer.get_array()
+        
         # Reconcile occasional 1-pixel difference between flatmap image layers 
         # that are generated by different functions
         if not all([np.abs(aa - bb) <= 1 for aa, bb in zip(im.shape, co.shape)]):
@@ -401,6 +416,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
             layer_cutout = imresize(co, im.shape[:2]).astype(np.float32)/255.
         else:
             layer_cutout = copy.copy(co)
+        
         # Handle different types of alpha layers. Unclear if this is still necessary after 
         # switching api to deal with matplotlib images.
         if im.dtype == np.uint8:
@@ -416,30 +432,34 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
                 im[layer_cutout==0] = np.nan
                 h, w = [float(v) for v in im.shape]
         y, x = np.nonzero(layer_cutout)
-        l, r, t, b = extents
-        x_span = np.abs(l-r)
+        l, r, b, t = extents
+        x_span = np.abs(r-l)
         y_span = np.abs(t-b)
         extents_new = [l + x.min() / w * x_span,
                     l + x.max() / w * x_span,
                     t + y.min() / h * y_span,
-                    t + y.max() / h * y_span]
+                    t + y.max() / h * y_span]    
+
         # Bounding box indices
         iy, ix = ((y.min(), y.max()), (x.min(), x.max()))
         tmp = im[iy[0]:iy[1], ix[0]:ix[1]]
         im_layer.set_array(tmp)
         im_layer.set_extent(extents_new)
+        
         # Track maxima / minima for figure
         LL = np.nanmin([extents_new[0], LL])
         RR = np.nanmax([extents_new[1], RR])
-        BB = np.nanmax([extents_new[2], BB])
-        TT = np.nanmin([extents_new[3], TT])
+        BB = np.nanmin([extents_new[2], BB])
+        TT = np.nanmax([extents_new[3], TT])
         imsize = (np.abs(np.diff(iy))[0], np.abs(np.diff(ix))[0])
+    
     # Re-set figure limits
     ax = fig.gca()
     ax.set_xlim(LL, RR)
     ax.set_ylim(TT, BB)    
     inch_size = np.array(imsize)[::-1] / float(fig.dpi)
     fig.set_size_inches(inch_size[0], inch_size[1])
+
     return
         
 
@@ -578,7 +598,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
-    ax.set_ylim(extents[3], extents[2])
+    ax.set_ylim(extents[2], extents[3])
 
     if fig_resize:
         imsize = fig.get_axes()[0].get_images()[0].get_size()
@@ -588,216 +608,6 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if cutout is not None:
         extents = add_cutout(fig, cutout, dataview, layers)
 
-    return fig
-
-
-def make_figure_old(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
-                height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
-                with_labels=True, with_colorbar=True, with_borders=False, 
-                with_dropout=False, with_curvature=False, extra_disp=None, 
-                linewidth=None, linecolor=None, roifill=None, shadow=None,
-                labelsize=None, labelcolor=None, cutout=None, cvmin=None,
-                cvmax=None, cvthr=None, fig=None, extra_hatch=None,
-                colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), **kwargs):
-   
-    from matplotlib import colors,cm, pyplot as plt
-    from matplotlib.collections import LineCollection
-
-    dataview = dataset.normalize(braindata)
-    if not isinstance(dataview, dataset.Dataview):
-        # Unclear what this means. Clarify error.
-        raise TypeError('Please provide a Dataview, not a Dataset')
-    
-    if fig is None:
-        fig_resize = True
-        fig = plt.figure()
-    else:
-        fig_resize = False
-        fig = plt.figure(fig.number)
-
-    im, extents = make_flatmap_image(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
-                       height=height, thick=thick, depth=depth)
-
-    svgobject = db.get_overlay(dataview.subject)
-
-    if cutout:
-        # Set ONLY desired cutout to be white
-        svgobject.cutouts.set(fill="white",stroke="white", **{'stroke-width':'2'})
-        for co_name, co_shape in svgobject.cutouts.shapes.items():
-            sh.visible = co_name == cutout
-        #roitex = svgobject.get_texture(height, labels=False)
-        #roitex.seek(0)
-        co = svgobject.get_texture('cutouts', height, labels=False)
-        if not np.any(co):
-            raise Exception('No pixels in cutout region %s!'%cutout)
-
-        # STUPID BUT NECESSARY 1-PIXEL CHECK:
-        if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,co.shape)]):
-            from scipy.misc import imresize
-            co = imresize(co, im.shape[:2]).astype(np.float32)/255.
-
-        # Alpha
-        if im.dtype == np.uint8:
-            im = np.cast['float32'](im)/255.
-            im[:,:,3]*=co
-            h, w, cdim = [float(v) for v in im.shape]
-        else:
-            im[co==0] = np.nan
-            h, w = [float(v) for v in im.shape]
-
-        # set extents
-        y,x = np.nonzero(co)
-        l,r,t,b = extents
-        extents = [x.min()/w * (l-r)+l,
-                    x.max()/w * (l-r)+l,
-                    y.min()/h * (t-b)+b,
-                    y.max()/h * (t-b)+b]
-
-        # bounding box indices
-        iy,ix = ((y.min(),y.max()),(x.min(),x.max()))
-    else:
-        iy,ix = ((0,-1),(0,-1))
-    
-    if with_curvature:
-        curv,ee = make_flatmap_image(db.get_surfinfo(dataview.subject), recache=recache, height=height)
-        if cutout: curv[co==0] = np.nan
-        axcv = fig.add_axes((0,0,1,1))
-        # Option to use thresholded curvature
-        use_threshold_curvature = config.get('curvature','threshold').lower() in ('true','t','1','y','yes') if cvthr is None else cvthr
-        if use_threshold_curvature:
-            curvT = (curv>0).astype(np.float32)
-            curvT[np.isnan(curv)] = np.nan
-            curv = curvT
-        cvimg = axcv.imshow(curv[iy[1]:iy[0]:-1,ix[0]:ix[1]], 
-                aspect='equal', 
-                extent=extents, 
-                cmap=plt.cm.gray,
-                vmin=float(config.get('curvature','min')) if cvmin is None else cvmin,
-                vmax=float(config.get('curvature','max')) if cvmax is None else cvmax,
-                origin='lower')
-        axcv.axis('off')
-        axcv.set_xlim(extents[0], extents[1])
-        axcv.set_ylim(extents[2], extents[3])
-
-    imkws = dict(aspect='equal', 
-        extent=extents, 
-        origin='lower')
-    
-    # Check whether dataview has a cmap instance
-    cmapdict = _has_cmap(dataview)
-    imkws.update(cmapdict)
-    print(imkws)
-
-    ax = fig.add_axes((0,0,1,1))
-    cimg = ax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]], **imkws)
-    ax.axis('off')
-    ax.set_xlim(extents[0], extents[1])
-    ax.set_ylim(extents[2], extents[3])
-
-
-    if with_colorbar and not isinstance(dataview, dataset.Volume2D):
-        cbar = fig.add_axes(colorbar_location)
-        fig.colorbar(cimg, cax=cbar, orientation='horizontal',
-                     ticks=colorbar_ticks)
-
-    if with_dropout is not False:
-        if isinstance(with_dropout, dataset.Dataview):
-            dropout_data = with_dropout
-        else:
-            if with_dropout is True:
-                dropout_power = 20 # default
-            else:
-                dropout_power = with_dropout
-
-            dropout_data = utils.get_dropout(dataview.subject, dataview.xfmname,
-                                             power=dropout_power)
-        
-        hatchim = _make_hatch_image(dropout_data, height, sampler, recache=recache)
-        if cutout: hatchim[:,:,3]*=co
-        dax = fig.add_axes((0,0,1,1))
-        dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal",
-                   interpolation="nearest", extent=extents, origin='lower')
-
-    if extra_hatch is not None:
-        hatch_data, hatch_color = extra_hatch
-        hatchim = _make_hatch_image(hatch_data, height, sampler, recache=recache)
-        hatchim[:,:,0] = hatch_color[0]
-        hatchim[:,:,1] = hatch_color[1]
-        hatchim[:,:,2] = hatch_color[2]
-        if cutout: hatchim[:,:,3]*=co
-        dax = fig.add_axes((0,0,1,1))
-        dax.imshow(hatchim[iy[1]:iy[0]:-1,ix[0]:ix[1]], aspect="equal",
-                   interpolation="nearest", extent=extents, origin='lower')
-    
-    if with_borders:
-        border = _gen_flat_border(dataview.subject, im.shape[0])
-        bax = fig.add_axes((0,0,1,1))
-        blc = LineCollection(border[0], linewidths=3.0,
-                             colors=[['r','b'][mw] for mw in border[1]])
-        bax.add_collection(blc)
-    #O = db.get_overlay(dataview.subject)
-    overlays = []
-    if with_rois:
-        #co = svgobject.get_texture(height, 'cutouts', labels=False)
-        roi = svgobject.get_texture('rois', height, labels=with_labels, #**kwargs)
-                                    linewidth=linewidth,
-                                    linecolor=linecolor,
-                                    roifill=roifill,
-                                    shadow=shadow,
-                                    labelsize=labelsize,
-                                    labelcolor=labelcolor)
-        overlays.append(roi)
-    if with_sulci:
-        sulc = svgobject.get_texture('sulci', height, labels=with_labels, #**kwargs)
-                                     linewidth=linewidth,
-                                     linecolor=linecolor,
-                                     shadow=shadow,
-                                     labelsize=labelsize,
-                                     labelcolor=labelcolor)
-        overlays.append(sulc)
-
-    if not extra_disp is None:
-        raise NotImplementedError("Not yet!")
-        svgfile,layer = extra_disp
-        if not isinstance(layer,(list,tuple)):
-            layer = [layer]
-        for extralayer in layer:
-            # Allow multiple extra layer overlays
-            pts_, polys_ = (0,0)
-            O = svgoverlay.get_overlay(svgfile, pts_, polys_)
-            disp = None
-            # disp = svgoverlay.get_overlay(dataview.subject,
-            #                   otype='external',
-            #                   shadow=shadow,
-            #                   labelsize=labelsize,
-            #                   labelcolor=labelcolor,
-            #                   layer=extralayer,
-            #                   svgfile=svgfile)
-            overlays.append(disp)
-
-    for oo in overlays:
-        #roitex = oo.get_texture(height, labels=with_labels, size=labelsize)
-        oo.seek(0)
-        oax = fig.add_axes((0,0,1,1))
-        im = plt.imread(oo)
-        if cutout: 
-            # STUPID BUT NECESSARY 1-PIXEL CHECK:
-            if any([np.abs(aa-bb)>0 and np.abs(aa-bb)<2 for aa,bb in zip(im.shape,im.shape)]):
-                from scipy.misc import imresize
-                co = imresize(co,im.shape[:2]).astype(np.float32)/255.
-            im[:,:,3] *= co
-
-        oimg = oax.imshow(im[iy[1]:iy[0]:-1,ix[0]:ix[1]],
-            aspect='equal', 
-            interpolation='bicubic', 
-            extent=extents, 
-            zorder=3,
-            origin='lower')
-
-    if fig_resize:
-        imsize = fig.get_axes()[0].get_images()[0].get_size()
-        fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
-        
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
@@ -1025,7 +835,16 @@ def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
         return img.T[::-1], extents
 
 def get_flatmask(subject, height=1024, recache=False):
-    """FARK"""
+    """
+    Parameters
+    ----------
+    subject : str
+        Name of subject in pycortex store
+    height : int
+        Height in pixels to generate the image
+    recache : bool
+        Recache the intermediate files? Can resolve some issues but is slower.
+    """
     cachedir = db.get_cache(subject)
     cachefile = os.path.join(cachedir, "flatmask_{h}.npz".format(h=height))
 
@@ -1041,7 +860,29 @@ def get_flatmask(subject, height=1024, recache=False):
 
 def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
                   recache=False, height=1024, depth=0.5):
-    """DEDARK"""
+    """
+    
+    Parameters
+    ----------
+    subject : str
+        Subject name in pycortex db
+    xfmname : str
+        Name of transform for subject
+    pixelwise : bool
+    
+    thick : int
+    
+    sampler : 
+    
+    recache : bool
+        Recache intermediate files? Doing so is slower but can resolve some errors.
+    height : int
+        Height in pixels of image to generated
+    depth : float
+    
+    Returns
+    -------
+    """
     cachedir = db.get_cache(subject)
     cachefile = os.path.join(cachedir, "flatverts_{height}.npz").format(height=height)
     if pixelwise and xfmname is not None:

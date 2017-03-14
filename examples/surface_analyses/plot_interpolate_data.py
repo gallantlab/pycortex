@@ -45,9 +45,10 @@ cortex.quickshow(interp_vertex, with_labels=False, with_rois=False)
 (lflatpts, lpolys), (rflatpts, rpolys) = cortex.db.get_surf(subject, "flat", 
                                                             nudge=True)
 
-ax = plt.gcf().axes[0]
+ax = plt.gca()
+# zorder is set to 10 to make sure points go on top of other quickflat layers
 ax.scatter(lflatpts[selected_pts,0], lflatpts[selected_pts,1], s=50, 
-           c=sparse_data, vmin=-2, vmax=2, cmap=plt.cm.RdBu_r)
+           c=sparse_data, vmin=-2, vmax=2, cmap=plt.cm.RdBu_r, zorder=10)
 
 
 # the interpolate function can also handle multiple dimensions at the same time

@@ -1,7 +1,7 @@
 """
-=================================================
-Display ROIs on the flatmap.
-=================================================
+========================
+Plot ROIs on the flatmap
+========================
 
 ROIs are defined as sub-layers of the `roi` layer in
 <filestore>/<subject>/rois.svg

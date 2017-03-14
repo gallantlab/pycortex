@@ -1,3 +1,5 @@
+"""Contains functions for making alignments between functional data and the surface, or, finding where the brain is.
+"""
 import os
 import numpy as np
 

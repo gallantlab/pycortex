@@ -1,7 +1,7 @@
 """
-=====================================================
-Display a previously defined cutout on the flatmap
-=====================================================
+===========================
+Plot cutouts on the flatmap
+===========================
 
 Cutouts are manually generated cuts of the cortical surface to highlight
 a region of interest.
@@ -16,7 +16,7 @@ name of the flatmap cutout defined in the `rois.svg` file.
 import cortex
 
 # Name of a sub-layer of the 'cutouts' layer in rois.svg file
-cutout_name = ""
+cutout_name = "VisualCortexRight"
 
 # Create a random pycortex Volume
 volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
