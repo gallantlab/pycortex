@@ -48,7 +48,7 @@ You can check the location of the filestore after installing by running::
 And you can check the location of the config file by running::
 
     import cortex
-    cortex.options.usercfg
+    cortex.options.config_path
 
 If you want to move the filestore, you need to update the config file::
 
