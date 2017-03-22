@@ -882,17 +882,35 @@ def make_svg(pts, polys):
 
     return svg
 
-def get_overlay(svgfile, pts, polys, remove_medial=False, **kwargs):
+def get_overlay(subject, svgfile, pts, polys, remove_medial=False, **kwargs):
     cullpts = pts[:,:2]
     if remove_medial:
         valid = np.unique(polys)
         cullpts = cullpts[valid]
 
     if not os.path.exists(svgfile):
+        # Overlay file does not exist yet! We need to create and populate it
         with open(svgfile, "w") as fp:
             fp.write(make_svg(pts.copy(), polys))
 
-    svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)
+        svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)
+
+        ## Add default layers
+        from database import db
+        from cStringIO import StringIO
+        from . import quickflat
+        import binascii
+
+        # Curvature
+        curv = db.get_surfinfo(subject, 'curvature')
+        curv.cmap = 'gray'
+        fp = StringIO()
+        quickflat.make_png(fp, curv, height=1024, with_rois=False, with_labels=False)
+        fp.seek(0)
+        svg.rois.add_shape('curvature', binascii.b2a_base64(fp.read()), False)
+
+    else:
+        svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)
     
     if remove_medial:
         return svg, valid
