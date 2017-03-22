@@ -110,6 +110,7 @@ class SVGOverlay(object):
         layer = _make_layer(svg.getroot(), name)
         shapes = _make_layer(layer, "shapes")
         shapes.attrib['id'] = "%s_shapes"%name
+        shapes.attrib['clip-path'] = "url(#edgeclip)"
         labels = _make_layer(layer, "labels")
         labels.attrib['id'] = "%s_labels"%name
         with open(self.svgfile, "w") as fp:
@@ -893,7 +894,10 @@ def get_overlay(svgfile, pts, polys, remove_medial=False, **kwargs):
             fp.write(make_svg(pts.copy(), polys))
 
     svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)
-    
+    # Assure all layers are present
+    for layer in ['sulci', 'cutouts', 'display']:
+        if layer not in svg.layers:
+            svg.add_layer(layer)
     if remove_medial:
         return svg, valid
         
@@ -995,5 +999,12 @@ def import_roi(roifile, outfile):
         label_layer.attrib['{%s}label'%inkns] = 'labels'
         rois.append(label_layer)
 
+
     with open(outfile, "w") as fp:
         fp.write(etree.tostring(svg, pretty_print=True))
+        
+    # Final check for all layers
+    svgo = SVGOverlay(outfile)
+    for new_layer in ['sulci', 'cutouts', 'display']:
+        if new_layer not in svgo.layers:
+            svgo.add_layer(new_layer)
