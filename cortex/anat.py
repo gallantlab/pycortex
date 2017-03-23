@@ -7,15 +7,17 @@ import tempfile
 import subprocess as sp
 
 import numpy as np
-
 from . import utils
 from .database import db
+from .options import config
 from .xfm import Transform
+
+fsl_prefix = config.get('basic', 'fsl_prefix')
 
 def brainmask(outfile, subject):
     raw = db.get_anat(subject, type='raw').get_filename()
     print('Brain masking anatomical...')
-    cmd = 'fsl5.0-bet {raw} {bet} -B -v'.format(raw=raw, bet=outfile)
+    cmd = '{fsl_prefix}bet {raw} {bet} -B -v'.format(fsl_prefix=fsl_prefix, raw=raw, bet=outfile)
     assert sp.call(cmd, shell=True) == 0, "Error calling fsl-bet"
 
 def whitematter(outfile, subject, do_voxelize=False):
@@ -29,9 +31,9 @@ def whitematter(outfile, subject, do_voxelize=False):
         try:
             cache = tempfile.mkdtemp()
             print("Segmenting the brain...")
-            cmd = 'fsl5.0-fast -o {cache}/fast {bet}'.format(cache=cache, bet=bet)
+            cmd = '{fsl_prefix}fast -o {cache}/fast {bet}'.format(fsl_prefix=fsl_prefix, cache=cache, bet=bet)
             assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
-            cmd = 'fsl5.0-fslmaths {cache}/fast_pve_2 -thr 0.5 -bin {out}'.format(cache=cache, out=outfile)
+            cmd = '{fsl_prefix}fslmaths {cache}/fast_pve_2 -thr 0.5 -bin {out}'.format(fsl_prefix=fsl_prefix, cache=cache, out=outfile)
             assert sp.call(cmd, shell=True) == 0, 'Error calling fsl-maths'
         finally:
             shutil.rmtree(cache)

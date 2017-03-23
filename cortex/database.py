@@ -176,7 +176,7 @@ class Database(object):
         self._subjects = dict([(sname, SubjectDB(sname, filestore=self.filestore)) for sname in subjs])
         return self._subjects
 
-    def get_anat(self, subject, type='raw', xfmname=None, recache=False, **kwargs):
+    def get_anat(self, subject, type='raw', xfmname=None, recache=False, order=1, **kwargs):
         """Return anatomical information from the filestore. Anatomical information is defined as
         any volume-space anatomical information pertaining to the subject, such as T1 image,
         white matter masks, etc. Volumes not found in the database will be automatically generated.
@@ -186,7 +186,7 @@ class Database(object):
         subject : str
             Name of the subject
         type : str
-            Type of anatomical volume to return
+            Type of anatomical volume to return. This should be the name of one of the 
         recache : bool
             Regenerate the information
 
@@ -213,7 +213,7 @@ class Database(object):
             return anatnib
 
         from . import volume
-        return volume.anat2epispace(anatnib.get_data().T.astype(np.float), subject, xfmname)
+        return volume.anat2epispace(anatnib.get_data().T.astype(np.float), subject, xfmname, order=order)
 
     def get_surfinfo(self, subject, type="curvature", recache=False, **kwargs):
         """Return auxillary surface information from the filestore. Surface info is defined as 
