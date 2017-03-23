@@ -49,8 +49,7 @@ cdef class CTMfile:
         if mode == 'r':
             self.ctx = openctm.ctmNewContext(openctm.CTM_IMPORT)
             openctm.ctmLoad(self.ctx, self.filename)
-            bytename = name.encode('utf-8')
-            err = openctm.ctmAddAttribMap(self.ctx, <float*> pts.data, <char*> bytename)
+            err = ctmGetError(self.ctx)
             if err != openctm.CTM_NONE:
                 raise IOError(openctm.ctmErrorString(err))
 
@@ -200,8 +199,7 @@ cdef class CTMfile:
             if fname is not None:
                 cname = fname
             pts = uv
-            bytename = name.encode('utf-8')
-            err = openctm.ctmAddUVMap(self.ctx, <float*>pts.data, <char*>bytename, cname)
+            err = openctm.ctmAddUVMap(self.ctx, <float*>pts.data, <char*>name, cname)
             if err == openctm.CTM_NONE:
                 err = openctm.ctmGetError(self.ctx)
                 raise Exception(openctm.ctmErrorString(err))
