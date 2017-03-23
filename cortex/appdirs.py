@@ -12,7 +12,7 @@ See <http://github.com/ActiveState/appdirs> for details and usage.
 # - XDG spec for Un*x: http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
 
 __version_info__ = (1, 2, 0)
-__version__ = '.'.join(map(str, __version_info__))
+__version__ = '.'.join([str(x) for x in __version_info__])
 
 
 import sys

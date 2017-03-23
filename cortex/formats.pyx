@@ -24,7 +24,8 @@ def read_off(str filename):
     pts, polys = [], []
     with open(filename) as fp:
         assert fp.readline()[:3] == 'OFF', 'Not an OFF file'
-        npts, nface, nedge = map(int, fp.readline().split())
+        #npts, nface, nedge = map(int, fp.readline().split())
+        npts, nface, nedge = [int(x) for x in fp.readline().split()] # python3 compatible
         print(npts, nface)
         for i in range(npts):
             pts.append([float(p) for p in fp.readline().split()])

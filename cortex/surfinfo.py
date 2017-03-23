@@ -152,10 +152,12 @@ def tissots_indicatrix(outfile, sub, radius=10, spacing=50):
 
 def flat_border(outfile, subject):
     flatpts, flatpolys = db.get_surf(subject, "flat", merge=True, nudge=True)
-    flatpolyset = set(map(tuple, flatpolys))
+    #flatpolyset = set(map(tuple, flatpolys))
+    flatpolyset = set([tuple(x) for x in flatpolys])
     
     fidpts, fidpolys = db.get_surf(subject, "fiducial", merge=True, nudge=True)
-    fidpolyset = set(map(tuple, fidpolys))
+    #fidpolyset = set(map(tuple, fidpolys))
+    fidpolyset = set([tuple(x) for x in fidpolys])
     fidonlypolys = fidpolyset - flatpolyset
     fidonlypolyverts = np.unique(np.array(list(fidonlypolys)).ravel())
     

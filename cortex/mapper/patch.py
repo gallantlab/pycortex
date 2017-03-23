@@ -36,7 +36,8 @@ class PatchMapper(Mapper):
             from .. import mp
             samples = mp.map(func, enumerate(patches))
         else:
-            samples = map(func, enumerate(patches))
+            #samples = map(func, enumerate(patches))
+            samples = [func(x) for x in enumerate(patches)]
 
         ij, alldata = [], []
         for i, (j, data) in enumerate(samples):

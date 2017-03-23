@@ -88,7 +88,8 @@ class BrainCTM(object):
         if fleft is not None:
             flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
             fmin, fmax = flatmerge.min(0), flatmerge.max(0)
-            self.flatlims = map(float, -fmin), map(float, fmax-fmin)
+            #self.flatlims = map(float, -fmin), map(float, fmax-fmin)
+            self.flatlims = float(-fmin), float(fmax-fmin)
 
             self.left.setFlat(fleft[0])
             self.right.setFlat(fright[0])

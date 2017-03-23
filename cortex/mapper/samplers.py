@@ -77,7 +77,8 @@ def distance_func(func, coords, shape, renorm=True, mp=True):
         from .. import mp
         ijdata = mp.map(func, range(len(coords)))
     else:
-        ijdata = map(func, range(len(coords)))
+        #ijdata = map(func, range(len(coords)))
+        ijdata = [func(x) for x in range(len(coords))]
 
     return np.hstack(ijdata)
 

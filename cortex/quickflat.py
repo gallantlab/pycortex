@@ -346,7 +346,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     if extents is None:
         extents = _get_extents(fig)
     pts_, polys_ = db.get_surf(dataview.subject, "flat", merge=True, nudge=True)
-    extra_svg = get_overlay(svgfile, pts_, polys_)
+    extra_svg = get_overlay(dataview.subject, svgfile, pts_, polys_)
     svg_kws = _convert_svg_kwargs(kwargs)
     im = extra_svg.get_texture(layer, height, 
                                labels=with_labels, 

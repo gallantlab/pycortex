@@ -950,7 +950,7 @@ def _parse_svg_pts(datastr):
     if data.pop(0).lower() != "m":
         raise ValueError("Unknown path format")
     #offset = np.array([float(x) for x in data[1].split(',')])
-    offset = np.array(map(float, [data.pop(0), data.pop(0)]))
+    offset = np.array([float(x) for x in [data.pop(0), data.pop(0)]])
     mode = "l"
     pts = [[offset[0], offset[1]]]
     
@@ -968,20 +968,20 @@ def _parse_svg_pts(datastr):
             mode = data.pop(0)
             continue
         if mode == "l":
-            offset += list(map(float, [data.pop(0), data.pop(0)]))
+            offset += list([float(x) for x in [data.pop(0), data.pop(0)]])
         elif mode == "L":
-            offset = np.array(list(map(float, [data.pop(0), data.pop(0)])))
+            offset = np.array(list([float(x) for x in [data.pop(0), data.pop(0)]]))
         elif mode == "c":
             data = data[4:]
-            offset += list(map(float, [data.pop(0), data.pop(0)]))
+            offset += list([float(x) for x in [data.pop(0), data.pop(0)]])
         elif mode == "C":
             data = data[4:]
-            offset = np.array(list(map(float, [data.pop(0), data.pop(0)])))
+            offset = np.array(list([float(x) for x in [data.pop(0), data.pop(0)]]))
         #support multi-part paths, by only using one label for the whole path
         elif mode == 'm' :
-            offset += list(map(float, [data.pop(0), data.pop(0)]))
+            offset += list([float(x) for x in [data.pop(0), data.pop(0)]])
         elif mode == 'M' :
-            offset = list(map(float, [data.pop(0), data.pop(0)]))
+            offset = list([float(x) for x in [data.pop(0), data.pop(0)]])
 
         ## Check to see if nothing has happened, and, if so, fail
         if len(data) == lastlen:

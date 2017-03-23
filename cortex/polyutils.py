@@ -1043,7 +1043,8 @@ def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True)
         from . import mp
         layers = mp.map(func, range(shape[2]))
     else:
-        layers = map(func, range(shape[2]))
+        #layers = map(func, range(shape[2]))
+        layers = [func(x) for x in range(shape[2])] # python3 compatible
 
     return np.array(layers).T
 
