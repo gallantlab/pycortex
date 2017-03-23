@@ -113,8 +113,11 @@ class SVGOverlay(object):
         shapes.attrib['clip-path'] = "url(#edgeclip)"
         labels = _make_layer(layer, "labels")
         labels.attrib['id'] = "%s_labels"%name
-        with open(self.svgfile, "w") as fp:
-            fp.write(etree.tostring(svg, pretty_print=True))
+        with open(self.svgfile, "wb") as fp:
+            #try:
+            fp.write(etree.tostring(svg, pretty_print=True)) # python2.X
+            #except:
+            #    fp.write(etree.tostring(svg, encoding=str, pretty_print=True)) # python3.X
         self.reload()
 
     def toxml(self, pretty=True):
@@ -302,8 +305,11 @@ class Overlay(object):
             height=str(self.svgobject.svgshape[1]),
         ))
 
-        with open(self.svgobject.svgfile, "w") as xml:
-            xml.write(etree.tostring(svg, pretty_print=True))
+        with open(self.svgobject.svgfile, "wb") as xml:
+            #try:
+            xml.write(etree.tostring(svg, pretty_print=True)) # python2.X
+            #except:
+            #    xml.write(etree.tostring(svg, encoding=str, pretty_print=True)) # python3.X
 
 class Labels(object):
     def __init__(self, overlay):
@@ -872,7 +878,7 @@ def make_svg(pts, polys):
     pts[:,1] = 1024 - pts[:,1]
     path = ""
     polyiter = trace_poly(boundary_edges(polys))
-    for poly in [polyiter.next(), polyiter.next()]:
+    for poly in [next(iter(polyiter)), next(iter(polyiter))]: #[polyiter.next(), polyiter.next()]:
         path +="M%f %f L"%tuple(pts[poly.pop(0), :2])
         path += ', '.join(['%f %f'%tuple(pts[p, :2]) for p in poly])
         path += 'Z '
@@ -897,18 +903,19 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False, **kwargs):
         svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)
 
         ## Add default layers
-        from database import db
-        from cStringIO import StringIO
+        from .database import db
+        #from cStringIO import StringIO
+        import io
         from . import quickflat
         import binascii
 
         # Curvature
         curv = db.get_surfinfo(subject, 'curvature')
         curv.cmap = 'gray'
-        fp = StringIO()
+        fp = io.BytesIO()
         quickflat.make_png(fp, curv, height=1024, with_rois=False, with_labels=False)
         fp.seek(0)
-        svg.rois.add_shape('curvature', binascii.b2a_base64(fp.read()), False)
+        svg.rois.add_shape('curvature', binascii.b2a_base64(fp.read()).decode('utf-8'), False)
 
     else:
         svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)

@@ -3,6 +3,7 @@
 
 import io
 import os
+import six
 import glob
 import copy
 import binascii
@@ -1021,7 +1022,10 @@ def _make_flatmask(subject, height=1024):
     from PIL import Image, ImageDraw
     pts, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
-    left, right = bounds.next(), bounds.next()
+    try:
+        left, right = bounds.next(), bounds.next() # python 2.X
+    except:
+        left, right = next(bounds), next(bounds) # python 3.X
     aspect = (height / (pts.max(0) - pts.min(0))[1])
     lpts = (pts[left] - pts.min(0)) * aspect
     rpts = (pts[right] - pts.min(0)) * aspect
@@ -1138,7 +1142,7 @@ def _has_cmap(dataview):
     if not isinstance(dataview, (dataset.VolumeRGB, dataset.VertexRGB)):
         # Get colormap from matplotlib or pycortex colormaps
         ## -- redundant code, here and in cortex/dataset/views.py -- ##
-        if isinstance(dataview.cmap,(str,unicode)):
+        if isinstance(dataview.cmap, six.string_types):
             if not dataview.cmap in cm.__dict__:
                 # unknown colormap, test whether it's in pycortex colormaps
                 cmapdir = config.get('webgl', 'colormaps')
