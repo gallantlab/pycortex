@@ -1,24 +1,29 @@
 Installation
 ============
-Pycortex is available on the Python Packaging Index. The easiest way to install it is with Anaconda_. To use pycortex with Anaconda_, first install anaconda as instructed, then type the following commands into a terminal::
+The best way to install pycortex currently is by getting the latest source code from github::
 
-    sudo pip install nibabel
-    sudo pip install pycortex
-
-If you are running Ubuntu, the built-in python packages should be sufficient. Use the following commands::
-
-    sudo apt-get install python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib
-    sudo pip install pycortex
-
-If you wish to run the latest bleeding-edge version of pycortex, use the following instructions (this is also a good thing to try if for whatever reason the pip install does not work)::
-
-    # This will create a source code directory for pycortex. 
-    git clone https://github.com/gallantlab/pycortex
+    git clone https://github.com/gallantlab/pycortex.git
     cd pycortex
-    # This will install the pycortex code into your local python installation
-    sudo python setup.py install
+    checkout glrework-merged
+
+    python setup.py develop
+
+
+Dependencies
+------------
+The easiest way to get most of the dependencies is using Anaconda_. To use pycortex with Anaconda_, first install anaconda as instructed, then::
+
+    pip install numpy Cython scipy h5py nibabel matplotlib Pillow numexpr tornado lxml networkx
+
+You will also need to install Inkscape_ using whatever method is appropriate for your system. On Mac OS X you will also need to enable access to Inkscape on the command line, see these instructions_.
+
+If you are running Ubuntu without Anaconda, use the following commands::
+
+    sudo apt-get install python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib inkscape
 
 .. _Anaconda: https://store.continuum.io/cshop/anaconda/
+.. _Inkscape: https://inkscape.org/en/
+.. _instructions: http://wiki.inkscape.org/wiki/index.php/Mac_OS_X#Inkscape_command_line
 
 Demo
 ----
@@ -31,13 +36,22 @@ To test if your install went well, first download the `example dataset <http://g
 
 If everything went well, this should pop up a web browser window with the same view as http://gallantlab.org/pycortex/retinotopy_demo/.
 
-Configuration
--------------
-Pycortex will automatically create a database filestore when it is first installed. In Linux, this filestore is located at :file:`/usr/local/share/pycortex/`. On first import, it will also create a configuration file in your user directory which allows you to specify additional options, including alternate filestore locations.
+Basic Configuration
+-------------------
+Pycortex will automatically create a database filestore when it is first installed. In Linux, this filestore is located at :file:`/usr/local/share/pycortex/`. On first import, it will also create a configuration file in your user directory which allows you to specify additional options, including alternate filestore locations. In Linux, this user configuration file is located in :file:`~/.config/pycortex/options.cfg`.
 
-In Linux, this user configuration file is located in :file:`~/.config/pycortex/options.cfg`. The location of the *filestore* (i.e. database) needs to be written into the file under the ``[basic]`` header::
+You can check the location of the filestore after installing by running::
+
+    import cortex
+    cortex.database.default_filestore
+
+And you can check the location of the config file by running::
+
+    import cortex
+    cortex.options.usercfg
+
+If you want to move the filestore, you need to update the config file::
 
    [basic]
    filestore=/abs/path/to/filestore
 
-.. todo:: Additional option documentation

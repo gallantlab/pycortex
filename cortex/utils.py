@@ -1,3 +1,5 @@
+"""Contain utility functions
+"""
 import io
 import os
 import binascii
@@ -36,11 +38,29 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     This is a cached file that specifies (1) the surfaces between which
     to interpolate (`types` argument), (2) the `method` to interpolate 
     between surfaces, (3) the display layers to include (rois, sulci, etc)
+    
+    Parameters
+    ----------
+    subject : str
+        Name of subject in pycortex stored
+    type : tuple
+        Surfaces between which to interpolate
+    method : str
+    
+    level : 
+    
+    recache : bool
+        Recache intermediate files? Can resolve some errors but is slower.
+    
+    decimate : bool
+    
+    Returns
+    -------
+    ctmfile :
     """
     lvlstr = ("%dd" if decimate else "%d")%level
     # Generates different cache files for each combination of disp_layers
     ctmcache = "%s_[{types}]_{method}_{level}_v3.json"%subject
-    # Mark any ctm file containing extra_disp as unique (will be over-written every time)
     ctmcache = ctmcache.format(types=','.join(types),
                                method=method,
                                level=lvlstr)
@@ -61,6 +81,18 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     return ctmfile
 
 def get_ctmmap(subject, **kwargs):
+    """
+    Parameters
+    ----------
+    subject : str
+        Subject name
+    
+    Returns
+    -------
+    lnew :
+    
+    rnew :
+    """
     from scipy.spatial import cKDTree
     from . import brainctm
     jsfile = get_ctmpack(subject, **kwargs)
@@ -78,6 +110,22 @@ def get_ctmmap(subject, **kwargs):
     return lnew, rnew
 
 def get_cortical_mask(subject, xfmname, type='nearest'):
+    """
+    Gets the cortical mask for a particular transform
+    
+    Parameters
+    ----------
+    subject : str
+        Subject name
+    xfmname : str
+        Transform name
+    type : str
+        Mask type
+        
+    Returns
+    -------
+    
+    """
     if type == 'cortical':
         ppts, polys = db.get_surf(subject, "pia", merge=True, nudge=False)
         wpts, polys = db.get_surf(subject, "wm", merge=True, nudge=False)
@@ -141,6 +189,18 @@ def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
 def get_hemi_masks(subject, xfmname, type='nearest'):
     '''Returns a binary mask of the left and right hemisphere
     surface voxels for the given subject.
+    
+    Parameters
+    ----------
+    subject : str
+        Name of subject
+    xfmname : str
+        Name of transform
+    type : str
+    
+    Returns
+    -------
+    
     '''
     return get_mapper(subject, xfmname, type=type).hemimasks
 
@@ -230,7 +290,23 @@ def get_roi_verts(subject, roi=None):
     return roidict
 
 def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
-    '''Return a bitmask for the given ROI'''
+    """Return a bitmask for the given ROI
+    
+    Parameters
+    ----------
+    subject : str
+        Name of subject
+    xfmname : str
+        Name of transform
+    roi : tuple
+        Name of ROI(s) to get masks for. None gets all of them
+    projection : str
+    
+    Returns
+    -------
+    output : dict
+        Dict of ROIs and their masks
+    """
 
     mapper = get_mapper(subject, xfmname, type=projection)
     rois = get_roi_verts(subject, roi=roi)
@@ -257,7 +333,7 @@ def get_aseg_mask(subject, xfmname, aseg_id, **kwargs):
     return anat2epispace(mask.astype(float), subject, xfmname, **kwargs)
 
 def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=False):
-    '''Return a numbered mask + dictionary of roi numbers
+    """Return a numbered mask + dictionary of roi numbers
 
     This function returns a single 3D array with a separate numerical index for each ROI, 
 
@@ -289,7 +365,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=
         the left hemisphere will be -1). 
     roi_index : dict
         Mapping of roi names to index values (e.g. {'V1': 1}). 
-    '''
+    """
     # Get ROIs from inkscape SVGs
     rois, vert_idx = db.get_overlay(subject, remove_medial=True)
 
@@ -397,6 +473,19 @@ def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=
 def get_dropout(subject, xfmname, power=20):
     """Create a dropout Volume showing where EPI signal
     is very low.
+    
+    Parameters
+    ----------
+    subject : str
+        Name of subject
+    xfmname : str
+        Name of transform
+    power :
+    
+    Returns
+    -------
+    volume : dataview
+        Pycortex volume of low signal locations
     """
     xfm = db.get_xfm(subject, xfmname)
     rawdata = xfm.reference.get_data().T.astype(np.float32)
@@ -413,6 +502,23 @@ def get_dropout(subject, xfmname, power=20):
     return Volume(normdata, subject, xfmname)
 
 def make_movie(stim, outfile, fps=15, size="640x480"):
+    """Makes a movie
+    
+    Parameters
+    ----------
+    stim : 
+    
+    outfile : str
+    
+    fps : float
+        refresh rate of the stimulus
+    size : str
+        resolution of the movie out
+        
+    Returns
+    -------
+    
+    """
     import shlex
     import subprocess as sp
     cmd = "ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv"
@@ -420,6 +526,15 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     sp.call(shlex.split(fcmd))
 
 def vertex_to_voxel(subject):
+    """
+    Parameters
+    ----------
+    subject : str
+        Name of subject
+        
+    Returns
+    -------
+    """
     max_thickness = db.get_surfinfo(subject, "thickness").data.max()
 
     # Get distance from each voxel to each vertex on each surface
@@ -441,6 +556,18 @@ def vertex_to_voxel(subject):
     return all_verts
 
 def get_cmap(name):
+    """Gets a colormaps
+    
+    Parameters
+    ----------
+    name : str
+        Name of colormap to get
+        
+    Returns
+    -------
+    cmap : ListedColormap
+        Matplotlib colormap object
+    """
     import matplotlib.pyplot as plt
     from matplotlib import colors
     # unknown colormap, test whether it's in pycortex colormaps

@@ -9,10 +9,14 @@ cwd = os.path.split(os.path.abspath(__file__))[0]
 userdir = appdirs.user_data_dir("pycortex", "JamesGao")
 usercfg = os.path.join(userdir, "options.cfg")
 
+# Read defaults from pycortex repo
 config = configparser.ConfigParser()
 config.read(os.path.join(cwd, 'defaults.cfg'))
 
+# Update defaults with user-sepecifed values in user config
 files_successfully_read = config.read(usercfg)
+
+# If user config doesn't exist, create it
 if len(files_successfully_read) == 0:
     os.makedirs(userdir)
     with open(usercfg, 'w') as fp:

@@ -1,3 +1,5 @@
+"""Contains functions for making a whitematter mask
+"""
 import os
 import shlex
 import shutil

@@ -90,6 +90,7 @@ class BrainCTM(object):
         if fleft is not None:
             flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
             fmin, fmax = flatmerge.min(0), flatmerge.max(0)
+            #self.flatlims = map(float, -fmin), map(float, fmax-fmin) # old code
             self.flatlims = [float(x) for x in -fmin], [float(x) for x in fmax-fmin]
 
             self.left.setFlat(fleft[0])
@@ -118,12 +119,13 @@ class BrainCTM(object):
 
         Parameters
         ----------
-        path : string filepath
+        path : string
+            File path for cached ctm file to save
         method : idkwtf
-        disp_layers : tuple|list
-            list of strings; names of layers from rois.svg to show
-        extra_disp : tuple
-            (svgfile,[layers]) - tuple of (external display .svg filename, [list_of,layers_in_file,to_display])
+        xxx disp_layers : tuple|list
+        xxx    list of strings; names of layers from rois.svg to show
+        xxx extra_disp : tuple
+        xxx    (svgfile,[layers]) - tuple of (external display .svg filename, [list_of,layers_in_file,to_display])
         """
         ctmname = path + ".ctm"
         svgname = path + ".svg"
@@ -275,7 +277,7 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
 
 def read_pack(ctmfile):
     fname = os.path.splitext(ctmfile)[0]
-    jsfile = json.load(open(fname+".json"))
+    jsfile = json.load(open(fname + ".json"))
     offset = jsfile['offsets']
 
     meshes = []

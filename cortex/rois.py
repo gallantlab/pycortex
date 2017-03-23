@@ -135,11 +135,13 @@ class ROIpack(object):
 
                 cc = nx.cycles.cycle_basis(bgraph)
                 if len(cc) > 1:
+                    # Need to deal with this later: map/reduce calls not python3 compatible
                     edges = reduce(set.symmetric_difference,
                                    [set(map(lambda l:tuple(sorted(l)), zip(c, c[1:]+[c[0]]))) for c in cc])
                     eg = nx.from_edgelist(edges)
                     cycles = nx.cycles.cycle_basis(eg)
-                    longest = np.argmax(map(len, cycles))
+                    #longest = np.argmax(map(len, cycles))
+                    longest = np.argmax([len(x) for x in  cycles]) # python3 compatible
                     path_order = cycles[longest]
                 else:
                     path_order = cc[0]

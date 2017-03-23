@@ -168,46 +168,6 @@ class Database(object):
         return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", # "get_paths", # Add?
                 "get_mask", "get_overlay","get_cache", "get_view", "save_view", "get_mnixfm"] + list(self.subjects.keys())
 
-    def loadXfm(self, *args, **kwargs):
-        warnings.warn("loadXfm is deprecated, use save_xfm instead", Warning)
-        return self.save_xfm(*args, **kwargs)
-
-    def getXfm(self, *args, **kwargs):
-        warnings.warn("getXfm is deprecated, use get_xfm instead", Warning)
-        return self.get_xfm(*args, **kwargs)
-
-    def getSurf(self, *args, **kwargs):
-        warnings.warn("getSurf is deprecated, use get_surf instead", Warning)
-        return self.get_surf(*args, **kwargs)
-
-    def getAnat(self, *args, **kwargs):
-        warnings.warn("getAnat is deprecated, use get_anat instead", Warning)
-        return self.get_anat(*args, **kwargs)
-
-    def getSurfInfo(self, *args, **kwargs):
-        warnings.warn("getSurfInfo is deprecated, use get_surfinfo instead", Warning)
-        return self.get_surfinfo(*args, **kwargs)
-
-    def getMask(self, *args, **kwargs):
-        warnings.warn("getMask is deprecated, use get_mask instead", Warning)
-        return self.get_mask(*args, **kwargs)
-
-    def getOverlay(self, *args, **kwargs):
-        warnings.warn("getOverlay is deprecated, use get_overlay instead", Warning)
-        return self.get_overlay(*args, **kwargs)
-
-    def getCache(self, *args, **kwargs):
-        warnings.warn("getCache is deprecated, use get_cache instead", Warning)
-        return self.get_cache(*args, **kwargs)
-
-    def loadView(self, *args, **kwargs):
-        warnings.warn("loadView is deprecated, use get_view instead", Warning)
-        return self.save_view(*args, **kwargs)
-
-    def setView(self, *args, **kwargs):
-        warnings.warn("setView is deprecated, use save_view instead", Warning)
-        return self.get_view(*args, **kwargs)
-
     @property
     def subjects(self):
         if self._subjects is not None:
@@ -314,7 +274,6 @@ class Database(object):
         paths = self.get_paths(subject)
         if self.auxfile is not None:
             print("I FOUND AN AUXFILE! HOLY MOLY, WHAT IS THAT??")
-            1/0
             try:
                 tf = self.auxfile.get_overlay(subject) # kwargs??
                 svgfile = tf.name
@@ -332,7 +291,7 @@ class Database(object):
         if os.path.exists(paths['rois']) and not os.path.exists(paths['overlays']):
             svgoverlay.import_roi(paths['rois'], paths['overlays'])
 
-        return svgoverlay.get_overlay(paths['overlays'], pts, polys, **kwargs)
+        return svgoverlay.get_overlay(subject, paths['overlays'], pts, polys, **kwargs)
     
     def save_xfm(self, subject, name, xfm, xfmtype="magnet", reference=None):
         """
@@ -523,7 +482,7 @@ class Database(object):
         ----------
         subject : str
             Name of the subject
-        name : str
+        xfmname : str
             Name of the transform
         hemisphere : str, optional
             Which hemisphere to return. If "both", return concatenated. Defaults to "both".

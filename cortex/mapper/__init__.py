@@ -77,7 +77,7 @@ class Mapper(object):
     @property
     def hemimasks(self):
         func = lambda m: (np.array(m.sum(0)).squeeze() != 0).reshape(self.shape)
-        return list([func(x) for x in self.masks])
+        return [func(x) for x in self.masks]
 
     def __repr__(self):
         ptype = self.__class__.__name__

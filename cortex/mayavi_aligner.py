@@ -963,7 +963,7 @@ class Align(HasTraits):
                 title='Aligner'
             )
 
-def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", decimate=False):
+def get_aligner(subject, xfmname, epifile=None, xfm=None, xfmtype="magnet", decimate=True):
     from .database import db
 
     dbxfm = None

@@ -20,12 +20,13 @@ User Guide
    :maxdepth: 2
    
    install
-   segmentation
+   segmentation_guide
    database
    align
-   dataset
+   .. dataset
    rois
    transforms
+   colormaps
 
 Example Gallery
 ---------------

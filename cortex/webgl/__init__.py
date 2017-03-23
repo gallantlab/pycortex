@@ -1,3 +1,5 @@
+"""Makes an interactive viewer for viewing data in a browser
+"""
 from ..utils import DocLoader
 
 show = DocLoader("show", ".view", "cortex.webgl")
