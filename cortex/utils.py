@@ -4,10 +4,12 @@ import io
 import os
 import binascii
 import numpy as np
+from six import string_types
 from importlib import import_module
 from .database import db
 from .volume import mosaic, unmask, anat2epispace
 from .options import config
+from .freesurfer import fs_aseg_dict
 
 class DocLoader(object):
     def __init__(self, func, mod, package):
@@ -36,16 +38,16 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
 
     This is a cached file that specifies (1) the surfaces between which
     to interpolate (`types` argument), (2) the `method` to interpolate 
-    between surfaces, (3) the display layers to include (rois, sulci, etc)
+    between surfaces
     
     Parameters
     ----------
     subject : str
         Name of subject in pycortex stored
-    type : tuple
-        Surfaces between which to interpolate
+    types : tuple
+        Surfaces between which to interpolate.
     method : str
-    
+        
     level : 
     
     recache : bool
@@ -65,8 +67,7 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
                                level=lvlstr)
     ctmfile = os.path.join(db.get_cache(subject), ctmcache)
 
-    if os.path.exists(ctmfile) and not recache: # and extra_disp is None:
-        # (never load cache with extra_disp, which is based on files outside pycortex)
+    if os.path.exists(ctmfile) and not recache: 
         return ctmfile
 
     print("Generating new ctm file...")
@@ -109,8 +110,7 @@ def get_ctmmap(subject, **kwargs):
     return lnew, rnew
 
 def get_cortical_mask(subject, xfmname, type='nearest'):
-    """
-    Gets the cortical mask for a particular transform
+    """Gets the cortical mask for a particular transform
     
     Parameters
     ----------
@@ -119,11 +119,16 @@ def get_cortical_mask(subject, xfmname, type='nearest'):
     xfmname : str
         Transform name
     type : str
-        Mask type
+        Mask type, one of {'cortical','thin','thick', 'nearest'}. 'cortical' is exactly the 
+        cortical ribbon, between the freesurfer-estimated white matter and pial 
+        surfaces; 'thin' is < 2mm away from fiducial surface; 'thick' is < 8mm 
+        away from fiducial surface. 
+        'nearest' is nearest voxel only (??)
         
     Returns
     -------
-    
+    mask : array
+        boolean mask array for cortical voxels in functional space
     """
     if type == 'cortical':
         ppts, polys = db.get_surf(subject, "pia", merge=True, nudge=False)
@@ -240,15 +245,11 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
         raise TypeError("Please specify a data view")
 
     svg = db.get_overlay(dv.subject)
-    try:
-        import cStringIO
-        fp = cStringIO.StringIO()
-    except:
-        fp = io.StringIO()
+    fp = io.BytesIO()
 
     quickflat.make_png(fp, dv, height=1024, with_rois=False, with_labels=False, **kwargs)
     fp.seek(0)
-    svg.rois.add_shape(name, binascii.b2a_base64(fp.read()), add_path)
+    svg.rois.add_shape(name, binascii.b2a_base64(fp.read()).decode('utf-8'), add_path)
     
     if open_inkscape:
         return sp.call(["inkscape", '-f', svg.svgfile])
@@ -284,7 +285,7 @@ def get_roi_verts(subject, roi=None):
         roi = svg.rois.shapes.keys()
 
     roidict = dict()
-    if isinstance(roi, str):
+    if isinstance(roi, string_types):
         roi = [roi]
 
     for name in roi:
@@ -320,20 +321,60 @@ def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
         
     return output
 
-def get_aseg_mask(subject, xfmname, aseg_id, **kwargs):
+def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **kwargs):
     """Return an epi space mask of the given ID from freesurfer's automatic segmentation
-
-    For aseg_id's, see https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
+    
+    Parameters
+    ----------
+    subject : str
+        pycortex subject ID
+    aseg_name : str or list
+        Name of brain partition or partitions to return. See freesurfer web site for partition names:
+        https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
+        ... or inspect `cortex.freesurfer.fs_aseg_mask.keys()` Currently (2017.03) only the first
+        256 indices in the freesurfer lookup table are supported. If a name is provided that does not 
+        exactly match any of the freesurfer partitions, the function will search for all partitions
+        that contain that name (caps are ignored). For example, 'white-matter' will generate a mask 
+        that combines masks for the following partitions: 'Right-Cerebral-White-Matter', 
+        'Left-Cerebellum-White-Matter', 'Right-Cerebellum-White-Matter', and 'Left-Cerebral-White-Matter')
+    xfmname : str
+        Name for transform of mask to functional space. If `None`, anatomical-space
+        mask is returned.
+    order : int, [0-5]
+        Order of spline interpolation for transform from anatomical to functional space
+        (ignored if xfmname is None). 0 is like nearest neighbor; 1 returns bilinear
+        interpolation of mask from anatomical space. To convert either of these volumes to
+        a binary mask for voxel selection, set the `threshold` argument.
+        Setting order > 1 is not recommended, as it will give values outside the range of 0-1.
+    threshold : scalar
+        If None or inf, does nothing.
+    Returns
+    -------
+    mask : 
+    Notes
+    -----
+    See also get_anat(subject, type='aseg')
+    
     """
     aseg = db.get_anat(subject, type="aseg").get_data().T
 
-    if isinstance(aseg_id, (list, tuple)):
-        mask = np.zeros(aseg.shape)
-        for idx in aseg_id:
-            mask = np.logical_or(mask, aseg == idx)
-    else:
-        mask = aseg == aseg_id
-    return anat2epispace(mask.astype(float), subject, xfmname, **kwargs)
+    if not isinstance(aseg_name, (list, tuple)):
+        aseg_name = [aseg_name]
+
+    mask = np.zeros(aseg.shape)
+    for name in aseg_name:
+        if name in fs_aseg_dict:
+            tmp = aseg==fs_aseg_dict[name]
+        else:
+            # Combine all masks containing `name` (e.g. all masks with 'cerebellum' in the name)
+            keys = [k for k in fs_aseg_dict.keys() if name.lower() in k.lower()]
+            if len(keys) == 0:
+                raise ValueError('Unknown aseg_name!')
+            tmp = np.any(np.array([aseg==fs_aseg_dict[k] for k in keys]), axis=0)
+        mask = np.logical_or(mask, tmp)
+    if xfmname is not None:
+        mask = anat2epispace(mask.astype(float), subject, xfmname, order=order, **kwargs)
+    return mask
 
 def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=False):
     """Return a numbered mask + dictionary of roi numbers
@@ -391,7 +432,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=
     # Mask for left hemisphere
     Lmask = (vox_idx < nL).flatten()
     Rmask = np.logical_not(Lmask)
-    if type(dst) in (str,unicode):
+    if isinstance(dst, string_types):
         cx_mask = db.get_mask(subject,xfmname,dst).flatten()
     else:
         cx_mask = (vox_dst < dst).flatten()
@@ -399,6 +440,8 @@ def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=
     if roi_list is None:
         roi_list = roi_names_all
     else:
+        # Idiot-proofing
+        assert len(set(roi_list))==len(roi_list), 'Duplicate ROI found in list!'
         roi_list = [r for r in roi_list if r in ['Cortex','cortex']+roi_names_all]
         if fail_for_missing_rois:
             fails = [r for r in roi_list if not r in ['Cortex','cortex']+roi_names_all]
@@ -503,7 +546,10 @@ def get_dropout(subject, xfmname, power=20):
     return Volume(normdata, subject, xfmname)
 
 def make_movie(stim, outfile, fps=15, size="640x480"):
-    """Makes a movie
+    """Makes an .ogv movie
+
+    A simple wrapper for ffmpeg. Calls:
+    "ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv"
     
     Parameters
     ----------
@@ -586,3 +632,27 @@ def get_cmap(name):
         except:
             raise Exception('Unkown color map!')
     return cmap
+
+def add_cmap(cmap, name):
+    """Add a colormap to pycortex
+    
+    This stores a matplotlib colormap in the pycortex filestore, such that it can 
+    be used in the webgl viewer in pycortex. See [] for more information about how
+    to generate colormaps in matplotlib
+
+    Parameters
+    ----------
+    cmap : matplotlib colormap
+        Color map to be saved
+    name : 
+        Name for colormap, e.g. 'jet', 'blue_to_yellow', etc. This will be a file name,
+        so no weird characters. This name will also be used to specify this colormap in 
+        future calls to cortex.quickflat.make_figure() or cortex.webgl.show()
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib import colors
+    x = np.linspace(0, 1, 256)
+    cmap_im = cmap(x).reshape((1,256,4))
+
+    plt.imsave(os.path.join(cmapdir,name),cmap_im)
+
