@@ -639,7 +639,7 @@ def get_cmap(name):
             raise Exception('Unkown color map!')
     return cmap
 
-def add_cmap(cmap, name):
+def add_cmap(cmap, name, cmapdir=None):
     """Add a colormap to pycortex
     
     This stores a matplotlib colormap in the pycortex filestore, such that it can 
@@ -659,6 +659,8 @@ def add_cmap(cmap, name):
     from matplotlib import colors
     x = np.linspace(0, 1, 256)
     cmap_im = cmap(x).reshape((1,256,4))
-
-    plt.imsave(os.path.join(cmapdir,name),cmap_im)
+    if cmapdir is None:
+        # Probably won't work due to permissions...
+        cmapdir = config.get('webgl', 'colormaps')
+    plt.imsave(os.path.join(cmapdir, name), cmap_im)
 
