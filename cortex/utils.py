@@ -347,10 +347,14 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
         a binary mask for voxel selection, set the `threshold` argument.
         Setting order > 1 is not recommended, as it will give values outside the range of 0-1.
     threshold : scalar
-        If None or inf, does nothing.
+        Threshold value for aseg mask. If None, function returns result of spline interpolation
+        of mask as transformed to functional space (will have continuous float values from 0-1)
+    
     Returns
     -------
-    mask : 
+    mask : array
+        array with float or boolean values denoting the location of the requested cortical partition.
+
     Notes
     -----
     See also get_anat(subject, type='aseg')
@@ -374,6 +378,8 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
         mask = np.logical_or(mask, tmp)
     if xfmname is not None:
         mask = anat2epispace(mask.astype(float), subject, xfmname, order=order, **kwargs)
+    if threshold is not None:
+        mask = mask > threshold
     return mask
 
 def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=False):
