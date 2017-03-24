@@ -120,10 +120,6 @@ class BrainCTM(object):
         path : string
             File path for cached ctm file to save
         method : idkwtf
-        xxx disp_layers : tuple|list
-        xxx    list of strings; names of layers from rois.svg to show
-        xxx extra_disp : tuple
-        xxx    (svgfile,[layers]) - tuple of (external display .svg filename, [list_of,layers_in_file,to_display])
         """
         ctmname = path + ".ctm"
         svgname = path + ".svg"

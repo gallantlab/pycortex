@@ -382,8 +382,12 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
         mask = mask > threshold
     return mask
 
-def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=False):
-    """Return a numbered mask + dictionary of roi numbers
+
+from six import string_types
+
+def get_roi_masks(subject, xfmname, dst='cortical', roi_list=None, fail_for_missing_rois=False, 
+                  split_lr=False, allow_overlap=False, return_dict=True):
+    """Return a dictionary of roi masks
 
     This function returns a single 3D array with a separate numerical index for each ROI, 
 
@@ -393,132 +397,103 @@ def get_roi_masks(subject, xfmname, roi_list=None, dst=2, fail_for_missing_rois=
         pycortex subject ID
     xfmname : string
         pycortex transformation name
-    roi_list : list or None
-        list of names of ROIs to retrieve (e.g. ['FFA','OFA','EBA']). Names should match the 
-        ROI layers in the rois.svg file for the `subject` specified. If None is provided (default),
-        all available ROIs for the subject are returned.
     dst : scalar or string
         Distance from fiducial surface to define ROI. Reasonable values are ~1 (very conservative)
         to ~3 (lots of brain that isn't cortex). Alternatively, you can specify one of the available 
         masks as the dst value ('thick','thin', or 'cortical'). 'cortical' will only work if the 
         surface for `subject` was created using Freesurfer.
+    roi_list : list or None
+        List of names of ROIs to retrieve (e.g. ['FFA','OFA','EBA']). Names should match the 
+        ROI layers in the rois.svg file for the `subject` specified. If None is provided (default),
+        all available ROIs for the subject are returned.
     fail_for_missing_rois : bool
         Whether to fail if one or more of the rois specified in roi_list are not available. If set to
-        False (default behavior), requested rois that are not present will be ignored (and not included
-        in the outputs, obviously)
+        False (default behavior), requested rois that are not present will be ignored and excluded
+        from the output
+    split_lr : bool
+        Whether to separate ROIs in to left and right hemispheres (e.g., 'V1' becomes 'V1_L' and 'V1_R')
+    allow_overlap : bool
+        Whether to allow ROIs to include voxels in other ROIs (default:False)
+    return_dict : bool
+        If True (default), function returns a dictionary of ROI masks; if False, a volume with integer
+        indices for each ROI (similar to Freesurfer's aseg masks) and a dictionary of how the indices
+        map to ROI names are returned. 
     
     Returns
     -------
-    mask : array
-        Single 3D array with a separate numerical index value for each ROI. ROI index values in the 
-        left hemisphere are negative. (For example, if V1 in the right hemisphere is 1, then V1 in 
-        the left hemisphere will be -1). 
-    roi_index : dict
-        Mapping of roi names to index values (e.g. {'V1': 1}). 
+    roi_masks : dict
+        Dictionary of arrays; keys are ROI names, values are roi masks.
+    - OR - 
+    (index_volume, index_labels) : tuple of array & dict
+        `index_volume` is a 3D array with a separate numerical index value for each ROI. Index values
+        in the left hemisphere are negative. (For example, if V1 in the right hemisphere is 1, then V1 in 
+        the left hemisphere will be -1). `index_labels` is a dict that maps roi names to index values 
+        (e.g. {'V1': 1}). 
     """
-    # Get ROIs from inkscape SVGs
-    rois, vert_idx = db.get_overlay(subject, remove_medial=True)
 
-    # Retrieve shape from the reference
-    shape = db.get_xfm(subject, xfmname).shape
-    
-    # Get 3D coordinates
-    coords = np.vstack(db.get_coords(subject, xfmname)) # Replace with a mapper object; get_coords is deprecated
-    n_verts = np.max(coords.shape)
-    coords = coords[vert_idx]
-    n_valid_vertices = np.max(coords.shape)
-    # Get distance of each voxel from fiducial surface (vox_dst) and index for each voxel showing 
-    # which surface vertex is closest to it (vox_idx). Note that vox_idx includes vertices on the 
-    # medial wall, which later need to be excluded from the ROIs.
-    vox_dst,vox_idx = get_vox_dist(subject,xfmname)
-    vox_idx_flat = vox_idx.flatten()
-    # Get L,R hem separately
-    L, R = db.get_surf(subject, "flat", merge=False, nudge=True)
-    nL = len(np.unique(L[1]))
-    # Mask for left hemisphere
-    Lmask = (vox_idx < nL).flatten()
-    Rmask = np.logical_not(Lmask)
-    if isinstance(dst, string_types):
-        cx_mask = db.get_mask(subject,xfmname,dst).flatten()
-    else:
-        cx_mask = (vox_dst < dst).flatten()
-    roi_names_all = rois.rois.shapes.keys()
+    # Start with vertices
+    tmp_list = [r for r in roi_list if not r=='Cortex']
+    roi_verts = get_roi_verts(subject, roi=tmp_list)
     if roi_list is None:
-        roi_list = roi_names_all
-    else:
-        # Idiot-proofing
-        assert len(set(roi_list))==len(roi_list), 'Duplicate ROI found in list!'
-        roi_list = [r for r in roi_list if r in ['Cortex','cortex']+roi_names_all]
-        if fail_for_missing_rois:
-            fails = [r for r in roi_list if not r in ['Cortex','cortex']+roi_names_all]
-            if any(fails):
-                for f in fails:
-                    print("No ROI exists for %s"%f)
-                raise ValueError("Invalid ROIs requested!")
-
-    if isinstance(roi_list, str):
+        roi_list = list(roi_verts.keys())
+    if not isinstance(roi_list, (list, tuple)):
         roi_list = [roi_list]
-    # First: get all roi voxels into 4D volume
-    tmp_mask = np.zeros((np.prod(shape),len(roi_list),2),np.bool)
-    drop_roi = []
-    for ir,roi in enumerate(roi_list):
-        if roi.lower()=='cortex':
-            roi_idx_bin3 = np.ones(Lmask.shape)>0
+    if fail_for_missing_rois:
+        missing = [r for r in roi_list if not r in roi_verts.keys()+['Cortex']]
+        if len(missing) > 0:
+            raise ValueError('One or more ROIs {} not found in overlays.svg file!'.format(missing))
+    # Get map of vertex indices for each voxel
+    vox_dst, vox_idx = get_vox_dist(subject, xfmname)
+    if isinstance(dst, string_types):
+        cortex_mask = db.get_mask(subject, xfmname, type=dst)
+    else:
+        cortex_mask = vox_dst <= dst
+    # Select roi voxels by combination of vertex indices & distance from fiducial surface
+    roi_voxels = {}
+    for roi in roi_list:
+        if roi not in roi_verts:
+            if not roi=='Cortex':
+                print("ROI {} not found...".format(roi))
+            continue
+        tmp = np.in1d(vox_idx.flatten(), roi_verts[roi]).reshape(vox_idx.shape)
+        roi_mask = tmp & cortex_mask
+        if np.any(roi_mask):
+            roi_voxels[roi] = roi_mask
         else:
-            print('BOOGERS!')
-            # This step is the time-consuming step, which can't be avoided.
-            #roi_idx_sub1 = rois.get_roi(roi) # substitution index 1 (in valid vertex space) # OLD
-            roi_idx_sub1 = get_roi_verts(subject, roi=roi)[roi] # NEW
-            # New
-            print(n_valid_vertices)
-            print(n_verts)
-            1/0
-            roi_idx_bin1 = np.zeros((n_valid_vertices,),np.bool) # binary index 1
-
-            # Old
-            # Complicated indexing to remove vertices/voxels on the medial wall
-            roi_idx_bin1 = np.zeros((n_valid_vertices,),np.bool) # binary index 1
-            roi_idx_bin1[roi_idx_sub1] = True
-            roi_idx_bin2 = np.zeros((n_verts,),np.bool) # binary index 2
-            roi_idx_bin2[vert_idx] = roi_idx_bin1
-            roi_idx_sub2 = np.nonzero(roi_idx_bin2)[0] # substitution index 2 (in ALL fiducial vertex space)
-            roi_idx_bin3 = np.in1d(vox_idx_flat,roi_idx_sub2) # binary index to 3D volume (flattened, though)
-        tmp_mask[:,ir,0] = np.all(np.array([roi_idx_bin3, Lmask, cx_mask]), axis=0)
-        tmp_mask[:,ir,1] = np.all(np.array([roi_idx_bin3, Rmask, cx_mask]), axis=0)
-        if not np.any(tmp_mask[:,ir]):
-            drop_roi += [ir]
-    # Cull rois with no voxels
-    keep_roi = np.array([not ir in drop_roi for ir in range(len(roi_list))], dtype=np.bool)
-    # Cull rois requested, but not avialable in pycortex
-    roi_list_L = [r for ir,r in enumerate(roi_list) if not ir in drop_roi]
-    tmp_mask = tmp_mask[:, keep_roi, :]
-    # Kill all overlap btw. "cortex" and other ROIs
-    roi_list_L_lower = [xx.lower() for xx in roi_list_L]
-    if 'cortex' in roi_list_L_lower:
-        cx_idx = roi_list_L_lower.index('cortex')
-        # Left:
-        other_rois = tmp_mask[:,np.arange(len(roi_list_L))!=cx_idx,0] 
-        tmp_mask[:,cx_idx,0] = np.logical_and(np.logical_not(np.any(other_rois,axis=1)),tmp_mask[:,cx_idx,0])
-        # Right:
-        other_rois = tmp_mask[:,np.arange(len(roi_list_L))!=cx_idx,1]
-        tmp_mask[:,cx_idx,1] = np.logical_and(np.logical_not(np.any(other_rois,axis=1)),tmp_mask[:,cx_idx,1])
-
-    # Second: 
-    mask = np.zeros(np.prod(shape),dtype=np.int64)
-    roi_idx = {}
-    to_cut = np.sum(tmp_mask,axis=1)>1
-    # Note that indexing by vox_idx guarantees that there will be no overlap in ROIs
-    # (unless there are overlapping assignments to ROIs on the surface), due to 
-    # each voxel being assigned only ONE closest vertex
-    print('%d overlapping voxels were cut'%np.sum(to_cut))
-    tmp_mask[to_cut] = False 
-    for ir,roi in enumerate(roi_list_L):
-        mask[tmp_mask[:,ir,0]] = -ir-1
-        mask[tmp_mask[:,ir,1]] = ir+1
-        roi_idx[roi] = ir+1
-    mask.shape = shape
-
-    return mask,roi_idx
+            print("ROI {} is empty...".format(roi))
+    all_mask = np.array(roi_voxels.values()).sum(0)
+    if 'Cortex' in roi_list:
+        roi_voxels['Cortex'] = (all_mask==0) & cortex_mask
+    # Optionally cull voxels assigned to > 1 ROI due to partly overlapping shapes in inkscape file:
+    if not allow_overlap:
+        print('Cutting {} overlapping voxels (should be < ~50)'.format(np.sum(all_mask>1)))
+        for roi in roi_list:
+            roi_voxels[roi][all_mask>1] = False
+    # Split left / right hemispheres if desired
+    # There ought to be a more succinct way to do this - get_hemi_masks only does the cortical
+    # ribbon, and is not guaranteed to have all voxels in the cortex_mask specified in this fn
+    left_verts, right_verts = db.get_surf(subject, "flat", merge=False, nudge=True)
+    left_mask = vox_idx < len(np.unique(left_verts[1]))
+    right_mask = np.logical_not(left_mask)
+    if split_lr:
+        roi_voxels_lr = {}
+        for roi in roi_list:
+            roi_voxels_lr[roi+'_L'] = roi_voxels[roi] & left_mask
+            roi_voxels_lr[roi+'_R'] = roi_voxels[roi] & right_mask
+        output = roi_voxels_lr
+    else:
+        output = roi_voxels
+    # Support alternative outputs for backward compatibility
+    if return_dict:
+        return output
+    else:
+        idx_vol = np.zeros(vox_idx.shape, dtype=np.int64)
+        idx_labels = {}
+        for iroi, roi in enumerate(roi_list):
+            idx_vol[roi_voxels[roi]] = iroi
+            idx_labels[roi] = iroi
+        idx_vol[left_mask] *= -1
+        return idx_vol, idx_labels
 
 def get_dropout(subject, xfmname, power=20):
     """Create a dropout Volume showing where EPI signal

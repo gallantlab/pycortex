@@ -273,7 +273,7 @@ class Database(object):
 
         paths = self.get_paths(subject)
         if self.auxfile is not None:
-            print("I FOUND AN AUXFILE! HOLY MOLY, WHAT IS THAT??")
+            #print("I FOUND AN AUXFILE! HOLY MOLY, WHAT IS THAT??") # still unclear what this does
             try:
                 tf = self.auxfile.get_overlay(subject) # kwargs??
                 svgfile = tf.name
