@@ -399,7 +399,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
                                        linewidth=2))
     co = svgobject.get_texture('cutouts', height, labels=False, **svg_kws)[..., 0]
     if not np.any(co):
-        raise Exception('No pixels in cutout region {}}!'.format(name))
+        raise Exception('No pixels in cutout region {}!'.format(name))
 
     # Bounding box indices
     LL, RR, BB, TT = np.nan, np.nan, np.nan, np.nan
