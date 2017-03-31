@@ -145,7 +145,7 @@ cdef class CTMfile:
 
         return pts, polys, norms
 
-    def save(self, method='mg2', int level=9):
+    def save(self, str method='mg2', int level=9):
         cdef char* cname = NULL
         cdef float* cnorms = NULL
         cdef openctm.CTMenum err
@@ -155,13 +155,11 @@ cdef class CTMfile:
         cdef np.ndarray[np.uint32_t, ndim=2] polys
         cdef np.ndarray[np.float32_t, ndim=2] norms
 
-        method = method.encode()
-
-        if method == b"mg2":
+        if method == "mg2":
             ctmmeth = openctm.CTM_METHOD_MG2
-        elif method == b"mg1":
+        elif method == "mg1":
             ctmmeth = openctm.CTM_METHOD_MG1
-        elif method == b"raw":
+        elif method == "raw":
             ctmmeth = openctm.CTM_METHOD_RAW
         else:
             raise TypeError('Invalid compression method')
@@ -171,7 +169,7 @@ cdef class CTMfile:
         if err != openctm.CTM_NONE:
             raise Exception(openctm.ctmErrorString(err))
 
-        if method != b"raw":
+        if method != "raw":
             openctm.ctmCompressionLevel(self.ctx, level)
             err = openctm.ctmGetError(self.ctx)
             if err != openctm.CTM_NONE:

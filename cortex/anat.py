@@ -7,8 +7,6 @@ import tempfile
 import subprocess as sp
 
 import numpy as np
-
-# from . import utils
 from .database import db
 from .options import config
 from .xfm import Transform

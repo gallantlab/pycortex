@@ -1,6 +1,6 @@
 """Makes flattened views of volumetric data on the cortical surface.
 """
-
+from six import string_types
 from functools import reduce
 import io
 import os
@@ -10,7 +10,6 @@ import copy
 import binascii
 import numpy as np
 
-from six import string_types
 from . import utils
 from . import dataset
 from .database import db
