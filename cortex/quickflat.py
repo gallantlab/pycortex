@@ -1079,7 +1079,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
     ll = np.vstack([l1, l2, l3])
     ll[:,missing] = 0
 
-    from cortex.mapper import samplers
+    from .mapper import samplers
     xfm = db.get_xfm(subject, xfmname, xfmtype='coord')
     sampclass = getattr(samplers, sampler)
 

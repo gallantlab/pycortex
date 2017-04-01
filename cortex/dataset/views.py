@@ -2,11 +2,14 @@ import json
 import warnings
 import h5py
 import numpy as np
+
 from .. import options
 from ..database import db
 from .braindata import BrainData, VolumeData, VertexData, _hash
+# from ..utils import u
 
 default_cmap = options.config.get("basic", "default_cmap")
+
 
 def normalize(data):
     if isinstance(data, tuple):
@@ -37,7 +40,7 @@ def _from_hdf_data(h5, name, xfmname=None, **kwargs):
 
     mask = None
     if "mask" in dnode.attrs:
-        if dnode.attrs['mask'].startswith("__"):
+        if u(dnode.attrs['mask']).startswith(u"__"):
             mask = h5['/subjects/%s/transforms/%s/masks/%s'%(dnode.attrs['subject'], xfmname, dnode.attrs['mask'])].value
         else:
             mask = dnode.attrs['mask']
@@ -140,18 +143,18 @@ class Dataview(object):
 
     @staticmethod
     def from_hdf(node):
-        data = json.loads(node[0].decode('utf8'))
+        data = json.loads(u(node[0]))
         desc = node[1]
         try:
             cmap = json.loads(node[2])
         except:
             cmap = node[2]
-        vmin = json.loads(node[3].decode('utf8'))
-        vmax = json.loads(node[4].decode('utf8'))
-        state = json.loads(node[5].decode('utf8'))
-        attrs = json.loads(node[6].decode('utf8'))
+        vmin = json.loads(u(node[3]))
+        vmax = json.loads(u(node[4]))
+        state = json.loads(u(node[5]))
+        attrs = json.loads(u(node[6]))
         try:
-            xfmname = json.loads(node[7].decode('utf8'))
+            xfmname = json.loads(u(node[7]))
         except ValueError:
             xfmname = None
 
@@ -322,6 +325,14 @@ class Vertex(VertexData, Dataview):
         r, g, b, a = super(Vertex, self).raw
         return VertexRGB(r, g, b, self.subject, a, 
             description=self.description, state=self.state, **self.attrs)
+
+
+def u(s, encoding='utf8'):
+    try:
+        return s.decode(encoding)
+    except AttributeError:
+        return s
+
 
 from .viewRGB import VolumeRGB, VertexRGB
 from .view2D import Volume2D, Vertex2D

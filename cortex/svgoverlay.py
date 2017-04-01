@@ -14,7 +14,7 @@ from scipy.spatial import cKDTree
 from lxml import etree
 from lxml.builder import E
 
-from cortex.options import config
+from .options import config
 
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
