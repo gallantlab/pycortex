@@ -3,6 +3,7 @@ from . import align, volume, quickflat, webgl, segment, options
 from .database import db
 from .utils import *
 from .quickflat import make_figure as quickshow
+from .volume import mosaic, unmask
 
 try:
 	from . import formats

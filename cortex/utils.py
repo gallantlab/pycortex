@@ -637,9 +637,3 @@ def add_cmap(cmap, name, cmapdir=None):
         cmapdir = config.get('webgl', 'colormaps')
     plt.imsave(os.path.join(cmapdir, name), cmap_im)
 
-
-def u(s, encoding='utf8'):
-    try:
-        return s.decode(encoding)
-    except AttributeError:
-        return s
