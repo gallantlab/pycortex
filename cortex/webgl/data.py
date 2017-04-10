@@ -9,7 +9,7 @@ dict(
 """
 import os
 import json
-import cStringIO
+from io import StringIO
 import numpy as np
 
 from .. import dataset
@@ -67,7 +67,7 @@ class Package(object):
         for brain in self.uniques:
             if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
                 data = np.array(self.images[brain.name])[0]
-                npyform = cStringIO.StringIO()
+                npyform = StringIO()
                 if self.brains[brain.name]['raw']:
                     data = data[..., indices[brain.subject]['index'], :]
                 else:
@@ -89,8 +89,7 @@ class Package(object):
 
 def _pack_png(mosaic):
     from PIL import Image
-    import cStringIO
-    buf = cStringIO.StringIO()
+    buf = StringIO()
     if mosaic.dtype not in (np.float32, np.uint8):
         raise TypeError
 

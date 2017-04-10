@@ -4,7 +4,12 @@ import time
 import json
 import stat
 import email
-import Queue
+
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+
 import struct
 import socket
 import logging
@@ -287,7 +292,7 @@ class WebApp(threading.Thread):
             (r"/(.*)", tornado.web.StaticFileHandler, dict(path=cwd)),
         ]
         self.port = port
-        self.response = Queue.Queue()
+        self.response = queue.Queue()
         self.connect = threading.Event()
         self.sockets = []
 

@@ -1,0 +1,39 @@
+language: python
+
+python:
+  - 2.7
+
+sudo: true
+
+env:
+  global:
+    - secure: "fumoc9CFl8Nypi9iMRuJAkDv4gHptcikEFlkiPOUz6wBiCyKj+w7Hl917wMOLqKuNGM0gT4suFG06quLI6hDTUhmWwulsWNXpRaql5ukhvCFMyqIx+kkuQGYe1aKcRmeDZqYsc3KEvSb2MOoeLIvsfqxjj3mvZwgaN4zaUthnZM="
+
+virtualenv:
+  system_site_packages: true
+
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get -y -qq install python-numpy python-scipy python-h5py cython python-numexpr python-tornado python-lxml python-networkx
+
+install:
+  - pip install --upgrade pip
+  - pip install nibabel Pillow matplotlib==1.5.1
+  - python -c "import matplotlib; print (matplotlib.__version__)"
+  
+script:
+  - set -e
+
+  - pip install sphinx numpydoc sphinx_gallery
+  - python setup.py build_ext --inplace
+
+  - cd docs
+  - make html
+  - cd ..
+  
+  - virtualenv venv --python=python3.5
+  - source venv/bin/activate
+  - pip install git+https://github.com/r-b-g-b/doctr.git@deploy-to-any-branch
+  - ssh-keyscan github.com >> ~/.ssh/known_hosts
+  - sudo venv/bin/doctr deploy --deploy-repo gallantlab/gallantlab.github.io --deploy-branch-name master --gh-pages-docs / --no-require-master
+  - deactivate
