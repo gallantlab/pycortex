@@ -11,7 +11,7 @@ from libc.stdlib cimport atoi, atof
 
 np.import_array()
 
-def read(str globname):
+def read(globname):
     readers = OrderedDict([('gii', read_gii), ('npz', read_npz), ('vtk', read_vtk), ('off', read_off), ('stl', read_stl)])
     for ext, func in readers.items():
         try:
@@ -20,7 +20,7 @@ def read(str globname):
             pass
     raise IOError('No such surface file')
 
-def read_off(str filename):
+def read_off(filename):
     pts, polys = [], []
     with open(filename) as fp:
         assert fp.readline()[:3] == 'OFF', 'Not an OFF file'
@@ -35,13 +35,13 @@ def read_off(str filename):
 
     return np.array(pts), np.array(polys)
 
-def read_npz(str filename):
+def read_npz(filename):
     npz = np.load(filename)
     pts, polys = npz['pts'], npz['polys']
     npz.close()
     return pts, polys
 
-def read_gii(str filename):
+def read_gii(filename):
     from nibabel import gifti
     gii = gifti.read(filename)
     pts = gii.getArraysFromIntent('pointset')[0].data
@@ -49,7 +49,7 @@ def read_gii(str filename):
     return pts, polys
 
 @cython.boundscheck(False)
-def read_stl(str filename):
+def read_stl(filename):
     cdef int i, j
 
     dtype = np.dtype("3f4, (3,3)f4, H")
@@ -75,7 +75,7 @@ def read_stl(str filename):
     return np.array(points), polys
 
 @cython.boundscheck(False)
-def read_vtk(str filename):
+def read_vtk(filename):
     cdef str vtk, line
     cdef bytes svtk
     cdef char *cstr = NULL, *cvtk = NULL
@@ -121,7 +121,7 @@ def read_vtk(str filename):
 
     return pts, polys
 
-def write_vtk(bytes filename, object pts, object polys, object norms=None):
+def write_vtk(filename, object pts, object polys, object norms=None):
     with open(filename, "w") as fp:
         fp.write("# vtk DataFile Version 3.0\nWritten by pycortex\nASCII\nDATASET POLYDATA\n")
         fp.write("POINTS %d float\n"%len(pts))
@@ -137,7 +137,7 @@ def write_vtk(bytes filename, object pts, object polys, object norms=None):
             fp.write("NORMALS Normals float")
             np.savetxt(fp, norms, fmt='%0.12g')
 
-def write_off(bytes filename, object pts, object polys):
+def write_off(filename, object pts, object polys):
     spolys = np.hstack((3*np.ones((len(polys),1), dtype=polys.dtype), polys))
     with open(filename, 'w') as fp:
         fp.write('OFF\n')
@@ -145,7 +145,7 @@ def write_off(bytes filename, object pts, object polys):
         np.savetxt(fp, pts, fmt='%f')
         np.savetxt(fp, spolys, fmt='%d')
 
-def write_stl(bytes filename, object pts, object polys):
+def write_stl(filename, object pts, object polys):
     dtype = np.dtype("3f4, 9f4, H")
     data = np.zeros((len(polys),), dtype=dtype)
     data['f1'] = pts[polys].reshape(-1, 9)
@@ -155,7 +155,7 @@ def write_stl(bytes filename, object pts, object polys):
 
 
 
-def write_gii(bytes filename, object pts, object polys):
+def write_gii(filename, object pts, object polys):
     from nibabel import gifti
     pts_darray = gifti.GiftiDataArray.from_array(pts.astype(np.float32), "pointset")
     polys_darray = gifti.GiftiDataArray.from_array(polys, "triangle")
