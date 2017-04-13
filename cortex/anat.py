@@ -1,12 +1,11 @@
 """Contains functions for making a whitematter mask
 """
-import os
-import shlex
 import shutil
 import tempfile
 import subprocess as sp
 
 import numpy as np
+import nibabel
 
 #from . import utils
 from .database import db
@@ -31,8 +30,23 @@ def whitematter(outfile, subject, do_voxelize=False):
             print("Segmenting the brain...")
             cmd = 'fsl5.0-fast -o {cache}/fast {bet}'.format(cache=cache, bet=bet)
             assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
+
+            wmfl = 'fast_pve_2'
+            arr = np.asarray(nibabel.load('{cache}/{wmseg}.nii.gz'.format(cache=cache,wmseg=wmfl)).get_data())
+            if arr.sum() == 0:
+                from warnings import warn
+                warn('"fsl-fast" with default settings failed. Trying no pve, no bias correction...')
+                cmd = 'fsl5.0-fast -g --nopve --nobias -o {cache}/fast {bet}'.format(cache=cache, bet=bet)
+                assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
+                wmfl = 'fast_seg_2'
+
             cmd = 'fsl5.0-fslmaths {cache}/fast_pve_2 -thr 0.5 -bin {out}'.format(cache=cache, out=outfile)
             assert sp.call(cmd, shell=True) == 0, 'Error calling fsl-maths'
+
+            # check generated mask succeeded
+            arr = np.asarray(nibabel.load('{outfl}'.format(outfl=outfile)).get_data())
+            assert arr.sum() >= 0, 'Error with generated whitematter mask.'
+
         finally:
             shutil.rmtree(cache)
 
@@ -46,7 +60,6 @@ def voxelize(outfile, subject, surf='wm', mp=True):
         xfm = Transform(np.linalg.inv(nib.get_affine()), nib)
         vox += polyutils.voxelize(xfm(pts), polys, shape=shape, center=(0,0,0), mp=mp).astype('bool')
         
-    import nibabel
     nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
     nib.to_filename(outfile)
 
