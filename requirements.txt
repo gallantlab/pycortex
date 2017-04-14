@@ -1,0 +1,11 @@
+numpy
+Cython
+scipy
+h5py
+nibabel
+matplotlib
+Pillow
+numexpr
+tornado
+lxml
+networkx
