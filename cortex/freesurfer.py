@@ -40,16 +40,15 @@ def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
         return os.path.join(base, "surf", hemi+".curv{name}")
 
 def autorecon(subject, type="all"):
-    """
+    """Run Freesurfer's autorecon-all command for a given freesurfer subject
     
     Parameters
     ----------
-    subject : 
-    
-    type : 
-    
-    Returns
-    -------
+    subject : string
+        Freesurfer subject ID (should be a folder in your freesurfer $SUBJECTS_DIR)
+    type : string
+        Which steps of autorecon-all to perform. {'all', '1','2','3','cp','wm', 'pia'}
+
     """
     types = { 
         'all':'autorecon-all',
@@ -75,7 +74,7 @@ def autorecon(subject, type="all"):
     sp.check_call(shlex.split(cmd))
 
 def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
-    """Flattens a brain
+    """Perform flattening of a brain using freesurfer
     
     Parameters
     ----------
@@ -203,7 +202,7 @@ def parse_surf(filename):
         print(comment)
         verts, faces = struct.unpack('>2I', fp.read(8))
         pts = np.fromstring(fp.read(4*3*verts), dtype='f4').byteswap()
-        polys = np.fromstring(fp.read(4*3*faces), dtype='I4').byteswap()
+        polys = np.fromstring(fp.read(4*3*faces), dtype='i4').byteswap()
 
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 

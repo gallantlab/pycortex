@@ -805,5 +805,10 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         client = server.get_client()
         client.server = server
         return client
-
+    else:
+        try:
+            from IPython.display import display, HTML
+            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
+        except:
+            pass
     return server

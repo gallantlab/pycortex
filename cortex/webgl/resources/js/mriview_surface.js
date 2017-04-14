@@ -56,6 +56,7 @@ var mriview = (function(module) {
                 hatchAlpha: { type:'f', value:1.},
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
 
+                dataAlpha: { type:'f', value:1.},
                 overlay:    { type:'t', value:null },
                 curvAlpha:  { type:'f', value:parseFloat(viewopts.curvalpha)},
                 curvScale:  { type:'f', value:parseFloat(viewopts.curvscale)},
@@ -72,6 +73,7 @@ var mriview = (function(module) {
             pivot: {action:[this, "setPivot", -180, 180]},
             shift: {action:[this, "setShift", 0, 200]},
             depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
+            opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
             left: {action:[this, "setLeftVis"]},
             right: {action:[this, "setRightVis"]},
 	        specularity: {action:[this, "setSpecular", 0, 1]},

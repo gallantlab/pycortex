@@ -1,12 +1,13 @@
 """Contains functions for making a whitematter mask
 """
-import os
-import shlex
 import shutil
 import tempfile
 import subprocess as sp
 
 import numpy as np
+import nibabel
+
+#from . import utils
 from .database import db
 from .options import config
 from .xfm import Transform
@@ -33,8 +34,23 @@ def whitematter(outfile, subject, do_voxelize=False):
             print("Segmenting the brain...")
             cmd = '{fsl_prefix}fast -o {cache}/fast {bet}'.format(fsl_prefix=fsl_prefix, cache=cache, bet=bet)
             assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
-            cmd = '{fsl_prefix}fslmaths {cache}/fast_pve_2 -thr 0.5 -bin {out}'.format(fsl_prefix=fsl_prefix, cache=cache, out=outfile)
+
+            wmfl = 'fast_pve_2'
+            arr = np.asarray(nibabel.load('{cache}/{wmseg}.nii.gz'.format(cache=cache,wmseg=wmfl)).get_data())
+            if arr.sum() == 0:
+                from warnings import warn
+                warn('"fsl-fast" with default settings failed. Trying no pve, no bias correction...')
+                cmd = '{fsl_prefix}fast -g --nopve --nobias -o {cache}/fast {bet}'.format(fsl_prefix=fsl_prefix, cache=cache, bet=bet)
+                assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
+                wmfl = 'fast_seg_2'
+
+            cmd = '{fsl_prefix}fslmaths {cache}/{wmfl} -thr 0.5 -bin {out}'.format(fsl_prefix=fsl_prefix, cache=cache, wmfl=wmfl, out=outfile)
             assert sp.call(cmd, shell=True) == 0, 'Error calling fsl-maths'
+
+            # check generated mask succeeded
+            arr = np.asarray(nibabel.load('{outfl}'.format(outfl=outfile)).get_data())
+            assert arr.sum() >= 0, 'Error with generated whitematter mask.'
+
         finally:
             shutil.rmtree(cache)
 
@@ -46,9 +62,8 @@ def voxelize(outfile, subject, surf='wm', mp=True):
     vox = np.zeros(shape, dtype=bool)
     for pts, polys in db.get_surf(subject, surf, nudge=False):
         xfm = Transform(np.linalg.inv(nib.get_affine()), nib)
-        vox += polyutils.voxelize(xfm(pts), polys, shape=shape, center=(0,0,0), mp=mp)
+        vox += polyutils.voxelize(xfm(pts), polys, shape=shape, center=(0,0,0), mp=mp).astype('bool')
         
-    import nibabel
     nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
     nib.to_filename(outfile)
 

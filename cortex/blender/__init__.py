@@ -36,16 +36,39 @@ def _call_blender(filename, code):
         tf.flush()
         sp.call(shlex.split(cmd))
 
-def add_cutdata(fname, dataview, name="retinotopy", projection="nearest", mesh="hemi"):
+def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh="hemi"):
+    """Add data as vertex colors to blender mesh
+    
+    Useful to add localizer data for help in placing flatmap cuts
+
+    Parameters
+    ----------
+    fname : string
+        .blend file name
+    braindata : dataview or dataset object
+        pycortex data to be shown on the mesh
+    name : string
+        Name for vertex color object (should indicate what the data is). If a dataset is 
+        provided instead of a dataview, this parameter is ignored and the keys for the 
+        dataset are used as names for the vertex color objects.
+    projection : string
+        one of {'nearest', 'trilinear', ...} (name for a pycortex mapper)
+    mesh : string
+        ...
+    """
+    if isinstance(braindata, dataset.Dataset):
+        for view_name, data in braindata.views.items():
+            add_cutdata(fname, data, name=view_name, projection=projection, mesh=mesh)
+        return
     from matplotlib import cm
-    dataview = dataset.normalize(dataview)
-    mapped = dataview.map(projection)
+    braindata = dataset.normalize(braindata)
+    mapped = braindata.map(projection)
     left = mapped.left
     right = mapped.right
 
-    cmap = utils.get_cmap(dataview.cmap)
-    vmin = dataview.vmin
-    vmax = dataview.vmax
+    cmap = utils.get_cmap(braindata.cmap)
+    vmin = braindata.vmin
+    vmax = braindata.vmax
     lcolor = cmap((left - vmin) / (vmax - vmin))[:,:3]
     rcolor = cmap((right - vmin) / (vmax - vmin))[:,:3]
 
