@@ -1,26 +1,30 @@
+import six
 import os
 import glob
 import copy
 import json
-import Queue
+if six.PY2:  # python 2
+    from Queue import Queue
+    from ConfigParser import NoOptionError
+else:  # python 3
+    from queue import Queue
+    from configparser import NoOptionError
 import shutil
 import random
 import functools
 import binascii
 import mimetypes
 import threading
+import warnings
 import webbrowser
 import numpy as np
-
 from tornado import web
-from .FallbackLoader import FallbackLoader
 
+from .FallbackLoader import FallbackLoader
 from .. import utils, options, volume, dataset
 from ..database import db
-
 from . import serve
 from .data import Package
-from ConfigParser import NoOptionError
 
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
@@ -217,9 +221,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 
 def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
-         autoclose=True, open_browser=True, port=None, pickerfun=None, template="mixer.html",
-         overlays_visible=('rois', 'sulci'), labels_visible=('rois', ), overlay_file=None,
-         title='Brain', **kwargs):
+         autoclose=True, open_browser=True, port=None, pickerfun=None,
+         template="mixer.html", overlays_visible=('rois', 'sulci'),
+         labels_visible=('rois', ), overlay_file=None, title='Brain', **kwargs):
     """
     Creates a webGL MRI viewer that is dynamically served by a tornado server
     running inside the current python process.
@@ -305,7 +309,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 for subj in subjects)
     package.reorder(ctms)
 
-    subjectjs = json.dumps(dict((subj, "/ctm/%s/"%subj) for subj in subjects))
+    subjectjs = json.dumps(dict((subj, "ctm/%s/"%subj) for subj in subjects))
     db.auxfile = None
 
     if layout is None:
@@ -318,7 +322,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
 
-    post_name = Queue.Queue()
+    post_name = Queue()
 
     # Put together all view options
     my_viewopts = dict(options.config.items('webgl_viewopts'))
@@ -343,7 +347,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 if mtype is None:
                     mtype = "application/octet-stream"
                 self.set_header("Content-Type", mtype)
-                self.write(open(os.path.join(fpath, path)).read())
+                self.write(open(os.path.join(fpath, path), 'rb').read())
 
     class DataHandler(web.RequestHandler):
         def get(self, path):
@@ -785,15 +789,15 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     if port is None:
         port = random.randint(1024, 65536)
 
-    server = WebApp([
-            (r'/ctm/(.*)', CTMHandler),
-            (r'/data/(.*)', DataHandler),
-            (r'/stim/(.*)', StimHandler),
-            (r'/mixer.html', MixerHandler),
-            (r'/picker', PickerHandler),
-            (r'/', MixerHandler),
-            (r'/static/(.*)', StaticHandler),
-        ], port)
+    server = WebApp([(r'/ctm/(.*)', CTMHandler),
+                     (r'/data/(.*)', DataHandler),
+                     (r'/stim/(.*)', StimHandler),
+                     (r'/mixer.html', MixerHandler),
+                     (r'/picker', PickerHandler),
+                     (r'/', MixerHandler),
+                     (r'/static/(.*)', StaticHandler)],
+                    port)
+
     server.start()
     print("Started server on port %d"%server.port)
     if open_browser:

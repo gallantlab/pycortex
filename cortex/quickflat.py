@@ -1,6 +1,7 @@
 """Makes flattened views of volumetric data on the cortical surface.
 """
-
+from six import string_types
+from functools import reduce
 import io
 import os
 import six
@@ -702,11 +703,7 @@ def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pix
         this function you are basically saying that you want an editable layer of vector 
         graphic ROIs on top of your image. `with_cutouts` is not functional yet.
     """
-    try:
-        import cStringIO
-        fp = cStringIO.StringIO()
-    except:
-        fp = io.StringIO()
+    fp = io.BytesIO()
     from matplotlib.pylab import imsave
     to_cut = ['with_rois','cutouts']
     for cc in to_cut:
@@ -1024,7 +1021,7 @@ def _make_flatmask(subject, height=1024):
     bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
     try:
         left, right = bounds.next(), bounds.next() # python 2.X
-    except:
+    except AttributeError:
         left, right = next(bounds), next(bounds) # python 3.X
     aspect = (height / (pts.max(0) - pts.min(0))[1])
     lpts = (pts[left] - pts.min(0)) * aspect
@@ -1082,7 +1079,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
     ll = np.vstack([l1, l2, l3])
     ll[:,missing] = 0
 
-    from cortex.mapper import samplers
+    from .mapper import samplers
     xfm = db.get_xfm(subject, xfmname, xfmtype='coord')
     sampclass = getattr(samplers, sampler)
 
@@ -1093,14 +1090,18 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
         piacoords = xfm((pia[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
         wmcoords = xfm((wm[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
 
-        valid_p = reduce(np.logical_and, [reduce(np.logical_and, (0 <= piacoords).T), 
-            piacoords[:,0] < xfm.shape[2], 
-            piacoords[:,1] < xfm.shape[1], 
-            piacoords[:,2] < xfm.shape[0]])
-        valid_w = reduce(np.logical_and, [reduce(np.logical_and, (0 <= wmcoords).T), 
-            wmcoords[:,0] < xfm.shape[2],
-            wmcoords[:,1] < xfm.shape[1],
-            wmcoords[:,2] < xfm.shape[0]])
+        valid_p = np.array([np.all((0 <= piacoords), axis=1),
+                            piacoords[:,0] < xfm.shape[2],
+                            piacoords[:,1] < xfm.shape[1],
+                            piacoords[:,2] < xfm.shape[0]])
+        valid_p = np.all(valid_p, axis=0)
+
+        valid_w = np.array([np.all((0 <= wmcoords), axis=1),
+                            wmcoords[:,0] < xfm.shape[2],
+                            wmcoords[:,1] < xfm.shape[1],
+                            wmcoords[:,2] < xfm.shape[0]])
+        valid_w = np.all(valid_w, axis=0)
+        
         valid = np.logical_and(valid_p, valid_w)
         vidx = np.nonzero(valid)[0]
         mapper = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
@@ -1120,10 +1121,12 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
         fid, polys = db.get_surf(subject, "fiducial", merge=True)
         fidcoords = xfm((fid[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
 
-        valid = reduce(np.logical_and, [reduce(np.logical_and, (0 <= fidcoords).T),
-            fidcoords[:,0] < xfm.shape[2],
-            fidcoords[:,1] < xfm.shape[1],
-            fidcoords[:,2] < xfm.shape[0]])
+        valid = reduce(np.logical_and,
+                       [reduce(np.logical_and, (0 <= fidcoords).T),
+                               fidcoords[:,0] < xfm.shape[2],
+                               fidcoords[:,1] < xfm.shape[1],
+                               fidcoords[:,2] < xfm.shape[0]])
+
         vidx = np.nonzero(valid)[0]
 
         i, j, data = sampclass(fidcoords[valid], xfm.shape)
@@ -1142,7 +1145,7 @@ def _has_cmap(dataview):
     if not isinstance(dataview, (dataset.VolumeRGB, dataset.VertexRGB)):
         # Get colormap from matplotlib or pycortex colormaps
         ## -- redundant code, here and in cortex/dataset/views.py -- ##
-        if isinstance(dataview.cmap, six.string_types):
+        if isinstance(dataview.cmap, string_types):
             if not dataview.cmap in cm.__dict__:
                 # unknown colormap, test whether it's in pycortex colormaps
                 cmapdir = config.get('webgl', 'colormaps')

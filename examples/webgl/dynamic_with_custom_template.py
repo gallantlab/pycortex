@@ -51,7 +51,7 @@ import cortex
 volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
 
 # create viewer
-cortex.webgl.show(data=volume, template = 'my_template.html')
+cortex.webgl.show(data=volume, template='my_template.html', recache=True)
 
 # a port number will then be output, for example "Started server on port 39140"
 # the viewer can then be accessed in a web browser, in this case at "localhost:39140"

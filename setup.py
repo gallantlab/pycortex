@@ -99,7 +99,9 @@ setup(name='pycortex',
                 'resources/images/*'
             ]
       },
-      requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>3.1)', 'shapely', 'html5lib', 'h5py (>=2.3)', 'numexpr'],
+      requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>3.1)',
+                'shapely', 'html5lib', 'h5py (>=2.3)', 'numexpr', 'Cython',
+                'nibabel'],
       cmdclass=dict(install=my_install),
       include_package_data=True,
       test_suite='nose.collector'

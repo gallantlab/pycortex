@@ -41,13 +41,13 @@ def map(func, iterable, procs = mp.cpu_count()):
     try:
         progress = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar()], maxval=iterlen)
         progress.start()
-        for i in xrange(iterlen):
+        for i in range(iterlen):
             idx, result = output.get()
             data[idx] = result
             progress.update(i+1)
         progress.finish()
     except NameError:
-        for _ in xrange(iterlen):
+        for _ in range(iterlen):
             idx, result = output.get()
             data[idx] = result
         
@@ -56,4 +56,4 @@ def map(func, iterable, procs = mp.cpu_count()):
 if __name__ == "__main__":
     #pool = Pool()
     #data = pool.map(
-    map(lambda x: max(x), zip(*(iter(xrange(65536)),)*3))
+    map(lambda x: max(x), zip(*(iter(range(65536)),)*3))

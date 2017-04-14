@@ -221,7 +221,7 @@ class VolumeData(BrainData):
             if mask is None:
                 nvox = self.data.shape[-1]
                 self._mask, self.mask = _find_mask(nvox, self.subject, self.xfmname)
-            elif isinstance(mask, str):
+            elif isinstance(mask, (bytes, str)):
                 self.mask = db.get_mask(self.subject, self.xfmname, mask)
                 self._mask = mask
             elif isinstance(mask, np.ndarray):
@@ -253,7 +253,7 @@ class VolumeData(BrainData):
         VertexData subclass
             Vertex valued version of this VolumeData.
         """
-        from .. import utils
+        from cortex import utils
         mapper = utils.get_mapper(self.subject, self.xfmname, projection)
         data = mapper(self)
         return data
@@ -278,7 +278,7 @@ class VolumeData(BrainData):
         """Returns a 3D or 4D volume for this VolumeData, automatically unmasking
         masked data.
         """
-        from .. import volume
+        from cortex import volume
         if self.linear:
             data = volume.unmask(self.mask, self.data[:])
         else:
@@ -478,7 +478,7 @@ class VertexData(BrainData):
         """
         import warnings
         warnings.warn('Inverse mapping cannot be accurate')
-        from .. import utils
+        from cortex import utils
         mapper = utils.get_mapper(self.subject, xfmname, projection)
         return mapper.backwards(self, **kwargs)
 

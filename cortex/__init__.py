@@ -3,6 +3,7 @@ from . import align, volume, quickflat, webgl, segment, options
 from .database import db
 from .utils import *
 from .quickflat import make_figure as quickshow
+from .volume import mosaic, unmask
 
 try:
 	from . import formats
@@ -32,3 +33,10 @@ class dep(object):
 		warnings.warn("cortex.surfs is deprecated, use cortex.db instead", Warning)
 		return db.__dir__()
 surfs = dep()
+
+import sys
+if sys.version_info.major == 2:
+        stdout = sys.stdout
+        reload(sys)
+        sys.setdefaultencoding('utf8')
+        sys.stdout = stdout

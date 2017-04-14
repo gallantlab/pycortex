@@ -19,6 +19,6 @@ volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
 viewer_path = '/path/to/store/viewer'
 
 # create viewer
-cortex.webgl.make_static(outpath=viewer_path, data=volume)
+cortex.webgl.make_static(outpath=viewer_path, data=volume, recache=True)
 
 # a webserver such as nginx can then be used to host the static viewer

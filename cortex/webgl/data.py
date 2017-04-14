@@ -9,11 +9,13 @@ dict(
 """
 import os
 import json
-import cStringIO
+from io import BytesIO
 import numpy as np
 
 from .. import dataset
 from .. import volume
+
+
 #TODO: How to package multiviews?
 class Package(object):
     """Package the data into a form usable by javascript"""
@@ -67,7 +69,7 @@ class Package(object):
         for brain in self.uniques:
             if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
                 data = np.array(self.images[brain.name])[0]
-                npyform = cStringIO.StringIO()
+                npyform = io.BytesIO()
                 if self.brains[brain.name]['raw']:
                     data = data[..., indices[brain.subject]['index'], :]
                 else:
@@ -89,8 +91,7 @@ class Package(object):
 
 def _pack_png(mosaic):
     from PIL import Image
-    import cStringIO
-    buf = cStringIO.StringIO()
+    buf = BytesIO()
     if mosaic.dtype not in (np.float32, np.uint8):
         raise TypeError
 

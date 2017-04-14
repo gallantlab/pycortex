@@ -74,6 +74,31 @@ def read_stl(filename):
 
     return np.array(points), polys
 
+
+def read_obj(filename, norm=False, uv=False):
+    pts, polys = [], []
+    n, t = None, None
+    if norm:
+        n = []
+    if uv:
+        t = []
+    with open(filename) as fp:
+        for line in fp:
+            if line.startswith('v '):
+                pts.append([float(s) for s in line[2:].split(" ")])
+            elif norm and line.startswith('vn '):
+                n.append([float(s) for s in line[3:].split(" ")])
+            elif uv and line.startswith('vt '):
+                t.append([float(s) for s in line[3:].split(" ")])
+            elif line.startswith('f '):
+                polys.append([int(l.split("/")[0])-1 for l in line[2:].split(" ")])
+
+    if not norm and not uv:
+        return np.array(pts), np.array(polys)
+    else:
+        return np.array(pts), np.array(polys), n, t
+
+
 @cython.boundscheck(False)
 def read_vtk(filename):
     cdef str vtk, line
