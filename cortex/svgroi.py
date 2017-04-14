@@ -982,7 +982,21 @@ def make_svg(pts, polys):
     pts[:,1] = 1024 - pts[:,1]
     path = ""
     polyiter = trace_poly(boundary_edges(polys))
-    for poly in [polyiter.next(), polyiter.next()]:
+    # some flat surfaces which have breach may have more than tow close-bound
+    poly_list = []
+    while 1:
+        try:
+            poly_list.append(polyiter.next())
+        except:
+            break
+    if len(poly_list) > 2:
+        print 'Warning: be careful! parts of the flat surfaces may have errors.'
+        while len(poly_list) > 2:
+            poly_size = [len(poly) for poly in poly_list]
+            poly_list.pop(np.argmin(poly_size))
+
+    #for poly in [polyiter.next(), polyiter.next()]:
+    for poly in poly_list:
         path +="M%f %f L"%tuple(pts[poly.pop(0), :2])
         path += ', '.join(['%f %f'%tuple(pts[p, :2]) for p in poly])
         path += 'Z '

@@ -566,7 +566,21 @@ def _make_flatmask(subject, height=1024):
     from PIL import Image, ImageDraw
     pts, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
-    left, right = bounds.next(), bounds.next()
+    # some surfaces which have breach may have more than two close-bound
+    bound_list = []
+    while 1:
+        try:
+            bound_list.append(bounds.next())
+        except:
+            break
+    if len(bound_list) > 2:
+        print 'Warning: be careful! parts of the flat surfaces may have errors.'
+        while len(bound_list) > 2:
+            # remove bound which has fewest edges
+            bound_size = [len(bound) for bound in bound_list]
+            bound_list.pop(np.argmin(bound_size))
+    left, right = bound_list[0], bound_list[1]
+    #left, right = bounds.next(), bounds.next()
     aspect = (height / (pts.max(0) - pts.min(0))[1])
     lpts = (pts[left] - pts.min(0)) * aspect
     rpts = (pts[right] - pts.min(0)) * aspect
