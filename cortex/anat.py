@@ -40,7 +40,7 @@ def whitematter(outfile, subject, do_voxelize=False):
                 assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
                 wmfl = 'fast_seg_2'
 
-            cmd = 'fsl5.0-fslmaths {cache}/fast_pve_2 -thr 0.5 -bin {out}'.format(cache=cache, out=outfile)
+            cmd = 'fsl5.0-fslmaths {cache}/{wmfl} -thr 0.5 -bin {out}'.format(cache=cache, wmfl=wmfl, out=outfile)
             assert sp.call(cmd, shell=True) == 0, 'Error calling fsl-maths'
 
             # check generated mask succeeded
