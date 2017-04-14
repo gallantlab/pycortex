@@ -186,7 +186,7 @@ class Database(object):
         subject : str
             Name of the subject
         type : str
-            Type of anatomical volume to return
+            Type of anatomical volume to return. This should be the name of one of the 
         recache : bool
             Regenerate the information
 
@@ -516,7 +516,8 @@ class Database(object):
         except (AttributeError, IOError):
             try:
                 # Get cache dir from config file
-                cachedir = os.path.join(options.config.get('basic', 'cache'), subject, 'cache')
+                cachedir = os.path.join(options.config.get('basic', 'cache'),
+                                        subject, 'cache')
             except options.configparser.NoOptionError:
                 # If not defined, go with default cache
                 cachedir = os.path.join(self.filestore, subject, "cache")

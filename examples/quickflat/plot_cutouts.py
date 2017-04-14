@@ -7,15 +7,15 @@ Cutouts are manually generated cuts of the cortical surface to highlight
 a region of interest.
 
 Cutouts are defined as sub-layers of the `cutouts` layer
-in <filestore>/<subject>/rois.svg.
+in <filestore>/<subject>/overlays.svg.
 
 The parameter `cutout` of the `quickflat.make_figure` method should be the
-name of the flatmap cutout defined in the `rois.svg` file.
+name of the flatmap cutout defined in the `overlays.svg` file.
 
 """
 import cortex
 
-# Name of a sub-layer of the 'cutouts' layer in rois.svg file
+# Name of a sub-layer of the 'cutouts' layer in overlays.svg file
 cutout_name = "VisualCortexRight"
 
 # Create a random pycortex Volume

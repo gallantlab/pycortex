@@ -4,11 +4,15 @@ import time
 import json
 import stat
 import email
-import Queue
+try:  # python 2
+    from Queue import Queue
+except ImportError:  # python 3
+    from queue import Queue
 import struct
 import socket
 import logging
 import binascii
+import base64
 import datetime
 import mimetypes
 import functools
@@ -26,9 +30,10 @@ cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
 def make_base64(imgfile):
-    with open(imgfile) as img:
+    with open(imgfile, 'rb') as img:
         mtype = mimetypes.guess_type(imgfile)[0]
-        data = binascii.b2a_base64(img.read()).strip()
+        imbytes = base64.encodestring(img.read())
+        data = imbytes.decode('utf-8').strip()
         return "data:{mtype};base64,{data}".format(mtype=mtype, data=data)
 
 class NPEncode(json.JSONEncoder):
@@ -44,7 +49,8 @@ class NPEncode(json.JSONEncoder):
                 dtype=obj.dtype.descr[0][1], 
                 shape=obj.shape, 
                 data=binascii.b2a_base64(obj.tostring()))
-        elif isinstance(obj, (np.int64, np.int32, np.int16, np.int8, np.uint64, np.uint32, np.uint16, np.uint8)):
+        elif isinstance(obj, (np.int64, np.int32, np.int16, np.int8,
+                              np.uint64, np.uint32, np.uint16, np.uint8)):
             return int(obj)
         elif isinstance(obj, (np.float64, np.float32)):
             return float(obj)
@@ -287,7 +293,7 @@ class WebApp(threading.Thread):
             (r"/(.*)", tornado.web.StaticFileHandler, dict(path=cwd)),
         ]
         self.port = port
-        self.response = Queue.Queue()
+        self.response = Queue()
         self.connect = threading.Event()
         self.sockets = []
 
@@ -329,12 +335,15 @@ class WebApp(threading.Thread):
 
 class JSProxy(object):
     def __init__(self, sendfunc, name="window"):
-        self.send = sendfunc
-        self.name = name
+        super(JSProxy, self).__setattr__('send', sendfunc)
+        super(JSProxy, self).__setattr__('name', name)
         
         self.attrs = self.send(method='query', params=[self.name])[0]
     
     def __getattr__(self, attr):
+        if attr == 'attrs':
+            return self.send(method='query', params=[self.name])[0]
+
         assert attr in self.attrs
         if self.attrs[attr][0] in ["object", "function"]:
             return JSProxy(self.send, "%s.%s"%(self.name, attr))
@@ -346,7 +355,8 @@ class JSProxy(object):
             return super(JSProxy, self).__setattr__(attr, value)
 
         assert self.attrs[attr] not in ["object", "function"]
-        resp = self.send(method='set', params=["%s.%s"%(self.name, attr), value])
+        resp = self.send(method='set',
+                         params=["%s.%s"%(self.name, attr), value])
         if isinstance(resp[0], dict) and "error" in resp[0]:
             raise Exception(resp[0]['error'])
         else:

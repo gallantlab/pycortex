@@ -9,7 +9,7 @@ crosshatch is used to display such dropout regions.
 The crosshatches are created using the reference nifti image file
 with a threshold.
 Setting the `with_dropout=True` parameter in `quickflat.make_figure`
-takes the reference nifti image file and computes a tresholded version
+takes the reference nifti image file and computes a thresholded version
 of this using the following formula:
 
     FIXME:

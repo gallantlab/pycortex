@@ -5,7 +5,7 @@ Save a 2D static flatmap as PNG
 
 Plot a 2D static flatmap and save it as PNG file.
 
-**Some words on the `rechache` parameter before we begin:**
+**Some words on the `recache` parameter before we begin:**
 
 Setting the `recache=True` parameter recaches the flatmap cache located in
 <filestore>/<subject>/cache. By default intermediate steps for a flatmap are
