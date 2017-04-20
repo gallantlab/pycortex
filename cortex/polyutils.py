@@ -847,7 +847,7 @@ class Distortion(object):
         vertratios[self.polys[:,0]] += tridists
         vertratios[self.polys[:,1]] += tridists
         vertratios[self.polys[:,2]] += tridists
-        vertratios /= np.bincount(self.polys.ravel())
+        vertratios /= np.bincount(self.polys.ravel(), minlength=len(self.ref))
         vertratios = np.nan_to_num(vertratios)
         vertratios[vertratios==0] = 1
         return vertratios
