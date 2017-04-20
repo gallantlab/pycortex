@@ -686,6 +686,29 @@ class Surface(object):
 
         return np.array(pts), np.array(polys)
 
+    def extract_geodesic_chunk(self, origin, radius):
+        """Extract a chunk of the surface that is within radius of the origin by
+        geodesic distance.
+        """
+        dist = self.geodesic_distance([origin])
+        sel = np.nonzero(dist < radius)[0]
+        sel_pts = self.pts[sel]
+
+        # create new polys with remapped indices
+
+        # find polys where all 3 verts are in the selected set
+        sel_polys_inds = np.nonzero(self.connected[sel].sum(0) == 3)[1]
+        sel_polys_old = self.polys[sel_polys_inds]
+
+        # create array to remap indices in polys to new indices
+        keyarr = np.zeros(len(self.pts), dtype=int)
+        keyarr[sel] = range(len(sel))
+
+        sel_polys = keyarr[sel_polys_old]
+
+        return sel_pts, sel_polys
+
+
     def polyhedra(self, wm):
         '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
         for p, facerow in enumerate(self.connected):
