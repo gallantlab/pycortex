@@ -107,7 +107,7 @@ var mriview = (function(module) {
                 (Math.max(gb0.max.z, gb1.max.z) - Math.min(gb0.min.z, gb1.min.z)) / 2 + Math.min(gb0.min.z, gb1.min.z),
             ];
             this.center = center;
-            this.object.position.set(0, -center[1], -center[2]);
+            //this.object.position.set(0, -center[1], -center[2]);
 
             var names = {left:0, right:1};
             var posdata = {
