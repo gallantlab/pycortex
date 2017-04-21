@@ -222,7 +222,8 @@ var dataset = (function(module) {
         this.max = json.max;
         this.mosaic = json.mosaic;
         this.name = json.name;
-        this.shape = json.shape;
+        this.shape = json.shape; // this gets changed a few lines down..
+        this.numslices = json.shape[0];
         this.data = images[json.name];
         this.frames = images[json.name].length;
 

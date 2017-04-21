@@ -36,6 +36,12 @@ var mriview = (function(module) {
             this.canvas.css("opacity", 1);
         }.bind(this));
 
+        this.sliceplanes = {
+            x: new sliceplane.Plane(this, 0),
+            y: new sliceplane.Plane(this, 1),
+            z: new sliceplane.Plane(this, 2),
+        };
+
         this.ui = new jsplot.Menu();
         this.ui.addEventListener("update", this.schedule.bind(this));
         this.ui.add({
@@ -297,6 +303,12 @@ var mriview = (function(module) {
             }
             this.schedule();
             this.loaded.resolve();
+
+            //set data for sliceplanes
+            this.sliceplanes.x.setData(this.active);
+            this.sliceplanes.y.setData(this.active);
+            this.sliceplanes.z.setData(this.active);
+
         }.bind(this));
     };
     module.Viewer.prototype.nextData = function(dir) {
@@ -546,6 +558,21 @@ var mriview = (function(module) {
             hide_labels: {action:hidelabels, key:'l', hidden:true},
         });
 
+        //add sliceplane gui
+        var sliceplane_ui = this.ui.addFolder("sliceplanes", true)
+        sliceplane_ui.add({
+            x: {action:[this.sliceplanes.x, "setVisible"]},
+            y: {action:[this.sliceplanes.y, "setVisible"]},
+            z: {action:[this.sliceplanes.z, "setVisible"]},
+        });
+        sliceplane_ui.addFolder("move", true).add({
+            x_up: {action:this.sliceplanes.x.next.bind(this.sliceplanes.x), key:'q'},
+            x_down: {action:this.sliceplanes.x.prev.bind(this.sliceplanes.x), key:'w'},
+            y_up: {action:this.sliceplanes.y.next.bind(this.sliceplanes.y), key:'a'},
+            y_down: {action:this.sliceplanes.y.prev.bind(this.sliceplanes.y), key:'s'},
+            z_up: {action:this.sliceplanes.z.next.bind(this.sliceplanes.z), key:'z'},
+            z_down: {action:this.sliceplanes.z.prev.bind(this.sliceplanes.z), key:'x'},
+        });
 
         if ($(this.object).find("#colormap_category").length > 0) {
             $(this.object).find("#colormap").ddslick({ width:296, height:350, 
