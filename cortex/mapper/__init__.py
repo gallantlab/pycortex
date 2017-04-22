@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 from .. import dataset
-from mapper import Mapper
+from mapper import Mapper, _savecache
 
 def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     from ..database import db
@@ -36,15 +36,3 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
         raise Exception
     except Exception as e:
         return mapcls[type]._cache(cachefile, subject, xfmname, **kwargs)
-
-def _savecache(filename, left, right, shape):
-    np.savez(filename,
-            left_data=left.data,
-            left_indices=left.indices,
-            left_indptr=left.indptr,
-            left_shape=left.shape,
-            right_data=right.data,
-            right_indices=right.indices,
-            right_indptr=right.indptr,
-            right_shape=right.shape,
-            shape=shape)
