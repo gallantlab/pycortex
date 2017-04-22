@@ -565,13 +565,22 @@ var mriview = (function(module) {
             y: {action:[this.sliceplanes.y, "setVisible"]},
             z: {action:[this.sliceplanes.z, "setVisible"]},
         });
-        sliceplane_ui.addFolder("move", true).add({
-            x_up: {action:this.sliceplanes.x.next.bind(this.sliceplanes.x), key:'q'},
-            x_down: {action:this.sliceplanes.x.prev.bind(this.sliceplanes.x), key:'w'},
-            y_up: {action:this.sliceplanes.y.next.bind(this.sliceplanes.y), key:'a'},
-            y_down: {action:this.sliceplanes.y.prev.bind(this.sliceplanes.y), key:'s'},
-            z_up: {action:this.sliceplanes.z.next.bind(this.sliceplanes.z), key:'z'},
-            z_down: {action:this.sliceplanes.z.prev.bind(this.sliceplanes.z), key:'x'},
+        var sliceplane_move = sliceplane_ui.addFolder("move", true);
+        sliceplane_move.add({
+            x_up: {action:this.sliceplanes.x.next.bind(this.sliceplanes.x), key:'q', hidden:true},
+            x_down: {action:this.sliceplanes.x.prev.bind(this.sliceplanes.x), key:'w', hidden:true},
+            y_up: {action:this.sliceplanes.y.next.bind(this.sliceplanes.y), key:'a', hidden:true},
+            y_down: {action:this.sliceplanes.y.prev.bind(this.sliceplanes.y), key:'s', hidden:true},
+            z_up: {action:this.sliceplanes.z.next.bind(this.sliceplanes.z), key:'z', hidden:true},
+            z_down: {action:this.sliceplanes.z.prev.bind(this.sliceplanes.z), key:'x', hidden:true},
+        });
+        sliceplane_move.add({
+            move_x: {action:[this.sliceplanes.x, 'setSmoothSlice', 0, 1, 0.001]},
+            move_y: {action:[this.sliceplanes.y, 'setSmoothSlice', 0, 1, 0.001]},
+            move_z: {action:[this.sliceplanes.z, 'setSmoothSlice', 0, 1, 0.001]},
+            rotate_x: {action:[this.sliceplanes.x, 'setAngle', -89, 89]},
+            rotate_y: {action:[this.sliceplanes.y, 'setAngle', -89, 89]},
+            rotate_z: {action:[this.sliceplanes.z, 'setAngle', -89, 89]}
         });
 
         if ($(this.object).find("#colormap_category").length > 0) {

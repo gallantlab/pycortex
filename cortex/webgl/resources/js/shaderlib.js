@@ -295,7 +295,7 @@ var Shaderlib = (function() {
                 "vColor = mix(vec4(voxlineColor, 1.), vColor, edgeFactor(edge*1.001));",
         "#endif",
 
-                //"if (vColor.a < .001) discard;",
+                "if (vColor.a < .001) discard;",
                 "gl_FragColor = vColor;",
         "#ifndef NOLIGHTS",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],

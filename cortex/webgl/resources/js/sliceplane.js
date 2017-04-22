@@ -4,6 +4,7 @@ var sliceplane = (function(module) {
         this.viewer = viewer;
         this.dir = dir;
         this._visible = false;
+        this._angle = 0;
     }
 
     module.Plane.prototype.setData = function(active) {
@@ -37,7 +38,7 @@ var sliceplane = (function(module) {
         this.uniforms.vmin.value = active.vmin[0].value;
         this.uniforms.vmax.value = active.vmax[0].value;
 
-        //this.object = new THREE.Group();
+        this.object = new THREE.Group();
 
         if (this.mesh !== undefined) {
             this.scene.remove(this.mesh);
@@ -53,9 +54,9 @@ var sliceplane = (function(module) {
         this.mesh = new THREE.Mesh(this.geometry, this.shader);
         this.mesh.doubleSided = true;
 
-        //this.object.add(this.mesh);
-        this.scene.add(this.mesh);
-        //this.scene.add(this.object);
+        this.object.add(this.mesh);
+        //this.scene.add(this.mesh);
+        this.scene.add(this.object);
         //viewer.surfs[0].surf.pivots.left.back.add(this.mesh);
 
         // var wiremat = new THREE.LineBasicMaterial({color:0xffffff, linewidth:2});
@@ -86,6 +87,7 @@ var sliceplane = (function(module) {
             blending:THREE.CustomBlending,
             transparent:true,
             side:THREE.DoubleSide,
+            // depthWrite:false
         });
     }
     module.Plane.prototype.update = function(slice) {
@@ -99,9 +101,6 @@ var sliceplane = (function(module) {
 
         this.shape = shape;
         this.slice = slice;
-
-        console.log(shape);
-        console.log(slice);
 
         var xfm = this.viewer.active.uniforms.volxfm.value[0];
         var imat = new THREE.Matrix4()
@@ -124,22 +123,62 @@ var sliceplane = (function(module) {
             imat.multiplyVector3(this.geometry.vertices[3].set(shape[0]-0.5,shape[1]-0.5,slice));
         }
 
+        this.geometry.computeBoundingSphere();
+        var center = this.geometry.boundingSphere.center;
+        this.object.position.copy(center);
+
+        var trans = new THREE.Matrix4().makeTranslation(-center.x, -center.y, -center.z);
+        this.geometry.applyMatrix(trans);
+
         this.geometry.computeFaceNormals();
         this.geometry.computeVertexNormals();
         this.geometry.verticesNeedUpdate = true;
         this.geometry.normalsNeedUpdate = true;
 
-        this._makeShader(this.viewer.active);
-        this.mesh.material = this.shader;
+        // this._makeShader(this.viewer.active);
+        // this.mesh.material = this.shader;
 
         this.setVisible(this._visible);
         this.viewer.schedule();
     }
     module.Plane.prototype.next = function() {
-        this.update((this.slice+1).mod(this.shape[this.dir]));
+
+        this.setSmoothSlice((Math.round(this.slice+1)).mod(this.shape[this.dir]) / this.shape[this.dir]);
     }
     module.Plane.prototype.prev = function() {
-        this.update((this.slice-1).mod(this.shape[this.dir]));
+        this.setSmoothSlice((Math.round(this.slice-1)).mod(this.shape[this.dir]) / this.shape[this.dir]);
+    }
+    module.Plane.prototype.setSmoothSlice = function(slice_fraction) {
+        if (slice_fraction === undefined)
+            if (this.slice === undefined)
+                return 0.5;
+            else
+                return this.slice / this.shape[this.dir];
+
+        this.update(slice_fraction * this.shape[this.dir]);
+    }
+    module.Plane.prototype.setAngle = function(angle) {
+        if (angle === undefined)
+            return this._angle;
+
+        var axis;
+        var xfm = this.viewer.active.uniforms.volxfm.value[0];
+        var imat = new THREE.Matrix4();
+        imat.getInverse(xfm);
+        var rot_imat = (new THREE.Matrix4).extractRotation(imat);
+
+        if (this.dir == 0) {
+            axis = (new THREE.Vector3(0,1,0)).applyMatrix4(rot_imat);
+        } else if (this.dir == 1) {
+            axis = (new THREE.Vector3(1,0,0)).applyMatrix4(rot_imat);
+        } else if (this.dir == 2) {
+            axis = (new THREE.Vector3(0,1,0)).applyMatrix4(rot_imat);
+        }
+
+        axis.normalize();
+
+        this.mesh.rotation.set(0,0,0);
+        this.mesh.rotateOnAxis(axis, angle / 180 * Math.PI);
     }
     module.Plane.prototype.setVisible = function(val) {
         if (val === undefined)
