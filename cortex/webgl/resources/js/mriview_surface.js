@@ -37,6 +37,7 @@ var mriview = (function(module) {
         this._rightvis = true;
         this.shaders = {};
         this._active = null;
+        this._sampler = "nearest";
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
         this.object = new THREE.Group();
@@ -81,7 +82,8 @@ var mriview = (function(module) {
             right: {action:[this, "setRightVis"]},
 	        specularity: {action:[this, "setSpecular", 0, 1]},
             layers: {action:[this, "setLayers", {1:1, 4:4, 8:8, 16:16, 32:32}]},
-            dither: {action:[this, "setDither"]}
+            dither: {action:[this, "setDither"]},
+            sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
         });
         this.ui.addFolder("curvature", true).add({
             brightness: {action:[this.uniforms.curvAlpha, "value", 0, 1]},
@@ -283,6 +285,7 @@ var mriview = (function(module) {
                 extratex: this.uniforms.extratex.value !== null,
                 halo: false,
                 dither: this._dither,
+                // sampler: this._sampler,
             });
             this.shaders[dataview.uuid] = shaders[0];
         }.bind(this));
@@ -453,6 +456,13 @@ var mriview = (function(module) {
         if (val === undefined)
             return this._dither;
         this._dither = val;
+        this.resetShaders();
+    }
+    module.Surface.prototype.setSampler = function(val) {
+        if (val === undefined)
+            return this._sampler;
+        this._sampler = val;
+        this._active.setFilter(val);
         this.resetShaders();
     }
 

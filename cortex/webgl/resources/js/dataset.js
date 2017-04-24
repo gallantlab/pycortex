@@ -210,7 +210,7 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++)
             this.data[i].setFilter(interp);
         //force a shader update for all surfaces using this dataview
-        this.dispatchEvent({type:"update", dataview:this});
+        // this.dispatchEvent({type:"update", dataview:this});
     };
 
     module.VolumeData = function(json, images) {
