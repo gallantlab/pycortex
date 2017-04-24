@@ -28,12 +28,15 @@ var mriview = (function(module) {
         this.pivots = {};
         this.hemis = {};
         this.volume = 0;
+        this._layers = 1;
+        this._dither = false;
         this._pivot = 0;
         this._shift = 0;
         this._specular = parseFloat(viewopts.specularity);
         this._leftvis = true;
         this._rightvis = true;
         this.shaders = {};
+        this._active = null;
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
         this.object = new THREE.Group();
@@ -56,7 +59,7 @@ var mriview = (function(module) {
                 hatchAlpha: { type:'f', value:1.},
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
 
-                dataAlpha: { type:'f', value:1.},
+                dataAlpha:  { type:'f', value:1.},
                 overlay:    { type:'t', value:null },
                 curvAlpha:  { type:'f', value:parseFloat(viewopts.curvalpha)},
                 curvScale:  { type:'f', value:parseFloat(viewopts.curvscale)},
@@ -77,13 +80,15 @@ var mriview = (function(module) {
             left: {action:[this, "setLeftVis"]},
             right: {action:[this, "setRightVis"]},
 	        specularity: {action:[this, "setSpecular", 0, 1]},
+            layers: {action:[this, "setLayers", {1:1, 4:4, 8:8, 16:16, 32:32}]},
+            dither: {action:[this, "setDither"]}
         });
         this.ui.addFolder("curvature", true).add({
             brightness: {action:[this.uniforms.curvAlpha, "value", 0, 1]},
             contrast: {action:[this.uniforms.curvLim, "value", 0, 0.5]},
             smoothness: {action:[this.uniforms.curvScale, "value", 0, 1]},
         });
-        
+
         var loader = new THREE.CTMLoader(false);
         loader.loadParts( ctminfo, function( geometries, materials, json ) {
             geometries[0].computeBoundingBox();
@@ -231,6 +236,8 @@ var mriview = (function(module) {
         this.dispatchEvent({type:"resize", width:evt.width, height:evt.height});
     };
     module.Surface.prototype.init = function(dataview) { 
+        this._active = dataview;
+
         this.loaded.done(function() {
             var shaders = [];
             // Halo rendering code, ignore for now
@@ -269,11 +276,13 @@ var mriview = (function(module) {
                 var shade_cls = Shaders.surface_pixel;
             }
             var shaders = dataview.getShader(shade_cls, this.uniforms, {
-                morphs:this.names.length, 
-                volume:this.volume, 
-                rois:  this.svg instanceof svgoverlay.SVGOverlay,
+                morphs: this.names.length, 
+                volume: this.volume, 
+                layers: this._layers,
+                rois: this.svg instanceof svgoverlay.SVGOverlay,
                 extratex: this.uniforms.extratex.value !== null,
                 halo: false,
+                dither: this._dither,
             });
             this.shaders[dataview.uuid] = shaders[0];
         }.bind(this));
@@ -325,20 +334,22 @@ var mriview = (function(module) {
     //     scene.fsquad.visible = true;
     // };
 
-    var _last_dataview;
     module.Surface.prototype.apply = function(dataview) {
-        if (_last_dataview != dataview.uuid) {
-            this.loaded.done(function() {
-                for (var i = 0; i < this.sheets.length; i++) {
-                    this.sheets[i].left.material = this.shaders[dataview.uuid];
-                    this.sheets[i].right.material = this.shaders[dataview.uuid];
-                }
+        this.loaded.done(function() {
+            for (var i = 0; i < this.sheets.length; i++) {
+                this.sheets[i].left.material = this.shaders[dataview.uuid];
+                this.sheets[i].right.material = this.shaders[dataview.uuid];
+            }
 
-                this.picker.apply(dataview)
-            }.bind(this));
-            _last_dataview = dataview.uuid;
-        }
+            this.picker.apply(dataview)
+        }.bind(this));
     };
+
+    module.Surface.prototype.resetShaders = function() {
+        this.clearShaders();
+        this.init(this._active);
+        this.apply(this._active);
+    }
 
     module.Surface.prototype.setHalo = function(layers) {
         var lmesh, rmesh;
@@ -432,6 +443,19 @@ var mriview = (function(module) {
         //this.surfs[0].surf.pivots.right.front.visible = val;
         this.pivots.right.front.visible = val;
     };    
+    module.Surface.prototype.setLayers = function(val) {
+        if (val === undefined)
+            return this._layers;
+        this._layers = val;
+        this.resetShaders();
+    }
+    module.Surface.prototype.setDither = function(val) {
+        if (val === undefined)
+            return this._dither;
+        this._dither = val;
+        this.resetShaders();
+    }
+
     module.Surface.prototype._makeMesh = function(geom, shader) {
         //Creates the mesh object given the geometry and shader
         var mesh = new THREE.Mesh(geom, shader);

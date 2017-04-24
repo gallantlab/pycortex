@@ -318,6 +318,8 @@ var Shaderlib = (function() {
             var sampler = opts.sampler || "nearest";
             var morphs = opts.morphs;
             var volume = opts.volume || 0;
+            var layers = opts.layers || 1;
+            var dither = opts.dither || false;
             if (volume > 0)
                 header += "#define CORTSHEET\n";
             if (opts.rois)
@@ -325,7 +327,7 @@ var Shaderlib = (function() {
             if (opts.extratex)
                 header += "#define EXTRATEX\n"
             if (opts.halo) {
-                if (twod)
+                if (opts.twod)
                     throw "Cannot use 2D colormaps with volume integration"
                 header += "#define HALO_RENDER\n";
             }
@@ -462,7 +464,7 @@ var Shaderlib = (function() {
 
             //Create samplers for texture volume sampling
             var fragMid = "";      
-            var factor = volume > 1 ? (1/volume).toFixed(6) : "1.";
+            var factor = layers > 1 ? (1/layers).toFixed(6) : "1.";
             var sampling = [
         "#ifdef RGBCOLORS",
                 "color[0] += "+factor+"*"+sampler+"_x(data[0], coord_x);",
@@ -487,27 +489,38 @@ var Shaderlib = (function() {
                     ""
                 ].join("\n");
             } else if (volume == 1) {
-                fragMid += [
-                    "coord_x = mix(vPos_x[0], vPos_x[1], thickmix);",
-                "#ifdef TWOD",
-                    "coord_y = mix(vPos_y[0], vPos_y[1], thickmix);",
-                "#endif",
-                    sampling,
-                    "",
-                ].join("\n");
-            } else {
-                fragMid += "vec2 rseed;\nfloat randval;\n";
-                for (var i = 0; i < volume; i++) {
+                if (layers == 1 && !dither) {
                     fragMid += [
-                        "rseed = gl_FragCoord.xy + vec2(2.34*"+i.toFixed(3)+", 3.14*"+i.toFixed(3)+");",
-                        "randval = rand(rseed);",
-                        "coord_x = mix(vPos_x[0], vPos_x[1], randval);",
+                        "coord_x = mix(vPos_x[0], vPos_x[1], thickmix);",
                     "#ifdef TWOD",
-                        "coord_y = mix(vPos_y[0], vPos_y[1], randval);",
+                        "coord_y = mix(vPos_y[0], vPos_y[1], thickmix);",
                     "#endif",
                         sampling,
-                        "", 
+                        "",
                     ].join("\n");
+                }
+                else {
+                    var sample_depth;
+                    var step = 1 / (layers - 1);
+                    fragMid += "vec2 rseed;\nfloat randval;\n";
+                    for (var i = 0; i < layers; i++) {
+                        if (dither) {
+                            fragMid += [
+                                "rseed = gl_FragCoord.xy + vec2(2.34*"+i.toFixed(3)+", 3.14*"+i.toFixed(3)+");",
+                                "randval = rand(rseed);"].join("\n");
+                            sample_depth = "randval";
+                        } else {
+                            sample_depth = (step * i).toFixed(3);
+                        }
+                        fragMid += [
+                            "coord_x = mix(vPos_x[0], vPos_x[1], "+sample_depth+");",
+                        "#ifdef TWOD",
+                            "coord_y = mix(vPos_y[0], vPos_y[1], "+sample_depth+");",
+                        "#endif",
+                            sampling,
+                            "", 
+                        ].join("\n");
+                    }
                 }
             }
 
