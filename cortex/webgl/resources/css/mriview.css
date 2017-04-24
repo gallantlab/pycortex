@@ -151,12 +151,12 @@ a:visited { color:white; }
 #figure_ui {
     position:absolute;
     /*right:20px;*/
-    left:0;
-    right:auto;
+    /*left:0;*/
+    right:0;
     width:265px !important;
     height:auto !important;
     z-index:150;
-    max-height:500px;
+    max-height:100%;
     overflow:auto;
 }
 .dg.main .close-button {
