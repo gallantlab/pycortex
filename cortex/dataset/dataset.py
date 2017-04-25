@@ -68,7 +68,7 @@ class Dataset(object):
     @classmethod
     def from_file(cls, filename):
         ds = cls()
-        ds.h5 = h5py.File(filename)
+        ds.h5 = h5py.File(filename, 'r')
 
         db.auxfile = ds
 
