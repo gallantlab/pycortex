@@ -38,14 +38,13 @@ var sliceplane = (function(module) {
         this.uniforms.vmin.value = active.vmin[0].value;
         this.uniforms.vmax.value = active.vmax[0].value;
 
-        this.object = new THREE.Group();
-
         if (this.mesh !== undefined) {
-            this.scene.remove(this.mesh);
+            this.scene.remove(this.object);
             this.geometry.dispose();
             this.shader.dispose();
-            this.scene.remove(this.wireframe);
         }
+
+        this.object = new THREE.Group();
 
         this.geometry = new THREE.PlaneGeometry();
         this.geometry.dynamic = true;
@@ -73,7 +72,7 @@ var sliceplane = (function(module) {
         // var shaders = Shaders.main("nearest", raw, twod, viewopts.voxlines, 0, false);
         // var shader_func = Shaders.surface_pixel;
         var opts = {sampler: "nearest",
-                    rgb: raw,
+                    raw: raw,
                     twod: twod,
                     voxline: false,
                     viewspace: true};
