@@ -1,0 +1,65 @@
+#!/usr/bin/env tcsh
+
+if ($# != 4) then
+  echo "Usage: $0:t [inFsRegFile] [refEPI] [subjectName] [xfmName]"
+  echo
+  echo "e.g.) $0:t register.dat refEPI.nii AWT1x2 fs_fullhead"
+  echo
+  echo "inFsRegFile  : Input registration file to be converted to pycortex format"
+  echo "               (expected to be in FreeSurfer register.dat format)"
+  echo "refEPI       : Referece volume to be registerd along with the affine matrix"
+  echo "subjectName  : Name of the target subject registered in pycortex database"
+  echo "               (expected to be identical with that for FreeSurfer)"
+  echo "xfmName      : Name of the transform to be newly registered to pycortex DB"
+  exit 1
+endif
+
+## Check command line arguments
+set fsRegFile=$1
+shift
+
+set refFile=$1
+shift
+
+set subjectName=$1
+shift
+
+set xfmName=$1
+shift
+
+## Create a temorary working directory
+set tmpdir=`mktemp -d`
+
+## Set paths
+set anatFile=$SUBJECTS_DIR/$subjectName/mri/orig.mgz
+set fsRegMtx=$tmpdir/fsreg.mtx
+set pycRegMtx=$tmpdir/pycreg.mtx
+
+## Extract the affine matrix from FreeSurfer register.dat file
+head -n 8 $fsRegFile | tail -n 4 > $fsRegMtx
+
+## Convert the transform from FreeSurfer to pycortex format
+cat <<EOF | matlab -nodisplay
+t = MRIread('$anatFile');
+e = MRIread('$refFile');
+t2e_fs = dlmread('$fsRegMtx');
+s2e_pyc = inv(e.tkrvox2ras) * t2e_fs * t.tkrvox2ras * inv(t.vox2ras0);
+dlmwrite('$pycRegMtx',s2e_pyc,'delimiter',' ');
+EOF
+
+## Register the converted transform into pycortex database
+cat <<EOF | python
+from cortex import db
+import numpy as np
+subjectName ="$subjectName"
+xfmName = "$xfmName"
+pycRegMtx = "$pycRegMtx"
+refFile = "$refFile"
+s2e_pyc = np.loadtxt(pycRegMtx)
+db.save_xfm(subjectName,xfmName,s2e_pyc,xfmtype="coord",reference=refFile)
+EOF
+
+## Delete the temporary working directory
+rm -rf $tmpdir
+
+exit 0

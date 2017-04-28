@@ -1,0 +1,88 @@
+#!/usr/bin/env tcsh
+
+if (($# < 3) || ($# > 4)) then
+  echo "Usage: $0:t [subjectName] [xfmName] [outFsRegFile] ([refEPI])"
+  echo
+  echo "e.g.) $0:t AWT1x2 fullhead register_pyc.dat refEPI.nii"
+  echo
+  echo "subjectName  : Name of the target subject registered in pycortex database"
+  echo "               (expected to be identical with that for FreeSurfer)"
+  echo "xfmName      : Name of the target pycortex transform (xfm) to be converted"
+  echo "outFsRegFile : Output file (to be written in FreeSufer register.dat format)"
+  echo "refEPI       : Reference volume to be registered along with xfm (optional)"
+  echo
+  exit 1
+endif
+
+## Check command line arguments
+set subjectName=$1
+shift
+
+set xfmName=$1
+shift
+
+set fsRegFile=$1
+shift
+
+set copyRefFile=false
+if ($#) then
+  set refFile=$1
+  set copyRefFile=true
+  shift
+endif
+
+## Create a temporary working directory
+set tmpdir=`mktemp -d`
+
+## Set paths
+set anatFile=$SUBJECTS_DIR/$subjectName/mri/orig.mgz
+set mtxFile=$tmpdir/reg_${subjectName}_${xfmName}.mtx
+if ($copyRefFile != true) then
+  set refFile=$tmpdir/refEPI.nii
+endif
+
+## Create a MATLAB function to generate FreeSufer register.dat format
+cat <<EOF > $tmpdir/write_fs_register.m
+function write_fs_register(filename, subjectName,volres,R)
+    fid = fopen(filename,'w');
+
+    fprintf(fid,'%s\n',subjectName);
+    fprintf(fid,'%.6f\n',volres(1));
+    fprintf(fid,'%.6f\n',volres(3));
+    fprintf(fid,'0.150000\n');
+    for i=1:size(R,1)
+        fprintf(fid,'%.15e ',R(i,:));
+        fprintf(fid,'\n');
+    end
+    fprintf(fid,'round\n');
+
+    fclose(fid);
+end
+EOF
+
+## Load the transform from pycortex DB and converts it into FreeSurfer format
+cat <<EOF | python
+import os
+import numpy as np
+from cortex import db
+subjectName ="$subjectName"
+xfmName = "$xfmName"
+xfm = db.get_xfm(subjectName,xfmName)
+np.savetxt("$mtxFile",xfm.xfm)
+os.system("mri_convert " + xfm.reference.get_filename() + " $refFile")
+EOF
+
+## Write the converted transform to a file in FreeSufer register.dat format
+cat <<EOF | matlab -nodisplay
+addpath $tmpdir
+t = MRIread('$anatFile');
+e = MRIread('$refFile');
+s2e_fsl = dlmread('$mtxFile');
+t2e_fsl = e.tkrvox2ras * s2e_fsl * t.vox2ras0 * inv(t.tkrvox2ras);
+write_fs_register('$fsRegFile','$subjectName',e.volres,t2e_fsl);
+EOF
+
+## Delete the temporary working directory
+rm -rf $tmpdir
+
+exit 0
