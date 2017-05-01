@@ -69,7 +69,7 @@ class Package(object):
         for brain in self.uniques:
             if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
                 data = np.array(self.images[brain.name])[0]
-                npyform = io.BytesIO()
+                npyform = BytesIO()
                 if self.brains[brain.name]['raw']:
                     data = data[..., indices[brain.subject]['index'], :]
                 else:

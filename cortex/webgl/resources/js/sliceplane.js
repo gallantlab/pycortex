@@ -8,6 +8,9 @@ var sliceplane = (function(module) {
     }
 
     module.Plane.prototype.setData = function(active) {
+	if (this.viewer.active.vertex) {
+	    return;
+	}
         this.scene = viewer.views[0].scene;
 
         this.uniforms = THREE.UniformsUtils.merge( [
@@ -90,6 +93,9 @@ var sliceplane = (function(module) {
         });
     }
     module.Plane.prototype.update = function(slice) {
+	if (this.viewer.active.vertex) {
+	    return;
+	}
         //var brain = this.viewer.active.data[0];
         var dshape = this.viewer.active.uniforms.dshape.value[0];
         var mosaic = this.viewer.active.uniforms.mosaic.value[0];
