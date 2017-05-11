@@ -48,7 +48,7 @@ class NPEncode(json.JSONEncoder):
                 __class__="NParray",
                 dtype=obj.dtype.descr[0][1], 
                 shape=obj.shape, 
-                data=binascii.b2a_base64(obj.tostring()))
+                data=binascii.b2a_base64(obj.tostring()).decode('utf-8'))
         elif isinstance(obj, (np.int64, np.int32, np.int16, np.int8,
                               np.uint64, np.uint32, np.uint16, np.uint8)):
             return int(obj)
@@ -318,7 +318,7 @@ class WebApp(threading.Thread):
 
     def send(self, **msg):
         if not isinstance(msg, str):
-            msg = json.dumps(msg, cls=NPEncode)
+            msg = json.dumps(msg, cls=NPEncode, ensure_ascii=False)
 
         for sock in self.sockets:
             sock.write_message(msg)
