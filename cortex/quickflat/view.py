@@ -33,7 +33,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
     sampler : str
         Name of sampling function used to sample underlying volume data. Options include 
-        'trilinear','nearest','lanczos'; see functions in cortex.mapper.samplers.py for all options
+        'trilinear', 'nearest', 'lanczos'; see functions in cortex.mapper.samplers.py for all options
     height : int
         Height of the image to render. Automatically scales the width for the aspect
         of the subject's flatmap
@@ -62,14 +62,14 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Font size for the label, e.g. "16pt"
     labelcolor : tuple of float, optional
         (R, G, B, A) specification for the label color
-    cvmin : float,optional
+    cvmin : float, optional
         Minimum value for curvature colormap. Defaults to config file value.
     cvmax : float, optional
         Maximum value for background curvature colormap. Defaults to config file value.
-    cvthr : bool,optional
+    cvthr : bool, optional
         Apply threshold to background curvature
     extra_disp : tuple, optional
-        Optional extra display layer from external .svg file. Tuple specifies (filename,layer)
+        Optional extra display layer from external .svg file. Tuple specifies (filename, layer)
         filename should be a full path. External svg file should be structured exactly as 
         rois.svg for the subject. (Best to just copy rois.svg somewhere else and add layers to it)
         Default value is None.
@@ -78,7 +78,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     colorbar_location : tuple, optional
         Location of the colorbar! Not sure of what the numbers actually mean. Left, bottom, width, height, maybe?
     """
-    from matplotlib import colors,cm, pyplot as plt
+    from matplotlib import colors, cm, pyplot as plt
     from matplotlib.collections import LineCollection
 
     dataview = dataset.normalize(braindata)
@@ -184,7 +184,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
         Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?
     sampler : str
         Name of sampling function used to sample underlying volume data. Options include 
-        'trilinear','nearest','lanczos'; see functions in cortex.mapper.samplers.py for all options
+        'trilinear', 'nearest', 'lanczos'; see functions in cortex.mapper.samplers.py for all options
 
     Other Parameters
     ----------------
@@ -248,12 +248,12 @@ def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pix
     """
     fp = io.BytesIO()
     from matplotlib.pylab import imsave
-    to_cut = ['with_rois','cutouts']
+    to_cut = ['with_rois', 'cutouts']
     for cc in to_cut:
         if cc in kwargs: 
             _ = kwargs.pop(cc)
     ## Render PNG file & retrieve image data
-    make_png(fp,braindata,with_rois=False,**kwargs) #recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth, **kwargs)
+    make_png(fp, braindata, with_rois=False, **kwargs) #recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth, **kwargs)
     fp.seek(0)
     pngdata = binascii.b2a_base64(fp.read())
     ## Create and save SVG file

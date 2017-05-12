@@ -63,16 +63,19 @@ def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
             data = braindata.volume
 
     if data.shape[0] > 1:
-        raise ValueError("Cannot flatten movie views - please provide 3D Volume or 2D Vertex data")
+        raise ValueError("Input data was not the correct dimensionality - please provide 3D Volume or 2D Vertex data")
 
+    if data.dtype == np.bool:
+        # Convert data to float to avoid image artifacts with booleans
+        data = data.astype(np.float)
     if data.dtype == np.uint8:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
         img[mask] = pixmap * data.reshape(-1, 4)
         return img.transpose(1,0,2)[::-1], extents
     else:
         badmask = np.array(pixmap.sum(1) > 0).ravel()
-        img = (np.nan*np.ones(mask.shape)).astype(braindata.data.dtype)
-        mimg = (np.nan*np.ones(badmask.shape)).astype(braindata.data.dtype)
+        img = (np.nan*np.ones(mask.shape)).astype(data.dtype)
+        mimg = (np.nan*np.ones(badmask.shape)).astype(data.dtype)
         mimg[badmask] = (pixmap*data.ravel())[badmask].astype(mimg.dtype)
         img[mask] = mimg
 
@@ -261,7 +264,7 @@ def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, reca
     return hatchim
 
 def _make_flatmask(subject, height=1024):
-    from . import polyutils
+    from .. import polyutils
     from PIL import Image, ImageDraw
     pts, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
@@ -325,7 +328,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
     ll = np.vstack([l1, l2, l3])
     ll[:,missing] = 0
 
-    from .mapper import samplers
+    from ..mapper import samplers
     xfm = db.get_xfm(subject, xfmname, xfmtype='coord')
     sampclass = getattr(samplers, sampler)
 
