@@ -140,7 +140,7 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None):
     for fsname, name in [('smoothwm',"wm"), ('pial',"pia"), ('inflated',"inflated")]:
         for hemi in ("lh", "rh"):
             pts, polys, _ = get_surf(subject, hemi, fsname, freesurfer_subject_dir=freesurfer_subject_dir)
-            fname = surfs.format(subj=sname, name=name, hemi=hemi)
+            fname = str(surfs.format(subj=sname, name=name, hemi=hemi))
             formats.write_gii(fname, pts=pts + surfmove, polys=polys)
 
     #import surfinfo
