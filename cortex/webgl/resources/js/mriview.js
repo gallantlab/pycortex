@@ -533,9 +533,6 @@ var mriview = (function(module) {
             this.animate([
                 {state:'camera.target', idx:anim_speed, value:[0,0,0]},
                 {state:'mix', idx:anim_speed, value:0},
-                {state:'camera.azimuth', idx:anim_speed, value:45},
-                {state:'camera.altitude', idx:anim_speed, value:75},
-                {state:'camera.radius', idx:anim_speed, value:400},
             ]);
         }.bind(this);
         var inflate = function() {
