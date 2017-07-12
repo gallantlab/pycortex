@@ -122,6 +122,53 @@ var dataset = (function(module) {
         .done(function() {
             this.loaded.resolve();
         }.bind(this));
+
+        this.ui = new jsplot.Menu();
+
+        if (!this.data[0].raw) { // not RGB
+            if (this.data.length > 1) { // 2D
+                // this.setvmin1 = function(val) {
+                //     this.setVminmax(val, this.vmax[0].value[0], 0);
+                // }.bind(this);
+                // this.setvmin2 = function(val) {
+                //     this.setVminmax(val, this.vmax[0].value[1], 1);
+                // }.bind(this);
+                // this.setvmax1 = function(val) {
+                //     this.setVminmax(this.vmin[0].value[0], val, 0)
+                // }.bind(this);
+                // this.setvmax2 = function(val) {
+                //     this.setVminmax(this.vmin[0].value[1], val, 1)
+                // }.bind(this);
+
+                // this.ui.add({
+                //     vmin1: {action: [this, "setvmin1", this.data[0].min, 
+                //         this.data[0].max, this.vmin[0].value[0]]},
+                //     vmax1: {action: [this, "setvmax1", this.data[0].min,
+                //         this.data[0].max, this.vmax[0].value[0]]},
+                //     vmin2: {action: [this, "setvmin2", this.data[1].min, 
+                //         this.data[1].max, this.vmin[0].value[1]]},
+                //     vmax1: {action: [this, "setvmax2", this.data[1].min,
+                //         this.data[1].max, this.vmax[0].value[1]]},
+                // });
+            } else { // not 2D, "normal"
+                this.setvmin = function(val) {
+                    if (val === undefined)
+                        return this.vmin[0].value[0];
+                    this.vmin[0].value[0] = val;
+                }.bind(this);
+                this.setvmax = function(val) {
+                    if (val === undefined)
+                        return this.vmax[0].value[0];
+                    this.vmax[0].value[0] = val;
+                }.bind(this);
+
+                this.ui.add({
+                    vmin: {action: [this, "setvmin", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
+                    // vmin: {action: [this.vmin, "value[0]", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
+                    vmax: {action: [this, "setvmax", this.data[0].min, this.data[0].max, this.vmax[0].value[0]]},
+                });
+            }
+        }
     }
     THREE.EventDispatcher.prototype.apply(module.DataView.prototype);
     module.DataView.prototype.setVminmax = function(min, max, dim, idx) {
@@ -210,7 +257,7 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++)
             this.data[i].setFilter(interp);
         //force a shader update for all surfaces using this dataview
-        this.dispatchEvent({type:"update", dataview:this});
+        // this.dispatchEvent({type:"update", dataview:this});
     };
 
     module.VolumeData = function(json, images) {
@@ -222,7 +269,8 @@ var dataset = (function(module) {
         this.max = json.max;
         this.mosaic = json.mosaic;
         this.name = json.name;
-        this.shape = json.shape;
+        this.shape = json.shape; // this gets changed a few lines down..
+        this.numslices = json.shape[0];
         this.data = images[json.name];
         this.frames = images[json.name].length;
 

@@ -36,12 +36,19 @@ var mriview = (function(module) {
             this.canvas.css("opacity", 1);
         }.bind(this));
 
+        this.sliceplanes = {
+            x: new sliceplane.Plane(this, 0),
+            y: new sliceplane.Plane(this, 1),
+            z: new sliceplane.Plane(this, 2),
+        };
+
         this.ui = new jsplot.Menu();
         this.ui.addEventListener("update", this.schedule.bind(this));
         this.ui.add({
             mix: {action:[this, "setMix"], hidden:true},
             frame:{action:[this, "setFrame"], hidden:true},
         });
+        this.dataui = this.ui.addFolder("datasets", false);
 
         this._bindUI();
     }
@@ -179,20 +186,28 @@ var mriview = (function(module) {
         if (!(data instanceof Array))
             data = [data];
 
-        var name, view;
+        var name, view, ui;
 
-        var handle = "<div class='handle'><span class='ui-icon ui-icon-carat-2-n-s'></span></div>";
+        var setDataFun = function(name) {
+            return function() {this.setData(name)}.bind(this);
+        }.bind(this);
+
+        // var handle = "<div class='handle'><span class='ui-icon ui-icon-carat-2-n-s'></span></div>";
         for (var i = 0; i < data.length; i++) {
             view = data[i];
             name = view.name;
             this.dataviews[name] = view;
 
-            var found = false;
-            $(this.object).find("#datasets li").each(function() {
-                found = found || ($(this).text() == name);
-            })
-            if (!found)
-                $(this.object).find("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
+            // var found = false;
+            // $(this.object).find("#datasets li").each(function() {
+            //     found = found || ($(this).text() == name);
+            // })
+            // if (!found)
+            //     $(this.object).find("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
+
+
+            view.ui.add({show: {action: setDataFun(name), key: i+1}});
+            this.dataui.addFolder(name, true, view.ui);
         }
         
         this.setData(data[0].name);
@@ -297,6 +312,12 @@ var mriview = (function(module) {
             }
             this.schedule();
             this.loaded.resolve();
+
+            //set data for sliceplanes
+            this.sliceplanes.x.setData(this.active);
+            this.sliceplanes.y.setData(this.active);
+            this.sliceplanes.z.setData(this.active);
+
         }.bind(this));
     };
     module.Viewer.prototype.nextData = function(dir) {
@@ -512,9 +533,6 @@ var mriview = (function(module) {
             this.animate([
                 {state:'camera.target', idx:anim_speed, value:[0,0,0]},
                 {state:'mix', idx:anim_speed, value:0},
-                {state:'camera.azimuth', idx:anim_speed, value:45},
-                {state:'camera.altitude', idx:anim_speed, value:75},
-                {state:'camera.radius', idx:anim_speed, value:400},
             ]);
         }.bind(this);
         var inflate = function() {
@@ -546,6 +564,30 @@ var mriview = (function(module) {
             hide_labels: {action:hidelabels, key:'l', hidden:true},
         });
 
+        //add sliceplane gui
+        var sliceplane_ui = this.ui.addFolder("sliceplanes", true)
+        sliceplane_ui.add({
+            x: {action:[this.sliceplanes.x, "setVisible"]},
+            y: {action:[this.sliceplanes.y, "setVisible"]},
+            z: {action:[this.sliceplanes.z, "setVisible"]},
+        });
+        var sliceplane_move = sliceplane_ui.addFolder("move", true);
+        sliceplane_move.add({
+            x_up: {action:this.sliceplanes.x.next.bind(this.sliceplanes.x), key:'q', hidden:true},
+            x_down: {action:this.sliceplanes.x.prev.bind(this.sliceplanes.x), key:'w', hidden:true},
+            y_up: {action:this.sliceplanes.y.next.bind(this.sliceplanes.y), key:'a', hidden:true},
+            y_down: {action:this.sliceplanes.y.prev.bind(this.sliceplanes.y), key:'s', hidden:true},
+            z_up: {action:this.sliceplanes.z.next.bind(this.sliceplanes.z), key:'z', hidden:true},
+            z_down: {action:this.sliceplanes.z.prev.bind(this.sliceplanes.z), key:'x', hidden:true},
+        });
+        sliceplane_move.add({
+            move_x: {action:[this.sliceplanes.x, 'setSmoothSlice', 0, 1, 0.001]},
+            move_y: {action:[this.sliceplanes.y, 'setSmoothSlice', 0, 1, 0.001]},
+            move_z: {action:[this.sliceplanes.z, 'setSmoothSlice', 0, 1, 0.001]},
+            rotate_x: {action:[this.sliceplanes.x, 'setAngle', -89, 89]},
+            rotate_y: {action:[this.sliceplanes.y, 'setAngle', -89, 89]},
+            rotate_z: {action:[this.sliceplanes.z, 'setAngle', -89, 89]}
+        });
 
         if ($(this.object).find("#colormap_category").length > 0) {
             $(this.object).find("#colormap").ddslick({ width:296, height:350, 
