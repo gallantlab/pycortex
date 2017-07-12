@@ -48,7 +48,7 @@ var mriview = (function(module) {
             mix: {action:[this, "setMix"], hidden:true},
             frame:{action:[this, "setFrame"], hidden:true},
         });
-        this.dataui = this.ui.addFolder("datasets", false);
+        // this.dataui = this.ui.addFolder("datasets", false);
 
         this._bindUI();
     }
