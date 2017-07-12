@@ -420,7 +420,11 @@ var mriview = (function(module) {
             }
             this.dispatchEvent({type:"stimulus", object:this.movie});
         } else {
-            this.ui.remove("movie")
+            // if movie was left playing, pause before removing menu with pause button
+            if (this.state == "play") {
+                this.playpause();
+            }
+            this.ui.remove("movie");
         }
         this.schedule();
     };
