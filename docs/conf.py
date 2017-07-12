@@ -32,7 +32,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.viewcode',
               'sphinx.ext.autosummary',
               'numpydoc',
-              'sphinx.ext.githubpages',
+              # 'sphinx.ext.githubpages',
               'sphinx_gallery.gen_gallery']
 
 autosummary_generate = True
