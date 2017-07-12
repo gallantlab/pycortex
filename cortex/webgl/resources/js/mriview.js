@@ -398,18 +398,17 @@ var mriview = (function(module) {
         }
     }
 
+    var movie_ui;
     module.Viewer.prototype.setupStim = function() {
         if (this.active.data[0].movie) {
-            // $(this.object).find("#moviecontrols").show();
-            // $(this.object).find("#bottombar").addClass("bbar_controls");
-            // $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
-            // this.active.data[0].loaded.progress(function(idx) {
-            //     var pct = idx / this.active.frames * 100;
-            //     $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
-            // }.bind(this)).done(function() {
-            //     $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
-            // }.bind(this));
-
+            if ("movie" in this.ui._folders) {
+                // nothing?
+            } else {
+                movie_ui = this.ui.addFolder("movie", true);
+                movie_ui.add({play_pause: {action: this.playpause.bind(this), key:'p'}});
+                movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
+            }
+            
             if (this.movie)
                 this.movie.destroy();
 
@@ -420,10 +419,8 @@ var mriview = (function(module) {
                 setTimeout(this.resize.bind(this), 1000);
             }
             this.dispatchEvent({type:"stimulus", object:this.movie});
-            //this.active.loaded.done(this.playpause.bind(this));
         } else {
-            // $(this.object).find("#moviecontrols").hide();
-            // $(this.object).find("#bottombar").removeClass("bbar_controls");
+            this.ui.remove("movie")
         }
         this.schedule();
     };
