@@ -405,7 +405,7 @@ var mriview = (function(module) {
                 // nothing?
             } else {
                 movie_ui = this.ui.addFolder("movie", true);
-                movie_ui.add({play_pause: {action: this.playpause.bind(this), key:'p'}});
+                movie_ui.add({play_pause: {action: this.playpause.bind(this), key:' '}});
                 movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
             }
             
@@ -415,7 +415,7 @@ var mriview = (function(module) {
             if (this.active.stim && figure) {
                 figure.setSize("right", "30%");
                 this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
-                this.movie.setFrame(0);
+                this.movie.setFrame(this.active.frame);
                 setTimeout(this.resize.bind(this), 1000);
             }
             this.dispatchEvent({type:"stimulus", object:this.movie});
@@ -501,12 +501,15 @@ var mriview = (function(module) {
     module.Viewer.prototype.setFrame = function(frame) {
         if (frame === undefined)
             return this.frame;
-        if (frame > this.active.length) {
-            frame -= this.active.length;
-            this._startplay += this.active.length;
+        if (frame >= this.active.frames) {
+            frame -= this.active.frames;
+            this._startplay += this.active.frames;
         }
         this.frame = frame;
         this.active.setFrame(frame);
+        if (this.movie) {
+            this.movie.setFrame(frame);
+        }
         // $(this.object).find("#movieprogress div").slider("value", frame);
         // $(this.object).find("#movieframe").attr("value", frame);
         this.schedule();
