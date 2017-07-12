@@ -206,8 +206,8 @@ var mriview = (function(module) {
             //     $(this.object).find("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
 
 
-            view.ui.add({show: {action: setDataFun(name), key: i+1}});
-            this.dataui.addFolder(name, true, view.ui);
+            // view.ui.add({show: {action: setDataFun(name), key: i+1}});
+            // this.dataui.addFolder(name, true, view.ui);
         }
         
         this.setData(data[0].name);
