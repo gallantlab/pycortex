@@ -79,7 +79,7 @@ setup(name='pycortex',
       description='Python Cortical mapping software for fMRI data',
       author='James Gao',
       author_email='james@jamesgao.com',
-      packages=['cortex', 'cortex.webgl', 'cortex.mapper', 'cortex.dataset', 'cortex.blender', 'cortex.tests'],
+      packages=['cortex', 'cortex.webgl', 'cortex.mapper', 'cortex.dataset', 'cortex.blender', 'cortex.tests', 'cortex.quickflat'],
       ext_modules=cythonize([ctm, formats]),
       package_data={
             'cortex':[ 
