@@ -99,7 +99,7 @@ setup(name='pycortex',
                 'resources/images/*'
             ]
       },
-      requires=['mayavi', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>3.1)',
+      requires=['mayavi (>=4.4.3)', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>3.1)',
                 'shapely', 'html5lib', 'h5py (>=2.3)', 'numexpr', 'Cython',
                 'nibabel'],
       cmdclass=dict(install=my_install),
