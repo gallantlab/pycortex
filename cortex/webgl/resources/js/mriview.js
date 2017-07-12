@@ -192,18 +192,18 @@ var mriview = (function(module) {
             return function() {this.setData(name)}.bind(this);
         }.bind(this);
 
-        // var handle = "<div class='handle'><span class='ui-icon ui-icon-carat-2-n-s'></span></div>";
+        var handle = "<div class='handle'><span class='ui-icon ui-icon-carat-2-n-s'></span></div>";
         for (var i = 0; i < data.length; i++) {
             view = data[i];
             name = view.name;
             this.dataviews[name] = view;
 
-            // var found = false;
-            // $(this.object).find("#datasets li").each(function() {
-            //     found = found || ($(this).text() == name);
-            // })
-            // if (!found)
-            //     $(this.object).find("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
+            var found = false;
+            $(this.object).find("#datasets li").each(function() {
+                found = found || ($(this).text() == name);
+            })
+            if (!found)
+                $(this.object).find("#datasets").append("<li class='ui-corner-all'>"+handle+name+"</li>");
 
 
             // view.ui.add({show: {action: setDataFun(name), key: i+1}});
