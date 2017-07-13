@@ -142,6 +142,70 @@ a:visited { color:white; }
     font-size:24pt;
     font-weight:bold;
 }
+
+/* colorlegend styles */
+#colorlegend {
+    height: 4%;
+    width: 30%;
+    position: absolute;
+    bottom: 30px;
+    left: 0;
+    right: 0;
+    margin: auto;
+    z-index: 100;
+
+}
+#colorlegend-colors {
+    height: 100%;
+    overflow: hidden;
+    background-color: red;
+}
+#colorlegend-colorbar {
+    height:300px;
+    width:100%;
+    display:block;
+    text-align:right;
+}
+#vmin, #vmax {
+    font-size:4vmin;
+    line-height:0vmin;
+    color:white;
+    z-index:99999;
+    position:absolute;
+    top: 50%;
+    width: 40vw;
+    height: 40vh;
+}
+#vmin {
+    text-align: right;
+    left: -42vw;
+}
+#vmax {
+    right:-42vw;
+}
+.colorlegend-select {
+    width: 100%;
+    position:absolute;
+}
+.select2-selection {
+}
+.select2-container {
+    visibility:hidden;
+    position: absolute;
+}
+.select2-container--above {
+}
+.select2-dropdown {
+    visibility:visible;
+}
+.select2-results__option {
+    text-align:left;
+}
+.colorlegend-option-image {
+    width:150px;
+    height:30px;
+}
+
 .datadesc {
     font-size:10pt;
     font-weight:normal;

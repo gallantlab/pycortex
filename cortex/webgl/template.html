@@ -36,6 +36,9 @@
 <script type='text/javascript' src='resources/js/mriview_surface.js'></script>
 <script type='text/javascript' src='resources/js/mriview.js'></script>
 
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/select2.min.js"></script>
+
 {% if leapmotion %}
 <script type='text/javascript' src="resources/js/leap-0.6.4.js"></script>
 <script type='text/javascript' src='resources/js/leap.js'></script>
@@ -59,6 +62,20 @@
 			<p class='opt_label'>Datasets</p>
 			<ul id='datasets'>
 			</ul>
+		</div>
+	</div>
+	<div id="colorlegend">
+		<div id="vmin">-5.246781</div>
+		<div id="vmax">5</div>
+		<div id='colorlegend-colors'>
+			<select class="colorlegend-select">
+				{% for name, img in colormaps %}
+					<option value="{{name}}">{{name}}</option>
+				{% end %}
+			</select>
+			<div id='colorlegend-colorbar-container'>
+				<img id='colorlegend-colorbar' src='{{colormaps[0][1]}}'/>
+			</div>
 		</div>
 	</div>
 	<canvas id='brain'></canvas>
