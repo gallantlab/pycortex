@@ -296,6 +296,90 @@ var mriview = (function(module) {
             $('#colorlegend-colorbar').attr('src', colormaps[cmapName].image.currentSrc);
         });
 
+        $('#vmin').off('wheel')
+        $('#vmin').on('wheel', function (e) {
+            let currentVal = parseFloat(viewer.active.vmin[0]['value'][0])
+            let newVal;
+            let step;
+
+            if (e.shiftKey) {
+                // logarithmic step
+                let range = viewer.active.vmax[0]['value'][0] - viewer.active.vmin[0]['value'][0]
+
+                step = 0.25
+                if (e.altKey) {
+                    step *= 0.1
+                }
+
+                if (e.originalEvent.deltaY >= 0) {
+                    newVal = currentVal + step * range;
+                } else {
+                    newVal = currentVal - step * range;
+                }
+
+            } else {
+                // linear step
+                step = 0.25
+                if (e.altKey) {
+                    step *= 0.1
+                }
+
+                if (e.originalEvent.deltaY >= 0) {
+                    newVal = currentVal + step;
+                } else {
+                    newVal = currentVal - step;
+                }
+            }
+
+            if (newVal < viewer.active.vmax[0]['value'][0]) {
+                viewer.active.setvmin(newVal);
+                $('#vmin').text(cleanNumber(newVal));
+                viewer.schedule();
+            }
+        });
+
+        $('#vmax').off('wheel')
+        $('#vmax').on('wheel', function (e) {
+            let currentVal = parseFloat(viewer.active.vmax[0]['value'][0])
+            let newVal;
+            let step;
+
+            if (e.shiftKey) {
+                // logarithmic step
+                let range = viewer.active.vmin[0]['value'][0] - viewer.active.vmax[0]['value'][0]
+
+                step = 0.25
+                if (e.altKey) {
+                    step *= 0.1
+                }
+
+                if (e.originalEvent.deltaY >= 0) {
+                    newVal = currentVal + step * range;
+                } else {
+                    newVal = currentVal - step * range;
+                }
+
+            } else {
+                // linear step
+                step = 0.25
+                if (e.altKey) {
+                    step *= 0.1
+                }
+
+                if (e.originalEvent.deltaY >= 0) {
+                    newVal = currentVal + step;
+                } else {
+                    newVal = currentVal - step;
+                }
+            }
+
+            if (newVal > viewer.active.vmin[0]['value'][0]) {
+                viewer.active.setvmax(newVal);
+                $('#vmax').text(cleanNumber(newVal));
+                viewer.schedule();
+            }
+        });
+
         var defers = [];
         for (var i = 0; i < this.active.data.length; i++) {
             defers.push(subjects[this.active.data[i].subject].loaded)

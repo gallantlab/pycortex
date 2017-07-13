@@ -168,13 +168,13 @@ a:visited { color:white; }
 }
 #vmin, #vmax {
     font-size:4vmin;
-    line-height:0vmin;
     color:white;
     z-index:99999;
     position:absolute;
-    top: 50%;
     width: 40vw;
     height: 40vh;
+    line-height:0vmin;
+    top: 50%;
 }
 #vmin {
     text-align: right;
