@@ -398,32 +398,33 @@ var mriview = (function(module) {
         }
     }
 
+    var movie_ui;
     module.Viewer.prototype.setupStim = function() {
         if (this.active.data[0].movie) {
-            // $(this.object).find("#moviecontrols").show();
-            // $(this.object).find("#bottombar").addClass("bbar_controls");
-            // $(this.object).find("#movieprogress>div").slider("option", {min:0, max:this.active.length});
-            // this.active.data[0].loaded.progress(function(idx) {
-            //     var pct = idx / this.active.frames * 100;
-            //     $(this.object).find("#movieprogress div.ui-slider-range").width(pct+"%");
-            // }.bind(this)).done(function() {
-            //     $(this.object).find("#movieprogress div.ui-slider-range").width("100%");
-            // }.bind(this));
-
+            if ("movie" in this.ui._folders) {
+                // nothing?
+            } else {
+                movie_ui = this.ui.addFolder("movie", true);
+                movie_ui.add({play_pause: {action: this.playpause.bind(this), key:' '}});
+                movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
+            }
+            
             if (this.movie)
                 this.movie.destroy();
 
             if (this.active.stim && figure) {
                 figure.setSize("right", "30%");
                 this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
-                this.movie.setFrame(0);
+                this.movie.setFrame(this.active.frame);
                 setTimeout(this.resize.bind(this), 1000);
             }
             this.dispatchEvent({type:"stimulus", object:this.movie});
-            //this.active.loaded.done(this.playpause.bind(this));
         } else {
-            // $(this.object).find("#moviecontrols").hide();
-            // $(this.object).find("#bottombar").removeClass("bbar_controls");
+            // if movie was left playing, pause before removing menu with pause button
+            if (this.state == "play") {
+                this.playpause();
+            }
+            this.ui.remove("movie");
         }
         this.schedule();
     };
@@ -500,12 +501,15 @@ var mriview = (function(module) {
     module.Viewer.prototype.setFrame = function(frame) {
         if (frame === undefined)
             return this.frame;
-        if (frame > this.active.length) {
-            frame -= this.active.length;
-            this._startplay += this.active.length;
+        if (frame >= this.active.frames) {
+            frame -= this.active.frames;
+            this._startplay += this.active.frames;
         }
         this.frame = frame;
         this.active.setFrame(frame);
+        if (this.movie) {
+            this.movie.setFrame(frame);
+        }
         // $(this.object).find("#movieprogress div").slider("value", frame);
         // $(this.object).find("#movieframe").attr("value", frame);
         this.schedule();
