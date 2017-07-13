@@ -43,7 +43,7 @@ In [3]: cortex.webshow(ds)
 
 Documentation
 -------------
-Please find more complete documentation for pycortex at http://gallantlab.org/pycortex/docs/. The documentation for pycortex is currently incomplete, but will be improved in the coming days, weeks, or months.
+NEW: Massively updated documentation for pycortex is available at https://gallantlab.github.io/pycortex. You can find many examples of pycortex features in the [pycortex example gallery](https://gallantlab.github.io/pycortex/auto_examples/index.html).
 
 Citation
 --------
