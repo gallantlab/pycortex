@@ -278,6 +278,24 @@ var mriview = (function(module) {
             $("#color_fieldset").fadeTo(0.15, 1);
         }
 
+        // color legend behavior
+        function cleanNumber (number) {
+            decimals = 3
+            return Math.round(parseFloat(number) * (10 ** decimals)) / (10 ** decimals)
+        }
+        var viewer = this
+        $('#colorlegend-colorbar').attr('src', colormaps[this.active.cmapName].image.currentSrc);
+        $('.colorlegend-select').val(this.active.cmapName).trigger('change');
+        $('#vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0]))
+        $('#vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0]))
+        $('.colorlegend-select').on('select2:select', function (e) {
+            var cmapName = e.params.data.id
+            viewer.active.cmapName = cmapName
+            viewer.active.setColormap(cmapName)
+            viewer.schedule()
+            $('#colorlegend-colorbar').attr('src', colormaps[cmapName].image.currentSrc);
+        });
+
         var defers = [];
         for (var i = 0; i < this.active.data.length; i++) {
             defers.push(subjects[this.active.data[i].subject].loaded)

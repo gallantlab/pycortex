@@ -73,6 +73,7 @@ var dataset = (function(module) {
         if (json.attrs.stim !== undefined)
             this.stim = "stim/"+json.attrs.stim;
 
+        this.cmapName = json.cmap[0];
         this.cmap = [{type:'t', value:colormaps[json.cmap[0]]}];
         this.vmin = [{type:'fv1', value:json.vmin[0] instanceof Array? json.vmin[0] : [json.vmin[0], 0]}];
         this.vmax = [{type:'fv1', value:json.vmax[0] instanceof Array? json.vmax[0] : [json.vmax[0],0]}];
