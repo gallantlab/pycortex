@@ -2,6 +2,7 @@ import json
 import warnings
 import h5py
 import numpy as np
+from six import string_types
 
 from .. import options
 from ..database import db
@@ -33,17 +34,17 @@ def _from_hdf_data(h5, name, xfmname=None, **kwargs):
     if dnode is None:
         dnode = h5.get(name)
 
-    subj = dnode.attrs['subject']
+    attrs = {k: u(v) for (k, v) in dnode.attrs.items()}
+    subj = attrs['subject']
     #support old style xfmname saving as attribute
-    if xfmname is None and 'xfmname' in dnode.attrs:
-        xfmname = dnode.attrs['xfmname']
-
+    if xfmname is None and 'xfmname' in attrs:
+        xfmname = attrs['xfmname']
     mask = None
-    if "mask" in dnode.attrs:
-        if u(dnode.attrs['mask']).startswith(u"__"):
-            mask = h5['/subjects/%s/transforms/%s/masks/%s'%(dnode.attrs['subject'], xfmname, dnode.attrs['mask'])].value
+    if 'mask' in attrs:
+        if attrs['mask'].startswith("__"):
+            mask = h5['/subjects/%s/transforms/%s/masks/%s'%(attrs['subject'], xfmname, attrs['mask'])].value
         else:
-            mask = dnode.attrs['mask']
+            mask = attrs['mask']
 
     #support old style RGB volumes
     if dnode.dtype == np.uint8 and dnode.shape[-1] in (3, 4):
@@ -65,13 +66,8 @@ def _from_hdf_data(h5, name, xfmname=None, **kwargs):
         
 
 def _from_hdf_view(h5, data, xfmname=None, vmin=None, vmax=None,  **kwargs):
-    try:
-        basestring
-        strcls = (unicode, str)
-    except NameError:
-        strcls = str
 
-    if isinstance(data, strcls):
+    if isinstance(data, string_types):
         return _from_hdf_data(h5, data, xfmname=xfmname, vmin=vmin, vmax=vmax, **kwargs)
         
     if len(data) == 2:
@@ -146,9 +142,9 @@ class Dataview(object):
         data = json.loads(u(node[0]))
         desc = node[1]
         try:
-            cmap = json.loads(node[2])
+            cmap = json.loads(u(node[2]))
         except:
-            cmap = node[2]
+            cmap = u(node[2])
         vmin = json.loads(u(node[3]))
         vmax = json.loads(u(node[4]))
         state = json.loads(u(node[5]))
