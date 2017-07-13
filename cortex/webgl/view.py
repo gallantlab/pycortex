@@ -670,8 +670,9 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             # Misc. setup
             fr = 0
             a = np.array
-            func = mixes[interpolation]
-            skip_props = ['surface.{subject}.right', 'surface.{subject}.left', ] #'projection', 
+            interpolation_function = mixes[interpolation]
+            skip_props = ['surface.{subject}.right', 'surface.{subject}.left',		# non-numeric properties that
+						  'surface.{subject}.dither', 'surface.{subject}.sampler']	# cannot be interpolated
             # Get keyframes
             keyframes = sorted(keyframes, key=lambda x:x['time'])
             # Normalize all time to frame rate
@@ -700,7 +701,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                         if (prop in skip_props) or (start[prop] is None):
                             frame[prop] = start[prop]
                             continue
-                        val = func(a(start[prop]), a(end[prop]), t)
+                        val = interpolation_function(a(start[prop]), a(end[prop]), t)
                         if isinstance(val, np.ndarray):
                             frame[prop] = val.tolist()
                         else:
@@ -709,7 +710,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             return allframes
 
         def make_movie_views(self, animation, filename="brainmovie%07d.png", offset=0,
-                      fps=30, size=(1920, 1080), alpha=1, interpolation="linear"):
+                      fps=30, size=(1920, 1080), alpha=1, interpolation="linear", sleep = 0.2, save = True):
             """Renders movie frames for animation of mesh movement
 
             Makes an animation (for example, a transition between inflated and
@@ -769,8 +770,9 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 # Set background alpha, color??
                 #self.renderer.setClearColor([0,0,0], alpha)
                 #self.saveIMG(filename%(fr+offset+1), size=size)
-                self.getImage(filename%(fr+offset+1), size=size)
-                time.sleep(0.01)
+                if save:
+                    self.getImage(filename%(fr+offset+1), size=size)
+                time.sleep(sleep)
 
     class PickerHandler(web.RequestHandler):
         def get(self):
