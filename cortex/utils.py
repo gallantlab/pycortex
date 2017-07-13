@@ -404,14 +404,19 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
     roi_list : list or None
         List of names of ROIs to retrieve (e.g. ['FFA','OFA','EBA']). Names should match 
         the ROI layers in the rois.svg file for the `subject` specified. If None is 
-        provided (default), all available ROIs for the subject are returned.
+        provided (default), all available ROIs for the subject are returned. If 'cortex'
+        is included in roi_list, a mask of all cortical voxels NOT included in other rois
+        is included in the output.
     gm_sampler : scalar or string
         How to sample the cortical gray matter. Options are: 
-        integer - Distance from fiducial surface to define ROI. Reasonable values ~ [1-3]
+        <an integer> - Distance from fiducial surface to define ROI. Reasonable values 
+            for this input range from 1-3. 
         The following will only work if you have used Freesurfer to define the subject's 
         surface, and so have separate pial and white matter surfaces:
         'cortical' - selection of all voxels with centers within the cortical ribbon
             (directly computed from distance of each voxel from fiducial surface)
+        'thick' - selection of voxels within 'thick' mask (see cortex.get_mask())
+        'thin' - selection of voxels within 'thin' mask (see cortex.get_mask())
         'cortical-liberal' - selection of all voxels that have any part within the 
             cortical ribbon ('line_nearest' mapper)
         'cortical-conservative' - selection of only the closest voxel to each surface 
@@ -441,14 +446,17 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         the left hemisphere will be -1). `index_labels` is a dict that maps roi names to index values 
         (e.g. {'V1': 1}). 
     """
-
-    # Start with vertices
-    tmp_list = [r for r in roi_list if not r=='Cortex']
-    roi_verts = get_roi_verts(subject, roi=tmp_list)
-    if roi_list is None:
-        roi_list = list(roi_verts.keys())
-    if not isinstance(roi_list, (list, tuple)):
+    # Catch single-roi input
+    if isinstance(roi_list, string_types):
         roi_list = [roi_list]
+    # Start with vertices
+    if roi_list is None:
+        roi_verts = get_roi_verts(subject)
+        roi_list = list(roi_verts.keys())
+    else:
+        tmp_list = [r for r in roi_list if not r=='Cortex']
+        roi_verts = get_roi_verts(subject, roi=tmp_list)
+    
     if fail_for_missing_rois:
         missing = [r for r in roi_list if not r in roi_verts.keys()+['Cortex']]
         if len(missing) > 0:
@@ -456,10 +464,9 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
 
     mapper_dict = {'cortical-conservative':'nearest',
                    'cortical-liberal':'line_nearest'}
-
-    
+    # Compress to only if statement if not going to use do_mapper
+    do_mapper = gm_sampler in mapper_dict    
     if do_mapper:
-        ### 
         # Need more mapper types
         mapper = get_mapper(subject, xfmname, type=mapper_dict[gm_sampler])
         for name, verts in list(roi_verts.items()):
@@ -471,16 +478,16 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
                 output[name] = (left>0) | (right>0)
         
     #return output
-
-    elif (gm_sampler == 'cortical') or not isinstance(gm_sampler, string_types):
-        # Get map of vertex indices for each voxel
+    elif (gm_sampler in ('cortical', 'thick', 'thin')) or not isinstance(gm_sampler, string_types):
+        # Get map of vertex indices for each voxel & distance of each voxel from fiducial surface
         vox_dst, vox_idx = get_vox_dist(subject, xfmname)
-        if isinstance(dst, string_types):
-            cortex_mask = db.get_mask(subject, xfmname, type=dst)
+        if isinstance(gm_sampler, string_types):
+            cortex_mask = db.get_mask(subject, xfmname, type=gm_sampler)
         else:
-            cortex_mask = vox_dst <= dst
+            cortex_mask = vox_dst <= gm_sampler
         # Select roi voxels by combination of vertex indices & distance from fiducial surface
         roi_voxels = {}
+        empty_rois = []
         for roi in roi_list:
             if roi not in roi_verts:
                 if not roi=='Cortex':
@@ -491,6 +498,8 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
             if np.any(roi_mask):
                 roi_voxels[roi] = roi_mask
             else:
+                # Perhaps discuss what this behavior should be
+                empty_rois.append(roi)
                 print("ROI {} is empty...".format(roi))
         all_mask = np.array(roi_voxels.values()).sum(0)
         if 'Cortex' in roi_list:
@@ -498,7 +507,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         # Optionally cull voxels assigned to > 1 ROI due to partly overlapping shapes in inkscape file:
         if not allow_overlap:
             print('Cutting {} overlapping voxels (should be < ~50)'.format(np.sum(all_mask>1)))
-            for roi in roi_list:
+            for roi in set(roi_list)-set(empty_rois):
                 roi_voxels[roi][all_mask>1] = False
         # Split left / right hemispheres if desired
         # There ought to be a more succinct way to do this - get_hemi_masks only does the cortical
