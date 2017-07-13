@@ -7,7 +7,6 @@ from six import string_types
 from .. import options
 from ..database import db
 from .braindata import BrainData, VolumeData, VertexData, _hash
-# from ..utils import u
 
 default_cmap = options.config.get("basic", "default_cmap")
 
