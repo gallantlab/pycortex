@@ -27,12 +27,12 @@ class ROIpack(object):
                  linecolor=None, roifill=None, shadow=None, labelsize=None,
                  labelcolor=None, dashtype='fromsvg', dashoffset='fromsvg',
                  layer='rois'):
-        """Contains ROI data in SVG form 
+        """Contains ROI data in SVG form
 
-        Stores [[display elements]] from one layer of an svg file. 
+        Stores [[display elements]] from one layer of an svg file.
         Most commonly, these are ROIs. Each ROI (or other display element)
-        can contain multiple paths. 
-        If those paths are closed (i.e., if these are all ROIs), then 
+        can contain multiple paths.
+        If those paths are closed (i.e., if these are all ROIs), then
         you can use the method ROIpack.get_roi() to get an index of the
         vertices associated with each roi.
 
@@ -42,7 +42,7 @@ class ROIpack(object):
         Notes
         -----
         The name and the function of this class have begun to diverge. This class
-        almost entirely has to do with parsing and storing elements of svg files, 
+        almost entirely has to do with parsing and storing elements of svg files,
         *SOME* of which are related to ROIs, and some of which are not. In the future,
         this class may be renamed to something like DispPack, display_pack, disp_elements,
         etc
@@ -51,7 +51,7 @@ class ROIpack(object):
         if isinstance(layer,(list,tuple)):
             # More elegant would be to have ROIpack be a fundamentally multi-layer
             # object, but for backward compatibility and for not breaking other
-            # other parts of the code (e.g. finding roi indices, etc) I have kept 
+            # other parts of the code (e.g. finding roi indices, etc) I have kept
             # it this way ML 2014.08.12
             self.svgfile = svgfile
             self.callback = callback
@@ -63,7 +63,7 @@ class ROIpack(object):
             layer1 = layer[0]
             # Recursive call to create multiple layers
             for iL,L in enumerate(layer):
-                self.layers[L] = ROIpack(tcoords, svgfile, callback, linewidth, linecolor, 
+                self.layers[L] = ROIpack(tcoords, svgfile, callback, linewidth, linecolor,
                     roifill, shadow, labelsize, labelcolor, dashtype, dashoffset,
                     layer=L)
                 # Necessary?
@@ -86,7 +86,7 @@ class ROIpack(object):
             self.svgfile = svgfile
             self.callback = callback
             self.kdt = cKDTree(tcoords)
-            self.layer = layer 
+            self.layer = layer
             # Display parameters
             if layer in config.sections():
                 dlayer = layer
@@ -94,7 +94,7 @@ class ROIpack(object):
                 # Unknown display layer; default to values for ROIs
                 import warnings
                 warnings.warn('No defaults set for display layer %s; Using defaults for ROIs in options.cfg file'%layer)
-                dlayer = 'rois'                
+                dlayer = 'rois'
             self.linewidth = float(config.get(dlayer, "line_width")) if linewidth is None else linewidth
             self.linecolor = tuple(map(float, config.get(dlayer, "line_color").split(','))) if linecolor is None else linecolor
             self.roifill = tuple(map(float, config.get(dlayer, "fill_color").split(','))) if roifill is None else roifill
@@ -114,7 +114,7 @@ class ROIpack(object):
         h = float(self.svg.getroot().get("height"))
         self.svgshape = w, h
 
-        #Set up the ROI dict 
+        #Set up the ROI dict
         self.rois = {}
         for r in _find_layer(self.svg, self.layer).findall("{%s}g"%svgns):
             roi = ROI(self, r)
@@ -166,7 +166,7 @@ class ROIpack(object):
             self.dashoffset = dashoffset
 
         for roi in list(self.rois.values()):
-            roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill, 
+            roi.set(linewidth=self.linewidth, linecolor=self.linecolor, roifill=self.roifill,
                 shadow=shadow,dashtype=dashtype,dashoffset=dashoffset)
 
         try:
@@ -185,7 +185,7 @@ class ROIpack(object):
         else:
             if hasattr(self, "labels"):
                 self.labels.attrib['style'] = "display:none;"
-        
+
         outsvg = copy.deepcopy(self.svg)
         if with_ims is not None:
             if isinstance(with_ims, (list, tuple)):
@@ -202,13 +202,13 @@ class ROIpack(object):
                     )
                 imlayer.append(img)
                 outsvg.getroot().insert(0, imlayer)
-        
+
         if filename is None:
             return etree.tostring(outsvg)
         else:
             with open(filename, "w") as outfile:
                 outfile.write(etree.tostring(outsvg))
-        
+
     def get_texture(self, texres, name=None, background=None, labels=True, bits=32, **kwargs):
         '''Renders the current roimap as a png'''
         #set the current size of the texture
@@ -242,7 +242,7 @@ class ROIpack(object):
         cmd = cmd.format(dpi=dpi, outfile=pngfile, bits=bits)
         proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
         proc.communicate(etree.tostring(self.svg))
-        
+
         if background is not None:
             self.svg.getroot().remove(img)
 
@@ -263,11 +263,11 @@ class ROIpack(object):
         COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
         all_splines = [] #contains each hemisphere separately
 
-        ###  
+        ###
         # this is for the svg path parsing (https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths)
         # the general format is that there is a state machine that keeps track of which command (path_ind)
         # that it's listening to while parsing over the appropriately sized (param_len) groups of
-        # coordinates for that command 
+        # coordinates for that command
         ###
 
         for path in path_strs:
@@ -279,16 +279,16 @@ class ROIpack(object):
             for path_ind in range(len(path)):
                 if path_ind == 0 and path[path_ind].lower() != 'm':
                     raise ValueError('Unknown path format!')
-                
-                elif path[path_ind].lower() == 'm': 
+
+                elif path[path_ind].lower() == 'm':
                     param_len = 2
                     p_j = path_ind + 1 # temp index
-                    
+
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         old_prev_coord = np.zeros(2)
                         old_prev_coord[0] = prev_coord[0]
                         old_prev_coord[1] = prev_coord[1]
- 
+
                         if path[path_ind] == 'M':
                             prev_coord[0] = float(path[p_j])
                             prev_coord[1] = self.svgshape[1] - float(path[p_j+1])
@@ -300,7 +300,7 @@ class ROIpack(object):
                                 prev_coord[1] -= float(path[p_j+1])
 
                             # this conditional is for recognizing and storing the last coord in the first M command(s)
-                            # as the official first coord in the spline path for any 'close path (ie, z)' command 
+                            # as the official first coord in the spline path for any 'close path (ie, z)' command
                         if isFirstM == True:
                             first_coord[0] = prev_coord[0]
                             first_coord[1] = prev_coord[1]
@@ -309,17 +309,17 @@ class ROIpack(object):
                             path_splines.append(LineSpline(old_prev_coord,prev_coord))
 
                         p_j += param_len
-                        
+
                 elif path[path_ind].lower() == 'z':
-                    path_splines.append(LineSpline(prev_coord, first_coord))                    
+                    path_splines.append(LineSpline(prev_coord, first_coord))
                     prev_coord[0] = first_coord[0]
                     prev_coord[1] = first_coord[1]
-                    
+
                 elif path[path_ind].lower() == 'l':
                     param_len = 2
                     p_j = path_ind + 1
                     next_coord = np.zeros(2)
-                                       
+
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         if path[path_ind] == 'L':
                             next_coord[0] = float(path[p_j])
@@ -328,7 +328,7 @@ class ROIpack(object):
                         else:
                             next_coord[0] = prev_coord[0] + float(path[p_j])
                             next_coord[1] = prev_coord[1] - float(path[p_j+1])
-                        
+
                         path_splines.append(LineSpline(prev_coord, next_coord))
                         prev_coord[0] = next_coord[0]
                         prev_coord[1] = next_coord[1]
@@ -338,7 +338,7 @@ class ROIpack(object):
                     param_len = 1
                     p_j = path_ind + 1
                     next_coord = np.zeros(2)
-                                       
+
                     while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
                         if path[path_ind] == 'H':
                             next_coord[0] = float(path[p_j])
@@ -346,12 +346,12 @@ class ROIpack(object):
                         else:
                             next_coord[0] = prev_coord[0] + float(path[p_j])
                             next_coord[1] = prev_coord[1]
-                        
+
                         path_splines.append(LineSpline(prev_coord, next_coord))
                         prev_coord[0] = next_coord[0]
                         prev_coord[1] = next_coord[1]
                         p_j += param_len
-                
+
                 elif path[path_ind].lower() == 'v':
                     param_len = 1
                     p_j = path_ind + 1
@@ -364,12 +364,12 @@ class ROIpack(object):
                         else:
                             next_coord[0] = prev_coord[0]
                             next_coord[1] = prev_coord[1] - float(path[p_j])
-                        
+
                         path_splines.append(LineSpline(prev_coord, next_coord))
                         prev_coord[0] = next_coord[0]
                         prev_coord[1] = next_coord[1]
                         p_j += param_len
-                
+
                 elif path[path_ind].lower() == 'c':
                     param_len = 6
                     p_j = path_ind + 1
@@ -391,7 +391,7 @@ class ROIpack(object):
                         else:
                             ctl1_coord[0] = prev_coord[0] + float(path[p_j])
                             ctl1_coord[1] = prev_coord[1] - float(path[p_j+1])
-                            
+
                             ctl2_coord[0] = prev_coord[0] + float(path[p_j+2])
                             ctl2_coord[1] = prev_coord[1] - float(path[p_j+3])
 
@@ -403,7 +403,7 @@ class ROIpack(object):
                         prev_coord[0] = end_coord[0]
                         prev_coord[1] = end_coord[1]
                         p_j += param_len
-                
+
                 elif path[path_ind].lower() == 's':
                     param_len = 4
                     p_j = path_ind + 1
@@ -424,10 +424,10 @@ class ROIpack(object):
                         else:
                             ctl2_coord[0] = prev_coord[0] + float(path[p_j])
                             ctl2_coord[1] = prev_coord[1] - float(path[p_j+1])
-                            
+
                             end_coord[0] = prev_coord[0] + float(path[p_j+2])
                             end_coord[1] = prev_coord[1] - float(path[p_j+3])
-                        
+
                         path_splines.append(CubBezSpline(prev_coord, ctl1_coord, ctl2_coord, end_coord))
                         prev_coord[0] = end_coord[0]
                         prev_coord[1] = end_coord[1]
@@ -452,12 +452,12 @@ class ROIpack(object):
 
                             end_coord[0] = prev_coord[0] + float(path[p_j+2])
                             end_coord[1] = prev_coord[1] - float(path[p_j+3])
-                                        
+
                         path_splines.append(QuadBezSpline(prev_coord, ctl_coord, end_coord))
                         prev_coord[0] = end_coord[0]
                         prev_coord[1] = end_coord[1]
                         p_j += param_len
-                
+
                 elif path[path_ind].lower() == 't':
                     param_len = 2
                     p_j = path_ind + 1
@@ -478,9 +478,9 @@ class ROIpack(object):
                         prev_coord[0] = end_coord[0]
                         prev_coord[1] = end_coord[1]
                         p_j += param_len
-                
+
                 # NOTE: This is *NOT* functional. Arcspline parsing saves to an incomplete ArcSpline class
-                elif path[path_ind].lower() == 'a': 
+                elif path[path_ind].lower() == 'a':
                     param_len = 7
                     p_j = path_ind + 1
                     end_coord = np.zeros(2)
@@ -524,7 +524,7 @@ class ROIpack(object):
     ###
 
     def get_roi(self, roiname):
-        vts = self.tcoords*self.svgshape # reverts tcoords from unit circle size to normal svg image format size  
+        vts = self.tcoords*self.svgshape # reverts tcoords from unit circle size to normal svg image format size
         all_splines = self.get_splines(roiname) #all_splines is a list of generally two roi paths, one for each hemisphere
 
         vts_inside_region = np.zeros(vts.shape[0],dtype=bool) # ultimately what gets returned
@@ -546,9 +546,9 @@ class ROIpack(object):
             found_vtxs[beforeSplineRegionY] = True
             found_vtxs[afterSplineRegionX] = True
             found_vtxs[afterSplineRegionY] = True
-            
+
             vt_isx = np.vstack([x0s,vts[:,1]]).T #iterable coords, same x-value as each other, but at their old y-value positions
- 
+
             vtx_is = vt_isx[~found_vtxs]
 
             splines_xs = [] # stores the roi's splines
@@ -559,7 +559,7 @@ class ROIpack(object):
             small_vts_inside_region = vts_inside_region[~found_vtxs]
             small_found_vtxs = found_vtxs[~found_vtxs]
 
-            # keeps stretching the vertical line to the right until all the points find their original vertex again            
+            # keeps stretching the vertical line to the right until all the points find their original vertex again
             while sum(small_found_vtxs) != len(small_found_vtxs):
                 closest_xs = np.Inf*np.ones(vtx_is.shape[0]) # starting marker for all vts are at Inf
 
@@ -573,19 +573,19 @@ class ROIpack(object):
                         for j in range(spline_i_xs.shape[1]):
                             isGreaterThanVtx = spline_i_xs[:,j] > vtx_is[:,0]
                             isLessThanClosestX = spline_i_xs[:,j] < closest_xs
-                            closest_xs[isGreaterThanVtx*isLessThanClosestX] = spline_i_xs[isGreaterThanVtx*isLessThanClosestX,j]                    
-            
+                            closest_xs[isGreaterThanVtx*isLessThanClosestX] = spline_i_xs[isGreaterThanVtx*isLessThanClosestX,j]
+
                 # checks if it's found the boundary or the original vertex
                 # it forgets about all the points in the line who've found their original vertex
                 # if it found a boundary, then flip the 'inside' flag to 'outside', and vice versa
-                
+
                 small_found_vtxsx = small_vts[~small_found_vtxs,0]<closest_xs
                 small_found_vtxs[~small_found_vtxs] = small_found_vtxsx
 
-                small_vts_inside_region[~small_found_vtxs] = True - small_vts_inside_region[~small_found_vtxs]
+                small_vts_inside_region[~small_found_vtxs] = np.logical_xor(True, small_vts_inside_region[~small_found_vtxs])
                 vtx_is[~small_found_vtxsx,0] = closest_xs[~small_found_vtxsx]
-                vtx_is = vtx_is[~small_found_vtxsx,:]        
-                
+                vtx_is = vtx_is[~small_found_vtxsx,:]
+
                 for i in range(len(splines_xs)):
                     if len(splines_xs[i].shape) == 1:
                         splines_xs[i] = splines_xs[i][~small_found_vtxsx]
@@ -598,7 +598,7 @@ class ROIpack(object):
                 break
 
         return np.nonzero(vts_inside_region)[0] # output indices of vertices that are inside the roi
-    
+
     @property
     def names(self):
         return list(self.rois.keys())
@@ -611,7 +611,7 @@ class ROIpack(object):
         comb = copy.deepcopy(self)
         if hasattr(comb,'layers'):
             lay1 = self.layer_names
-        else:    
+        else:
             # Convert single-layer to multi-layer ROI
             comb.layers = {self.layer:self}
             comb.layer = 'multi_layer'
@@ -630,7 +630,7 @@ class ROIpack(object):
             svg_fin.getroot().insert(0, to_add)
             lay2 = [other_roipack.layer]
         # Maintain order of layers according to order of addition
-        comb.layer_names = lay1+lay2 
+        comb.layer_names = lay1+lay2
         comb.svg = svg_fin
         comb.kdt = cKDTree(self.kdt.data) # necessary?
         for L in comb.layer_names:
@@ -654,7 +654,7 @@ class ROIpack(object):
             # Unknown display layer; default to values for ROIs
             import warnings
             warnings.warn('No defaults set for display layer %s; Using defaults for ROIs in options.cfg file'%self.layer)
-            dlayer = 'rois'                
+            dlayer = 'rois'
         if size is None:
             size = config.get(dlayer, "labelsize")
         if color is None:
@@ -667,7 +667,7 @@ class ROIpack(object):
 
         try:
             layer = _find_layer(self.svg, "%s_labels"%self.layer)
-        except ValueError: # Changed in _find_layer below... AssertionError: # Why assertion error? 
+        except ValueError: # Changed in _find_layer below... AssertionError: # Why assertion error?
             layer = _make_layer(self.svg.getroot(), "%s_labels"%self.layer)
 
         labelpos, candidates = [], []
@@ -728,7 +728,7 @@ class ROI(object):
         offset = np.array(map(float, [data.pop(0), data.pop(0)]))
         mode = "l"
         pts = [[offset[0], offset[1]]]
-        
+
         def canfloat(n):
             try:
                 float(n)
@@ -765,8 +765,8 @@ class ROI(object):
         pts /= self.parent.svgshape
         pts[:,1] = 1-pts[:,1]
         return pts
-    
-    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None, hide=None, 
+
+    def set(self, linewidth=None, linecolor=None, roifill=None, shadow=None, hide=None,
         dashtype=None, dashoffset=None):
         if linewidth is not None:
             self.linewidth = linewidth
@@ -790,12 +790,12 @@ class ROI(object):
         hide = "display:none;" if self.hide else ""
         style = style.format(
             fill="rgb(%d,%d,%d)"%tuple(roifill[:-1]), fo=roifill[-1]/255.0,
-            lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1]/255.0, 
+            lc="rgb(%d,%d,%d)"%tuple(linecolor[:-1]), lo=linecolor[-1]/255.0,
             lw=self.linewidth, hide=hide)
         # Deal with dashed lines, on a path-by-path basis
         for path in self.paths:
-            # (This must be done separately from style if we want 
-            # to be able to vary dashed/not-dashed style across 
+            # (This must be done separately from style if we want
+            # to be able to vary dashed/not-dashed style across
             # rois/display elements, which we do)
             if self.dashtype is None:
                 dashstr = ""
@@ -810,13 +810,13 @@ class ROI(object):
             else:
                 dashstr = "stroke-dasharray:%d,%d;stroke-dashoffset:%d;"%(self.dashtype+(self.dashoffset))
             path.attrib["style"] = style+dashstr
-            
+
             if self.parent.shadow > 0:
                 path.attrib["filter"] = "url(#dropshadow)"
             elif "filter" in path.attrib:
                 del path.attrib['filter']
-            # Set layer id to "rois" (or whatever). 
-    
+            # Set layer id to "rois" (or whatever).
+
     def get_labelpos(self, pts=None, norms=None, fancy=False):
         if not hasattr(self, "coords"):
             allpaths = itertools.chain(*[_split_multipath(path.get("d")) for path in self.paths])
@@ -871,11 +871,11 @@ def _strip_top_layers(svg,layer):
     """Remove all top-level layers except <layer> from lxml svg object
 
     `layer` can be a list/tuple if you wish to keep multiple layers (for display!)
-    
+
     NOTES
     -----
-    Trying to keep multiple layers will severely bork use of ROIpack for 
-    actual ROIs. 
+    Trying to keep multiple layers will severely bork use of ROIpack for
+    actual ROIs.
 
     """
     if not isinstance(layer,(tuple,list)):
@@ -889,7 +889,7 @@ def _strip_top_layers(svg,layer):
     for s in tostrip:
         s.getparent().remove(s)
     return svg
-    
+
 try:
     from shapely.geometry import Polygon
     def _center_pts(pts):
@@ -1006,7 +1006,7 @@ def get_roipack(svgfile, pts, polys, remove_medial=False, **kwargs):
     rois = ROIpack(cullpts, svgfile, **kwargs)
     if remove_medial:
         return rois, valid
-        
+
     return rois
 
 ## From svg.path (https://github.com/regebro/svg.path/blob/master/src/svg/path/parser.py)
