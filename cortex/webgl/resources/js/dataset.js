@@ -1,9 +1,9 @@
 var dataset = (function(module) {
-    module.filtertypes = { 
-        nearest: THREE.NearestFilter, 
-        trilinear: THREE.LinearFilter, 
-        nearlin: THREE.LinearFilter, 
-        debug: THREE.NearestFilter 
+    module.filtertypes = {
+        nearest: THREE.NearestFilter,
+        trilinear: THREE.LinearFilter,
+        nearlin: THREE.LinearFilter,
+        debug: THREE.NearestFilter
     };
 
     module.samplers = {
@@ -36,13 +36,15 @@ var dataset = (function(module) {
         json.name = dvx.name + " vs. "+ dvy.name;
         json.data = [[dvx.data[0].name, dvy.data[0].name]];
         json.description = "2D colormap for "+dvx.name+" and "+dvy.name;
-        json.cmap = [viewopts.default_2Dcmap];
-        json.vmin = [[dvx.vmin, dvy.vmin]];
-        json.vmax = [[dvx.vmax, dvy.vmax]];
+        // json.cmap = [viewopts.default_2Dcmap];
+        json.cmap = ["RdBu_covar"];
+        json.vmin = [[dvx.vmin[0].value[0], dvy.vmin[0].value[0]]];
+        json.vmax = [[dvx.vmax[0].value[0], dvy.vmax[0].value[0]]];
         json.attrs = dvx.attrs;
         json.state = dvx.state;
         json.xfm = [[dvx.xfm, dvy.xfm]];
-        return new module.DataView(json);
+        var dataview = new module.DataView(json);
+        return dataview;
     };
 
     module.DataView = function(json) {
@@ -100,8 +102,8 @@ var dataset = (function(module) {
             allready.push(false);
         }
 
-        var deferred = this.data.length == 1 ? 
-            $.when(this.data[0].loaded) : 
+        var deferred = this.data.length == 1 ?
+            $.when(this.data[0].loaded) :
             $.when(this.data[0].loaded, this.data[1].loaded);
         deferred
         .progress(function(available) {
@@ -127,6 +129,7 @@ var dataset = (function(module) {
 
         if (!this.data[0].raw) { // not RGB
             if (this.data.length > 1) { // 2D
+              console.log('Loading 2D dataset');
                 // this.setvmin1 = function(val) {
                 //     this.setVminmax(val, this.vmax[0].value[0], 0);
                 // }.bind(this);
@@ -141,32 +144,32 @@ var dataset = (function(module) {
                 // }.bind(this);
 
                 // this.ui.add({
-                //     vmin1: {action: [this, "setvmin1", this.data[0].min, 
+                //     vmin1: {action: [this, "setvmin1", this.data[0].min,
                 //         this.data[0].max, this.vmin[0].value[0]]},
                 //     vmax1: {action: [this, "setvmax1", this.data[0].min,
                 //         this.data[0].max, this.vmax[0].value[0]]},
-                //     vmin2: {action: [this, "setvmin2", this.data[1].min, 
+                //     vmin2: {action: [this, "setvmin2", this.data[1].min,
                 //         this.data[1].max, this.vmin[0].value[1]]},
                 //     vmax1: {action: [this, "setvmax2", this.data[1].min,
                 //         this.data[1].max, this.vmax[0].value[1]]},
                 // });
             } else { // not 2D, "normal"
-                this.setvmin = function(val) {
-                    if (val === undefined)
-                        return this.vmin[0].value[0];
-                    this.vmin[0].value[0] = val;
-                }.bind(this);
-                this.setvmax = function(val) {
-                    if (val === undefined)
-                        return this.vmax[0].value[0];
-                    this.vmax[0].value[0] = val;
-                }.bind(this);
+                // this.setvmin = function(val) {
+                //     if (val === undefined)
+                //         return this.vmin[0].value[0];
+                //     this.vmin[0].value[0] = val;
+                // }.bind(this);
+                // this.setvmax = function(val) {
+                //     if (val === undefined)
+                //         return this.vmax[0].value[0];
+                //     this.vmax[0].value[0] = val;
+                // }.bind(this);
 
-                this.ui.add({
-                    vmin: {action: [this, "setvmin", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
-                    // vmin: {action: [this.vmin, "value[0]", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
-                    vmax: {action: [this, "setvmax", this.data[0].min, this.data[0].max, this.vmax[0].value[0]]},
-                });
+                // this.ui.add({
+                //     vmin: {action: [this, "setvmin", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
+                //     // vmin: {action: [this.vmin, "value[0]", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
+                //     vmax: {action: [this, "setvmax", this.data[0].min, this.data[0].max, this.vmax[0].value[0]]},
+                // });
             }
         }
     }
@@ -219,7 +222,7 @@ var dataset = (function(module) {
             opts.twod = this.data.length > 1;
             opts.voxline = (viewopts.voxlines==='true');
             var shadecode = shaderfunc(opts);
-            var shader = new THREE.ShaderMaterial({ 
+            var shader = new THREE.ShaderMaterial({
                 vertexShader:shadecode.vertex,
                 fragmentShader:shadecode.fragment,
                 attributes: shadecode.attrs,
@@ -375,7 +378,7 @@ var dataset = (function(module) {
                 //Since the buffer probably got shuffled, we need to map it using indexMap
 		var sleft = new Float32Array(left.length);
 		var sright = new Float32Array(right.length);
-		
+
                 var hemis = subjects[this.subject].hemis;
 
                 subjects[this.subject].loaded.done(function() {

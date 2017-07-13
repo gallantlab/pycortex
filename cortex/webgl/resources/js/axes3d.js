@@ -236,7 +236,7 @@ var jsplot = (function (module) {
         }
     };
     module.Axes3D.prototype.playpause = function(state) {
-        if (this.state == "play" && state == "pause") {
+        if (this.state == "play") {
             this.state = "pause";
         } else {
             //Start playing
