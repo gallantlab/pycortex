@@ -280,78 +280,50 @@ var mriview = (function(module) {
 
         // color legend behavior
         function cleanNumber (number) {
-            decimals = 3
-            return Math.round(parseFloat(number) * (10 ** decimals)) / (10 ** decimals)
+            decimals = 3;
+            return parseFloat(number).toPrecision(decimals);
         }
         var viewer = this
         $('#colorlegend-colorbar').attr('src', colormaps[this.active.cmapName].image.currentSrc);
         $('.colorlegend-select').val(this.active.cmapName).trigger('change');
-        $('#vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0]))
-        $('#vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0]))
+        $('#vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0]));
+        $('#vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0]));
         $('.colorlegend-select').on('select2:select', function (e) {
-            var cmapName = e.params.data.id
-            viewer.active.cmapName = cmapName
-            viewer.active.setColormap(cmapName)
-            viewer.schedule()
+            var cmapName = e.params.data.id;
+            viewer.active.cmapName = cmapName;
+            viewer.active.setColormap(cmapName);
+            viewer.schedule();
             $('#colorlegend-colorbar').attr('src', colormaps[cmapName].image.currentSrc);
         });
 
-        $('#vmin').off('wheel')
-        $('#vmin').on('wheel', function (e) {
-            let currentVal = parseFloat(viewer.active.vmin[0]['value'][0])
-            let newVal;
-            let step;
-
-            if (e.shiftKey) {
-                // logarithmic step
-                let range = viewer.active.vmax[0]['value'][0] - viewer.active.vmin[0]['value'][0]
-
-                step = 0.25
-                if (e.altKey) {
-                    step *= 0.1
-                }
-
-                if (e.originalEvent.deltaY >= 0) {
-                    newVal = currentVal + step * range;
-                } else {
-                    newVal = currentVal - step * range;
-                }
-
-            } else {
-                // linear step
-                step = 0.25
-                if (e.altKey) {
-                    step *= 0.1
-                }
-
-                if (e.originalEvent.deltaY >= 0) {
-                    newVal = currentVal + step;
-                } else {
-                    newVal = currentVal - step;
-                }
-            }
-
-            if (newVal < viewer.active.vmax[0]['value'][0]) {
+        function submitVmin(newVal) {
+            if ($.isNumeric(newVal) && newVal < viewer.active.vmax[0]['value'][0]) {
                 viewer.active.setvmin(newVal);
                 $('#vmin').text(cleanNumber(newVal));
                 viewer.schedule();
             }
-        });
+        }
 
-        $('#vmax').off('wheel')
-        $('#vmax').on('wheel', function (e) {
-            let currentVal = parseFloat(viewer.active.vmax[0]['value'][0])
+        function submitVmax(newVal) {
+            if ($.isNumeric(newVal) && newVal > viewer.active.vmin[0]['value'][0]) {
+                viewer.active.setvmax(newVal);
+                $('#vmax').text(cleanNumber(newVal));
+                viewer.schedule();
+            }
+        }
+
+        $('#vmin').off('wheel');
+        $('#vmin').on('wheel', function (e) {
+            let currentVal = parseFloat(viewer.active.vmin[0]['value'][0]);
             let newVal;
-            let step;
+            let step = 0.25;
+            if (e.altKey) {
+                step *= 0.1;
+            }
 
             if (e.shiftKey) {
                 // logarithmic step
-                let range = viewer.active.vmin[0]['value'][0] - viewer.active.vmax[0]['value'][0]
-
-                step = 0.25
-                if (e.altKey) {
-                    step *= 0.1
-                }
+                let range = viewer.active.vmax[0]['value'][0] - viewer.active.vmin[0]['value'][0];
 
                 if (e.originalEvent.deltaY >= 0) {
                     newVal = currentVal + step * range;
@@ -361,11 +333,6 @@ var mriview = (function(module) {
 
             } else {
                 // linear step
-                step = 0.25
-                if (e.altKey) {
-                    step *= 0.1
-                }
-
                 if (e.originalEvent.deltaY >= 0) {
                     newVal = currentVal + step;
                 } else {
@@ -373,12 +340,76 @@ var mriview = (function(module) {
                 }
             }
 
-            if (newVal > viewer.active.vmin[0]['value'][0]) {
-                viewer.active.setvmax(newVal);
-                $('#vmax').text(cleanNumber(newVal));
-                viewer.schedule();
-            }
+            submitVmin(newVal)
         });
+
+        $('#vmax').off('wheel')
+        $('#vmax').on('wheel', function (e) {
+            let currentVal = parseFloat(viewer.active.vmax[0]['value'][0]);
+            let newVal;
+            let step = 0.25;
+            if (e.altKey) {
+                step *= 0.1;
+            }
+
+            if (e.shiftKey) {
+                // logarithmic step
+                let range = viewer.active.vmax[0]['value'][0] - viewer.active.vmin[0]['value'][0];
+
+                if (e.originalEvent.deltaY >= 0) {
+                    newVal = currentVal + step * range;
+                } else {
+                    newVal = currentVal - step * range;
+                }
+
+            } else {
+                // linear step
+                if (e.originalEvent.deltaY >= 0) {
+                    newVal = currentVal + step;
+                } else {
+                    newVal = currentVal - step;
+                }
+            }
+            submitVmax(newVal);
+        });
+
+        function clickVminFunction () {
+            $('#vmin').css('display', 'none');
+            $('#vmin-input').val(cleanNumber(viewer.active.vmin[0]['value'][0]));
+            $('#vmin-input').css('display', 'block');
+            $('#vmin-input').focus();
+        }
+
+        function leaveVminFunction () {
+            $('#vmin-input').css('display', 'none');
+            $('#vmin').css('display', 'block');
+            submitVmin($('#vmin-input').val());
+        }
+
+        function clickVmaxFunction () {
+            $('#vmax').css('display', 'none');
+            $('#vmax-input').val(cleanNumber(viewer.active.vmax[0]['value'][0]));
+            $('#vmax-input').css('display', 'block');
+            $('#vmax-input').focus();
+        }
+
+        function leaveVmaxFunction () {
+            $('#vmax-input').css('display', 'none')
+            $('#vmax').css('display', 'block')
+            submitVmax($('#vmax-input').val())
+        }
+
+        $('#vmin').on('click', clickVminFunction);
+        $('#vmin-input').off();
+        $('#vmin-input').on('blur', leaveVminFunction);
+        $('#vmin-input').on('keyup', function (e) { if (event.keyCode === 13) leaveVminFunction() });
+
+        $('#vmax').on('click', clickVmaxFunction);
+        $('#vmax-input').off()
+        $('#vmax-input').on('blur', leaveVmaxFunction);
+        $('#vmax-input').on('keyup', function (e) { if (event.keyCode === 13) leaveVmaxFunction() });
+
+
 
         var defers = [];
         for (var i = 0; i < this.active.data.length; i++) {

@@ -156,6 +156,10 @@ var jsplot = (function (module) {
             var key = desc.key;
             var action = desc.action;
             window.addEventListener("keypress", function(event) {
+                if (event.target.nodeName === 'INPUT' && event.target.id !== "") {
+                    // note: normally you would want to block on all INPUT target tags. however, if you tab-key away from an input element, INPUT remains the target even if the element has been manually deblurred, but the id *will* be cleared. since it would be nice to be able to use shortcuts after tab-aways, this statement only blocks events from inputs with ids
+                    return;
+                }
                 if (event.defaultPrevented)
                     return;
 

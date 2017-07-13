@@ -6,11 +6,13 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <link rel="stylesheet" href="resources/css/jquery-ui.min.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/w2ui-1.4.2.min.css" type='text/css' />
+<link rel="stylesheet" href="resources/css/select2-4.0.3.min.css" type='text/css' />
 
 <script type='text/javascript' src='resources/js/jquery-2.1.1.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery-ui.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
 <script type="text/javascript" src="resources/js/dat.gui.min.js"></script>
+<script type="text/javascript" src="resources/js/select2-4.0.3.min.js"></script>
 
 <script type='text/javascript' src="resources/js/three.js"></script>
 <script type='text/javascript' src="resources/js/OculusRiftEffect.js"></script>
@@ -35,9 +37,6 @@
 <script type='text/javascript' src='resources/js/mriview_utils.js'></script>
 <script type='text/javascript' src='resources/js/mriview_surface.js'></script>
 <script type='text/javascript' src='resources/js/mriview.js'></script>
-
-<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/select2.min.js"></script>
 
 {% if leapmotion %}
 <script type='text/javascript' src="resources/js/leap-0.6.4.js"></script>
@@ -65,8 +64,14 @@
 		</div>
 	</div>
 	<div id="colorlegend">
-		<div id="vmin">-5.246781</div>
-		<div id="vmax">5</div>
+		<div id="vmin-container">
+			<input id="vmin-input"></input>
+			<div id="vmin"></div>
+		</div>
+		<div id="vmax-container">
+			<input id="vmax-input"></input>
+			<div id="vmax"></div>
+		</div>
 		<div id='colorlegend-colors'>
 			<select class="colorlegend-select">
 				{% for name, img in colormaps %}
