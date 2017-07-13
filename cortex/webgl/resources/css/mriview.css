@@ -143,7 +143,9 @@ a:visited { color:white; }
     font-weight:bold;
 }
 
-/* colorlegend styles */
+/*************************************************
+ * Colorlegend styles
+ *************************************************/
 #colorlegend {
     height:4%;
     width:30%;
@@ -207,21 +209,11 @@ a:visited { color:white; }
     left:calc(-1px - 1vw);
 }
 #vmin, #vmax {
-    /*font-size:4vmin;
-    color:white;
-    z-index:99999;
-    position:absolute;
-    width:40vw;
-    height:40vh;
-    line-height:0vmin;
-    top:50%;*/
 }
 #vmin {
     text-align:right;
-    /*left:-42vw;*/
 }
 #vmax {
-    /*right:-42vw;*/
 }
 .colorlegend-select {
     width:100%;
