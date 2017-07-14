@@ -155,22 +155,22 @@ var dataset = (function(module) {
                 //         this.data[1].max, this.vmax[0].value[1]]},
                 // });
             } else { // not 2D, "normal"
-                // this.setvmin = function(val) {
-                //     if (val === undefined)
-                //         return this.vmin[0].value[0];
-                //     this.vmin[0].value[0] = val;
-                // }.bind(this);
-                // this.setvmax = function(val) {
-                //     if (val === undefined)
-                //         return this.vmax[0].value[0];
-                //     this.vmax[0].value[0] = val;
-                // }.bind(this);
+                this.setvmin = function(val) {
+                    if (val === undefined)
+                        return this.vmin[0].value[0];
+                    this.vmin[0].value[0] = val;
+                }.bind(this);
+                this.setvmax = function(val) {
+                    if (val === undefined)
+                        return this.vmax[0].value[0];
+                    this.vmax[0].value[0] = val;
+                }.bind(this);
 
-                // this.ui.add({
-                //     vmin: {action: [this, "setvmin", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
-                //     // vmin: {action: [this.vmin, "value[0]", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
-                //     vmax: {action: [this, "setvmax", this.data[0].min, this.data[0].max, this.vmax[0].value[0]]},
-                // });
+                this.ui.add({
+                    vmin: {action: [this, "setvmin", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
+                    // vmin: {action: [this.vmin, "value[0]", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
+                    vmax: {action: [this, "setvmax", this.data[0].min, this.data[0].max, this.vmax[0].value[0]]},
+                });
             }
         }
     }
