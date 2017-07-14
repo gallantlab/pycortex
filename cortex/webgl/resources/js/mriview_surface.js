@@ -522,8 +522,7 @@ var mriview = (function(module) {
     };
     module.Surface.prototype.toggleLeftVis = function() {
         this.setLeftVis(!this._leftvis);
-        // viewer.schedule();
-        this.dispatchEvent({type:"update"});
+        viewer.schedule();
     };
     module.Surface.prototype.setRightVis = function(val) {
         if (val === undefined)
@@ -534,8 +533,7 @@ var mriview = (function(module) {
     };
     module.Surface.prototype.toggleRightVis = function() {
         this.setRightVis(!this._rightvis);
-        // viewer.schedule();
-        this.dispatchEvent({type:"update"});
+        viewer.schedule();
     };
     module.Surface.prototype.setLayers = function(val) {
         if (val === undefined)
