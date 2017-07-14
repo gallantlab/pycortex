@@ -340,6 +340,8 @@ var Shaderlib = (function() {
             "attribute vec4 wm;",
             "attribute vec3 wmnorm;",
             "attribute vec4 auxdat;",
+            "attribute vec3 flatBumpNorms;",
+            "attribute float flatheight;",
             // "attribute float dropout;",
             
             "varying vec3 vViewPosition;",
@@ -390,11 +392,16 @@ var Shaderlib = (function() {
                 "vec3 pos, norm;",
                 "mixfunc(mpos, mnorm, pos, norm);",
 
+                // "norm = mix(flatBumpNorms, normalize(onorm), thickmix);",
+                // "norm = normalize(flatBumpNorms);",
+
             "#ifdef CORTSHEET",
-                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
+                // "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
+                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., thickmix) * flatheight;",
             "#endif",
 
-                "vNormal = normalMatrix * norm;",
+                "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.));",
+                // "vNormal = normalMatrix * norm;",
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
             "}"
@@ -586,6 +593,8 @@ var Shaderlib = (function() {
                 wm: { type: 'v4', value:null },
                 wmnorm: { type: 'v3', value:null },
                 auxdat: { type: 'v4', value:null },
+                flatBumpNorms: { type: 'v3', value:null },
+                flatheight: { type: 'f', value:null },
             };
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};

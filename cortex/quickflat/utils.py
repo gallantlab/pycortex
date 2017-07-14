@@ -411,6 +411,8 @@ def _has_cmap(dataview):
         elif isinstance(dataview.cmap, colors.Colormap):
             # Allow input of matplotlib colormap class
             cmap = dataview.cmap
+        else:
+            raise TypeError('{} type not handled'.format(type(dataview.cmap)))
 
         cmapdict.update(cmap=cmap, 
                         vmin=dataview.vmin, 
