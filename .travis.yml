@@ -6,7 +6,7 @@ python:
 sudo: true
 env:
   global:
-    - secure: "UepyjbYMe/+1BDTWipEttTcolgB16TGKJ4w7U4rNFBksGm40Acq+5MXwjJfvEt0M5xF/L7T7HUK8RJpqwORtWrazJvi50spB+mCE83U1KAD1Y1sWQZH2di0FlYsDJ06bKyMdoFBq8yRmT9B6n7YPDxUrqsL1API6Vuqb+uCXB6I="
+    - secure: "V8DI664TIMmsSqdlE+9kFTk0srpF3NFdcc5QNUmIXKHGYBx61BpZs86A4JcfKa6BxwsB8kMs88LPWw9JiT9rG86CvWxGMMn0JAzkSBOhk2XBU7kQRPdCGQ0MVL1hFUbmiCKTkWTIf/dbIBwbMCnckk6i3E1sV06+qZSQCtc6n5w="
 
 before_install:
   - sudo apt-get install inkscape
@@ -19,4 +19,4 @@ script:
   - cd docs
   - make html
   - cd ..
-  - doctr deploy --deploy-repo gallantlab/pycortex --deploy-branch-name gh-pages --no-require-master .
+  - doctr deploy --deploy-repo gallantlab/gallantlab.github.io .
