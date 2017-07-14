@@ -76,17 +76,27 @@ class Mapper(object):
 
         Parameters
         ----------
-        vertexdata : Vertex object
+        vertexdata : Vertex object or array
             The data that will be projected back into voxel space.
+            If Vertex object is provided, a Volume object is returned
+            If an array is provided, an array is returned
         '''
+        Vert2Vol = isinstance(vertexdata, dataset.Vertex)
+        if Vert2Vol:
+            to_map = vertexdata.data
+        else:
+            to_map = vertexdata
         # stack the two mappers together
         bothmappers = sparse.vstack(self.masks)
         # dot the vertex data with the stacked mappers
-        partial_vertex = bothmappers.T.dot(vertexdata.data)
+        partial_vertex = bothmappers.T.dot(to_map)
         # solve the inverse mapping problem
         voxeldata = self._get_backmapper().solve(partial_vertex).reshape(self.shape)
-        # construct a volume object with the new data
-        return dataset.Volume(voxeldata, self.subject, self.xfmname)
+        if Vert2Vol:
+            # construct a volume object with the new data
+            return dataset.Volume(voxeldata, self.subject, self.xfmname)
+        else:
+            return voxeldata
 
     def _get_backmapper(self):
         if not hasattr(self, '_backmapper'):

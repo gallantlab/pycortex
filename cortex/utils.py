@@ -3,6 +3,7 @@
 import io
 import os
 import binascii
+import warnings
 import numpy as np
 from six import string_types
 from importlib import import_module
@@ -26,7 +27,6 @@ class DocLoader(object):
 
 
 def get_roipack(*args, **kwargs):
-    import warnings
     warnings.warn('Please use db.get_overlay instead', DeprecationWarning)
     return db.get_overlay(*args, **kwargs)
 
@@ -254,7 +254,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     if open_inkscape:
         return sp.call(["inkscape", '-f', svg.svgfile])
 
-def get_roi_verts(subject, roi=None):
+def get_roi_verts(subject, roi=None, mask=False):
     """Return vertices for the given ROIs, or all ROIs if none are given.
 
     Parameters
@@ -264,6 +264,9 @@ def get_roi_verts(subject, roi=None):
     roi : str, list or None, optional
         ROIs to fetch. Can be ROI name (string), a list of ROI names, or
         None, in which case all ROIs will be fetched.
+    mask : bool
+        if True, return a logical mask across vertices for the roi
+        if False, return a list of indices for the ROI
 
     Returns
     -------
@@ -289,7 +292,12 @@ def get_roi_verts(subject, roi=None):
         roi = [roi]
 
     for name in roi:
-        roidict[name] = np.intersect1d(svg.rois.get_mask(name), goodpts)
+        roi_idx = np.intersect1d(svg.rois.get_mask(name), goodpts)
+        if mask:
+            roidict[name] = np.zeros(pts.shape[:1]) > 1
+            roidict[name][roi_idx] = True
+        else:
+            roidict[name] = roi_idx
 
     return roidict
 
@@ -313,16 +321,17 @@ def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
     output : dict
         Dict of ROIs and their masks
     """
-    import warnings
-    warnings.DeprecationWarning('Deprecated! Use get_roi_mask')
+    warnings.warn('Deprecated! Use get_roi_mask')
 
     mapper = get_mapper(subject, xfmname, type=projection)
-    rois = get_roi_verts(subject, roi=roi)
+    rois = get_roi_verts(subject, roi=roi, mask=True)
     output = dict()
     for name, verts in list(rois.items()):
-        left, right = mapper.backwards(verts)
-        output[name] = left + right
-        
+        # This is broken; unclear when/if backward mappers ever worked this way.
+        #left, right = mapper.backwards(vert_mask)
+        #output[name] = left + right
+        output[name] = mapper.backwards(verts.astype(np.float))
+        # Threshold?
     return output
 
 def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **kwargs):
@@ -390,7 +399,8 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
 
 
 def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_lr=False, 
-                  allow_overlap=False, fail_for_missing_rois=False, return_dict=True):
+                  allow_overlap=False, fail_for_missing_rois=True, exclude_empty_rois=False, 
+                  threshold=None, return_dict=True):
     """Return a dictionary of roi masks
 
     This function returns a single 3D array with a separate numerical index for each ROI, 
@@ -403,10 +413,12 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         pycortex transformation name
     roi_list : list or None
         List of names of ROIs to retrieve (e.g. ['FFA','OFA','EBA']). Names should match 
-        the ROI layers in the rois.svg file for the `subject` specified. If None is 
-        provided (default), all available ROIs for the subject are returned. If 'cortex'
-        is included in roi_list, a mask of all cortical voxels NOT included in other rois
-        is included in the output.
+        the ROI layers in the overlays.svg file for the `subject` specified. If None is 
+        provided (default), all available ROIs for the subject are returned. If 'Cortex'
+        is included in roi_list*, a mask of all cortical voxels NOT included in other 
+        requested rois is included in the output.
+        * works for gm_sampler = 'cortical', 'think', 'thick', or (any scalar value);
+        does not work for mapper-based gray matter samplers.
     gm_sampler : scalar or string
         How to sample the cortical gray matter. Options are: 
         <an integer> - Distance from fiducial surface to define ROI. Reasonable values 
@@ -421,115 +433,173 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
             cortical ribbon ('line_nearest' mapper)
         'cortical-conservative' - selection of only the closest voxel to each surface 
             vertex ('nearest' mapper)
+        mapper-based gm_samplers will return floating point values from 0-1 for each 
+        voxel (reflecting the fraction of that voxel inside the ROI) unless a threshold
+        is provided.
+    threshold : float [0-1]
+        value used to convert probablistic ROI values to a boolean mask for the ROI.
     split_lr : bool
         Whether to separate ROIs in to left and right hemispheres (e.g., 'V1' becomes 
         'V1_L' and 'V1_R')
     allow_overlap : bool
-        Whether to allow ROIs to include voxels in other ROIs (default:False)
+        Whether to allow ROIs to include voxels in other ROIs (default:False). This 
+        should only be relevant if (a) spline shapes defining ROIs in overlays.svg 
+        overlap at all, or (b) a low threshold is set for a mapper-based gm_sampler
     fail_for_missing_rois : bool
-        Whether to fail if one or more of the rois specified in roi_list are not avail-
-        able. If set to False (default behavior), requested rois that are not present 
-        will be ignored and excluded from the output
+        Whether to fail if one or more of the rois specified in roi_list are not 
+        defined in the overlays.svg file 
+    exclude_empty_rois : bool
+        Whether to fail if an ROI that is present in the overlays.svg file contains no
+        voxels due to the scan not targeting that region of the brain.
     return_dict : bool
         If True (default), function returns a dictionary of ROI masks; if False, a volume 
         with integer indices for each ROI (similar to Freesurfer's aseg masks) and a 
-        dictionary of how the indices map to ROI names are returned. 
-    
+        dictionary of how the indices map to ROI names are returned.
+
     Returns
     -------
     roi_masks : dict
         Dictionary of arrays; keys are ROI names, values are roi masks.
     - OR - 
-    (index_volume, index_labels) : tuple of array & dict
+    index_volume, index_labels : array, dict
         `index_volume` is a 3D array with a separate numerical index value for each ROI. Index values
         in the left hemisphere are negative. (For example, if V1 in the right hemisphere is 1, then V1 in 
         the left hemisphere will be -1). `index_labels` is a dict that maps roi names to index values 
         (e.g. {'V1': 1}). 
+
+    Notes
+    -----
+    Some gm_samplers may fail if you have very high-resolution data (i.e., with voxels on the 
+    order of the spacing between vertices in your cortical mesh). In such cases, there may be
+    voxels in the middle of your ROI that are not assigned to the ROI (because no vertex falls
+    within that voxel). For such cases, it is recommended to use 'cortical', 'thick', or 
+    'thin' as your `gm_sampler`.
     """
-    # Catch single-roi input
+    # Convert mapper names to pycortex sampler types
+    mapper_dict = {'cortical-conservative':'nearest',
+                   'cortical-liberal':'line_nearest'}
+    # Method
+    use_mapper = gm_sampler in mapper_dict
+    use_cortex_mask = (gm_sampler in ('cortical', 'thick', 'thin')) or not isinstance(gm_sampler, string_types)
+    if not (use_mapper or use_cortex_mask):
+        raise ValueError('Unknown gray matter sampler (gm_sampler)!')
+    # Initialize
+    roi_voxels = {}
+    pct_coverage = {}
+    # Catch single-ROI input
     if isinstance(roi_list, string_types):
         roi_list = [roi_list]
+    if not return_dict:
+        split_lr = True
+        if use_mapper and threshold is None:
+            raise Exception("You must set a threshold for gm_mapper='%s' if you want an indexed volume output"%gm_mapper)
     # Start with vertices
     if roi_list is None:
-        roi_verts = get_roi_verts(subject)
+        roi_verts = get_roi_verts(subject, mask=use_mapper)
         roi_list = list(roi_verts.keys())
     else:
         tmp_list = [r for r in roi_list if not r=='Cortex']
-        roi_verts = get_roi_verts(subject, roi=tmp_list)
-    
-    if fail_for_missing_rois:
-        missing = [r for r in roi_list if not r in roi_verts.keys()+['Cortex']]
-        if len(missing) > 0:
-            raise ValueError('One or more ROIs {} not found in overlays.svg file!'.format(missing))
-
-    mapper_dict = {'cortical-conservative':'nearest',
-                   'cortical-liberal':'line_nearest'}
-    # Compress to only if statement if not going to use do_mapper
-    do_mapper = gm_sampler in mapper_dict    
-    if do_mapper:
-        # Need more mapper types
-        mapper = get_mapper(subject, xfmname, type=mapper_dict[gm_sampler])
-        for name, verts in list(roi_verts.items()):
-            left, right = mapper.backwards(verts)
-            if split_lr:
-                output[name+'_L'] = left > 0
-                output[name+'_R'] = right > 0
+        try:
+            roi_verts = get_roi_verts(subject, roi=tmp_list, mask=use_mapper)
+        except KeyError as key:
+            if fail_for_missing_rois:
+                raise KeyError("Requested ROI {} not found in overlays.svg!".format(key))
             else:
-                output[name] = (left>0) | (right>0)
-        
-    #return output
-    elif (gm_sampler in ('cortical', 'thick', 'thin')) or not isinstance(gm_sampler, string_types):
-        # Get map of vertex indices for each voxel & distance of each voxel from fiducial surface
+                roi_verts = get_roi_verts(subject, roi=None, mask=use_mapper)
+                missing = [r for r in roi_list if not r in roi_verts.keys()+['Cortex']]
+                roi_verts = dict((roi, verts) for roi, verts in roi_verts.items() if roi in roi_list)
+                roi_list = list(set(roi_list)-set(missing))
+                print('Requested ROI(s) {} not found in overlays.svg!'.format(missing))
+    # Get (a) indices for nearest vertex to each voxel
+    # and (b) distance from each voxel to nearest vertex in fiducial surface
+    if (use_cortex_mask or split_lr) or (not return_dict):
         vox_dst, vox_idx = get_vox_dist(subject, xfmname)
+    if use_mapper:
+        mapper = get_mapper(subject, xfmname, type=mapper_dict[gm_sampler])
+    elif use_cortex_mask:
         if isinstance(gm_sampler, string_types):
             cortex_mask = db.get_mask(subject, xfmname, type=gm_sampler)
         else:
             cortex_mask = vox_dst <= gm_sampler
-        # Select roi voxels by combination of vertex indices & distance from fiducial surface
-        roi_voxels = {}
-        empty_rois = []
-        for roi in roi_list:
-            if roi not in roi_verts:
-                if not roi=='Cortex':
-                    print("ROI {} not found...".format(roi))
-                continue
-            tmp = np.in1d(vox_idx.flatten(), roi_verts[roi]).reshape(vox_idx.shape)
-            roi_mask = tmp & cortex_mask
-            if np.any(roi_mask):
-                roi_voxels[roi] = roi_mask
-            else:
-                # Perhaps discuss what this behavior should be
-                empty_rois.append(roi)
-                print("ROI {} is empty...".format(roi))
-        all_mask = np.array(roi_voxels.values()).sum(0)
-        if 'Cortex' in roi_list:
+    # Loop over ROIs to map vertices to volume, using mapper or cortex mask + vertex indices
+    for roi in roi_list:
+        if roi not in roi_verts:
+            if not roi=='Cortex':
+                print("ROI {} not found...".format(roi))
+            continue
+        if use_mapper:
+            roi_voxels[roi] = mapper.backwards(roi_verts[roi].astype(np.float))
+            # Optionally threshold probablistic values returned by mapper
+            if threshold is not None:
+                roi_voxels[roi] = roi_voxels[roi] > threshold
+            # Check for partial / empty rois:
+            vert_in_scan = np.hstack([np.array((m>0).sum(1)).flatten() for m in mapper.masks])
+            vert_in_scan = vert_in_scan[roi_verts[roi]]
+        elif use_cortex_mask:
+            vox_in_roi = np.in1d(vox_idx.flatten(), roi_verts[roi]).reshape(vox_idx.shape)
+            roi_voxels[roi] = vox_in_roi & cortex_mask
+            # This is not accurate... because vox_idx only contains the indices of the *nearest*
+            # vertex to each voxel, it excludes many vertices. I can't think of a way to compute
+            # this accurately for non-mapper gm_samplers for now... ML 2017.07.14
+            vert_in_scan = np.in1d(roi_verts[roi], vox_idx[cortex_mask])
+        # Compute ROI coverage
+        pct_coverage[roi] = vert_in_scan.mean() * 100
+        if use_mapper:
+            print("Found %0.2f%% of %s"%(pct_coverage[roi], roi))
+        
+    # Create cortex mask
+    all_mask = np.array(roi_voxels.values()).sum(0)
+    if 'Cortex' in roi_list:
+        if use_mapper:
+            # cortex_mask isn't defined / exactly definable if you're using a mapper
+            print("Cortex roi not included b/c currently not compatible with your selection for gm_sampler")
+            _ = roi_list.pop(roi_list.index('Cortex'))
+        else:
             roi_voxels['Cortex'] = (all_mask==0) & cortex_mask
-        # Optionally cull voxels assigned to > 1 ROI due to partly overlapping shapes in inkscape file:
-        if not allow_overlap:
-            print('Cutting {} overlapping voxels (should be < ~50)'.format(np.sum(all_mask>1)))
-            for roi in set(roi_list)-set(empty_rois):
-                roi_voxels[roi][all_mask>1] = False
-        # Split left / right hemispheres if desired
-        # There ought to be a more succinct way to do this - get_hemi_masks only does the cortical
-        # ribbon, and is not guaranteed to have all voxels in the cortex_mask specified in this fn
+    # Optionally cull voxels assigned to > 1 ROI due to partly overlapping ROI splines
+    # in inkscape overlays.svg file:
+    if not allow_overlap:
+        print('Cutting {} overlapping voxels (should be < ~50)'.format(np.sum(all_mask > 1)))
+        for roi in roi_list:
+            roi_voxels[roi][all_mask > 1] = False
+    # Split left / right hemispheres if desired
+    # There ought to be a more succinct way to do this - get_hemi_masks only does the cortical
+    # ribbon, and is not guaranteed to have all voxels in the cortex_mask specified in this fn
+    if split_lr:
         left_verts, right_verts = db.get_surf(subject, "flat", merge=False, nudge=True)
         left_mask = vox_idx < len(np.unique(left_verts[1]))
         right_mask = np.logical_not(left_mask)
-        if split_lr:
-            roi_voxels_lr = {}
-            for roi in roi_list:
-                roi_voxels_lr[roi+'_L'] = roi_voxels[roi] & left_mask
-                roi_voxels_lr[roi+'_R'] = roi_voxels[roi] & right_mask
-            output = roi_voxels_lr
-        else:
-            output = roi_voxels
+        roi_voxels_lr = {}
+        for roi in roi_list:
+            roi_voxels_lr[roi+'_L'] = roi_voxels[roi] & left_mask
+            roi_voxels_lr[roi+'_R'] = roi_voxels[roi] & right_mask
+        output = roi_voxels_lr
+    else:
+        output = roi_voxels
+
+    # Check percent coverage / optionally cull emtpy ROIs
+    for roi in set(roi_list)-set(['Cortex']):
+        if pct_coverage[roi] < 100:
+            # if not np.any(mask) : reject ROI
+            if pct_coverage[roi]==0:
+                warnings.warn('ROI %s is entirely missing from your scan protocol!'%(roi))
+                if exclude_empty_rois:
+                    if split_lr:
+                        _ = output.pop(roi+'_L')
+                        _ = output.pop(roi+'_R')
+                    else:
+                        _ = output.pop(roi)
+            else:
+                if use_mapper:
+                    warnings.warn('ROI %s is only %0.2f%% contained in your scan protocol!'%(roi, pct_coverage[roi]))
+
     # Support alternative outputs for backward compatibility
     if return_dict:
         return output
     else:
         idx_vol = np.zeros(vox_idx.shape, dtype=np.int64)
         idx_labels = {}
-        for iroi, roi in enumerate(roi_list):
+        for iroi, roi in enumerate(roi_list, 1):
             idx_vol[roi_voxels[roi]] = iroi
             idx_labels[roi] = iroi
         idx_vol[left_mask] *= -1

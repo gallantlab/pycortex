@@ -805,7 +805,8 @@ try:
             print("unable to find zero centroid...")
             return list(poly.buffer(-100).centroid.coords)[0] * max + min
         except:
-            print("Shapely error")
+            # This may not be worth being so verbose about... I think this is only for label positions.
+            print("Shapely error - computing mean of points instead of geometric center")
             return np.nanmean(pts, 0)
 
 except (ImportError, OSError):
