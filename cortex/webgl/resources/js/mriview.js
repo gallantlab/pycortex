@@ -647,8 +647,9 @@ var mriview = (function(module) {
         if (frame === undefined)
             return this.frame;
         if (frame >= this.active.frames) {
-            frame -= this.active.frames;
+            frame %= this.active.frames;
             this._startplay += this.active.frames;
+            this.playpause();
         }
         this.frame = frame;
         this.active.setFrame(frame);
