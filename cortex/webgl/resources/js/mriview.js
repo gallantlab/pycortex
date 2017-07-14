@@ -408,7 +408,7 @@ var mriview = (function(module) {
                 movie_ui.add({play_pause: {action: this.playpause.bind(this), key:' '}});
                 movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
             }
-            
+
             if (this.movie)
                 this.movie.destroy();
 
@@ -672,6 +672,7 @@ var mriview = (function(module) {
         // add keybindings for cycling through datasets
         this.ui.add({
           next_dset: {action: this.nextData.bind(this), key: '+', hidden: true},
+          next_dset_alt: {action: this.nextData.bind(this), key: '=', hidden: true},
           prev_dset: {action: this.nextData.bind(this, -1), key: '-', hidden: true}});
 
         $(this.object).find("#datasets")
