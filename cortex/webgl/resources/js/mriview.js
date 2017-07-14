@@ -11,6 +11,7 @@ var mriview = (function(module) {
 
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
+
         //Catalog the available colormaps
         $(this.object).find(".cmap img").each(function() {
             var tex = new THREE.Texture(this);
@@ -284,7 +285,11 @@ var mriview = (function(module) {
             return parseFloat(number).toPrecision(decimals);
         }
         var viewer = this
-        $('#colorlegend-colorbar').attr('src', colormaps[this.active.cmapName].image.currentSrc);
+
+        let imageData = $('#' + this.active.cmapName + ' img')[0].src
+        // let imageData = colormaps[this.active.cmapName].image.currentSrc
+
+        $('#colorlegend-colorbar').attr('src', imageData);
         $('.colorlegend-select').val(this.active.cmapName).trigger('change');
         $('#vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0]));
         $('#vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0]));
@@ -325,7 +330,7 @@ var mriview = (function(module) {
                 // logarithmic step
                 let range = viewer.active.vmax[0]['value'][0] - viewer.active.vmin[0]['value'][0];
 
-                if (e.originalEvent.deltaY >= 0) {
+                if (e.originalEvent.deltaY <= 0) {
                     newVal = currentVal + step * range;
                 } else {
                     newVal = currentVal - step * range;
@@ -333,7 +338,7 @@ var mriview = (function(module) {
 
             } else {
                 // linear step
-                if (e.originalEvent.deltaY >= 0) {
+                if (e.originalEvent.deltaY <= 0) {
                     newVal = currentVal + step;
                 } else {
                     newVal = currentVal - step;
@@ -356,7 +361,7 @@ var mriview = (function(module) {
                 // logarithmic step
                 let range = viewer.active.vmax[0]['value'][0] - viewer.active.vmin[0]['value'][0];
 
-                if (e.originalEvent.deltaY >= 0) {
+                if (e.originalEvent.deltaY <= 0) {
                     newVal = currentVal + step * range;
                 } else {
                     newVal = currentVal - step * range;
@@ -364,7 +369,7 @@ var mriview = (function(module) {
 
             } else {
                 // linear step
-                if (e.originalEvent.deltaY >= 0) {
+                if (e.originalEvent.deltaY <= 0) {
                     newVal = currentVal + step;
                 } else {
                     newVal = currentVal - step;

@@ -240,7 +240,9 @@ var jsplot = (function (module) {
                 selector.show();
                 selector.select2('open');
             });
+            $('#brain').on('click', function () { selector.select2("close"); })
         });
+
     }
     THREE.EventDispatcher.prototype.apply(module.Axes.prototype);
     module.Axes.prototype.resize = function() {}

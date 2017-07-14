@@ -234,7 +234,8 @@ a:visited { color:white; }
     text-align:left;
 }
 .colorlegend-option-image {
-    width:150px;
+    /*width:150px;*/
+    width:66%;
     height:30px;
 }
 
