@@ -475,7 +475,6 @@ var mriview = (function(module) {
         }
 
         let newVal = this.uniforms.thickmix.value + inc;
-        console.log(newVal)
         if (-.01 <= newVal && newVal <= 1.01) {
             this.setThickMix(newVal);
         }
