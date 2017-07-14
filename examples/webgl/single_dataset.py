@@ -9,6 +9,9 @@ A webgl viewer displays a 3D view of brain data in a web browser
 
 import cortex
 
+import numpy as np
+np.random.seed(1234)
+
 # gather data Volume
 volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
 

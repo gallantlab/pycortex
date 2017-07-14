@@ -17,6 +17,9 @@ In the browser you can switch between datasets with the + and - keys
 
 import cortex
 
+import numpy as np
+np.random.seed(1234)
+
 # gather multiple datasets
 volume1 = cortex.Volume.random(subject='S1', xfmname='fullhead', priority=1)
 volume2 = cortex.Volume.random(subject='S1', xfmname='fullhead', priority=2)

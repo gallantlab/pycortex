@@ -13,6 +13,7 @@ vertex mapping of that data. You can plot both of these as you normally would.
 import cortex
 import cortex.polyutils
 import numpy as np
+np.random.seed(1234)
 import matplotlib.pyplot as plt
 
 subject = 'S1'

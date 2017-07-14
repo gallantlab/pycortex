@@ -10,10 +10,14 @@ This example shows how to create a transform from some subject functional space
 to MNI space, and how to apply that transform to a dataset.
 
 """
+
 import cortex
 
 # First let's do this "manually", using cortex.mni
 from cortex import mni
+
+import numpy as np
+np.random.seed(1234)
 
 # This transform is gonna be from one specific functional space for a subject
 # which is defined by the transform (xfm)

@@ -14,6 +14,8 @@ By default, ROIs and ROI labels are displayed when a flatmap is plotted using
 
 """
 import cortex
+import numpy as np
+np.random.seed(1234)
 
 # Create a random pycortex Volume
 volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
