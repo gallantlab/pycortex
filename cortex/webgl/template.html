@@ -6,11 +6,13 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <link rel="stylesheet" href="resources/css/jquery-ui.min.css" type='text/css' />
 <link rel="stylesheet" href="resources/css/w2ui-1.4.2.min.css" type='text/css' />
+<link rel="stylesheet" href="resources/css/select2-4.0.3.min.css" type='text/css' />
 
 <script type='text/javascript' src='resources/js/jquery-2.1.1.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery-ui.min.js'></script>
 <script type='text/javascript' src='resources/js/jquery.ddslick.min.js'></script>
 <script type="text/javascript" src="resources/js/dat.gui.min.js"></script>
+<script type="text/javascript" src="resources/js/select2-4.0.3.min.js"></script>
 
 <script type='text/javascript' src="resources/js/three.js"></script>
 <script type='text/javascript' src="resources/js/OculusRiftEffect.js"></script>
@@ -53,11 +55,31 @@
 
 <div id='main'>
 	<div id='ctmload' class='loadmsg'><img src='resources/css/images/loading.gif'>Loading brain...</div>
-	<div id='dataopts'>
-		<div id='dataname'></div>
+	<div id='dataopts' class='dataset-opts'>
+		<div id='dataname' class='opt-header'></div>
 		<div id='dataset_category' class='opt_category'>
 			<ul id='datasets'>
 			</ul>
+		</div>
+	</div>
+	<div id="colorlegend">
+		<div id="vmin-container">
+			<input id="vmin-input"></input>
+			<div id="vmin"></div>
+		</div>
+		<div id="vmax-container">
+			<input id="vmax-input"></input>
+			<div id="vmax"></div>
+		</div>
+		<div id='colorlegend-colors'>
+			<select class="colorlegend-select">
+				{% for name, img in colormaps %}
+					<option value="{{name}}">{{name}}</option>
+				{% end %}
+			</select>
+			<div id='colorlegend-colorbar-container'>
+				<img id='colorlegend-colorbar' src='{{colormaps[0][1]}}'/>
+			</div>
 		</div>
 	</div>
 	<canvas id='brain'></canvas>
@@ -135,4 +157,3 @@
 
 </body>
 </html>
-	

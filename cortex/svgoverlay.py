@@ -488,7 +488,8 @@ class Shape(object):
                 small_found_vtxsx = small_vts[~small_found_vtxs,0]<closest_xs
                 small_found_vtxs[~small_found_vtxs] = small_found_vtxsx
 
-                small_vts_inside_region[~small_found_vtxs] = True - small_vts_inside_region[~small_found_vtxs]
+                small_vts_inside_region[~small_found_vtxs] = ~small_vts_inside_region[~small_found_vtxs]
+
                 vtx_is[~small_found_vtxsx,0] = closest_xs[~small_found_vtxsx]
                 vtx_is = vtx_is[~small_found_vtxsx,:]        
                 

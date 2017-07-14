@@ -1,4 +1,4 @@
-body { 
+body {
     background-color:#333;
     font-family:Helvetica Neue, sans-serif;
     font-size:10pt;
@@ -10,9 +10,9 @@ input[type='text'] {
     border:1px solid #CCC;
     border-radius:10px / 2px;
 }
-table { 
-    border-spacing:0; 
-    border-collapse:collapse; 
+table {
+    border-spacing:0;
+    border-collapse:collapse;
 }
 .clear { clear:both; }
 .jsplot_figure {
@@ -24,7 +24,7 @@ table {
 
 .content { padding:10px; }
 .infobar {
-    transition: all .3s; 
+    transition: all .3s;
     transition-timing-function:ease;
     transition-delay:1s;
     -moz-transition: all .3s;
@@ -142,6 +142,103 @@ a:visited { color:white; }
     font-size:24pt;
     font-weight:bold;
 }
+
+/*************************************************
+ * Colorlegend styles
+ *************************************************/
+#colorlegend {
+    height:4%;
+    width:30%;
+    position:absolute;
+    bottom:30px;
+    left:0;
+    right:0;
+    margin:auto;
+    z-index:100;
+
+}
+#colorlegend-colors {
+    height:100%;
+    overflow:hidden;
+    background-color:red;
+}
+#colorlegend-colorbar {
+    height:300px;
+    width:100%;
+    display:block;
+    text-align:right;
+}
+#vmin-container, #vmax-container {
+    font-size:4vmin;
+    color:white;
+    z-index:99999;
+    position:absolute;
+    width:40vw;
+    height:40vh;
+    line-height:0vmin;
+    top:50%;
+}
+#vmin-container {
+    left:-42vw;
+}
+#vmax-container {
+    right:-42vw;
+}
+#vmin-input, #vmax-input {
+    color:white;
+    background-color:black;
+    font-size:4vmin;
+    display:none;
+    position:absolute;
+    height:4vh;
+    width:20vw;
+    border-width:1px;
+    outline:none;
+    padding-left:1vw;
+    padding-right:1vw;
+    padding-top:3vh;
+    padding-bottom:3vh;
+
+    top:calc(-1px - 3vh);
+}
+#vmin-input {
+    right:calc(-1px - 1vw);
+    text-align:right;
+}
+#vmax-input {
+    left:calc(-1px - 1vw);
+}
+#vmin, #vmax {
+}
+#vmin {
+    text-align:right;
+}
+#vmax {
+}
+.colorlegend-select {
+    width:100%;
+    position:absolute;
+}
+.select2-selection {
+}
+.select2-container {
+    visibility:hidden;
+    position:absolute;
+}
+.select2-container--above {
+}
+.select2-dropdown {
+    visibility:visible;
+}
+.select2-results__option {
+    text-align:left;
+}
+.colorlegend-option-image {
+    /*width:150px;*/
+    width:66%;
+    height:30px;
+}
+
 .datadesc {
     font-size:10pt;
     font-weight:normal;
@@ -169,7 +266,7 @@ a:visited { color:white; }
 
 div.opt_category {
     /*display:none;*/
-    border:1px solid #CCC;
+    /*border:1px solid #CCC;*/
     border-radius:3px;
     padding:10px;
     margin:10px;
@@ -192,12 +289,12 @@ div.opt_category p.opt_label {
     width:36px;
     /*overflow:auto;*/
 }
-.dd-option-image, .dd-selected-image { 
+.dd-option-image, .dd-selected-image {
     float:right;
     padding-right: 10px;
-    min-height:8px; 
-    /*width:256px; 
-    max-width:256px; 
+    min-height:8px;
+    /*width:256px;
+    max-width:256px;
     max-height:256px; */
     width:220px;
     max-width:220px;
@@ -217,52 +314,52 @@ div.opt_category p.opt_label {
     background:#ddf;
 }
 
-.vcolorbar { 
-    display:none; 
-    width:36px; 
-}
-input.vlim {
-    float:left; 
+.vcolorbar {
+    display:none;
     width:36px;
 }
-.vrange_wrap { 
-    float:left; 
+input.vlim {
+    float:left;
+    width:36px;
+}
+.vrange_wrap {
+    float:left;
     padding:5px 10px;
 }
-#vrange { 
-    width:200px; 
+#vrange {
+    width:200px;
 }
-#vrange2 { 
-    height:200px; 
+#vrange2 {
+    height:200px;
 }
 #topbar fieldset {
     min-width:200px;
 }
 
 /* datasets */
-ul#datasets { 
-    width: 200px; 
-    list-style: none; 
-    margin: 0; 
-    padding: 0; 
+ul#datasets {
+    width: 200px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
     overflow:auto;
     max-height:300px;
 }
-ul#datasets li { 
-    background: white; 
-    position:relative; 
-    margin: 5px; 
-    padding: 5px; 
-    border: 1px solid black; 
-    list-style: none; 
-    padding-left: 42px; 
+ul#datasets li {
+    background: white;
+    position:relative;
+    margin: 5px;
+    padding: 5px;
+    border: 1px solid black;
+    list-style: none;
+    padding-left: 42px;
 }
-ul#datasets li .handle { 
-    background: #CCC; 
-    position: absolute; 
-    left: 0; 
-    top: 0; 
-    bottom: 0; 
+ul#datasets li .handle {
+    background: #CCC;
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
     padding:8px;
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
@@ -311,8 +408,8 @@ table#movieui {
     text-align:left;
     vertical-align:middle;
 }
-#moviecontrol { 
-    padding:2px; 
+#moviecontrol {
+    padding:2px;
 }
 #moviecontrol img {
     padding:4px;
