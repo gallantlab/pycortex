@@ -481,12 +481,12 @@ var mriview = (function(module) {
         // return attr;
     }
 
-    module.offsetVerts = function(verts, offsets, axis) {
+    module.offsetVerts = function(verts, offsets, axis, factor) {
         var num = verts.length / verts.itemSize;
         var newpos = new Float32Array(verts.array);
 
         for ( var i = 0; i < num; i ++ ) {
-            newpos[i*verts.itemSize + axis] += offsets.array[i];
+            newpos[i*verts.itemSize + axis] += factor * offsets.array[i];
         }
 
         var attr = new THREE.BufferAttribute(newpos, verts.itemSize);
