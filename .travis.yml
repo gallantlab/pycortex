@@ -19,4 +19,4 @@ script:
   - cd docs
   - make html
   - cd ..
-  - doctr deploy --deploy-repo gallantlab/gallantlab.github.io --no-require-master .
+  - doctr deploy --deploy-repo gallantlab/gallantlab.github.io --deploy-branch-name master --no-require-master .
