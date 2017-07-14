@@ -225,6 +225,24 @@ var jsplot = (function (module) {
 
             this.figure.addEventListener("resize", this.resize.bind(this));
         }
+
+        // color legend
+        function formatState (state) {
+            if (!state.id) { return state.text; }
+            var $state = $('<span class="colorlegend-option"><img class="colorlegend-option-image" src="' + colormaps[state.text].image.currentSrc + '" class="img-flag" /> ' + state.text + '</span>');
+            return $state;
+        };
+        $(document).ready(function() {
+            var selector = $(".colorlegend-select").select2({
+                templateResult: formatState
+            });
+            $("#colorlegend-colorbar").on('click', function() {
+                selector.show();
+                selector.select2('open');
+            });
+            $('#brain').on('click', function () { selector.select2("close"); })
+        });
+
     }
     THREE.EventDispatcher.prototype.apply(module.Axes.prototype);
     module.Axes.prototype.resize = function() {}
