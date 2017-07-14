@@ -469,13 +469,14 @@ var mriview = (function(module) {
     module.Surface.prototype.changeDepth = function(direction) {
         let inc;
         if (direction > 0) {
-            inc = .1
+            inc = .05
         } else {
-            inc = -.1
+            inc = -.05
         }
 
         let newVal = this.uniforms.thickmix.value + inc;
-        if (0 <= newVal && newVal <= 1) {
+        console.log(newVal)
+        if (-.01 <= newVal && newVal <= 1.01) {
             this.setThickMix(newVal);
         }
     }
