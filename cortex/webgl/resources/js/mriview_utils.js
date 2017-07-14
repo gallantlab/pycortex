@@ -251,6 +251,7 @@ var mriview = (function(module) {
                 cb.subVectors( pC, pB );
                 ab.subVectors( pA, pB );
                 cb.cross( ab );
+                // cb.normalize();
 
                 normals[ vA * 3 ]     += cb.x;
                 normals[ vA * 3 + 1 ] += cb.y;
@@ -282,8 +283,213 @@ var mriview = (function(module) {
             normals[ i + 1 ] *= n;
             normals[ i + 2 ] *= n;
 
+            if (isNaN(normals[i])) {
+                normals[i] = 0;
+                normals[i+1] = 0;
+                normals[i+2] = 0;
+            }
+
         }
         var attr = new THREE.BufferAttribute(normals, 3);
+        attr.needsUpdate = true;
+        return attr;
+    }
+
+    module.computeAreas = function(vertices, index, offsets) {
+        var i, il;
+        var j, jl;
+
+        var indices = index.array;
+        var positions = vertices.array;
+        var stride = vertices.itemSize;
+
+        var areas = new Float32Array( vertices.array.length / vertices.itemSize );
+
+        var vA, vB, vC, x, y, z, area,
+            pA = new THREE.Vector3(),
+            pB = new THREE.Vector3(),
+            pC = new THREE.Vector3(),
+
+            cb = new THREE.Vector3(),
+            ab = new THREE.Vector3(),
+
+            tri = new THREE.Triangle();
+
+        for ( j = 0, jl = offsets.length; j < jl; ++ j ) {
+
+            var start = offsets[ j ].start;
+            var count = offsets[ j ].count;
+            var index = offsets[ j ].index;
+
+            for ( i = start, il = start + count; i < il; i += 3 ) {
+
+                vA = index + indices[ i ];
+                vB = index + indices[ i + 1 ];
+                vC = index + indices[ i + 2 ];
+
+                x = positions[ vA * stride ];
+                y = positions[ vA * stride + 1 ];
+                z = positions[ vA * stride + 2 ];
+                pA.set( x, y, z );
+
+                x = positions[ vB * stride ];
+                y = positions[ vB * stride + 1 ];
+                z = positions[ vB * stride + 2 ];
+                pB.set( x, y, z );
+
+                x = positions[ vC * stride ];
+                y = positions[ vC * stride + 1 ];
+                z = positions[ vC * stride + 2 ];
+                pC.set( x, y, z );
+
+                tri.set( pA, pB, pC );
+                varea = tri.area() / 3;
+
+
+                areas[vA] += varea;
+                areas[vB] += varea;
+                areas[vC] += varea;
+
+            }
+        }
+
+        return areas;
+    }
+
+    module.smoothVertexData = function(vertices, index, offsets, data, factor) {
+        var i, il;
+        var j, jl;
+
+        var indices = index.array;
+        var positions = vertices.array;
+        var stride = vertices.itemSize;
+
+        var smoothdata = new Float32Array( data.length ),
+            counts = new Uint16Array( data.length );
+
+        var vA, vB, vC, x, y, z, area,
+            pA = new THREE.Vector3(),
+            pB = new THREE.Vector3(),
+            pC = new THREE.Vector3(),
+
+            cb = new THREE.Vector3(),
+            ab = new THREE.Vector3(),
+
+            tri = new THREE.Triangle();
+
+        for ( j = 0, jl = offsets.length; j < jl; ++ j ) {
+
+            var start = offsets[ j ].start;
+            var count = offsets[ j ].count;
+            var index = offsets[ j ].index;
+
+            for ( i = start, il = start + count; i < il; i += 3 ) {
+
+                vA = index + indices[ i ];
+                vB = index + indices[ i + 1 ];
+                vC = index + indices[ i + 2 ];
+
+                // x = positions[ vA * stride ];
+                // y = positions[ vA * stride + 1 ];
+                // z = positions[ vA * stride + 2 ];
+                // pA.set( x, y, z );
+
+                // x = positions[ vB * stride ];
+                // y = positions[ vB * stride + 1 ];
+                // z = positions[ vB * stride + 2 ];
+                // pB.set( x, y, z );
+
+                // x = positions[ vC * stride ];
+                // y = positions[ vC * stride + 1 ];
+                // z = positions[ vC * stride + 2 ];
+                // pC.set( x, y, z );
+
+                // tri.set( pA, pB, pC );
+                // varea = tri.area() / 3;
+
+                smoothdata[vA] += data[vB] + data[vC];
+                smoothdata[vB] += data[vA] + data[vC];
+                smoothdata[vC] += data[vA] + data[vB];
+
+                counts[vA] += 2;
+                counts[vB] += 2;
+                counts[vC] += 2;
+
+            }
+        }
+
+        for ( var k = 0; k < data.length; k ++ ) {
+            smoothdata[k] = smoothdata[k] / counts[k] * factor + (data[k] * (1.0 - factor));
+        }
+
+        return smoothdata;
+    }
+
+    module.iterativelySmoothVertexData = function(vertices, index, offsets, data, factor, iters) {
+        var smoothed = data;
+        for ( var i = 0; i < iters; i ++ ) {
+            smoothed = module.smoothVertexData(vertices, index, offsets, smoothed, factor);
+        }
+        return smoothed;
+    }
+
+    module.computeVertexPrismVolume = function(areas1, areas2, dists) {
+        var num = areas1.length;
+
+        var volumes = new Float32Array(num);
+
+        for ( var i = 0; i < num; i ++ ) {
+            volumes[i] = dists[i] / 3 * ( areas1[i] + areas2[i] + Math.sqrt(areas1[i] * areas2[i]));
+        }
+
+        return volumes;
+    }
+
+    module.computeFlatVolumeHeight = function(areas, volumes) {
+        var num = areas.length;
+        var flatheights = new Float32Array(num);
+
+        for ( var i = 0; i < num; i ++ ) {
+            flatheights[i] = volumes[i] / areas[i];
+        }
+
+        var attr = new THREE.BufferAttribute(flatheights, 1);
+        attr.needsUpdate = true;
+        return attr;
+    }
+
+    module.computeDist = function(verts1, verts2) {
+        var stride1 = verts1.itemSize;
+        var stride2 = verts2.itemSize;
+        var num = verts1.length / stride1;
+        var dists = new Float32Array(num);
+
+        var tv1 = new THREE.Vector3(), tv2 = new THREE.Vector3();
+
+        for ( var i = 0; i < num; i ++ ) {
+            tv1.set(verts1.array[i * stride1], 
+                    verts1.array[i * stride1 + 1], 
+                    verts1.array[i * stride1 + 2]);
+            tv2.set(verts2.array[i * stride2], 
+                    verts2.array[i * stride2 + 1], 
+                    verts2.array[i * stride2 + 2]);
+            dists[i] = tv1.distanceTo(tv2);
+        }
+        return dists;
+        // var attr = new THREE.BufferAttribute(dists, 1);
+        // attr.needsUpdate = true;
+        // return attr;
+    }
+
+    module.offsetVerts = function(verts, offsets, axis) {
+        var num = verts.length / verts.itemSize;
+        var newpos = new Float32Array(verts.array);
+
+        for ( var i = 0; i < num; i ++ ) {
+            newpos[i*verts.itemSize + axis] += offsets.array[i];
+        }
+
+        var attr = new THREE.BufferAttribute(newpos, verts.itemSize);
         attr.needsUpdate = true;
         return attr;
     }
