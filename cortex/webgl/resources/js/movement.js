@@ -133,11 +133,9 @@ var jsplot = (function (module) {
 			this.setTarget(this.target.toArray());
 		}
 
-		// if ( mix == 1 ) {
-		// 	this.twodbutton.show();
-		// } else {
-		// 	this.twodbutton.hide();
-		// }
+		if ( mix < 1 ) {
+			this.twodbutton.hide();
+		}
 	}
 
 	module.LandscapeControls.prototype.setAzimuth = function(az) {

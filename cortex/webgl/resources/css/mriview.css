@@ -171,7 +171,7 @@ a:visited { color:white; }
 #vmin-container, #vmax-container {
     font-size:4vmin;
     color:white;
-    z-index:99999;
+    z-index:110;
     position:absolute;
     width:40vw;
     height:40vh;
@@ -435,7 +435,7 @@ button#twodbutton {
     position: absolute;
     right: 2%;
     bottom: 2%;
-    z-index: 8;
+    z-index: 200;
     padding: 2px 10px 2px 10px;
     border: 1px solid white;
     border-radius: 3px;
