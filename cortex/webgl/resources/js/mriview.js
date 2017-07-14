@@ -34,6 +34,13 @@ var mriview = (function(module) {
             this.resize();
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
+            this.object.appendChild(this.controls.twodbutton[0]);
+            this.controls.twodbutton.click(function(){
+                this.animate([
+                    {state:'camera.azimuth', idx:0.5, value:180},
+                    {state:'camera.altitude', idx:0.5, value:0.1},
+                ]);
+            }.bind(this));
         }.bind(this));
 
         this.sliceplanes = {

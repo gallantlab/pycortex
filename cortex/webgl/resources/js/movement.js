@@ -30,6 +30,11 @@ var jsplot = (function (module) {
 
 		this._momentum = {change:[0,0]};
 		this._state = STATE.NONE;
+
+		this.twodbutton = $(document.createElement('button'));
+		this.twodbutton.attr('id', 'twodbutton');
+		this.twodbutton.html('2d');
+		// this.twodbutton.click(this.set2d.bind(this));
 	}
 	THREE.EventDispatcher.prototype.apply(module.LandscapeControls.prototype);
 
@@ -42,6 +47,11 @@ var jsplot = (function (module) {
 			this.radius*Math.sin(altrad)*Math.sin(azirad),
 			this.radius*Math.cos(altrad)
 		);
+	}
+
+	module.LandscapeControls.prototype.set2d = function() {
+		this.setAzimuth(180);
+		this.setAltitude(0.1);
 	}
 
 	module.LandscapeControls.prototype.update = function(camera) {
@@ -111,7 +121,7 @@ var jsplot = (function (module) {
 
 	module.LandscapeControls.prototype.setMix = function(mix) {
 		this.mix = mix;
-		if (mix > 0 && mix < 1 || true) {
+		if (mix > 0 && mix < 1 || true) { // hacky, I'm leaving this for now..
 			this.azimuth = (1 - this.mix) * this._foldedazimuth + this.mix * this._flatazimuth;
 			this.altitude = (1 - this.mix) * this._foldedaltitude + this.mix * this._flataltitude;
 			this.target.set(this._foldedtarget.x * (1-mix) + mix*this._flattarget.x,
@@ -122,6 +132,12 @@ var jsplot = (function (module) {
 			this.setAltitude(this.altitude);
 			this.setTarget(this.target.toArray());
 		}
+
+		// if ( mix == 1 ) {
+		// 	this.twodbutton.show();
+		// } else {
+		// 	this.twodbutton.hide();
+		// }
 	}
 
 	module.LandscapeControls.prototype.setAzimuth = function(az) {
@@ -139,6 +155,11 @@ var jsplot = (function (module) {
 		this._foldedazimuth = this.mix * this._foldedazimuth + (1 - this.mix) * az;
 		// this._flatazimuth = (1 - this.mix) * this._flatazimuth + this.mix * az;
 		if ( this.mix == 1.0 ) {
+			if ( az != 180 )
+				this.enable2Dbutton();
+			else
+				this.disable2Dbutton();
+
 			this._flatazimuth = az;
 		}
 		// if (this.mix == 0) {
@@ -165,7 +186,13 @@ var jsplot = (function (module) {
 		this._foldedaltitude = this.mix * this._foldedaltitude + (1 - this.mix) * alt;
 		// this._flataltitude = (1 - this.mix) * this._flataltitude + this.mix * alt;
 		if ( this.mix == 1.0 ) {
+			if ( alt != 0.1 )
+				this.enable2Dbutton();
+			else
+				this.disable2Dbutton();
+			
 			this._flataltitude = alt;
+			
 		}
 
 		this._flataltitude = Math.min(Math.max(this._flataltitude, 0.1), 75);
@@ -199,6 +226,15 @@ var jsplot = (function (module) {
 		this.target.set(this._foldedtarget.x * (1-mix) + mix*this._flattarget.x,
 		                this._foldedtarget.y * (1-mix) + mix*this._flattarget.y,
 		                this._foldedtarget.z * (1-mix) + mix*this._flattarget.z);
+	}
+
+	module.LandscapeControls.prototype.enable2Dbutton = function() {
+		// this.twodbutton.prop('disabled', false);
+		this.twodbutton.show();
+	}
+	module.LandscapeControls.prototype.disable2Dbutton = function() {
+		// this.twodbutton.prop('disabled', true);
+		this.twodbutton.hide();
 	}
 
 	module.LandscapeControls.prototype.bind = function(object) {
