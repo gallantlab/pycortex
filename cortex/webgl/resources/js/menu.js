@@ -163,6 +163,14 @@ var jsplot = (function (module) {
                 if (event.defaultPrevented)
                     return;
 
+                if (desc.hasOwnProperty('modKeys')) {
+                    for (let modKey of desc.modKeys) {
+                        if (!event[modKey]) {
+                            return
+                        }
+                    }
+                }
+
                 if (String.fromCharCode(event.keyCode) == key) {
                     action();
                     event.preventDefault();
@@ -170,6 +178,26 @@ var jsplot = (function (module) {
                 }
             }.bind(this), true);
         }
+
+        // setup mousewheel shortcuts
+        if (desc.wheel) {
+            window.addEventListener("wheel", function(event) {
+                if (desc.hasOwnProperty('modKeys')) {
+                    for (let modKey of desc.modKeys) {
+                        if (!event[modKey]) {
+                            return
+                        }
+                    }
+                }
+
+                desc.action(event.deltaY);
+
+                for (var i in gui.__controllers) {
+                    gui.__controllers[i].updateDisplay();
+                }
+            }.bind(this), true);
+        }
+
         return ctrl;
     }
     module.Menu.prototype._remove = function(name) {

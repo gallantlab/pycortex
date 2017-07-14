@@ -71,20 +71,25 @@ var mriview = (function(module) {
                 // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
         ]);
-        
+
         this.ui = (new jsplot.Menu()).add({
             unfold: {action:[this, "setMix", 0., 1.]},
             pivot: {action:[this, "setPivot", -180, 180]},
             shift: {action:[this, "setShift", 0, 200]},
             depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
+            changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true},
             opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
             left: {action:[this, "setLeftVis"]},
+            leftToggle: {action: this.toggleLeftVis.bind(this), key: 'L', modKeys: ['shiftKey'], hidden: true},
             right: {action:[this, "setRightVis"]},
+            rightToggle: {action: this.toggleRightVis.bind(this), key: 'R', modKeys: ['shiftKey'], hidden: true},
 	        specularity: {action:[this, "setSpecular", 0, 1]},
             layers: {action:[this, "setLayers", {1:1, 4:4, 8:8, 16:16, 32:32}]},
             dither: {action:[this, "setDither"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
         });
+        
+
         this.ui.addFolder("curvature", true).add({
             brightness: {action:[this.uniforms.curvAlpha, "value", 0, 1]},
             contrast: {action:[this.uniforms.curvLim, "value", 0, 0.5]},
@@ -283,7 +288,8 @@ var mriview = (function(module) {
         }.bind(this));
         this.dispatchEvent({type:"resize", width:evt.width, height:evt.height});
     };
-    module.Surface.prototype.init = function(dataview) { 
+    module.Surface.prototype.init = function(dataview) {
+
         this._active = dataview;
 
         this.loaded.done(function() {
@@ -453,10 +459,26 @@ var mriview = (function(module) {
     module.Surface.prototype.setThickMix = function(val) {
         this.uniforms.thickmix.value = val;
 
-
-
+        let mix = this.uniforms.surfmix.value;
+        var smix = mix * (this.names.length - 1);
+        var factor = 1 - Math.abs(smix - (this.names.length-1));
+        let clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
         this.dispatchEvent({type:'mix', flat:clipped, mix:mix, thickmix:this.uniforms.thickmix.value});
+        viewer.schedule()
     };
+    module.Surface.prototype.changeDepth = function(direction) {
+        let inc;
+        if (direction > 0) {
+            inc = .05
+        } else {
+            inc = -.05
+        }
+
+        let newVal = this.uniforms.thickmix.value + inc;
+        if (-.01 <= newVal && newVal <= 1.01) {
+            this.setThickMix(newVal);
+        }
+    }
     module.Surface.prototype.setPivot = function(val) {
         if (val === undefined)
             return this._pivot;
@@ -497,13 +519,21 @@ var mriview = (function(module) {
         //this.surfs[0].surf.pivots.left.front.visible = val;
         this.pivots.left.front.visible = val;
     };
+    module.Surface.prototype.toggleLeftVis = function() {
+        this.setLeftVis(!this._leftvis);
+        viewer.schedule();
+    };
     module.Surface.prototype.setRightVis = function(val) {
         if (val === undefined)
             return this._rightvis
         this._rightvis = val;
         //this.surfs[0].surf.pivots.right.front.visible = val;
         this.pivots.right.front.visible = val;
-    };    
+    };
+    module.Surface.prototype.toggleRightVis = function() {
+        this.setRightVis(!this._rightvis);
+        viewer.schedule();
+    };
     module.Surface.prototype.setLayers = function(val) {
         if (val === undefined)
             return this._layers;
