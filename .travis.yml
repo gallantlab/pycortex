@@ -1,0 +1,22 @@
+# doctr requires python >= 3.5
+language: python
+python:
+  - 3.5
+
+sudo: true
+env:
+  global:
+    - secure: "UepyjbYMe/+1BDTWipEttTcolgB16TGKJ4w7U4rNFBksGm40Acq+5MXwjJfvEt0M5xF/L7T7HUK8RJpqwORtWrazJvi50spB+mCE83U1KAD1Y1sWQZH2di0FlYsDJ06bKyMdoFBq8yRmT9B6n7YPDxUrqsL1API6Vuqb+uCXB6I="
+
+before_install:
+  - sudo apt-get install inkscape
+
+script:
+  - set -e
+  - pip install lxml numpy scipy numexpr networkx tornado cython matplotlib h5py nibabel Pillow sphinx sphinx_gallery numpydoc
+  - pip install git+https://github.com/r-b-g-b/doctr.git
+  - python setup.py build_ext --inplace
+  - cd docs
+  - make html
+  - cd ..
+  - doctr deploy --deploy-repo gallantlab/pycortex --deploy-branch-name gh-pages --no-require-master .
