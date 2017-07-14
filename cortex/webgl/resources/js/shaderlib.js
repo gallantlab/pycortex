@@ -336,6 +336,8 @@ var Shaderlib = (function() {
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
             "uniform mat4 volxfm[2];",
             "uniform float thickmix;",
+            "uniform int bumpyflat;",
+            "float f_bumpyflat = float(bumpyflat);",
 
             "attribute vec4 wm;",
             "attribute vec3 wmnorm;",
@@ -397,10 +399,10 @@ var Shaderlib = (function() {
 
             "#ifdef CORTSHEET",
                 // "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
-                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., thickmix) * flatheight;",
+                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., thickmix) * flatheight * f_bumpyflat;",
             "#endif",
 
-                "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.));",
+                "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
                 // "vNormal = normalMatrix * norm;",
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
