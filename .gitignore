@@ -47,3 +47,5 @@ nosetests.xml
 
 # vim temp files
 *~
+
+*.nfs*
