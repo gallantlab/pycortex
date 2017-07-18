@@ -3,9 +3,12 @@
 Get ROI Voxel Mask
 ==================
 
-Select all of the voxels within a named ROI and then plot them onto a
-flatmap. In order for this to work, you have to have this ROI in your
-svg file for this subject.
+Get proportion of each voxel that exists within a named ROI (this 
+constitutes a probability map for the ROI, with values ranging from
+0-1). Plot this probablistic roi mask onto a flatmap. 
+
+In order for this to work, the specified ROI must exist in the
+overlays.svg file in the pycortex filestore for this subject.
 """
 
 import cortex
@@ -16,11 +19,26 @@ xfm = "fullhead"
 roi = "EBA"
 
 # Get the map of which voxels are inside of our ROI
-eba_map = cortex.utils.get_roi_mask(subject, xfm, roi)[roi]
-# And then threshold
-eba_mask = eba_map > 2
+roi_masks = cortex.utils.get_roi_masks(subject, xfm, 
+                                       roi_list=[roi],
+                                       gm_sampler='cortical-conservative', # Select only voxels mostly within cortex
+                                       split_lr=False, # No separate left/right ROIs
+                                       threshold=None, # Leave roi mask values as probabilites / fractions
+                                       return_dict=True
+                                       )
 
-# Now we can just plot this onto a flatmap
-roi_data = cortex.Volume(eba_mask, subject, xfm, cmap="Blues_r")
-cortex.quickshow(roi_data)
+# Plot the mask for one ROI onto a flatmap
+roi_data = cortex.Volume(roi_masks[roi], subject, xfm, 
+                         vmin=0, # This is a probability mask, so only
+                         vmax=1, # so scale btw zero and one
+                         cmap="inferno", # For pretty
+                         )
+
+cortex.quickflat.make_figure(roi_data,
+                             thick=1, # select a single depth (btw white matter & pia)
+                             sampler='nearest', # no interpolation
+                             with_curvature=True,
+                             with_colorbar=True,
+                             )
+
 plt.show()

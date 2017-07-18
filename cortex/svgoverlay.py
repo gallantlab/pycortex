@@ -7,8 +7,7 @@ import tempfile
 import itertools
 import numpy as np
 import subprocess as sp
-from .svgsplines import LineSpline, QuadBezSpline, CubBezSpline, ArcSpline
-
+from matplotlib.path import Path
 from scipy.spatial import cKDTree
 
 from lxml import etree
@@ -413,348 +412,23 @@ class Shape(object):
 
         return labels
 
-    ###
-    # The get_mask function takes in an roi's name and returns an array indicating if every vertex is or isn't in that roi
-    # The way it works is that it collapses all of the x-values of the vertex coordinates approximately around the roi to the same
-    # small value, making a vertical line left of the roi. Then, it stretches the line to the right again, but stops the coordinates if they
-    # hit either an roi boundary or the original vertex position. In other words, it increases the x-values of the coordinates to either
-    # those of the the nearest spline path or the original vertex coordinate, whichever has the closer x-value.
-    # This way, it keeps track of how many boundaries it hit, starting from the outside, going inward toward the the original vertex coordinate.
-    # An odd number of boundaries found before the vertex means 'outside' the region or 'False' in the array, and an even number of
-    # boundaries found before the vertex means 'inside' the region or 'True' in the array
-    #
-    # This is all implemented with 1d and nd arrays manipulations, so the math is very algebraic.
-    #
-    # NOTE: Look into replacing these with matplotlib functions. 
-    # http://matplotlib.org/1.2.1/api/path_api.html#matplotlib.path.Path.contains_points
-    # For parsing svg files to matplotlib paths, see: 
-    # https://github.com/rougier/LinuxMag-HS-2014/blob/master/matplotlib/firefox.py
-    ###
     def get_mask(self, vts):
-        all_splines = self.splines #all_splines is a list of generally two roi paths, one for each hemisphere
+        """get list of vertices inside this roi"""
+        if len(self.splines)==0:
+            # No splines defined for this (ROI). Wut.
+            import warnings
+            warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
+            return []
+        # Annoying: The paths created are upside-down wrt vertex coordinates. So flip them.
+        verts_upside_down = copy.copy(vts)
+        verts_upside_down[:, 1] = self.height - verts_upside_down[:, 1]
+        verts_in_any_path = [p.contains_points(verts_upside_down) for p in self.splines]
+        vert_idx_list = np.hstack([np.nonzero(v)[0] for v in verts_in_any_path])
+        return  vert_idx_list
 
-        vts_inside_region = np.zeros(vts.shape[0],dtype=bool) # ultimately what gets returned
-
-        for splines in all_splines: #retrieves path splines for each hemisphere separately
-            x0s = np.min(vts[:,0])*.98*np.ones(vts.shape[0])
-
-            # Only checks the vertices in a bounding box around the spline path.
-            # The splines are always within a convex shape whose corners are
-            # their svg command's end point and control points, so the box is their
-            # min and max X and Y coordinates.
-            beforeSplineRegionX = vts[:,0] < np.min([float(sp_i.smallestX()) for sp_i in splines])
-            beforeSplineRegionY = vts[:,1] < np.min([float(sp_i.smallestY()) for sp_i in splines])
-            afterSplineRegionX = vts[:,0] > np.max([float(sp_i.biggestX()) for sp_i in splines])
-            afterSplineRegionY = vts[:,1] > np.max([float(sp_i.biggestY()) for sp_i in splines])
-
-            found_vtxs = np.zeros(vts.shape[0],dtype=bool)
-            found_vtxs[beforeSplineRegionX] = True
-            found_vtxs[beforeSplineRegionY] = True
-            found_vtxs[afterSplineRegionX] = True
-            found_vtxs[afterSplineRegionY] = True
-            
-            vt_isx = np.vstack([x0s,vts[:,1]]).T #iterable coords, same x-value as each other, but at their old y-value positions
- 
-            vtx_is = vt_isx[~found_vtxs]
-
-            splines_xs = [] # stores the roi's splines
-            for i in range(len(splines)):
-                splines_xs.append(splines[i].allSplineXGivenY(vtx_is)) # gets all the splines' x-values for each y-value in the line we're checking
-
-            small_vts = vts[~found_vtxs,:]
-            small_vts_inside_region = vts_inside_region[~found_vtxs]
-            small_found_vtxs = found_vtxs[~found_vtxs]
-
-            # keeps stretching the vertical line to the right until all the points find their original vertex again            
-            while sum(small_found_vtxs) != len(small_found_vtxs):
-                closest_xs = np.Inf*np.ones(vtx_is.shape[0]) # starting marker for all vts are at Inf
-
-                for i in range(len(splines_xs)):
-                    spline_i_xs = splines_xs[i]
-                    if len(spline_i_xs.shape) == 1: # Line splines
-                        isGreaterThanVtx = spline_i_xs > vtx_is[:,0]
-                        isLessThanClosestX = spline_i_xs < closest_xs
-                        closest_xs[isGreaterThanVtx*isLessThanClosestX] = spline_i_xs[isGreaterThanVtx*isLessThanClosestX]
-                    else: # all other splines
-                        for j in range(spline_i_xs.shape[1]):
-                            isGreaterThanVtx = spline_i_xs[:,j] > vtx_is[:,0]
-                            isLessThanClosestX = spline_i_xs[:,j] < closest_xs
-                            closest_xs[isGreaterThanVtx*isLessThanClosestX] = spline_i_xs[isGreaterThanVtx*isLessThanClosestX,j]                    
-            
-                # checks if it's found the boundary or the original vertex
-                # it forgets about all the points in the line who've found their original vertex
-                # if it found a boundary, then flip the 'inside' flag to 'outside', and vice versa
-                
-                small_found_vtxsx = small_vts[~small_found_vtxs,0]<closest_xs
-                small_found_vtxs[~small_found_vtxs] = small_found_vtxsx
-
-                small_vts_inside_region[~small_found_vtxs] = ~small_vts_inside_region[~small_found_vtxs]
-                vtx_is[~small_found_vtxsx,0] = closest_xs[~small_found_vtxsx]
-                vtx_is = vtx_is[~small_found_vtxsx,:]        
-                
-                for i in range(len(splines_xs)):
-                    if len(splines_xs[i].shape) == 1:
-                        splines_xs[i] = splines_xs[i][~small_found_vtxsx]
-                    else:
-                        splines_xs[i] = splines_xs[i][~small_found_vtxsx,:]
-
-            vts_inside_region[~found_vtxs] = small_vts_inside_region # reverts shape back from small bounding box to whole brain shape
-
-            if sum(vts_inside_region) == len(vts_inside_region):
-                break
-
-        return np.nonzero(vts_inside_region)[0] # output indices of vertices that are inside the roi
     @property
     def splines(self):
-        path_strs = [list(_tokenize_path(path.get('d'))) for path in self.paths]
-
-        COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
-        splines = []
-        ###  
-        # this is for the svg path parsing (https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths)
-        # the general format is that there is a state machine that keeps track of which command (path_ind)
-        # that it's listening to while parsing over the appropriately sized (param_len) groups of
-        # coordinates for that command 
-        ###
-        for path in path_strs:
-            path_splines = []
-            first_coord = np.zeros(2) #array([0,0])
-            prev_coord = np.zeros(2) #array([0,0])
-            isFirstM = True# inkscape may create multiple starting commands to move to the spline's starting coord, this just treats those as one commend
-
-
-            for path_ind in range(len(path)):
-                if path_ind == 0 and path[path_ind].lower() != 'm':
-                    raise ValueError('Unknown path format!')
-                
-                elif path[path_ind].lower() == 'm': 
-                    param_len = 2
-                    p_j = path_ind + 1 # temp index
-                    
-                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
-                        old_prev_coord = np.zeros(2)
-                        old_prev_coord[0] = prev_coord[0]
-                        old_prev_coord[1] = self.height - prev_coord[1]
-
-                        if path[path_ind] == 'M':
-                            prev_coord[0] = float(path[p_j])
-                            prev_coord[1] = self.height - float(path[p_j+1])
-                        else:
-                            prev_coord[0] += float(path[p_j])
-                            if isFirstM:
-                                prev_coord[1] = self.height - float(path[p_j+1])
-                            else:
-                                prev_coord[1] -= self.height - float(path[p_j+1])
-
-                            # this conditional is for recognizing and storing the last coord in the first M command(s)
-                            # as the official first coord in the spline path for any 'close path (ie, z)' command 
-                        if isFirstM == True:
-                            first_coord[0] = prev_coord[0]
-                            first_coord[1] = prev_coord[1]
-                            isFirstM = False
-                        else:
-                            path_splines.append(LineSpline(old_prev_coord,prev_coord))
-
-                        p_j += param_len
-                        
-                elif path[path_ind].lower() == 'z':
-                    path_splines.append(LineSpline(prev_coord, first_coord))                    
-                    prev_coord[0] = first_coord[0]
-                    prev_coord[1] = first_coord[1]
-                    
-                elif path[path_ind].lower() == 'l':
-                    param_len = 2
-                    p_j = path_ind + 1
-                    next_coord = np.zeros(2)
-                                       
-                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
-                        if path[path_ind] == 'L':
-                            next_coord[0] = float(path[p_j])
-                            next_coord[1] = float(path[p_j+1])
-
-                        else:
-                            next_coord[0] = prev_coord[0] + float(path[p_j])
-                            next_coord[1] = prev_coord[1] - float(path[p_j+1])
-                        
-                        path_splines.append(LineSpline(prev_coord, next_coord))
-                        prev_coord[0] = next_coord[0]
-                        prev_coord[1] = next_coord[1]
-                        p_j += param_len
-
-                elif path[path_ind].lower() == 'h':
-                    param_len = 1
-                    p_j = path_ind + 1
-                    next_coord = np.zeros(2)
-                                       
-                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
-                        if path[path_ind] == 'H':
-                            next_coord[0] = float(path[p_j])
-                            next_coord[1] = prev_coord[1]
-                        else:
-                            next_coord[0] = prev_coord[0] + float(path[p_j])
-                            next_coord[1] = prev_coord[1]
-                        
-                        path_splines.append(LineSpline(prev_coord, next_coord))
-                        prev_coord[0] = next_coord[0]
-                        prev_coord[1] = next_coord[1]
-                        p_j += param_len
-                
-                elif path[path_ind].lower() == 'v':
-                    param_len = 1
-                    p_j = path_ind + 1
-                    next_coord = np.zeros(2)
-
-                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
-                        if path[path_ind] == 'V':
-                            next_coord[0] = prev_coord[0]
-                            next_coord[1] = float(path[p_j])
-                        else:
-                            next_coord[0] = prev_coord[0]
-                            next_coord[1] = prev_coord[1] - float(path[p_j])
-                        
-                        path_splines.append(LineSpline(prev_coord, next_coord))
-                        prev_coord[0] = next_coord[0]
-                        prev_coord[1] = next_coord[1]
-                        p_j += param_len
-                
-                elif path[path_ind].lower() == 'c':
-                    param_len = 6
-                    p_j = path_ind + 1
-                    ctl1_coord = np.zeros(2)
-                    ctl2_coord = np.zeros(2)
-                    end_coord = np.zeros(2)
-
-                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
-                        if path[path_ind] == 'C':
-                            ctl1_coord[0] = float(path[p_j])
-                            ctl1_coord[1] = float(path[p_j+1])
-
-                            ctl2_coord[0] = float(path[p_j+2])
-                            ctl2_coord[1] = float(path[p_j+3])
-
-                            end_coord[0] = float(path[p_j+4])
-                            end_coord[1] = float(path[p_j+5])
-
-                        else:
-                            ctl1_coord[0] = prev_coord[0] + float(path[p_j])
-                            ctl1_coord[1] = prev_coord[1] - float(path[p_j+1])
-                            
-                            ctl2_coord[0] = prev_coord[0] + float(path[p_j+2])
-                            ctl2_coord[1] = prev_coord[1] - float(path[p_j+3])
-
-                            end_coord[0] = prev_coord[0] + float(path[p_j+4])
-                            end_coord[1] = prev_coord[1] - float(path[p_j+5])
-
-                        path_splines.append(CubBezSpline(prev_coord, ctl1_coord, ctl2_coord, end_coord))
-
-                        prev_coord[0] = end_coord[0]
-                        prev_coord[1] = end_coord[1]
-                        p_j += param_len
-                
-                elif path[path_ind].lower() == 's':
-                    param_len = 4
-                    p_j = path_ind + 1
-                    ctl1_coord = np.zeros(2)
-                    ctl2_coord = np.zeros(2)
-                    end_coord = np.zeros(2)
-
-                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
-                        ctl1_coord = prev_coord - path_splines[len(path_splines)-1].c2 + prev_coord
-
-                        if path[path_ind] == 'S':
-                            ctl2_coord[0] = float(path[p_j])
-                            ctl2_coord[1] = float(path[p_j+1])
-
-                            end_coord[0] = float(path[p_j+2])
-                            end_coord[1] = float(path[p_j+3])
-
-                        else:
-                            ctl2_coord[0] = prev_coord[0] + float(path[p_j])
-                            ctl2_coord[1] = prev_coord[1] - float(path[p_j+1])
-                            
-                            end_coord[0] = prev_coord[0] + float(path[p_j+2])
-                            end_coord[1] = prev_coord[1] - float(path[p_j+3])
-                        
-                        path_splines.append(CubBezSpline(prev_coord, ctl1_coord, ctl2_coord, end_coord))
-                        prev_coord[0] = end_coord[0]
-                        prev_coord[1] = end_coord[1]
-                        p_j += param_len
-
-                elif path[path_ind].lower() == 'q':
-                    param_len = 4
-                    p_j = path_ind + 1
-                    ctl_coord = np.zeros(2)
-                    end_coord = np.zeros(2)
-
-                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
-                        if path[path_ind] == 'Q':
-                            ctl_coord[0] = float(path[p_j])
-                            ctl_coord[1] = float(path[p_j+1])
-
-                            end_coord[0] = float(path[p_j+2])
-                            end_coord[1] = float(path[p_j+3])
-                        else:
-                            ctl_coord[0] = prev_coord[0] + float(path[p_j])
-                            ctl_coord[1] = prev_coord[1] - float(path[p_j+1])
-
-                            end_coord[0] = prev_coord[0] + float(path[p_j+2])
-                            end_coord[1] = prev_coord[1] - float(path[p_j+3])
-                                        
-                        path_splines.append(QuadBezSpline(prev_coord, ctl_coord, end_coord))
-                        prev_coord[0] = end_coord[0]
-                        prev_coord[1] = end_coord[1]
-                        p_j += param_len
-                
-                elif path[path_ind].lower() == 't':
-                    param_len = 2
-                    p_j = path_ind + 1
-                    ctl_coord = np.zeros(2)
-                    end_coord = np.zeros(2)
-
-                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
-                        ctl_coord = prev_coord - path_splines[len(path_splines)-1].c + prev_coord
-
-                        if path[path_ind] == 'T':
-                            end_coord[0] = float(path[p_j])
-                            end_coord[1] = float(path[p_j+1])
-                        else:
-                            end_coord[0] = prev_coord[0] + float(path[p_j])
-                            end_coord[1] = prev_coord[1] - float(path[p_j+1])
-
-                        path_splines.append(QuadBezSpline(prev_coord, ctl_coord, end_coord))
-                        prev_coord[0] = end_coord[0]
-                        prev_coord[1] = end_coord[1]
-                        p_j += param_len
-                
-                # NOTE: This is *NOT* functional. Arcspline parsing saves to an incomplete ArcSpline class
-                elif path[path_ind].lower() == 'a': 
-                    param_len = 7
-                    p_j = path_ind + 1
-                    end_coord = np.zeros(2)
-
-                    while p_j < len(path) and len(COMMANDS.intersection(path[p_j])) == 0:
-                        rx = float(path[p_j])
-                        ry = float(path[p_j+1])
-                        x_rot = float(path[p_j+2])
-                        large_arc_flag = int(path[p_j+3])
-                        sweep_flag = int(path[p_j+4])
-
-                        if path[path_ind] == 'A':
-                            end_coord[0] = float(path[p_j+5])
-                            end_coord[1] = float(path[p_j+6])
-                        else:
-                            end_coord[0] = prev_coord[0] + float(path[p_j+5])
-                            end_coord[1] = prev_coord[1] - float(path[p_j+6])
-
-                        path_splines.append(ArcSpline(prev_coord, rx, ry, x_rot, large_arc_flag, sweep_flag, end_coord))
-
-                        prev_coord[0] = end_coord[0]
-                        prev_coord[1] = end_coord[1]
-                        p_j += param_len
-
-            splines.append(path_splines)
-
-        return splines
+        return [gen_path(p) for p in self.paths]
 
     @property
     def visible(self):
@@ -905,7 +579,6 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False, **kwargs):
 
         ## Add default layers
         from .database import db
-        #from cStringIO import StringIO
         import io
         from . import quickflat
         import binascii
@@ -1036,3 +709,54 @@ def import_roi(roifile, outfile):
     for new_layer in ['sulci', 'cutouts', 'display']:
         if new_layer not in svgo.layers:
             svgo.add_layer(new_layer)
+
+def gen_path(path):
+    mdict = dict(m=Path.MOVETO, l=Path.LINETO)
+    verts, codes = [], []
+    mode, pen = None, np.array([0.,0.])
+    
+    it = iter(path.get('d').split(' '))
+    run = True
+    while run:
+        try:
+            cmd = it.next()
+            if len(cmd) == 1:
+                mode = cmd
+                if cmd.lower() == 'z':
+                    verts.append([0,0])
+                    codes.append(Path.CLOSEPOLY)
+            elif mode.lower() == 'c':
+                p1 = [float(ss) for ss in cmd.split(',')]
+                p2 = [float(ss) for ss in it.next().split(',')]
+                p3 = [float(ss) for ss in it.next().split(',')]
+                if mode == 'c':
+                    verts.append(pen + p1)
+                    verts.append(pen + p2)
+                    verts.append(pen + p3)
+                    pen += p3
+                else:
+                    verts.append(p1)
+                    verts.append(p2)
+                    verts.append(p3)
+                    pen = np.array(p3)
+                codes.append(Path.CURVE4)
+                codes.append(Path.CURVE4)
+                codes.append(Path.CURVE4)
+            else:
+                val = [float(cc) for cc in cmd.split(',')]
+                codes.append(mdict[mode.lower()])
+                if mode.lower() == mode:
+                    pen += val
+                    verts.append(pen.tolist())
+                else:
+                    pen = np.array(val)
+                    verts.append(val)
+                    
+                if mode == 'm':
+                    mode = 'l'
+                elif mode == 'M':
+                    mode = 'L'
+
+        except StopIteration:
+            run = False
+    return Path(verts, codes=codes)

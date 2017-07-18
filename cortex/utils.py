@@ -2,6 +2,7 @@
 """
 import io
 import os
+import copy
 import binascii
 import warnings
 import numpy as np
@@ -295,7 +296,10 @@ def get_roi_verts(subject, roi=None, mask=False):
         roi_idx = np.intersect1d(svg.rois.get_mask(name), goodpts)
         if mask:
             roidict[name] = np.zeros(pts.shape[:1]) > 1
-            roidict[name][roi_idx] = True
+            if np.any(roi_idx):
+                roidict[name][roi_idx] = True
+            else:
+                warnings.warn("No vertices found in {}!".format(name))
         else:
             roidict[name] = roi_idx
 
@@ -571,8 +575,10 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         right_mask = np.logical_not(left_mask)
         roi_voxels_lr = {}
         for roi in roi_list:
-            roi_voxels_lr[roi+'_L'] = roi_voxels[roi] & left_mask
-            roi_voxels_lr[roi+'_R'] = roi_voxels[roi] & right_mask
+            roi_voxels_lr[roi+'_L'] = copy.copy(roi_voxels[roi]) # & left_mask
+            roi_voxels_lr[roi+'_L'][right_mask] = False # ? 
+            roi_voxels_lr[roi+'_R'] = copy.copy(roi_voxels[roi]) # & right_mask
+            roi_voxels_lr[roi+'_R'][left_mask] = False # ?
         output = roi_voxels_lr
     else:
         output = roi_voxels
@@ -590,7 +596,8 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
                     else:
                         _ = output.pop(roi)
             else:
-                if use_mapper:
+                # I think this is the only one for which this works correctly...
+                if gm_sampler=='cortical-conservative':
                     warnings.warn('ROI %s is only %0.2f%% contained in your scan protocol!'%(roi, pct_coverage[roi]))
 
     # Support alternative outputs for backward compatibility
