@@ -552,7 +552,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
             print("Found %0.2f%% of %s"%(pct_coverage[roi], roi))
         
     # Create cortex mask
-    all_mask = np.array(roi_voxels.values()).sum(0)
+    all_mask = np.array(list(roi_voxels.values())).sum(0)
     if 'Cortex' in roi_list:
         if use_mapper:
             # cortex_mask isn't defined / exactly definable if you're using a mapper
