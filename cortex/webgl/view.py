@@ -800,8 +800,9 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
 
     server.start()
     print("Started server on port %d"%server.port)
+    url = "http://%s:%d/mixer.html"%(serve.hostname, server.port)
     if open_browser:
-        webbrowser.open("http://%s:%d/mixer.html"%(serve.hostname, server.port))
+        webbrowser.open(url)
         client = server.get_client()
         client.server = server
         return client
