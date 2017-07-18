@@ -719,7 +719,7 @@ def gen_path(path):
     run = True
     while run:
         try:
-            cmd = it.next()
+            cmd = next(it)
             if len(cmd) == 1:
                 mode = cmd
                 if cmd.lower() == 'z':
@@ -727,8 +727,8 @@ def gen_path(path):
                     codes.append(Path.CLOSEPOLY)
             elif mode.lower() == 'c':
                 p1 = [float(ss) for ss in cmd.split(',')]
-                p2 = [float(ss) for ss in it.next().split(',')]
-                p3 = [float(ss) for ss in it.next().split(',')]
+                p2 = [float(ss) for ss in next(it).split(',')]
+                p3 = [float(ss) for ss in next(it).split(',')]
                 if mode == 'c':
                     verts.append(pen + p1)
                     verts.append(pen + p2)
