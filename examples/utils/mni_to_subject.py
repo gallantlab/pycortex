@@ -16,6 +16,10 @@ import cortex
 # First let's do this "manually", using cortex.mni
 from cortex import mni
 
+import numpy as np
+np.random.seed(1234)
+
+
 # This transform is gonna be from one specific functional space for a subject
 # which is defined by the transform (xfm)
 s1_to_mni = mni.compute_mni_transform(subject='S1', xfm='fullhead')

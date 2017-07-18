@@ -75,6 +75,7 @@ var dataset = (function(module) {
         if (json.attrs.stim !== undefined)
             this.stim = "stim/"+json.attrs.stim;
 
+        this.cmapName = json.cmap[0];
         this.cmap = [{type:'t', value:colormaps[json.cmap[0]]}];
         this.vmin = [{type:'fv1', value:json.vmin[0] instanceof Array? json.vmin[0] : [json.vmin[0], 0]}];
         this.vmax = [{type:'fv1', value:json.vmax[0] instanceof Array? json.vmax[0] : [json.vmax[0],0]}];
@@ -154,22 +155,22 @@ var dataset = (function(module) {
                 //         this.data[1].max, this.vmax[0].value[1]]},
                 // });
             } else { // not 2D, "normal"
-                // this.setvmin = function(val) {
-                //     if (val === undefined)
-                //         return this.vmin[0].value[0];
-                //     this.vmin[0].value[0] = val;
-                // }.bind(this);
-                // this.setvmax = function(val) {
-                //     if (val === undefined)
-                //         return this.vmax[0].value[0];
-                //     this.vmax[0].value[0] = val;
-                // }.bind(this);
+                this.setvmin = function(val) {
+                    if (val === undefined)
+                        return this.vmin[0].value[0];
+                    this.vmin[0].value[0] = val;
+                }.bind(this);
+                this.setvmax = function(val) {
+                    if (val === undefined)
+                        return this.vmax[0].value[0];
+                    this.vmax[0].value[0] = val;
+                }.bind(this);
 
-                // this.ui.add({
-                //     vmin: {action: [this, "setvmin", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
-                //     // vmin: {action: [this.vmin, "value[0]", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
-                //     vmax: {action: [this, "setvmax", this.data[0].min, this.data[0].max, this.vmax[0].value[0]]},
-                // });
+                this.ui.add({
+                    vmin: {action: [this, "setvmin", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
+                    // vmin: {action: [this.vmin, "value[0]", this.data[0].min, this.data[0].max, this.vmin[0].value[0]]},
+                    vmax: {action: [this, "setvmax", this.data[0].min, this.data[0].max, this.vmax[0].value[0]]},
+                });
             }
         }
     }

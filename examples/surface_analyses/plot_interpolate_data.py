@@ -15,6 +15,7 @@ the selected points. This is similar to thin plate splines.
 import cortex
 from cortex.polyutils import Surface
 import numpy as np
+np.random.seed(1234)
 from matplotlib import pyplot as plt
 
 subject = "S1"

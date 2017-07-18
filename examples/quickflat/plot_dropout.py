@@ -20,6 +20,8 @@ of this using the following formula:
 """
 
 import cortex
+import numpy as np
+np.random.seed(1234)
 
 # Create a random pycortex Volume
 volume = cortex.Volume.random(subject='S1', xfmname='fullhead')

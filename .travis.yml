@@ -1,0 +1,22 @@
+# doctr requires python >= 3.5
+language: python
+python:
+  - 3.5
+
+sudo: true
+env:
+  global:
+    - secure: "V8DI664TIMmsSqdlE+9kFTk0srpF3NFdcc5QNUmIXKHGYBx61BpZs86A4JcfKa6BxwsB8kMs88LPWw9JiT9rG86CvWxGMMn0JAzkSBOhk2XBU7kQRPdCGQ0MVL1hFUbmiCKTkWTIf/dbIBwbMCnckk6i3E1sV06+qZSQCtc6n5w="
+
+before_install:
+  - sudo apt-get install inkscape
+
+script:
+  - set -e
+  - pip install lxml numpy scipy numexpr networkx tornado cython matplotlib h5py nibabel Pillow sphinx sphinx_gallery numpydoc
+  - pip install git+https://github.com/r-b-g-b/doctr.git
+  - python setup.py build_ext --inplace
+  - cd docs
+  - make html
+  - cd ..
+  - doctr deploy --deploy-repo gallantlab/gallantlab.github.io --deploy-branch-name master --no-require-master .

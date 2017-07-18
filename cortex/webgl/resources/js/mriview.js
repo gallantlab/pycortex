@@ -11,6 +11,7 @@ var mriview = (function(module) {
 
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
+
         //Catalog the available colormaps
         $(this.object).find(".cmap img").each(function() {
             var tex = new THREE.Texture(this);
@@ -34,6 +35,13 @@ var mriview = (function(module) {
             this.resize();
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
+            this.object.appendChild(this.controls.twodbutton[0]);
+            this.controls.twodbutton.click(function(){
+                this.animate([
+                    {state:'camera.azimuth', idx:0.5, value:180},
+                    {state:'camera.altitude', idx:0.5, value:0.1},
+                ]);
+            }.bind(this));
         }.bind(this));
 
         this.sliceplanes = {
@@ -278,6 +286,143 @@ var mriview = (function(module) {
             $("#color_fieldset").fadeTo(0.15, 1);
         }
 
+        // color legend behavior
+        function cleanNumber (number) {
+            decimals = 3;
+            return parseFloat(number).toPrecision(decimals);
+        }
+        var viewer = this
+
+        let imageData = $('#' + this.active.cmapName + ' img')[0].src
+        // let imageData = colormaps[this.active.cmapName].image.currentSrc
+
+        $('#colorlegend-colorbar').attr('src', imageData);
+        $('.colorlegend-select').val(this.active.cmapName).trigger('change');
+        $('#vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0]));
+        $('#vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0]));
+        $('.colorlegend-select').on('select2:select', function (e) {
+            var cmapName = e.params.data.id;
+            viewer.active.cmapName = cmapName;
+            viewer.active.setColormap(cmapName);
+            viewer.schedule();
+            $('#colorlegend-colorbar').attr('src', colormaps[cmapName].image.currentSrc);
+        });
+
+        function submitVmin(newVal) {
+            if ($.isNumeric(newVal) && newVal < viewer.active.vmax[0]['value'][0]) {
+                viewer.active.setvmin(newVal);
+                $('#vmin').text(cleanNumber(newVal));
+                viewer.schedule();
+            }
+        }
+
+        function submitVmax(newVal) {
+            if ($.isNumeric(newVal) && newVal > viewer.active.vmin[0]['value'][0]) {
+                viewer.active.setvmax(newVal);
+                $('#vmax').text(cleanNumber(newVal));
+                viewer.schedule();
+            }
+        }
+
+        $('#vmin').off('wheel');
+        $('#vmin').on('wheel', function (e) {
+            let currentVal = parseFloat(viewer.active.vmin[0]['value'][0]);
+            let newVal;
+            let step = 0.25;
+            if (e.altKey) {
+                step *= 0.1;
+            }
+
+            if (e.shiftKey) {
+                // logarithmic step
+                let range = viewer.active.vmax[0]['value'][0] - viewer.active.vmin[0]['value'][0];
+
+                if (e.originalEvent.deltaY <= 0) {
+                    newVal = currentVal + step * range;
+                } else {
+                    newVal = currentVal - step * range;
+                }
+
+            } else {
+                // linear step
+                if (e.originalEvent.deltaY <= 0) {
+                    newVal = currentVal + step;
+                } else {
+                    newVal = currentVal - step;
+                }
+            }
+
+            submitVmin(newVal)
+        });
+
+        $('#vmax').off('wheel')
+        $('#vmax').on('wheel', function (e) {
+            let currentVal = parseFloat(viewer.active.vmax[0]['value'][0]);
+            let newVal;
+            let step = 0.25;
+            if (e.altKey) {
+                step *= 0.1;
+            }
+
+            if (e.shiftKey) {
+                // logarithmic step
+                let range = viewer.active.vmax[0]['value'][0] - viewer.active.vmin[0]['value'][0];
+
+                if (e.originalEvent.deltaY <= 0) {
+                    newVal = currentVal + step * range;
+                } else {
+                    newVal = currentVal - step * range;
+                }
+
+            } else {
+                // linear step
+                if (e.originalEvent.deltaY <= 0) {
+                    newVal = currentVal + step;
+                } else {
+                    newVal = currentVal - step;
+                }
+            }
+            submitVmax(newVal);
+        });
+
+        function clickVminFunction () {
+            $('#vmin').css('display', 'none');
+            $('#vmin-input').val(cleanNumber(viewer.active.vmin[0]['value'][0]));
+            $('#vmin-input').css('display', 'block');
+            $('#vmin-input').focus();
+        }
+
+        function leaveVminFunction () {
+            $('#vmin-input').css('display', 'none');
+            $('#vmin').css('display', 'block');
+            submitVmin($('#vmin-input').val());
+        }
+
+        function clickVmaxFunction () {
+            $('#vmax').css('display', 'none');
+            $('#vmax-input').val(cleanNumber(viewer.active.vmax[0]['value'][0]));
+            $('#vmax-input').css('display', 'block');
+            $('#vmax-input').focus();
+        }
+
+        function leaveVmaxFunction () {
+            $('#vmax-input').css('display', 'none')
+            $('#vmax').css('display', 'block')
+            submitVmax($('#vmax-input').val())
+        }
+
+        $('#vmin').on('click', clickVminFunction);
+        $('#vmin-input').off();
+        $('#vmin-input').on('blur', leaveVminFunction);
+        $('#vmin-input').on('keyup', function (e) { if (event.keyCode === 13) leaveVminFunction() });
+
+        $('#vmax').on('click', clickVmaxFunction);
+        $('#vmax-input').off()
+        $('#vmax-input').on('blur', leaveVmaxFunction);
+        $('#vmax-input').on('keyup', function (e) { if (event.keyCode === 13) leaveVmaxFunction() });
+
+
+
         var defers = [];
         for (var i = 0; i < this.active.data.length; i++) {
             defers.push(subjects[this.active.data[i].subject].loaded)
@@ -408,10 +553,10 @@ var mriview = (function(module) {
                 movie_ui.add({play_pause: {action: this.playpause.bind(this), key:' '}});
                 movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
             }
-            
-            if (this.movie)
-                this.movie.destroy();
 
+            if (this.movie) {
+                this.movie.destroy();
+            }
             if (this.active.stim && figure) {
                 figure.setSize("right", "30%");
                 this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
@@ -427,6 +572,12 @@ var mriview = (function(module) {
             this.ui.remove("movie");
         }
         this.schedule();
+        if (this.movie) {
+            // I don't know why I had to do this twice,
+            // but it makes the stimulus movie buffer better...
+            this.movie.destroy();
+            this.movie.destroy();
+        }
     };
 
     module.Viewer.prototype.setVminmax = function(vmin, vmax, dim) {
@@ -502,8 +653,14 @@ var mriview = (function(module) {
         if (frame === undefined)
             return this.frame;
         if (frame >= this.active.frames) {
-            frame -= this.active.frames;
+            frame %= this.active.frames;
             this._startplay += this.active.frames;
+            this.playpause();
+        }
+        var replay = false;
+        if (this.state == "play") {
+            this.playpause();
+            replay = true;
         }
         this.frame = frame;
         this.active.setFrame(frame);
@@ -512,6 +669,9 @@ var mriview = (function(module) {
         }
         // $(this.object).find("#movieprogress div").slider("value", frame);
         // $(this.object).find("#movieframe").attr("value", frame);
+        if (replay == true) {
+            this.playpause();
+        }
         this.schedule();
     };
 
@@ -672,6 +832,7 @@ var mriview = (function(module) {
         // add keybindings for cycling through datasets
         this.ui.add({
           next_dset: {action: this.nextData.bind(this), key: '+', hidden: true},
+          next_dset_alt: {action: this.nextData.bind(this), key: '=', hidden: true},
           prev_dset: {action: this.nextData.bind(this, -1), key: '-', hidden: true}});
 
         $(this.object).find("#datasets")

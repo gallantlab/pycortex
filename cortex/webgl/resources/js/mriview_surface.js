@@ -54,6 +54,7 @@ var mriview = (function(module) {
 
                 thickmix:   { type:'f',  value:0.5},
                 surfmix:    { type:'f',  value:0},
+                bumpyflat:  { type:'i',  value:true},
 
                 //hatch:      { type:'t',  value:0, texture: module.makeHatch() },
                 //hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
@@ -71,20 +72,26 @@ var mriview = (function(module) {
                 // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
         ]);
-        
+
         this.ui = (new jsplot.Menu()).add({
             unfold: {action:[this, "setMix", 0., 1.]},
             pivot: {action:[this, "setPivot", -180, 180]},
             shift: {action:[this, "setShift", 0, 200]},
             depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
+            bumpy_flatmap: {action:[this.uniforms.bumpyflat, "value"]},
+            changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true},
             opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
             left: {action:[this, "setLeftVis"]},
+            leftToggle: {action: this.toggleLeftVis.bind(this), key: 'L', modKeys: ['shiftKey'], hidden: true},
             right: {action:[this, "setRightVis"]},
+            rightToggle: {action: this.toggleRightVis.bind(this), key: 'R', modKeys: ['shiftKey'], hidden: true},
 	        specularity: {action:[this, "setSpecular", 0, 1]},
             layers: {action:[this, "setLayers", {1:1, 4:4, 8:8, 16:16, 32:32}]},
             dither: {action:[this, "setDither"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
         });
+        
+
         this.ui.addFolder("curvature", true).add({
             brightness: {action:[this.uniforms.curvAlpha, "value", 0, 1]},
             contrast: {action:[this.uniforms.curvLim, "value", 0, 0.5]},
@@ -158,6 +165,52 @@ var mriview = (function(module) {
                 var culled = module._cull_flatmap_vertices(hemi.attributes.index.array, hemi.attributes.auxdat.array, hemi.offsets);
                 hemi.culled = { index: new THREE.BufferAttribute(culled.indices, 3), offsets:culled.offsets };
                 hemi.fullind = { index: hemi.attributes.index, offsets:hemi.offsets };
+
+                var smoothfactor = 0.1;
+                var smoothiter = 50;
+
+
+                var wmareas = module.computeAreas(hemi.attributes.wm, hemi.attributes.index, hemi.offsets);
+                wmareas = module.iterativelySmoothVertexData(hemi.attributes.wm, hemi.attributes.index, hemi.offsets, wmareas, smoothfactor, smoothiter);
+                hemi.wmareas = wmareas;
+                var pialareas = module.computeAreas(hemi.attributes.position, hemi.attributes.index, hemi.offsets);
+                pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, smoothfactor, smoothiter);
+                hemi.pialareas = pialareas;
+
+                // var flatareas = module.computeAreas(hemi.attributes.mixSurfs1, hemi.culled.index, hemi.culled.offsets);
+                // var flatareascale = flatscale ** 2;
+                // flatareas = flatareas.map(function (a) { return a / flatareascale;});
+                // flatareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, flatareas, smoothfactor, smoothiter);
+                // hemi.flatareas = flatareas;
+
+                var dists = module.computeDist(hemi.attributes.position, hemi.attributes.wm);
+                dists = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, dists, smoothfactor, smoothiter);
+
+                var vertexvolumes = module.computeVertexPrismVolume(wmareas, pialareas, dists);
+                hemi.vertexvolumes = vertexvolumes;
+                var flatheights = module.computeFlatVolumeHeight(wmareas, vertexvolumes);
+                flatheights.array = flatheights.array.map(function (h) {return h * flatscale;});
+                // flatheights.array = flatheights.array.map(Math.sqrt);
+                
+                var flat_offset_verts;
+                if ( name == "left" ) {
+                    flat_offset_verts = module.offsetVerts(hemi.attributes.mixSurfs1, flatheights, 0, -1);
+                } else {
+                    flat_offset_verts = module.offsetVerts(hemi.attributes.mixSurfs1, flatheights, 0, 1);
+                }
+                // // hemi.addAttribute('offsetflat', flat_offset_verts);
+                // var flatoff_geom = new THREE.BufferGeometry();
+                // flatoff_geom.addAttribute('position', flat_offset_verts);
+                // flatoff_geom.addAttribute('index', hemi.attributes.index);
+                // flatoff_geom.computeVertexNormals();
+
+                // console.log(flatoff_geom);
+                // this.flatoff = flatoff_geom;
+
+                // hemi.addAttribute('flatBumpNorms', flatoff_geom.attributes.normal);
+                hemi.addAttribute('flatheight', flatheights);
+                hemi.addAttribute('flatBumpNorms', module.computeNormal(flat_offset_verts, hemi.attributes.index, hemi.offsets) );
+
 
                 //Queue blank data attributes for vertexdata
                 hemi.addAttribute("data0", new THREE.BufferAttribute(new Float32Array(), 1));
@@ -237,7 +290,8 @@ var mriview = (function(module) {
         }.bind(this));
         this.dispatchEvent({type:"resize", width:evt.width, height:evt.height});
     };
-    module.Surface.prototype.init = function(dataview) { 
+    module.Surface.prototype.init = function(dataview) {
+
         this._active = dataview;
 
         this.loaded.done(function() {
@@ -395,10 +449,38 @@ var mriview = (function(module) {
         }
         _last_clipped = clipped;
 
-        this.uniforms.specularStrength.value = this._specular * (1-clipped);
+        // this.uniforms.specularStrength.value = this._specular * (1-clipped);
+        this.uniforms.specularStrength.value = this._specular;
         this.setPivot( 180 * clipped);
+
+        this.pivots.left.back.rotation.x = clipped * -Math.PI/2;
+        this.pivots.right.back.rotation.x = clipped * -Math.PI/2;
+        
         this.dispatchEvent({type:'mix', flat:clipped, mix:mix, thickmix:this.uniforms.thickmix.value});
     };
+    module.Surface.prototype.setThickMix = function(val) {
+        this.uniforms.thickmix.value = val;
+
+        let mix = this.uniforms.surfmix.value;
+        var smix = mix * (this.names.length - 1);
+        var factor = 1 - Math.abs(smix - (this.names.length-1));
+        let clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
+        this.dispatchEvent({type:'mix', flat:clipped, mix:mix, thickmix:this.uniforms.thickmix.value});
+        viewer.schedule()
+    };
+    module.Surface.prototype.changeDepth = function(direction) {
+        let inc;
+        if (direction > 0) {
+            inc = .05
+        } else {
+            inc = -.05
+        }
+
+        let newVal = this.uniforms.thickmix.value + inc;
+        if (-.01 <= newVal && newVal <= 1.01) {
+            this.setThickMix(newVal);
+        }
+    }
     module.Surface.prototype.setPivot = function(val) {
         if (val === undefined)
             return this._pivot;
@@ -429,7 +511,7 @@ var mriview = (function(module) {
             return this._specular;
 
         this._specular = val;
-	this.uniforms.specularStrength.value = this._specular * (1-_last_clipped);
+	this.uniforms.specularStrength.value = this._specular;// * (1-_last_clipped);
     
     };
     module.Surface.prototype.setLeftVis = function(val) {
@@ -439,13 +521,21 @@ var mriview = (function(module) {
         //this.surfs[0].surf.pivots.left.front.visible = val;
         this.pivots.left.front.visible = val;
     };
+    module.Surface.prototype.toggleLeftVis = function() {
+        this.setLeftVis(!this._leftvis);
+        viewer.schedule();
+    };
     module.Surface.prototype.setRightVis = function(val) {
         if (val === undefined)
             return this._rightvis
         this._rightvis = val;
         //this.surfs[0].surf.pivots.right.front.visible = val;
         this.pivots.right.front.visible = val;
-    };    
+    };
+    module.Surface.prototype.toggleRightVis = function() {
+        this.setRightVis(!this._rightvis);
+        viewer.schedule();
+    };
     module.Surface.prototype.setLayers = function(val) {
         if (val === undefined)
             return this._layers;
@@ -481,9 +571,11 @@ var mriview = (function(module) {
             if (right) {
                 flat[i*4+1] = flatscale*uv[i*2] + this.flatoff[1];
                 norms[i*3] = 1;
+                // flat[i*4+0] = -flatscale*uv[i*2+1];
             } else {
                 flat[i*4+1] = flatscale*-uv[i*2] + this.flatoff[1];
                 norms[i*3] = -1;
+                // flat[i*4+0] = flatscale*uv[i*2+1];
             }
             flat[i*4+2] = flatscale*uv[i*2+1];
             uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
