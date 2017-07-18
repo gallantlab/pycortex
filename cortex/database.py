@@ -458,6 +458,9 @@ class Database(object):
         nib.to_filename(fname)
 
     def get_mask(self, subject, xfmname, type='thick'):
+        if hasattr(type, 'decode'):
+            type = type.decode('utf8')        
+
         try:
             self.auxfile.get_mask(subject, xfmname, type)
         except (AttributeError, IOError):

@@ -13,6 +13,7 @@ normal arithmetic operators like +, -, *, /, and **
 
 import cortex
 import numpy as np
+np.random.seed(1234)
 import matplotlib.pyplot as plt
 
 subject = 'S1'

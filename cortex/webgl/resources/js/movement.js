@@ -2,8 +2,18 @@ var jsplot = (function (module) {
 	var STATE = { NONE : -1, ROTATE : 0, PAN : 1, ZOOM : 2 };
 	module.LandscapeControls = function() {
 		this.target = new THREE.Vector3();
+		this._foldedtarget = new THREE.Vector3();
+		this._flattarget = new THREE.Vector3();
+		this._flattarget.y = -60;
+		
 		this.azimuth = 45;
+		this._foldedazimuth = 45;
+		this._flatazimuth = 180;
+		
 		this.altitude = 75;
+		this._foldedaltitude = 75;
+		this._flataltitude = 0.1;
+		
 		this.radius = 400;
 
 		this.mix = 0;
@@ -20,6 +30,11 @@ var jsplot = (function (module) {
 
 		this._momentum = {change:[0,0]};
 		this._state = STATE.NONE;
+
+		this.twodbutton = $(document.createElement('button'));
+		this.twodbutton.attr('id', 'twodbutton');
+		this.twodbutton.html('2d');
+		// this.twodbutton.click(this.set2d.bind(this));
 	}
 	THREE.EventDispatcher.prototype.apply(module.LandscapeControls.prototype);
 
@@ -34,10 +49,17 @@ var jsplot = (function (module) {
 		);
 	}
 
+	module.LandscapeControls.prototype.set2d = function() {
+		this.setAzimuth(180);
+		this.setAltitude(0.1);
+	}
+
 	module.LandscapeControls.prototype.update = function(camera) {
 		var func;
 		if (this._state != STATE.NONE) {
 			if (this._state == STATE.ROTATE)
+				func = this.rotate
+			else if (this._state == STATE.PAN && this.mix == 1)
 				func = this.rotate
 			else if (this._state == STATE.PAN)
 				func = this.pan
@@ -64,8 +86,14 @@ var jsplot = (function (module) {
 	}
 
 	module.LandscapeControls.prototype.rotate = function(x, y) {
-		var mix = Math.pow(this.mix, 2);
-		this.pan(x * mix, y * mix);
+		// in FLAT mode (mix = 1), PAN and ROTATE are reversed
+		var mix;
+		if (this._state != STATE.PAN) {
+			mix = Math.pow(this.mix, 2);
+			this.pan(x * mix, y * mix);
+		} else {
+			mix = 0;
+		}
 		
 		var rx = x  * (1 - mix), ry = y * (1 - mix);
 		this.setAzimuth(this.azimuth - this.rotateSpeed * rx);		
@@ -83,7 +111,8 @@ var jsplot = (function (module) {
 		var up = right.clone().cross(eye);
 		var pan = right.setLength( this.panSpeed * x ).add(
 			up.setLength( this.panSpeed * y ));
-		this.target.add( pan );
+		this.setTarget((new THREE.Vector3).copy(this.target).add(pan).toArray());
+		// this.target.add( pan );
 	}
 
 	module.LandscapeControls.prototype.zoom = function(x, y) {
@@ -92,15 +121,28 @@ var jsplot = (function (module) {
 
 	module.LandscapeControls.prototype.setMix = function(mix) {
 		this.mix = mix;
-		this.setAzimuth(this.azimuth);
-		this.setAltitude(this.altitude);
+		if (mix > 0 && mix < 1 || true) { // hacky, I'm leaving this for now..
+			this.azimuth = (1 - this.mix) * this._foldedazimuth + this.mix * this._flatazimuth;
+			this.altitude = (1 - this.mix) * this._foldedaltitude + this.mix * this._flataltitude;
+			this.target.set(this._foldedtarget.x * (1-mix) + mix*this._flattarget.x,
+			                this._foldedtarget.y * (1-mix) + mix*this._flattarget.y,
+			                this._foldedtarget.z * (1-mix) + mix*this._flattarget.z);
+		} else {
+			this.setAzimuth(this.azimuth);
+			this.setAltitude(this.altitude);
+			this.setTarget(this.target.toArray());
+		}
+
+		if ( mix < 1 ) {
+			this.twodbutton.hide();
+		}
 	}
 
 	module.LandscapeControls.prototype.setAzimuth = function(az) {
 		if (az === undefined)
 			return this.azimuth;
 
-		if (this.mix > 0) {
+		if (this.mix > 0 && false) { // THIS IS DISABLED, NO AZIMUTH LIMITS
 			var azlim = this.mix * 180;
 			if (azlim > az || az > (360 - azlim)) {
 				var d1 = azlim - az;
@@ -108,28 +150,89 @@ var jsplot = (function (module) {
 				az = Math.abs(d1) > Math.abs(d2) ? 360-azlim : azlim;
 			}
 		}
+		this._foldedazimuth = this.mix * this._foldedazimuth + (1 - this.mix) * az;
+		// this._flatazimuth = (1 - this.mix) * this._flatazimuth + this.mix * az;
+		if ( this.mix == 1.0 ) {
+			if ( az != 180 )
+				this.enable2Dbutton();
+			else
+				this.disable2Dbutton();
+
+			this._flatazimuth = az;
+		}
+		// if (this.mix == 0) {
+		// 	this._foldedazimuth = az;
+		// } else if (this.mix == 1) {
+		// 	this._flatazimuth = az;
+		// }
+
+		az = (1 - this.mix) * this._foldedazimuth + this.mix * this._flatazimuth;
+
 		this.azimuth = az < 0 ? az + 360 : az % 360;
 	}
 	module.LandscapeControls.prototype.setAltitude = function(alt) {
 		if (alt === undefined)
 			return this.altitude;
 
-		var altlim = this.mix * 90;
-		alt = alt > 179.9999-altlim ? 179.9999-altlim : alt;
-		this.altitude = alt < 0.0001+altlim ? 0.0001+altlim : alt;
+		// var altlim = this.mix * 90;
+		// var altlim = 0; // THIS IS DISABLED, NO ALTITUDE LIMITS
+		// alt = alt > 179.9999-altlim ? 179.9999-altlim : alt;
+		// this.altitude = alt < 0.0001+altlim ? 0.0001+altlim : alt;
+		// this._basealtitude = Math.min(Math.max(alt, 0.1), 179.9);
+		// this.altitude = Math.max(this._basealtitude - 90 * this.mix, 0.1);
+
+		this._foldedaltitude = this.mix * this._foldedaltitude + (1 - this.mix) * alt;
+		// this._flataltitude = (1 - this.mix) * this._flataltitude + this.mix * alt;
+		if ( this.mix == 1.0 ) {
+			if ( alt != 0.1 )
+				this.enable2Dbutton();
+			else
+				this.disable2Dbutton();
+			
+			this._flataltitude = alt;
+			
+		}
+
+		this._flataltitude = Math.min(Math.max(this._flataltitude, 0.1), 75);
+
+		// if (this.mix == 0) {
+		// 	this._foldedaltitude = alt;
+		// } else if (this.mix == 1) {
+		// 	this._flataltitude = alt;
+		// }
+		alt = (1 - this.mix) * this._foldedaltitude + this.mix * this._flataltitude;
+		// alt = (1 - this.mix) * this._foldedaltitude + this.mix * this._flataltitude;
+		this.altitude = Math.min(Math.max(alt, 0.1), 179.9);
 	}
 	module.LandscapeControls.prototype.setRadius = function(rad) {
 		if (rad === undefined)
 			return this.radius;
 
-		this.radius = Math.max(Math.min(rad, 600), 85);
+		this.radius = Math.max(Math.min(rad, 600), 10);
 	}
 
 	module.LandscapeControls.prototype.setTarget = function(xyz) {
 		if (!(xyz instanceof Array))
 			return [this.target.x, this.target.y, this.target.z];
 
-		this.target.set(xyz[0], xyz[1], xyz[2]);
+		var mix = this.mix;
+		if (mix < 1) {
+			this._foldedtarget.set(xyz[0], xyz[1], xyz[2]);
+		} else if (mix == 1) {
+			this._flattarget.set(xyz[0], xyz[1], 0);
+		}
+		this.target.set(this._foldedtarget.x * (1-mix) + mix*this._flattarget.x,
+		                this._foldedtarget.y * (1-mix) + mix*this._flattarget.y,
+		                this._foldedtarget.z * (1-mix) + mix*this._flattarget.z);
+	}
+
+	module.LandscapeControls.prototype.enable2Dbutton = function() {
+		// this.twodbutton.prop('disabled', false);
+		this.twodbutton.show();
+	}
+	module.LandscapeControls.prototype.disable2Dbutton = function() {
+		// this.twodbutton.prop('disabled', true);
+		this.twodbutton.hide();
 	}
 
 	module.LandscapeControls.prototype.bind = function(object) {
@@ -150,9 +253,9 @@ var jsplot = (function (module) {
 
 		// listeners
 		function keydown( event ) {
-			if (event.keyCode == 17) {
+			if (event.keyCode == 17) { // ctrl
 				keystate = STATE.ZOOM;
-			} else if (event.keyCode == 16) {
+			} else if (event.keyCode == 16) { // shift
 				keystate = STATE.PAN;
 			} else {
 				keystate = null;
@@ -221,8 +324,10 @@ var jsplot = (function (module) {
 
 
 		function mousewheel( event ) {
-		    this.setRadius(this.radius + this.zoomSpeed * -1 * event.wheelDelta * 50.0);
-		    this.dispatchEvent( changeEvent );
+			if (!event.altKey) {
+			    this.setRadius(this.radius + this.zoomSpeed * -1 * event.wheelDelta * 50.0);
+			    this.dispatchEvent( changeEvent );
+			}
 		};
 
 		//code from http://vetruvet.blogspot.com/2010/12/converting-single-touch-events-to-mouse.html

@@ -11,12 +11,12 @@ In order for this to work, the specified ROI must exist in the
 overlays.svg file in the pycortex filestore for this subject.
 """
 
-import cortex
-import matplotlib.pyplot as plt
+# import cortex
+# import matplotlib.pyplot as plt
 
-subject = "S1"
-xfm = "fullhead"
-roi = "EBA"
+# subject = "S1"
+# xfm = "fullhead"
+# roi = "EBA"
 
 # Get the map of which voxels are inside of our ROI
 roi_masks = cortex.utils.get_roi_masks(subject, xfm, 

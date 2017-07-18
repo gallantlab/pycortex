@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 from .. import dataset
-from mapper import Mapper, _savecache
+from .mapper import Mapper, _savecache
 
 def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     from ..database import db
