@@ -5,7 +5,7 @@ from .. import dataset
 from ..database import db
 from ..options import config
 from ..svgoverlay import get_overlay
-from .utils import _get_height, _get_extents, _convert_svg_kwargs, _has_cmap, _get_images
+from .utils import _get_height, _get_extents, _convert_svg_kwargs, _has_cmap, _get_images, _parse_defaults
 from .utils import make_flatmap_image, _make_hatch_image
 
 ### --- Individual compositing functions --- ###
@@ -167,7 +167,9 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
         height = _get_height(fig)        
     svgobject = db.get_overlay(dataview.subject)
     svg_kws = _convert_svg_kwargs(kwargs)
-    im = svgobject.get_texture('rois', height, labels=with_labels, shape_list=roi_list, **svg_kws)
+    layer_kws = _parse_defaults('rois_paths')
+    layer_kws.update(svg_kws)
+    im = svgobject.get_texture('rois', height, labels=with_labels, shape_list=roi_list, **layer_kws)
     ax = fig.gca()
     img = ax.imshow(im,
         aspect='equal', 
@@ -207,7 +209,10 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
     """
     svgobject = db.get_overlay(dataview.subject)
     svg_kws = _convert_svg_kwargs(kwargs)
-    sulc = svgobject.get_texture('sulci', height, labels=with_labels, **svg_kws)
+    layer_kws = _parse_defaults('sulci_paths')
+    layer_kws.update(svg_kws)
+    print(layer_kws)
+    sulc = svgobject.get_texture('sulci', height, labels=with_labels, **layer_kws)
     if extents is None:
         extents = _get_extents(fig)
     ax = fig.gca()
@@ -340,10 +345,16 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     pts_, polys_ = db.get_surf(dataview.subject, "flat", merge=True, nudge=True)
     extra_svg = get_overlay(dataview.subject, svgfile, pts_, polys_)
     svg_kws = _convert_svg_kwargs(kwargs)
+    try:
+        # Check for layer if it exists
+        layer_kws = _parse_defaults(layer+'_paths')
+        layer_kws.update(svg_kws)
+    except:
+        layer_kws = svg_kws
     im = extra_svg.get_texture(layer, height, 
                                labels=with_labels, 
                                shape_list=shape_list, 
-                               **svg_kws)
+                               **layer_kws)
     ax = fig.gca()
     img = ax.imshow(im, 
                     aspect="equal", 

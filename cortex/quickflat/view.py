@@ -136,7 +136,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     # Add custom
     if extra_disp is not None:
         svgfile, layer = extra_disp
-        custom_im = composite.add_custom(fig, dataview.subject, svgfile, layer, height=height, extents=extents, 
+        custom_im = composite.add_custom(fig, dataview, svgfile, layer, height=height, extents=extents, 
             linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, 
             with_labels=with_labels)
         layers['custom'] = custom_im

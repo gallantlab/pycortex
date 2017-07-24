@@ -480,7 +480,8 @@ try:
             return list(poly.buffer(-100).centroid.coords)[0] * max + min
         except:
             # This may not be worth being so verbose about... I think this is only for label positions.
-            print("Shapely error - computing mean of points instead of geometric center")
+            import warnings
+            warnings.warn("Shapely error - computing mean of points instead of geometric center")
             return np.nanmean(pts, 0)
 
 except (ImportError, OSError):
