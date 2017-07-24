@@ -324,8 +324,10 @@ var jsplot = (function (module) {
 
 
 		function mousewheel( event ) {
-		    this.setRadius(this.radius + this.zoomSpeed * -1 * event.wheelDelta * 50.0);
-		    this.dispatchEvent( changeEvent );
+			if (!event.altKey) {
+			    this.setRadius(this.radius + this.zoomSpeed * -1 * event.wheelDelta * 50.0);
+			    this.dispatchEvent( changeEvent );
+			}
 		};
 
 		//code from http://vetruvet.blogspot.com/2010/12/converting-single-touch-events-to-mouse.html

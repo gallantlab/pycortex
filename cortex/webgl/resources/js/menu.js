@@ -156,12 +156,20 @@ var jsplot = (function (module) {
             var key = desc.key;
             var action = desc.action;
             window.addEventListener("keypress", function(event) {
-                if (event.target.nodeName === 'INPUT' && (event.target.id !== "" || event.target.classList.index("select2-search__field") ==! -1)) {
+                if (event.target.nodeName === 'INPUT' && (event.target.id !== "" || (event.target.hasOwnProperty('classList') && event.target.classList.index("select2-search__field") ==! -1))) {
                     // note: normally you would want to block on all INPUT target tags. however, if you tab-key away from an input element, INPUT remains the target even if the element has been manually deblurred, but the id *will* be cleared. since it would be nice to be able to use shortcuts after tab-aways, this statement only blocks events from inputs with ids
                     return;
                 }
                 if (event.defaultPrevented)
                     return;
+
+                if (desc.hasOwnProperty('modKeys')) {
+                    for (let modKey of desc.modKeys) {
+                        if (!event[modKey]) {
+                            return
+                        }
+                    }
+                }
 
                 if (String.fromCharCode(event.keyCode) == key) {
                     action();
@@ -170,6 +178,26 @@ var jsplot = (function (module) {
                 }
             }.bind(this), true);
         }
+
+        // setup mousewheel shortcuts
+        if (desc.wheel) {
+            window.addEventListener("wheel", function(event) {
+                if (desc.hasOwnProperty('modKeys')) {
+                    for (let modKey of desc.modKeys) {
+                        if (!event[modKey]) {
+                            return
+                        }
+                    }
+                }
+
+                desc.action(event.deltaY);
+
+                for (var i in gui.__controllers) {
+                    gui.__controllers[i].updateDisplay();
+                }
+            }.bind(this), true);
+        }
+
         return ctrl;
     }
     module.Menu.prototype._remove = function(name) {

@@ -24,6 +24,9 @@ This can be helpful if you think there is no reason that the
 """
 import cortex
 import matplotlib.pyplot as plt
+import numpy as np
+np.random.seed(1234)
+
 
 # Create a random pycortex Volume
 volume = cortex.Volume.random(subject='S1', xfmname='retinotopy')

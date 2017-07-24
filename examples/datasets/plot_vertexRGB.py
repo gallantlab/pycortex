@@ -19,6 +19,7 @@ use any cortex.Vertex objects in their place though.
 import cortex
 import cortex.polyutils
 import numpy as np
+np.random.seed(1234)
 import matplotlib.pyplot as plt
 
 subject = 'S1'

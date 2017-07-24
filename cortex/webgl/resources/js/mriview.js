@@ -554,9 +554,9 @@ var mriview = (function(module) {
                 movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
             }
 
-            if (this.movie)
+            if (this.movie) {
                 this.movie.destroy();
-
+            }
             if (this.active.stim && figure) {
                 figure.setSize("right", "30%");
                 this.movie = figure.add(jsplot.MovieAxes, "right", false, this.active.stim);
@@ -572,6 +572,12 @@ var mriview = (function(module) {
             this.ui.remove("movie");
         }
         this.schedule();
+        if (this.movie) {
+            // I don't know why I had to do this twice,
+            // but it makes the stimulus movie buffer better...
+            this.movie.destroy();
+            this.movie.destroy();
+        }
     };
 
     module.Viewer.prototype.setVminmax = function(vmin, vmax, dim) {
@@ -647,8 +653,14 @@ var mriview = (function(module) {
         if (frame === undefined)
             return this.frame;
         if (frame >= this.active.frames) {
-            frame -= this.active.frames;
+            frame %= this.active.frames;
             this._startplay += this.active.frames;
+            this.playpause();
+        }
+        var replay = false;
+        if (this.state == "play") {
+            this.playpause();
+            replay = true;
         }
         this.frame = frame;
         this.active.setFrame(frame);
@@ -657,6 +669,9 @@ var mriview = (function(module) {
         }
         // $(this.object).find("#movieprogress div").slider("value", frame);
         // $(this.object).find("#movieframe").attr("value", frame);
+        if (replay == true) {
+            this.playpause();
+        }
         this.schedule();
     };
 

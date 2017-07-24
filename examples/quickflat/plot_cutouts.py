@@ -14,6 +14,8 @@ name of the flatmap cutout defined in the `overlays.svg` file.
 
 """
 import cortex
+import numpy as np
+np.random.seed(1234)
 
 # Name of a sub-layer of the 'cutouts' layer in overlays.svg file
 cutout_name = "VisualCortexRight"

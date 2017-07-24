@@ -12,6 +12,7 @@ show just the region around that ROI.
 
 import cortex
 import numpy as np
+np.random.seed(1234)
 from matplotlib import pyplot as plt
 
 def zoom_to_roi(subject, roi, hem, margin=10.0):
