@@ -130,6 +130,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         layers['rois'] = roi_im
     # Add sulci
     if with_sulci:
+        print(linecolor)
+        print(linewidth)
         sulc_im = composite.add_sulci(fig, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
              shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels)
         layers['sulci'] = sulc_im
