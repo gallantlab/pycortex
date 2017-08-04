@@ -16,7 +16,7 @@ import numpy as np
 # Create an empty volume (nans = transparent values on surface)
 # (This makes it easier to see overlay manipulations, this will
 # work just fine with real data)
-volume = cortex.Volume.empty(subject='S1', xfmname='fullhead', value=np.nan)
+volume = cortex.Volume.random(subject='S1', xfmname='fullhead') #, value=np.nan)
 
 # Create basic figure, with rois, labels, sulci all off
 fig = cortex.quickflat.make_figure(volume, 

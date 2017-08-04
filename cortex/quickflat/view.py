@@ -164,7 +164,9 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     if with_colorbar:
         colorbar = composite.add_colorbar(fig, data_im)
-        
+        # Reset axis to main figure axis
+        plt.axes(ax)
+
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
