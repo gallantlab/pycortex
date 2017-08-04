@@ -162,6 +162,9 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if cutout is not None:
         extents = composite.add_cutout(fig, cutout, dataview, layers)
 
+    if with_colorbar:
+        colorbar = composite.add_colorbar(fig, data_im)
+        
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
