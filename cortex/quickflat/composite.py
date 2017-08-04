@@ -4,8 +4,9 @@ from .. import dataset
 from ..database import db
 from ..options import config
 from ..svgoverlay import get_overlay
+from ..utils import get_shared_voxels, get_mapper
 from .utils import _get_height, _get_extents, _convert_svg_kwargs, _has_cmap, _get_images, _parse_defaults
-from .utils import make_flatmap_image, _make_hatch_image
+from .utils import make_flatmap_image, _make_hatch_image, _return_pixel_pairs, get_flatmask, get_flatcache
 
 ### --- Individual compositing functions --- ###
 
@@ -202,7 +203,7 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
         zorder=4)
     return img
 
-def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwargs):
+def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, **kwargs):
     """Add sulci layer to figure
 
     Parameters
@@ -385,6 +386,65 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
                     label='custom',
                     zorder=6)
     return img
+
+def add_connected_vertices(fig, dataview, height=None, extents=None, recache=False, 
+                           min_dist=5, max_dist=85, color=(1.0,0.5,0.1,0.6), linewidth=2, 
+                           **kwargs):
+    """Plot lines btw distant vertices that are within the same voxel
+
+    Notes
+    -----
+    Replace min_dist, max_dist with more principled values!
+    extents is currently unused, but probably should be to scale pix_array
+    """
+    from matplotlib.collections import LineCollection
+    if extents is None:
+        extents = _get_extents(fig)
+    if height is None:
+        height = _get_height(fig)            
+    subject = dataview.subject
+    xfmname = dataview.xfmname
+    if xfmname is None:
+        # Raise error? Just pass?
+        raise ValueError("Dataview for add_connected_vertices must be a Volume! You seem to have provided vertex data.")
+    # Should cache this value in the db
+    within_voxel_vertex_dists = get_shared_voxels(subject, xfmname, **kwargs)
+    mapper = get_mapper(subject, xfmname, 'nearest', recache=recache)
+    mask, extents = get_flatmask(subject)
+    pixmap = get_flatcache(subject, None)
+    img = np.nan * np.ones(mask.shape) #Finding a mapping from verts to pixels in flatmap (This is a hack)
+    img[mask] = pixmap * (np.arange(mapper.nverts))
+    img_arr = img.flatten()
+    # I'm pretty sure this should be done with the pixmap / mask variables, but I'm not sure how rn so oh well
+    # Two dictionaries, containing x and y values for each vert in the final flatmap. Again, this is a severe hack.
+    # Currently, this is also the most time consuming part of the process.
+    x_dict = {}
+    y_dict = {}
+    divisor = img.shape[1]
+    for i, elem in enumerate(img_arr):
+        if not np.isnan(elem):
+            x_dict[int(elem)] = i//divisor
+            y_dict[int(elem)] = i%divisor
+    # Threshold!
+    # the 5 index here relates to one of several possible distance metrics
+    # returned by 
+    valid_filter = (within_voxel_vertex_dists[:, 5] > min_dist) * (within_voxel_vertex_dists[:, 5] < max_dist)
+    valid_vox = within_voxel_vertex_dists[valid_filter]
+    # Substitute:
+    # flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
+    # valid = np.unique(polys)    
+    pix_array, valid_vert_pairs = _return_pixel_pairs(valid_vox[:,1:3], x_dict, y_dict)
+    # Scaling this coordinates for plot
+    pix_array_scaled = (pix_array / (np.array(mask.shape).astype(np.float32)))
+    # Mebbe scale colors by distance? Or some such fancy? Not necessary...
+    lc = LineCollection(pix_array_scaled, 
+                        transform=fig.transFigure, 
+                        figure=fig,
+                        colors=color, 
+                        linewidths=linewidth)
+    ax = fig.gca()
+    lc_object = ax.add_collection(lc)
+    return lc_object
 
 def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
     """Apply a cutout mask to extant layers in flatmap figure

@@ -158,6 +158,20 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
 
     return pixmap
 
+def _return_pixel_pairs(vert_pair_list, x_dict, y_dict):
+    """Janky and probably unnecessary"""
+    pix_list = []
+    vert_pairs_valid = []
+    for (vert1, vert2) in vert_pair_list:
+        if vert1 in x_dict and vert2 in x_dict:
+            pix1 = np.array((x_dict[vert1], y_dict[vert1]))
+            pix2 = np.array((x_dict[vert2], y_dict[vert2]))
+            pix_list.append(np.array([pix1, pix2]))
+            vert_pairs_valid.append((vert1, vert2))
+        else:
+            #These are vertex pairs not represented in the flatmap. I have found them to belong to the middle brain are that is deleted while creating the flat map.
+            pass 
+    return np.array(pix_list), np.array(vert_pairs_valid)
 
 ### --- Hidden helper functions --- ###
 

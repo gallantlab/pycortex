@@ -14,6 +14,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
                 with_labels=True, with_colorbar=True, with_borders=False, 
                 with_dropout=False, with_curvature=False, extra_disp=None, 
+                with_connected_vertices=False,
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
                 curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
@@ -43,8 +44,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     depth : float
         Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
         boundary, 1 = pial surface)
-    with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature : bool, optional
-        Display the rois, labels, colorbar, annotated flatmap borders, or cross-hatch dropout?
+    with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature, etc : bool, optional
+        Display the rois, labels, colorbar, annotated flatmap borders, etc
     cutout : str
         Name of flatmap cutout with which to clip the full flatmap. Should be the name
         of a sub-layer of the 'cutouts' layer in <filestore>/<subject>/overlays.svg
@@ -68,10 +69,6 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         (R, G, B, A) specification for the label color
     curvature_brightness : float, optional
         Minimum value for curvature colormap. Defaults to config file value.
-    cvmax : float, optional
-        Maximum value for background curvature colormap. Defaults to config file value.
-    cvthr : bool, optional
-        Apply threshold to background curvature
     extra_disp : tuple, optional
         Optional extra display layer from external .svg file. Tuple specifies (filename, layer)
         filename should be a full path. External svg file should be structured exactly as 
@@ -149,7 +146,11 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, 
             with_labels=with_labels)
         layers['custom'] = custom_im
-        
+    # Add connector lines btw connected vertices
+    if with_connected_vertices:
+        # This may be better not as a default option...
+        lc = composite.add_connected_vertices(fig, dataview)
+
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
     ax.set_ylim(extents[2], extents[3])
