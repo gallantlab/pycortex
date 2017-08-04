@@ -18,9 +18,9 @@ and you will also need a flatmap for them.
 import six
 import cortex
 import matplotlib.pyplot as plt
-if six.PY2
+if six.PY2:
     from urllib import urlretrieve
-elif six.PY3
+elif six.PY3:
     from urllib.request import urlretrieve
 
 
