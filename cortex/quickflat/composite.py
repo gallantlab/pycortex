@@ -1,6 +1,5 @@
 import copy
 import numpy as np
-
 from .. import dataset
 from ..database import db
 from ..options import config
@@ -10,8 +9,8 @@ from .utils import make_flatmap_image, _make_hatch_image
 
 ### --- Individual compositing functions --- ###
 
-def add_curvature(fig, dataview, extents=None, height=None, threshold=None, contrast=None,
-                  brightness=None, cmap='gray', recache=False):
+def add_curvature(fig, dataview, extents=None, height=None, threshold=True, contrast=None,
+                  brightness=None, smooth=None, cmap='gray', recache=False, curvature_lims=0.5):
     """Add curvature layer to figure
 
     Parameters
@@ -25,17 +24,26 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=None, cont
         extents of images already present in figure.
     height : scalar 
         Height of image. None defaults to height of images already present in figure. 
-    threshold : boolean or None
+    threshold : boolean 
         Whether to apply a threshold to the curvature values to create a binary curvature image
         (one shade for positive curvature, one shade for negative). `None` defaults to value 
         specified in the config file
     contrast : float, [0-1] or None 
-        WIP: None defaults to config value
-    brightness : float
-        How bright to make average value of curvature. This is not raw brightness (for now); this 
-        scales the minimum and maximum of the color scale for curvature, so the units are in curvature.
-        Positive values will make the zero curvature value lighter and negative values will make the 
-        zero curvatuer value darker. 
+        Contrast of curvature image. 1 is maximal contrast (given brightness). If brightness is 0.5
+        and contrast is 1, and cmap is 'gray', curvature will be black and white. None defaults
+        to value in config file.
+    brightness : float, [0-1] or None
+        How bright to make average value of curvature (0=black, 1=white in gray cmap). None
+        defaults to the value in config file.
+    curvature_lims : float
+        Limits for real curvature values (actual values for cortical curvature are normalized
+        within [-`curvature_lims`, +`curvature_lims`] before scaling by `contrast` and shifting
+        by `brightness`). 
+    smooth : scalar or None
+        Width of smoothing to apply to surface curvature. None defaults to no smoothing, or
+        whatever the default value for curvature is that is stored in 
+        <filestore>/<subject>/surface-info/curvature.npz (for some subjects initiated in old
+        versions of pycortex, this may be smoothed too!)
     cmap : string
         name for colormap of curvature
     recache : boolean
@@ -48,37 +56,52 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=None, cont
         matplotlib axes image object for plotted data
 
     """
+    from matplotlib.colors import Normalize
     if height is None:
         height = _get_height(fig)
     # Get curvature map as image
-    curv_vertices = db.get_surfinfo(dataview.subject)
+    default_smoothing = config.get('curvature','smooth')
+    if default_smoothing.lower()=='none':
+        default_smoothing = None
+    else:
+        default_smoothing = np.float(default_smoothing)
+    if smooth is None:
+        # (Might still be None!)
+        smooth = default_smoothing
+    if smooth is None:
+        # If no value for 'smooth' is given in kwargs, db.get_surfinfo returns
+        # the default curvature value, whatever that may be. This is the behavior
+        # that we want a None in the code to invoke. This is silly and complicated
+        # due to backward compatibility issues with some old subjects.
+        curv_vertices = db.get_surfinfo(dataview.subject)
+    else:
+        curv_vertices = db.get_surfinfo(dataview.subject, smooth=smooth)
     curv, _ = make_flatmap_image(curv_vertices, recache=recache, height=height)
+    # First, limit to sensible range for flatmap curvature
+    norm = Normalize(vmin=-0.5, vmax=0.5)
+    curv_im = norm(curv)
     # Option to use thresholded curvature
     default_threshold = config.get('curvature','threshold').lower() in ('true','t','1','y','yes')
     use_threshold_curvature = default_threshold if threshold is None else threshold
     if use_threshold_curvature:
-        curvT = (curv>0).astype(np.float32)
-        curvT[np.isnan(curv)] = np.nan
-        curv = curvT
-    # Still WIP: Compute min / max for display of curvature based on `contrast` and `brightness` inputs
-    if contrast is None:
-        contrast = float(config.get('curvature', 'contrast'))
+        curv_im = (np.nan_to_num(curv_im) > 0.5).astype(np.float)
+        curv_im[np.isnan(curv)] = np.nan
+    # Get defaults for brightness, contrast
     if brightness is None:
         brightness = float(config.get('curvature', 'brightness'))
-    cvmin, cvmax = -contrast, contrast
-    if brightness < 0:
-        cvmin += brightness
-    else:
-        cvmax += brightness
+    if contrast is None:
+        contrast = float(config.get('curvature', 'contrast'))
+    # Scale and shift curvature image
+    curv_im = (curv_im - 0.5) * contrast + brightness
     if extents is None:
         extents = _get_extents(fig)
     ax = fig.gca()
-    cvimg = ax.imshow(curv, 
+    cvimg = ax.imshow(curv_im, 
             aspect='equal', 
             extent=extents, 
             cmap=cmap, 
-            vmin=cvmin, #float(config.get('curvature','min')) if cvmin is None else cvmin,
-            vmax=cvmax, #float(config.get('curvature','max')) if cvmax is None else cvmax,
+            vmin=0, 
+            vmax=1, 
             label='curvature',
             zorder=0)
     return cvimg

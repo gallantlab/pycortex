@@ -15,14 +15,17 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 with_labels=True, with_colorbar=True, with_borders=False, 
                 with_dropout=False, with_curvature=False, extra_disp=None, 
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
-                labelsize=None, labelcolor=None, cutout=None, cvmin=None,
-                cvmax=None, cvthr=None, fig=None, extra_hatch=None,
+                labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
+                curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
                 colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), **kwargs):
-    """Show a Volume or Vertex on a flatmap with matplotlib. Additional kwargs are passed on to
-    matplotlib's imshow command.
+    """Show a Volume or Vertex on a flatmap with matplotlib. 
+
+    Note that **kwargs are ONLY present now for backward compatibility / warnings. No kwargs
+    should be used.
+
     Parameters
     ----------
-    braindata : Dataview
+    braindata : Dataview (e.g. instance of cortex.Volume, cortex.Vertex,...)
         the data you would like to plot on a flatmap
     recache : boolean
         Whether or not to recache intermediate files. Takes longer to plot this way, potentially
@@ -44,7 +47,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Display the rois, labels, colorbar, annotated flatmap borders, or cross-hatch dropout?
     cutout : str
         Name of flatmap cutout with which to clip the full flatmap. Should be the name
-        of a sub-layer of the 'cutouts' layer in <filestore>/<subject>/rois.svg
+        of a sub-layer of the 'cutouts' layer in <filestore>/<subject>/overlays.svg
+
     Other Parameters
     ----------------
     dpi : int
@@ -62,7 +66,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Font size for the label, e.g. "16pt"
     labelcolor : tuple of float, optional
         (R, G, B, A) specification for the label color
-    cvmin : float, optional
+    curvature_brightness : float, optional
         Minimum value for curvature colormap. Defaults to config file value.
     cvmax : float, optional
         Maximum value for background curvature colormap. Defaults to config file value.
@@ -71,20 +75,18 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     extra_disp : tuple, optional
         Optional extra display layer from external .svg file. Tuple specifies (filename, layer)
         filename should be a full path. External svg file should be structured exactly as 
-        rois.svg for the subject. (Best to just copy rois.svg somewhere else and add layers to it)
-        Default value is None.
+        overlays.svg for the subject. (Best to just copy overlays.svg somewhere else and add 
+        layers to it.) Default value is None.
     extra_hatch : tuple, optional
         Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple. 
     colorbar_location : tuple, optional
         Location of the colorbar! Not sure of what the numbers actually mean. Left, bottom, width, height, maybe?
     """
-    from matplotlib import colors, cm, pyplot as plt
-    from matplotlib.collections import LineCollection
+    from matplotlib import pyplot as plt
 
     dataview = dataset.normalize(braindata)
     if not isinstance(dataview, dataset.Dataview):
-        # Unclear what this means. Clarify error.
-        raise TypeError('Please provide a Dataview, not a Dataset')
+        raise TypeError('Please provide a Dataview (e.g. an instance of cortex.Volume, cortex.Vertex, etc), not a Dataset')
     
     if fig is None:
         fig_resize = True
@@ -100,7 +102,14 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     layers = dict(data=data_im)
     # Add curvature
     if with_curvature:
-        curv_im = composite.add_curvature(fig, dataview, extents)
+        if any([x in kwargs for x in ['cvmin', 'cvmax', 'cvthr']]):
+            raise ValueError(("Use of `cvmin`, `cvmax`, and `cvthr` is deprecated! Please use \n"
+                             "`curvature_brightness`, `curvature_contrast`, and `curvature_threshold`\n"
+                             "to set appearance of background curvature."))
+        curv_im = composite.add_curvature(fig, dataview, extents, 
+                                          brightness=curvature_brightness,
+                                          contrast=curvature_contrast,
+                                          threshold=curvature_threshold)
         layers['curvature'] = curv_im
     # Add dropout
     if with_dropout is not False:
@@ -153,6 +162,11 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if cutout is not None:
         extents = composite.add_cutout(fig, cutout, dataview, layers)
 
+    if with_colorbar:
+        colorbar = composite.add_colorbar(fig, data_im)
+        # Reset axis to main figure axis
+        plt.axes(ax)
+
     return fig
 
 def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
@@ -163,7 +177,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     ----------
     fname : str
         Filename for where to save the PNG file
-    braindata : Dataview
+    braindata : Dataview (e.g. instance of cortex.Volume, cortex.Vertex, ...)
         the data you would like to plot on a flatmap
     recache : boolean
         Whether or not to recache intermediate files. Takes longer to plot this way, potentially

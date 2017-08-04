@@ -184,9 +184,8 @@ class SVGOverlay(object):
         kwargs : keyword arguments
             keywords to specify display properties of svg path objects, e.g. {'stroke':'white',
             'stroke-width':2} etc. See inkscape help for names for properties. This function
-            is used extensively by quickflat.py, which provides dictionaries to map between 
-            more matplotlib-like properties (linecolor->stroke, linewidth->stroke-width) for a
-            more easy-to-use API.
+            is used by quickflat.py, which provides dictionaries to map between more matplotlib-
+            like properties (linecolor->stroke, linewidth->stroke-width) for an easier-to-use API.
 
         Returns
         -------
@@ -209,6 +208,8 @@ class SVGOverlay(object):
             )
             self.svg.getroot().insert(0, img)
 
+        #label_defaults = _parse_defaults(layer+'_labels')
+
         for layer in self:
             if layer.name==layer_name:
                 layer.visible = True
@@ -216,6 +217,14 @@ class SVGOverlay(object):
                 if shape_list is not None:
                     for name_, shape_ in layer.shapes.items():
                         shape_.visible = name_ in shape_list
+                        # Set visibility of labels (by setting text alpha to 0)
+                        # This could be less baroque, but text elements currently
+                        # do not have individually settable visibility / style params
+                        tmp_style = copy.deepcopy(layer.labels.text_style)
+                        tmp_style['fill-opacity'] = '1' if shape_.visible else '0'
+                        tmp_style_str = ';'.join(['%s:%s'%(k,v) for k, v in tmp_style.items() if v != 'None'])
+                        for i in range(len(layer.labels.elements[name_])):
+                            layer.labels.elements[name_][i].set('style', tmp_style_str)
                 layer.set(**kwargs)
             else:
                 layer.visible = False
@@ -314,6 +323,9 @@ class Labels(object):
     def __init__(self, overlay):
         self.overlay = overlay
         self.layer = _find_layer(self.overlay.layer, "labels")
+        # This should be layer-specific,and read from different fields in the options.cfg file
+        # if possible, falling back to overlay_text if the speific layer defaults don't exist.
+        # Don't have time to figure out how to get the layer name here (rois, sulci, etc)
         self.text_style = dict(config.items("overlay_text"))
         
         text_style = self.text_style.items()
@@ -669,6 +681,7 @@ def _parse_svg_pts(datastr):
     return np.array(pts)
 
 def import_roi(roifile, outfile):
+    """Convert rois.svg file (from previous versions of pycortex) to overlays.svg"""
     import warnings
     warnings.warn("Converting rois.svg to overlays.svg")
     svg = etree.parse(roifile, parser=parser)

@@ -15,12 +15,12 @@ S1 is the example subject that comes with pycortex, but if you want to plot
 data onto a different subject, you will need to have them in your filestore,
 and you will also need a flatmap for them.
 """
-
+import six
 import cortex
 import matplotlib.pyplot as plt
-try: #  python 2
+if six.PY2:
     from urllib import urlretrieve
-except ImportError:  # python 3
+elif six.PY3:
     from urllib.request import urlretrieve
 
 
@@ -31,9 +31,15 @@ ret_data = cortex.load("S1_retinotopy.hdf")
 
 # The retinotopy data has to be divided into left and right hemispheres
 left_data = ret_data.angle_left
-cortex.quickshow(left_data, with_curvature=True, cvmin=-5., cvmax=5., cvthr=True)
+cortex.quickshow(left_data, with_curvature=True, 
+							curvature_contrast=0.5, 
+							curvature_brightness=0.5, 
+							curvature_threshold=True)
 plt.show()
 
 right_data = ret_data.angle_right
-cortex.quickshow(right_data, with_curvature=True, cvmin=-5., cvmax=5., cvthr=True)
+cortex.quickshow(right_data, with_curvature=True, 
+							 curvature_contrast=0.5, 
+							 curvature_brightness=0.5, 
+							 curvature_threshold=True)
 plt.show()
