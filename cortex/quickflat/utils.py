@@ -222,9 +222,6 @@ def _parse_defaults(section):
             defaults[k] = _color2hex(defaults[k])
         elif k=='stroke-dasharray' and isinstance(defaults[k], (list,tuple)):
             defaults[k] = '{}, {}'.format(*defaults[k])
-
-    print('%s defaults:'%section)
-    print(defaults)
     return defaults
 
 def _get_images(fig):

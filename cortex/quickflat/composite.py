@@ -211,7 +211,6 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
     svg_kws = _convert_svg_kwargs(kwargs)
     layer_kws = _parse_defaults('sulci_paths')
     layer_kws.update(svg_kws)
-    print(layer_kws)
     sulc = svgobject.get_texture('sulci', height, labels=with_labels, **layer_kws)
     if extents is None:
         extents = _get_extents(fig)
@@ -421,10 +420,8 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
         else:
             layer_cutout = copy.copy(co)
         
-        # Handle different types of alpha layers. Unclear if this is still necessary after 
-        # switching api to deal with matplotlib images.
+        # Handle different types of alpha layers. Useful for RGBVolumes if nothing else.
         if im.dtype == np.uint8:
-            raise Exception("WTF are you doing with uint8 data in a matplotlib Image...")
             im = np.cast['float32'](im)/255.
             im[:,:,3] *= layer_cutout
             h, w, cdim = [float(v) for v in im.shape]
