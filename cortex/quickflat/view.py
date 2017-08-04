@@ -86,8 +86,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     dataview = dataset.normalize(braindata)
     if not isinstance(dataview, dataset.Dataview):
-        # Unclear what this means. Clarify error.
-        raise TypeError('Please provide a Dataview, not a Dataset')
+        raise TypeError('Please provide a Dataview (e.g. an instance of cortex.Volume, cortex.Vertex, etc), not a Dataset')
     
     if fig is None:
         fig_resize = True

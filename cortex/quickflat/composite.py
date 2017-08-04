@@ -10,7 +10,7 @@ from .utils import make_flatmap_image, _make_hatch_image
 ### --- Individual compositing functions --- ###
 
 def add_curvature(fig, dataview, extents=None, height=None, threshold=True, contrast=None,
-                  brightness=None, cmap='gray', recache=False, curvature_lims=0.5):
+                  brightness=None, smooth=None, cmap='gray', recache=False, curvature_lims=0.5):
     """Add curvature layer to figure
 
     Parameters
@@ -39,6 +39,11 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
         Limits for real curvature values (actual values for cortical curvature are normalized
         within [-`curvature_lims`, +`curvature_lims`] before scaling by `contrast` and shifting
         by `brightness`). 
+    smooth : scalar or None
+        Width of smoothing to apply to surface curvature. None defaults to no smoothing, or
+        whatever the default value for curvature is that is stored in 
+        <filestore>/<subject>/surface-info/curvature.npz (for some subjects initiated in old
+        versions of pycortex, this may be smoothed too!)
     cmap : string
         name for colormap of curvature
     recache : boolean
@@ -55,7 +60,22 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     if height is None:
         height = _get_height(fig)
     # Get curvature map as image
-    curv_vertices = db.get_surfinfo(dataview.subject)
+    default_smoothing = config.get('curvature','smooth')
+    if default_smoothing.lower()=='none':
+        default_smoothing = None
+    else:
+        default_smoothing = np.float(default_smoothing)
+    if smooth is None:
+        # (Might still be None!)
+        smooth = default_smoothing
+    if smooth is None:
+        # If no value for 'smooth' is given in kwargs, db.get_surfinfo returns
+        # the default curvature value, whatever that may be. This is the behavior
+        # that we want a None in the code to invoke. This is silly and complicated
+        # due to backward compatibility issues with some old subjects.
+        curv_vertices = db.get_surfinfo(dataview.subject)
+    else:
+        curv_vertices = db.get_surfinfo(dataview.subject, smooth=smooth)
     curv, _ = make_flatmap_image(curv_vertices, recache=recache, height=height)
     # First, limit to sensible range for flatmap curvature
     norm = Normalize(vmin=-0.5, vmax=0.5)

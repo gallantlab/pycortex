@@ -223,8 +223,6 @@ def _parse_defaults(section):
         elif k=='stroke-dasharray' and isinstance(defaults[k], (list,tuple)):
             defaults[k] = '{}, {}'.format(*defaults[k])
 
-    print('%s defaults:'%section)
-    print(defaults)
     return defaults
 
 def _get_images(fig):
