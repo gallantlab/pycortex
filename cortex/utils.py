@@ -332,7 +332,13 @@ def get_roi_surf(subject, surf_type, roi):
     for i in xrange(np.shape(polys)[0]):
         if np.array(map(lambda x: x in vert_set, polys[i, :])).all():
             roi_polys.append(polys[i, :])
-    return np.array(roi_polys)
+    reindexed_polys = []
+    vert_rev_hash_idx = {}
+    for i, v in enumerate(vert_idx):
+        vert_rev_hash_idx[v] = i
+    for poly in roi_polys:
+        reindexed_polys.append(map(vert_rev_hash_idx.get, poly))
+    return (pts[vert_idx], np.array(reindexed_polys))
 
 
 def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
