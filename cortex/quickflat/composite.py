@@ -10,7 +10,8 @@ from .utils import make_flatmap_image, _make_hatch_image
 ### --- Individual compositing functions --- ###
 
 def add_curvature(fig, dataview, extents=None, height=None, threshold=True, contrast=None,
-                  brightness=None, smooth=None, cmap='gray', recache=False, curvature_lims=0.5):
+                  brightness=None, smooth=None, cmap='gray', recache=False, curvature_lims=0.5,
+                  legacy_mode=False):
     """Add curvature layer to figure
 
     Parameters
@@ -77,22 +78,31 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     else:
         curv_vertices = db.get_surfinfo(dataview.subject, smooth=smooth)
     curv, _ = make_flatmap_image(curv_vertices, recache=recache, height=height)
-    # First, limit to sensible range for flatmap curvature
-    norm = Normalize(vmin=-0.5, vmax=0.5)
-    curv_im = norm(curv)
     # Option to use thresholded curvature
     default_threshold = config.get('curvature','threshold').lower() in ('true','t','1','y','yes')
     use_threshold_curvature = default_threshold if threshold is None else threshold
-    if use_threshold_curvature:
-        curv_im = (np.nan_to_num(curv_im) > 0.5).astype(np.float)
-        curv_im[np.isnan(curv)] = np.nan
-    # Get defaults for brightness, contrast
-    if brightness is None:
-        brightness = float(config.get('curvature', 'brightness'))
-    if contrast is None:
-        contrast = float(config.get('curvature', 'contrast'))
-    # Scale and shift curvature image
-    curv_im = (curv_im - 0.5) * contrast + brightness
+    if legacy_mode and use_threshold_curvature:
+        curvT = (curv>0).astype(np.float32)
+        curvT[np.isnan(curv)] = np.nan
+        curv = curvT
+    if isinstance(curvature_lims, (list, tuple)):
+        vmin, vmax = curvature_lims
+    else: 
+        vmin, vmax = -curvature_lims, curvature_lims
+    norm = Normalize(vmin=vmin, vmax=vmax)
+    curv_im = norm(curv)
+    if not legacy_mode:
+        if use_threshold_curvature:
+            # Assumes symmetrical curvature_lims
+            curv_im = (np.nan_to_num(curv_im) > 0.5).astype(np.float)
+            curv_im[np.isnan(curv)] = np.nan
+        # Get defaults for brightness, contrast
+        if brightness is None:
+            brightness = float(config.get('curvature', 'brightness'))
+        if contrast is None:
+            contrast = float(config.get('curvature', 'contrast'))
+        # Scale and shift curvature image
+        curv_im = (curv_im - 0.5) * contrast + brightness
     if extents is None:
         extents = _get_extents(fig)
     ax = fig.gca()

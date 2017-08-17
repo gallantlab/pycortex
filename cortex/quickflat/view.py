@@ -67,10 +67,16 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     labelcolor : tuple of float, optional
         (R, G, B, A) specification for the label color
     curvature_brightness : float, optional
-        Minimum value for curvature colormap. Defaults to config file value.
-    cvmax : float, optional
+        Mean* brightness of background. 0 = black, 1 = white, intermediate values are corresponding 
+        grayscale values. If None, Defaults to config file value. (*this does not precisely specify 
+        the mean; the actual mean luminance of the curvature depends on the value for 
+        `curvature_contrast`. It's easiest to think about it as the mean brightness, though.)
+    curvature_contrast : float, optional
+        Contrast of curvature. 1 = maximal contrast (black/white), 0 = no contrast (solid color for
+        curvature equal to `curvature_brightness`). 
+    cvmax : float, optional [DEPRECATED! use `curvature_brightness` and `curvature_contrast` instead]
         Maximum value for background curvature colormap. Defaults to config file value.
-    cvthr : bool, optional
+    cvthr : bool, optional [DEPRECATED! use `curvature_threshold` instead]
         Apply threshold to background curvature
     extra_disp : tuple, optional
         Optional extra display layer from external .svg file. Tuple specifies (filename, layer)
@@ -102,14 +108,30 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     layers = dict(data=data_im)
     # Add curvature
     if with_curvature:
+        # backward compatibility
         if any([x in kwargs for x in ['cvmin', 'cvmax', 'cvthr']]):
-            raise ValueError(("Use of `cvmin`, `cvmax`, and `cvthr` is deprecated! Please use \n"
+            import warnings
+            warnings.warn(("Use of `cvmin`, `cvmax`, and `cvthr` is deprecated! Please use \n"
                              "`curvature_brightness`, `curvature_contrast`, and `curvature_threshold`\n"
                              "to set appearance of background curvature."))
+            legacy_mode = True
+            if ('cvmin' in kwargs) and ('cvmax' in kwargs):
+                # Assumes that if one is specified, both are; weird case where only one is 
+                # specified will still break.
+                curvature_lims = (kwargs.pop('cvmin'), kwargs.pop('cvmax'))
+            else:
+                curvature_lims = 0.5
+            if 'cvthr' in kwargs:
+                curvature_threshold = kwargs.pop('cvthr')
+        else:
+            curvature_lims = 0.5
+            legacy_mode = False
         curv_im = composite.add_curvature(fig, dataview, extents, 
                                           brightness=curvature_brightness,
                                           contrast=curvature_contrast,
-                                          threshold=curvature_threshold)
+                                          threshold=curvature_threshold,
+                                          curvature_lims=curvature_lims,
+                                          legacy_mode=legacy_mode)
         layers['curvature'] = curv_im
     # Add dropout
     if with_dropout is not False:
