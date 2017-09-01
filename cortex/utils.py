@@ -700,10 +700,105 @@ def vertex_to_voxel(subject): # Am I deprecated in favor of mappers??? Maybe???
 
     return all_verts
 
-def get_shared_voxels(subject, xfmname, hemi="both", distsurf="inflated", merge=True):
-    '''Return voxels that map to distant vertices, and for each such voxel,
-       also returns the mutually farthest pair of vertices mapping to the voxel
+# def get_shared_voxels(subject, xfmname, hemi="both", distsurf="inflated", merge=True):
+#     '''Return voxels that map to distant vertices, and for each such voxel,
+#        also returns the mutually farthest pair of vertices mapping to the voxel
        
+#     Parameters
+#     ----------
+#     subject : str
+#         Name of the subject
+#     xfmname : str
+#         Name of the transform
+#     hemi : str, optional
+#         Which hemisphere to return. 'lh', 'rh', or 'both'
+#     merge : bool, optinal
+#         Join the hemispheres, if requesting both
+#     distsurf : str,
+#         Surface on which to compute distances
+#         (inflated, fiducial, or flat)
+    
+#     Returns 
+#     -------
+#     vox_vert_array: np.array,
+#     (vox_idx, farthest_pair[0], farthest_pair[1], dist_fid, dist_flat, dist_inf)
+
+#     Notes
+#     -----
+#     output needs work. Should be (voxels x 2), or possibly (selected_voxels x 3)
+#     Possibly include more ways to do this calculation
+    
+#     Thanks to Utkarsh Singhal for this excellent contribution.
+#     '''
+#     from scipy.spatial import distance_matrix
+#     assert hemi in ('lh', 'rh', 'both')
+
+#     # Get masks for left and right hemispheres
+#     Lmask, Rmask = get_mapper(subject, xfmname).masks 
+#     if hemi == 'both':
+#         hemispheres = ['lh', 'rh']
+#     else:
+#         hemispheres = [hemi]
+#     out = []
+#     for hem in hemispheres:
+#         if hem == 'lh':
+#             mask = Lmask
+#         else:
+#             mask = Rmask
+#         # Map from voxels to verts
+#         # This creates a list n_voxels long; each element in the list is a
+#         # list of vertices that map to that voxel
+#         vertices_per_voxel = mask.tolil().transpose().rows 
+
+#         pts_fid, _ = db.get_surf(subject, 'fiducial', hem)
+#         pts_inf, _ = db.get_surf(subject, 'flat', hem)
+#         pts_flat, _ = db.get_surf(subject, 'inflated', hem)
+#         pts = {'fiducial':pts_fid, 'flat':pts_inf, 'inflated':pts_flat}[distsurf]
+
+#         vox_vert_list = []
+#         for vox_idx, vox in enumerate(vertices_per_voxel):
+#             if len(vox) > 1: #If the voxel maps to multiple vertices
+#                 vox = np.array(vox)
+#                 verts = pts[vox] 
+#                 # Distance btw [selected] vertices
+#                 dist_mat = distance_matrix(verts, verts) # ... but this is perhaps not optimal
+                
+#                 farthest_pair_local = np.unravel_index(dist_mat.argmax(), dist_mat.shape)
+#                 farthest_pair = vox[np.array(farthest_pair_local)]
+
+#                 dist_fid = np.linalg.norm(pts_fid[farthest_pair[0]] - pts_fid[farthest_pair[1]])
+#                 dist_inf = np.linalg.norm(pts_inf[farthest_pair[0]] - pts_inf[farthest_pair[1]])
+#                 dist_flat = np.linalg.norm(pts_flat[farthest_pair[0]] - pts_flat[farthest_pair[1]])
+#                 # Compare distance estimates from 
+#                 dist_inf_ = distance_matrix(pts_inf[vox], pts_inf[vox])
+#                 dist_fid_ = distance_matrix(pts_inf[vox], pts_inf[vox])
+#                 stretch_dist = np.max(dist_inf_ - dist_fid)
+                
+#                 vox_vert_list.append([vox_idx, farthest_pair[0], farthest_pair[1], dist_fid, dist_flat, dist_inf, stretch_dist]) 
+#         tmp = np.array(vox_vert_list)
+#         # Add offset for right hem voxels
+#         if hem=='rh':
+#             tmp[:,1:3] += Lmask.shape[0]
+#         out.append(tmp)
+#     if hemi in ('lh', 'rh'):
+#         return out[0]
+#     else:
+#         if merge:
+#             return np.vstack(out)
+#         else:
+#             return tuple(out)
+
+def _iter_surfedges(tris, heuristic):
+    for a,b,c in tris:
+        yield a,b,{'weight': heuristic(a,b)}
+        yield b,c,{'weight': heuristic(b,c)}
+        yield a,c,{'weight': heuristic(a,c)}
+
+
+
+def get_shared_voxels(subject, xfmname, hemi="lh", merge=True):                                                                                                                                  
+    '''Return voxels that are shared by multiple vertices, and for each such voxel,
+       also returns the mutually farthest pair of vertices mapping to the voxel
     Parameters
     ----------
     subject : str
@@ -711,82 +806,60 @@ def get_shared_voxels(subject, xfmname, hemi="both", distsurf="inflated", merge=
     xfmname : str
         Name of the transform
     hemi : str, optional
-        Which hemisphere to return. 'lh', 'rh', or 'both'
+        Which hem
+        isphere to return. For now, only 'lh' or 'rh'
     merge : bool, optinal
         Join the hemispheres, if requesting both
-    distsurf : str,
-        Surface on which to compute distances
-        (inflated, fiducial, or flat)
-    
-    Returns 
+
+    Returns
     -------
     vox_vert_array: np.array,
-    (vox_idx, farthest_pair[0], farthest_pair[1], dist_fid, dist_flat, dist_inf)
-
-    Notes
-    -----
-    output needs work. Should be (voxels x 2), or possibly (selected_voxels x 3)
-    Possibly include more ways to do this calculation
-    
-    Thanks to Utkarsh Singhal for this excellent contribution.
+    (vox_idx, farthest_pair[0], farthest_pair[1])
     '''
     from scipy.spatial import distance_matrix
-    assert hemi in ('lh', 'rh', 'both')
+    from scipy.sparse import find as sparse_find
+    import networkx as nx
 
-    # Get masks for left and right hemispheres
-    Lmask, Rmask = get_mapper(subject, xfmname).masks 
-    if hemi == 'both':
-        hemispheres = ['lh', 'rh']
+    Lmask, RMask = get_mapper(subject, xfmname).masks # Get masks for left and right hemisphere
+    
+    assert hemi == 'lh' or hemi == 'rh'
+    if hemi == 'lh':
+        mask = Lmask
     else:
-        hemispheres = [hemi]
-    out = []
-    for hem in hemispheres:
-        if hem == 'lh':
-            mask = Lmask
-        else:
-            mask = Rmask
-        # Map from voxels to verts
-        # This creates a list n_voxels long; each element in the list is a
-        # list of vertices that map to that voxel
-        vertices_per_voxel = mask.tolil().transpose().rows 
+        mask = Rmask
+    
+    all_voxels = mask.tolil().transpose().rows # Map from voxels to verts
+    vert_to_vox_map = dict(zip(*(sparse_find(mask)[:2]))) #From verts to vox
+    
+    pts_inf, _ = db.get_surf(subject, 'inflated', hemi)
+    pts_fid, polys_fid = db.get_surf(subject, 'fiducial', hemi) #Get the fiducial surface
 
-        pts_fid, _ = db.get_surf(subject, 'fiducial', hem)
-        pts_inf, _ = db.get_surf(subject, 'flat', hem)
-        pts_flat, _ = db.get_surf(subject, 'inflated', hem)
-        pts = {'fiducial':pts_fid, 'flat':pts_inf, 'inflated':pts_flat}[distsurf]
+    l2_distance = lambda v1, v2: np.linalg.norm(pts_fid[v1] - pts_fid[v2]) # L2 distance in fiducial space
+    heuristic = l2_distance #A* heuristic
 
-        vox_vert_list = []
-        for vox_idx, vox in enumerate(vertices_per_voxel):
-            if len(vox) > 1: #If the voxel maps to multiple vertices
-                vox = np.array(vox)
-                verts = pts[vox] 
-                # Distance btw [selected] vertices
-                dist_mat = distance_matrix(verts, verts) # ... but this is perhaps not optimal
-                
-                farthest_pair_local = np.unravel_index(dist_mat.argmax(), dist_mat.shape)
-                farthest_pair = vox[np.array(farthest_pair_local)]
-
-                dist_fid = np.linalg.norm(pts_fid[farthest_pair[0]] - pts_fid[farthest_pair[1]])
-                dist_inf = np.linalg.norm(pts_inf[farthest_pair[0]] - pts_inf[farthest_pair[1]])
-                dist_flat = np.linalg.norm(pts_flat[farthest_pair[0]] - pts_flat[farthest_pair[1]])
-                # Compare distance estimates from 
-                dist_inf_ = distance_matrix(pts_inf[vox], pts_inf[vox])
-                dist_fid_ = distance_matrix(pts_inf[vox], pts_inf[vox])
-                stretch_dist = np.max(dist_inf_ - dist_fid)
-                
-                vox_vert_list.append([vox_idx, farthest_pair[0], farthest_pair[1], dist_fid, dist_flat, dist_inf, stretch_dist]) 
-        tmp = np.array(vox_vert_list)
-        # Add offset for right hem voxels
-        if hem=='rh':
-            tmp[:,1:3] += Lmask.shape[0]
-        out.append(tmp)
-    if hemi in ('lh', 'rh'):
-        return out[0]
-    else:
-        if merge:
-            return np.vstack(out)
-        else:
-            return tuple(out)
+    graph = nx.Graph()
+    graph.add_edges_from(_iter_surfedges(polys_fid, l2_distance)) #Make a graph of fiducial surface polygons
+    
+    vox_vert_list = []
+    for vox_idx, vox in enumerate(all_voxels):
+        if len(vox) > 1: #If the voxel maps to multiple vertices
+            vox = np.array(vox)
+            verts = pts_inf[vox] 
+            dist_mat = distance_matrix(verts, verts)
+            farthest_pair_local = np.unravel_index(dist_mat.argmax(), dist_mat.shape) #find farthest pair in fiducial space
+            dist_inf = dist_mat.max()
+            
+            vert1, vert2 = vox[np.array(farthest_pair_local)]
+            vert1, vert2 = int(vert1), int(vert2)
+            
+            is_not_medial_wall = vert1 in vert_to_vox_map and vert2 in vert_to_vox_map
+            if is_not_medial_wall:
+                geodesic_path = nx.astar_path(graph, vert1, vert2, heuristic=heuristic, weight='weight')
+                stays_in_voxel = all([(v not in vert_to_vox_map) or (vert_to_vox_map[v] == vox_idx) for v in geodesic_path]) #If any vertex in path goes out of the voxel
+                # stays_in_voxel = all([(v in vert_to_vox_map) and (vert_to_vox_map[v] == vox_idx) for v in geodesic_path]) #If any vertex in path goes out of the voxel
+                if not stays_in_voxel:
+                    vox_vert_list.append([vox_idx, vert1, vert2])
+    return np.array(vox_vert_list)
 
 
 def get_cmap(name):

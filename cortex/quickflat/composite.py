@@ -425,15 +425,11 @@ def add_connected_vertices(fig, dataview, height=None, extents=None, recache=Fal
         if not np.isnan(elem):
             x_dict[int(elem)] = i//divisor
             y_dict[int(elem)] = i%divisor
-    # Threshold!
-    # the 5 index here relates to one of several possible distance metrics
-    # returned by 
-    valid_filter = (within_voxel_vertex_dists[:, 5] > min_dist) * (within_voxel_vertex_dists[:, 5] < max_dist)
-    valid_vox = within_voxel_vertex_dists[valid_filter]
+
     # Substitute:
     # flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     # valid = np.unique(polys)    
-    pix_array, valid_vert_pairs = _return_pixel_pairs(valid_vox[:,1:3], x_dict, y_dict)
+    pix_array, valid_vert_pairs = _return_pixel_pairs(within_voxel_vertex_dists[:,1:3], x_dict, y_dict)
     # Scaling this coordinates for plot
     pix_array_scaled = (pix_array / (np.array(mask.shape).astype(np.float32)))
     # Mebbe scale colors by distance? Or some such fancy? Not necessary...
