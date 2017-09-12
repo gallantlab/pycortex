@@ -437,7 +437,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         @property
         def view_props(self):
             _camera_props = ['camera.%s'%k for k in self.ui.camera._controls.attrs.keys()]
-            _subject = self.ui.surface._folders.attrs.keys()[0]
+            _subject = list(self.ui.surface._folders.attrs.keys())[0]
             _surface = getattr(self.ui.surface, _subject)
             _surface_props = ['surface.{subject}.%s'%k for k in _surface._controls.attrs.keys()]
             #view_props = _camera_props + _surface_props
@@ -494,15 +494,15 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             If multiple subjects are present, only retrieves view for first subject.
             """
             view = {}
-            subject = self.ui.surface._folders.attrs.keys()[0]
+            subject = list(self.ui.surface._folders.attrs.keys())[0]
             for p in self.view_props:
                 try:
                     view[p] = self.ui.get(p.format(subject=subject) if '{subject}' in p else p)[0]
                 except Exception as err:
                     # TO DO: Fix this hack with an error class in serve.py & catch it here 
-                    msg = "Cannot read property 'undefined'"
-                    if err.message[:len(msg)] != msg:
-                        raise err
+                    print(err) #msg = "Cannot read property 'undefined'"
+                    #if err.message[:len(msg)] != msg:
+                    #    raise err
             if not time is None:
                 view['time'] = time
             return view

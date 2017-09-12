@@ -229,7 +229,7 @@ var jsplot = (function (module) {
         // color legend
         function formatState (state) {
             if (!state.id) { return state.text; }
-            var $state = $('<span class="colorlegend-option"><img class="colorlegend-option-image" src="' + colormaps[state.text].image.currentSrc + '" class="img-flag" /> ' + state.text + '</span>');
+            var $state = $('<span class="colorlegend-option"><img class="colorlegend-option-image" src="' + colormaps[state.text].image.currentSrc + '" class="img-flag" />' + state.text + '</span>');
             return $state;
         };
         $(document).ready(function() {

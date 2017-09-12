@@ -147,27 +147,107 @@ a:visited { color:white; }
  * Colorlegend styles
  *************************************************/
 #colorlegend {
-    height:4%;
-    width:30%;
+    width:30vw;
     position:absolute;
     bottom:30px;
     left:0;
     right:0;
     margin:auto;
     z-index:100;
-
 }
 #colorlegend-colors {
     height:100%;
     overflow:hidden;
-    background-color:red;
 }
 #colorlegend-colorbar {
-    height:300px;
+    height: 4vh;
     width:100%;
     display:block;
     text-align:right;
 }
+#vlims-2d {
+    display: none;
+}
+
+/* 2D version */
+#colorlegend.colorlegend-2d {
+    height:20vmin;
+    width:20vmin;
+    margin-left: 30px;
+    margin-right: auto;
+}
+.colorlegend-2d #vlims-2d {
+    display: block;
+}
+.colorlegend-2d #vlims-1d {
+    display: none;
+}
+.colorlegend-2d #colorlegend-colorbar {
+    height: 20vmin;
+}
+#xd-vmin-container, #xd-vmax-container, #yd-vmin-container, #yd-vmax-container {
+    font-size:2.5vmin;
+    color: white;
+}
+#xd-vmin-container, #xd-vmax-container {
+    position: absolute;
+    top: -4.5vmin;
+}
+#xd-vmin-container {
+    left: 0;
+    text-align: left;
+    display: block;
+}
+#xd-vmax-container {
+    width: 14vmin;
+    display: block;
+    right: 0;
+    text-align: right;
+}
+#yd-vmin-container, #yd-vmax-container {
+    position: absolute;
+    right: -12vmin;
+    width: 10vmin;
+}
+#yd-vmin-container {
+    bottom:0;
+}
+#yd-vmax-container {
+    top:0;
+}
+#xd-vmin-input, #xd-vmax-input, #yd-vmin-input, #yd-vmax-input {
+    position: absolute;
+    display: none;
+    font-size:2.5vmin;
+    background-color: black;
+    color: white;
+    width: 11vmin;
+
+    border-width:1px;
+    outline:none;
+
+    padding:0.5vmin;
+}
+#yd-vmax-input {
+    top: calc(-1px - 0.5vmin);
+    left:calc(-1px - 0.5vmin);
+}
+#yd-vmin-input {
+    bottom:calc(-1px - 0.5vmin);
+    left:calc(-1px - 0.5vmin);
+}
+#xd-vmin-input {
+    top: calc(-1px - 0.5vmin);
+    left:calc(-1px - 0.5vmin);
+}
+#xd-vmax-input {
+    text-align: right;
+    top: calc(-1px - 0.5vmin);
+    right: calc(-1px - 0.5vmin);
+}
+
+
+/* 1D version*/
 #vmin-container, #vmax-container {
     font-size:4vmin;
     color:white;
@@ -215,6 +295,8 @@ a:visited { color:white; }
 }
 #vmax {
 }
+
+/* selection styles*/
 .colorlegend-select {
     width:100%;
     position:absolute;
@@ -234,7 +316,6 @@ a:visited { color:white; }
     text-align:left;
 }
 .colorlegend-option-image {
-    /*width:150px;*/
     width:66%;
     height:30px;
 }
@@ -247,8 +328,6 @@ a:visited { color:white; }
 
 #figure_ui {
     position:absolute;
-    /*right:20px;*/
-    /*left:0;*/
     right:0;
     width:265px !important;
     height:auto !important;
