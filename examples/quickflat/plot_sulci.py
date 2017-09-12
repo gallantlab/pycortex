@@ -4,7 +4,7 @@ Plot sulci on the flatmap
 =========================
 
 The sulci are defined in a sub-layer of the sulci layer in
-<filestore>/<subject>/rois.svg.
+<filestore>/<subject>/overlays.svg.
 
 The parameter `with_sulci` in `quickflat.make_figure` controls
 displaying the sulci on the surface.

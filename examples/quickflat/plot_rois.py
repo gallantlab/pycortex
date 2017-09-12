@@ -4,7 +4,7 @@ Plot ROIs on the flatmap
 ========================
 
 ROIs are defined as sub-layers of the `roi` layer in
-<filestore>/<subject>/rois.svg
+<filestore>/<subject>/overlays.svg
 
 By default, ROIs and ROI labels are displayed when a flatmap is plotted using
 `quickflat.make_figure`.

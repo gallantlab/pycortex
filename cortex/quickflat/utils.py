@@ -5,6 +5,7 @@ from functools import reduce
 import os
 import glob
 import numpy as np
+import string
 
 from .. import utils
 from .. import dataset
@@ -203,6 +204,25 @@ def _convert_svg_kwargs(kwargs):
     out = dict((svg_style_key_mapping[k], svg_style_value_mapping[k](v)) 
                for k,v in kwargs.items() if v is not None)
     return out
+
+def _parse_defaults(section):
+    defaults = dict(config.items(section))
+    for k in defaults.keys():
+        # Convert numbers to floating point numbers
+        if defaults[k][0] in string.digits + '.':
+            if ',' in defaults[k]:
+                defaults[k] = [float(x) for x in defaults[k].split(',')]
+            else:
+                defaults[k] = float(defaults[k])
+        # Convert 'None' to None
+        if defaults[k] == 'None':
+            defaults[k] = None
+        # Special case formatting
+        if k=='stroke' or k=='fill':
+            defaults[k] = _color2hex(defaults[k])
+        elif k=='stroke-dasharray' and isinstance(defaults[k], (list,tuple)):
+            defaults[k] = '{}, {}'.format(*defaults[k])
+    return defaults
 
 def _get_images(fig):
     """Get all images in a given matplotlib axis"""
