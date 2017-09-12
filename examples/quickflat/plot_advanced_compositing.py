@@ -11,7 +11,7 @@ quickflat.composite sub-module.
 """
 
 import cortex
-import numpy as np
+import matplotlib.pyplot as plt
 
 # Create an empty volume (nans = transparent values on surface)
 # (This makes it easier to see overlay manipulations, this will
@@ -44,3 +44,4 @@ _ = cortex.quickflat.composite.add_rois(fig, volume,
                                         fillalpha=0.35,
                                         dashes=(5,3)                  # Dash length & gap btw dashes
                                         )
+plt.show()
