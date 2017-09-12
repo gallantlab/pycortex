@@ -14,8 +14,10 @@ before_install:
 script:
   - set -e
   - pip install lxml numpy scipy numexpr networkx tornado cython matplotlib h5py nibabel Pillow sphinx sphinx_gallery numpydoc
-  - pip install git+https://github.com/doctr/doctr.git
-
+  - git clone https://github.com/drdoctr/doctr.git
+  - cd doctr
+  - pip install .
+  - cd ..
   - python setup.py build_ext --inplace
   - cd docs
   - make html
