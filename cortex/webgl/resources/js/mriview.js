@@ -286,20 +286,107 @@ var mriview = (function(module) {
             $("#color_fieldset").fadeTo(0.15, 1);
         }
 
-        // color legend behavior
-        function cleanNumber (number) {
-            decimals = 3;
-            return parseFloat(number).toPrecision(decimals);
+        // // // // // // // // // // // // // // // // // // // // // // // //
+        // start colorlegend code
+
+        function get1dColormaps () {
+            let colormaps1d = {}
+            for (let colormap of Object.keys(colormaps)) {
+                if (colormaps[colormap].image.height == 1) {
+                    colormaps1d[colormap] = colormaps[colormap]
+                }
+            }
+            return colormaps1d
         }
+
+        function get2dColormaps () {
+            let colormaps2d = {}
+            for (let colormap of Object.keys(colormaps)) {
+                if (colormaps[colormap].image.height > 1) {
+                    colormaps2d[colormap] = colormaps[colormap]
+                }
+            }
+            return colormaps2d
+        }
+
+        function setColorOptions (colormaps) {
+            // clear current options
+            let options = $('.colorlegend-select option')
+            for (let key in Object.keys(options)) {
+                let option = options[key]
+                if (option) {
+                    if (!colormaps.hasOwnProperty(option.innerText)) {
+                        option.remove()
+                    }
+                }
+            }
+
+            // add new options
+            let selectElement = $('.colorlegend-select')[0]
+            for (let colormap of Object.keys(colormaps).sort()) {
+                let optionElement = document.createElement('option')
+                optionElement.setAttribute('value', colormap)
+                optionElement.innerText = colormap
+                selectElement.appendChild(optionElement)
+            }
+        }
+
+        // adjust display and options according to dimensionality
+        let dims = this.active.data.length
+        if (dims === 1) {
+            $('#colorlegend').removeClass('colorlegend-2d')
+            setColorOptions(get1dColormaps())
+        } else if (dims === 2) {
+            $('#colorlegend').addClass('colorlegend-2d')
+            setColorOptions(get2dColormaps())
+        } else {
+            console.log('unknown case: dims=' + dims)
+        }
+
+        // clean numbers for display in colorbar
+        function cleanNumber (number, decimals, exponential_if_beyond) {
+            if (!decimals) {
+                decimals = 3;
+            }
+            cleaned = parseFloat(number).toPrecision(decimals);
+
+            // remove trailing zeros
+            if (cleaned.indexOf('e') === -1 && cleaned.indexOf('.') !== -1) {
+                cleaned = cleaned.replace(/0+$/, '')
+            }
+
+            // remove trailing decimal place
+            if (cleaned[cleaned.length - 1] == '.') {
+                cleaned = cleaned.substring(0, cleaned.length - 1)
+            }
+
+            //  convert to scientific notation if too long
+            if (cleaned.length > 7) {
+                cleaned = parseFloat(cleaned).toExponential();
+            }
+
+            return cleaned
+        }
+
         var viewer = this
 
         let imageData = $('#' + this.active.cmapName + ' img')[0].src
-        // let imageData = colormaps[this.active.cmapName].image.currentSrc
 
         $('#colorlegend-colorbar').attr('src', imageData);
         $('.colorlegend-select').val(this.active.cmapName).trigger('change');
-        $('#vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0]));
-        $('#vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0]));
+
+        // displaycolor limits
+        if (dims === 1) {
+            $('#vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0]));
+            $('#vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0]));
+        } else if (dims === 2) {
+            $('#xd-vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0], 3, true));
+            $('#xd-vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0], 3, true));
+            $('#yd-vmin').text(cleanNumber(viewer.active.vmin[0]['value'][1], 3, true));
+            $('#yd-vmax').text(cleanNumber(viewer.active.vmax[0]['value'][1], 3, true));
+        }
+
+
         $('.colorlegend-select').on('select2:select', function (e) {
             var cmapName = e.params.data.id;
             viewer.active.cmapName = cmapName;
@@ -308,118 +395,113 @@ var mriview = (function(module) {
             $('#colorlegend-colorbar').attr('src', colormaps[cmapName].image.currentSrc);
         });
 
-        function submitVmin(newVal) {
-            if ($.isNumeric(newVal) && newVal < viewer.active.vmax[0]['value'][0]) {
-                viewer.active.setvmin(newVal);
-                $('#vmin').text(cleanNumber(newVal));
+        function submitVmin(newVal, dim, textId, decimals) {
+            if (!decimals) {
+                decimals = 3
+            }
+
+            if (!dim) {
+                dim = 0
+            }
+
+            if ($.isNumeric(newVal) && parseFloat(newVal) < parseFloat(viewer.active.vmax[0]['value'][dim])) {
+                viewer.active.setvmin(newVal, dim);
+                $(textId).text(cleanNumber(newVal, decimals--));
                 viewer.schedule();
             }
         }
 
-        function submitVmax(newVal) {
-            if ($.isNumeric(newVal) && newVal > viewer.active.vmin[0]['value'][0]) {
-                viewer.active.setvmax(newVal);
-                $('#vmax').text(cleanNumber(newVal));
+        function submitVmax(newVal, dim, textId, decimals) {
+            if (!decimals) {
+                decimals = 3
+            }
+
+            if (!dim) {
+                dim = 0
+            }
+
+            if ($.isNumeric(newVal) && parseFloat(newVal) > parseFloat(viewer.active.vmin[0]['value'][dim])) {
+                viewer.active.setvmax(newVal, dim);
+                $(textId).text(cleanNumber(newVal, decimals));
                 viewer.schedule();
             }
         }
 
-        $('#vmin').off('wheel');
-        $('#vmin').on('wheel', function (e) {
-            let currentVal = parseFloat(viewer.active.vmin[0]['value'][0]);
-            let newVal;
-            let step = 0.25;
-            if (e.altKey) {
-                step *= 0.1;
-            }
-
-            if (e.shiftKey) {
-                // logarithmic step
-                let range = viewer.active.vmax[0]['value'][0] - viewer.active.vmin[0]['value'][0];
-
-                if (e.originalEvent.deltaY <= 0) {
-                    newVal = currentVal + step * range;
-                } else {
-                    newVal = currentVal - step * range;
-                }
-
-            } else {
-                // linear step
-                if (e.originalEvent.deltaY <= 0) {
-                    newVal = currentVal + step;
-                } else {
-                    newVal = currentVal - step;
-                }
-            }
-
-            submitVmin(newVal)
-        });
-
-        $('#vmax').off('wheel')
-        $('#vmax').on('wheel', function (e) {
-            let currentVal = parseFloat(viewer.active.vmax[0]['value'][0]);
-            let newVal;
-            let step = 0.25;
-            if (e.altKey) {
-                step *= 0.1;
-            }
-
-            if (e.shiftKey) {
-                // logarithmic step
-                let range = viewer.active.vmax[0]['value'][0] - viewer.active.vmin[0]['value'][0];
-
-                if (e.originalEvent.deltaY <= 0) {
-                    newVal = currentVal + step * range;
-                } else {
-                    newVal = currentVal - step * range;
-                }
-
-            } else {
-                // linear step
-                if (e.originalEvent.deltaY <= 0) {
-                    newVal = currentVal + step;
-                } else {
-                    newVal = currentVal - step;
-                }
-            }
-            submitVmax(newVal);
-        });
-
-        function clickVminFunction () {
-            $('#vmin').css('display', 'none');
-            $('#vmin-input').val(cleanNumber(viewer.active.vmin[0]['value'][0]));
-            $('#vmin-input').css('display', 'block');
-            $('#vmin-input').focus();
+        let submitFunctions = {
+            'vmin': submitVmin,
+            'vmax': submitVmax,
         }
 
-        function leaveVminFunction () {
-            $('#vmin-input').css('display', 'none');
-            $('#vmin').css('display', 'block');
-            submitVmin($('#vmin-input').val());
+        // new wheel functions
+        function setWheelFunctions (side, id, dim) {
+            $(id).off('wheel')
+            $(id).on('wheel', function (e) {
+                let currentVal = parseFloat(viewer.active[side][0]['value'][dim]);
+                let newVal;
+                let step = 0.25;
+                if (e.altKey) {
+                    step *= 0.1;
+                }
+
+                if (e.shiftKey) {
+                    // logarithmic step
+                    let range = viewer.active.vmax[0]['value'][dim] - viewer.active.vmin[0]['value'][dim];
+
+                    if (e.originalEvent.deltaY <= 0) {
+                        newVal = currentVal + step * range;
+                    } else {
+                        newVal = currentVal - step * range;
+                    }
+
+                } else {
+                    // linear step
+                    if (e.originalEvent.deltaY <= 0) {
+                        newVal = currentVal + step;
+                    } else {
+                        newVal = currentVal - step;
+                    }
+                }
+                submitFunctions[side](newVal, dim, id);
+            });
         }
 
-        function clickVmaxFunction () {
-            $('#vmax').css('display', 'none');
-            $('#vmax-input').val(cleanNumber(viewer.active.vmax[0]['value'][0]));
-            $('#vmax-input').css('display', 'block');
-            $('#vmax-input').focus();
+        setWheelFunctions('vmin', '#vmin', 0)
+        setWheelFunctions('vmax', '#vmax', 0)
+        setWheelFunctions('vmin', '#xd-vmin', 0)
+        setWheelFunctions('vmax', '#xd-vmax', 0)
+        setWheelFunctions('vmin', '#yd-vmin', 1)
+        setWheelFunctions('vmax', '#yd-vmax', 1)
+
+        function setClickFunctions (side, textId, inputId, dim, decimals) {
+            function enterFunction () {
+                $(textId).css('display', 'none');
+                $(inputId).val(cleanNumber(viewer.active[side][0]['value'][dim], decimals, true));
+                $(inputId).css('display', 'block');
+                $(inputId).focus();
+            }
+
+            function leaveFunction () {
+                $(inputId).css('display', 'none');
+                $(textId).css('display', 'block');
+                submitFunctions[side]($(inputId).val(), dim, textId, decimals);
+            }
+
+            $(textId).on('click', enterFunction);
+            $(inputId).off();
+            $(inputId).on('blur', leaveFunction);
+            $(inputId).on('keyup', function (e) { if (event.keyCode === 13) leaveFunction() });
         }
 
-        function leaveVmaxFunction () {
-            $('#vmax-input').css('display', 'none')
-            $('#vmax').css('display', 'block')
-            submitVmax($('#vmax-input').val())
-        }
+        setClickFunctions('vmin', '#vmin', '#vmin-input', 0)
+        setClickFunctions('vmax', '#vmax', '#vmax-input', 0)
+        setClickFunctions('vmin', '#xd-vmin', '#xd-vmin-input', 0, 3)
+        setClickFunctions('vmax', '#xd-vmax', '#xd-vmax-input', 0, 3)
+        setClickFunctions('vmin', '#yd-vmin', '#yd-vmin-input', 1, 3)
+        setClickFunctions('vmax', '#yd-vmax', '#yd-vmax-input', 1, 3)
 
-        $('#vmin').on('click', clickVminFunction);
-        $('#vmin-input').off();
-        $('#vmin-input').on('blur', leaveVminFunction);
-        $('#vmin-input').on('keyup', function (e) { if (event.keyCode === 13) leaveVminFunction() });
 
-        $('#vmax').on('click', clickVmaxFunction);
-        $('#vmax-input').off()
-        $('#vmax-input').on('blur', leaveVmaxFunction);
-        $('#vmax-input').on('keyup', function (e) { if (event.keyCode === 13) leaveVmaxFunction() });
+        // end colorbar code
+        // // // // // // // // // // // // // // // // // // // // // // // //
 
 
 

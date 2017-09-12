@@ -129,41 +129,51 @@ var dataset = (function(module) {
         this.ui = new jsplot.Menu();
 
         if (!this.data[0].raw) { // not RGB
-            if (this.data.length > 1) { // 2D
-              console.log('Loading 2D dataset');
-                // this.setvmin1 = function(val) {
-                //     this.setVminmax(val, this.vmax[0].value[0], 0);
-                // }.bind(this);
-                // this.setvmin2 = function(val) {
-                //     this.setVminmax(val, this.vmax[0].value[1], 1);
-                // }.bind(this);
-                // this.setvmax1 = function(val) {
-                //     this.setVminmax(this.vmin[0].value[0], val, 0)
-                // }.bind(this);
-                // this.setvmax2 = function(val) {
-                //     this.setVminmax(this.vmin[0].value[1], val, 1)
-                // }.bind(this);
+            // this.setvmin1 = function(val) {
+            //     this.setVminmax(val, this.vmax[0].value[0], 0);
+            // }.bind(this);
+            // this.setvmin2 = function(val) {
+            //     this.setVminmax(val, this.vmax[0].value[1], 1);
+            // }.bind(this);
+            // this.setvmax1 = function(val) {
+            //     this.setVminmax(this.vmin[0].value[0], val, 0)
+            // }.bind(this);
+            // this.setvmax2 = function(val) {
+            //     this.setVminmax(this.vmin[0].value[1], val, 1)
+            // }.bind(this);
 
-                // this.ui.add({
-                //     vmin1: {action: [this, "setvmin1", this.data[0].min,
-                //         this.data[0].max, this.vmin[0].value[0]]},
-                //     vmax1: {action: [this, "setvmax1", this.data[0].min,
-                //         this.data[0].max, this.vmax[0].value[0]]},
-                //     vmin2: {action: [this, "setvmin2", this.data[1].min,
-                //         this.data[1].max, this.vmin[0].value[1]]},
-                //     vmax1: {action: [this, "setvmax2", this.data[1].min,
-                //         this.data[1].max, this.vmax[0].value[1]]},
-                // });
-            } else { // not 2D, "normal"
-                this.setvmin = function(val) {
+            // this.ui.add({
+            //     vmin1: {action: [this, "setvmin1", this.data[0].min,
+            //         this.data[0].max, this.vmin[0].value[0]]},
+            //     vmax1: {action: [this, "setvmax1", this.data[0].min,
+            //         this.data[0].max, this.vmax[0].value[0]]},
+            //     vmin2: {action: [this, "setvmin2", this.data[1].min,
+            //         this.data[1].max, this.vmin[0].value[1]]},
+            //     vmax1: {action: [this, "setvmax2", this.data[1].min,
+            //         this.data[1].max, this.vmax[0].value[1]]},
+            // });
+            if (this.data.length == 1 || this.data.length == 2) {
+                this.setvmin = function(val, dim) {
+                    if (!dim) {
+                        dim = 0
+                    }
+
                     if (val === undefined)
-                        return this.vmin[0].value[0];
-                    this.vmin[0].value[0] = val;
+                        return this.vmin[0].value[dim];
+                    this.vmin[0].value[dim] = val;
+
+                    console.log('setting vmin: ' + val + ' ' + dim)
                 }.bind(this);
-                this.setvmax = function(val) {
+                this.setvmax = function(val, dim) {
+                    if (!dim) {
+                        dim = 0
+                    }
+
                     if (val === undefined)
-                        return this.vmax[0].value[0];
-                    this.vmax[0].value[0] = val;
+                        return this.vmax[0].value[dim];
+                    this.vmax[0].value[dim] = val;
+
+                    console.log('setting vmax: ' + val + ' ' + dim)
                 }.bind(this);
 
                 this.ui.add({
@@ -189,14 +199,8 @@ var dataset = (function(module) {
             this.vmax[idx].value[dim] = max;
         }
     }
-    module.DataView.prototype.setColormap = function(cmap, idx) {
-        if (idx === undefined) {
-            for (var i = 0; i < this.data.length; i++) {
-                this.cmap[i].value = colormaps[cmap];
-            }
-        } else {
-            this.cmap[idx].value = colormaps[cmap];
-        }
+    module.DataView.prototype.setColormap = function(cmap) {
+        this.cmap[0].value = colormaps[cmap];
     }
 
     module.DataView.prototype.getShader = function(shaderfunc, uniforms, opts) {

@@ -17,6 +17,7 @@ class Dataview2D(Dataview):
         self.vmax = vmax
         self.vmin2 = vmin if vmin2 is None else vmin2
         self.vmax2 = vmax if vmax2 is None else vmax2
+
         self.state = state
         self.attrs = kwargs
         if 'priority' not in self.attrs:
@@ -139,8 +140,8 @@ class Volume2D(Dataview2D):
             vmax = dim1.vmax if vmax is None else vmax
             vmax2 = dim2.vmax if vmax2 is None else vmax2
         else:
-            self.dim1 = Volume(dim1, subject, xfmname)
-            self.dim2 = Volume(dim2, subject, xfmname)
+            self.dim1 = Volume(dim1, subject, xfmname, vmin=vmin, vmax=vmax)
+            self.dim2 = Volume(dim2, subject, xfmname, vmin=vmin2, vmax=vmax2)
 
         super(Volume2D, self).__init__(description=description, cmap=cmap, vmin=vmin,
                                        vmax=vmax, vmin2=vmin2, vmax2=vmax2, **kwargs)
