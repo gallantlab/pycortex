@@ -404,7 +404,7 @@ var mriview = (function(module) {
                 dim = 0
             }
 
-            if ($.isNumeric(newVal) && parseFloat(newVal) < parseFloat(viewer.active.vmax[0]['value'][dim])) {
+            if ($.isNumeric(newVal)) {
                 viewer.active.setvmin(newVal, dim);
                 $(textId).text(cleanNumber(newVal, decimals--));
                 viewer.schedule();
@@ -420,7 +420,7 @@ var mriview = (function(module) {
                 dim = 0
             }
 
-            if ($.isNumeric(newVal) && parseFloat(newVal) > parseFloat(viewer.active.vmin[0]['value'][dim])) {
+            if ($.isNumeric(newVal)) {
                 viewer.active.setvmax(newVal, dim);
                 $(textId).text(cleanNumber(newVal, decimals));
                 viewer.schedule();
