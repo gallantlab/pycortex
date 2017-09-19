@@ -351,6 +351,8 @@ class JSProxy(object):
             return self.attrs[attr][1]
 
     def __setattr__(self, attr, value):
+        if hasattr(self, "attrs") and self.attrs is None:
+            return super(JSProxy, self).__setattr__(attr, value)
         if not hasattr(self, "attrs") or attr not in self.attrs:
             return super(JSProxy, self).__setattr__(attr, value)
 
