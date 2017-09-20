@@ -4,18 +4,17 @@
     var viewer, subjects, datasets, figure, sock, viewopts;
 {% end %}
 {% block onload %}
-                viewopts = {{viewopts}};
-		
-	        subjects = {{subjects}};
-		for (var name in subjects) {
-			subjects[name] = new mriview.Surface(subjects[name]);
-		}
+        viewopts = {{viewopts}};
+        subjects = {{subjects}};
+        for (var name in subjects) {
+            subjects[name] = new mriview.Surface(subjects[name]);
+        }
 
-		figure = new jsplot.W2Figure();
-		viewer = figure.add(mriview.Viewer, "main", true);
+        figure = new jsplot.W2Figure();
+        viewer = figure.add(mriview.Viewer, "main", true);
 
-		dataviews = dataset.fromJSON({{data}});
-		viewer.addData(dataviews);
+        dataviews = dataset.fromJSON({{data}});
+        viewer.addData(dataviews);
 
-		sock = new Websock();
+        sock = new Websock();
 {% end %}
