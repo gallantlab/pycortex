@@ -424,9 +424,9 @@ var Shaderlib = (function() {
         "#endif",
 
             "uniform float thickmix;",
-            "uniform float curvAlpha;",
-            "uniform float curvScale;",
-            "uniform float curvLim;",
+            "uniform float brightness;",
+            "uniform float smoothness;",
+            "uniform float contrast;",
             "uniform vec3 voxlineColor;",
             "uniform float voxlineWidth;",
 
@@ -459,8 +459,9 @@ var Shaderlib = (function() {
 
             "void main() {",
                 //Curvature Underlay
-                "float curv = clamp(vCurv / curvScale + 0.5, 0.5-curvLim, 0.5+curvLim);",
-                "vec4 cColor = vec4(vec3(curv) * curvAlpha, 1.0);",
+                "float ctmp = clamp(vCurv / smoothness, -0.5, 0.5);", // use limits here too
+                "float curv = clamp(ctmp * contrast + brightness, 0.0, 1.0);",
+                "vec4 cColor = vec4(vec3(curv), 1.0);", 
 
                 "vec3 coord_x, coord_y;",
             "#ifdef RGBCOLORS",
@@ -714,9 +715,9 @@ var Shaderlib = (function() {
             "uniform sampler2D extratex;",
         "#endif",
 
-            "uniform float curvAlpha;",
-            "uniform float curvScale;",
-            "uniform float curvLim;",
+            "uniform float brightness;",
+            "uniform float smoothness;",
+            "uniform float contrast;",
 
             // "uniform float hatchAlpha;",
             // "uniform vec3 hatchColor;",
@@ -737,8 +738,10 @@ var Shaderlib = (function() {
 
             "void main() {",
                 //Curvature Underlay
-                "float curv = clamp(vCurv / curvScale  + .5, curvLim, 1.-curvLim);",
-                "vec4 cColor = vec4(vec3(curv) * curvAlpha, curvAlpha);",
+                "float ctmp = clamp(vCurv / smoothness, -0.5, 0.5);", // use limits here too
+                "float curv = clamp(ctmp * contrast + brightness, 0.0, 1.0);",
+                //"vec4 cColor = vec4(vec3(curv) * brightness, brightness);", // Old way. Important to actually have alpha?
+                "vec4 cColor = vec4(vec3(curv), 1.0);",
 
                 //Cross hatch / dropout layer
                 // "float hw = gl_FrontFacing ? hatchAlpha*vDrop : 1.;",

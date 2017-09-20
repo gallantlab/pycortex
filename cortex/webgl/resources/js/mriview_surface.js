@@ -54,7 +54,7 @@ var mriview = (function(module) {
 
                 thickmix:   { type:'f',  value:0.5},
                 surfmix:    { type:'f',  value:0},
-                bumpyflat:  { type:'i',  value:true},
+                bumpyflat:  { type:'i',  value:viewopts.bumpy_flatmap == 'true'},
 
                 //hatch:      { type:'t',  value:0, texture: module.makeHatch() },
                 //hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
@@ -63,9 +63,9 @@ var mriview = (function(module) {
 
                 dataAlpha:  { type:'f', value:1.},
                 overlay:    { type:'t', value:null },
-                curvAlpha:  { type:'f', value:parseFloat(viewopts.curvalpha)},
-                curvScale:  { type:'f', value:parseFloat(viewopts.curvscale)},
-                curvLim:    { type:'f', value:parseFloat(viewopts.curvlim)},
+                brightness:  { type:'f', value:parseFloat(viewopts.brightness)},
+                smoothness:  { type:'f', value:parseFloat(viewopts.smoothness)},
+                contrast:    { type:'f', value:parseFloat(viewopts.contrast)},
                 extratex:   { type:'t', value:null},
 
                 // screen:     { type:'t', value:this.volumebuf},
@@ -93,9 +93,9 @@ var mriview = (function(module) {
         
 
         this.ui.addFolder("curvature", true).add({
-            brightness: {action:[this.uniforms.curvAlpha, "value", 0, 1]},
-            contrast: {action:[this.uniforms.curvLim, "value", 0, 0.5]},
-            smoothness: {action:[this.uniforms.curvScale, "value", 0, 1]},
+            brightness: {action:[this.uniforms.brightness, "value", 0, 1]},
+            contrast: {action:[this.uniforms.contrast, "value", 0, 1]},
+            smoothness: {action:[this.uniforms.smoothness, "value", 0, 1]},
         });
 
         var loader = new THREE.CTMLoader(false);
@@ -188,6 +188,7 @@ var mriview = (function(module) {
 
                 var vertexvolumes = module.computeVertexPrismVolume(wmareas, pialareas, dists);
                 hemi.vertexvolumes = vertexvolumes;
+                //if (viewopts.bumpy_flatmap == 'true') { // change this line to test whether flatmap exists?
                 var flatheights = module.computeFlatVolumeHeight(wmareas, vertexvolumes);
                 flatheights.array = flatheights.array.map(function (h) {return h * flatscale;});
                 // flatheights.array = flatheights.array.map(Math.sqrt);
@@ -210,7 +211,7 @@ var mriview = (function(module) {
                 // hemi.addAttribute('flatBumpNorms', flatoff_geom.attributes.normal);
                 hemi.addAttribute('flatheight', flatheights);
                 hemi.addAttribute('flatBumpNorms', module.computeNormal(flat_offset_verts, hemi.attributes.index, hemi.offsets) );
-
+                //}
 
                 //Queue blank data attributes for vertexdata
                 hemi.addAttribute("data0", new THREE.BufferAttribute(new Float32Array(), 1));
