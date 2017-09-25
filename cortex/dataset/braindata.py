@@ -221,12 +221,12 @@ class VolumeData(BrainData):
             if mask is None:
                 nvox = self.data.shape[-1]
                 self._mask, self.mask = _find_mask(nvox, self.subject, self.xfmname)
-            elif isinstance(mask, (bytes, str)):
-                self.mask = db.get_mask(self.subject, self.xfmname, mask)
-                self._mask = mask
             elif isinstance(mask, np.ndarray):
                 self.mask = mask > 0
                 self._mask = mask > 0
+            else:
+                self.mask = db.get_mask(self.subject, self.xfmname, mask)
+                self._mask = mask
 
             self.shape = self.mask.shape
         else:
@@ -235,7 +235,7 @@ class VolumeData(BrainData):
             if self.movie:
                 shape = shape[1:]
             xfm = db.get_xfm(self.subject, self.xfmname)
-            if xfm.shape != shape:
+            if xfm.shafpe != shape:
                 raise ValueError("Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)" % (str(shape), str(xfm.shape)))
             self.shape = shape
 
