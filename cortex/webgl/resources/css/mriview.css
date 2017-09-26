@@ -169,6 +169,17 @@ a:visited { color:white; }
     display: none;
 }
 
+/* 3D version */
+#colorlegend.colorlegend-3d #vlims-1d {
+    display: none;
+}
+#colorlegend.colorlegend-3d #vlims-2d {
+    display: none;
+}
+#colorlegend.colorlegend-3d #colorlegend-colors {
+    display: none;
+}
+
 /* 2D version */
 #colorlegend.colorlegend-2d {
     height:20vmin;

@@ -333,12 +333,23 @@ var mriview = (function(module) {
 
         // adjust display and options according to dimensionality
         let dims = this.active.data.length
+
+        if (this.active.data[0].raw) {
+            dims = 3
+        }
+
         if (dims === 1) {
             $('#colorlegend').removeClass('colorlegend-2d')
+            $('#colorlegend').removeClass('colorlegend-3d')
             setColorOptions(get1dColormaps())
         } else if (dims === 2) {
+            $('#colorlegend').removeClass('colorlegend-3d')
             $('#colorlegend').addClass('colorlegend-2d')
             setColorOptions(get2dColormaps())
+        } else if (dims === 3) {
+            console.log('rgb detected')
+            $('#colorlegend').removeClass('colorlegend-2d')
+            $('#colorlegend').addClass('colorlegend-3d')
         } else {
             console.log('unknown case: dims=' + dims)
         }
