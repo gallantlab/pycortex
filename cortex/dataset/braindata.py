@@ -235,7 +235,7 @@ class VolumeData(BrainData):
             if self.movie:
                 shape = shape[1:]
             xfm = db.get_xfm(self.subject, self.xfmname)
-            if xfm.shafpe != shape:
+            if xfm.shape != shape:
                 raise ValueError("Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)" % (str(shape), str(xfm.shape)))
             self.shape = shape
 
