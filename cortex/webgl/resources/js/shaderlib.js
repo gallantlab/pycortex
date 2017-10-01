@@ -331,6 +331,8 @@ var Shaderlib = (function() {
                     throw "Cannot use 2D colormaps with volume integration"
                 header += "#define HALO_RENDER\n";
             }
+            if (opts.hasflat)
+                header += "#define HASFLAT\n"
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -342,8 +344,11 @@ var Shaderlib = (function() {
             "attribute vec4 wm;",
             "attribute vec3 wmnorm;",
             "attribute vec4 auxdat;",
-            "attribute vec3 flatBumpNorms;",
-            "attribute float flatheight;",
+
+            "#ifdef HASFLAT",
+                "attribute vec3 flatBumpNorms;",
+                "attribute float flatheight;",
+            "#endif",
             // "attribute float dropout;",
             
             "varying vec3 vViewPosition;",
@@ -398,12 +403,20 @@ var Shaderlib = (function() {
                 // "norm = normalize(flatBumpNorms);",
 
             "#ifdef CORTSHEET",
-                // "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
-                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., thickmix) * flatheight * f_bumpyflat;",
+                // 
+                "#ifdef HASFLAT",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., thickmix) * flatheight * f_bumpyflat;",
+                "#else",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
+                "#endif",
             "#endif",
 
-                "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
-                // "vNormal = normalMatrix * norm;",
+                "#ifdef HASFLAT",
+                    "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
+                "#else",
+                    "vNormal = normalMatrix * norm;",
+                "#endif",
+
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
             "}"
@@ -595,9 +608,13 @@ var Shaderlib = (function() {
                 wm: { type: 'v4', value:null },
                 wmnorm: { type: 'v3', value:null },
                 auxdat: { type: 'v4', value:null },
-                flatBumpNorms: { type: 'v3', value:null },
-                flatheight: { type: 'f', value:null },
+                // flatBumpNorms: { type: 'v3', value:null },
+                // flatheight: { type: 'f', value:null },
             };
+            if (opts.hasflat) {
+                attributes.flatBumpNorms = { type: 'v3', value:null };
+                attributes.flatheight = { type: 'f', value:null };
+            }
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};
                 attributes['mixNorms'+i] = { type:'v3', value:null};

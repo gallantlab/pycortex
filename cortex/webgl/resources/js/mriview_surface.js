@@ -159,58 +159,69 @@ var mriview = (function(module) {
                     hemi.attributes['mixNorms'+json.names.length].needsUpdate = true;
                     posdata[name].positions.push(hemi.attributes['mixSurfs'+json.names.length]);
                     posdata[name].normals.push(hemi.attributes['mixNorms'+json.names.length]);
+
+
+                    var smoothfactor = 0.1;
+                    var smoothiter = 50;
+
+
+                    var wmareas = module.computeAreas(hemi.attributes.wm, hemi.attributes.index, hemi.offsets);
+                    wmareas = module.iterativelySmoothVertexData(hemi.attributes.wm, hemi.attributes.index, hemi.offsets, wmareas, smoothfactor, smoothiter);
+                    hemi.wmareas = wmareas;
+                    var pialareas = module.computeAreas(hemi.attributes.position, hemi.attributes.index, hemi.offsets);
+                    pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, smoothfactor, smoothiter);
+                    hemi.pialareas = pialareas;
+
+                    // var flatareas = module.computeAreas(hemi.attributes.mixSurfs1, hemi.culled.index, hemi.culled.offsets);
+                    // var flatareascale = flatscale ** 2;
+                    // flatareas = flatareas.map(function (a) { return a / flatareascale;});
+                    // flatareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, flatareas, smoothfactor, smoothiter);
+                    // hemi.flatareas = flatareas;
+
+                    var dists = module.computeDist(hemi.attributes.position, hemi.attributes.wm);
+                    dists = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, dists, smoothfactor, smoothiter);
+
+                    var vertexvolumes = module.computeVertexPrismVolume(wmareas, pialareas, dists);
+                    hemi.vertexvolumes = vertexvolumes;
+                    var flatheights = module.computeFlatVolumeHeight(wmareas, vertexvolumes);
+                    flatheights.array = flatheights.array.map(function (h) {return h * flatscale;});
+                    // flatheights.array = flatheights.array.map(Math.sqrt);
+                    
+                    var flat_offset_verts;
+                    if ( name == "left" ) {
+                        flat_offset_verts = module.offsetVerts(hemi.attributes.mixSurfs1, flatheights, 0, -1);
+                    } else {
+                        flat_offset_verts = module.offsetVerts(hemi.attributes.mixSurfs1, flatheights, 0, 1);
+                    }
+                    // // hemi.addAttribute('offsetflat', flat_offset_verts);
+                    // var flatoff_geom = new THREE.BufferGeometry();
+                    // flatoff_geom.addAttribute('position', flat_offset_verts);
+                    // flatoff_geom.addAttribute('index', hemi.attributes.index);
+                    // flatoff_geom.computeVertexNormals();
+
+                    // console.log(flatoff_geom);
+                    // this.flatoff = flatoff_geom;
+
+                    // hemi.addAttribute('flatBumpNorms', flatoff_geom.attributes.normal);
+                    hemi.addAttribute('flatheight', flatheights);
+                    hemi.addAttribute('flatBumpNorms', module.computeNormal(flat_offset_verts, hemi.attributes.index, hemi.offsets) );
+                } else {
+                    // Fill these attributes so the shader doesn't choke, even though
+                    // there's no flatmap
+                    // just set flatheight to 1 everywhere.
+                    // var flatheight_arr = new Float32Array(hemi.attributes.position.position / hemi.attributes.position.itemSize);
+                    // flatheight_arr = flatheight_arr.map(function (x) {return 1.0;});
+                    // var flatheight = new THREE.BufferAttribute(flatheight_arr, 1);
+                    // hemi.addAttribute('flatheight', flatheight);
+
+                    // // and set the flatBumpNorms to the 
+                    // var flatBumpNorms = module.computeNormal()
                 }
 
                 //Generate an index list that has culled non-flatmap vertices
                 var culled = module._cull_flatmap_vertices(hemi.attributes.index.array, hemi.attributes.auxdat.array, hemi.offsets);
                 hemi.culled = { index: new THREE.BufferAttribute(culled.indices, 3), offsets:culled.offsets };
                 hemi.fullind = { index: hemi.attributes.index, offsets:hemi.offsets };
-
-                var smoothfactor = 0.1;
-                var smoothiter = 50;
-
-
-                var wmareas = module.computeAreas(hemi.attributes.wm, hemi.attributes.index, hemi.offsets);
-                wmareas = module.iterativelySmoothVertexData(hemi.attributes.wm, hemi.attributes.index, hemi.offsets, wmareas, smoothfactor, smoothiter);
-                hemi.wmareas = wmareas;
-                var pialareas = module.computeAreas(hemi.attributes.position, hemi.attributes.index, hemi.offsets);
-                pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, smoothfactor, smoothiter);
-                hemi.pialareas = pialareas;
-
-                // var flatareas = module.computeAreas(hemi.attributes.mixSurfs1, hemi.culled.index, hemi.culled.offsets);
-                // var flatareascale = flatscale ** 2;
-                // flatareas = flatareas.map(function (a) { return a / flatareascale;});
-                // flatareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, flatareas, smoothfactor, smoothiter);
-                // hemi.flatareas = flatareas;
-
-                var dists = module.computeDist(hemi.attributes.position, hemi.attributes.wm);
-                dists = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, dists, smoothfactor, smoothiter);
-
-                var vertexvolumes = module.computeVertexPrismVolume(wmareas, pialareas, dists);
-                hemi.vertexvolumes = vertexvolumes;
-                var flatheights = module.computeFlatVolumeHeight(wmareas, vertexvolumes);
-                flatheights.array = flatheights.array.map(function (h) {return h * flatscale;});
-                // flatheights.array = flatheights.array.map(Math.sqrt);
-                
-                var flat_offset_verts;
-                if ( name == "left" ) {
-                    flat_offset_verts = module.offsetVerts(hemi.attributes.mixSurfs1, flatheights, 0, -1);
-                } else {
-                    flat_offset_verts = module.offsetVerts(hemi.attributes.mixSurfs1, flatheights, 0, 1);
-                }
-                // // hemi.addAttribute('offsetflat', flat_offset_verts);
-                // var flatoff_geom = new THREE.BufferGeometry();
-                // flatoff_geom.addAttribute('position', flat_offset_verts);
-                // flatoff_geom.addAttribute('index', hemi.attributes.index);
-                // flatoff_geom.computeVertexNormals();
-
-                // console.log(flatoff_geom);
-                // this.flatoff = flatoff_geom;
-
-                // hemi.addAttribute('flatBumpNorms', flatoff_geom.attributes.normal);
-                hemi.addAttribute('flatheight', flatheights);
-                hemi.addAttribute('flatBumpNorms', module.computeNormal(flat_offset_verts, hemi.attributes.index, hemi.offsets) );
-
 
                 //Queue blank data attributes for vertexdata
                 hemi.addAttribute("data0", new THREE.BufferAttribute(new Float32Array(), 1));
@@ -332,6 +343,7 @@ var mriview = (function(module) {
                 var shade_cls = Shaders.surface_pixel;
             }
             var shaders = dataview.getShader(shade_cls, this.uniforms, {
+                hasflat: this.flatlims !== undefined,
                 morphs: this.names.length, 
                 volume: this.volume, 
                 layers: this._layers,
