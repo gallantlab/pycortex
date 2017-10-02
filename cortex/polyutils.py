@@ -907,10 +907,10 @@ class Distortion(object):
 
         G = make_surface_graph(self.polys)
         selverts = np.unique(self.polys.ravel())
-        ref_dists = [np.sqrt(((self.ref[G.neighbors(ii)] - self.ref[ii])**2).sum(1))
-                     for ii in selverts]
-        flat_dists = [np.sqrt(((self.flat[G.neighbors(ii)] - self.flat[ii])**2).sum(1))
-                      for ii in selverts]
+        ref_dists = [np.sqrt(((self.ref[np.array([x for x in G.neighbors(ii)])] - 
+                               self.ref[ii])**2).sum(1)) for ii in selverts]
+        flat_dists = [np.sqrt(((self.flat[np.array([x for x in G.neighbors(ii)])] - 
+                                self.flat[ii])**2).sum(1)) for ii in selverts]
         msdists = np.array([(f-r).mean() for r,f in zip(ref_dists, flat_dists)])
         alldists = np.zeros((len(self.ref),))
         alldists[selverts] = msdists
