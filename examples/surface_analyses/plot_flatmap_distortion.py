@@ -23,6 +23,7 @@ the original.
 
 import cortex
 from cortex.polyutils import Distortion
+import matplotlib.pyplot as plt
 
 subject = "S1"
 
@@ -62,3 +63,5 @@ cortex.quickshow(metric_dist, with_rois=False, with_labels=False)
 # these also return Vertex objects like those we created above
 areal_dist_2 = cortex.db.get_surfinfo(subject, "distortion", dist_type="areal")
 metric_dist_2 = cortex.db.get_surfinfo(subject, "distortion", dist_type="metric")
+
+plt.show()
