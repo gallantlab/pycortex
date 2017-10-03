@@ -601,7 +601,7 @@ class Surface(object):
         path = [a]
         d = self.geodesic_distance([b], **kwargs)
         while path[-1] != b:
-            n = self.graph.neighbors(path[-1])
+            n = np.array(list(self.graph.neighbors(path[-1])))
             path.append(n[d[n].argmin()])
         return path
 
