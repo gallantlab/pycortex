@@ -1,5 +1,4 @@
 var mriview = (function(module) {
-    var anim_speed = 2;
     var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
     module.Viewer = function(figure) {
         jsplot.Axes.call(this, figure);
@@ -788,15 +787,15 @@ var mriview = (function(module) {
 
         this.reset_view = function() {
             this.animate([
-                {state:'camera.target', idx:anim_speed, value:[0,0,0]},
-                {state:'mix', idx:anim_speed, value:0},
+                {state:'camera.target', idx:parseFloat(viewopts.anim_speed), value:[0,0,0]},
+                {state:'mix', idx:parseFloat(viewopts.anim_speed), value:0},
             ]);
         }.bind(this);
         var inflate = function() {
-            this.animate([{state:'mix', idx:anim_speed, value:.5}]);
+            this.animate([{state:'mix', idx:parseFloat(viewopts.anim_speed), value:.5}]);
         }.bind(this);
         var flatten = function() {
-            this.animate([ {state:'mix', idx:anim_speed, value:1}]);
+            this.animate([ {state:'mix', idx:parseFloat(viewopts.anim_speed), value:1}]);
         }.bind(this);
         cam_ui.add({
             reset: {action:this.reset_view, key:'r'},
