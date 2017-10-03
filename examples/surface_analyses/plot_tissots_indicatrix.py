@@ -25,8 +25,11 @@ introduced by flattening the globe onto a map:
 """
 
 import cortex
+import matplotlib.pyplot as plt
 
 tissot = cortex.db.get_surfinfo("S1", "tissots_indicatrix", radius=10, spacing=30)
 tissot.cmap = 'plasma'
 
 cortex.quickshow(tissot, with_labels=False, with_rois=False, with_colorbar=False)
+
+plt.show()

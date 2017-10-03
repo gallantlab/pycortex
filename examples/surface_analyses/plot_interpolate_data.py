@@ -59,3 +59,4 @@ ax.scatter(lflatpts[selected_pts,0], lflatpts[selected_pts,1], s=50,
 
 # > interp_data_2d.shape
 # (152893, 10)
+plt.show()
