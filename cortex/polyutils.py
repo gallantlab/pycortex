@@ -995,27 +995,24 @@ def boundary_edges(polys):
     return np.array(epts)
 
 def trace_poly(edges):
-    '''Given a disjoint set of edges, yield complete linked polygons'''
-    idx = dict((i, set([])) for i in np.unique(edges))
-    for i, (x, y) in enumerate(edges):
-        idx[x].add(i)
-        idx[y].add(i)
-
-    eset = set(range(len(edges)))
-    while len(eset) > 0:
-        eidx = eset.pop()
-        poly = list(edges[eidx])
-        stack = set([eidx])
-        while poly[-1] != poly[0] or len(poly) == 1:
-            next = list(idx[poly[-1]] - stack)[0]
-            eset.remove(next)
-            stack.add(next)
-            if edges[next][0] == poly[-1]:
-                poly.append(edges[next][1])
-            elif edges[next][1] == poly[-1]:
-                poly.append(edges[next][0])
-            else:
-                raise Exception
+    conn = dict((e, []) for e in np.unique(np.array(edges).ravel()))
+    for a, b in edges:
+        conn[a].append(b)
+        conn[b].append(a)
+    
+    while len(conn) > 0:
+        vert, nverts = next(iter(conn.items()))
+        poly = [vert]
+        while (len(poly) == 1 or poly[0] != poly[-1]) and len(conn[poly[-1]]) > 0:
+            nvert = conn[poly[-1]][0]
+            conn[nvert].remove(poly[-1])
+            conn[poly[-1]].remove(nvert)
+            if len(conn[nvert]) == 0:
+                del conn[nvert]
+            if len(conn[poly[-1]]) == 0:
+                del conn[poly[-1]]
+            
+            poly.append(nvert)
 
         yield poly
 
