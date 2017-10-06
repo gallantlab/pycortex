@@ -198,6 +198,10 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     my_viewopts = dict(options.config.items('webgl_viewopts'))
     my_viewopts['overlays_visible'] = overlays_visible
     my_viewopts['labels_visible'] = labels_visible
+    my_viewopts['brightness'] = options.config.get('curvature', 'brightness')
+    my_viewopts['smoothness'] = options.config.get('curvature', 'webgl_smooth')
+    my_viewopts['contrast'] = options.config.get('curvature', 'contrast')
+    
     for sec in options.config.sections():
         if 'paths' in sec or 'labels' in sec:
             my_viewopts[sec] = dict(options.config.items(sec))
