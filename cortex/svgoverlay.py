@@ -158,7 +158,7 @@ class SVGOverlay(object):
         if filename is None:
             return etree.tostring(outsvg)
         else:
-            with open(filename, "w") as outfile:
+            with open(filename, "wb") as outfile:
                 outfile.write(etree.tostring(outsvg))
         
     def get_texture(self, layer_name, height, name=None, background=None, labels=True,
@@ -585,7 +585,7 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False, **kwargs):
 
     if not os.path.exists(svgfile):
         # Overlay file does not exist yet! We need to create and populate it
-        with open(svgfile, "w") as fp:
+        with open(svgfile, "wb") as fp:
             fp.write(make_svg(pts.copy(), polys))
 
         svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)
@@ -715,7 +715,7 @@ def import_roi(roifile, outfile):
         rois.append(label_layer)
 
 
-    with open(outfile, "w") as fp:
+    with open(outfile, "wb") as fp:
         fp.write(etree.tostring(svg, pretty_print=True))
         
     # Final check for all layers
