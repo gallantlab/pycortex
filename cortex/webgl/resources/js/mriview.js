@@ -668,6 +668,7 @@ var mriview = (function(module) {
             function (e) {
                 // only implemented for 1d volume datasets
                 if (this.active.data.length != 1 || this.active.data[0].raw) {
+                    $('#mouseover_value').css('display', 'none')
                     return
                 }
 
