@@ -332,7 +332,6 @@ var mriview = (function(module) {
 
         // adjust display and options according to dimensionality
         let dims = this.active.data.length
-
         if (this.active.data[0].raw) {
             dims = 3
         }
@@ -510,7 +509,7 @@ var mriview = (function(module) {
         setClickFunctions('vmax', '#yd-vmax', '#yd-vmax-input', 1, 3)
 
 
-        // end colorbar code
+        // end colorlegend code
         // // // // // // // // // // // // // // // // // // // // // // // //
 
 
@@ -598,6 +597,102 @@ var mriview = (function(module) {
         if (surf.ui !== undefined) {
             this.ui.addFolder("surface", true, surf.ui);
         }
+
+        function xyz_to_jk(x, y, z) {
+            // xyz is 3d coordinate in voxel space ie (100, 100, 20)
+            // uv is 2d coordinate in mosaic slice space  ie (6, 5)
+            // jk is 2d coordinate in mosaic texture space ie (600, 500)
+            // i is linear index in unraveled image ie (123213)
+            // all zero-indexed
+
+            n_x = this.active.data[0].shape[0]
+            n_y = this.active.data[0].shape[1]
+            n_z = this.active.data[0].numslices
+            
+            n_u = this.active.data[0].mosaic[0]
+            n_v = this.active.data[0].mosaic[1]
+
+            n_j = this.active.data[0].textures[0].image.width
+            n_k = this.active.data[0].textures[0].image.height
+
+            u = z % n_u
+            v = Math.floor(z / n_u)
+
+            j_origin = 1 + u * (n_x + 1)
+            k_origin = 1 + v * (n_y + 1)
+
+            j = j_origin + x
+            k = k_origin + y
+
+            i = k * n_j + j
+
+            // console.log('n_x: ', n_x)
+            // console.log('n_y: ', n_y)
+            // console.log('n_z: ', n_z)
+            // console.log('n_u: ', n_u)
+            // console.log('n_v: ', n_v)
+            // console.log('n_j: ', n_j)
+            // console.log('n_k: ', n_k)
+            // console.log('x: ', x)
+            // console.log('y: ', y)
+            // console.log('z: ', z)
+            // console.log('u: ', u)
+            // console.log('v: ', v)
+            // console.log('j_origin: ', j_origin)
+            // console.log('k_origin: ', k_origin)
+            // console.log('j: ', j)
+            // console.log('k: ', k)
+            // console.log('i: ', i)
+
+            return i
+        }
+
+        function svg_off(surfs) {
+            for (surf of surfs) {
+                if (surf.surf.svg !== undefined) {
+                    surf.surf.svg.labels.left.visible = false;
+                    surf.surf.svg.labels.right.visible = false;
+                }
+            }
+        }
+        function svg_on(surfs) {
+            for (surf of surfs) {
+                if (surf.surf.svg !== undefined) {
+                    surf.surf.svg.labels.left.visible = true;
+                    surf.surf.svg.labels.right.visible = true;
+                }
+            }
+        }
+
+        $("#brain").on('mousemove',
+            function (e) {
+                // only implemented for 1d volume datasets
+                if (this.active.data.length != 1 || this.active.data[0].raw) {
+                    return
+                }
+
+                if (this.surfs[0].pick && this.surfs[0].surf.picker) {
+                    svg_off(this.surfs)
+                    index = this.surfs[0].surf.picker.get_vertex_index(
+                        this.renderer,
+                        this.camera,
+                        e.clientX,
+                        e.clientY,
+                    )
+                    svg_on(this.surfs)
+                    if (index.voxel) {
+                        console.log(index)
+                        i = xyz_to_jk.bind(this)(index.voxel.x, index.voxel.y, index.voxel.z)
+                        value = this.active.data[0].textures[0].image.data[i]
+                        // console.log('value: ', this.active.data[0].textures[0].image.data[i])
+                        $('#mouseover_value').text(parseFloat(value).toPrecision(3))
+                        $('#mouseover_value').css('display', 'block')
+                    } else {
+                        $('#mouseover_value').css('display', 'none')
+                    }
+                }
+            }.bind(this)
+        )
 
         this.schedule();
         return surf;

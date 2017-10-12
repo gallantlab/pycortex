@@ -143,6 +143,19 @@ a:visited { color:white; }
     font-weight:bold;
 }
 
+/* mouseover data styles */
+
+#mouseover_value {
+    position: absolute;
+    bottom: 20px;
+    left:10px;
+    color: white;
+    z-index: 100;
+    font-size: 2.5vmin;
+    display:none;
+    vertical-align:bottom;
+}
+
 /*************************************************
  * Colorlegend styles
  *************************************************/
