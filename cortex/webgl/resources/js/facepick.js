@@ -188,27 +188,55 @@ PickPosition.prototype = {
         }
     },
 
+    get_vertex_index: function(renderer, scene, x, y, surf) {
+
+        this.draw(renderer, scene);
+        let p = this._pick(x, y, renderer.context);
+        if (p) {
+            let point = mriview.get_position(
+                this.posdata[p.hemi],
+                this.uniforms.surfmix.value,
+                this.uniforms.thickmix.value,
+                p.ptidx,
+            );
+            let vertex = this.revIndex[p.hemi][p.ptidx];
+
+            let vec_float = point.base.clone().applyMatrix4(this.xfm);
+            let voxel = new THREE.Vector3(
+                Math.round(vec_float.x), 
+                Math.round(vec_float.y),
+                Math.round(vec_float.z),
+            )
+
+            return {'vertex': vertex, 'voxel': voxel}
+        } else {
+            return -1
+        }
+    },
+
     pick: function(renderer, scene, x, y, keep) {
         // DISABLE MULTI-CURSORS to make linking to voxels easy
         this.draw(renderer, scene);
         var p = this._pick(x, y, renderer.context);
-	if (p) {
-	    //var vec = p.pos.clone().applyMatrix4(this.xfm); // this uses "actual" picked coordinates, but is not very accurate (and doesn't match display!)
-	    var vert = mriview.get_position(this.posdata[p.hemi],
-					    this.uniforms.surfmix.value,
-					    this.uniforms.thickmix.value,
-					    p.ptidx);
-	    var vec_float = vert.base.clone().applyMatrix4(this.xfm);
-	    var vec = new THREE.Vector3(Math.round(vec_float.x), 
-					Math.round(vec_float.y),
-					Math.round(vec_float.z));
-            var idx = this.revIndex[p.hemi][p.ptidx];
-            console.log("Picked vertex "+idx+" (orig "+p.ptidx+") in "+p.hemi+" hemisphere, voxel=["+vec.x+","+vec.y+","+vec.z+"]");
-	    this.process_pick(vec, p.hemi, p.ptidx, keep);
-	}
-	else {
-	    this.process_nonpick();
-	}
+    	if (p) {
+    	    //var vec = p.pos.clone().applyMatrix4(this.xfm); // this uses "actual" picked coordinates, but is not very accurate (and doesn't match display!)
+    	    var vert = mriview.get_position(this.posdata[p.hemi],
+    					    this.uniforms.surfmix.value,
+    					    this.uniforms.thickmix.value,
+    					    p.ptidx);
+    	    var vec_float = vert.base.clone().applyMatrix4(this.xfm);
+    	    var vec = new THREE.Vector3(Math.round(vec_float.x), 
+    					Math.round(vec_float.y),
+    					Math.round(vec_float.z));
+                var idx = this.revIndex[p.hemi][p.ptidx];
+                console.log("Picked vertex "+idx+" (orig "+p.ptidx+") in "+p.hemi+" hemisphere, voxel=["+vec.x+","+vec.y+","+vec.z+"]");
+    	    this.process_pick(vec, p.hemi, p.ptidx, keep);
+            return {'vertex': idx, 'voxel': vec}
+    	}
+    	else {
+    	    this.process_nonpick();
+            return -1
+    	}
     },
     
     process_pick: function(vec, hemi, ptidx, keep) {
@@ -223,8 +251,8 @@ PickPosition.prototype = {
         }
         this.axes = [];
 	
-	if (this.callback_nonpick !== undefined)
-	    this.callback_nonpick();
+    	if (this.callback_nonpick !== undefined)
+    	    this.callback_nonpick();
     },
     
     dblpick: function(x, y, keep) {
