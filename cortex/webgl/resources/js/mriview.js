@@ -601,7 +601,7 @@ var mriview = (function(module) {
         $("#brain").on('mousemove',
             function (event) {
                 // only implemented for 1d volume datasets
-                if (this.active.data.length != 1 || this.active.data[0].raw) {
+                if (this.active.data.length != 1 || this.active.data[0].raw  || this.active.data[0].verts) {
                     $('#mouseover_value').css('display', 'none')
                     return
                 }
@@ -738,6 +738,16 @@ var mriview = (function(module) {
         for (var i = 0; i < this.surfs.length; i++) {
             if (this.surfs[i].pick)
                 coords = this.surfs[i].pick(this.renderer, this.camera, evt.x, evt.y);
+        }
+
+        // 
+        // // set the picked value display
+        // 
+
+        // only implemented for 1d volume datasets
+        if (this.active.data.length != 1 || this.active.data[0].raw || this.active.data[0].verts) {
+            $('#picked_value').css('display', 'none')
+            return
         }
 
         if (coords !== -1) {
