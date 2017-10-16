@@ -362,11 +362,12 @@ var mriview = (function(module) {
             this.svg.labels.left.visible = false;
             this.svg.labels.right.visible = false;
         }
-        this.picker.pick(renderer, camera, x, y, false);
+        result = this.picker.pick(renderer, camera, x, y, false);
         if (this.svg !== undefined) {
             this.svg.labels.left.visible = true;
             this.svg.labels.right.visible = true;
         }
+        return result
     }
     module.Surface.prototype.clearShaders = function() {
         for (var name in this.shaders) {

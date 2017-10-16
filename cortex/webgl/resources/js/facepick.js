@@ -231,9 +231,11 @@ PickPosition.prototype = {
                 var idx = this.revIndex[p.hemi][p.ptidx];
                 console.log("Picked vertex "+idx+" (orig "+p.ptidx+") in "+p.hemi+" hemisphere, voxel=["+vec.x+","+vec.y+","+vec.z+"]");
     	    this.process_pick(vec, p.hemi, p.ptidx, keep);
+            return {'vertex': idx, 'voxel': vec}
     	}
     	else {
     	    this.process_nonpick();
+            return -1
     	}
     },
     
@@ -249,8 +251,8 @@ PickPosition.prototype = {
         }
         this.axes = [];
 	
-	if (this.callback_nonpick !== undefined)
-	    this.callback_nonpick();
+    	if (this.callback_nonpick !== undefined)
+    	    this.callback_nonpick();
     },
     
     dblpick: function(x, y, keep) {
