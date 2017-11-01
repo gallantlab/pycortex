@@ -143,6 +143,30 @@ a:visited { color:white; }
     font-weight:bold;
 }
 
+/* mouseover data styles */
+
+#picked_value {
+    position: absolute;
+    bottom: 5vmin;
+    left:10px;
+    color: white;
+    z-index: 100;
+    font-size: 2.5vmin;
+    display:none;
+    vertical-align:bottom;
+}
+
+#mouseover_value {
+    position: absolute;
+    bottom: 1.5vmin;
+    left:10px;
+    color: white;
+    z-index: 100;
+    font-size: 2.5vmin;
+    display:none;
+    vertical-align:bottom;
+}
+
 /*************************************************
  * Colorlegend styles
  *************************************************/

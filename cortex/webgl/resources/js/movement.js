@@ -267,6 +267,10 @@ var jsplot = (function (module) {
 			keystate = null;
 		};
 
+		function blur ( event ) {
+			keystate = null
+		}
+
 		function mousedown( event ) {
 			event.preventDefault();
 			event.stopPropagation();
@@ -346,6 +350,7 @@ var jsplot = (function (module) {
 
 		window.addEventListener( 'keydown', keydown.bind(this), false );
 		window.addEventListener( 'keyup', keyup.bind(this), false );
+		window.addEventListener( 'blur', blur.bind(this), false );
 	}
 
 	return module;

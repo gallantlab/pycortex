@@ -332,7 +332,6 @@ var mriview = (function(module) {
 
         // adjust display and options according to dimensionality
         let dims = this.active.data.length
-
         if (this.active.data[0].raw) {
             dims = 3
         }
@@ -510,7 +509,7 @@ var mriview = (function(module) {
         setClickFunctions('vmax', '#yd-vmax', '#yd-vmax-input', 1, 3)
 
 
-        // end colorbar code
+        // end colorlegend code
         // // // // // // // // // // // // // // // // // // // // // // // //
 
 
@@ -599,9 +598,115 @@ var mriview = (function(module) {
             this.ui.addFolder("surface", true, surf.ui);
         }
 
+        $("#brain").on('mousemove',
+            function (event) {
+                // only implemented for 1d volume datasets
+                if (this.active.data.length != 1 || this.active.data[0].raw  || this.active.data[0].verts) {
+                    $('#mouseover_value').css('display', 'none')
+                    return
+                }
+
+                // set mouseover value if mouse is over a vertex
+                mouse_index = this.getMouseIndex(event)
+                if (mouse_index !== -1) {
+                    value = this.active.data[0].textures[0].image.data[mouse_index]
+                    $('#mouseover_value').text(parseFloat(value).toPrecision(3))
+                    $('#mouseover_value').css('display', 'block')
+                } else {
+                    $('#mouseover_value').css('display', 'none')
+                }
+            }.bind(this)
+        )
+
         this.schedule();
         return surf;
     };
+
+    module.Viewer.prototype.getMouseIndex = function(event) {
+        if (this.surfs[0].pick && this.surfs[0].surf.picker) {
+            this.svgOff(this.surfs)
+            let coords = this.surfs[0].surf.picker.get_vertex_index(
+                this.renderer,
+                this.camera,
+                event.clientX,
+                event.clientY,
+            )
+            this.svgOn(this.surfs)
+            if (coords === -1) {
+                return -1
+            }
+            // console.log(coords)
+            return this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
+        }
+        return -1
+    };
+
+    module.Viewer.prototype.xyxToI = function(x, y, z) {
+        // xyz is 3d coordinate in voxel space ie (100, 100, 20)
+        // uv is 2d coordinate in mosaic slice space  ie (6, 5)
+        // jk is 2d coordinate in mosaic texture space ie (600, 500)
+        // i is linear index in unraveled image ie (123213)
+        // all zero-indexed
+
+        let n_x = this.active.data[0].shape[0]
+        let n_y = this.active.data[0].shape[1]
+        let n_z = this.active.data[0].numslices
+        
+        let n_u = this.active.data[0].mosaic[0]
+        let n_v = this.active.data[0].mosaic[1]
+
+        let n_j = this.active.data[0].textures[0].image.width
+        let n_k = this.active.data[0].textures[0].image.height
+
+        let u = z % n_u
+        let v = Math.floor(z / n_u)
+
+        let j_origin = 1 + u * (n_x + 1)
+        let k_origin = 1 + v * (n_y + 1)
+
+        let j = j_origin + x
+        let k = k_origin + y
+
+        let i = k * n_j + j
+
+        // console.log('n_x: ', n_x)
+        // console.log('n_y: ', n_y)
+        // console.log('n_z: ', n_z)
+        // console.log('n_u: ', n_u)
+        // console.log('n_v: ', n_v)
+        // console.log('n_j: ', n_j)
+        // console.log('n_k: ', n_k)
+        // console.log('x: ', x)
+        // console.log('y: ', y)
+        // console.log('z: ', z)
+        // console.log('u: ', u)
+        // console.log('v: ', v)
+        // console.log('j_origin: ', j_origin)
+        // console.log('k_origin: ', k_origin)
+        // console.log('j: ', j)
+        // console.log('k: ', k)
+        // console.log('i: ', i)
+
+        return i
+    };
+
+    module.Viewer.prototype.svgOff = function(surfs) {
+        for (surf of surfs) {
+            if (surf.surf.svg !== undefined) {
+                surf.surf.svg.labels.left.visible = false;
+                surf.surf.svg.labels.right.visible = false;
+            }
+        }
+    }
+    module.Viewer.prototype.svgOn = function(surfs) {
+        for (surf of surfs) {
+            if (surf.surf.svg !== undefined) {
+                surf.surf.svg.labels.left.visible = true;
+                surf.surf.svg.labels.right.visible = true;
+            }
+        }
+    }
+
     module.Viewer.prototype.rmSurf = function(surftype) {
         var newsurfs = [];
         for (var i = 0; i < this.surfs.length; i++) {
@@ -629,9 +734,29 @@ var mriview = (function(module) {
     }
 
     module.Viewer.prototype.pick = function(evt) {
+        let coords
         for (var i = 0; i < this.surfs.length; i++) {
             if (this.surfs[i].pick)
-                this.surfs[i].pick(this.renderer, this.camera, evt.x, evt.y);
+                coords = this.surfs[i].pick(this.renderer, this.camera, evt.x, evt.y);
+        }
+
+        // 
+        // // set the picked value display
+        // 
+
+        // only implemented for 1d volume datasets
+        if (this.active.data.length != 1 || this.active.data[0].raw || this.active.data[0].verts) {
+            $('#picked_value').css('display', 'none')
+            return
+        }
+
+        if (coords !== -1) {
+            let mouse_index = this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
+            value = this.active.data[0].textures[0].image.data[mouse_index]
+            $('#picked_value').text(parseFloat(value).toPrecision(3))
+            $('#picked_value').css('display', 'block')
+        } else {
+            $('#picked_value').css('display', 'none')
         }
     }
 
