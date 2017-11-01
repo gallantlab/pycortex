@@ -165,7 +165,7 @@ class Database(object):
             raise AttributeError
     
     def __dir__(self):
-        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", # "get_paths", # Add?
+        return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "subjects", # "get_paths", # Add?
                 "get_mask", "get_overlay","get_cache", "get_view", "save_view", "get_mnixfm"] + list(self.subjects.keys())
 
     @property
@@ -173,6 +173,7 @@ class Database(object):
         if self._subjects is not None:
             return self._subjects
         subjs = os.listdir(os.path.join(self.filestore))
+        subjs = [s for s in subjs if os.path.isdir(os.path.join(self.filestore, s))]
         self._subjects = dict([(sname, SubjectDB(sname, filestore=self.filestore)) for sname in subjs])
         return self._subjects
 

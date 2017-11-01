@@ -268,6 +268,100 @@ def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
 
     return pts, polys, get_curv(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir)
 
+def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subject='fsaverage'):
+    """subject is a freesurfer subject"""
+    if fs_dir is None:
+        fs_dir = os.environ['SUBJECTS_DIR']
+    for hemi in hemisphere:
+        srclabel = os.path.join(fs_dir, src_subject, 'label', 
+                                '{hemi}.{label}.label'.format(hemi=hemi, label=label))
+        trglabel = os.path.join(fs_dir, subject, 'label', 
+                                '{hemi}.{label}.label'.format(hemi=hemi, label=label))
+        if not os.path.exists(srclabel):
+            raise ValueError("Label {} doesn't exist!".format(srclabel))
+        fs_sub_dir = os.path.join(fs_dir, subject, 'label')
+        if not os.path.exists(fs_sub_dir):
+            raise ValueError("Freesurfer subject directory for subject ({}) does not exist!".format(fs_sub_dir))
+        cmd = ("mri_label2label --srcsubject {src_subject} --trgsubject {subject} "
+               "--srclabel {srclabel} --trglabel {trglabel} "
+               "--regmethod surface --hemi {hemi}")
+        cmd_f = cmd.format(hemi=hemi, subject=subject, src_subject=src_subject, 
+                           srclabel=srclabel, trglabel=trglabel)
+        print("Calling: ")
+        print(cmd_f)
+        to_call = shlex.split(cmd_f)
+        proc = sp.Popen(to_call,
+                           stdin=sp.PIPE,
+                           stdout=sp.PIPE,
+                           stderr=sp.PIPE)
+        stdout, stderr = proc.communicate()
+        if stderr not in ('', b''):
+            raise Exception("Error in freesurfer function call:\n{}".format(stderr))
+    print("Labels transferred")
+
+def _parse_labels(label_files, subject):
+    """Extract values from freesurfer label file(s) and map to vertices
+
+    Parameters
+    ----------
+    label_files : str or list
+        full paths to label file or files to load
+    subject : str
+        pycortex subject ID
+    """
+    if not isinstance(label_files, (list, tuple)):
+        label_files = [label_files]
+    verts = []
+    values = []
+    lh_surf, _ = database.db.get_surf(subject, 'fiducial', 'left')
+    for fname in label_files:
+        with open(fname) as fid:
+            lines = fid.readlines()
+            lines = [[float(xx.strip()) for xx in x.split(' ') if xx.strip()] for x in lines[2:]]
+            vals = np.array(lines)
+            if '/lh.' in fname:
+                verts.append(vals[:,0])
+            elif '/rh.' in fname:
+                verts.append(vals[:,0] + lh_surf.shape[0])
+            values.append(vals[:,-1])
+    verts = np.hstack(verts)
+    values = np.hstack(values)
+    return verts, values
+
+def get_label(subject, label, fs_subject=None, fs_dir=None, src_subject='fsaverage', hemisphere=('lh', 'rh'), **kwargs):
+    """Get data from a label file for fsaverage subject
+
+    Parameters
+    ----------
+    subject : str
+        A pycortex subject ID
+    label : str
+        Label name
+    fs_subject : str
+        Freesurfer subject ID, if different from pycortex subject ID
+    src_subject : str
+        Freesurfer subject ID from which to transfer the label. 
+    fs_dir : str
+        Freesurfer subject directory; None defaults to OS environment variable 
+    hemisphere : list | tuple
+
+    """
+    if fs_dir is None:
+        fs_dir = os.environ['SUBJECTS_DIR']
+    else:
+        os.environ['SUBJECTS_DIR'] = fs_dir
+    if fs_subject is None:
+        fs_subject = subject
+    label_files = [os.path.join(fs_dir, fs_subject, 'label', '{}.{}.label'.format(h, label)) for h in hemisphere]
+    # If label file doesn't exist, try to move it there
+    print('looking for {}'.format(label_files))
+    if not all([os.path.exists(f) for f in label_files]):
+        print("Transforming label file to subject's freesurfer directory...")
+        _move_labels(fs_subject, label, hemisphere=hemisphere, fs_dir=fs_dir, src_subject=src_subject)
+    verts, values = _parse_labels(label_files, subject)
+    idx = verts.astype(np.int)
+    return idx, values
+
 def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):
     """  
     """
