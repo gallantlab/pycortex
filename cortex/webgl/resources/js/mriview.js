@@ -655,6 +655,10 @@ var mriview = (function(module) {
         let n_u = this.active.data[0].mosaic[0]
         let n_v = this.active.data[0].mosaic[1]
 
+        if (typeof this.active.data[0].textures[0] === "undefined") {
+            return -1
+        }
+
         let n_j = this.active.data[0].textures[0].image.width
         let n_k = this.active.data[0].textures[0].image.height
 
