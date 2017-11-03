@@ -189,6 +189,9 @@ PickPosition.prototype = {
     },
 
     get_vertex_index: function(renderer, scene, x, y, surf) {
+        if (typeof this.x === "undefined") {
+            return -1
+        }
 
         this.draw(renderer, scene);
         let p = this._pick(x, y, renderer.context);
