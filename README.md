@@ -6,6 +6,8 @@ pycortex
 
 Pycortex is a software that allows you to visualize fMRI or other volumetric mapping data on cortical surfaces.
 
+https://gallantlab.github.io/
+
 Quickstart
 ----------
 UPDATE 2015.11.24: Unfortunately, the pip install of pycortex is out of date and broken. The pip installation will thus not work. We apologize for any frustration or inconvenience this may have caused. We will eventually update the version stored on pip, but for now please see below for instructions on how to install pycortex directly from the git repository. 
@@ -45,7 +47,7 @@ In [3]: cortex.webshow(ds)
 
 Documentation
 -------------
-NEW: Massively updated documentation for pycortex is available at https://gallantlab.github.io/pycortex. You can find many examples of pycortex features in the [pycortex example gallery](https://gallantlab.github.io/pycortex/auto_examples/index.html).
+NEW: Massively updated documentation for pycortex is available at https://gallantlab.github.io/. You can find many examples of pycortex features in the [pycortex example gallery](https://gallantlab.github.io/auto_examples/index.html).
 
 Citation
 --------
