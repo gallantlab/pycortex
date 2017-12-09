@@ -445,8 +445,14 @@ var mriview = (function(module) {
 
         this.uniforms.surfmix.value = mix;
         var smix = mix * (this.names.length - 1);
-        var factor = 1 - Math.abs(smix - (this.names.length-1));
-        var clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
+        // check if there is a flatmap
+        if (this.flatlims !== undefined) {
+            var factor = 1 - Math.abs(smix - (this.names.length-1));
+            var clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
+        } else {
+            var factor = 0;
+            var clipped = 0;
+        }
 
         //Swap out the polys array between the culled and full when flattening
         if (clipped > 0 && _last_clipped == 0) {
