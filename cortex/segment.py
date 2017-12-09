@@ -4,6 +4,7 @@ import os
 import time
 import shlex
 import subprocess as sp
+from builtins import input
 import multiprocessing as mp
 
 from . import blender
@@ -50,7 +51,7 @@ def fix_wm(subject):
     sp.call(shlex.split(cmd.format(subj=subject)))
     status.value = 0
 
-    resp = raw_input("1) Run autorecon-wm?\n2) Run autorecon-cp?\n3) Do nothing?\n (Choose 1, 2, or 3)")
+    resp = input("1) Run autorecon-wm?\n2) Run autorecon-cp?\n3) Do nothing?\n (Choose 1, 2, or 3)")
     if resp == "1":
         freesurfer.autorecon(subject, "wm")
     elif resp == "2":
@@ -85,7 +86,7 @@ def fix_pia(subject):
     sp.call(shlex.split(cmd.format(subj=subject)))
     status.value = 0
 
-    resp = raw_input("1) Run autorecon-pia?\n2) Run autorecon-wm?\n3) Do nothing?\n (Choose 1, 2, or 3)")
+    resp = input("1) Run autorecon-pia?\n2) Run autorecon-wm?\n3) Do nothing?\n (Choose 1, 2, or 3)")
     if resp == "1":
         freesurfer.autorecon(subject, "pia")
     elif resp == "2":
