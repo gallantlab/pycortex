@@ -668,6 +668,8 @@ var Shaderlib = (function() {
                 header += "#define ROI_RENDER\n";
             if (opts.extratex)
                 header += "#define EXTRATEX\n";
+            if (opts.equivolume)
+                header += "#define EQUIVOLUME\n"
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -704,6 +706,8 @@ var Shaderlib = (function() {
             utils.mixer(morphs),
 
             "void main() {",
+
+                utils.thickmixer_main,
 
                 "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
                 "vViewPosition = -mvPosition.xyz;",
@@ -826,6 +830,8 @@ var Shaderlib = (function() {
                 wm: { type: 'v4', value:null },
                 wmnorm: { type: 'v3', value:null },
                 auxdat: { type: 'v4', value:null },
+                wmarea: { type: 'f', value:null },
+                pialarea: { type: 'f', value:null },
             };
 
             for (var i = 0; i < 4; i++)
@@ -874,7 +880,8 @@ var Shaderlib = (function() {
                 header += "#define CORTSHEET\n";
 
             var vertShade = [
-                "uniform float thickmix;",
+                // "uniform float thickmix;",
+                utils.thickmixer,
 
                 utils.mixer(morphs),
                 "attribute vec4 wm;",
@@ -884,10 +891,11 @@ var Shaderlib = (function() {
                 "varying vec3 vPos;",
 
                 "void main() {",
+                    utils.thickmixer_main,
 
             "#ifdef CORTSHEET",
-                    "vec3 mpos = mix(position, wm.xyz, thickmix);",
-                    "vec3 mnorm = mix(normal, wmnorm, thickmix);",
+                    "vec3 mpos = mix(position, wm.xyz, use_thickmix);",
+                    "vec3 mnorm = mix(normal, wmnorm, use_thickmix);",
                     "vPos = mix(position, wm.xyz, 0.5);",
             "#else",
                     "vec3 mpos = position;",
@@ -899,7 +907,7 @@ var Shaderlib = (function() {
                     "mixfunc(mpos, mnorm, pos, norm);",
 
                 "#ifdef CORTSHEET",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
                 "#endif",
 
                     "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
