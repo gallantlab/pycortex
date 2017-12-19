@@ -172,7 +172,26 @@ var Shaderlib = (function() {
             "}",
             ].join("\n");
             return glsl;
-        }
+        },
+
+        // thickmixer: header code that loads the uniforms and attributes needed to
+        // do equivolume sampling, for vertex shaders
+        thickmixer: [
+            "uniform float thickmix;",
+            "uniform int equivolume;",
+            "attribute float wmarea;",
+            "attribute float pialarea;",
+        ].join("\n"),
+
+        // thickmixer_main: translates a desired volume fraction into linear mixing
+        // parameter.
+        thickmixer_main: [
+            "#ifdef EQUIVOLUME",
+                "float use_thickmix = 1. - (1. / (pialarea - wmarea) * (-1. * wmarea + sqrt((1. - thickmix) * pialarea * pialarea + thickmix * wmarea * wmarea)));",
+            "#else",
+                "float use_thickmix = thickmix;",
+            "#endif",
+        ].join("\n"),
     }
 
     var module = function() {
@@ -333,11 +352,14 @@ var Shaderlib = (function() {
             }
             if (opts.hasflat)
                 header += "#define HASFLAT\n"
+            if (opts.equivolume)
+                header += "#define EQUIVOLUME\n"
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
             "uniform mat4 volxfm[2];",
-            "uniform float thickmix;",
+            // "uniform float thickmix;",
+            utils.thickmixer,
             "uniform int bumpyflat;",
             "float f_bumpyflat = float(bumpyflat);",
 
@@ -356,6 +378,7 @@ var Shaderlib = (function() {
             "varying vec2 vUv;",
             "varying float vCurv;",
             "varying float vMedial;",
+            "varying float vThickmix;",
             // "varying float vDrop;",
 
             "varying vec3 vPos_x[2];",
@@ -366,6 +389,8 @@ var Shaderlib = (function() {
             utils.mixer(morphs),
 
             "void main() {",
+                utils.thickmixer_main,
+                "vThickmix = use_thickmix;",
 
                 "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
                 "vViewPosition = -mvPosition.xyz;",
@@ -383,8 +408,8 @@ var Shaderlib = (function() {
         "#endif",
 
         "#ifdef CORTSHEET",
-                "vec3 mpos = mix(position, wm.xyz, thickmix);",
-                "vec3 mnorm = mix(normal, wmnorm, thickmix);",
+                "vec3 mpos = mix(position, wm.xyz, use_thickmix);",
+                "vec3 mnorm = mix(normal, wmnorm, use_thickmix);",
         "#else",
                 "vec3 mpos = position;",
                 "vec3 mnorm = normal;",
@@ -405,14 +430,14 @@ var Shaderlib = (function() {
             "#ifdef CORTSHEET",
                 // 
                 "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., thickmix) * flatheight * f_bumpyflat;",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatheight * f_bumpyflat;",
                 "#else",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
                 "#endif",
             "#endif",
 
                 "#ifdef HASFLAT",
-                    "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
+                    "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
                 "#else",
                     "vNormal = normalMatrix * norm;",
                 "#endif",
@@ -437,6 +462,7 @@ var Shaderlib = (function() {
         "#endif",
 
             "uniform float thickmix;",
+            // utils.thickmixer,
             "uniform float brightness;",
             "uniform float smoothness;",
             "uniform float contrast;",
@@ -462,6 +488,7 @@ var Shaderlib = (function() {
 
             "varying float vCurv;",
             "varying float vMedial;",
+            "varying float vThickmix;",
             
             utils.standard_frag_vars,
             utils.rand,
@@ -514,9 +541,9 @@ var Shaderlib = (function() {
             } else if (volume == 1) {
                 if (layers == 1 && !dither) {
                     fragMid += [
-                        "coord_x = mix(vPos_x[0], vPos_x[1], thickmix);",
+                        "coord_x = mix(vPos_x[0], vPos_x[1], vThickmix);",
                     "#ifdef TWOD",
-                        "coord_y = mix(vPos_y[0], vPos_y[1], thickmix);",
+                        "coord_y = mix(vPos_y[0], vPos_y[1], vThickmix);",
                     "#endif",
                         sampling,
                         "",
@@ -571,7 +598,7 @@ var Shaderlib = (function() {
 
         "#ifdef VOXLINE",
             "#ifdef CORTSHEET",
-                "vec3 coord = mix(vPos_x[0], vPos_x[1], thickmix);",
+                "vec3 coord = mix(vPos_x[0], vPos_x[1], vThickmix);",
             "#else",
                 "vec3 coord = vPos_x[0];",
             "#endif",
@@ -609,6 +636,8 @@ var Shaderlib = (function() {
                 wm: { type: 'v4', value:null },
                 wmnorm: { type: 'v3', value:null },
                 auxdat: { type: 'v4', value:null },
+                wmarea: { type: 'f', value:null },
+                pialarea: { type: 'f', value:null },
                 // flatBumpNorms: { type: 'v3', value:null },
                 // flatheight: { type: 'f', value:null },
             };
@@ -646,7 +675,8 @@ var Shaderlib = (function() {
             "uniform float vmin[2];",
             "uniform float vmax[2];",
             "uniform float framemix;",
-            "uniform float thickmix;",
+            // "uniform float thickmix;",
+            utils.thickmixer,
 
             "varying vec4 vColor;",
     "#ifdef RGBCOLORS",
@@ -692,8 +722,8 @@ var Shaderlib = (function() {
         "#endif",
 
         "#ifdef CORTSHEET",
-                "vec3 mpos = mix(position, wm.xyz, thickmix);",
-                "vec3 mnorm = mix(normal, wmnorm, thickmix);",
+                "vec3 mpos = mix(position, wm.xyz, use_thickmix);",
+                "vec3 mnorm = mix(normal, wmnorm, use_thickmix);",
         "#else",
                 "vec3 mpos = position;",
                 "vec3 mnorm = normal;",
@@ -709,7 +739,7 @@ var Shaderlib = (function() {
                 "mixfunc(mpos, mnorm, pos, norm);",
 
             "#ifdef CORTSHEET",
-                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
+                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
             "#endif",
 
                 "vNormal = normalMatrix * norm;",
@@ -744,6 +774,7 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             "varying float vMedial;",
             "uniform float thickmix;",
+            // utils.thickmixer,
 
             utils.standard_frag_vars,
 
