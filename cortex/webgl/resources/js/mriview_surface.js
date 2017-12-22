@@ -154,6 +154,22 @@ var mriview = (function(module) {
                     delete hemi.attributes[json.names[i]];
                 }
                 //Setup flatmap mix
+		var wmareas = module.computeAreas(hemi.attributes.wm, hemi.attributes.index, hemi.offsets);
+                wmareas = module.iterativelySmoothVertexData(hemi.attributes.wm, hemi.attributes.index, hemi.offsets, wmareas, smoothfactor, smoothiter);
+                hemi.wmareas = wmareas;
+
+		var pialareas = module.computeAreas(hemi.attributes.position, hemi.attributes.index, hemi.offsets);
+                pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, smoothfactor, smoothiter);
+                hemi.pialareas = pialareas;
+
+		var pialarea_attr = new THREE.BufferAttribute(pialareas, 1);
+                pialarea_attr.needsUpdate = true;
+                var wmarea_attr = new THREE.BufferAttribute(wmareas, 1);
+                wmarea_attr.needsUpdate = true;
+		
+                hemi.addAttribute('pialarea', pialarea_attr);
+                hemi.addAttribute('wmarea', wmarea_attr);
+
                 if (this.flatlims !== undefined) {
                     var flats = this._makeFlat(hemi.attributes.uv.array, json.flatlims, names[name]);
                     hemi.addAttribute('mixSurfs'+json.names.length, new THREE.BufferAttribute(flats.pos, 4));
@@ -166,14 +182,6 @@ var mriview = (function(module) {
 
                     var smoothfactor = 0.1;
                     var smoothiter = 50;
-
-
-                    var wmareas = module.computeAreas(hemi.attributes.wm, hemi.attributes.index, hemi.offsets);
-                    wmareas = module.iterativelySmoothVertexData(hemi.attributes.wm, hemi.attributes.index, hemi.offsets, wmareas, smoothfactor, smoothiter);
-                    hemi.wmareas = wmareas;
-                    var pialareas = module.computeAreas(hemi.attributes.position, hemi.attributes.index, hemi.offsets);
-                    pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, smoothfactor, smoothiter);
-                    hemi.pialareas = pialareas;
 
                     // var flatareas = module.computeAreas(hemi.attributes.mixSurfs1, hemi.culled.index, hemi.culled.offsets);
                     // var flatareascale = flatscale ** 2;
@@ -208,14 +216,6 @@ var mriview = (function(module) {
                     // hemi.addAttribute('flatBumpNorms', flatoff_geom.attributes.normal);
                     hemi.addAttribute('flatheight', flatheights);
                     hemi.addAttribute('flatBumpNorms', module.computeNormal(flat_offset_verts, hemi.attributes.index, hemi.offsets) );
-
-                    var pialarea_attr = new THREE.BufferAttribute(pialareas, 1);
-                    pialarea_attr.needsUpdate = true;
-                    var wmarea_attr = new THREE.BufferAttribute(wmareas, 1);
-                    wmarea_attr.needsUpdate = true;
-
-                    hemi.addAttribute('pialarea', pialarea_attr);
-                    hemi.addAttribute('wmarea', wmarea_attr);
                 } else {
                     // Fill these attributes so the shader doesn't choke, even though
                     // there's no flatmap
