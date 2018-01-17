@@ -388,7 +388,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     return img
 
 def add_connected_vertices(fig, dataview, height=None, extents=None, recache=False, 
-                           min_dist=5, max_dist=85, color=(1.0,0.5,0.1,0.6), linewidth=2, 
+                           min_dist=5, max_dist=85, color=(1.0,0.5,0.1,0.6), linewidth=2, exclude_border_width=None,
                            **kwargs):
     """Plot lines btw distant vertices that are within the same voxel
 
@@ -398,6 +398,7 @@ def add_connected_vertices(fig, dataview, height=None, extents=None, recache=Fal
     extents is currently unused, but probably should be to scale pix_array
     """
     from matplotlib.collections import LineCollection
+    from scipy.ndimage import binary_dilation
     if extents is None:
         extents = _get_extents(fig)
     if height is None:
@@ -408,13 +409,20 @@ def add_connected_vertices(fig, dataview, height=None, extents=None, recache=Fal
         # Raise error? Just pass?
         raise ValueError("Dataview for add_connected_vertices must be a Volume! You seem to have provided vertex data.")
     # Should cache this value in the db
-    within_voxel_vertex_dists = get_shared_voxels(subject, xfmname, **kwargs)
+    shared_voxels = get_shared_voxels(subject, xfmname, **kwargs)
     mapper = get_mapper(subject, xfmname, 'nearest', recache=recache)
     mask, extents = get_flatmask(subject)
     pixmap = get_flatcache(subject, None)
     img = np.nan * np.ones(mask.shape) #Finding a mapping from verts to pixels in flatmap (This is a hack)
     img[mask] = pixmap * (np.arange(mapper.nverts))
     img_arr = img.flatten()
+    
+    if exclude_border_width:
+        border_vertices = set(img[binary_dilation(np.isnan(img), iterations=exclude_border_width) - np.isnan(img)].astype(int))
+        shared_voxels = np.array([a for a in shared_voxels if ((a[1] not in border_vertices) and (a[2] not in border_vertices))])
+
+
+
     # I'm pretty sure this should be done with the pixmap / mask variables, but I'm not sure how rn so oh well
     # Two dictionaries, containing x and y values for each vert in the final flatmap. Again, this is a severe hack.
     # Currently, this is also the most time consuming part of the process.
@@ -429,7 +437,7 @@ def add_connected_vertices(fig, dataview, height=None, extents=None, recache=Fal
     # Substitute:
     # flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     # valid = np.unique(polys)    
-    pix_array, valid_vert_pairs = _return_pixel_pairs(within_voxel_vertex_dists[:,1:3], x_dict, y_dict)
+    pix_array, valid_vert_pairs = _return_pixel_pairs(shared_voxels[:,1:3], x_dict, y_dict)
     # Scaling this coordinates for plot
     pix_array_scaled = (pix_array / (np.array(mask.shape).astype(np.float32)))
     # Mebbe scale colors by distance? Or some such fancy? Not necessary...
