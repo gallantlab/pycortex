@@ -566,7 +566,7 @@ class Surface(object):
 
         return phi
 
-    def geodesic_path(self, a, b, **kwargs):
+    def geodesic_path(self, a, b, max_len=1000, **kwargs):
         """Finds the shortest path between two points `a` and `b`.
 
         This shortest path is based on geodesic distances across the surface.
@@ -586,6 +586,9 @@ class Surface(object):
         
         Other Parameters
         ----------------
+        max_len : int, optional, default=1000
+            Maximum path length before the function quits. Sometimes it can get stuck
+            in loops, causing infinite paths.
         m : float, optional
             Reverse Euler step length. The optimal value is likely between 0.5 and 1.5.
             Default is 1.0, which should be fine for most cases.
@@ -603,6 +606,8 @@ class Surface(object):
         while path[-1] != b:
             n = np.array(list(self.graph.neighbors(path[-1])))
             path.append(n[d[n].argmin()])
+            if len(path) > max_len:
+                return path
         return path
 
     @property
