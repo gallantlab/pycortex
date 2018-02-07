@@ -9,19 +9,7 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-if len(set(('develop', 'bdist_egg', 'bdist_rpm', 'bdist', 'bdist_dumb',
-            'bdist_wininst', 'install_egg_info', 'egg_info', 'easy_install',
-            'test',
-            )).intersection(sys.argv)) > 0:
-    # This formulation is taken from nibabel.
-    # "setup_egg imports setuptools setup, thus monkeypatching distutils."
-    # Turns out, this patching needs to happen before disutils.core.Extension
-    # is imported in order to use cythonize()...
-    from setuptools import setup
-else:
-    # Use standard
-    from distutils.core import setup
-
+from setuptools import setup
 from distutils.command.install import install
 from distutils.core import Extension
 
@@ -99,9 +87,9 @@ setup(name='pycortex',
                 'resources/images/*'
             ]
       },
-      requires=['mayavi (>=4.4.3)', 'lxml', 'numpy', 'scipy (>=0.9.0)', 'tornado (>3.1)',
+      install_requires=['lxml', 'numpy', 'tornado (>3.1)','future',
                 'shapely', 'html5lib', 'h5py (>=2.3)', 'numexpr', 'Cython',
-                'nibabel'],
+                ],
       cmdclass=dict(install=my_install),
       include_package_data=True,
       test_suite='nose.collector'
