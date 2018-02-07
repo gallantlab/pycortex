@@ -28,7 +28,7 @@ attrmaps = [
 cdef class CTMfile:
     cdef CTMcontext ctx
 
-    cdef public bytes filename
+    cdef public object filename
     cdef public str mode
 
     cdef unsigned int length
@@ -38,7 +38,7 @@ cdef class CTMfile:
     cdef public dict attribs
     cdef public dict uvs
 
-    def __cinit__(self, bytes filename, str mode='r'):
+    def __cinit__(self, object filename, str mode='r'):
         cdef openctm.CTMenum err
         cdef char* name
         self.filename = filename
@@ -145,7 +145,7 @@ cdef class CTMfile:
 
         return pts, polys, norms
 
-    def save(self, str method='mg2', int level=9):
+    def save(self, method='mg2', int level=9):
         cdef char* cname = NULL
         cdef float* cnorms = NULL
         cdef openctm.CTMenum err

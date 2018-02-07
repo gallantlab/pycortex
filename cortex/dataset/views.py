@@ -125,7 +125,7 @@ class Dataview(object):
         sdict = dict(
             state=self.state, 
             attrs=self.attrs.copy(), 
-            desc=self.description)
+            desc=self.description.decode())
         try:
             sdict.update(dict(
                 cmap=[self.cmap], 

@@ -11,7 +11,6 @@ from .. import utils
 from .. import dataset
 from ..database import db
 from ..options import config
-from ..svgoverlay import get_overlay
         
 
 def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
