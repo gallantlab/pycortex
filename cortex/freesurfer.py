@@ -149,6 +149,8 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None):
         lh, rh = [parse_curv(curvs.format(hemi=hemi, name=curv)) for hemi in ['lh', 'rh']]
         np.savez(surfinfo.format(subj=sname, name=info), left=-lh, right=-rh)
 
+    database.db = database.Database()
+
 def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     """Imports a flat brain from freesurfer
     
