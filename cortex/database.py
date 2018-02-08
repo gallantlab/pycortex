@@ -12,6 +12,7 @@ import tempfile
 import functools
 import numpy as np
 from hashlib import sha1
+from builtins import input
 
 from . import options
 
@@ -569,7 +570,7 @@ class Database(object):
 
     def make_subj(self, subject):
         if os.path.exists(os.path.join(self.filestore, subject)):
-            if raw_input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
+            if input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
                 shutil.rmtree(os.path.join(self.filestore, subject))
             else:
                 raise ValueError('Do not overwrite')

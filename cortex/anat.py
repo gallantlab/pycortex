@@ -5,7 +5,6 @@ import tempfile
 import subprocess as sp
 
 import numpy as np
-import nibabel
 
 #from . import utils
 from .database import db
@@ -28,6 +27,7 @@ def whitematter(outfile, subject, do_voxelize=False):
         else:
             voxelize(outfile, subject, surf="wm")
     except IOError:
+        import nibabel
         bet = db.get_anat(subject, type='brainmask').get_filename()
         try:
             cache = tempfile.mkdtemp()
@@ -56,6 +56,7 @@ def whitematter(outfile, subject, do_voxelize=False):
 
 def voxelize(outfile, subject, surf='wm', mp=True):
     '''Voxelize the whitematter surface to generate the white matter mask'''
+    import nibabel
     from . import polyutils
     nib = db.get_anat(subject, "raw")
     shape = nib.get_shape()

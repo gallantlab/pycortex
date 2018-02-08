@@ -2,6 +2,7 @@
 """
 import os
 import numpy as np
+from builtins import input
 
 def manual(subject, xfmname, reference=None, **kwargs):
     """Open GUI for manually aligning a functional volume to the cortical surface for `subject`. This
@@ -57,7 +58,7 @@ def manual(subject, xfmname, reference=None, **kwargs):
             print('Refusing to overwrite existing transform %s because there are cached masks. Delete the masks manually if you want to modify the transform.' % xfmname)
             checked = False
             while not checked:
-                resp = raw_input("Do you want to continue in view-only mode? (Y/N) ").lower().strip()
+                resp = input("Do you want to continue in view-only mode? (Y/N) ").lower().strip()
                 if resp in ["y", "yes", "n", "no"]:
                     checked = True
                     if resp in ["y", "yes"]:

@@ -3,7 +3,6 @@ import numpy as np
 from .. import dataset
 from ..database import db
 from ..options import config
-from ..svgoverlay import get_overlay
 from .utils import _get_height, _get_extents, _convert_svg_kwargs, _has_cmap, _get_images, _parse_defaults
 from .utils import make_flatmap_image, _make_hatch_image
 
@@ -194,6 +193,7 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
     img : matplotlib.image.AxesImage
         matplotlib axes image object for plotted data
     """
+    from ..svgoverlay import get_overlay
     if extents is None:
         extents = _get_extents(fig)
     if height is None:
@@ -240,6 +240,7 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
     img : matplotlib.image.AxesImage
         matplotlib axes image object for plotted data
     """
+    from ..svgoverlay import get_overlay
     svgobject = db.get_overlay(dataview.subject)
     svg_kws = _convert_svg_kwargs(kwargs)
     layer_kws = _parse_defaults('sulci_paths')
@@ -292,6 +293,7 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4, hatch_c
     -----
     Possibly to add: add hatch_width, hatch_offset arguments.
     """
+    from ..svgoverlay import get_overlay
     if extents is None:
         extents = _get_extents(fig)
     if height is None:
@@ -370,6 +372,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
         matplotlib axes image object for plotted data
 
     """
+    from ..svgoverlay import get_overlay
     if height is None:
         height = _get_height(fig)
     if extents is None:
@@ -417,6 +420,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
     -------
 
     """
+    from ..svgoverlay import get_overlay
     if layers is None:
         layers = _get_images(fig)
     if height is None:

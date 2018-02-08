@@ -174,7 +174,7 @@ def write_stl(filename, object pts, object polys):
     dtype = np.dtype("3f4, 9f4, H")
     data = np.zeros((len(polys),), dtype=dtype)
     data['f1'] = pts[polys].reshape(-1, 9)
-    with open(filename, 'w') as fp:
+    with open(filename, 'wb') as fp:
         fp.write(struct.pack('80xI', len(polys)))
         fp.write(data.tostring())
 
@@ -186,3 +186,17 @@ def write_gii(filename, object pts, object polys):
     polys_darray = gifti.GiftiDataArray.from_array(polys, "triangle")
     gii = gifti.GiftiImage(darrays=[pts_darray, polys_darray])
     gifti.write(gii, filename)
+
+
+def write_obj(filename, object pts, object polys, object colors=None):
+    with open(filename, 'w') as fp:
+        fp.write("o Object\n")
+        if colors is not None:
+            for pt, c in zip(pts, colors):
+                fp.write("v %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n"%(pt[0], pt[1], pt[2], c[0], c[1], c[2]))
+        else:
+            for pt in pts:
+                fp.write("v %0.6f %0.6f %0.6f\n"%tuple(pt))
+        fp.write("s off\n")
+        for f in polys:
+            fp.write("f %d %d %d\n"%tuple((f+1)))

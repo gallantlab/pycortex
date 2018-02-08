@@ -452,12 +452,12 @@ input.vlim {
 
 /* datasets */
 ul#datasets {
-    width: 200px;
+    max-width: 400px;
     list-style: none;
     margin: 0;
     padding: 0;
     overflow:auto;
-    max-height:300px;
+    max-height:70vh;
 }
 ul#datasets li {
     background: white;

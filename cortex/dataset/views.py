@@ -121,11 +121,14 @@ class Dataview(object):
     def to_json(self, simple=False):
         if simple:
             return dict()
-            
+        
+        desc = self.description
+        if hasattr(desc, 'decode'):
+            desc = desc.decode()
         sdict = dict(
             state=self.state, 
             attrs=self.attrs.copy(), 
-            desc=self.description)
+            desc=desc)
         try:
             sdict.update(dict(
                 cmap=[self.cmap], 

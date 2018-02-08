@@ -11,7 +11,6 @@ from importlib import import_module
 from .database import db
 from .volume import anat2epispace
 from .options import config
-from .freesurfer import fs_aseg_dict
 
 class DocLoader(object):
     def __init__(self, func, mod, package):
@@ -416,6 +415,7 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
     See also get_anat(subject, type='aseg')
 
     """
+    from .freesurfer import fs_aseg_dict
     aseg = db.get_anat(subject, type="aseg").get_data().T
 
     if not isinstance(aseg_name, (list, tuple)):

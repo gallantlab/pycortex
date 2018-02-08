@@ -7,6 +7,7 @@ import tempfile
 import warnings
 import shlex
 import subprocess as sp
+from builtins import input
 
 import numpy as np
 
@@ -66,7 +67,7 @@ def autorecon(subject, type="all"):
         'wm':"4 hours"
         }
     if str(type) in times:
-        resp = raw_input("recon-all will take approximately %s to run! Continue? "%times[str(type)])
+        resp = input("recon-all will take approximately %s to run! Continue? "%times[str(type)])
         if resp.lower() not in ("yes", "y"):
             return
             
@@ -89,7 +90,7 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
     Returns
     -------
     """
-    resp = raw_input('Flattening takes approximately 2 hours! Continue? ')
+    resp = input('Flattening takes approximately 2 hours! Continue? ')
     if resp.lower() in ('y', 'yes'):
         inpath = get_paths(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch)
         outpath = get_paths(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch+".flat")
@@ -147,6 +148,8 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None):
     for curv, info in dict(sulc="sulcaldepth", thickness="thickness", curv="curvature").items():
         lh, rh = [parse_curv(curvs.format(hemi=hemi, name=curv)) for hemi in ['lh', 'rh']]
         np.savez(surfinfo.format(subj=sname, name=info), left=-lh, right=-rh)
+
+    database.db = database.Database()
 
 def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     """Imports a flat brain from freesurfer
@@ -209,7 +212,7 @@ def parse_surf(filename):
 def write_surf(filename, pts, polys, comment=''):
     """  
     """
-    with open(filename, 'wb') as fp:
+    with open(filename, 'w') as fp:
         fp.write('\xff\xff\xfe')
         fp.write(comment+'\n\n')
         fp.write(struct.pack('>2I', len(pts), len(polys)))
@@ -480,7 +483,7 @@ def write_decimated(path, pts, polys):
     data['x'] = dpts[:,0]
     data['y'] = dpts[:,1]
     data['z'] = dpts[:,2]
-    with open(path+'.full.patch.3d', 'wb') as fp:
+    with open(path+'.full.patch.3d', 'w') as fp:
         fp.write(struct.pack('>i', -1))
         fp.write(struct.pack('>i', len(dpts)))
         fp.write(data.tostring())

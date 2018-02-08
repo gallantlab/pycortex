@@ -29,7 +29,7 @@ for path, name in zip(all_paths, all_names):
     rst_file.write(name)
     rst_file.write("\n\n")
     rst_file.write(path_template.format(path=path))
-    if ("2D" in name) or ("covar" in name):
+    if ("2D" in name) or ("covar" in name) or ("alpha" in name):
         rst_file.write(height_2d)
     else:
         rst_file.write(height_1d)
