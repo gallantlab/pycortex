@@ -119,7 +119,11 @@ if (window.webkitURL)
 
     #Save out the new html file
     with open(outfile, "w") as htmlfile:
-        serializer = html5lib.serializer.htmlserializer.HTMLSerializer()
+        # Fix error due to changes new version of html5lib (> 0.9999...)
+        try:
+            serializer = html5lib.serializer.htmlserializer.HTMLSerializer()
+        except AttributeError:
+            serializer = html5lib.serializer.HTMLSerializer()
         walker = html5lib.treewalkers.getTreeWalker("dom")
 
         for line in serializer.serialize(walker(dom)):
