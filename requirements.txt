@@ -1,12 +1,13 @@
-wheel
+future
 numpy
 scipy
-matplotlib
+tornado==4.3
+shapely
 lxml
 html5lib
 h5py
-tornado==4.3
 numexpr
+cython
+matplotlib
 pillow
 nibabel
-cython

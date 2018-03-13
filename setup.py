@@ -37,22 +37,21 @@ class my_install(install):
             for fname in files:
                 os.chmod(os.path.join(root, fname), 438)
 
-ctm = Extension('cortex.openctm', 
-            ['cortex/openctm.pyx',
-             'OpenCTM-1.0.3/lib/openctm.c',
-             'OpenCTM-1.0.3/lib/stream.c',
-             'OpenCTM-1.0.3/lib/compressRAW.c',
-             'OpenCTM-1.0.3/lib/compressMG1.c',
-             'OpenCTM-1.0.3/lib/compressMG2.c',
-             'OpenCTM-1.0.3/lib/liblzma/Alloc.c',
-             'OpenCTM-1.0.3/lib/liblzma/LzFind.c',
-             'OpenCTM-1.0.3/lib/liblzma/LzmaDec.c',
-             'OpenCTM-1.0.3/lib/liblzma/LzmaEnc.c',
-             'OpenCTM-1.0.3/lib/liblzma/LzmaLib.c',
-            ], libraries=['m'], include_dirs=
-            ['OpenCTM-1.0.3/lib/', 
-             'OpenCTM-1.0.3/lib/liblzma/'
-            ] + get_numpy_include_dirs(),
+ctm = Extension('cortex.openctm', [
+            'cortex/openctm.pyx',
+            'OpenCTM-1.0.3/lib/openctm.c',
+            'OpenCTM-1.0.3/lib/stream.c',
+            'OpenCTM-1.0.3/lib/compressRAW.c',
+            'OpenCTM-1.0.3/lib/compressMG1.c',
+            'OpenCTM-1.0.3/lib/compressMG2.c',
+            'OpenCTM-1.0.3/lib/liblzma/Alloc.c',
+            'OpenCTM-1.0.3/lib/liblzma/LzFind.c',
+            'OpenCTM-1.0.3/lib/liblzma/LzmaDec.c',
+            'OpenCTM-1.0.3/lib/liblzma/LzmaEnc.c',
+            'OpenCTM-1.0.3/lib/liblzma/LzmaLib.c',], 
+            libraries=['m'], include_dirs=[
+            'OpenCTM-1.0.3/lib/', 
+            'OpenCTM-1.0.3/lib/liblzma/'] + get_numpy_include_dirs(),
             define_macros=[
                 ('LZMA_PREFIX_CTM', None),
                 ('OPENCTM_BUILD', None),
@@ -63,13 +62,13 @@ formats = Extension('cortex.formats', ['cortex/formats.pyx'],
                     include_dirs=get_numpy_include_dirs())
 
 setup(name='pycortex',
-      version='0.1.1',
-      description='Python Cortical mapping software for fMRI data',
-      author='James Gao',
-      author_email='james@jamesgao.com',
-      packages=['cortex', 'cortex.webgl', 'cortex.mapper', 'cortex.dataset', 'cortex.blender', 'cortex.tests', 'cortex.quickflat'],
-      ext_modules=cythonize([ctm, formats]),
-      package_data={
+    version='0.1.1',
+    description='Python Cortical mapping software for fMRI data',
+    author='James Gao',
+    author_email='james@jamesgao.com',
+    packages=['cortex', 'cortex.webgl', 'cortex.mapper', 'cortex.dataset', 'cortex.blender', 'cortex.tests', 'cortex.quickflat'],
+    ext_modules=cythonize([ctm, formats]),
+    package_data={
             'cortex':[ 
                 'svgbase.xml',
                 'defaults.cfg',
@@ -86,12 +85,14 @@ setup(name='pycortex',
                 'resources/css/ui-lightness/images/*',
                 'resources/images/*'
             ]
-      },
-      install_requires=['lxml', 'numpy', 'tornado (>3.1)','future',
-                'shapely', 'html5lib', 'h5py (>=2.3)', 'numexpr', 'Cython',
-                ],
-      cmdclass=dict(install=my_install),
-      include_package_data=True,
-      test_suite='nose.collector'
+    },
+    install_requires=[
+        'future','numpy', 'scipy', 'tornado==4.3',
+        'shapely', 'lxml', 'html5lib', 'h5py', 'numexpr', 'cython',
+        'matplotlib', 'pillow', 'nibabel',
+    ],
+    cmdclass=dict(install=my_install),
+    include_package_data=True,
+    test_suite='nose.collector'
 )
 
