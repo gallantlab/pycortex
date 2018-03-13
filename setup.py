@@ -9,9 +9,8 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-from setuptools import setup
-from distutils.command.install import install
-from distutils.core import Extension
+from setuptools import setup, Extension
+from setuptools.command.install import install
 
 from Cython.Build import cythonize
 
