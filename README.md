@@ -7,20 +7,21 @@ Pycortex is a software library that allows you to visualize fMRI or other volume
 Quickstart
 ----------
 ```
-python -m venv env  # use virtualenv instead for python 2
+python3 -m venv env  # use `virtualenv env` for python 2
 source env/bin/activate
 pip install -U setuptools wheel numpy cython
 pip install -U git+git://github.com/gallantlab/pycortex.git@glrework-merged
 ```
-
-Also, a new version of pycortex is nearly ready for release. It is currently on the branch `glrework-merged`.
-
-This last command installs pycortex into the site-packages folder in your local python installation. This means that you will not need to change your PYTHONPATH variable (don't worry if you have no idea what that means). If you are working in a python terminal, do not try to import pycortex from inside the source code directory, or the import will fail. 
+This command creates a new [virtualenv](https://docs.python.org/3/library/venv.html) for pycortex to resolve dependencies. Run `source env/bin/activate` whenever you need pycortex.
 
 Demo
 ----
-Pycortex is best used with [IPython](http://www.ipython.org/).
-
+Pycortex is best used with [IPython](http://www.ipython.org/). Install it in your virtualenv using 
+```
+source env/bin/activate
+pip install ipython
+```
+To run the pycortex demo,
 ```
 $ ipython
 In [1]: import cortex
