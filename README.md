@@ -9,9 +9,10 @@ Quickstart
 IMPORTANT: The current pip version of pycortex is out of date and broken. Please do not use it, but instead directly use the latest version of pycortex from github:
 
 ```
-$ git clone http://github.com/gallantlab/pycortex
-$ cd pycortex
-$ python setup.py develop
+$ python -m venv env
+$ source env/bin/activate
+$ pip install -U setuptools wheel numpy cython
+$ pip install -U git+git://github.com/gallantlab/pycortex.git@glrework-merged
 ```
 
 Also, a new version of pycortex is nearly ready for release. It is currently on the branch `glrework-merged`.
@@ -20,13 +21,12 @@ This last command installs pycortex into the site-packages folder in your local 
 
 Demo
 ----
-Pycortex is best used with [IPython](http://www.ipython.org/). To run this demo, please download this [example dataset](http://gallantlab.org/pycortex/S1_retinotopy.hdf).
+Pycortex is best used with [IPython](http://www.ipython.org/).
 
 ```
 $ ipython
 In [1]: import cortex
-In [2]: ds = cortex.load("S1_retinotopy.hdf")
-In [3]: cortex.webshow(ds)
+In [2]: cortex.webshow(cortex.Volume.random("S1", "fullhead"))
 ```
 
 Documentation
