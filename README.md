@@ -6,13 +6,11 @@ Pycortex is a software library that allows you to visualize fMRI or other volume
 
 Quickstart
 ----------
-IMPORTANT: The current pip version of pycortex is out of date and broken. Please do not use it, but instead directly use the latest version of pycortex from github:
-
 ```
-$ python -m venv env
-$ source env/bin/activate
-$ pip install -U setuptools wheel numpy cython
-$ pip install -U git+git://github.com/gallantlab/pycortex.git@glrework-merged
+python -m venv env  # use virtualenv instead for python 2
+source env/bin/activate
+pip install -U setuptools wheel numpy cython
+pip install -U git+git://github.com/gallantlab/pycortex.git@glrework-merged
 ```
 
 Also, a new version of pycortex is nearly ready for release. It is currently on the branch `glrework-merged`.
