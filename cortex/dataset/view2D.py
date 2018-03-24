@@ -82,6 +82,13 @@ class Dataview2D(Dataview):
         # Preserve nan values as alpha = 0
         aidx = np.logical_or(np.isnan(data1),np.isnan(data2))
         a[aidx] = 0
+        # Code from master, to handle alpha input, prob better here but not tested.
+        # # Possibly move this above setting nans to alpha = 0;
+        # # Possibly multiply specified alpha by alpha in colormap??
+        # if 'alpha' in self.attrs:
+        #     # Over-write alpha from colormap / nans with alpha arg if provided.
+        #     # Question: Might it be important tokeep alpha as an attr?
+        #     a = self.attrs.pop('alpha')
         return r, g, b, a
 
     @property

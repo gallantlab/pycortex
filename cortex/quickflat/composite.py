@@ -8,6 +8,8 @@ from ..utils import get_shared_voxels, get_mapper
 from .utils import _get_height, _get_extents, _convert_svg_kwargs, _has_cmap, _get_images, _parse_defaults
 from .utils import make_flatmap_image, _make_hatch_image, _return_pixel_pairs, get_flatmask, get_flatcache
 
+import time
+
 ### --- Individual compositing functions --- ###
 
 def add_curvature(fig, dataview, extents=None, height=None, threshold=True, contrast=None,
@@ -388,10 +390,11 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     return img
 
 def add_connected_vertices(fig, dataview, height=None, extents=None, recache=False, 
-                           min_dist=5, max_dist=85, color=(1.0,0.5,0.1,0.6), linewidth=2, exclude_border_width=None,
-                           **kwargs):
+                           min_dist=5, max_dist=85, color=(1.0,0.5,0.1,0.6), 
+                           linewidth=2, exclude_border_width=None,
+                           alpha=1.0, **kwargs):
     """Plot lines btw distant vertices that are within the same voxel
-
+    updated...
     Notes
     -----
     Replace min_dist, max_dist with more principled values!
@@ -399,6 +402,7 @@ def add_connected_vertices(fig, dataview, height=None, extents=None, recache=Fal
     """
     from matplotlib.collections import LineCollection
     from scipy.ndimage import binary_dilation
+
     if extents is None:
         extents = _get_extents(fig)
     if height is None:
@@ -406,45 +410,43 @@ def add_connected_vertices(fig, dataview, height=None, extents=None, recache=Fal
     subject = dataview.subject
     xfmname = dataview.xfmname
     if xfmname is None:
-        # Raise error? Just pass?
         raise ValueError("Dataview for add_connected_vertices must be a Volume! You seem to have provided vertex data.")
-    # Should cache this value in the db
-    shared_voxels = get_shared_voxels(subject, xfmname, **kwargs)
-    mapper = get_mapper(subject, xfmname, 'nearest', recache=recache)
+    shared_voxels = db.get_shared_voxels(subject, xfmname, recache=recache, **kwargs)
     mask, extents = get_flatmask(subject)
     pixmap = get_flatcache(subject, None)
-    img = np.nan * np.ones(mask.shape) #Finding a mapping from verts to pixels in flatmap (This is a hack)
-    img[mask] = pixmap * (np.arange(mapper.nverts))
-    img_arr = img.flatten()
-    
+    n_pixels, n_verts = pixmap.shape
+
     if exclude_border_width:
-        border_vertices = set(img[binary_dilation(np.isnan(img), iterations=exclude_border_width) - np.isnan(img)].astype(int))
+        # Finding vertices that map to the border of the flatmap
+        img = np.nan * np.ones(mask.shape) 
+        img[mask] = pixmap * np.arange(n_verts) # mapper.nverts
+        border_mask = binary_dilation(~mask, iterations=exclude_border_width) ^ (~mask)
+        border_vertices = set(img[border_mask].astype(int))
         shared_voxels = np.array([a for a in shared_voxels if ((a[1] not in border_vertices) and (a[2] not in border_vertices))])
 
-
-
-    # I'm pretty sure this should be done with the pixmap / mask variables, but I'm not sure how rn so oh well
-    # Two dictionaries, containing x and y values for each vert in the final flatmap. Again, this is a severe hack.
-    # Currently, this is also the most time consuming part of the process.
-    x_dict = {}
-    y_dict = {}
-    divisor = img.shape[1]
-    for i, elem in enumerate(img_arr):
-        if not np.isnan(elem):
-            x_dict[int(elem)] = i//divisor
-            y_dict[int(elem)] = i%divisor
-
-    # Substitute:
-    # flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
-    # valid = np.unique(polys)    
-    pix_array, valid_vert_pairs = _return_pixel_pairs(shared_voxels[:,1:3], x_dict, y_dict)
-    # Scaling this coordinates for plot
-    pix_array_scaled = (pix_array / (np.array(mask.shape).astype(np.float32)))
-    # Mebbe scale colors by distance? Or some such fancy? Not necessary...
+    valid_vert_mask = np.array(pixmap.sum(0) > 0).flatten()
+    valid_verts = np.arange(n_verts)[valid_vert_mask] # mapper.nverts
+    # Assure both vertices in each pair are not in the medial wall
+    vtx1valid = np.in1d(shared_voxels[:, 1], valid_verts)
+    vtx2valid = np.in1d(shared_voxels[:, 2], valid_verts)
+    va, vb = shared_voxels[vtx1valid & vtx2valid, 1:].T
+    # Get X, Y coordinates per vertex, scale to 0-1 range
+    [lpt, lpoly], [rpt, rpoly] = db.get_surf(subject, "flat", nudge=True)
+    vert_xyz = np.vstack([lpt, rpt])
+    vert_xyz -= vert_xyz.min(0)
+    vert_xyz /= vert_xyz.max(0)
+    x, y = vert_xyz[:, :2].T
+    # Map vertices to X, Y coordinates suitable for LineCollection input
+    pix_array_x = np.vstack([x[va], x[vb]]).T
+    pix_array_y = np.vstack([y[va], y[vb]]).T
+    pix_array_scaled = np.dstack([pix_array_x, pix_array_y])
+    # Add line collection 
+    # (This is the most time consuming step, as it draws many lines)
     lc = LineCollection(pix_array_scaled, 
                         transform=fig.transFigure, 
                         figure=fig,
                         colors=color, 
+                        alpha=alpha,
                         linewidths=linewidth)
     ax = fig.gca()
     lc_object = ax.add_collection(lc)

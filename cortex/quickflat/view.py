@@ -148,8 +148,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         layers['custom'] = custom_im
     # Add connector lines btw connected vertices
     if with_connected_vertices:
-        # This may be better not as a default option...
-        lc = composite.add_connected_vertices(fig, dataview)
+        vertex_lines = composite.add_connected_vertices(fig, dataview)
 
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])

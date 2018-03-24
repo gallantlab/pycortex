@@ -723,7 +723,7 @@ def _set_edge_distance_graph_attribute(graph, pts, polys):
         nx.set_edge_attributes(graph, 'distance', edge_distances)
 
 
-def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True):                                                                                                                                  
+def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True):
     '''Return voxels that are shared by multiple vertices, and for each such voxel,
        also returns the mutually farthest pair of vertices mapping to the voxel
     Parameters
@@ -733,8 +733,7 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
     xfmname : str
         Name of the transform
     hemi : str, optional
-        Which hem
-        isphere to return. For now, only 'lh' or 'rh'
+        Which hemisphere to return. For now, only 'lh' or 'rh'
     merge : bool, optinal
         Join the hemispheres, if requesting both
     use_astar: bool, optional
@@ -780,23 +779,25 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
 
         vox_vert_list = []
         for vox_idx, vox in enumerate(all_voxels):
-            if len(vox) > 1: #If the voxel maps to multiple vertices
+            if len(vox) > 1: # If the voxel maps to multiple vertices
                 vox = np.array(vox).astype(int)
                 for v1 in range(vox.size-1):
                     vert1 = vox[v1]
-                    if vert1 in vert_to_vox_map: #If the vertex is a valid vertex
+                    if vert1 in vert_to_vox_map: # If the vertex is a valid vertex
                         for v2 in range(v1+1, vox.size):
                             vert2 = vox[v2]
-                            if vert2 in vert_to_vox_map: #If the vertex is a valid vertex                    
-                                path =  shortest_path(vert1, vert2)
-                                stays_in_voxel = all([(v in vert_to_vox_map) and (vert_to_vox_map[v] == vox_idx) for v in path]) #If any vertex in path goes out of the voxel
+                            if vert2 in vert_to_vox_map: # If the vertex is a valid vertex                    
+                                path = shortest_path(vert1, vert2)
+                                # Test whether any vertex in path goes out of the voxel
+                                stays_in_voxel = all([(v in vert_to_vox_map) and (vert_to_vox_map[v] == vox_idx) for v in path]) 
                                 if not stays_in_voxel:
+                                    1/0
                                     vox_vert_list.append([vox_idx, vert1, vert2])
         
         tmp =  np.array(vox_vert_list)
         # Add offset for right hem voxels
         if hem=='rh':
-            tmp[:,1:3] += Lmask.shape[0]
+            tmp[:, 1:3] += Lmask.shape[0]
         out.append(tmp)
     if hemi in ('lh', 'rh'):
         return out[0]
