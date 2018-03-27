@@ -38,6 +38,7 @@ var mriview = (function(module) {
         this.shaders = {};
         this._active = null;
         this._sampler = "nearest";
+        this._equivolume = false;
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
         this.object = new THREE.Group();
@@ -55,6 +56,7 @@ var mriview = (function(module) {
                 thickmix:   { type:'f',  value:0.5},
                 surfmix:    { type:'f',  value:0},
                 bumpyflat:  { type:'i',  value:viewopts.bumpy_flatmap == 'true'},
+                // equivolume:  { type:'i',  value:viewopts.equivolume == 'true'},
 
                 //hatch:      { type:'t',  value:0, texture: module.makeHatch() },
                 //hatchrep:   { type:'v2', value:new THREE.Vector2(108, 40) },
@@ -79,6 +81,7 @@ var mriview = (function(module) {
             shift: {action:[this, "setShift", 0, 200]},
             depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
             bumpy_flatmap: {action:[this.uniforms.bumpyflat, "value"]},
+            equivolume: {action:[this, "setEquivolume"]},
             changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true},
             opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
             left: {action:[this, "setLeftVis"]},
@@ -151,6 +154,22 @@ var mriview = (function(module) {
                     delete hemi.attributes[json.names[i]];
                 }
                 //Setup flatmap mix
+		var wmareas = module.computeAreas(hemi.attributes.wm, hemi.attributes.index, hemi.offsets);
+                wmareas = module.iterativelySmoothVertexData(hemi.attributes.wm, hemi.attributes.index, hemi.offsets, wmareas, smoothfactor, smoothiter);
+                hemi.wmareas = wmareas;
+
+		var pialareas = module.computeAreas(hemi.attributes.position, hemi.attributes.index, hemi.offsets);
+                pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, smoothfactor, smoothiter);
+                hemi.pialareas = pialareas;
+
+		var pialarea_attr = new THREE.BufferAttribute(pialareas, 1);
+                pialarea_attr.needsUpdate = true;
+                var wmarea_attr = new THREE.BufferAttribute(wmareas, 1);
+                wmarea_attr.needsUpdate = true;
+		
+                hemi.addAttribute('pialarea', pialarea_attr);
+                hemi.addAttribute('wmarea', wmarea_attr);
+
                 if (this.flatlims !== undefined) {
                     var flats = this._makeFlat(hemi.attributes.uv.array, json.flatlims, names[name]);
                     hemi.addAttribute('mixSurfs'+json.names.length, new THREE.BufferAttribute(flats.pos, 4));
@@ -163,14 +182,6 @@ var mriview = (function(module) {
 
                     var smoothfactor = 0.1;
                     var smoothiter = 50;
-
-
-                    var wmareas = module.computeAreas(hemi.attributes.wm, hemi.attributes.index, hemi.offsets);
-                    wmareas = module.iterativelySmoothVertexData(hemi.attributes.wm, hemi.attributes.index, hemi.offsets, wmareas, smoothfactor, smoothiter);
-                    hemi.wmareas = wmareas;
-                    var pialareas = module.computeAreas(hemi.attributes.position, hemi.attributes.index, hemi.offsets);
-                    pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, smoothfactor, smoothiter);
-                    hemi.pialareas = pialareas;
 
                     // var flatareas = module.computeAreas(hemi.attributes.mixSurfs1, hemi.culled.index, hemi.culled.offsets);
                     // var flatareascale = flatscale ** 2;
@@ -351,6 +362,7 @@ var mriview = (function(module) {
                 extratex: this.uniforms.extratex.value !== null,
                 halo: false,
                 dither: this._dither,
+                equivolume: this._equivolume,
                 // sampler: this._sampler,
             });
             this.shaders[dataview.uuid] = shaders[0];
@@ -572,6 +584,12 @@ var mriview = (function(module) {
             return this._sampler;
         this._sampler = val;
         this._active.setFilter(val);
+        this.resetShaders();
+    }
+    module.Surface.prototype.setEquivolume = function(val) {
+        if (val === undefined)
+            return this._equivolume;
+        this._equivolume = val;
         this.resetShaders();
     }
 

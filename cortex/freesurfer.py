@@ -99,15 +99,22 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
     else:
         print("Not going to flatten...")
 
-def import_subj(subject, sname=None, freesurfer_subject_dir=None):
+def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_surf='smoothwm'):
     """Imports a subject from freesurfer
     
     Parameters
     ----------
     subject : string
         Freesurfer subject name
-    sname : string
-        Pycortex subject name (These variable names should be changed)
+    sname : string, optional
+        Pycortex subject name (These variable names should be changed). By default uses
+        the same name as the freesurfer subject.
+    freesurfer_subject_dir : string, optional
+        Freesurfer subject directory to pull data from. By default uses the directory
+        given by the environment variable $SUBJECTS_DIR.
+    whitematter_surf : string, optional
+        Which whitematter surface to import as 'wm'. By default uses 'smoothwm', but that
+        surface is smoothed and may not be appropriate. A good alternative is 'white'.
     """
     if sname is None:
         sname = subject
@@ -138,7 +145,7 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None):
 
     from . import formats
     #import surfaces
-    for fsname, name in [('smoothwm',"wm"), ('pial',"pia"), ('inflated',"inflated")]:
+    for fsname, name in [(whitematter_surf,"wm"), ('pial',"pia"), ('inflated',"inflated")]:
         for hemi in ("lh", "rh"):
             pts, polys, _ = get_surf(subject, hemi, fsname, freesurfer_subject_dir=freesurfer_subject_dir)
             fname = str(surfs.format(subj=sname, name=name, hemi=hemi))
