@@ -199,6 +199,190 @@ class Transform(object):
         elif direction=='anat>func':
             return fslx
 
+    @classmethod
+    def from_freesurfer(cls, fs_register, func_nii, subject, freesurfer_subject_dir=None):
+        """Converts a FreeSurfer transform to a pycortex transform.
+
+        Converts a transform computed using FreeSurfer alignment tools (e.g., bbregister) to
+        a transform ("xfm") object in pycortex. The transform must have been computed
+        FROM the nifti volume specified in `func_nii` TO the anatomical volume of
+        the FreeSurfer subject `subject` (See Notes below).
+
+        Parameters
+        ----------
+        fs_register : array
+            4x4 transformation matrix, described in an FreeSurfer register.dat file, for a transform computed
+            FROM the func_nii volume TO the anatomical volume of the FreeSurfer subject `subject`.
+            Alternatively, a string file name for the FreeSurfer register.dat file.
+        func_nii : str or nibabel.Nifti1Image
+            nibabel image object (or string path to nibabel-readable image) for (functional) data volume
+            to be projected onto cortical surface
+        subject : str
+            FreeSurfer subject name for which the anatomical volume was registered for.
+        freesurfer_subject_dir : str | None
+            Directory of FreeSurfer subjects. Defaults to the value for
+            the environment variable 'SUBJECTS_DIR' (which should be set
+            by freesurfer)
+
+        Returns
+        -------
+        xfm : cortex.xfm.Transform object
+            A pycortex COORD transform.
+
+        Notes
+        -----
+        The transform is assumed to be computed FROM the functional data TO the anatomical data of
+        the specified FreeSurfer subject. In FreeSurfer speak, that means that the arguments to
+        FreeSurfer alignment tools should have been:
+        bbregister --s <subject> --mov <func_nii> --reg <fs_register> ...
+
+        """
+        import subprocess
+        import nibabel
+        import numpy.linalg as npl
+        inv = npl.inv
+
+        # Load anatomical to functional transform from register.dat file, if string is provided
+        if isinstance(fs_register, string_types):
+            with open(fs_register, 'r') as fid:
+                L = fid.readlines()
+            anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[4:8]])
+        else:
+            anat2func = fs_register
+
+        # Set FreeSurfer subject directory
+        if freesurfer_subject_dir is None:
+            freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
+
+        # Set path to the anatomical volume used to compute fs_register
+        anat_mgz = os.path.join(freesurfer_subject_dir, subject, 'mri', 'orig.mgz')
+
+        # Read vox2ras transform for the anatomical volume
+        try:
+            cmd = ('mri_info', '--vox2ras', anat_mgz)
+            L = subprocess.check_output(cmd).splitlines()
+            anat_vox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
+        except OSError:
+            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            raise
+
+        # Read tkrvox2ras transform for the  anatomical volume
+        try:
+            cmd = ('mri_info', '--vox2ras-tkr', anat_mgz)
+            L = subprocess.check_output(cmd).splitlines()
+            anat_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
+        except OSError:
+            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            raise
+
+        # Read tkvox2ras transform for the functional volume
+        try:
+            cmd = ('mri_info', '--vox2ras-tkr', func_nii)
+            L = subprocess.check_output(cmd).splitlines()
+            func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
+        except OSError:
+            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            raise
+
+        # Calculate pycorex transform (i.e. scanner to functional transform)
+        coord = np.dot(inv(func_tkrvox2ras), np.dot(anat2func, np.dot(anat_tkrvox2ras, inv(anat_vox2ras))))
+
+        try:
+            refIm = nibabel.load(func_nii)
+        except AttributeError:
+            refIm = func_nii
+
+        return cls(coord, refIm)
+
+    def to_freesurfer(self, fs_register, subject, freesurfer_subject_dir=None):
+        """Converts a pycortex transform to a FreeSurfer transform.
+
+        Converts a transform stored in pycortex xfm object to the FreeSurfer format
+        (i.e., register.dat format)
+
+        Parameters
+        ----------
+        fs_register : str
+            Output path for the FreeSurfer formatted transform to be output.
+        subject : str
+            FreeSurfer subject name from which the pycortex subject was imported
+
+        freesurfer_subject_dir : str | None
+            Directory of FreeSurfer subjects. Defaults to the value for
+            the environment variable 'SUBJECTS_DIR' (which should be set
+            by freesurfer)
+
+        """
+        import tempfile
+        import subprocess
+        import nibabel
+        import numpy.linalg as npl
+        inv = npl.inv
+
+        # Set FreeSurfer subject directory
+        if freesurfer_subject_dir is None:
+            freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
+
+        # Set path to the anatomical volume for the FreeSurfer subject
+        anat_mgz = os.path.join(freesurfer_subject_dir, subject, 'mri', 'orig.mgz')
+
+        # Write out the functional volume as Nifti file
+        tmp = tempfile.mkstemp(suffix='.nii')
+        func_nii = tmp[1]
+        nibabel.save(self.reference, func_nii)
+
+        # Read vox2ras transform for the anatomical volume
+        try:
+            cmd = ('mri_info', '--vox2ras', anat_mgz)
+            L = subprocess.check_output(cmd).splitlines()
+            anat_vox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
+        except OSError:
+            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            raise
+
+        # Read tkrvox2ras transform for the  anatomical volume
+        try:
+            cmd = ('mri_info', '--vox2ras-tkr', anat_mgz)
+            L = subprocess.check_output(cmd).splitlines()
+            anat_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
+        except OSError:
+            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            raise
+
+        # Read tkvox2ras transform for the functional volume
+        try:
+            cmd = ('mri_info', '--vox2ras-tkr', func_nii)
+            L = subprocess.check_output(cmd).splitlines()
+            func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
+        except OSError:
+            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            raise
+
+        # Read voxel resolution of the functional volume
+        try:
+            cmd = ('mri_info', '--res', func_nii)
+            ll = subprocess.check_output(cmd)
+            func_voxres = np.array([np.float(s) for s in ll.split() if s])
+        except OSError:
+            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            raise
+
+        # Calculate FreeSurfer transform
+        fs_anat2func = np.dot(func_tkrvox2ras, np.dot(self.xfm, np.dot(anat_vox2ras, inv(anat_tkrvox2ras))))
+
+        # Write out to `fs_register` in register.dat format
+        with open(fs_register, 'w') as fid:
+            fid.write('{}\n'.format(subject))
+            fid.write('{:.6f}\n'.format(func_voxres[0]))
+            fid.write('{:.6f}\n'.format(func_voxres[1]))
+            fid.write('0.150000\n')
+            for row in fs_anat2func:
+                fid.write(' '.join(['{:.15e}'.format(x) for x in row]) + '\n')
+
+        os.remove(func_nii)
+
+        return fs_anat2func
+
 def isstr(obj):
     """Check for stringy-ness in python 2.7 or 3"""
     try:
