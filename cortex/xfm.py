@@ -263,7 +263,7 @@ class Transform(object):
             L = subprocess.check_output(cmd).splitlines()
             anat_vox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
-            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
             raise
 
         # Read tkrvox2ras transform for the  anatomical volume
@@ -272,7 +272,7 @@ class Transform(object):
             L = subprocess.check_output(cmd).splitlines()
             anat_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
-            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
             raise
 
         # Read tkvox2ras transform for the functional volume
@@ -281,7 +281,7 @@ class Transform(object):
             L = subprocess.check_output(cmd).splitlines()
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
-            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
             raise
 
         # Calculate pycorex transform (i.e. scanner to functional transform)
@@ -337,7 +337,7 @@ class Transform(object):
             L = subprocess.check_output(cmd).splitlines()
             anat_vox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
-            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
             raise
 
         # Read tkrvox2ras transform for the  anatomical volume
@@ -346,7 +346,7 @@ class Transform(object):
             L = subprocess.check_output(cmd).splitlines()
             anat_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
-            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
             raise
 
         # Read tkvox2ras transform for the functional volume
@@ -355,7 +355,7 @@ class Transform(object):
             L = subprocess.check_output(cmd).splitlines()
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
-            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
             raise
 
         # Read voxel resolution of the functional volume
@@ -364,7 +364,7 @@ class Transform(object):
             ll = subprocess.check_output(cmd)
             func_voxres = np.array([np.float(s) for s in ll.split() if s])
         except OSError:
-            print "Error occured while executing:\n{}".format(' '.join(cmd))
+            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
             raise
 
         # Calculate FreeSurfer transform
