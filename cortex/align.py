@@ -82,7 +82,7 @@ def manual(subject, xfmname, reference=None, **kwargs):
 
     return m
 
-def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed"):
+def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args=''):
     """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.
 
     If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting
@@ -104,6 +104,10 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed"):
     noclean : bool, optional
         If True intermediate files will not be removed from /tmp (this is useful for debugging things),
         and the returned value will be the name of the temp directory. Default False.
+    bbrtype : str, optional
+        The 'bbrtype' argument that is passed to FLIRT.
+    pre_flirt_args : str, optional
+        Additional arguments that are passed to the FLIRT pre-alignment step (not BBR).
 
     Returns
     -------
@@ -130,8 +134,8 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed"):
         wmseg = db.get_anat(subject, type='whitematter').get_filename()
         #Compute anatomical-to-epi transform
         print('FLIRT pre-alignment')
-        cmd = '{fslpre}flirt  -in {epi} -ref {bet} -dof 6 -omat {cache}/init.mat'.format(
-           fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet)
+        cmd = '{fslpre}flirt  -in {epi} -ref {bet} -dof 6 {pre_flirt_args} -omat {cache}/init.mat'.format(
+           fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet, pre_flirt_args=pre_flirt_args)
         if sp.call(cmd, shell=True) != 0:
            raise IOError('Error calling initial FLIRT')
 
