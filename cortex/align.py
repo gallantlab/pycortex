@@ -92,6 +92,9 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
     Do that using the following (with the same `subject` and `xfmname` used here, no need for `reference`):
     > align.manual(subject, xfmname)
 
+    If automatic alignment gives you a very bad answer, you can try giving the pre-BBR FLIRT
+    some hints by passing '-usesqform' in as `pre_flirt_args`.
+
     Parameters
     ----------
     subject : str
