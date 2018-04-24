@@ -32,9 +32,9 @@ def _call_blender(filename, code):
             startcode += "blendlib.clear_all()\n"
             cmd = "blender -b -P {tfname}".format(tfname=tf.name)
 
-        tf.write(startcode+code+endcode)
+        tf.write((startcode+code+endcode).encode())
         tf.flush()
-        sp.call(shlex.split(cmd))
+        sp.call([w.encode() for w in shlex.split(cmd)])
 
 def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh="hemi"):
     """Add data as vertex colors to blender mesh
@@ -159,8 +159,8 @@ def write_patch(bname, pname, mesh="hemi"):
     This is a necessary step for flattening the surface in freesurfer
     """
     p = xdrlib.Packer()
-    p.pack_string(pname)
-    p.pack_string(mesh)
+    p.pack_string(pname.encode())
+    p.pack_string(mesh.encode())
     with tempfile.NamedTemporaryFile() as tf:
         tf.write(p.get_buffer())
         tf.flush()

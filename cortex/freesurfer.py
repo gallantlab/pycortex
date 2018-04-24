@@ -219,13 +219,13 @@ def parse_surf(filename):
 def write_surf(filename, pts, polys, comment=''):
     """  
     """
-    with open(filename, 'w') as fp:
-        fp.write('\xff\xff\xfe')
-        fp.write(comment+'\n\n')
+    with open(filename, 'wb') as fp:
+        fp.write(b'\xff\xff\xfe')
+        fp.write((comment+'\n\n').encode())
         fp.write(struct.pack('>2I', len(pts), len(polys)))
         fp.write(pts.astype(np.float32).byteswap().tostring())
         fp.write(polys.astype(np.uint32).byteswap().tostring())
-        fp.write('\n')
+        fp.write(b'\n')
 
 def parse_curv(filename):
     """  
