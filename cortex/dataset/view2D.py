@@ -172,7 +172,7 @@ class Volume2D(Dataview2D):
             state=self.state, description=self.description, **self.attrs)
         if not 'alpha' in self.attrs:
             kws['alpha'] = a
-        return = VolumeRGB(r, g, b, **kws)
+        return VolumeRGB(r, g, b, **kws)
 
 
     @property
@@ -244,7 +244,7 @@ class Vertex2D(Dataview2D):
         kws = dict(subject=self.dim1.subject)
         if not 'alpha' in self.attrs:
             kws['alpha'] = a
-        return = VertexRGB(r, g, b, **kws)
+        return VertexRGB(r, g, b, **kws)
 
     @property
     def vertices(self):
