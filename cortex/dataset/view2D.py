@@ -167,9 +167,13 @@ class Volume2D(Dataview2D):
             r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
         else:
             r, g, b, a = self._to_raw(self.dim1.volume, self.dim2.volume)
-        
-        return VolumeRGB(r, g, b, alpha=a, subject=self.dim1.subject, xfmname=self.dim1.xfmname, 
+        # Allow manual override of alpha channel
+        kws = dict(subject=self.dim1.subject, xfmname=self.dim1.xfmname, 
             state=self.state, description=self.description, **self.attrs)
+        if not 'alpha' in self.attrs:
+            kws['alpha'] = a
+        return = VolumeRGB(r, g, b, **kws)
+
 
     @property
     def xfmname(self):
@@ -236,7 +240,11 @@ class Vertex2D(Dataview2D):
         """VertexRGB object containing the colormapped data from this object.
         """
         r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
-        return VertexRGB(r, g, b, alpha=a, subject=self.dim1.subject)
+        # Allow manual override of alpha channel
+        kws = dict(subject=self.dim1.subject)
+        if not 'alpha' in self.attrs:
+            kws['alpha'] = a
+        return = VertexRGB(r, g, b, **kws)
 
     @property
     def vertices(self):
