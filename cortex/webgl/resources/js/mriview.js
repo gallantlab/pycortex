@@ -21,6 +21,7 @@ var mriview = (function(module) {
             tex.needsUpdate = true;
             colormaps[this.parentNode.id] = tex;
         });
+        window.colormaps = colormaps
 
         this.canvas = $(this.object).find("#brain");
         jsplot.Axes3D.call(this, figure);
@@ -221,6 +222,8 @@ var mriview = (function(module) {
     };
 
     module.Viewer.prototype.setData = function(name) {
+        console.log('setting data')
+
         if (name instanceof Array) {
             if (name.length == 1) {
                 name = name[0];
@@ -290,7 +293,7 @@ var mriview = (function(module) {
 
         function get1dColormaps () {
             let colormaps1d = {}
-            for (let colormap of Object.keys(colormaps)) {
+            for (let colormap of Object.keys(window.colormaps)) {
                 if (colormaps[colormap].image.height == 1) {
                     colormaps1d[colormap] = colormaps[colormap]
                 }
@@ -300,7 +303,7 @@ var mriview = (function(module) {
 
         function get2dColormaps () {
             let colormaps2d = {}
-            for (let colormap of Object.keys(colormaps)) {
+            for (let colormap of Object.keys(window.colormaps)) {
                 if (colormaps[colormap].image.height > 1) {
                     colormaps2d[colormap] = colormaps[colormap]
                 }
@@ -309,6 +312,7 @@ var mriview = (function(module) {
         }
 
         function setColorOptions (colormaps) {
+
             // clear current options
             let options = $('.colorlegend-select option')
             for (let key in Object.keys(options)) {
