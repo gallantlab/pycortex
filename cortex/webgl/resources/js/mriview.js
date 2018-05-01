@@ -314,9 +314,7 @@ var mriview = (function(module) {
             for (let key in Object.keys(options)) {
                 let option = options[key]
                 if (option) {
-                    if (!colormaps.hasOwnProperty(option.innerText)) {
-                        option.remove()
-                    }
+                    option.remove()
                 }
             }
 
