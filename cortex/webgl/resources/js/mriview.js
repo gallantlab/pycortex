@@ -395,6 +395,12 @@ var mriview = (function(module) {
             $('#yd-vmax').text(cleanNumber(viewer.active.vmax[0]['value'][1], 3, true));
         }
 
+        $('.colorlegend-select').on('select2:open', function (e) {
+            window.colorlegendOpen = true
+        });
+        $('.colorlegend-select').on('select2:close', function (e) {
+            window.colorlegendOpen = false
+        });
 
         $('.colorlegend-select').on('select2:select', function (e) {
             var cmapName = e.params.data.id;
