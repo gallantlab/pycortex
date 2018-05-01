@@ -93,7 +93,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     dataview = dataset.normalize(braindata)
     if not isinstance(dataview, dataset.Dataview):
         raise TypeError('Please provide a Dataview (e.g. an instance of cortex.Volume, cortex.Vertex, etc), not a Dataset')
-    
+
     if fig is None:
         fig_resize = True
         fig = plt.figure()
@@ -171,7 +171,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, 
             with_labels=with_labels)
         layers['custom'] = custom_im
-        
+
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
     ax.set_ylim(extents[2], extents[3])
@@ -185,7 +185,12 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         extents = composite.add_cutout(fig, cutout, dataview, layers)
 
     if with_colorbar:
-        colorbar = composite.add_colorbar(fig, data_im)
+        # Allow 2D colorbars:
+        if isinstance(dataview, dataset.view2D.Dataview2D):
+            colorbar = composite.add_colorbar_2d(fig, dataview.cmap,
+                [dataview.vmin, dataview.vmax, dataview.vmin2, dataview.vmax2])
+        else:
+            colorbar = composite.add_colorbar(fig, data_im)
         # Reset axis to main figure axis
         plt.axes(ax)
 

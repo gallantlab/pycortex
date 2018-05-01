@@ -224,7 +224,7 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
     extents : array-like
         4 values for [Left, Right, Top, Bottom] extents of image plotted. None defaults to 
         extents of images already present in figure.
-    height : scalar 
+    height : scalar
         Height of image. None defaults to height of images already present in figure. 
     with_labels : bool
         Whether to display text labels for sulci
@@ -233,8 +233,8 @@ def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwar
     ----------------
     kwargs : keyword arguments
         Keywords args govern line appearance in final plot. Allowable kwargs are : linewidth,
-        linecolor, 
-    
+        linecolor
+
     Returns
     -------
     img : matplotlib.image.AxesImage
@@ -313,7 +313,7 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4, hatch_c
                     zorder=2)
     return img
 
-def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), 
+def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(0.4, 0.07, 0.2, 0.04), 
     orientation='horizontal'):
     """Add a colorbar to a flatmap plot
 
@@ -334,7 +334,39 @@ def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(.4, .07, .2,
     """
     cbar = fig.add_axes(colorbar_location)
     fig.colorbar(cimg, cax=cbar, orientation=orientation, ticks=colorbar_ticks)
-    return
+    return cbar
+
+def add_colorbar_2d(fig, cmap_name, colorbar_ticks,
+    colorbar_location=(0.425, 0.02, 0.15, 0.15), fontsize=12):
+    """Add a 2D colorbar to a flatmap plot
+
+    Parameters
+    ----------
+    fig : matplotlib Figure object
+    cimg : matplotlib.image.AxesImage object
+        Image for which to create colorbar. For reference, matplotlib.image.AxesImage 
+        is the output of imshow()
+    colorbar_ticks : array-like
+        values for colorbar ticks
+    colorbar_location : array-like
+        Four-long list, tuple, or array that specifies location for colorbar axes 
+        [left, top, width, height] (?)
+    orientation : string
+        'vertical' or 'horizontal'
+    """
+    # a bit sketchy - lazy imports
+    import matplotlib.pyplot as plt
+    import os
+    cmap_dir = config.get('webgl', 'colormaps')
+    cim = plt.imread(os.path.join(cmap_dir, cmap_name + '.png'))
+    fig.add_axes(colorbar_location)
+    cbar = plt.imshow(cim, extent=colorbar_ticks, interpolation='bilinear')
+    cbar.axes.set_xticks(colorbar_ticks[:2])
+    cbar.axes.set_xticklabels(colorbar_ticks[:2], fontdict=dict(size=fontsize))
+    cbar.axes.set_yticks(colorbar_ticks[2:])
+    cbar.axes.set_yticklabels(colorbar_ticks[2:], fontdict=dict(size=fontsize))
+
+    return cbar
 
 def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_labels=False, 
     shape_list=None, **kwargs):
