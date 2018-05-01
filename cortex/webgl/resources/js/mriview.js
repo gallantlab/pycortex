@@ -222,7 +222,6 @@ var mriview = (function(module) {
     };
 
     module.Viewer.prototype.setData = function(name) {
-        console.log('setting data')
 
         if (name instanceof Array) {
             if (name.length == 1) {
@@ -332,27 +331,32 @@ var mriview = (function(module) {
             }
         }
 
+
         // adjust display and options according to dimensionality
         let dims = this.active.data.length
         if (this.active.data[0].raw) {
             dims = 3
         }
 
-        if (dims === 1) {
-            $('#colorlegend').removeClass('colorlegend-2d')
-            $('#colorlegend').removeClass('colorlegend-3d')
-            setColorOptions(get1dColormaps())
-        } else if (dims === 2) {
-            $('#colorlegend').removeClass('colorlegend-3d')
-            $('#colorlegend').addClass('colorlegend-2d')
-            setColorOptions(get2dColormaps())
-        } else if (dims === 3) {
-            console.log('rgb detected')
-            $('#colorlegend').removeClass('colorlegend-2d')
-            $('#colorlegend').addClass('colorlegend-3d')
-        } else {
-            console.log('unknown case: dims=' + dims)
+        function setColorOptionsByDim(dims) {
+            if (dims === 1) {
+                $('#colorlegend').removeClass('colorlegend-2d')
+                $('#colorlegend').removeClass('colorlegend-3d')
+                setColorOptions(get1dColormaps())
+            } else if (dims === 2) {
+                $('#colorlegend').removeClass('colorlegend-3d')
+                $('#colorlegend').addClass('colorlegend-2d')
+                setColorOptions(get2dColormaps())
+            } else if (dims === 3) {
+                console.log('rgb detected')
+                $('#colorlegend').removeClass('colorlegend-2d')
+                $('#colorlegend').addClass('colorlegend-3d')
+            } else {
+                console.log('unknown case: dims=' + dims)
+            }
         }
+
+        setColorOptionsByDim(dims)
 
         // clean numbers for display in colorbar
         function cleanNumber (number, decimals, exponential_if_beyond) {
@@ -397,13 +401,21 @@ var mriview = (function(module) {
             $('#yd-vmax').text(cleanNumber(viewer.active.vmax[0]['value'][1], 3, true));
         }
 
+        $('.colorlegend-select').off('select2:open')
         $('.colorlegend-select').on('select2:open', function (e) {
             window.colorlegendOpen = true
         });
+
+        $('.colorlegend-select').off('select2:opening')
+        $('.colorlegend-select').on('select2:opening', function (e) {
+            setColorOptionsByDim(dims)
+        });
+        $('.colorlegend-select').off('select2:close')
         $('.colorlegend-select').on('select2:close', function (e) {
             window.colorlegendOpen = false
         });
 
+        $('.colorlegend-select').off('select2:select')
         $('.colorlegend-select').on('select2:select', function (e) {
             var cmapName = e.params.data.id;
             viewer.active.cmapName = cmapName;
