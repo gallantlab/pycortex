@@ -179,6 +179,9 @@ a:visited { color:white; }
     margin:auto;
     z-index:100;
 }
+.select2-dropdown {
+    width: 30vw!important;
+}
 #colorlegend-colors {
     height:100%;
     overflow:hidden;
