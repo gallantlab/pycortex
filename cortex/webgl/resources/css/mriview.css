@@ -211,8 +211,9 @@ a:visited { color:white; }
 #colorlegend.colorlegend-2d {
     height:20vmin;
     width:20vmin;
-    margin-left: 30px;
+    margin-left: 5vmin;
     margin-right: auto;
+    bottom: 5vmin;
 }
 .colorlegend-2d #vlims-2d {
     display: block;
@@ -229,7 +230,7 @@ a:visited { color:white; }
 }
 #xd-vmin-container, #xd-vmax-container {
     position: absolute;
-    top: -4.5vmin;
+    top: 21.5vmin;
 }
 #xd-vmin-container {
     left: 0;
@@ -248,10 +249,18 @@ a:visited { color:white; }
     width: 10vmin;
 }
 #yd-vmin-container {
-    bottom:0;
+    transform: rotate(270deg);
+    transform-origin: 0% 100%;
+    text-align: left;
+    left: -1vmin;
+    bottom: 0;
 }
 #yd-vmax-container {
-    top:0;
+    transform: rotate(270deg);
+    transform-origin: 0% 0%;
+    text-align: right;
+    top: 10vmin;
+    left: -4vmin;
 }
 #xd-vmin-input, #xd-vmax-input, #yd-vmin-input, #yd-vmax-input {
     position: absolute;
@@ -268,7 +277,7 @@ a:visited { color:white; }
 }
 #yd-vmax-input {
     top: calc(-1px - 0.5vmin);
-    left:calc(-1px - 0.5vmin);
+    left: 0.2vmin
 }
 #yd-vmin-input {
     bottom:calc(-1px - 0.5vmin);
