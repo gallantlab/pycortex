@@ -223,6 +223,22 @@ var mriview = (function(module) {
 
     module.Viewer.prototype.setData = function(name) {
 
+        // blur any selected input elements
+        let ids = [
+            ['#vmin', '#vmin-input'],
+            ['#vmax', '#vmax-input'],
+            ['#xd-vmin', '#xd-vmin-input'],
+            ['#xd-vmax', '#xd-vmax-input'],
+            ['#yd-vmin', '#yd-vmin-input'],
+            ['#yd-vmax', '#yd-vmax-input'],
+        ]
+        for (let displayIdInputId of ids) {
+            $(displayIdInputId[0]).css('display', 'block')
+            $(displayIdInputId[1]).css('display', 'none')
+            document.getElementById(displayIdInputId[1].slice(1)).blur()
+            console.log('hi')
+        }
+
         if (name instanceof Array) {
             if (name.length == 1) {
                 name = name[0];
@@ -527,7 +543,6 @@ var mriview = (function(module) {
         setClickFunctions('vmax', '#xd-vmax', '#xd-vmax-input', 0, 3)
         setClickFunctions('vmin', '#yd-vmin', '#yd-vmin-input', 1, 3)
         setClickFunctions('vmax', '#yd-vmax', '#yd-vmax-input', 1, 3)
-
 
         // end colorlegend code
         // // // // // // // // // // // // // // // // // // // // // // // //
