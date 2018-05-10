@@ -236,7 +236,6 @@ var mriview = (function(module) {
             $(displayIdInputId[0]).css('display', 'block')
             $(displayIdInputId[1]).css('display', 'none')
             document.getElementById(displayIdInputId[1].slice(1)).blur()
-            console.log('hi')
         }
 
         if (name instanceof Array) {
