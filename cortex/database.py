@@ -274,22 +274,22 @@ class Database(object):
         pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
 
         paths = self.get_paths(subject)
+        # NOTE: This try loop is broken, in that it does nothing for the inteded 
+        # use case (loading an overlay from a packed subject) - needs fixing. 
+        # This hasn't come up yet due to very rare use of packed subjects.
         if self.auxfile is not None:
-            #print("I FOUND AN AUXFILE! HOLY MOLY, WHAT IS THAT??") # still unclear what this does
             try:
+                # Prob should be something like:
+                #self.auxfile.get_overlay(subject, **kwargs)
                 tf = self.auxfile.get_overlay(subject) # kwargs??
                 svgfile = tf.name
             except (AttributeError, IOError):
-                # NOTE: This is better error handling, but does not account for
-                # case in which self.auxfile is None - when is that?? I (ML) think
-                # it only comes up with new svg layer variants in extra_layers branch...
-                # svgfile = self.get_paths(subject)["rois"]
-                # Layer type does not exist or has been temporarily removed
+                # I think the rest of the code should be here (as in other functions...)
                 pass
         if 'pts' in kwargs:
             pts = kwargs['pts']
             del kwargs['pts']
-            
+        # ... and `svgfile` variable should be used here...
         if os.path.exists(paths['rois']) and not os.path.exists(paths['overlays']):
             svgoverlay.import_roi(paths['rois'], paths['overlays'])
 
@@ -479,6 +479,32 @@ class Database(object):
             mask = get_cortical_mask(subject, xfmname, type)
             self.save_mask(subject, xfmname, type, mask)
             return mask
+
+    def get_shared_voxels(self, subject, xfmname, hemi="both", merge=True, use_astar=True, recache=False):
+        """Get an array indicating which vertices are inappropriately mapped to the same voxel.
+
+        For a given transform and surface, returns an array containing a list of vertices which 
+        are spatially distant on the cortical surface but that map to the same voxels (this occurs
+        at sulcal crossings)
+
+        """
+        # Test for packed subjects
+        try:
+            voxels = self.auxfile.get_shared_voxels(subject, xfmname, hemi=hemi, merge=merge, use_astar=use_astar)
+            return voxels
+        except (AttributeError, IOError):
+            pass
+        # Proceed w/ potential load
+        shared_voxel_file = os.path.join(self.get_cache(subject), 'shared_vertices_{xfmname}_{hemi}.npy'.format(xfmname=xfmname, hemi=hemi))
+        if not os.path.exists(shared_voxel_file) or recache:
+            print('Shared voxel array not found, generating...')
+            from .utils import get_shared_voxels as _get_shared_voxels
+            voxels = _get_shared_voxels(subject, xfmname, hemi=hemi, merge=merge, use_astar=use_astar)
+            np.save(shared_voxel_file, voxels)
+            return voxels
+        else:
+            voxels = np.load(shared_voxel_file)
+            return voxels
 
     def get_coords(self, subject, xfmname, hemisphere="both", magnet=None):
         """Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space

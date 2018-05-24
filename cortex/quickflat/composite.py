@@ -3,8 +3,12 @@ import numpy as np
 from .. import dataset
 from ..database import db
 from ..options import config
+from ..svgoverlay import get_overlay
+from ..utils import get_shared_voxels, get_mapper
 from .utils import _get_height, _get_extents, _convert_svg_kwargs, _has_cmap, _get_images, _parse_defaults
-from .utils import make_flatmap_image, _make_hatch_image
+from .utils import make_flatmap_image, _make_hatch_image, _return_pixel_pairs, get_flatmask, get_flatcache
+
+import time
 
 ### --- Individual compositing functions --- ###
 
@@ -77,6 +81,9 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     else:
         curv_vertices = db.get_surfinfo(dataview.subject, smooth=smooth)
     curv, _ = make_flatmap_image(curv_vertices, recache=recache, height=height)
+    # First, limit to sensible range for flatmap curvature
+    norm = Normalize(vmin=-0.5, vmax=0.5)
+    curv_im = norm(curv)
     # Option to use thresholded curvature
     default_threshold = config.get('curvature','threshold').lower() in ('true','t','1','y','yes')
     use_threshold_curvature = default_threshold if threshold is None else threshold
@@ -212,7 +219,7 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
         zorder=4)
     return img
 
-def add_sulci(fig, dataview, extents=None, height=1024, with_labels=True, **kwargs):
+def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, **kwargs):
     """Add sulci layer to figure
 
     Parameters
@@ -430,6 +437,69 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
                     label='custom',
                     zorder=6)
     return img
+
+def add_connected_vertices(fig, dataview, height=None, extents=None, recache=False, 
+                           min_dist=5, max_dist=85, color=(1.0,0.5,0.1,0.6), 
+                           linewidth=2, exclude_border_width=None,
+                           alpha=1.0, **kwargs):
+    """Plot lines btw distant vertices that are within the same voxel
+    updated...
+    Notes
+    -----
+    Replace min_dist, max_dist with more principled values!
+    extents is currently unused, but probably should be to scale pix_array
+    """
+    from matplotlib.collections import LineCollection
+    from scipy.ndimage import binary_dilation
+
+    if extents is None:
+        extents = _get_extents(fig)
+    if height is None:
+        height = _get_height(fig)            
+    subject = dataview.subject
+    xfmname = dataview.xfmname
+    if xfmname is None:
+        raise ValueError("Dataview for add_connected_vertices must be a Volume! You seem to have provided vertex data.")
+    shared_voxels = db.get_shared_voxels(subject, xfmname, recache=recache, **kwargs)
+    mask, extents = get_flatmask(subject)
+    pixmap = get_flatcache(subject, None)
+    n_pixels, n_verts = pixmap.shape
+
+    if exclude_border_width:
+        # Finding vertices that map to the border of the flatmap
+        img = np.nan * np.ones(mask.shape) 
+        img[mask] = pixmap * np.arange(n_verts) # mapper.nverts
+        border_mask = binary_dilation(~mask, iterations=exclude_border_width) ^ (~mask)
+        border_vertices = set(img[border_mask].astype(int))
+        shared_voxels = np.array([a for a in shared_voxels if ((a[1] not in border_vertices) and (a[2] not in border_vertices))])
+
+    valid_vert_mask = np.array(pixmap.sum(0) > 0).flatten()
+    valid_verts = np.arange(n_verts)[valid_vert_mask] # mapper.nverts
+    # Assure both vertices in each pair are not in the medial wall
+    vtx1valid = np.in1d(shared_voxels[:, 1], valid_verts)
+    vtx2valid = np.in1d(shared_voxels[:, 2], valid_verts)
+    va, vb = shared_voxels[vtx1valid & vtx2valid, 1:].T
+    # Get X, Y coordinates per vertex, scale to 0-1 range
+    [lpt, lpoly], [rpt, rpoly] = db.get_surf(subject, "flat", nudge=True)
+    vert_xyz = np.vstack([lpt, rpt])
+    vert_xyz -= vert_xyz.min(0)
+    vert_xyz /= vert_xyz.max(0)
+    x, y = vert_xyz[:, :2].T
+    # Map vertices to X, Y coordinates suitable for LineCollection input
+    pix_array_x = np.vstack([x[va], x[vb]]).T
+    pix_array_y = np.vstack([y[va], y[vb]]).T
+    pix_array_scaled = np.dstack([pix_array_x, pix_array_y])
+    # Add line collection 
+    # (This is the most time consuming step, as it draws many lines)
+    lc = LineCollection(pix_array_scaled, 
+                        transform=fig.transFigure, 
+                        figure=fig,
+                        colors=color, 
+                        alpha=alpha,
+                        linewidths=linewidth)
+    ax = fig.gca()
+    lc_object = ax.add_collection(lc)
+    return lc_object
 
 def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
     """Apply a cutout mask to extant layers in flatmap figure

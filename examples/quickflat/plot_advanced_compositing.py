@@ -12,6 +12,7 @@ quickflat.composite sub-module.
 
 import cortex
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Create an empty volume (nans = transparent values on surface)
 # (This makes it easier to see overlay manipulations, this will
