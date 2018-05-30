@@ -829,7 +829,6 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
                                 # Test whether any vertex in path goes out of the voxel
                                 stays_in_voxel = all([(v in vert_to_vox_map) and (vert_to_vox_map[v] == vox_idx) for v in path]) 
                                 if not stays_in_voxel:
-                                    1/0
                                     vox_vert_list.append([vox_idx, vert1, vert2])
         
         tmp =  np.array(vox_vert_list)
