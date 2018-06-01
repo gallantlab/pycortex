@@ -14,15 +14,15 @@ import cortex
 import numpy as np
 import matplotlib.pyplot as plt
 
-np.random.seed(1234)
-
-# Create a random pycortex Volume
-volume = cortex.Volume.random(subject='S1', xfmname='retinotopy')
+# Create an empty pycortex Volume
+volume = cortex.Volume.empty(subject='S1', xfmname='retinotopy', value=np.nan)
 
 # Plot a flatmap with the data projected onto the surface
-fig = cortex.quickflat.make_figure(volume)
+fig = cortex.quickflat.make_figure(volume, with_curvature=True, with_colorbar=False)
 
+# Advanced compositing addition of connected vertices.
+# Note that this will not currently resize correctly with a figure.
 lines = cortex.quickflat.composite.add_connected_vertices(fig, volume,
-            exclude_border_width=None, color=(1.0, 0.5, 0.1, 0.6), linewidth=2,
-            alpha=1.0)
+            exclude_border_width=None, color=(1.0, 0.5, 0.1, 0.6), linewidth=0.75,
+            alpha=0.3, recache=True)
 plt.show()
