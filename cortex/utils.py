@@ -758,7 +758,7 @@ def _set_edge_distance_graph_attribute(graph, pts, polys):
             edge_distances[(z,y)] = heuristic(z,y)
             edge_distances[(x,z)] = heuristic(x,z)
             edge_distances[(z,x)] = heuristic(z,x)
-        nx.set_edge_attributes(graph, 'distance', edge_distances)
+        nx.set_edge_attributes(graph, edge_distances, name='distance')
 
 
 def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True):
