@@ -393,7 +393,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     extents : array-like
         4 values for [Left, Right, Bottom, Top] extents of image plotted. If None, defaults to 
         extents of images already present in figure.
-    height : scalar 
+    height : scalar
         Height of image. if None, defaults to height of images already present in figure. 
     with_labels : bool
         Whether to display text labels on ROIs
@@ -438,16 +438,46 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
                     zorder=6)
     return img
 
-def add_connected_vertices(fig, dataview, height=None, extents=None, recache=False, 
-                           min_dist=5, max_dist=85, color=(1.0,0.5,0.1,0.6), 
-                           linewidth=2, exclude_border_width=None,
+def add_connected_vertices(fig, dataview, exclude_border_width=None,
+                           height=None, extents=None, recache=False,
+                           color=(1.0, 0.5, 0.1, 0.6), linewidth=2,
                            alpha=1.0, **kwargs):
     """Plot lines btw distant vertices that are within the same voxel
-    updated...
+
+    Parameters
+    ----------
+    fig : matplotlib figure
+        Figure into which to plot the hatches. Should have pycortex flatmap
+        image in it already.
+    dataview : cortex.Volume
+        cortex.Volume object containing data used to determine which vertices
+        are connected.
+    exclude_border_width : scalar or None
+        if not None, width from edge of flatmap for which crossover lines are
+        not computed.
+    height : scalar
+        Height of image. if None, defaults to height of images already present
+        in figure.
+    extents : array-like
+        4 values for [Left, Right, Bottom, Top] extents of image plotted. If
+        None, defaults to extents of images already present in figure.
+    color : rgba tuple
+        color of lines
+    linewidth : scalar
+        width of plotted lines
+    alpha : scalar, [0-1]
+        alpha value for plotted lines
+    kwargs are mapped to cortex.db.get_shared_voxels
+    
     Notes
     -----
-    Replace min_dist, max_dist with more principled values!
-    extents is currently unused, but probably should be to scale pix_array
+    The process of drawing all the connected vertices is graphically intensive
+    because of the sheer number of lines to draw. This is already partly sped
+    up by using a LineCollection object instead of plotting each line,
+    but it's still an expensive step, and takes quite a while on some systems.
+
+    `extents` is currently unused, but probably should be to scale pix_array
+    As a result, this may be brittle to some figure transformations.
     """
     from matplotlib.collections import LineCollection
     from scipy.ndimage import binary_dilation
@@ -460,7 +490,9 @@ def add_connected_vertices(fig, dataview, height=None, extents=None, recache=Fal
     xfmname = dataview.xfmname
     if xfmname is None:
         raise ValueError("Dataview for add_connected_vertices must be a Volume! You seem to have provided vertex data.")
+    print('computing shared voxels')
     shared_voxels = db.get_shared_voxels(subject, xfmname, recache=recache, **kwargs)
+    print('Finished computing shared voxels')
     mask, extents = get_flatmask(subject)
     pixmap = get_flatcache(subject, None)
     n_pixels, n_verts = pixmap.shape
@@ -491,6 +523,7 @@ def add_connected_vertices(fig, dataview, height=None, extents=None, recache=Fal
     pix_array_scaled = np.dstack([pix_array_x, pix_array_y])
     # Add line collection 
     # (This is the most time consuming step, as it draws many lines)
+    print('plotting lines...')
     lc = LineCollection(pix_array_scaled, 
                         transform=fig.transFigure, 
                         figure=fig,

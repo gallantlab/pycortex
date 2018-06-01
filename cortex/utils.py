@@ -362,7 +362,7 @@ def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
     output : dict
         Dict of ROIs and their masks
     """
-    warnings.warn('Deprecated! Use get_roi_mask')
+    warnings.warn('Deprecated! Use get_roi_masks')
 
     mapper = get_mapper(subject, xfmname, type=projection)
     rois = get_roi_verts(subject, roi=roi, mask=True)
@@ -709,7 +709,7 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
 
-def vertex_to_voxel(subject): # Am I deprecated in favor of mappers??? Maybe???
+def vertex_to_voxel(subject):  # Am I deprecated in favor of mappers??? Maybe?
     """
     Parameters
     ----------
@@ -745,7 +745,7 @@ def _set_edge_distance_graph_attribute(graph, pts, polys):
     adds the attribute 'edge distance' to a graph
     '''
     import networkx as nx
-    
+
     l2_distance = lambda v1, v2: np.linalg.norm(pts[v1] - pts[v2])
     heuristic = l2_distance # A* heuristic
 
@@ -775,18 +775,19 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
     merge : bool, optinal
         Join the hemispheres, if requesting both
     use_astar: bool, optional
-        Toggle to decide whether to use A* seach or geodesic paths for the shortest paths
+        Toggle to decide whether to use A* seach or geodesic paths for the
+        shortest paths
 
     Returns
     -------
     vox_vert_array: np.array,
-    array of dimensions #voxels X 3, clumns being: (vox_idx, farthest_pair[0], farthest_pair[1])
+    array of dimensions # voxels X 3, columns being: (vox_idx, farthest_pair[0],
+    farthest_pair[1])
     '''
-
 
     from scipy.sparse import find as sparse_find
     import networkx as nx
-    Lmask, Rmask = get_mapper(subject, xfmname).masks # Get masks for left and right hemisphere 
+    Lmask, Rmask = get_mapper(subject, xfmname).masks  # Get masks for left and right hemisphere 
     if hemi == 'both':
         hemispheres = ['lh', 'rh']
     else:
@@ -797,40 +798,40 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
             mask = Lmask
         else:
             mask = Rmask
-    
-        all_voxels = mask.tolil().transpose().rows # Map from voxels to verts
-        vert_to_vox_map = dict(zip(*(sparse_find(mask)[:2]))) #From verts to vox
 
-        pts_fid, polys_fid = db.get_surf(subject, 'fiducial', hem) #Get the fiducial surface
+        all_voxels = mask.tolil().transpose().rows  # Map from voxels to verts
+        vert_to_vox_map = dict(zip(*(sparse_find(mask)[:2])))  # From verts to vox
+
+        pts_fid, polys_fid = db.get_surf(subject, 'fiducial', hem)  # Get the fiducial surface
         surf = Surface(pts_fid, polys_fid) #Get the fiducial surface
         graph = surf.graph 
 
         _set_edge_distance_graph_attribute(graph, pts_fid, polys_fid)
 
         l2_distance = lambda v1, v2: np.linalg.norm(pts_fid[v1] - pts_fid[v2])
-        heuristic = l2_distance # A* heuristic
-        
+        heuristic = l2_distance  # A* heuristic
+
         if use_astar:
-            shortest_path = lambda a,b: nx.astar_path(graph, a, b, heuristic=heuristic, weight='distance') # Find approximate shortest paths using A* search
+            shortest_path = lambda a, b: nx.astar_path(graph, a, b, heuristic=heuristic, weight='distance') # Find approximate shortest paths using A* search
         else:
-            shortest_path = surf.geodesic_path # Find shortest paths using geodesic distances
+            shortest_path = surf.geodesic_path  # Find shortest paths using geodesic distances
 
         vox_vert_list = []
         for vox_idx, vox in enumerate(all_voxels):
-            if len(vox) > 1: # If the voxel maps to multiple vertices
+            if len(vox) > 1:  # If the voxel maps to multiple vertices
                 vox = np.array(vox).astype(int)
                 for v1 in range(vox.size-1):
                     vert1 = vox[v1]
-                    if vert1 in vert_to_vox_map: # If the vertex is a valid vertex
+                    if vert1 in vert_to_vox_map:  # If the vertex is a valid vertex
                         for v2 in range(v1+1, vox.size):
                             vert2 = vox[v2]
-                            if vert2 in vert_to_vox_map: # If the vertex is a valid vertex                    
+                            if vert2 in vert_to_vox_map:  # If the vertex is a valid vertex
                                 path = shortest_path(vert1, vert2)
                                 # Test whether any vertex in path goes out of the voxel
                                 stays_in_voxel = all([(v in vert_to_vox_map) and (vert_to_vox_map[v] == vox_idx) for v in path]) 
                                 if not stays_in_voxel:
                                     vox_vert_list.append([vox_idx, vert1, vert2])
-        
+
         tmp =  np.array(vox_vert_list)
         # Add offset for right hem voxels
         if hem=='rh':
