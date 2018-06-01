@@ -14,6 +14,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
                 with_labels=True, with_colorbar=True, with_borders=False, 
                 with_dropout=False, with_curvature=False, extra_disp=None, 
+                with_connected_vertices=False,
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
                 curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
@@ -43,8 +44,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     depth : float
         Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
         boundary, 1 = pial surface)
-    with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature : bool, optional
-        Display the rois, labels, colorbar, annotated flatmap borders, or cross-hatch dropout?
+    with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature, etc : bool, optional
+        Display the rois, labels, colorbar, annotated flatmap borders, etc
     cutout : str
         Name of flatmap cutout with which to clip the full flatmap. Should be the name
         of a sub-layer of the 'cutouts' layer in <filestore>/<subject>/overlays.svg
@@ -93,7 +94,6 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     dataview = dataset.normalize(braindata)
     if not isinstance(dataview, dataset.Dataview):
         raise TypeError('Please provide a Dataview (e.g. an instance of cortex.Volume, cortex.Vertex, etc), not a Dataset')
-
     if fig is None:
         fig_resize = True
         fig = plt.figure()
@@ -171,6 +171,9 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, 
             with_labels=with_labels)
         layers['custom'] = custom_im
+    # Add connector lines btw connected vertices
+    if with_connected_vertices:
+        vertex_lines = composite.add_connected_vertices(fig, dataview)
 
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])

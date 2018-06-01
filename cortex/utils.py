@@ -11,6 +11,8 @@ from importlib import import_module
 from .database import db
 from .volume import anat2epispace
 from .options import config
+from .freesurfer import fs_aseg_dict
+from .polyutils import Surface 
 
 class DocLoader(object):
     def __init__(self, func, mod, package):
@@ -360,7 +362,7 @@ def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
     output : dict
         Dict of ROIs and their masks
     """
-    warnings.warn('Deprecated! Use get_roi_mask')
+    warnings.warn('Deprecated! Use get_roi_masks')
 
     mapper = get_mapper(subject, xfmname, type=projection)
     rois = get_roi_verts(subject, roi=roi, mask=True)
@@ -707,7 +709,7 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
 
-def vertex_to_voxel(subject):
+def vertex_to_voxel(subject):  # Am I deprecated in favor of mappers??? Maybe?
     """
     Parameters
     ----------
@@ -736,6 +738,112 @@ def vertex_to_voxel(subject):
     all_verts[pia_closer] = pia_verts[pia_closer]
 
     return all_verts
+
+
+def _set_edge_distance_graph_attribute(graph, pts, polys):
+    '''
+    adds the attribute 'edge distance' to a graph
+    '''
+    import networkx as nx
+
+    l2_distance = lambda v1, v2: np.linalg.norm(pts[v1] - pts[v2])
+    heuristic = l2_distance # A* heuristic
+
+    if not nx.get_edge_attributes(graph, 'distance'): # Add edge distances as an attribute to this graph if it isn't there
+        edge_distances = dict()
+        for x,y,z in polys:
+            edge_distances[(x,y)] = heuristic(x,y)
+            edge_distances[(y,x)] = heuristic(y,x)
+            edge_distances[(y,z)] = heuristic(y,z)
+            edge_distances[(z,y)] = heuristic(z,y)
+            edge_distances[(x,z)] = heuristic(x,z)
+            edge_distances[(z,x)] = heuristic(z,x)
+        nx.set_edge_attributes(graph, 'distance', edge_distances)
+
+
+def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True):
+    '''Return voxels that are shared by multiple vertices, and for each such voxel,
+       also returns the mutually farthest pair of vertices mapping to the voxel
+    Parameters
+    ----------
+    subject : str
+        Name of the subject
+    xfmname : str
+        Name of the transform
+    hemi : str, optional
+        Which hemisphere to return. For now, only 'lh' or 'rh'
+    merge : bool, optinal
+        Join the hemispheres, if requesting both
+    use_astar: bool, optional
+        Toggle to decide whether to use A* seach or geodesic paths for the
+        shortest paths
+
+    Returns
+    -------
+    vox_vert_array: np.array,
+    array of dimensions # voxels X 3, columns being: (vox_idx, farthest_pair[0],
+    farthest_pair[1])
+    '''
+
+    from scipy.sparse import find as sparse_find
+    import networkx as nx
+    Lmask, Rmask = get_mapper(subject, xfmname).masks  # Get masks for left and right hemisphere 
+    if hemi == 'both':
+        hemispheres = ['lh', 'rh']
+    else:
+        hemispheres = [hemi]
+    out = []
+    for hem in hemispheres:
+        if hem == 'lh':
+            mask = Lmask
+        else:
+            mask = Rmask
+
+        all_voxels = mask.tolil().transpose().rows  # Map from voxels to verts
+        vert_to_vox_map = dict(zip(*(sparse_find(mask)[:2])))  # From verts to vox
+
+        pts_fid, polys_fid = db.get_surf(subject, 'fiducial', hem)  # Get the fiducial surface
+        surf = Surface(pts_fid, polys_fid) #Get the fiducial surface
+        graph = surf.graph 
+
+        _set_edge_distance_graph_attribute(graph, pts_fid, polys_fid)
+
+        l2_distance = lambda v1, v2: np.linalg.norm(pts_fid[v1] - pts_fid[v2])
+        heuristic = l2_distance  # A* heuristic
+
+        if use_astar:
+            shortest_path = lambda a, b: nx.astar_path(graph, a, b, heuristic=heuristic, weight='distance') # Find approximate shortest paths using A* search
+        else:
+            shortest_path = surf.geodesic_path  # Find shortest paths using geodesic distances
+
+        vox_vert_list = []
+        for vox_idx, vox in enumerate(all_voxels):
+            if len(vox) > 1:  # If the voxel maps to multiple vertices
+                vox = np.array(vox).astype(int)
+                for v1 in range(vox.size-1):
+                    vert1 = vox[v1]
+                    if vert1 in vert_to_vox_map:  # If the vertex is a valid vertex
+                        for v2 in range(v1+1, vox.size):
+                            vert2 = vox[v2]
+                            if vert2 in vert_to_vox_map:  # If the vertex is a valid vertex
+                                path = shortest_path(vert1, vert2)
+                                # Test whether any vertex in path goes out of the voxel
+                                stays_in_voxel = all([(v in vert_to_vox_map) and (vert_to_vox_map[v] == vox_idx) for v in path]) 
+                                if not stays_in_voxel:
+                                    vox_vert_list.append([vox_idx, vert1, vert2])
+
+        tmp =  np.array(vox_vert_list)
+        # Add offset for right hem voxels
+        if hem=='rh':
+            tmp[:, 1:3] += Lmask.shape[0]
+        out.append(tmp)
+    if hemi in ('lh', 'rh'):
+        return out[0]
+    else:
+        if merge:
+            return np.vstack(out)
+        else:
+            return tuple(out)
 
 def get_cmap(name):
     """Gets a colormaps
