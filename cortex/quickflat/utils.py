@@ -11,7 +11,7 @@ from .. import utils
 from .. import dataset
 from ..database import db
 from ..options import config
-        
+
 
 def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
     """Generate flatmap image from volumetric brain data
@@ -261,7 +261,7 @@ def _get_height(fig):
         height = images['data'].get_array().shape[0]
     else:
         # No images, revert to default
-        height = 1024 
+        height = 1024
     return height
 
 def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, recache=False):
@@ -284,7 +284,7 @@ def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, reca
     """
     dmap, _ = make_flatmap_image(hatch_data, height=height, sampler=sampler, recache=recache)
     hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
-    
+
     hatchpat = (hx+hy)%(2*hatch_space) < 2
     # Leila code that breaks shit:
     #hatch_size = [0, 4, 4]
@@ -346,11 +346,11 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
     aspect = size[0] / size[1]
     width = int(aspect * height)
     grid = np.mgrid[fmin[0]:fmax[0]:width*1j, fmin[1]:fmax[1]:height*1j].reshape(2,-1)
-    
+
     mask, extents = get_flatmask(subject, height=height)
     assert mask.shape[0] == width and mask.shape[1] == height
-    
-    ## Get barycentric coordinates
+
+    # Get barycentric coordinates
     dl = Delaunay(flat[valid,:2])
     simps = dl.find_simplex(grid.T[mask.ravel()])
     missing = simps == -1
@@ -365,7 +365,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
     xfm = db.get_xfm(subject, xfmname, xfmtype='coord')
     sampclass = getattr(samplers, sampler)
 
-    ## Transform fiducial vertex locations to pixel locations using barycentric xfm
+    # Transform fiducial vertex locations to pixel locations using barycentric xfm
     try:
         pia, polys = db.get_surf(subject, "pia", merge=True, nudge=False)
         wm, polys = db.get_surf(subject, "wm", merge=True, nudge=False)
@@ -383,7 +383,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
                             wmcoords[:,1] < xfm.shape[1],
                             wmcoords[:,2] < xfm.shape[0]])
         valid_w = np.all(valid_w, axis=0)
-        
+
         valid = np.logical_and(valid_p, valid_w)
         vidx = np.nonzero(valid)[0]
         mapper = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
@@ -405,9 +405,9 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
 
         valid = reduce(np.logical_and,
                        [reduce(np.logical_and, (0 <= fidcoords).T),
-                               fidcoords[:,0] < xfm.shape[2],
-                               fidcoords[:,1] < xfm.shape[1],
-                               fidcoords[:,2] < xfm.shape[0]])
+                        fidcoords[:, 0] < xfm.shape[2],
+                        fidcoords[:, 1] < xfm.shape[1],
+                        fidcoords[:, 2] < xfm.shape[0]])
 
         vidx = np.nonzero(valid)[0]
 
@@ -432,13 +432,13 @@ def _has_cmap(dataview):
                 # unknown colormap, test whether it's in pycortex colormaps
                 cmapdir = config.get('webgl', 'colormaps')
                 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-                colormaps = dict(((os.path.split(c)[1][:-4],c) for c in colormaps))
+                colormaps = dict(((os.path.split(c)[1][:-4], c) for c in colormaps))
                 if not dataview.cmap in colormaps:
                     raise Exception('Unkown color map!')
                 I = plt.imread(colormaps[dataview.cmap])
                 cmap = colors.ListedColormap(np.squeeze(I))
                 # Register colormap while we're at it
-                cm.register_cmap(dataview.cmap,cmap)
+                cm.register_cmap(dataview.cmap, cmap)
             else:
                 cmap = dataview.cmap
         elif isinstance(dataview.cmap, colors.Colormap):

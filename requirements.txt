@@ -11,3 +11,4 @@ cython
 matplotlib
 pillow
 nibabel
+networkx==2.1

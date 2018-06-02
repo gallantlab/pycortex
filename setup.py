@@ -23,6 +23,7 @@ def set_default_filestore(prefix, optfile):
     with open(optfile, 'w') as fp:
         config.write(fp)
 
+
 class my_install(install):
     def run(self):
         install.run(self)
@@ -61,21 +62,22 @@ formats = Extension('cortex.formats', ['cortex/formats.pyx'],
                     include_dirs=get_numpy_include_dirs())
 
 setup(name='pycortex',
-    version='0.1.1',
-    description='Python Cortical mapping software for fMRI data',
-    author='James Gao',
-    author_email='james@jamesgao.com',
-    packages=['cortex', 'cortex.webgl', 'cortex.mapper', 'cortex.dataset', 'cortex.blender', 'cortex.tests', 'cortex.quickflat'],
-    ext_modules=cythonize([ctm, formats]),
-    package_data={
-            'cortex':[ 
+      version='0.1.1',
+      description='Python Cortical mapping software for fMRI data',
+      author='James Gao',
+      author_email='james@jamesgao.com',
+      packages=['cortex', 'cortex.webgl', 'cortex.mapper', 'cortex.dataset',
+                'cortex.blender', 'cortex.tests', 'cortex.quickflat'],
+      ext_modules=cythonize([ctm, formats]),
+      package_data={
+            'cortex': [
                 'svgbase.xml',
                 'defaults.cfg',
                 'bbr.sch'
             ],
             'cortex.webgl': [
-                '*.html', 
-                'favicon.ico', 
+                '*.html',
+                'favicon.ico',
                 'resources/js/*.js',
                 'resources/js/ctm/*.js',
                 'resources/css/*.css',
@@ -84,14 +86,13 @@ setup(name='pycortex',
                 'resources/css/ui-lightness/images/*',
                 'resources/images/*'
             ]
-    },
-    install_requires=[
-        'future','numpy', 'scipy', 'tornado==4.3',
+            },
+      install_requires=[
+        'future', 'numpy', 'scipy', 'tornado==4.3',
         'shapely', 'lxml', 'html5lib', 'h5py', 'numexpr', 'cython',
-        'matplotlib', 'pillow', 'nibabel',
-    ],
-    cmdclass=dict(install=my_install),
-    include_package_data=True,
-    test_suite='nose.collector'
-)
-
+        'matplotlib', 'pillow', 'nibabel', 'networkx==2.1',
+      ],
+      cmdclass=dict(install=my_install),
+      include_package_data=True,
+      test_suite='nose.collector'
+      )

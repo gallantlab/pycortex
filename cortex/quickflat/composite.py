@@ -10,7 +10,8 @@ from .utils import make_flatmap_image, _make_hatch_image, _return_pixel_pairs, g
 
 import time
 
-### --- Individual compositing functions --- ###
+""" --- Individual compositing functions --- """
+
 
 def add_curvature(fig, dataview, extents=None, height=None, threshold=True, contrast=None,
                   brightness=None, smooth=None, cmap='gray', recache=False, curvature_lims=0.5,
@@ -26,13 +27,13 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     extents : array-like
         4 values for [Left, Right, Top, Bottom] extents of image plotted. None defaults to 
         extents of images already present in figure.
-    height : scalar 
+    height : scalar
         Height of image. None defaults to height of images already present in figure. 
-    threshold : boolean 
+    threshold : boolean
         Whether to apply a threshold to the curvature values to create a binary curvature image
         (one shade for positive curvature, one shade for negative). `None` defaults to value 
         specified in the config file
-    contrast : float, [0-1] or None 
+    contrast : float, [0-1] or None
         Contrast of curvature image. 1 is maximal contrast (given brightness). If brightness is 0.5
         and contrast is 1, and cmap is 'gray', curvature will be black and white. None defaults
         to value in config file.
@@ -42,17 +43,17 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     curvature_lims : float
         Limits for real curvature values (actual values for cortical curvature are normalized
         within [-`curvature_lims`, +`curvature_lims`] before scaling by `contrast` and shifting
-        by `brightness`). 
+        by `brightness`).
     smooth : scalar or None
         Width of smoothing to apply to surface curvature. None defaults to no smoothing, or
-        whatever the default value for curvature is that is stored in 
+        whatever the default value for curvature is that is stored in
         <filestore>/<subject>/surface-info/curvature.npz (for some subjects initiated in old
         versions of pycortex, this may be smoothed too!)
     cmap : string
         name for colormap of curvature
     recache : boolean
         Whether or not to recache intermediate files. Takes longer to plot this way, potentially
-        resolves some errors. 
+        resolves some errors.
 
     Returns
     -------
@@ -64,7 +65,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     if height is None:
         height = _get_height(fig)
     # Get curvature map as image
-    default_smoothing = config.get('curvature','smooth')
+    default_smoothing = config.get('curvature', 'smooth')
     if default_smoothing.lower()=='none':
         default_smoothing = None
     else:
@@ -85,7 +86,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     norm = Normalize(vmin=-0.5, vmax=0.5)
     curv_im = norm(curv)
     # Option to use thresholded curvature
-    default_threshold = config.get('curvature','threshold').lower() in ('true','t','1','y','yes')
+    default_threshold = config.get('curvature','threshold').lower() in ('true', 't', '1', 'y', 'yes')
     use_threshold_curvature = default_threshold if threshold is None else threshold
     if legacy_mode and use_threshold_curvature:
         curvT = (curv>0).astype(np.float32)
@@ -93,7 +94,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
         curv = curvT
     if isinstance(curvature_lims, (list, tuple)):
         vmin, vmax = curvature_lims
-    else: 
+    else:
         vmin, vmax = -curvature_lims, curvature_lims
     norm = Normalize(vmin=vmin, vmax=vmax)
     curv_im = norm(curv)
@@ -112,17 +113,17 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     if extents is None:
         extents = _get_extents(fig)
     ax = fig.gca()
-    cvimg = ax.imshow(curv_im, 
-            aspect='equal', 
-            extent=extents, 
-            cmap=cmap, 
-            vmin=0, 
-            vmax=1, 
-            label='curvature',
-            zorder=0)
+    cvimg = ax.imshow(curv_im,
+                      aspect='equal',
+                      extent=extents,
+                      cmap=cmap,
+                      vmin=0,
+                      vmax=1,
+                      label='curvature',
+                      zorder=0)
     return cvimg
 
-def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True, 
+def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
              sampler='nearest', recache=False):
     """Add data to quickflat plot
 
@@ -131,10 +132,10 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     fig : figure
         Figure into which to plot image of curvature
     braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview)
-        Object containing containing data to be plotted, subject (surface identifier), 
+        Object containing containing data to be plotted, subject (surface identifier),
         and transform.
-    height : scalar 
-        Height of image. None defaults to height of images already present in figure. 
+    height : scalar
+        Height of image. None defaults to height of images already present in figure.
     recache : boolean
         Whether or not to recache intermediate files. Takes longer to plot this way, potentially
         resolves some errors. Useful if you've made changes to the alignment
@@ -143,7 +144,7 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     thick : int
         Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
     sampler : str
-        Name of sampling function used to sample underlying volume data. Options include 
+        Name of sampling function used to sample underlying volume data. Options include
         'trilinear','nearest','lanczos'; see functions in cortex.mapper.samplers.py for all options
 
     Returns
@@ -152,10 +153,10 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
         matplotlib axes image object for plotted data
     extents : list
         Extents of image [left, right, top, bottom] in figure coordinates
-    """    
+    """
     dataview = dataset.normalize(braindata)
     if not isinstance(dataview, dataset.Dataview):
-        # Unclear what this means. Clarify error in terms of pycortex classes 
+        # Unclear what this means. Clarify error in terms of pycortex classes
         # (please provide a [cortex.dataset.Dataview or whatever] instance)
         raise TypeError('Please provide a Dataview, not a Dataset')
     # Generate image (2D array, maybe 3D array)
@@ -165,12 +166,12 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     cmapdict = _has_cmap(dataview)
     # Plot
     ax = fig.gca()
-    img = ax.imshow(im, 
-            aspect='equal', 
-            extent=extents, 
-            label='data',
-            zorder=1,
-            **cmapdict)
+    img = ax.imshow(im,
+                    aspect='equal',
+                    extent=extents,
+                    label='data',
+                    zorder=1,
+                    **cmapdict)
     return img, extents
 
 def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_list=None, **kwargs):
@@ -212,12 +213,13 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
     im = svgobject.get_texture('rois', height, labels=with_labels, shape_list=roi_list, **layer_kws)
     ax = fig.gca()
     img = ax.imshow(im,
-        aspect='equal', 
-        interpolation='bicubic', 
-        extent=extents, 
-        label='rois',
-        zorder=4)
+                    aspect='equal',
+                    interpolation='bicubic',
+                    extent=extents,
+                    label='rois',
+                    zorder=4)
     return img
+
 
 def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, **kwargs):
     """Add sulci layer to figure
@@ -257,16 +259,17 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, **kwar
         extents = _get_extents(fig)
     ax = fig.gca()
     img = ax.imshow(sulc,
-                     aspect='equal', 
-                     interpolation='bicubic', 
-                     extent=extents, 
-                     label='sulci',
-                     zorder=5)
+                    aspect='equal',
+                    interpolation='bicubic',
+                    extent=extents,
+                    label='sulci',
+                    zorder=5)
     return img
 
-def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4, hatch_color=(0,0,0),
-    sampler='nearest', recache=False):
-    """Add hatching to figure at locations specified in hatch_data    
+
+def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
+    hatch_color=(0, 0, 0), sampler='nearest', recache=False):
+    """Add hatching to figure at locations specified in hatch_data
 
     Parameters
     ----------
@@ -320,6 +323,7 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4, hatch_c
                     zorder=2)
     return img
 
+
 def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(0.4, 0.07, 0.2, 0.04), 
     orientation='horizontal'):
     """Add a colorbar to a flatmap plot
@@ -342,6 +346,7 @@ def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(0.4, 0.07, 0
     cbar = fig.add_axes(colorbar_location)
     fig.colorbar(cimg, cax=cbar, orientation=orientation, ticks=colorbar_ticks)
     return cbar
+
 
 def add_colorbar_2d(fig, cmap_name, colorbar_ticks,
     colorbar_location=(0.425, 0.02, 0.15, 0.15), fontsize=12):
@@ -378,13 +383,13 @@ def add_colorbar_2d(fig, cmap_name, colorbar_ticks,
 def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_labels=False, 
     shape_list=None, **kwargs):
     """Add a custom data layer
-    
+
     Parameters
     ----------
     fig : matplotlib figure
         Figure into which to plot the hatches. Should have pycortex flatmap image in it already.
     dataview : cortex.Volume
-        cortex.Volume object containing 
+        cortex.Volume object containing
     svgfile : string
         Filepath for custom svg file to use. Must be formatted identically to overlays.svg
         file for subject in `dataview`
@@ -398,12 +403,13 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     with_labels : bool
         Whether to display text labels on ROIs
     shape_list : list
-        list of paths/shapes within svg layer to render, if only a subset of the paths/
-        shapes within the layer are desired.
+        list of paths/shapes within svg layer to render, if only a subset of
+        the paths/shapes within the layer are desired.
 
     Other Parameters
     ----------------
-    kwargs : 
+    kwargs : dict
+        maps to svg keyword arguments for e.g. line width, color, etc
 
     Returns
     -------
@@ -440,7 +446,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
 
 def add_connected_vertices(fig, dataview, exclude_border_width=None,
                            height=None, extents=None, recache=False,
-                           color=(1.0, 0.5, 0.1, 0.6), linewidth=2,
+                           color=(1.0, 0.5, 0.1, 0.6), linewidth=0.75,
                            alpha=1.0, **kwargs):
     """Plot lines btw distant vertices that are within the same voxel
 
@@ -468,7 +474,7 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     alpha : scalar, [0-1]
         alpha value for plotted lines
     kwargs are mapped to cortex.db.get_shared_voxels
-    
+
     Notes
     -----
     The process of drawing all the connected vertices is graphically intensive
@@ -490,9 +496,9 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     xfmname = dataview.xfmname
     if xfmname is None:
         raise ValueError("Dataview for add_connected_vertices must be a Volume! You seem to have provided vertex data.")
-    print('computing shared voxels')
+    # print('computing shared voxels')
     shared_voxels = db.get_shared_voxels(subject, xfmname, recache=recache, **kwargs)
-    print('Finished computing shared voxels')
+    # print('Finished computing shared voxels')
     mask, extents = get_flatmask(subject)
     pixmap = get_flatcache(subject, None)
     n_pixels, n_verts = pixmap.shape
@@ -521,13 +527,13 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     pix_array_x = np.vstack([x[va], x[vb]]).T
     pix_array_y = np.vstack([y[va], y[vb]]).T
     pix_array_scaled = np.dstack([pix_array_x, pix_array_y])
-    # Add line collection 
+    # Add line collection
     # (This is the most time consuming step, as it draws many lines)
-    print('plotting lines...')
-    lc = LineCollection(pix_array_scaled, 
-                        transform=fig.transFigure, 
+    # print('plotting lines...')
+    lc = LineCollection(pix_array_scaled,
+                        transform=fig.transFigure,
                         figure=fig,
-                        colors=color, 
+                        colors=color,
                         alpha=alpha,
                         linewidths=linewidth)
     ax = fig.gca()
@@ -543,17 +549,18 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
         figure to which to add cutouts
     name : str
         name of cutout shape within cutouts layer to use to crop the rest of the figure
-    dataview : 
-    
-    layers :
-    
+    dataview : cortex.Volume
+        cortex.Volume object being plotted (only used to get subject name)
+    layers : list of layers in svg object
+        layers to which the cutout will be applied. None defaults to all.
+        [unclear if it's worth it to keep this input.]
     height : int
-    
-    extents :
-
-    Returns
-    -------
-
+        height of resulting figure. None defaults to height specified by other
+        previous compositing functions. [unclear if it's worth it to keep this
+        input.]
+    extents : tuple | list
+        extents of figure. None defaults to previously specified extents.
+        [unclear if it's worth it to keep this input.]
     """
     from ..svgoverlay import get_overlay
     if layers is None:
@@ -580,7 +587,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
     # Clip each layer to this cutout
     for layer_name, im_layer in layers.items():
         im = im_layer.get_array()
-        
+
         # Reconcile occasional 1-pixel difference between flatmap image layers 
         # that are generated by different functions
         if not all([np.abs(aa - bb) <= 1 for aa, bb in zip(im.shape, co.shape)]):
@@ -591,7 +598,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
             layer_cutout = imresize(co, im.shape[:2]).astype(np.float32)/255.
         else:
             layer_cutout = copy.copy(co)
-        
+
         # Handle different types of alpha layers. Useful for RGBVolumes if nothing else.
         if im.dtype == np.uint8:
             im = np.cast['float32'](im)/255.
@@ -609,27 +616,27 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
         x_span = np.abs(r-l)
         y_span = np.abs(t-b)
         extents_new = [l + x.min() / w * x_span,
-                    l + x.max() / w * x_span,
-                    t + y.min() / h * y_span,
-                    t + y.max() / h * y_span]    
+                       l + x.max() / w * x_span,
+                       t + y.min() / h * y_span,
+                       t + y.max() / h * y_span]
 
         # Bounding box indices
         iy, ix = ((y.min(), y.max()), (x.min(), x.max()))
         tmp = im[iy[0]:iy[1], ix[0]:ix[1]]
         im_layer.set_array(tmp)
         im_layer.set_extent(extents_new)
-        
+
         # Track maxima / minima for figure
         LL = np.nanmin([extents_new[0], LL])
         RR = np.nanmax([extents_new[1], RR])
         BB = np.nanmin([extents_new[2], BB])
         TT = np.nanmax([extents_new[3], TT])
         imsize = (np.abs(np.diff(iy))[0], np.abs(np.diff(ix))[0])
-    
+
     # Re-set figure limits
     ax = fig.gca()
     ax.set_xlim(LL, RR)
-    ax.set_ylim(BB, TT)    
+    ax.set_ylim(BB, TT)
     inch_size = np.array(imsize)[::-1] / float(fig.dpi)
     fig.set_size_inches(inch_size[0], inch_size[1])
 
