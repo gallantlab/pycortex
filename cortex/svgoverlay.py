@@ -207,7 +207,8 @@ class SVGOverlay(object):
                 height=str(self.svgshape[1]),
             )
             self.svg.getroot().insert(0, img)
-
+        if height is None:
+            height = self.svgshape[1]
         #label_defaults = _parse_defaults(layer+'_labels')
 
         for layer in self:
