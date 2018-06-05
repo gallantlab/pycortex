@@ -4,45 +4,30 @@ pycortex
 
 ![quickflat demo](https://raw.github.com/jamesgao/pycortex/master/docs/wn_med.png)
 
-Pycortex is a software that allows you to visualize fMRI or other volumetric mapping data on cortical surfaces.
-
-https://gallantlab.github.io/
+Pycortex is a software library that allows you to visualize fMRI or other volumetric neuroimaging data on cortical surfaces.
 
 Quickstart
 ----------
-UPDATE 2015.11.24: Unfortunately, the pip install of pycortex is out of date and broken. The pip installation will thus not work. We apologize for any frustration or inconvenience this may have caused. We will eventually update the version stored on pip, but for now please see below for instructions on how to install pycortex directly from the git repository. 
-
-The easiest way to configure your local python environment to suport pycortex is to use the [Anaconda python distribution](https://store.continuum.io/cshop/anaconda/). Download and install anaconda, then run the following command to install one non-standard library (nibabel) for reading and writing fMRI data:
-
 ```
-$ sudo pip install nibabel 
+python3 -m venv env  # use `virtualenv env` for python 2
+source env/bin/activate
+pip install -U setuptools wheel numpy cython
+pip install -U git+git://github.com/gallantlab/pycortex.git
 ```
-
-This should work on Mac or Linux PCs. If you using Ubuntu, you can skip Anaconda and use the following command instead, which will install all python prerequisites for pycortex.
-
-```
-$ sudo apt-get install python-pip python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib mayavi2 inkscape blender
-```
-
-To install from the github repository, call the following commands. For both commands, replace `<your_directory>` with the folder where you would like to store the pycortex source code.
-
-```
-$ git clone http://github.com/gallantlab/pycortex <your_directory> 
-$ cd <your_directory>
-$ sudo python setup.py install
-```
-
-This last command installs pycortex into the site-packages folder in your local python installation. This means that you will not need to change your PYTHONPATH variable (don't worry if you have no idea what that means). If you are working in a python terminal, do not try to import pycortex from inside the source code directory, or the import will fail. 
+This command creates a new [virtualenv](https://docs.python.org/3/library/venv.html) for pycortex to resolve dependencies. Run `source env/bin/activate` whenever you need pycortex.
 
 Demo
 ----
-Pycortex is best used with [IPython](http://www.ipython.org/). To run this demo, please download this [example dataset](http://gallantlab.org/pycortex/S1_retinotopy.hdf).
-
+Pycortex is best used with [IPython](http://www.ipython.org/). Install it in your virtualenv using 
+```
+source env/bin/activate
+pip install ipython
+```
+To run the pycortex demo,
 ```
 $ ipython
 In [1]: import cortex
-In [2]: ds = cortex.load("S1_retinotopy.hdf")
-In [3]: cortex.webshow(ds)
+In [2]: cortex.webshow(cortex.Volume.random("S1", "fullhead"))
 ```
 
 Documentation
