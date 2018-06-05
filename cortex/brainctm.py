@@ -170,13 +170,14 @@ class BrainCTM(object):
             # assign coordinates in left hemisphere negative values
             with open(svgname, "wb") as fp:
                 for element in svg.svg.findall(".//{http://www.w3.org/2000/svg}text"):
-                    idx = int(element.attrib["data-ptidx"])
-                    if idx < len(inverse[0]):
-                        idx = inverse[0][idx]
-                    else:
-                        idx -= len(inverse[0])
-                        idx = inverse[1][idx] + len(inverse[0])
-                    element.attrib["data-ptidx"] = str(idx)
+                    if 'data-ptidx' in element.attrib:
+                        idx = int(element.attrib["data-ptidx"])
+                        if idx < len(inverse[0]):
+                            idx = inverse[0][idx]
+                        else:
+                            idx -= len(inverse[0])
+                            idx = inverse[1][idx] + len(inverse[0])
+                        element.attrib["data-ptidx"] = str(idx)
                 fp.write(svg.toxml())
         return ptmap
 
