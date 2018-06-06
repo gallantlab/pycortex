@@ -1,16 +1,5 @@
 """utilities for efficiently working with patches of cortex (aka subsurfaces)"""
 
-"""
-TODO:
-- docs
-    - add examples to docs
-    - add external gif
-- finalization
-    [x] resolve TODO's
-    [x] look at all lint warnings
-    [x] delete commented out things
-"""
-
 import numpy as np
 import scipy.sparse
 
