@@ -5,6 +5,8 @@ import tempfile
 
 import numpy as np
 
+from ..options import config
+
 
 class ExactGeodesicMixin(object):
     """Mixin for computing exact geodesic distance along surface"""
@@ -35,15 +37,14 @@ class ExactGeodesicMixin(object):
             index of vertex to compute geodesic distance from
         """
 
-        # path to VTP executable
-        vtp_path = '/auto/k2/share/geodesic/VTP-linux/cmake-build-debug/VTP'
+        vtp_path = config.get('geodesic', 'vtp_path')
 
         # initialize temporary files
         f_obj, tmp_obj_path = tempfile.mkstemp()
         f_output, tmp_output_path = tempfile.mkstemp()
 
         # create object file
-        self.export_to_obj_file(f_obj)
+        self.export_to_obj_file(tmp_obj_path)
 
         # run algorithm
         cmd = [vtp_path, '-m', tmp_obj_path, '-s', str(vertex), '-o', tmp_output_path]
@@ -51,7 +52,11 @@ class ExactGeodesicMixin(object):
 
         # read output
         with open(tmp_output_path) as f:
-            distances = np.array(f.read().split('\n')[:-1], dtype=float)
+            output = f.read()
+            distances = np.array(output.split('\n')[:-2], dtype=float)
+
+        if distances.shape[0] == 0:
+            raise Exception('VTP error')
 
         os.close(f_obj)
         os.close(f_output)
@@ -71,7 +76,7 @@ class ExactGeodesicMixin(object):
 
         if isinstance(path_or_handle, str):
             with open(path_or_handle, 'w') as f:
-                return self.export_to_obj_file(self, f)
+                return self.export_to_obj_file(f)
 
         else:
             path_or_handle.write('mtllib none.mtl\n')
