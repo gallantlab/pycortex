@@ -683,7 +683,6 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
         return border_mask
 
     @property
-    @_memo
     def iter_surfedges(self):
         for a, b, c in self.polys:
             yield a, b
@@ -691,7 +690,6 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
             yield a, c
 
     @property
-    @_memo
     def iter_surfedges_weighted(self):
         """iterate through edges
 
