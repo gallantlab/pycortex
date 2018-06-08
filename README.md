@@ -1,6 +1,6 @@
 pycortex
 ========
-[![Build Status](https://travis-ci.org/gallantlab/pycortex.svg?branch=glrework-merged)](https://travis-ci.org/gallantlab/pycortex)
+[![Build Status](https://travis-ci.org/gallantlab/pycortex.svg?branch=master)](https://travis-ci.org/gallantlab/pycortex)
 
 ![quickflat demo](https://raw.github.com/jamesgao/pycortex/master/docs/wn_med.png)
 

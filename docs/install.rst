@@ -4,7 +4,6 @@ The best way to install pycortex currently is by getting the latest source code 
 
     git clone https://github.com/gallantlab/pycortex.git
     cd pycortex
-    checkout glrework-merged
 
     python setup.py develop
 
