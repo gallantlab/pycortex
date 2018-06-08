@@ -8,6 +8,14 @@ import numpy as np
 from ..options import config
 
 
+class ExactGeodesicException(Exception):
+    """Raised when exact_geodesic_distance() is unavailable or used improperly
+
+    - to create a fallback to geodesic_distance()
+    """
+    pass
+
+
 class ExactGeodesicMixin(object):
     """Mixin for computing exact geodesic distance along surface"""
 
@@ -37,7 +45,12 @@ class ExactGeodesicMixin(object):
             index of vertex to compute geodesic distance from
         """
 
-        vtp_path = config.get('geodesic', 'vtp_path')
+        try:
+            vtp_path = config.get('geodesic', 'vtp_path')
+        except:
+            raise ExactGeodesicException('must set config["geodesic"]["vtp_path"]')
+        if not os.path.exists(vtp_path):
+            raise ExactGeodesicException('vtp_path does not exist: ' + str(vtp_path))
 
         # initialize temporary files
         f_obj, tmp_obj_path = tempfile.mkstemp()
@@ -56,7 +69,7 @@ class ExactGeodesicMixin(object):
             distances = np.array(output.split('\n')[:-2], dtype=float)
 
         if distances.shape[0] == 0:
-            raise Exception('VTP error')
+            raise ExactGeodesicException('VTP error')
 
         os.close(f_obj)
         os.close(f_output)

@@ -190,6 +190,7 @@ class SubsurfaceMixin(object):
                 break
 
             except RuntimeError:
+                # singular subsurface
                 working_radius *= 1.1
                 continue
 
