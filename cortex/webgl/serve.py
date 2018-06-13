@@ -307,7 +307,11 @@ class WebApp(threading.Thread):
         ioloop.clear_current()
         ioloop.make_current()
         application = tornado.web.Application(self.handlers, gzip=True)
-        self.server = tornado.httpserver.HTTPServer(application, io_loop=ioloop)
+        # If tornado version is 5.0 or greater, io_loop arg does not exist
+        if tornado.version_info[0] < 5:
+            self.server = tornado.httpserver.HTTPServer(application, io_loop=ioloop)
+        else:
+            self.server = tornado.httpserver.HTTPServer(application)
         self.server.listen(self.port)
         ioloop.start()
 
