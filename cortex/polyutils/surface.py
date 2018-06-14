@@ -673,7 +673,7 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
         duplicate_mask = (sorted_edges[:, :-1] == sorted_edges[:, 1:]).sum(axis=0) == 2
 
         nonduplicate_mask = np.ones(sorted_edges.shape[1], dtype=bool)
-        nonduplicate_mask[duplicate_mask] = False
+        nonduplicate_mask[:-1][duplicate_mask] = False
         nonduplicate_mask[1:][duplicate_mask] = False
 
         border_mask = np.zeros(self.pts.shape[0], dtype=bool)
