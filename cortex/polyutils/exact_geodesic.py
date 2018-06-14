@@ -38,6 +38,10 @@ class ExactGeodesicMixin(object):
         """Compute geodesic distance using VTP method
 
         - uses authors' implementation of [Qin el al 2016]
+        - code obtained at https://github.com/YipengQin/VTP_source_code
+            - compile code with `cmake CMakeLists.txt; make`
+        - should set varaible "geodesic/vtp_path" in pycortex config
+            - point toward VTP executable
 
         Parameters
         ----------
