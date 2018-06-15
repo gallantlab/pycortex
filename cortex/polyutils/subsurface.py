@@ -94,10 +94,13 @@ class SubsurfaceMixin(object):
         n_vertices = self.pts.shape[0]
         output_mask = np.zeros(n_vertices, dtype=bool)
 
-        if isinstance(vertex, int):
+        if np.issubdtype(type(vertex), np.integer):
             add_next = [vertex]
             output_mask[vertex] = True
-        elif (isinstance(vertex, list)) or (isinstance(vertex, np.ndarray) and vertex.dtype == int):
+        elif (
+            (isinstance(vertex, list))
+            or (isinstance(vertex, np.ndarray) and np.issubdtype(vertex.dtype, np.integer))
+        ):
             add_next = vertex
             output_mask[vertex] = True
         else:
