@@ -6,6 +6,7 @@ import tempfile
 import numpy as np
 
 from ..options import config
+from .. import formats
 
 
 class ExactGeodesicException(Exception):
@@ -37,11 +38,15 @@ class ExactGeodesicMixin(object):
     def call_vtp_geodesic(self, vertex):
         """Compute geodesic distance using VTP method
 
-        - uses authors' implementation of [Qin el al 2016]
-        - code obtained at https://github.com/YipengQin/VTP_source_code
-            - compile code with `cmake CMakeLists.txt; make`
-        - should set varaible "geodesic/vtp_path" in pycortex config
-            - point toward VTP executable
+        VTP Code
+        --------
+        - uses external authors' implementation of [Qin el al 2016]
+        - https://github.com/YipengQin/VTP_source_code
+        - vtp code must be compiled separately to produce VTP executable
+        - once compiled, place path to VTP executable in pycortex config
+        - i.e. in config put:
+            [geodesic]
+            vtp_path = /path/to/compiled/VTP
 
         Parameters
         ----------
@@ -49,10 +54,11 @@ class ExactGeodesicMixin(object):
             index of vertex to compute geodesic distance from
         """
 
-        try:
+        if config.has_option('geodesic', 'vtp_path'):
             vtp_path = config.get('geodesic', 'vtp_path')
-        except:
+        else:
             raise ExactGeodesicException('must set config["geodesic"]["vtp_path"]')
+
         if not os.path.exists(vtp_path):
             raise ExactGeodesicException('vtp_path does not exist: ' + str(vtp_path))
 
@@ -61,7 +67,7 @@ class ExactGeodesicMixin(object):
         f_output, tmp_output_path = tempfile.mkstemp()
 
         # create object file
-        self.export_to_obj_file(tmp_obj_path)
+        formats.write_obj(tmp_obj_path, self.pts, self.polys)
 
         # run algorithm
         cmd = [vtp_path, '-m', tmp_obj_path, '-s', str(vertex), '-o', tmp_output_path]
@@ -79,32 +85,3 @@ class ExactGeodesicMixin(object):
         os.close(f_output)
 
         return distances
-
-    def export_to_obj_file(self, path_or_handle):
-        """export Surface to Wavefront obj for use by external programs
-
-        https://en.wikipedia.org/wiki/Wavefront_.obj_file
-
-        Parameters
-        ----------
-        - path_or_handle : str or file handle
-            - location to write .obj file to
-        """
-
-        if isinstance(path_or_handle, str):
-            with open(path_or_handle, 'w') as f:
-                return self.export_to_obj_file(f)
-
-        else:
-            path_or_handle.write('mtllib none.mtl\n')
-            path_or_handle.write('o hemi\n')
-
-            for vertex in self.pts:
-                path_or_handle.write('v ' + ' '.join(vertex.astype(str)) + '\n')
-
-            path_or_handle.write('usemtl None\n')
-            path_or_handle.write('s off\n')
-
-            for polygon in self.polys:
-                polygon = polygon + 1
-                path_or_handle.write('f ' + ' '.join(polygon.astype(str)) + '\n')
