@@ -65,8 +65,8 @@ def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
     if data.shape[0] > 1:
         raise ValueError("Input data was not the correct dimensionality - please provide 3D Volume or 2D Vertex data")
 
-    if data.dtype == np.bool:
-        # Convert data to float to avoid image artifacts with booleans
+    if data.dtype != np.uint8:
+        # Convert data to float to avoid image artifacts
         data = data.astype(np.float)
     if data.dtype == np.uint8:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
