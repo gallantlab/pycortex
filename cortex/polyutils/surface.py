@@ -1,12 +1,15 @@
+
 import functools
-import io
 from collections import OrderedDict
 
 import numpy as np
 import numexpr as ne
-from scipy.spatial import distance, Delaunay
+from scipy.spatial import distance
 from scipy import sparse
 import scipy.sparse.linalg
+
+from . import exact_geodesic
+from . import subsurface
 
 
 def _memo(fn):
@@ -22,7 +25,8 @@ def _memo(fn):
 
     return memofn
 
-class Surface(object):
+
+class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
     """Represents a single cortical hemisphere surface. Can be the white matter surface,
     pial surface, fiducial (mid-cortical) surface, inflated surface, flattened surface,
     etc.
@@ -566,7 +570,7 @@ class Surface(object):
 
         return phi
 
-    def geodesic_path(self, a, b, max_len=1000, **kwargs):
+    def geodesic_path(self, a, b, max_len=1000, d=None, **kwargs):
         """Finds the shortest path between two points `a` and `b`.
 
         This shortest path is based on geodesic distances across the surface.
@@ -583,7 +587,9 @@ class Surface(object):
             Vertex that is the start of the path
         b : int
             Vertex that is the end of the path
-        
+        d : array
+            array of geodesic distances, will be computed if not provided
+
         Other Parameters
         ----------------
         max_len : int, optional, default=1000
@@ -602,7 +608,8 @@ class Surface(object):
             List of the vertices in the path from a to b
         """
         path = [a]
-        d = self.geodesic_distance([b], **kwargs)
+        if d is None:
+            d = self.geodesic_distance([b], **kwargs)
         while path[-1] != b:
             n = np.array(list(self.graph.neighbors(path[-1])))
             path.append(n[d[n].argmin()])
@@ -636,25 +643,108 @@ class Surface(object):
 
     @property
     @_memo
+    def boundary_vertices(self):
+        """return mask of boundary vertices
+
+        algorithm: for simple mesh, every edge appears in either 1 or 2 polys
+            1 -> border edge
+            2 -> non-border edge
+        """
+
+        first = np.hstack(
+            [
+                self.polys[:, 0],
+                self.polys[:, 1],
+                self.polys[:, 2],
+            ]
+        )
+        second = np.hstack(
+            [
+                self.polys[:, 1],
+                self.polys[:, 2],
+                self.polys[:, 0],
+            ]
+        )
+        polygon_edges = np.vstack([first, second])
+        polygon_edges = np.vstack([polygon_edges.min(axis=0), polygon_edges.max(axis=0)])
+
+        sort_order = np.lexsort(polygon_edges)
+        sorted_edges = polygon_edges[:, sort_order]
+        duplicate_mask = (sorted_edges[:, :-1] == sorted_edges[:, 1:]).sum(axis=0) == 2
+
+        nonduplicate_mask = np.ones(sorted_edges.shape[1], dtype=bool)
+        nonduplicate_mask[:-1][duplicate_mask] = False
+        nonduplicate_mask[1:][duplicate_mask] = False
+
+        border_mask = np.zeros(self.pts.shape[0], dtype=bool)
+        border_mask[sorted_edges[:, nonduplicate_mask][0, :]] = True
+        border_mask[sorted_edges[:, nonduplicate_mask][1, :]] = True
+
+        return border_mask
+
+    @property
+    def iter_surfedges(self):
+        for a, b, c in self.polys:
+            yield a, b
+            yield b, c
+            yield a, c
+
+    @property
+    def iter_surfedges_weighted(self):
+        """iterate through edges
+
+        - same iteration order as self.edge_lengths
+            - border edges will be iterated once, non-border edges will be iterated twice
+        """
+        distances = self.edge_lengths
+        n_edges = distances.size / 3
+
+        for i, (a, b, c) in enumerate(self.polys):
+            yield a, b, distances[i]
+            yield b, c, distances[i + n_edges]
+            yield a, c, distances[i + 2 * n_edges]
+
+    @property
+    @_memo
     def graph(self):
         """NetworkX undirected graph representing this Surface.
         """
         import networkx as nx
-        def iter_surfedges(tris):
-            for a,b,c in tris:
-                yield a,b
-                yield b,c
-                yield a,c
-
-        def make_surface_graph(tris):
-            graph = nx.Graph()
-            graph.add_edges_from(iter_surfedges(tris))
-            return graph
-
-        return make_surface_graph(self.polys)
+        graph = nx.Graph()
+        graph.add_edges_from(self.iter_surfedges)
+        return graph
 
     def get_graph(self):
         return self.graph
+
+    @property
+    @_memo
+    def edge_lengths(self):
+        """return vector of edge lengths
+
+        - same iteration order as iter_surfedges_listed()
+            - border edges will be iterated once, non-border edges will be iterated twice
+        """
+
+        n_edges = self.polys.shape[0]
+        edges = np.zeros((n_edges * 3, 3))
+        edges[:n_edges, :] = self.ppts[:, 0, :] - self.ppts[:, 1, :]
+        edges[n_edges:(2 * n_edges), :] = self.ppts[:, 1, :] - self.ppts[:, 2, :]
+        edges[(2 * n_edges):, :] = self.ppts[:, 2, :] - self.ppts[:, 0, :]
+
+        edges **= 2
+        distances = edges.sum(axis=1)
+        distances **= 0.5
+
+        return distances
+
+    @property
+    @_memo
+    def weighted_distance_graph(self):
+        import networkx as nx
+        weighted_graph = nx.Graph()
+        weighted_graph.add_weighted_edges_from(self.iter_surfedges_weighted)
+        return weighted_graph
 
     def extract_chunk(self, nfaces=100, seed=None, auxpts=None):
         '''Extract a chunk of the surface using breadth first search, for testing purposes'''
@@ -793,6 +883,7 @@ class Surface(object):
         face1 = self.connected[p1]
         face2 = self.connected[p2]
 
+
 class _ptset(object):
     def __init__(self):
         self.idx = OrderedDict()
@@ -822,282 +913,3 @@ class _quadset(object):
         for quad in list(self.polys.values()):
             yield quad[:3]
             yield [quad[0], quad[2], quad[3]]
-
-class Distortion(object):
-    """Used to compute distortion metrics between fiducial and another (e.g. flat)
-    surface.
-
-    Parameters
-    ----------
-    flat : 2D ndarray, shape (total_verts, 3)
-        Location of each vertex in flatmap space.
-    ref : 2D ndarray, shape (total_verts, 3)
-        Location of each vertex in fiducial (reference) space.
-    polys : 2D ndarray, shape (total_polys, 3)
-        Triangle vertex indices in both `flat` and `ref`.
-    """
-    def __init__(self, flat, ref, polys):
-        self.flat = flat
-        self.ref = ref
-        self.polys = polys
-
-    @property
-    def areal(self):
-        """Compute areal distortion of the flatmap.
-
-        Areal distortion is calculated at each triangle as the log2 ratio of
-        the triangle area in the flatmap to the area in the reference surface.
-        Distortion values are then resampled onto the vertices.
-
-        Thus a value of 0 indicates the areas are equal (no distortion), a 
-        value of +1 indicates that the area in the flatmap is 2x the area
-        in the reference surface (expansion), and a value of -1 indicates
-        that the area in the flatmap is 1/2x the area in the reference
-        surface (compression).
-
-        See: http://brainvis.wustl.edu/wiki/index.php/Caret:Operations/Morphing
-
-        Returns
-        -------
-        vertratios : 1D ndarray, shape (total_verts,)
-            Areal distortion at each vertex.
-        """
-        def area(pts, polys):
-            ppts = pts[polys]
-            cross = np.cross(ppts[:,1] - ppts[:,0], ppts[:,2] - ppts[:,0])
-            return np.sqrt((cross**2).sum(-1))
-
-        refarea = area(self.ref, self.polys)
-        flatarea = area(self.flat, self.polys)
-        tridists = np.log2(flatarea/refarea)
-        
-        vertratios = np.zeros((len(self.ref),))
-        vertratios[self.polys[:,0]] += tridists
-        vertratios[self.polys[:,1]] += tridists
-        vertratios[self.polys[:,2]] += tridists
-        vertratios /= np.bincount(self.polys.ravel(), minlength=len(self.ref))
-        vertratios = np.nan_to_num(vertratios)
-        vertratios[vertratios==0] = 1
-        return vertratios
-
-    @property
-    def metric(self):
-        """Compute metric distortion of the flatmap.
-
-        Metric distortion is calculated as the difference in squared distance
-        from each vertex to its neighbors between the flatmap and the reference.
-
-        Positive values of metric distortion mean that vertices are farther from
-        their neighbors in the flatmap than in the reference surface (expansion),
-        etc.
-
-        See: Fishl, Sereno, and Dale, 1999.
-
-        Returns
-        -------
-        vertdists : 1D ndarray, shape (total_verts,)
-            Metric distortion at each vertex.
-        """
-        import networkx as nx
-        def iter_surfedges(tris):
-            for a,b,c in tris:
-                yield a,b
-                yield b,c
-                yield a,c
-
-        def make_surface_graph(tris):
-            graph = nx.Graph()
-            graph.add_edges_from(iter_surfedges(tris))
-            return graph
-
-        G = make_surface_graph(self.polys)
-        selverts = np.unique(self.polys.ravel())
-        ref_dists = [np.sqrt(((self.ref[np.array([x for x in G.neighbors(ii)])] - 
-                               self.ref[ii])**2).sum(1)) for ii in selverts]
-        flat_dists = [np.sqrt(((self.flat[np.array([x for x in G.neighbors(ii)])] - 
-                                self.flat[ii])**2).sum(1)) for ii in selverts]
-        msdists = np.array([(f-r).mean() for r,f in zip(ref_dists, flat_dists)])
-        alldists = np.zeros((len(self.ref),))
-        alldists[selverts] = msdists
-        return alldists
-
-def tetra_vol(pts):
-    '''Volume of a tetrahedron'''
-    tetra = pts[1:] - pts[0]
-    return np.abs(np.dot(tetra[0], np.cross(tetra[1], tetra[2]))) / 6
-
-def brick_vol(pts):
-    '''Volume of a triangular prism'''
-    return tetra_vol(pts[[0, 1, 2, 4]]) + tetra_vol(pts[[0, 2, 3, 4]]) + tetra_vol(pts[[2, 3, 4, 5]])
-
-def sort_polys(polys):
-    amin = polys.argmin(1)
-    xind = np.arange(len(polys))
-    return np.array([polys[xind, amin], polys[xind, (amin+1)%3], polys[xind, (amin+2)%3]]).T
-
-def face_area(pts):
-    '''Area of triangles
-
-    Parameters
-    ----------
-    pts : array_like
-        n x 3 x 3 array with n triangles, 3 pts, and (x,y,z) coordinates
-    '''
-    return 0.5 * np.sqrt((np.cross(pts[:,1]-pts[:,0], pts[:,2]-pts[:,0])**2).sum(1))
-
-def face_volume(pts1, pts2, polys):
-    '''Volume of each face in a polyhedron sheet'''
-    vols = np.zeros((len(polys),))
-    for i, face in enumerate(polys):
-        vols[i] = brick_vol(np.append(pts1[face], pts2[face], axis=0))
-        if i % 1000 == 0:
-            print(i)
-    return vols
-
-def decimate(pts, polys):
-    from tvtk.api import tvtk
-    pd = tvtk.PolyData(points=pts, polys=polys)
-    dec = tvtk.DecimatePro(input=pd)
-    dec.set(preserve_topology=True, splitting=False, boundary_vertex_deletion=False, target_reduction=1.0)
-    dec.update()
-    dpts = dec.output.points.to_array()
-    dpolys = dec.output.polys.to_array().reshape(-1, 4)[:,1:]
-    return dpts, dpolys
-
-def inside_convex_poly(pts):
-    """Returns a function that checks if inputs are inside the convex hull of polyhedron defined by pts
-
-    Alternative method to check is to get faces of the convex hull, then check if each normal is pointed away from each point.
-    As it turns out, this is vastly slower than using qhull's find_simplex, even though the simplex is not needed.
-    """
-    tri = Delaunay(pts)
-    return lambda x: tri.find_simplex(x) != -1
-
-def make_cube(center=(.5, .5, .5), size=1):
-    pts = np.array([(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0),
-                    (0, 0, 1), (1, 0, 1), (0, 1, 1), (1, 1, 1)], dtype=float)
-    pts -= (.5, .5, .5)
-    polys = np.array([(0, 2, 3), (0, 3, 1), (0, 1, 4), (1, 5, 4),
-                      (1, 3, 5), (3, 7, 5), (2, 7, 3), (2, 6, 7),
-                      (0, 6, 2), (0, 4, 6), (4, 7, 6), (4, 5, 7)], dtype=np.uint32)
-    return pts * size + center, polys
-
-def boundary_edges(polys):
-    '''Returns the edges that are on the boundary of a mesh, as defined by belonging to only 1 face'''
-    edges = dict()
-    for i, poly in enumerate(np.sort(polys)):
-        for a, b in [(0,1), (1,2), (0, 2)]:
-            key = poly[a], poly[b]
-            if key not in edges:
-                edges[key] = []
-            edges[key].append(i)
-
-    epts = []
-    for edge, faces in edges.items():
-        if len(faces) == 1:
-            epts.append(edge)
-
-    return np.array(epts)
-
-def trace_poly(edges):
-    conn = dict((e, []) for e in np.unique(np.array(edges).ravel()))
-    for a, b in edges:
-        conn[a].append(b)
-        conn[b].append(a)
-    
-    while len(conn) > 0:
-        vert, nverts = next(iter(conn.items()))
-        poly = [vert]
-        while (len(poly) == 1 or poly[0] != poly[-1]) and len(conn[poly[-1]]) > 0:
-            nvert = conn[poly[-1]][0]
-            conn[nvert].remove(poly[-1])
-            conn[poly[-1]].remove(nvert)
-            if len(conn[nvert]) == 0:
-                del conn[nvert]
-            if len(conn[poly[-1]]) == 0:
-                del conn[poly[-1]]
-            
-            poly.append(nvert)
-
-        yield poly
-
-def rasterize(poly, shape=(256, 256)):
-    #ImageDraw sucks at its job, so we'll use imagemagick to do rasterization
-    import subprocess as sp
-    import shlex
-    from PIL import Image
-    
-    polygon = " ".join(["%0.3f,%0.3f"%tuple(p[::-1]) for p in np.array(poly)-(.5, .5)])
-    cmd = 'convert -size %dx%d xc:black -fill white -stroke none -draw "polygon %s" PNG32:-'%(shape[0], shape[1], polygon)
-    proc = sp.Popen(shlex.split(cmd), stdout=sp.PIPE)
-    png = io.BytesIO(proc.communicate()[0])
-    im = Image.open(png)
-
-    # For PNG8:
-    # mode, palette = im.palette.getdata()
-    # lut = np.fromstring(palette, dtype=np.uint8).reshape(-1, 3)
-    # if (lut == 255).any():
-    #     white = np.nonzero((lut == 255).all(1))[0][0]
-    #     return np.array(im) == white
-    # return np.zeros(shape, dtype=bool)
-    return (np.array(im)[:,:,0] > 128).T
-
-def voxelize(pts, polys, shape=(256, 256, 256), center=(128, 128, 128), mp=True):
-    from tvtk.api import tvtk
-    
-    pd = tvtk.PolyData(points=pts + center + (0, 0, 0), polys=polys)
-    plane = tvtk.Planes(normals=[(0,0,1)], points=[(0,0,0)])
-    clip = tvtk.ClipPolyData(clip_function=plane, input=pd)
-    feats = tvtk.FeatureEdges(
-        manifold_edges=False, 
-        non_manifold_edges=False, 
-        feature_edges=False,
-        boundary_edges=True,
-        input=clip.output)
-
-    def func(i):
-        plane.points = [(0,0,i)]
-        feats.update()
-        vox = np.zeros(shape[:2][::-1], np.uint8)
-        if feats.output.number_of_lines > 0:
-            epts = feats.output.points.to_array()
-            edges = feats.output.lines.to_array().reshape(-1, 3)[:,1:]
-            for poly in trace_poly(edges):
-                vox += rasterize(epts[poly][:,:2]+[.5, .5], shape=shape[:2][::-1])
-        return vox % 2
-
-    if mp:
-        from . import mp
-        layers = mp.map(func, range(shape[2]))
-    else:
-        #layers = map(func, range(shape[2]))
-        layers = [func(x) for x in range(shape[2])] # python3 compatible
-
-    return np.array(layers).T
-
-def measure_volume(pts, polys):
-    from tvtk.api import tvtk
-    pd = tvtk.PolyData(points=pts, polys=polys)
-    mp = tvtk.MassProperties(input=pd)
-    return mp.volume
-
-def marching_cubes(volume, smooth=True, decimate=True, **kwargs):
-    from tvtk.api import tvtk
-    imgdata = tvtk.ImageData(dimensions=volume.shape)
-    imgdata.point_data.scalars = volume.flatten('F')
-
-    contours = tvtk.ContourFilter(input=imgdata, number_of_contours=1)
-    contours.set_value(0, 1)
-
-    if smooth:
-        smoothargs = dict(number_of_iterations=40, feature_angle = 90, pass_band=.05)
-        smoothargs.update(kwargs)
-        contours = tvtk.WindowedSincPolyDataFilter(input=contours.output, **smoothargs)
-    if decimate:
-        contours = tvtk.QuadricDecimation(input=contours.output, target_reduction=.75)
-    
-    contours.update()
-    pts = contours.output.points.to_array()
-    polys = contours.output.polys.to_array().reshape(-1, 4)[:,1:]
-    return pts, polys
-
