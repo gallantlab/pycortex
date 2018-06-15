@@ -129,7 +129,7 @@ class SubsurfaceMixin(object):
             mask_list = [self.get_euclidean_ball(self.pts[index, :], radius) for index in vertex]
             close_enough = np.array(mask_list).sum(axis=0).astype(bool)
         else:
-            raise Exception('unknown vertex type:' + str(vertex))
+            raise Exception('unknown vertex type: ' + str(type(vertex)))
 
         return {
             'vertex_mask': self.get_connected_vertices(vertex=vertex, mask=close_enough),
