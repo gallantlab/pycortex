@@ -98,7 +98,7 @@ class SubsurfaceMixin(object):
             add_next = [vertex]
             output_mask[vertex] = True
         elif (
-            (isinstance(vertex, list))
+            isinstance(vertex, list)
             or (isinstance(vertex, np.ndarray) and np.issubdtype(vertex.dtype, np.integer))
         ):
             add_next = vertex
@@ -126,9 +126,12 @@ class SubsurfaceMixin(object):
             distance threshold
         """
 
-        if isinstance(vertex, int):
+        if np.issubdtype(type(vertex), np.integer):
             close_enough = self.get_euclidean_ball(self.pts[vertex, :], radius)
-        elif (isinstance(vertex, list)) or (isinstance(vertex, np.ndarray) and vertex.dtype == int):
+        elif (
+            isinstance(vertex, list)
+            or (isinstance(vertex, np.ndarray) and np.issubdtype(vertex.dtype, np.integer))
+        ):
             mask_list = [self.get_euclidean_ball(self.pts[index, :], radius) for index in vertex]
             close_enough = np.array(mask_list).sum(axis=0).astype(bool)
         else:
@@ -186,7 +189,7 @@ class SubsurfaceMixin(object):
                 subsurface = self.create_subsurface(vertex_mask=vertex_mask)
                 vertex_map = subsurface.subsurface_vertex_map
 
-                if isinstance(vertex, (int, float)):
+                if np.isscalar(vertex):
                     vertex = [vertex]
 
                 geodesic_distance = subsurface.geodesic_distance(vertex_map[vertex])
