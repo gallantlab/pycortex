@@ -2,7 +2,7 @@ pycortex
 ========
 [![Build Status](https://travis-ci.org/gallantlab/pycortex.svg?branch=master)](https://travis-ci.org/gallantlab/pycortex)
 
-![quickflat demo](https://raw.github.com/jamesgao/pycortex/master/docs/wn_med.png)
+[![quickflat demo](https://raw.github.com/jamesgao/pycortex/master/docs/wn_med.png)](https://gallantlab.github.io/)
 
 Pycortex is a software library that allows you to visualize fMRI or other volumetric neuroimaging data on cortical surfaces.
 
