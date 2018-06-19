@@ -1,5 +1,6 @@
 import os
 import re
+import codecs
 import binascii
 import mimetypes
 
@@ -17,7 +18,7 @@ def _resolve_path(filename, roots):
 
 def _embed_css(cssfile, rootdirs):
     csspath, fname = os.path.split(cssfile)
-    with open(cssfile) as fp:
+    with codecs.open(cssfile, encoding='utf-8') as fp:
         css = fp.read()
         cssparse = re.compile(r'(.*?){([^}]+)}', re.S)
         urlparse = re.compile(r'url\(([^\)]+)\)')
@@ -28,29 +29,29 @@ def _embed_css(cssfile, rootdirs):
                     imgpath = _resolve_path(os.path.join(csspath, url.strip("\"'")), rootdirs)
                     content = re.sub(url, serve.make_base64(imgpath).replace('\n', ''), content)
 
-            cssout.append("%s {\n%s\n}"%(selector, content))
+            cssout.append(u"%s {\n%s\n}"%(selector, content))
         return '\n'.join(cssout)
 
 def _embed_js(dom, script, rootdirs):
     wparse = re.compile(r"new Worker\(\s*(['\"].*?['\"])\s*\)", re.S)
     aparse = re.compile(r"attr\(\s*['\"]src['\"]\s*,\s*['\"](.*?)['\"]\)")
-    with open(_resolve_path(script.getAttribute("src"), rootdirs)) as jsfile:
+    with codecs.open(_resolve_path(script.getAttribute("src"), rootdirs), encoding='utf-8') as jsfile:
         jssrc = jsfile.read()
         for worker in wparse.findall(jssrc):
             wid = os.path.splitext(os.path.split(worker.strip('"\''))[1])[0]
             wtext = _embed_worker(_resolve_path(worker.strip('"\''), rootdirs))
-            wscript = dom.createElement("script")
-            wscript.setAttribute("type", "text/js-worker")
-            wscript.setAttribute("id", wid)
+            wscript = dom.createElement(u"script")
+            wscript.setAttribute(u"type", u"text/js-worker")
+            wscript.setAttribute(u"id", wid)
             wscript.appendChild(dom.createTextNode(wtext))
             script.parentNode.insertBefore(wscript, script)
-            rplc = "window.URL.createObjectURL(new Blob([document.getElementById('%s').textContent]))"%wid
+            rplc = u"window.URL.createObjectURL(new Blob([document.getElementById('%s').textContent]))"%wid
             jssrc = jssrc.replace(worker, rplc)
 
         for src in aparse.findall(jssrc):
             if not src.strip().startswith("data:"):
                 jspath = _resolve_path(src.strip('\'"'), rootdirs)
-                jssrc = jssrc.replace(src, "%s"%serve.make_base64(jspath).replace('\n', ''))
+                jssrc = jssrc.replace(src, u"%s"%serve.make_base64(jspath).replace('\n', ''))
 
         script.removeAttribute("src")
         script.appendChild(dom.createTextNode(jssrc))
@@ -58,7 +59,7 @@ def _embed_js(dom, script, rootdirs):
 def _embed_worker(worker):
     wparse = re.compile(r"importScripts\((.*)\)")
     wpath = os.path.split(worker)[0]
-    with open(worker) as wfile:
+    with codecs.open(worker, encoding='utf-8') as wfile:
         wdata = wfile.read()
         for simport in wparse.findall(wdata):
             imports = []
@@ -74,15 +75,15 @@ def _embed_images(dom, rootdirs):
         src = img.getAttribute("src")
         if not src.strip("\"'").startswith("data:") and len(src) > 0:
             imgfile = _resolve_path(img.getAttribute("src"), rootdirs)
-            img.setAttribute("src", serve.make_base64(imgfile).replace('\n', ''))
+            img.setAttribute(u"src", serve.make_base64(imgfile).replace('\n', ''))
 
 def embed(rawhtml, outfile, rootdirs=(serve.cwd,)):
     parser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))
     dom = parser.parse(rawhtml)
     head = dom.getElementsByTagName("head")[0]
     wurl = dom.createElement("script")
-    wurl.setAttribute("type", "text/javascript")
-    wurl.appendChild(dom.createTextNode('''
+    wurl.setAttribute(u"type", u"text/javascript")
+    wurl.appendChild(dom.createTextNode(u'''
 if (window.webkitURL)
     window.URL = window.webkitURL;
 '''))
@@ -110,7 +111,7 @@ if (window.webkitURL)
         if (css.getAttribute("type") == "text/css"):
             csstext = _embed_css(_resolve_path(css.getAttribute("href"), rootdirs), rootdirs)
             ncss = dom.createElement("style")
-            ncss.setAttribute("type", "text/css")
+            ncss.setAttribute(u"type", u"text/css")
             ncss.appendChild(dom.createTextNode(csstext))
             css.parentNode.insertBefore(ncss, css)
             css.parentNode.removeChild(css)
