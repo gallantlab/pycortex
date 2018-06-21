@@ -12,16 +12,18 @@ from . import freesurfer
 from . import options
 from .database import db
 
-def init_subject(subject, filename):
+def init_subject(subject, filenames, run_all=False):
     """Run the first initial segmentation for a subject's anatomy. This function runs 
     autorecon-all, then imports the subject into the pycortex database.
 
     Parameters
     ----------
     subject : str
-        The name of the subject
-    filename : str
-        Freesurfer-compatible filename for the anatomical image
+        The name of the subject (this subject is created in the Freesurfer
+        SUBJECTS_DIR)
+    filenames : str | list
+        Freesurfer-compatible filename(s) for the anatomical image(s). This can be
+        the first dicom file of a 
     """
     cmd = "recon-all -i {fname} -s {subj}".format(subj=subject, fname=filename)
     sp.call(shlex.split(cmd))
@@ -63,6 +65,38 @@ def fix_wm(subject):
 
     freesurfer.import_subj(subject)
 
+def edit_surfaces(subject, volumes=('brain.mgz', 'aseg.mgz', 'brainmask.mgz', 'wm.mgz'),
+                  surfaces=('lh.smoothwm', 'rh.smoothwm', 'lh.pial','rh.pial'), 
+                  freesurfer_subject_dir=os.environ['SUBJECTS_DIR']):
+    cmaps = {'brain':'grayscale',
+             'aseg':'lut',
+             'brainmask':'heat',
+             'wm':'heat',
+             'smoothwm':'yellow',
+             'pial':'red'
+             }
+    opacity={'brain':1.0,
+             'aseg':0.4,
+             'brainmask':0.4,
+             'wm':0.4,
+             }
+    vols = []
+    for v in volumes:
+        vpath = os.path.join(freesurfer_subject_dir, subject, 'mri', v)
+        vv, _ = os.path.splitext(v)
+        vextra = ':colormap={cm}:opacity={op:0.2f}'.format(cm=cmaps[vv], op=opacity[vv])
+        vols.append(vpath + vextra)
+    surfs = []
+    for s in surfaces:
+        spath = os.path.join(freesurfer_subject_dir, subject, 'surf', s)
+        _, ss = s.split('.')
+        sextra = ':edgecolor={col}'.format(col=cmaps[ss])
+        surfs.append(spath + sextra)
+    cmd = ["freeview", '-v'] + vols + ['-f'] + surfs
+    print("Calling: {}".format(' '.join(cmd)))
+    sp.call(cmd)
+
+
 def fix_pia(subject):
     """Initializes an interface to make pial surface edits.
     This function will open two windows -- a tkmedit window that makse the actual edits,
@@ -98,7 +132,8 @@ def fix_pia(subject):
 
     freesurfer.import_subj(subject)
 
-def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None, freesurfer_subject_dir=None):
+def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None, 
+                freesurfer_subject_dir=None):
     """Initializes an interface to cut the segmented surface for flatmapping.
     This function creates or opens a blend file in your filestore which allows
     surfaces to be cut along hand-defined seams. Blender will automatically 
