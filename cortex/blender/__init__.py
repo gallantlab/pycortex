@@ -6,9 +6,12 @@ import subprocess as sp
 
 import numpy as np
 
+from .. import options
 from .. import freesurfer
 from .. import dataset
 from .. import utils 
+
+default_blender = options.config.get('dependency_paths', 'blender')
 
 _base_imports = """import sys
 sys.path.insert(0, '{path}')
@@ -19,7 +22,7 @@ from bpy import context as C
 from bpy import data as D
 """.format(path=os.path.split(os.path.abspath(__file__))[0])
 
-def _call_blender(filename, code):
+def _call_blender(filename, code, blender_path=default_blender):
     """Call blender, while running the given code. If the filename doesn't exist, save a new file in that location.
     New files will be initially cleared by deleting all objects.
     """
@@ -27,10 +30,10 @@ def _call_blender(filename, code):
         print("In new named temp file: %s"%tf.name)
         startcode=_base_imports
         endcode = "\nbpy.ops.wm.save_mainfile(filepath='{fname}')".format(fname=filename)
-        cmd = "blender -b {fname} -P {tfname}".format(fname=filename, tfname=tf.name)
+        cmd = "{blender_path} -b {fname} -P {tfname}".format(blender_path=blender_path, fname=filename, tfname=tf.name)
         if not os.path.exists(filename):
             startcode += "blendlib.clear_all()\n"
-            cmd = "blender -b -P {tfname}".format(tfname=tf.name)
+            cmd = "{blender_path} -b -P {tfname}".format(blender_path=blender_path, tfname=tf.name)
 
         tf.write((startcode+code+endcode).encode())
         tf.flush()
@@ -130,6 +133,11 @@ def gii_cut(fname, subject, hemi):
 
 def fs_cut(fname, subject, hemi, freesurfer_subject_dir=None):
     """Cut freesurfer surface using blender interface
+
+    Parameters
+    ----------
+    fname : str
+        file path for new .blend file (must end in ".blend")
 
     if `freesurfer_subject_dir` is None, it defaults to SUBJECTS_DIR environment variable
     """

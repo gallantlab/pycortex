@@ -14,7 +14,7 @@ def _repack(linear, n=3):
     For example, _repack([1, 2, 3, 4, 5, 6], n=3) -> [[1, 2, 3], [4, 5, 6]]
     Good for unravelling ravelled data
     """
-    return list(zip(*[iter(linear)]*3))
+    return list(zip(*[iter(linear)] * n))
 
 def clear_all():
     bpy.ops.object.select_all(action='SELECT')
@@ -112,6 +112,7 @@ def write_patch(filename, pts, edges=None):
                 fp.write(struct.pack('>i3f', i+1, *pt))
 
 def save_patch(fname, mesh='hemi'):
+    """Saves patch to file that can be read by pycortex"""
     if isinstance(mesh, str):
         mesh = D.meshes[mesh]
 
