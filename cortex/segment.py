@@ -9,6 +9,7 @@ import multiprocessing as mp
 
 from . import blender
 from . import freesurfer
+from . import options
 from .database import db
 
 def init_subject(subject, filename):
@@ -135,8 +136,8 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None, fr
 
     if data is not None:
         blender.add_cutdata(fname, data, name=data.description)
-
-    sp.call(shlex.split("blender %s"%fname))
+    blender_cmd = options.config.get('dependency_paths', 'blender')
+    sp.call(blender_cmd, fname)
     patchpath = freesurfer.get_paths(fs_subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=name)
     blender.write_patch(fname, patchpath)
     
