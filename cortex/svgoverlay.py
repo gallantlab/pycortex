@@ -236,10 +236,9 @@ class SVGOverlay(object):
             png = tempfile.NamedTemporaryFile(suffix=".png")
             pngfile = png.name
 
-        # Old command: (Using ImageMagick function `convert`)
-        #cmd = "convert -background none -density {dpi} SVG:- PNG{bits}:{outfile}"
-        cmd = "inkscape -z -h {height} -e {outfile} /dev/stdin"
-        cmd = cmd.format(height=height, outfile=pngfile) #, bits=bits)
+        inkscape_cmd = config.get('dependency_paths', 'inkscape')
+        cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
+        cmd = cmd.format(inkscape_cmd=inkscape_cmd, height=height, outfile=pngfile)
         proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
         proc.communicate(etree.tostring(self.svg))
 

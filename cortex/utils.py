@@ -254,7 +254,8 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     svg.rois.add_shape(name, binascii.b2a_base64(fp.read()).decode('utf-8'), add_path)
 
     if open_inkscape:
-        return sp.call(["inkscape", '-f', svg.svgfile])
+        inkscape_cmd = config.get('dependency_paths', 'inkscape')
+        return sp.call([inkscape_cmd, '-f', svg.svgfile])
 
 def get_roi_verts(subject, roi=None, mask=False):
     """Return vertices for the given ROIs, or all ROIs if none are given.
