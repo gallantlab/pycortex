@@ -34,7 +34,7 @@ def make_base64(imgfile):
         mtype = mimetypes.guess_type(imgfile)[0]
         imbytes = base64.encodestring(img.read())
         data = imbytes.decode('utf-8').strip()
-        return "data:{mtype};base64,{data}".format(mtype=mtype, data=data)
+        return u"data:{mtype};base64,{data}".format(mtype=mtype, data=data)
 
 class NPEncode(json.JSONEncoder):
     def default(self, obj):
