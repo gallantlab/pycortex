@@ -100,6 +100,18 @@ def add_shapekey(shape, name=None):
     return key
 
 def write_patch(filename, pts, edges=None):
+    """Writes a patch file that is readable by freesurfer.
+    
+    Parameters
+    ----------
+    filename : name for patch to write. Should be of the form 
+        <subject>.flatten.3d
+    pts : array-like
+        points in the mesh
+    edges : array-like
+        edges in the mesh
+
+    """
     if edges is None:
         edges = set()
 
@@ -111,8 +123,16 @@ def write_patch(filename, pts, edges=None):
             else:
                 fp.write(struct.pack('>i3f', i+1, *pt))
 
-def save_patch(fname, mesh='hemi'):
-    """Saves patch to file that can be read by pycortex"""
+def _get_pts_edges(mesh):
+    """Function called within blender to get non-cut vertices & edges
+
+    Operates on a mesh object within an open instance of blender. 
+
+    Parameters
+    ----------
+    mesh : str
+        name of mesh to cut
+    """
     if isinstance(mesh, str):
         mesh = D.meshes[mesh]
 
@@ -150,7 +170,7 @@ def save_patch(fname, mesh='hemi'):
 
     bpy.ops.object.mode_set(mode='EDIT') 
     bpy.ops.mesh.select_all(action='DESELECT')
-    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.mode_set(mode='OBJECT')    
 
     fverts = set()
     if hasattr(mesh, "polygons"):
@@ -166,6 +186,24 @@ def save_patch(fname, mesh='hemi'):
     edges = mwall_edge | (smore - seam)
     verts = fverts - seam
     pts = [(v, D.shape_keys['Key'].key_blocks['inflated'].data[v].co) for v in verts]
+    return pts, edges
+
+def save_obj(fname, mesh='hemi'):
+    """Saves cut brain to an .obj file that can be read by SLIM
+    
+    Parameters
+    fname : str
+        name of file to be written. Should end in .obj
+    mesh : str
+        name of mesh object to be cut.
+    """
+    pts, edges = _get_pts_edges(mesh)
+    bpy.ops.export_scene.obj(filepath=fname)
+
+def save_patch(fname, mesh='hemi'):
+    """Saves patch to file that can be read by freesurfer"""
+    pts, edges = _get_pts_edges(mesh)
+
     write_patch(fname, pts, edges)
 
 def read_xdr(filename):
@@ -174,6 +212,7 @@ def read_xdr(filename):
         pts = u.unpack_array(p.unpack_double)
         polys = u.unpack_array(p.unpack_uint)
         return pts, polys
+
 def write_xdr(filename, pts, polys):
     with open(filename, "wb") as fp:
         p = xdrlib.Packer()

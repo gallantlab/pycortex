@@ -72,6 +72,7 @@ def autorecon(subject, type="all"):
             return
             
     cmd = "recon-all -s {subj} -{cmd}".format(subj=subject, cmd=types[str(type)])
+    print("Calling:\n{cmd}".format(cmd=cmd))
     sp.check_call(shlex.split(cmd))
 
 def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
