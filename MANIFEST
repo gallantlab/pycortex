@@ -18,11 +18,13 @@ cortex/brainctm.py
 cortex/db.py
 cortex/defaults.cfg
 cortex/formats.c
+cortex/formats.pyx
 cortex/formats_old.py
 cortex/freesurfer.py
 cortex/mayavi_aligner.py
 cortex/mp.py
 cortex/openctm.c
+cortex/openctm.pyx
 cortex/options.py
 cortex/polyutils.py
 cortex/quickflat.py
