@@ -1,7 +1,7 @@
 Surface Database
 ================
 
-Pycortex creates and maintains a simple flat-file database store all the data required to plot data on a cortical sheet (surfaces, transforms, masks, regions-of-interest, etc.). By default, the filestore is in ``INSTALL_DATA/share/pycortex/``. This location can be customized in your ``options.cfg`` file. You can find the filestore directory by running::
+Pycortex creates and maintains a simple flat-file database store all the data required to plot data on a cortical sheet (surfaces, transforms, masks, regions-of-interest, etc.). By default, the filestore is in ``INSTALL_DATA/share/pycortex/``. This location can be customized in your ``defaults.cfg`` file. You can find the filestore directory by running::
 
     import cortex
     cortex.database.default_filestore
