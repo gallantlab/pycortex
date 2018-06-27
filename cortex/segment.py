@@ -7,6 +7,7 @@ import subprocess as sp
 from builtins import input
 import multiprocessing as mp
 
+from . import formats
 from . import blender
 from . import freesurfer
 from . import options
@@ -77,12 +78,16 @@ def edit_segmentation(subject, volumes=('brain.mgz', 'aseg.mgz', 'brainmask.mgz'
             "`run_freesurfer_recon(%s, 'wm'\n",
             "If you have edited the brainmask (pial surface), you should run:")
 
-
+def _export_obj(blend_file, obj_file):
+    pass
 
 def flatten_slim(obj_in, obj_out, slim_path=slim_path):
     """Flatten brain w/ slim object flattening"""
-    sp.call(slim_path, obj_in, obj_out)
-    # Need to write patch?
+    sp.call([slim_path, obj_in, obj_out])
+    # Call SLIM algorithm to flatten
+    pts, polys, norms, (u, v) = formats.read_obj(obj_out, norm=True, uv=True)
+    np.savez('/Users/mark/Desktop/test.npz', polys=polys, u=u, v=v)
+    return
 
 def tmp_flatten(cx_subject, hemi, name='flatten', freesurfer_subject_dir=None):
     fs_subject = cx_subject
@@ -94,7 +99,7 @@ def tmp_flatten(cx_subject, hemi, name='flatten', freesurfer_subject_dir=None):
     objpath = patchpath.replace('.patch.3d', '.obj')
     objout = objpath.replace('.obj', '_slim.obj')
     blender.write_patch(fname, objpath, flat_type='obj')
-
+    flatten_slim(objpath, objout)
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None, 
                 freesurfer_subject_dir=None, flatten_with='freesurfer'):
@@ -136,7 +141,7 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
     if data is not None:
         blender.add_cutdata(fname, data, name=data.description)
     blender_cmd = options.config.get('dependency_paths', 'blender')
-    sp.call(blender_cmd, fname)
+    sp.call([blender_cmd, fname])
     patchpath = freesurfer.get_paths(fs_subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=name)
     if flatten_with=='freesurfer':
         blender.write_patch(fname, patchpath)    
@@ -146,7 +151,8 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
         objpath = patchpath.replace('.patch.3d', '.obj')
         objout = objpath.replace('.obj', '_slim.obj')
         blender.write_patch(fname, objpath)
-
+        flatten_slim(objpath, objout)
+        return
 
     other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
                                  freesurfer_subject_dir=freesurfer_subject_dir).format(name=name+".flat")
