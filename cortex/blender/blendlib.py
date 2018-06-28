@@ -201,12 +201,13 @@ def save_obj(fname, mesh='hemi'):
         name of mesh object to be cut.
     """
     verts, pts, edges = _get_pts_edges(mesh)
+    bpy.ops.mesh.delete(type='EDGE_FACE')
+    # mm. set shape key?
     bpy.ops.export_scene.obj(filepath=fname)
 
 def save_patch(fname, mesh='hemi'):
     """Saves patch to file that can be read by freesurfer"""
     verts, pts, edges = _get_pts_edges(mesh)
-
     write_patch(fname, pts, edges)
 
 def read_xdr(filename):

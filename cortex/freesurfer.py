@@ -169,7 +169,7 @@ def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     patch : 
     
     sname : str
-        Pycortex subject name3
+        Pycortex subject name
     freesurfer_subject_dir : str
     
     Returns
