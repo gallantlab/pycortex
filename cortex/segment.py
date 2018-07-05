@@ -45,8 +45,29 @@ def init_subject(subject, filenames, run_all=False):
 
 def edit_segmentation(subject, volumes=('brain.mgz', 'aseg.mgz', 'brainmask.mgz', 'wm.mgz'),
                   surfaces=('lh.smoothwm', 'rh.smoothwm', 'lh.pial','rh.pial'), 
-                  freesurfer_subject_dir=os.environ['SUBJECTS_DIR']):
+                  freesurfer_subject_dir=None):
+    """Edit automatic segmentation results using freeview
 
+    Opens an instance of freeview with relevant files loaded.
+
+    Parameters
+    ----------
+    subject : str
+        freesurfer subject identifier. Note that subject must be in your 
+        SUBJECTS_DIR for freesurfer. If the environment variable SUBJECTS_DIR
+        is not set in your shell, then the location of the directory must be 
+        specified in `freesurfer_subjects_dir`.
+    volumes : tuple | list
+        Names of volumes to load in freeview
+    surfaces : tuple | list
+        Names of surfaces to load in freeview
+    freesurfer_subjects_dir : str | None
+        Location of freesurfer subjects directory. If None, defaults to value of 
+        SUBJECTS_DIR environment variable. 
+
+    """
+    if freesurfer_subjects_dir is None:
+        freesurfer_subjects_dir = os.environ['SUBJECTS_DIR']
     cmaps = {'brain':'grayscale',
              'aseg':'lut',
              'brainmask':'heat',

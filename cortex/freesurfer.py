@@ -159,6 +159,34 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
 
     database.db = database.Database()
 
+def _import_flat_fromdata(subject, pts, polys):
+    """Write gifti files given pycortex subject ID and data
+
+    Supports alternative flattening to freesurfer's flattening
+
+    Parameters
+    ----------
+    subject : str
+        pycortex subject ID
+    pts : tuple of arrays
+        point arrays (x, y, z) for left, right hem (in that order)
+    polys : tuple of arrays
+        array of polygon triangles (indices to pts array) for left, right hem
+    """
+    surfs = os.path.join(database.default_filestore, subject, "surfaces", "flat_{hemi}.gii")
+
+    from . import formats
+    for hemi in ['lh', 'rh']:
+        fname = surfs.format(hemi=hemi)
+        print("saving to %s"%fname)
+        formats.write_gii(fname, pts=flat, polys=polys)
+
+    #clear the cache, per #81
+    cache = os.path.join(database.default_filestore, subject, "cache")
+    print("Clearing cache in: %s"%cache)
+    shutil.rmtree(cache)
+    os.makedirs(cache)
+
 def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     """Imports a flat brain from freesurfer
     
@@ -182,7 +210,9 @@ def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     from . import formats
     for hemi in ['lh', 'rh']:
         pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat", freesurfer_subject_dir=freesurfer_subject_dir)
+        # Reorder axes: X, Y, Z instead of Y, X, Z
         flat = pts[:,[1, 0, 2]]
+        # Flip Y axis upside down
         flat[:,1] = -flat[:,1]
         fname = surfs.format(hemi=hemi)
         print("saving to %s"%fname)
