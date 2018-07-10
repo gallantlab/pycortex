@@ -162,7 +162,7 @@ def fs_cut(fname, subject, hemi, freesurfer_subject_dir=None):
         """.format(tfname=tf.name)
         _call_blender(fname, code)
 
-def write_patch(bname, pname, mesh="hemi", flat_type='patch'):
+def write_patch(bname, pname, mesh="hemi"):
     """Write out the mesh 'mesh' in the blender file 'bname' into patch file 'pname'
     This is a necessary step for flattening the surface in freesurfer
 
@@ -185,7 +185,7 @@ def write_patch(bname, pname, mesh="hemi", flat_type='patch'):
             u = xdrlib.Unpacker(fp.read())
             pname = u.unpack_string().decode('utf-8')
             mesh = u.unpack_string().decode('utf-8')
-            blendlib.save_{flat_type}(pname, mesh)
-        """.format(tfname=tf.name, flat_type=flat_type)
+            blendlib.save_patch(pname, mesh)
+        """.format(tfname=tf.name)
         _call_blender(bname, code)
 

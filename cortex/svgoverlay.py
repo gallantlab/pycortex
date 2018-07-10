@@ -626,7 +626,7 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
         # be made clear when this file is created - opening a git issue on 
         # this soon...ML
         with open(svgfile, "wb") as fp:
-            fp.write(make_svg(pts.copy(), polys))
+            fp.write(make_svg(pts.copy(), polys).encode())
 
         svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)
 

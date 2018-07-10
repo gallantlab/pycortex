@@ -169,8 +169,7 @@ def _get_pts_edges(mesh):
             smore.add(i)
     # Leave cuts (+ area around them) selected... unclear how best to cut
     # within blender. Code below exports pts (not these pts?) to different
-    # file type, but we need an .obj file (preferably exported from blender)
-    # to flatten and use SLIM for un-distortion...
+    # file type, but we need an .obj file to flatten w/ SLIM
     #bpy.ops.object.mode_set(mode='EDIT') 
     #bpy.ops.mesh.select_all(action='DESELECT')
     #bpy.ops.object.mode_set(mode='OBJECT')    
@@ -190,20 +189,6 @@ def _get_pts_edges(mesh):
     verts = fverts - seam
     pts = [(v, D.shape_keys['Key'].key_blocks['inflated'].data[v].co) for v in verts]
     return verts, pts, edges
-
-def save_obj(fname, mesh='hemi'):
-    """Saves cut brain to an .obj file that can be read by SLIM
-    
-    Parameters
-    fname : str
-        name of file to be written. Should end in .obj
-    mesh : str
-        name of mesh object to be cut.
-    """
-    verts, pts, edges = _get_pts_edges(mesh)
-    bpy.ops.mesh.delete(type='EDGE_FACE')
-    # mm. set shape key?
-    bpy.ops.export_scene.obj(filepath=fname)
 
 def save_patch(fname, mesh='hemi'):
     """Saves patch to file that can be read by freesurfer"""

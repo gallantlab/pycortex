@@ -159,33 +159,33 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
 
     database.db = database.Database()
 
-def _import_flat_fromdata(subject, pts, polys):
-    """Write gifti files given pycortex subject ID and data
+# def _import_flat_fromdata(subject, pts, polys):
+#     """Write gifti files given pycortex subject ID and data
 
-    Supports alternative flattening to freesurfer's flattening
+#     Supports alternative flattening to freesurfer's flattening
 
-    Parameters
-    ----------
-    subject : str
-        pycortex subject ID
-    pts : tuple of arrays
-        point arrays (x, y, z) for left, right hem (in that order)
-    polys : tuple of arrays
-        array of polygon triangles (indices to pts array) for left, right hem
-    """
-    surfs = os.path.join(database.default_filestore, subject, "surfaces", "flat_{hemi}.gii")
+#     Parameters
+#     ----------
+#     subject : str
+#         pycortex subject ID
+#     pts : tuple of arrays
+#         point arrays (x, y, z) for left, right hem (in that order)
+#     polys : tuple of arrays
+#         array of polygon triangles (indices to pts array) for left, right hem
+#     """
+#     surfs = os.path.join(database.default_filestore, subject, "surfaces", "flat_{hemi}.gii")
 
-    from . import formats
-    for hemi in ['lh', 'rh']:
-        fname = surfs.format(hemi=hemi)
-        print("saving to %s"%fname)
-        formats.write_gii(fname, pts=flat, polys=polys)
+#     from . import formats
+#     for hemi in ['lh', 'rh']:
+#         fname = surfs.format(hemi=hemi)
+#         print("saving to %s"%fname)
+#         formats.write_gii(fname, pts=flat, polys=polys)
 
-    #clear the cache, per #81
-    cache = os.path.join(database.default_filestore, subject, "cache")
-    print("Clearing cache in: %s"%cache)
-    shutil.rmtree(cache)
-    os.makedirs(cache)
+#     #clear the cache, per #81
+#     cache = os.path.join(database.default_filestore, subject, "cache")
+#     print("Clearing cache in: %s"%cache)
+#     shutil.rmtree(cache)
+#     os.makedirs(cache)
 
 def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     """Imports a flat brain from freesurfer
@@ -257,6 +257,36 @@ def write_surf(filename, pts, polys, comment=''):
         fp.write(pts.astype(np.float32).byteswap().tostring())
         fp.write(polys.astype(np.uint32).byteswap().tostring())
         fp.write(b'\n')
+
+def write_patch(filename, pts, edges=None):
+    """Writes a patch file that is readable by freesurfer.
+    
+    Note this function is duplicated here and in blendlib. This function
+    writes freesurfer format, so seems natural to place here, but it 
+    also needs to be called from blender, and the blendlib functions are 
+    the only ones currently that can easily be called in a running 
+    blender session. 
+
+    Parameters
+    ----------
+    filename : name for patch to write. Should be of the form 
+        <subject>.flatten.3d
+    pts : array-like
+        points in the mesh
+    edges : array-like
+        edges in the mesh. 
+
+    """
+    if edges is None:
+        edges = set()
+
+    with open(filename, 'wb') as fp:
+        fp.write(struct.pack('>2i', -1, len(pts)))
+        for i, pt in pts:
+            if i in edges:
+                fp.write(struct.pack('>i3f', -i-1, *pt))
+            else:
+                fp.write(struct.pack('>i3f', i+1, *pt))
 
 def parse_curv(filename):
     """  
