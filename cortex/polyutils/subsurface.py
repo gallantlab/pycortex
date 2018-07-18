@@ -69,8 +69,7 @@ class SubsurfaceMixin(object):
         vertex_map[vertex_mask] = range(vertex_mask.sum())
 
         # build inverse map from new index to old index
-        vertex_inverse = np.array([np.where(vertex_map==v)[0][0]
-                                   for v in range(vertex_mask.sum())])
+        vertex_inverse = np.nonzero(vertex_mask)[0] 
 
         # reindex vertices and polygons
         subsurface_vertices = self.pts[vertex_mask, :]
