@@ -68,6 +68,10 @@ class SubsurfaceMixin(object):
         vertex_map = np.ones(self.pts.shape[0], dtype=np.int) * np.iinfo(np.int32).max
         vertex_map[vertex_mask] = range(vertex_mask.sum())
 
+        # build inverse map from new index to old index
+        vertex_inverse = np.array([np.where(vertex_map==v)[0][0]
+                                   for v in range(vertex_mask.sum())])
+
         # reindex vertices and polygons
         subsurface_vertices = self.pts[vertex_mask, :]
         subsurface_polygons = vertex_map[self.polys[polygon_mask, :]]
@@ -76,6 +80,7 @@ class SubsurfaceMixin(object):
         subsurface = self.__class__(pts=subsurface_vertices, polys=subsurface_polygons)
         subsurface.subsurface_vertex_mask = vertex_mask
         subsurface.subsurface_vertex_map = vertex_map
+        subsurface.subsurface_vertex_inverse = vertex_inverse
         subsurface.subsurface_polygon_mask = polygon_mask
 
         return subsurface
