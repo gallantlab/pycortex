@@ -1,5 +1,4 @@
 
-import functools
 from collections import OrderedDict
 
 import numpy as np
@@ -10,20 +9,7 @@ import scipy.sparse.linalg
 
 from . import exact_geodesic
 from . import subsurface
-
-
-def _memo(fn):
-    """Helper decorator memoizes the given zero-argument function.
-    Really helpful for memoizing properties so they don't have to be recomputed
-    dozens of times.
-    """
-    @functools.wraps(fn)
-    def memofn(self, *args, **kwargs):
-        if id(fn) not in self._cache:
-            self._cache[id(fn)] = fn(self)
-        return self._cache[id(fn)]
-
-    return memofn
+from .misc import _memo
 
 
 class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
