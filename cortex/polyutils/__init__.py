@@ -1,6 +1,7 @@
 
 from .distortion import Distortion
 from .misc import (
+    _memo,
     tetra_vol,
     brick_vol,
     sort_polys,
@@ -16,4 +17,4 @@ from .misc import (
     measure_volume,
     marching_cubes,
 )
-from .surface import Surface, _memo, _ptset, _quadset
+from .surface import Surface, _ptset, _quadset

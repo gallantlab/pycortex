@@ -3,6 +3,8 @@
 import numpy as np
 import scipy.sparse
 
+from .misc import _memo
+
 
 class SubsurfaceMixin(object):
     """mixin for Surface of efficient methods for working with subsurfaces
@@ -68,9 +70,6 @@ class SubsurfaceMixin(object):
         vertex_map = np.ones(self.pts.shape[0], dtype=np.int) * np.iinfo(np.int32).max
         vertex_map[vertex_mask] = range(vertex_mask.sum())
 
-        # build inverse map from new index to old index
-        vertex_inverse = np.nonzero(vertex_mask)[0] 
-
         # reindex vertices and polygons
         subsurface_vertices = self.pts[vertex_mask, :]
         subsurface_polygons = vertex_map[self.polys[polygon_mask, :]]
@@ -79,10 +78,14 @@ class SubsurfaceMixin(object):
         subsurface = self.__class__(pts=subsurface_vertices, polys=subsurface_polygons)
         subsurface.subsurface_vertex_mask = vertex_mask
         subsurface.subsurface_vertex_map = vertex_map
-        subsurface.subsurface_vertex_inverse = vertex_inverse
         subsurface.subsurface_polygon_mask = polygon_mask
 
         return subsurface
+
+    @property
+    @_memo
+    def subsurface_vertex_inverse(self):
+        return np.nonzero(self.subsurface_vertex_mask)[0]
 
     def get_connected_vertices(self, vertex, mask):
         """return vertices connected to vertex that satisfy mask
