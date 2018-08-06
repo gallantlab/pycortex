@@ -1,6 +1,7 @@
 """Contains functions for interfacing with freesurfer
 """
 import os
+import copy
 import shutil
 import struct
 import tempfile
@@ -14,6 +15,7 @@ import numpy as np
 from . import database
 from . import anat
 
+
 def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
     """Retrive paths for all surfaces for a subject processed by freesurfer
 
@@ -26,23 +28,26 @@ def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
     type : string ['patch'|'surf'|'curv']
         Which type of files to return
     freesurfer_subject_dir : string | None
-        Directory of freesurfer subjects. Defaults to the value for 
-        the environment variable 'SUBJECTS_DIR' (which should be set 
+        Directory of freesurfer subjects. Defaults to the value for
+        the environment variable 'SUBJECTS_DIR' (which should be set
         by freesurfer)
     """
     if freesurfer_subject_dir is None:
         freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
-    base = os.path.join(freesurfer_subject_dir,subject)
+    base = os.path.join(freesurfer_subject_dir, subject)
     if type == "patch":
         return os.path.join(base, "surf", hemi+".{name}.patch.3d")
     elif type == "surf":
         return os.path.join(base, "surf", hemi+".{name}")
     elif type == "curv":
         return os.path.join(base, "surf", hemi+".curv{name}")
+    elif type == "slim":
+        return os.path.join(base, "surf", hemi+"{name}_slim.obj")
+
 
 def autorecon(subject, type="all"):
     """Run Freesurfer's autorecon-all command for a given freesurfer subject
-    
+
     Parameters
     ----------
     subject : string
@@ -51,43 +56,46 @@ def autorecon(subject, type="all"):
         Which steps of autorecon-all to perform. {'all', '1','2','3','cp','wm', 'pia'}
 
     """
-    types = { 
-        'all':'autorecon-all',
-        '1':"autorecon1",
-        '2':"autorecon2",
-        '3':"autorecon3",
-        'cp':"autorecon2-cp",
-        'wm':"autorecon2-wm",
-        'pia':"autorecon2-pial"}
+    types = {
+        'all': 'autorecon-all',
+        '1': "autorecon1",
+        '2': "autorecon2",
+        '3': "autorecon3",
+        'cp': "autorecon2-cp",
+        'wm': "autorecon2-wm",
+        'pia': "autorecon2-pial"}
 
     times = {
-        'all':"12 hours", 
-        '2':"6 hours", 
-        'cp':"8 hours", 
-        'wm':"4 hours"
+        'all': "12 hours",
+        '2': "6 hours",
+        'cp': "8 hours",
+        'wm': "4 hours"
         }
     if str(type) in times:
         resp = input("recon-all will take approximately %s to run! Continue? "%times[str(type)])
         if resp.lower() not in ("yes", "y"):
             return
-            
+
     cmd = "recon-all -s {subj} -{cmd}".format(subj=subject, cmd=types[str(type)])
     print("Calling:\n{cmd}".format(cmd=cmd))
     sp.check_call(shlex.split(cmd))
 
+
 def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
     """Perform flattening of a brain using freesurfer
-    
+
     Parameters
     ----------
-    subject : 
-    
-    hemi : 
-    
-    patch : 
-    
-    freesurfer_subject_dir :
-    
+    subject : str
+        Freesurfer subject ID
+    hemi : str ['lh' | 'rh']
+        hemisphere to flatten
+    patch : str
+        name for freesurfer patch (used as `name` argument to format output
+        of `get_paths()`)
+    freesurfer_subject_dir : str
+        Freesurfer subjects directory location. None defaults to $SUBJECTS_DIR
+
     Returns
     -------
     """
@@ -100,9 +108,10 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
     else:
         print("Not going to flatten...")
 
+
 def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_surf='smoothwm'):
     """Imports a subject from freesurfer
-    
+
     Parameters
     ----------
     subject : string
@@ -130,7 +139,6 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
     fspath = os.path.join(freesurfer_subject_dir, subject, 'mri')
     curvs = os.path.join(freesurfer_subject_dir, subject, 'surf', '{hemi}.{name}')
 
-    #import anatomicals
     for fsname, name in dict(T1="raw", aseg="aseg").items():
         path = os.path.join(fspath, "{fsname}.mgz").format(fsname=fsname)
         out = anats.format(subj=sname, name=name)
@@ -140,66 +148,41 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
     if not os.path.exists(curvs.format(hemi="lh", name="fiducial")):
         make_fiducial(subject, freesurfer_subject_dir=freesurfer_subject_dir)
 
-    #Freesurfer uses FOV/2 for center, let's set the surfaces to use the magnet isocenter
+    # Freesurfer uses FOV/2 for center, let's set the surfaces to use the
+    # magnet isocenter
     trans = nibabel.load(out).get_affine()[:3, -1]
     surfmove = trans - np.sign(trans) * [128, 128, 128]
 
     from . import formats
-    #import surfaces
-    for fsname, name in [(whitematter_surf,"wm"), ('pial',"pia"), ('inflated',"inflated")]:
+    for fsname, name in [(whitematter_surf, "wm"), ('pial', "pia"), ('inflated', "inflated")]:
         for hemi in ("lh", "rh"):
             pts, polys, _ = get_surf(subject, hemi, fsname, freesurfer_subject_dir=freesurfer_subject_dir)
             fname = str(surfs.format(subj=sname, name=name, hemi=hemi))
             formats.write_gii(fname, pts=pts + surfmove, polys=polys)
 
-    #import surfinfo
     for curv, info in dict(sulc="sulcaldepth", thickness="thickness", curv="curvature").items():
         lh, rh = [parse_curv(curvs.format(hemi=hemi, name=curv)) for hemi in ['lh', 'rh']]
         np.savez(surfinfo.format(subj=sname, name=info), left=-lh, right=-rh)
 
     database.db = database.Database()
 
-# def _import_flat_fromdata(subject, pts, polys):
-#     """Write gifti files given pycortex subject ID and data
 
-#     Supports alternative flattening to freesurfer's flattening
-
-#     Parameters
-#     ----------
-#     subject : str
-#         pycortex subject ID
-#     pts : tuple of arrays
-#         point arrays (x, y, z) for left, right hem (in that order)
-#     polys : tuple of arrays
-#         array of polygon triangles (indices to pts array) for left, right hem
-#     """
-#     surfs = os.path.join(database.default_filestore, subject, "surfaces", "flat_{hemi}.gii")
-
-#     from . import formats
-#     for hemi in ['lh', 'rh']:
-#         fname = surfs.format(hemi=hemi)
-#         print("saving to %s"%fname)
-#         formats.write_gii(fname, pts=flat, polys=polys)
-
-#     #clear the cache, per #81
-#     cache = os.path.join(database.default_filestore, subject, "cache")
-#     print("Clearing cache in: %s"%cache)
-#     shutil.rmtree(cache)
-#     os.makedirs(cache)
-
-def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
+def import_flat(subject, patch, sname=None, flat_type='freesurfer',
+                freesurfer_subject_dir=None):
     """Imports a flat brain from freesurfer
-    
+
     Parameters
     ----------
     subject : str
         Freesurfer subject name
-    patch : 
-    
+    patch : sumting
+        idk
     sname : str
         Pycortex subject name
     freesurfer_subject_dir : str
-    
+        directory for freesurfer subjects. None defaults to evironment variable
+        $SUBJECTS_DIR
+
     Returns
     -------
     """
@@ -209,28 +192,36 @@ def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
 
     from . import formats
     for hemi in ['lh', 'rh']:
-        pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat", freesurfer_subject_dir=freesurfer_subject_dir)
-        # Reorder axes: X, Y, Z instead of Y, X, Z
-        flat = pts[:,[1, 0, 2]]
-        # Flip Y axis upside down
-        flat[:,1] = -flat[:,1]
+        if flat_type == 'freesurfer':
+            pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat", freesurfer_subject_dir=freesurfer_subject_dir)
+            # Reorder axes: X, Y, Z instead of Y, X, Z
+            flat = pts[:, [1, 0, 2]]
+            # Flip Y axis upside down
+            flat[:, 1] = -flat[:, 1]
+        elif flat_type == 'slim':
+            flat_file = get_paths(subject, hemi, type='slim',
+                                  freesurfer_subject_dir=freesurfer_subject_dir)
+            flat_file = flat_file.format(patch)
+            flat, polys = formats.read_obj(flat_file)
         fname = surfs.format(hemi=hemi)
         print("saving to %s"%fname)
         formats.write_gii(fname, pts=flat, polys=polys)
 
-    #clear the cache, per #81
+    # clear the cache, per #81
     cache = os.path.join(database.default_filestore, sname, "cache")
     shutil.rmtree(cache)
     os.makedirs(cache)
 
+
 def make_fiducial(subject, freesurfer_subject_dir=None):
-    """  
+    """Make fiducial surface (halfway between white matter and pial surfaces)
     """
     for hemi in ['lh', 'rh']:
         spts, polys, _ = get_surf(subject, hemi, "smoothwm", freesurfer_subject_dir=freesurfer_subject_dir)
         ppts, _, _ = get_surf(subject, hemi, "pial", freesurfer_subject_dir=freesurfer_subject_dir)
         fname = get_paths(subject, hemi, "surf", freesurfer_subject_dir=freesurfer_subject_dir).format(name="fiducial")
         write_surf(fname, (spts + ppts) / 2, polys)
+
 
 def parse_surf(filename):
     """  
@@ -247,8 +238,9 @@ def parse_surf(filename):
 
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
+
 def write_surf(filename, pts, polys, comment=''):
-    """  
+    """Write freesurfer surface file
     """
     with open(filename, 'wb') as fp:
         fp.write(b'\xff\xff\xfe')
@@ -258,23 +250,24 @@ def write_surf(filename, pts, polys, comment=''):
         fp.write(polys.astype(np.uint32).byteswap().tostring())
         fp.write(b'\n')
 
+
 def write_patch(filename, pts, edges=None):
     """Writes a patch file that is readable by freesurfer.
-    
+
     Note this function is duplicated here and in blendlib. This function
-    writes freesurfer format, so seems natural to place here, but it 
-    also needs to be called from blender, and the blendlib functions are 
-    the only ones currently that can easily be called in a running 
-    blender session. 
+    writes freesurfer format, so seems natural to place here, but it
+    also needs to be called from blender, and the blendlib functions are
+    the only ones currently that can easily be called in a running
+    blender session.
 
     Parameters
     ----------
-    filename : name for patch to write. Should be of the form 
+    filename : name for patch to write. Should be of the form
         <subject>.flatten.3d
     pts : array-like
         points in the mesh
     edges : array-like
-        edges in the mesh. 
+        edges in the mesh.
 
     """
     if edges is None:
@@ -288,6 +281,7 @@ def write_patch(filename, pts, edges=None):
             else:
                 fp.write(struct.pack('>i3f', i+1, *pt))
 
+
 def parse_curv(filename):
     """  
     """
@@ -295,25 +289,28 @@ def parse_curv(filename):
         fp.seek(15)
         return np.fromstring(fp.read(), dtype='>f4').byteswap().newbyteorder()
 
+
 def parse_patch(filename):
     """  
     """
     with open(filename, 'rb') as fp:
         header, = struct.unpack('>i', fp.read(4))
         nverts, = struct.unpack('>i', fp.read(4))
-        data = np.fromstring(fp.read(), dtype=[('vert', '>i4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4')])
+        data = np.fromstring(fp.read(), dtype=[('vert', '>i4'), ('x', '>f4'),
+                                               ('y', '>f4'), ('z', '>f4')])
         assert len(data) == nverts
         return data
 
+
 def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
-    """  
+    """Read freesurfer surface file
     """
     if type == "patch":
         assert patch is not None
         surf_file = get_paths(subject, hemi, 'surf', freesurfer_subject_dir=freesurfer_subject_dir).format(name='smoothwm')
     else:
         surf_file = get_paths(subject, hemi, 'surf', freesurfer_subject_dir=freesurfer_subject_dir).format(name=type)
-    
+
     pts, polys = parse_surf(surf_file)
 
     if patch is not None:
@@ -338,6 +335,7 @@ def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
         return pts, polys, idx
 
     return pts, polys, get_curv(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir)
+
 
 def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subject='fsaverage'):
     """subject is a freesurfer subject"""
@@ -369,6 +367,7 @@ def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subjec
         if stderr not in ('', b''):
             raise Exception("Error in freesurfer function call:\n{}".format(stderr))
     print("Labels transferred")
+
 
 def _parse_labels(label_files, subject):
     """Extract values from freesurfer label file(s) and map to vertices
@@ -433,8 +432,9 @@ def get_label(subject, label, fs_subject=None, fs_dir=None, src_subject='fsavera
     idx = verts.astype(np.int)
     return idx, values
 
+
 def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):
-    """  
+    """Load freesurfer curv file
     """
     if type == "wm":
         curv_file = get_paths(subject, hemi, 'curv', freesurfer_subject_dir=freesurfer_subject_dir).format(name='')
@@ -443,15 +443,16 @@ def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):
 
     return parse_curv(curv_file)
 
+
 def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir=None):
     """Show a surface from a Freesurfer subject directory
-    
+
     Parameters
     ----------
     subject : str
         Freesurfer subject name
-    hemi : 
-    
+    hemi : str ['lh' | 'rh']
+        Left or right hemisphere
     type : 
     
     patch : 
@@ -468,7 +469,7 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
         curv = get_curv(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir)
     else:
         curv = idx
-    
+
     fig = mlab.figure()
     src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, scalars=curv, figure=fig)
     norms = mlab.pipeline.poly_data_normals(src, figure=fig)
@@ -520,6 +521,7 @@ def write_dot(fname, pts, polys, name="test"):
         fp.write("maxiter=1000000;\n");
         fp.write("}")
 
+
 def read_dot(fname, pts):
     """  
     """
@@ -537,6 +539,7 @@ def read_dot(fname, pts):
             data[int(el[0][1:])] = float(x), float(y)
             el = fp.readline().split(' ')
     return data
+
 
 def write_decimated(path, pts, polys):
     """  
@@ -556,7 +559,7 @@ def write_decimated(path, pts, polys):
         fp.write(struct.pack('>i', len(dpts)))
         fp.write(data.tostring())
 
-import copy
+
 class SpringLayout(object):
     """  
     """
@@ -659,205 +662,205 @@ def stretch_mwall(pts, polys, mwall):
     return SpringLayout(pts, polys, inflated, pins=mwall)
 
 # aseg partition labels (up to 256 only)
-fs_aseg_dict = {'Unknown' : 0,
-    'Left-Cerebral-Exterior' : 1,
-    'Left-Cerebral-White-Matter' : 2,
-    'Left-Cerebral-Cortex' : 3,
-    'Left-Lateral-Ventricle' : 4,
-    'Left-Inf-Lat-Vent' : 5,
-    'Left-Cerebellum-Exterior' : 6,
-    'Left-Cerebellum-White-Matter' : 7,
-    'Left-Cerebellum-Cortex' : 8,
-    'Left-Thalamus' : 9,
-    'Left-Thalamus-Proper' : 10,
-    'Left-Caudate' : 11,
-    'Left-Putamen' : 12,
-    'Left-Pallidum' : 13,
-    '3rd-Ventricle' : 14,
-    '4th-Ventricle' : 15,
-    'Brain-Stem' : 16,
-    'Left-Hippocampus' : 17,
-    'Left-Amygdala' : 18,
-    'Left-Insula' : 19,
-    'Left-Operculum' : 20,
-    'Line-1' : 21,
-    'Line-2' : 22,
-    'Line-3' : 23,
-    'CSF' : 24,
-    'Left-Lesion' : 25,
-    'Left-Accumbens-area' : 26,
-    'Left-Substancia-Nigra' : 27,
-    'Left-VentralDC' : 28,
-    'Left-undetermined' : 29,
-    'Left-vessel' : 30,
-    'Left-choroid-plexus' : 31,
-    'Left-F3orb' : 32,
-    'Left-lOg' : 33,
-    'Left-aOg' : 34,
-    'Left-mOg' : 35,
-    'Left-pOg' : 36,
-    'Left-Stellate' : 37,
-    'Left-Porg' : 38,
-    'Left-Aorg' : 39,
-    'Right-Cerebral-Exterior' : 40,
-    'Right-Cerebral-White-Matter' : 41,
-    'Right-Cerebral-Cortex' : 42,
-    'Right-Lateral-Ventricle' : 43,
-    'Right-Inf-Lat-Vent' : 44,
-    'Right-Cerebellum-Exterior' : 45,
-    'Right-Cerebellum-White-Matter' : 46,
-    'Right-Cerebellum-Cortex' : 47,
-    'Right-Thalamus' : 48,
-    'Right-Thalamus-Proper' : 49,
-    'Right-Caudate' : 50,
-    'Right-Putamen' : 51,
-    'Right-Pallidum' : 52,
-    'Right-Hippocampus' : 53,
-    'Right-Amygdala' : 54,
-    'Right-Insula' : 55,
-    'Right-Operculum' : 56,
-    'Right-Lesion' : 57,
-    'Right-Accumbens-area' : 58,
-    'Right-Substancia-Nigra' : 59,
-    'Right-VentralDC' : 60,
-    'Right-undetermined' : 61,
-    'Right-vessel' : 62,
-    'Right-choroid-plexus' : 63,
-    'Right-F3orb' : 64,
-    'Right-lOg' : 65,
-    'Right-aOg' : 66,
-    'Right-mOg' : 67,
-    'Right-pOg' : 68,
-    'Right-Stellate' : 69,
-    'Right-Porg' : 70,
-    'Right-Aorg' : 71,
-    '5th-Ventricle' : 72,
-    'Left-Interior' : 73,
-    'Right-Interior' : 74,
-    'Left-Lateral-Ventricles' : 75,
-    'Right-Lateral-Ventricles' : 76,
-    'WM-hypointensities' : 77,
-    'Left-WM-hypointensities' : 78,
-    'Right-WM-hypointensities' : 79,
-    'non-WM-hypointensities' : 80,
-    'Left-non-WM-hypointensities' : 81,
-    'Right-non-WM-hypointensities' : 82,
-    'Left-F1' : 83,
-    'Right-F1' : 84,
-    'Optic-Chiasm' : 85,
-    'Corpus_Callosum' : 86,
-    'Left-Amygdala-Anterior' : 96,
-    'Right-Amygdala-Anterior' : 97,
-    'Dura' : 98,
-    'Left-wm-intensity-abnormality' : 100,
-    'Left-caudate-intensity-abnormality' : 101,
-    'Left-putamen-intensity-abnormality' : 102,
-    'Left-accumbens-intensity-abnormality' : 103,
-    'Left-pallidum-intensity-abnormality' : 104,
-    'Left-amygdala-intensity-abnormality' : 105,
-    'Left-hippocampus-intensity-abnormality' : 106,
-    'Left-thalamus-intensity-abnormality' : 107,
-    'Left-VDC-intensity-abnormality' : 108,
-    'Right-wm-intensity-abnormality' : 109,
-    'Right-caudate-intensity-abnormality' : 110,
-    'Right-putamen-intensity-abnormality' : 111,
-    'Right-accumbens-intensity-abnormality' : 112,
-    'Right-pallidum-intensity-abnormality' : 113,
-    'Right-amygdala-intensity-abnormality' : 114,
-    'Right-hippocampus-intensity-abnormality' : 115,
-    'Right-thalamus-intensity-abnormality' : 116,
-    'Right-VDC-intensity-abnormality' : 117,
-    'Epidermis' : 118,
-    'Conn-Tissue' : 119,
-    'SC-Fat/Muscle' : 120,
-    'Cranium' : 121,
-    'CSF-SA' : 122,
-    'Muscle' : 123,
-    'Ear' : 124,
-    'Adipose' : 125,
-    'Spinal-Cord' : 126,
-    'Soft-Tissue' : 127,
-    'Nerve' : 128,
-    'Bone' : 129,
-    'Air' : 130,
-    'Orbital-Fat' : 131,
-    'Tongue' : 132,
-    'Nasal-Structures' : 133,
-    'Globe' : 134,
-    'Teeth' : 135,
-    'Left-Caudate/Putamen' : 136,
-    'Right-Caudate/Putamen' : 137,
-    'Left-Claustrum' : 138,
-    'Right-Claustrum' : 139,
-    'Cornea' : 140,
-    'Diploe' : 142,
-    'Vitreous-Humor' : 143,
-    'Lens' : 144,
-    'Aqueous-Humor' : 145,
-    'Outer-Table' : 146,
-    'Inner-Table' : 147,
-    'Periosteum' : 148,
-    'Endosteum' : 149,
-    'R/C/S' : 150,
-    'Iris' : 151,
-    'SC-Adipose/Muscle' : 152,
-    'SC-Tissue' : 153,
-    'Orbital-Adipose' : 154,
-    'Left-IntCapsule-Ant' : 155,
-    'Right-IntCapsule-Ant' : 156,
-    'Left-IntCapsule-Pos' : 157,
-    'Right-IntCapsule-Pos' : 158,
-    'Left-Cerebral-WM-unmyelinated' : 159,
-    'Right-Cerebral-WM-unmyelinated' : 160,
-    'Left-Cerebral-WM-myelinated' : 161,
-    'Right-Cerebral-WM-myelinated' : 162,
-    'Left-Subcortical-Gray-Matter' : 163,
-    'Right-Subcortical-Gray-Matter' : 164,
-    'Skull' : 165,
-    'Posterior-fossa' : 166,
-    'Scalp' : 167,
-    'Hematoma' : 168,
-    'Left-Cortical-Dysplasia' : 180,
-    'Right-Cortical-Dysplasia' : 181,
-    'Left-hippocampal_fissure' : 193,
-    'Left-CADG-head' : 194,
-    'Left-subiculum' : 195,
-    'Left-fimbria' : 196,
-    'Right-hippocampal_fissure' : 197,
-    'Right-CADG-head' : 198,
-    'Right-subiculum' : 199,
-    'Right-fimbria' : 200,
-    'alveus' : 201,
-    'perforant_pathway' : 202,
-    'parasubiculum' : 203,
-    'presubiculum' : 204,
-    'subiculum' : 205,
-    'CA1' : 206,
-    'CA2' : 207,
-    'CA3' : 208,
-    'CA4' : 209,
-    'GC-DG' : 210,
-    'HATA' : 211,
-    'fimbria' : 212,
-    'lateral_ventricle' : 213,
-    'molecular_layer_HP' : 214,
-    'hippocampal_fissure' : 215,
-    'entorhinal_cortex' : 216,
-    'molecular_layer_subiculum' : 217,
-    'Amygdala' : 218,
-    'Cerebral_White_Matter' : 219,
-    'Cerebral_Cortex' : 220,
-    'Inf_Lat_Vent' : 221,
-    'Perirhinal' : 222,
-    'Cerebral_White_Matter_Edge' : 223,
-    'Background' : 224,
-    'Ectorhinal' : 225,
-    'Fornix' : 250,
-    'CC_Posterior' : 251,
-    'CC_Mid_Posterior' : 252,
-    'CC_Central' : 253,
-    'CC_Mid_Anterior' : 254,
-    'CC_Anterior' : 255}
+fs_aseg_dict = {'Unknown': 0,
+                'Left-Cerebral-Exterior': 1,
+                'Left-Cerebral-White-Matter': 2,
+                'Left-Cerebral-Cortex': 3,
+                'Left-Lateral-Ventricle': 4,
+                'Left-Inf-Lat-Vent': 5,
+                'Left-Cerebellum-Exterior': 6,
+                'Left-Cerebellum-White-Matter': 7,
+                'Left-Cerebellum-Cortex': 8,
+                'Left-Thalamus': 9,
+                'Left-Thalamus-Proper': 10,
+                'Left-Caudate': 11,
+                'Left-Putamen': 12,
+                'Left-Pallidum': 13,
+                '3rd-Ventricle': 14,
+                '4th-Ventricle': 15,
+                'Brain-Stem': 16,
+                'Left-Hippocampus': 17,
+                'Left-Amygdala': 18,
+                'Left-Insula': 19,
+                'Left-Operculum': 20,
+                'Line-1': 21,
+                'Line-2': 22,
+                'Line-3': 23,
+                'CSF': 24,
+                'Left-Lesion': 25,
+                'Left-Accumbens-area': 26,
+                'Left-Substancia-Nigra': 27,
+                'Left-VentralDC': 28,
+                'Left-undetermined': 29,
+                'Left-vessel': 30,
+                'Left-choroid-plexus': 31,
+                'Left-F3orb': 32,
+                'Left-lOg': 33,
+                'Left-aOg': 34,
+                'Left-mOg': 35,
+                'Left-pOg': 36,
+                'Left-Stellate': 37,
+                'Left-Porg': 38,
+                'Left-Aorg': 39,
+                'Right-Cerebral-Exterior': 40,
+                'Right-Cerebral-White-Matter': 41,
+                'Right-Cerebral-Cortex': 42,
+                'Right-Lateral-Ventricle': 43,
+                'Right-Inf-Lat-Vent': 44,
+                'Right-Cerebellum-Exterior': 45,
+                'Right-Cerebellum-White-Matter': 46,
+                'Right-Cerebellum-Cortex': 47,
+                'Right-Thalamus': 48,
+                'Right-Thalamus-Proper': 49,
+                'Right-Caudate': 50,
+                'Right-Putamen': 51,
+                'Right-Pallidum': 52,
+                'Right-Hippocampus': 53,
+                'Right-Amygdala': 54,
+                'Right-Insula': 55,
+                'Right-Operculum': 56,
+                'Right-Lesion': 57,
+                'Right-Accumbens-area': 58,
+                'Right-Substancia-Nigra': 59,
+                'Right-VentralDC': 60,
+                'Right-undetermined': 61,
+                'Right-vessel': 62,
+                'Right-choroid-plexus': 63,
+                'Right-F3orb': 64,
+                'Right-lOg': 65,
+                'Right-aOg': 66,
+                'Right-mOg': 67,
+                'Right-pOg': 68,
+                'Right-Stellate': 69,
+                'Right-Porg': 70,
+                'Right-Aorg': 71,
+                '5th-Ventricle': 72,
+                'Left-Interior': 73,
+                'Right-Interior': 74,
+                'Left-Lateral-Ventricles': 75,
+                'Right-Lateral-Ventricles': 76,
+                'WM-hypointensities': 77,
+                'Left-WM-hypointensities': 78,
+                'Right-WM-hypointensities': 79,
+                'non-WM-hypointensities': 80,
+                'Left-non-WM-hypointensities': 81,
+                'Right-non-WM-hypointensities': 82,
+                'Left-F1': 83,
+                'Right-F1': 84,
+                'Optic-Chiasm': 85,
+                'Corpus_Callosum': 86,
+                'Left-Amygdala-Anterior': 96,
+                'Right-Amygdala-Anterior': 97,
+                'Dura': 98,
+                'Left-wm-intensity-abnormality': 100,
+                'Left-caudate-intensity-abnormality': 101,
+                'Left-putamen-intensity-abnormality': 102,
+                'Left-accumbens-intensity-abnormality': 103,
+                'Left-pallidum-intensity-abnormality': 104,
+                'Left-amygdala-intensity-abnormality': 105,
+                'Left-hippocampus-intensity-abnormality': 106,
+                'Left-thalamus-intensity-abnormality': 107,
+                'Left-VDC-intensity-abnormality': 108,
+                'Right-wm-intensity-abnormality': 109,
+                'Right-caudate-intensity-abnormality': 110,
+                'Right-putamen-intensity-abnormality': 111,
+                'Right-accumbens-intensity-abnormality': 112,
+                'Right-pallidum-intensity-abnormality': 113,
+                'Right-amygdala-intensity-abnormality': 114,
+                'Right-hippocampus-intensity-abnormality': 115,
+                'Right-thalamus-intensity-abnormality': 116,
+                'Right-VDC-intensity-abnormality': 117,
+                'Epidermis': 118,
+                'Conn-Tissue': 119,
+                'SC-Fat/Muscle': 120,
+                'Cranium': 121,
+                'CSF-SA': 122,
+                'Muscle': 123,
+                'Ear': 124,
+                'Adipose': 125,
+                'Spinal-Cord': 126,
+                'Soft-Tissue': 127,
+                'Nerve': 128,
+                'Bone': 129,
+                'Air': 130,
+                'Orbital-Fat': 131,
+                'Tongue': 132,
+                'Nasal-Structures': 133,
+                'Globe': 134,
+                'Teeth': 135,
+                'Left-Caudate/Putamen': 136,
+                'Right-Caudate/Putamen': 137,
+                'Left-Claustrum': 138,
+                'Right-Claustrum': 139,
+                'Cornea': 140,
+                'Diploe': 142,
+                'Vitreous-Humor': 143,
+                'Lens': 144,
+                'Aqueous-Humor': 145,
+                'Outer-Table': 146,
+                'Inner-Table': 147,
+                'Periosteum': 148,
+                'Endosteum': 149,
+                'R/C/S': 150,
+                'Iris': 151,
+                'SC-Adipose/Muscle': 152,
+                'SC-Tissue': 153,
+                'Orbital-Adipose': 154,
+                'Left-IntCapsule-Ant': 155,
+                'Right-IntCapsule-Ant': 156,
+                'Left-IntCapsule-Pos': 157,
+                'Right-IntCapsule-Pos': 158,
+                'Left-Cerebral-WM-unmyelinated': 159,
+                'Right-Cerebral-WM-unmyelinated': 160,
+                'Left-Cerebral-WM-myelinated': 161,
+                'Right-Cerebral-WM-myelinated': 162,
+                'Left-Subcortical-Gray-Matter': 163,
+                'Right-Subcortical-Gray-Matter': 164,
+                'Skull': 165,
+                'Posterior-fossa': 166,
+                'Scalp': 167,
+                'Hematoma': 168,
+                'Left-Cortical-Dysplasia': 180,
+                'Right-Cortical-Dysplasia': 181,
+                'Left-hippocampal_fissure': 193,
+                'Left-CADG-head': 194,
+                'Left-subiculum': 195,
+                'Left-fimbria': 196,
+                'Right-hippocampal_fissure': 197,
+                'Right-CADG-head': 198,
+                'Right-subiculum': 199,
+                'Right-fimbria': 200,
+                'alveus': 201,
+                'perforant_pathway': 202,
+                'parasubiculum': 203,
+                'presubiculum': 204,
+                'subiculum': 205,
+                'CA1': 206,
+                'CA2': 207,
+                'CA3': 208,
+                'CA4': 209,
+                'GC-DG': 210,
+                'HATA': 211,
+                'fimbria': 212,
+                'lateral_ventricle': 213,
+                'molecular_layer_HP': 214,
+                'hippocampal_fissure': 215,
+                'entorhinal_cortex': 216,
+                'molecular_layer_subiculum': 217,
+                'Amygdala': 218,
+                'Cerebral_White_Matter': 219,
+                'Cerebral_Cortex': 220,
+                'Inf_Lat_Vent': 221,
+                'Perirhinal': 222,
+                'Cerebral_White_Matter_Edge': 223,
+                'Background': 224,
+                'Ectorhinal': 225,
+                'Fornix': 250,
+                'CC_Posterior': 251,
+                'CC_Mid_Posterior': 252,
+                'CC_Central': 253,
+                'CC_Mid_Anterior': 254,
+                'CC_Anterior': 255}
 
 if __name__ == "__main__":
     import sys

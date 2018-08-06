@@ -20,8 +20,10 @@ from .freesurfer import import_subj as import_freesurfer_subject
 slim_path = options.config.get('dependency_paths', 'slim')
 
 def init_subject(subject, filenames, run_all=False):
-    """Run the first initial segmentation for a subject's anatomy. This function runs 
-    autorecon-all, then imports the subject into the pycortex database.
+    """Run the first initial segmentation for a subject's anatomy. 
+
+    This function runs autorecon-all, then (optionally) imports the subject
+    into the pycortex database.
 
     Parameters
     ----------
@@ -29,13 +31,14 @@ def init_subject(subject, filenames, run_all=False):
         The name of the subject (this subject is created in the Freesurfer
         SUBJECTS_DIR)
     filenames : str | list
-        Freesurfer-compatible filename(s) for the anatomical image(s). This can be
-        the first dicom file of a 
+        Freesurfer-compatible filename(s) for the anatomical image(s). This can
+        be the first dicom file of a series of dicoms, a nifti file, an mgz
+        file, etc.
     run_all : bool
-        Whether to run recon-all all the way through to importing the subject into 
-        pycortex. False by default, since we recommend editing (or at least inspecting)
-        the brain mask and white matter segmentations prior to importing into 
-        pycortex.
+        Whether to run recon-all all the way through to importing the subject
+        into pycortex. False by default, since we recommend editing (or at
+        least inspecting) the brain mask and white matter segmentations prior
+        to importing into pycortex.
     """
     cmd = "recon-all -i {fname} -s {subj}".format(subj=subject, fname=filename)
     print("Calling:\n%{}".format(cmd))
@@ -44,9 +47,11 @@ def init_subject(subject, filenames, run_all=False):
         run_freesurfer_recon(subject, "all")
         import_freesurfer_subject(subject)
 
-def edit_segmentation(subject, volumes=('brain.mgz', 'aseg.mgz', 'brainmask.mgz', 'wm.mgz'),
-                  surfaces=('lh.smoothwm', 'rh.smoothwm', 'lh.pial','rh.pial'), 
-                  freesurfer_subject_dir=None):
+
+def edit_segmentation(subject,
+                      volumes=('brain.mgz', 'aseg.mgz', 'brainmask.mgz', 'wm.mgz'),
+                      surfaces=('lh.smoothwm', 'rh.smoothwm', 'lh.pial', 'rh.pial'),
+                      freesurfer_subject_dir=None):
     """Edit automatic segmentation results using freeview
 
     Opens an instance of freeview with relevant files loaded.
@@ -54,32 +59,32 @@ def edit_segmentation(subject, volumes=('brain.mgz', 'aseg.mgz', 'brainmask.mgz'
     Parameters
     ----------
     subject : str
-        freesurfer subject identifier. Note that subject must be in your 
+        freesurfer subject identifier. Note that subject must be in your
         SUBJECTS_DIR for freesurfer. If the environment variable SUBJECTS_DIR
-        is not set in your shell, then the location of the directory must be 
+        is not set in your shell, then the location of the directory must be
         specified in `freesurfer_subject_dir`.
     volumes : tuple | list
         Names of volumes to load in freeview
     surfaces : tuple | list
         Names of surfaces to load in freeview
     freesurfer_subject_dir : str | None
-        Location of freesurfer subjects directory. If None, defaults to value of 
-        SUBJECTS_DIR environment variable. 
+        Location of freesurfer subjects directory. If None, defaults to value
+        of SUBJECTS_DIR environment variable.
 
     """
     if freesurfer_subject_dir is None:
         freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
-    cmaps = {'brain':'grayscale',
-             'aseg':'lut',
-             'brainmask':'heat',
-             'wm':'heat',
-             'smoothwm':'yellow',
-             'pial':'red'
+    cmaps = {'brain': 'grayscale',
+             'aseg': 'lut',
+             'brainmask': 'heat',
+             'wm': 'heat',
+             'smoothwm': 'yellow',
+             'pial': 'red'
              }
-    opacity={'brain':1.0,
-             'aseg':0.4,
-             'brainmask':0.4,
-             'wm':0.4,
+    opacity={'brain': 1.0,
+             'aseg': 0.4,
+             'brainmask': 0.4,
+             'wm': 0.4,
              }
     vols = []
     for v in volumes:
@@ -101,7 +106,7 @@ def edit_segmentation(subject, volumes=('brain.mgz', 'aseg.mgz', 'brainmask.mgz'
             "If you have edited the brainmask (pial surface), you should run:")
 
 
-def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None, 
+def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
                  slim_path=slim_path):
     """Flatten brain w/ slim object flattening
 
@@ -119,6 +124,10 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
     slim_path : str
         path to SLIM flattening. Defaults to path specified in config file.
     """
+    if slim_path == 'None':
+        raise ValueError("Please download SLIM (%s) and set the path to it in the `slim` field\n"
+                         "in the `dependency_paths` section of your config file (%s) \n"
+                         "if you wish to use slim!"%)
     resp = input('Flattening with SLIM will take a few mins. Continue? (type y or n and press return)')
     if not resp.lower() in ('y', 'yes'): 
         print("Not flattening...")
@@ -162,13 +171,14 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
     uv -= (uv.max(0) / 2)
     infl_scale = np.max(np.abs(pts_new.min(0)-pts_new.max(0)))
     # This is a magic number based on the approximate scale of the flatmap
-    # (created by freesurfer) to the inflated map in a couple other subjects. 
+    # (created by freesurfer) to the inflated map in a couple other subjects.
     # For two hemispheres in two other subjects, it ranged from 1.37 to 1.5.
     # There doesn't seem to be a principled way to set this number, since the
-    # flatmap is stretched and distorted anyway, and that stretch varies by 
-    # subject and by hemisphere. Note, tho,that  this doesn't change distortions,
-    # just the overall scale of the thing. So here we are. ML 2018.07.05
-    extra_scale = 1.4 
+    # flatmap is stretched and distorted anyway, and that stretch varies by
+    # subject and by hemisphere. Note, tho,that  this doesn't change
+    # distortions, just the overall scale of the thing. So here we are.
+    # ML 2018.07.05
+    extra_scale = 1.4
     uv *= (infl_scale * extra_scale)
     # put back polys, etc that were missing
     pts_flat = pts.copy()
@@ -229,18 +239,33 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
         blender.add_cutdata(fname, data, name=data.description)
     blender_cmd = options.config.get('dependency_paths', 'blender')
     sp.call([blender_cmd, fname])
-    patchpath = freesurfer.get_paths(fs_subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=name)
+    patchpath = freesurfer.get_paths(fs_subject, hemi,
+                                     freesurfer_subject_dir=freesurfer_subject_dir)
+    patchpath = patchpath.format(name=name)
     blender.write_patch(fname, patchpath)
-    if flatten_with=='freesurfer':
-        freesurfer.flatten(fs_subject, hemi, patch=name, freesurfer_subject_dir=freesurfer_subject_dir)
+    if flatten_with == 'freesurfer':
+        freesurfer.flatten(fs_subject, hemi, patch=name, 
+                           freesurfer_subject_dir=freesurfer_subject_dir)
         # Check to see if both hemispheres have been flattened
         other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
-                                     freesurfer_subject_dir=freesurfer_subject_dir).format(name=name+".flat")
+                                     freesurfer_subject_dir=freesurfer_subject_dir)
+        other = other.format(name=name+".flat")
         # If so, go ahead and import subject
         if os.path.exists(other):
-            freesurfer.import_flat(fs_subject, name, sname=cx_subject, freesurfer_subject_dir=freesurfer_subject_dir)
-    elif flatten_with=='SLIM':
+            freesurfer.import_flat(fs_subject, name, sname=cx_subject,
+                                   flat_type='freesurfer',
+                                   freesurfer_subject_dir=freesurfer_subject_dir)
+    elif flatten_with == 'SLIM':
         flatten_slim(fs_subject, hemi, patch=name, freesurfer_subject_dir=freesurfer_subject_dir)
+        other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
+                                     type='slim',
+                                     freesurfer_subject_dir=freesurfer_subject_dir)
+        other = other.format(name=name)
+        # If so, go ahead and import subject
+        if os.path.exists(other):
+            freesurfer.import_flat(fs_subject, name, sname=cx_subject,
+                                   flat_type='slim',
+                                   freesurfer_subject_dir=freesurfer_subject_dir)
 
     return
 

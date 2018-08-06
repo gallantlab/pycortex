@@ -71,7 +71,8 @@ def add_vcolor(hemis, mesh=None, name='color'):
         else:
             for i, j in enumerate(loopidx):
                 vcolor.data[i].color = color[j]
-    else: #older blender version, need to iterate faces instead
+    else:
+        # older blender version, need to iterate faces instead
         print("older blender found...")
         if not isinstance(color[0], (list, tuple)):
             for i in range(len(mesh.faces)):
@@ -167,12 +168,12 @@ def _get_pts_edges(mesh):
     for i, vert in enumerate(mesh.vertices):
         if vert.select:
             smore.add(i)
-    # Leave cuts (+ area around them) selected... unclear how best to cut
-    # within blender. Code below exports pts (not these pts?) to different
-    # file type, but we need an .obj file to flatten w/ SLIM
-    #bpy.ops.object.mode_set(mode='EDIT') 
-    #bpy.ops.mesh.select_all(action='DESELECT')
-    #bpy.ops.object.mode_set(mode='OBJECT')    
+    # Leave cuts (+ area around them) selected.
+    # Uncomment the next lines to revert to previous behavior
+    # (deselecting everything)
+    # bpy.ops.object.mode_set(mode='EDIT')
+    # bpy.ops.mesh.select_all(action='DESELECT')
+    # bpy.ops.object.mode_set(mode='OBJECT')
 
     fverts = set()
     if hasattr(mesh, "polygons"):
