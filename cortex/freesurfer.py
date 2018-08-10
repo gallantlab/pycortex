@@ -45,7 +45,7 @@ def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
         return os.path.join(base, "surf", hemi+"{name}_slim.obj")
 
 
-def autorecon(subject, type="all"):
+def autorecon(subject, type="all", parallel=False, n_cores=None):
     """Run Freesurfer's autorecon-all command for a given freesurfer subject
 
     Parameters
@@ -77,6 +77,12 @@ def autorecon(subject, type="all"):
             return
 
     cmd = "recon-all -s {subj} -{cmd}".format(subj=subject, cmd=types[str(type)])
+    if parallel and type in ('2', 'wm'):
+        # Parallelization only works for autorecon2 or autorecon2-wm
+        if n_cores is None:
+            import multiprocessing as mp
+            n_cores = mp.cup_count()
+        cmd += ' -parallel -openmp {n_cores:d}'.format(n_cores=n_cores)
     print("Calling:\n{cmd}".format(cmd=cmd))
     sp.check_call(shlex.split(cmd))
 

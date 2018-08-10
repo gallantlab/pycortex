@@ -117,7 +117,8 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
     hemi : str
         'lh' or 'rh' for left or right hemisphere
     patch : str
-        name of patch, often "flatten"
+        name of patch, often "flatten" (obj file used here is {hemi}_{patch}.obj
+        in the subject's freesurfer directory)
     freesurfer_subject_dir : str
         path to freesurfer subejct dir. Defaults to environment variable
         SUBJECTS_DIR
@@ -125,9 +126,10 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
         path to SLIM flattening. Defaults to path specified in config file.
     """
     if slim_path == 'None':
-        raise ValueError("Please download SLIM (%s) and set the path to it in the `slim` field\n"
-                         "in the `dependency_paths` section of your config file (%s) \n"
-                         "if you wish to use slim!"%)
+        slim_url = 'https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings'
+        raise ValueError("Please download SLIM ({slim_url}}) and set the path to it in the `slim` field\n"
+                         "in the `[dependency_paths]` section of your config file ({usercfg}) \n"
+                         "if you wish to use slim!".format(slim_url=slim_url, usercfg=options.usercfg))
     resp = input('Flattening with SLIM will take a few mins. Continue? (type y or n and press return)')
     if not resp.lower() in ('y', 'yes'): 
         print("Not flattening...")
@@ -135,7 +137,6 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
     # File paths
     if freesurfer_subject_dir is None:
         freesurfer_subject_dir = os.environ['SUBJECTS_DIR']    
-    surfpath = os.path.join(freesurfer_subject_dir, subject, "surf", "flat_{hemi}.gii")
     patchpath = freesurfer.get_paths(subject, hemi, 
                                      freesurfer_subject_dir=freesurfer_subject_dir)
     patchpath = patchpath.format(name=patch)
@@ -155,7 +156,6 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
     print("Writing input to SLIM: %s"%obj_in)
     formats.write_obj(obj_in, pts_new, polys_new)
     # Call slim to write new obj file
-
     print('Flattening with SLIM (will take a few minutes)...')
     out = sp.check_output([slim_path, obj_in, obj_out])
     print("SLIM code wrote %s"%obj_out)
@@ -193,10 +193,11 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
         # Flip Y axis upside down
         pts_flat[:, 1] = -pts_flat[:, 1]
         pts_flat[:, 0] = -pts_flat[:, 0]
-    # Save out gii file in freesurfer directory    
-    fname = surfpath.format(hemi=hemi)
-    print("Writing %s"%fname)
-    formats.write_gii(fname, pts=pts_flat, polys=polys)
+    # Modify output .obj file to reflect flattening
+    #surfpath = os.path.join(freesurfer_subject_dir, subject, "surf", "flat_{hemi}.gii")
+    #fname = surfpath.format(hemi=hemi)
+    #print("Writing %s"%fname)
+    formats.write_obj(obj_out.replace('.obj','2.obj'), pts=pts_flat, polys=polys)
     return
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None, 
