@@ -28,10 +28,23 @@ def whitematter(outfile, subject, do_voxelize=False):
             voxelize(outfile, subject, surf="wm")
     except IOError:
         import nibabel
-        bet = db.get_anat(subject, type='brainmask').get_filename()
+        
         try:
             cache = tempfile.mkdtemp()
-            print("Segmenting the brain...")
+            print ("Attempting to segment the brain with freesurfer...")
+            bet2 = db.get_anat(subject, type='raw_wm').get_filename()
+            vol = nibabel.load('{bet2}'.format(bet2=bet2))
+            vol_data = vol.get_data()
+            print(vol_data.shape)
+            new_data = vol_data.copy()
+            new_data[new_data==250] = 0
+            new_data[new_data>0] = 1
+            wm_freesurf = nibabel.Nifti1Image(new_data, vol.affine, header=vol.header)
+            wm_freesurf.to_filename(outfile)
+        except:
+            cache = tempfile.mkdtemp()
+            print("Attempt with freesurfer failed, trying again with FSL...")
+            bet = db.get_anat(subject, type='brainmask').get_filename()
             cmd = '{fsl_prefix}fast -o {cache}/fast {bet}'.format(fsl_prefix=fsl_prefix, cache=cache, bet=bet)
             assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
 
