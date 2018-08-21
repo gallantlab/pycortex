@@ -12,14 +12,14 @@ from . import composite
 
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
                 height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
-                with_labels=True, with_colorbar=True, with_borders=False, 
-                with_dropout=False, with_curvature=False, extra_disp=None, 
+                with_labels=True, with_colorbar=True, with_borders=False,
+                with_dropout=False, with_curvature=False, extra_disp=None,
                 with_connected_vertices=False,
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
                 curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
                 colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), **kwargs):
-    """Show a Volume or Vertex on a flatmap with matplotlib. 
+    """Show a Volume or Vertex on a flatmap with matplotlib.
 
     Note that **kwargs are ONLY present now for backward compatibility / warnings. No kwargs
     should be used.
@@ -36,7 +36,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     thick : int
         Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
     sampler : str
-        Name of sampling function used to sample underlying volume data. Options include 
+        Name of sampling function used to sample underlying volume data. Options include
         'trilinear', 'nearest', 'lanczos'; see functions in cortex.mapper.samplers.py for all options
     height : int
         Height of the image to render. Automatically scales the width for the aspect
@@ -68,24 +68,24 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     labelcolor : tuple of float, optional
         (R, G, B, A) specification for the label color
     curvature_brightness : float, optional
-        Mean* brightness of background. 0 = black, 1 = white, intermediate values are corresponding 
-        grayscale values. If None, Defaults to config file value. (*this does not precisely specify 
-        the mean; the actual mean luminance of the curvature depends on the value for 
+        Mean* brightness of background. 0 = black, 1 = white, intermediate values are corresponding
+        grayscale values. If None, Defaults to config file value. (*this does not precisely specify
+        the mean; the actual mean luminance of the curvature depends on the value for
         `curvature_contrast`. It's easiest to think about it as the mean brightness, though.)
     curvature_contrast : float, optional
         Contrast of curvature. 1 = maximal contrast (black/white), 0 = no contrast (solid color for
-        curvature equal to `curvature_brightness`). 
+        curvature equal to `curvature_brightness`).
     cvmax : float, optional [DEPRECATED! use `curvature_brightness` and `curvature_contrast` instead]
         Maximum value for background curvature colormap. Defaults to config file value.
     cvthr : bool, optional [DEPRECATED! use `curvature_threshold` instead]
         Apply threshold to background curvature
     extra_disp : tuple, optional
         Optional extra display layer from external .svg file. Tuple specifies (filename, layer)
-        filename should be a full path. External svg file should be structured exactly as 
-        overlays.svg for the subject. (Best to just copy overlays.svg somewhere else and add 
+        filename should be a full path. External svg file should be structured exactly as
+        overlays.svg for the subject. (Best to just copy overlays.svg somewhere else and add
         layers to it.) Default value is None.
     extra_hatch : tuple, optional
-        Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple. 
+        Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple.
     colorbar_location : tuple, optional
         Location of the colorbar! Not sure of what the numbers actually mean. Left, bottom, width, height, maybe?
     """
@@ -102,7 +102,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         fig = plt.figure(fig.number)
     ax = fig.add_axes((0, 0, 1, 1))
     # Add data
-    data_im, extents = composite.add_data(fig, dataview, pixelwise=pixelwise, thick=thick, sampler=sampler, 
+    data_im, extents = composite.add_data(fig, dataview, pixelwise=pixelwise, thick=thick, sampler=sampler,
                        height=height, depth=depth, recache=recache)
 
     layers = dict(data=data_im)
@@ -116,7 +116,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                              "to set appearance of background curvature."))
             legacy_mode = True
             if ('cvmin' in kwargs) and ('cvmax' in kwargs):
-                # Assumes that if one is specified, both are; weird case where only one is 
+                # Assumes that if one is specified, both are; weird case where only one is
                 # specified will still break.
                 curvature_lims = (kwargs.pop('cvmin'), kwargs.pop('cvmax'))
             else:
@@ -126,7 +126,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         else:
             curvature_lims = 0.5
             legacy_mode = False
-        curv_im = composite.add_curvature(fig, dataview, extents, 
+        curv_im = composite.add_curvature(fig, dataview, extents,
                                           brightness=curvature_brightness,
                                           contrast=curvature_contrast,
                                           threshold=curvature_threshold,
@@ -145,13 +145,13 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             hatch_data = utils.get_dropout(dataview.subject, dataview.xfmname,
                                          power=dropout_power)
 
-        drop_im = composite.add_hatch(fig, hatch_data, extents=extents, height=height, 
+        drop_im = composite.add_hatch(fig, hatch_data, extents=extents, height=height,
             sampler=sampler)
         layers['dropout'] = drop_im
     # Add extra hatching
     if extra_hatch is not None:
         hatch_data2, hatch_color = extra_hatch
-        hatch_im = composite.add_hatch(fig, hatch_data2, extents=extents, height=height, 
+        hatch_im = composite.add_hatch(fig, hatch_data2, extents=extents, height=height,
             sampler=sampler)
         layers['hatch'] = hatch_im
     # Add rois
@@ -167,8 +167,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     # Add custom
     if extra_disp is not None:
         svgfile, layer = extra_disp
-        custom_im = composite.add_custom(fig, dataview, svgfile, layer, height=height, extents=extents, 
-            linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, 
+        custom_im = composite.add_custom(fig, dataview, svgfile, layer, height=height, extents=extents,
+            linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor,
             with_labels=with_labels)
         layers['custom'] = custom_im
     # Add connector lines btw connected vertices
@@ -190,10 +190,13 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if with_colorbar:
         # Allow 2D colorbars:
         if isinstance(dataview, dataset.view2D.Dataview2D):
+            print colorbar_location, "2d"
             colorbar = composite.add_colorbar_2d(fig, dataview.cmap,
-                [dataview.vmin, dataview.vmax, dataview.vmin2, dataview.vmax2])
+                [dataview.vmin, dataview.vmax, dataview.vmin2, dataview.vmax2],
+                colorbar_location=colorbar_location)
         else:
-            colorbar = composite.add_colorbar(fig, data_im)
+            print colorbar_location
+            colorbar = composite.add_colorbar(fig, data_im, colorbar_location=colorbar_location)
         # Reset axis to main figure axis
         plt.axes(ax)
 
@@ -223,11 +226,11 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
         the subject's flatmap
     depth : float
         Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
-        boundary, 1 = pial surface)        
+        boundary, 1 = pial surface)
     with_rois, with_labels, with_colorbar, with_borders, with_dropout : bool, optional
         Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?
     sampler : str
-        Name of sampling function used to sample underlying volume data. Options include 
+        Name of sampling function used to sample underlying volume data. Options include
         'trilinear', 'nearest', 'lanczos'; see functions in cortex.mapper.samplers.py for all options
 
     Other Parameters
@@ -257,7 +260,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
                       sampler=sampler,
                       height=height,
                       **kwargs)
-    
+
     imsize = fig.get_axes()[0].get_images()[0].get_size()
     fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
     if bgcolor is None:
@@ -267,12 +270,12 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     fig.clf()
     plt.close(fig)
 
-def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pixelwise=True, sampler='nearest', height=1024, thick=32, depth=0.5, 
+def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pixelwise=True, sampler='nearest', height=1024, thick=32, depth=0.5,
     """Save an svg file of the desired flatmap.
 
     This function creates an SVG file with vector graphic ROIs overlaid on a single png image.
-    Ideally, this function would layer different images (curvature, data, dropout, etc), but 
-    that has been left to implement at a future date if anyone really wants it. 
+    Ideally, this function would layer different images (curvature, data, dropout, etc), but
+    that has been left to implement at a future date if anyone really wants it.
 
     Parameters
     ----------
@@ -286,15 +289,15 @@ def make_svg(fname, braindata, with_labels=True, **kwargs): # recache=False, pix
     Other Parameters
     ----------------
     kwargs : see make_figure
-        All kwargs are passed to make_png. `with_rois` will be ignored, because by using 
-        this function you are basically saying that you want an editable layer of vector 
+        All kwargs are passed to make_png. `with_rois` will be ignored, because by using
+        this function you are basically saying that you want an editable layer of vector
         graphic ROIs on top of your image. `with_cutouts` is not functional yet.
     """
     fp = io.BytesIO()
     from matplotlib.pylab import imsave
     to_cut = ['with_rois', 'cutouts']
     for cc in to_cut:
-        if cc in kwargs: 
+        if cc in kwargs:
             _ = kwargs.pop(cc)
     ## Render PNG file & retrieve image data
     make_png(fp, braindata, with_rois=False, **kwargs) #recache=recache, pixelwise=pixelwise, sampler=sampler, height=height, thick=thick, depth=depth, **kwargs)
@@ -319,7 +322,7 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024,
     import tempfile
     import subprocess as sp
     import multiprocessing as mp
-    
+
     from scipy.interpolate import interp1d
 
     # Make the flatmaps
@@ -338,14 +341,14 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024,
     times = np.arange(0, len(ims)*tr, tr)
     interp = interp1d(times, ims, kind=interp, axis=0, copy=False)
     frames = np.linspace(0, times[-1], (len(times)-1)*tr*fps+1)
-    
+
     try:
         path = tempfile.mkdtemp()
         impath = os.path.join(path, "im{:09d}.png")
-        for frame, frame_time in enumerate(frames): 
+        for frame, frame_time in enumerate(frames):
             img.set_data(interp(frame_time))
             fig.savefig(impath.format(frame), transparent=True, dpi=dpi)
-        # avconv might not be relevant function for all operating systems. 
+        # avconv might not be relevant function for all operating systems.
         # Introduce operating system check here?
         cmd = "avconv -i {path} -vcodec {vcodec} -r {fps} -b {br} {name}".format(path=impath, vcodec=vcodec, fps=fps, br=bitrate, name=name)
         sp.call(shlex.split(cmd))
