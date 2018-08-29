@@ -25,9 +25,9 @@ cwd = os.path.abspath(os.path.split(__file__)[0])
 
 class SVGOverlay(object):
     """Object to represent all vector graphic overlays (rois, sulci, etc) stored in an svg file
-    
-    This object facilitates interaction with the information in the overlays.svg files 
-    that exist for each subject in the pycortex database. 
+
+    This object facilitates interaction with the information in the overlays.svg files
+    that exist for each subject in the pycortex database.
 
     Parameters
     ----------
@@ -73,7 +73,7 @@ class SVGOverlay(object):
         # See http://stackoverflow.com/questions/31819778/scipy-spatial-ckdtree-running-slowly
         try:
             # not compatible with scipy version < 0.16
-            self.kdt = cKDTree(self.coords, balanced_tree=False) 
+            self.kdt = cKDTree(self.coords, balanced_tree=False)
         except:
             # Older call signature
             self.kdt = cKDTree(self.coords)
@@ -123,22 +123,23 @@ class SVGOverlay(object):
         """Return a string xml version of the SVGOverlay object"""
         return etree.tostring(self.svg, pretty_print=pretty)
 
-    def get_svg(self, filename=None, labels=True, with_ims=None):
+    def get_svg(self, filename=None, layers=['rois'], labels=True, with_ims=None):
         """Returns a new SVG file with images embedded
 
         Parameters
         ----------
         filename : string
             File path to which to write new svg
+        layers : list
+            List of layer names to show
         labels : boolean
             Whether labels should be visible or not
         with_ims : list
-            list of images to incorporate into new svg file. The first image 
+            list of images to incorporate into new svg file. The first image
             listed will be on the uppermost layer, the last will be lowest.
         """
-        self.labels.visible = labels
-        
-        outsvg = copy.deepcopy(self.svg)
+        outsvg = self.svg
+
         if with_ims is not None:
             if isinstance(with_ims, (list, tuple)):
                 with_ims = zip(range(len(with_ims)), with_ims)
@@ -154,17 +155,33 @@ class SVGOverlay(object):
                     )
                 imlayer.append(img)
                 outsvg.getroot().insert(0, imlayer)
-        
-        if filename is None:
-            return etree.tostring(outsvg)
-        else:
-            with open(filename, "wb") as outfile:
-                outfile.write(etree.tostring(outsvg))
-        
+
+        for layer in self:
+            if layer.name in layers:
+                layer.visible = True
+                layer.labels.visible = labels
+                for name_, shape_ in layer.shapes.items():
+                    shape_.visible = True
+                    # Set visibility of labels (by setting text alpha to 0)
+                    # This could be less baroque, but text elements currently
+                    # do not have individually settable visibility / style params
+                    tmp_style = copy.deepcopy(layer.labels.text_style)
+                    tmp_style['fill-opacity'] = '1' if labels else '0'
+                    tmp_style_str = ';'.join(['%s:%s'%(k,v) for k, v in tmp_style.items() if v != 'None'])
+                    for i in range(len(layer.labels.elements[name_])):
+                        layer.labels.elements[name_][i].set('style', tmp_style_str)
+            else:
+                layer.visible = False
+                layer.labels.visible = False
+
+        with open(filename, "wb") as outfile:
+            outfile.write(etree.tostring(outsvg))
+        print('Saved SVG to: %s'%filename)
+
     def get_texture(self, layer_name, height, name=None, background=None, labels=True,
         shape_list=None, **kwargs):
         """Renders a specific layer of this svgobject as a png
-        
+
         Parameters
         ----------
         layer_name : string
@@ -178,7 +195,7 @@ class SVGOverlay(object):
         labels : boolean
             Whether to render labels for paths in the svg file
         shape_list : list
-            list of string names for path/shape elements in this layer to be rendered 
+            list of string names for path/shape elements in this layer to be rendered
             (any elements not on this list will be set to invisible, if this list is
             provided)
         kwargs : keyword arguments
@@ -327,14 +344,14 @@ class Labels(object):
         # if possible, falling back to overlay_text if the speific layer defaults don't exist.
         # Don't have time to figure out how to get the layer name here (rois, sulci, etc)
         self.text_style = dict(config.items("overlay_text"))
-        
+
         text_style = self.text_style.items()
         text_style = ';'.join(['%s:%s'%(k,v) for k, v in text_style if v != 'None'])
 
         #generate a list of labels that should be in the layer
         self.elements = dict()
         for shape in self.overlay.shapes.values():
-            self.elements[shape.name] = shape.get_labelpos() 
+            self.elements[shape.name] = shape.get_labelpos()
 
         #match up existing labels with their respective paths
         def close(pt, x, y):
@@ -467,7 +484,7 @@ def _make_layer(parent, name):
     layer.attrib["{%s}label"%inkns] = name
     layer.attrib["{%s}groupmode"%inkns] = "layer"
     return layer
-    
+
 try:
     from shapely.geometry import Polygon
     def _center_pts(pts):
@@ -606,7 +623,7 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False, **kwargs):
 
     else:
         svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)
-    
+
     # Assure all layers are present
     for layer in ['sulci', 'cutouts', 'display']:
         if layer not in svg.layers:
@@ -614,7 +631,7 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False, **kwargs):
 
     if remove_medial:
         return svg, valid
-        
+
     return svg
 
 ## From svg.path (https://github.com/regebro/svg.path/blob/master/src/svg/path/parser.py)
@@ -640,7 +657,7 @@ def _parse_svg_pts(datastr):
     offset = np.array([float(x) for x in [data.pop(0), data.pop(0)]])
     mode = "l"
     pts = [[offset[0], offset[1]]]
-    
+
     def canfloat(n):
         try:
             float(n)
@@ -717,7 +734,7 @@ def import_roi(roifile, outfile):
 
     with open(outfile, "wb") as fp:
         fp.write(etree.tostring(svg, pretty_print=True))
-        
+
     # Final check for all layers
     svgo = SVGOverlay(outfile)
     for new_layer in ['sulci', 'cutouts', 'display']:
@@ -728,7 +745,7 @@ def gen_path(path):
     mdict = dict(m=Path.MOVETO, l=Path.LINETO)
     verts, codes = [], []
     mode, pen = None, np.array([0.,0.])
-    
+
     it = iter(path.get('d').split(' '))
     run = True
     while run:
@@ -765,7 +782,7 @@ def gen_path(path):
                 else:
                     pen = np.array(val)
                     verts.append(val)
-                    
+
                 if mode == 'm':
                     mode = 'l'
                 elif mode == 'M':
