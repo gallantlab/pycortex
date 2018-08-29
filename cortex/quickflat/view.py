@@ -266,7 +266,8 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     fig.clf()
     plt.close(fig)
 
-def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['rois'], height=1024):
+def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['rois'],
+             height=1024, **kwargs):
     """Save an svg file of the desired flatmap.
 
     This function creates an SVG file with vector graphic ROIs overlaid on a single png image.
@@ -293,8 +294,12 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
     from matplotlib.pylab import imsave
 
     ## Render PNG file & retrieve image data
-    arr, extents = make_flatmap_image(braindata, height=height)
-    imsave(fp, arr, cmap=braindata.cmap, vmin=braindata.vmin, vmax=braindata.vmax)
+    arr, extents = make_flatmap_image(braindata, height=height, **kwargs)
+
+    if hasattr(braindata, 'cmap'):
+        imsave(fp, arr, cmap=braindata.cmap, vmin=braindata.vmin, vmax=braindata.vmax)
+    else:
+        imsave(fp, arr)
     fp.seek(0)
     pngdata = binascii.b2a_base64(fp.read())
     image_data = [pngdata]
