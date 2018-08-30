@@ -9,6 +9,7 @@ from scipy import sparse
 import scipy.sparse.linalg
 
 from . import exact_geodesic
+from . import parallel_transport
 from . import subsurface
 
 
@@ -26,7 +27,11 @@ def _memo(fn):
     return memofn
 
 
-class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
+class Surface(
+    exact_geodesic.ExactGeodesicMixin,
+    parallel_transport.ParallelTransportMixin,
+    subsurface.SubsurfaceMixin,
+):
     """Represents a single cortical hemisphere surface. Can be the white matter surface,
     pial surface, fiducial (mid-cortical) surface, inflated surface, flattened surface,
     etc.
