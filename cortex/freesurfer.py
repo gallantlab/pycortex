@@ -173,7 +173,7 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
     database.db = database.Database()
 
 
-def import_flat(subject, patch, sname=None, flat_type='freesurfer',
+def import_flat(subject, patch, sname=None,
                 freesurfer_subject_dir=None):
     """Imports a flat brain from freesurfer
 
