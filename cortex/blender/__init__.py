@@ -28,7 +28,7 @@ def _call_blender(filename, code, blender_path=default_blender):
     """
     with tempfile.NamedTemporaryFile() as tf:
         print("In new named temp file: %s"%tf.name)
-        startcode=_base_imports
+        startcode = _base_imports
         endcode = "\nbpy.ops.wm.save_mainfile(filepath='{fname}')".format(fname=filename)
         cmd = "{blender_path} -b {fname} -P {tfname}".format(blender_path=blender_path, fname=filename, tfname=tf.name)
         if not os.path.exists(filename):
