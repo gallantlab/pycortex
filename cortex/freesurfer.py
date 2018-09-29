@@ -11,6 +11,13 @@ import subprocess as sp
 from builtins import input
 
 import numpy as np
+import nibabel
+from nibabel import gifti
+from tempfile import NamedTemporaryFile
+from scipy.spatial.kdtree import KDTree
+from scipy.linalg import lstsq
+from scipy.sparse import coo_matrix
+
 
 from . import database
 from . import anat
@@ -528,6 +535,187 @@ def get_label(subject, label, fs_subject=None, fs_dir=None, src_subject='fsavera
     verts, values = _parse_labels(label_files, subject)
     idx = verts.astype(np.int)
     return idx, values
+
+
+def _mri_surf2surf_command(src_subj, trg_subj, input_file, output_file, hemi):
+    # mri_surf2surf --srcsubject <source subject name> --srcsurfval
+    # <sourcefile> --trgsubject <target suhject name> --trgsurfval <target
+    # file> --hemi <hemifield>
+
+    cmd = ["mri_surf2surf", "--srcsubject", src_subj,
+                            "--sval", input_file,
+                            "--trgsubject", trg_subj,
+                            "--tval", output_file,
+                            "--hemi", hemi,
+          ]
+    return cmd
+
+
+
+def mri_surf2surf(data, source_subj, target_subj, hemi):
+    """Uses freesurfer mri_surf2surf to transfer vertex data between
+        two freesurfer subjects
+    
+    Parameters
+    ==========
+    data: ndarray, shape=(n_imgs, n_verts)
+        data arrays representing vertex data
+    
+    source_subj: str
+        freesurfer subject name of source subject
+    
+    target_subj: str
+        freesurfer subject name of target subject
+    
+    hemi: str in ("lh", "rh")
+        string indicating hemisphere.
+    
+    Notes
+    =====
+    Requires path to mri_surf2surf or freesurfer environment to be active.
+    """
+    data_arrays = [gifti.GiftiDataArray(d) for d in data]
+    gifti_image = gifti.GiftiImage(darrays=data_arrays)
+
+    tf_in = NamedTemporaryFile(suffix=".gii")
+    nibabel.save(gifti_image, tf_in.name)
+
+    tf_out = NamedTemporaryFile(suffix='.gii')
+    cmd = _mri_surf2surf_command(source_subj, target_subj,
+                                   tf_in.name, tf_out.name, hemi)
+    p = sp.Popen(cmd)
+    exit_code = p.wait()
+    if exit_code != 0:
+        import warnings
+        warnings.warn(f"Exit code {exit_code} means mri_surf2surf didn't work")
+
+    tf_in.close()
+    output_img = nibabel.load(tf_out.name)
+    output_data = np.array([da.data for da in output_img.darrays])
+    tf_out.close()
+    return output_data
+
+
+def get_mri_surf2surf_matrix(source_subj, hemi, surface_type,
+                            target_subj='fsaverage', subjects_dir=None,
+                            n_neighbors=20, random_state=0,
+                            n_test_images=40, coef_threshold=None,
+                            renormalize=True):
+
+    """Creates a matrix implementing freesurfer mri_surf2surf command.
+    
+    A surface-to-surface transform is a linear transform between vertex spaces.
+    Such a transform must be highly localized in the sense that a vertex in the
+    target surface only draws its values from very few source vertices.
+    This function exploits the localization to create an inverse problem for 
+    each vertex.
+    The source neighborhoods for each target vertex are found by using
+    mri_surf2surf to transform the three coordinate maps from the source 
+    surface to the target surface, yielding three coordinate values for each
+    target vertex, for which we find the nearest neighbors in the source space.
+    A small number of test images is transformed from source surface to
+    target surface.	
+    For each target vertex in the transformed test images, a regression is 
+    performed using only the corresponding source image neighborhood, yielding
+    the entries for a sparse matrix encoding the transform.
+    
+    Parameters
+    ==========
+    
+    source_subj: str
+    	Freesurfer name of source subject
+    
+    hemi: str in ("lh", "rh")
+    	Indicator for hemisphere
+    
+    surface_type: str in ("white", "pial", ...)
+    	Indicator for surface layer
+    
+    target_subj: str, default "fsaverage"
+    	Freesurfer name of target subject
+    
+    subjects_dir: str, default os.environ["SUBJECTS_DIR"]
+    	The freesurfer subjects directory
+    
+    n_neighbors: int, default 20
+    	The size of the neighborhood to take into account when estimating
+    	the source support of a vertex
+    
+    random_state: int, default 0
+    	Random number generator or seed for generating test images
+    
+    n_test_images: int, default 40
+    	Number of test images transformed to compute inverse problem. This 
+    	should be greater than n_neighbors or equal.
+    
+    coef_treshold: float, default 1 / (10 * n_neighbors)
+    	Value under which to set a weight to zero in the inverse problem.
+    
+    renormalize: boolean, default True
+    	Determines whether the rows of the output matrix should add to 1,
+    	implementing what is sensible: a weighted averaging
+    
+    Notes
+    =====
+    It turns out that freesurfer seems to do the following: For each target
+    vertex, find, on the sphere, the nearest source vertices, and average their
+    values. Try to be as one-to-one as possible.
+    """
+
+    source_verts, _, _ = get_surf(source_subj, hemi, surface_type,
+                                  freesurfer_subject_dir=subjects_dir)
+
+    transformed_coords = mri_surf2surf(source_verts.T, 
+                                            source_subj, target_subj, hemi)
+
+    kdt = KDTree(source_verts)
+    print("Getting nearest neighbors")
+    distances, indices = kdt.query(transformed_coords.T, k=n_neighbors)
+    print("Done")
+
+    rng = (np.random.RandomState(random_state) 
+                          if isinstance(random_state, int) else random_state)
+    test_images = rng.randn(n_test_images, len(source_verts))
+    transformed_test_images = mri_surf2surf(test_images, source_subj,
+                                           target_subj, hemi)
+
+    # Solve linear problems to get coefficients
+    all_coefs = []
+    residuals = []
+    print("Computing coefficients")
+    i = 0
+    for target_activation, source_inds in zip(
+                                        transformed_test_images.T, indices):
+        i += 1
+        print(f"{i}", end="\r")
+        source_values = test_images[:, source_inds]
+        r = lstsq(source_values, target_activation,
+                 overwrite_a=True, overwrite_b=True)
+        all_coefs.append(r[0])
+        residuals.append(r[1])
+    print("Done")
+
+    all_coefs = np.array(all_coefs)
+
+    if coef_threshold is None:  # we know now that coefs are doing averages
+        coef_threshold = (1 / 10. / n_neighbors )
+    all_coefs[np.abs(all_coefs) < coef_threshold] = 0
+    if renormalize:
+        all_coefs /= np.abs(all_coefs).sum(axis=1)[:, np.newaxis] + 1e-10
+
+    # there seem to be like 7 vertices that don't constitute an average over
+    # 20 vertices or less, but all the others are such an average.
+
+    # Let's make a matrix that does the transform:
+    col_indices = indices.ravel()
+    row_indices = (np.arange(indices.shape[0])[:, np.newaxis] *
+                   np.ones(indices.shape[1], dtype='int')).ravel()
+    data = all_coefs.ravel()
+    shape = (transformed_coords.shape[1], source_verts.shape[0])
+
+    matrix = coo_matrix((data, (row_indices, col_indices)), shape=shape)
+
+    return matrix
 
 
 def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):
