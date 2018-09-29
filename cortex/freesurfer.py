@@ -587,7 +587,9 @@ def mri_surf2surf(data, source_subj, target_subj, hemi):
     exit_code = p.wait()
     if exit_code != 0:
         import warnings
-        warnings.warn(f"Exit code {exit_code} means mri_surf2surf didn't work")
+        warnings.warn(
+            ("Exit code {exit_code} means that "
+            "mri_surf2surf didn't work").format(exit_code))
 
     tf_in.close()
     output_img = nibabel.load(tf_out.name)
@@ -687,7 +689,7 @@ def get_mri_surf2surf_matrix(source_subj, hemi, surface_type,
     for target_activation, source_inds in zip(
                                         transformed_test_images.T, indices):
         i += 1
-        print(f"{i}", end="\r")
+        print("{i}".format(i), end="\r")
         source_values = test_images[:, source_inds]
         r = lstsq(source_values, target_activation,
                  overwrite_a=True, overwrite_b=True)
