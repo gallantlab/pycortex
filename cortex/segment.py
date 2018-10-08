@@ -202,7 +202,7 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
     
     if slim_path == 'None':
         slim_url = 'https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings'
-        raise ValueError("Please download SLIM ({slim_url}}) and set the path to it in the `slim` field\n"
+        raise ValueError("Please download SLIM ({slim_url}) and set the path to it in the `slim` field\n"
                          "in the `[dependency_paths]` section of your config file ({usercfg}) \n"
                          "if you wish to use slim!".format(slim_url=slim_url, usercfg=options.usercfg))
     resp = input('Flattening with SLIM will take a few mins. Continue? (type y or n and press return)')
