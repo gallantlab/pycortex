@@ -81,7 +81,7 @@ def edit_segmentation(subject,
              'brainmask': 'heat',
              'wm': 'heat',
              'smoothwm': 'yellow',
-             'pial': 'red'
+             'pial': 'blue'
              }
     opacity={'brain': 1.0,
              'aseg': 0.4,

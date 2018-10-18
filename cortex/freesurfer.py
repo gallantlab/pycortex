@@ -429,11 +429,12 @@ def get_label(subject, label, fs_subject=None, fs_dir=None, src_subject='fsavera
     if fs_subject is None:
         fs_subject = subject
     label_files = [os.path.join(fs_dir, fs_subject, 'label', '{}.{}.label'.format(h, label)) for h in hemisphere]
-    # If label file doesn't exist, try to move it there
-    print('looking for {}'.format(label_files))
-    if not all([os.path.exists(f) for f in label_files]):
-        print("Transforming label file to subject's freesurfer directory...")
-        _move_labels(fs_subject, label, hemisphere=hemisphere, fs_dir=fs_dir, src_subject=src_subject)
+    if subject not in ['fsaverage', 'MNI', 'fsaverage_pycortex']:
+        # If label file doesn't exist, try to move it there
+        print('looking for {}'.format(label_files))
+        if not all([os.path.exists(f) for f in label_files]):
+            print("Transforming label file to subject's freesurfer directory...")
+            _move_labels(fs_subject, label, hemisphere=hemisphere, fs_dir=fs_dir, src_subject=src_subject)
     verts, values = _parse_labels(label_files, subject)
     idx = verts.astype(np.int)
     return idx, values
