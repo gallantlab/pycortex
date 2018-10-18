@@ -56,6 +56,7 @@ var mriview = (function(module) {
                 thickmix:   { type:'f',  value:0.5},
                 surfmix:    { type:'f',  value:0},
                 bumpyflat:  { type:'i',  value:viewopts.bumpy_flatmap == 'true'},
+                allowtilt:  { type:'i',  value:viewopts.allow_tilt == 'true'},
                 // equivolume:  { type:'i',  value:viewopts.equivolume == 'true'},
 
                 //hatch:      { type:'t',  value:0, texture: module.makeHatch() },
@@ -81,6 +82,7 @@ var mriview = (function(module) {
             shift: {action:[this, "setShift", 0, 200]},
             depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
             bumpy_flatmap: {action:[this.uniforms.bumpyflat, "value"]},
+            allow_tilt: {action:[this.uniforms.allowtilt, "value"]},
             equivolume: {action:[this, "setEquivolume"]},
             changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true},
             opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
