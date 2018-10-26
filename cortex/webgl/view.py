@@ -103,12 +103,13 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     You will need a real web server to view this, since `file://` paths
     don't handle xsrf correctly
     """
-    if overlay_file is not None:
-        raise NotImplementedError("External overlay_file not supported yet, sorry!")
     
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
         os.makedirs(outpath)
+    if not os.path.exists(os.path.join(outpath, 'data')):
+        # Don't lump together w/ outpath, because of edge cases
+        # for which outpath exists but not sub-folder `data`
         os.makedirs(os.path.join(outpath, "data"))
 
     data = dataset.normalize(data)
@@ -142,7 +143,12 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         ctms[subj] = newfname+".json"
 
         for ext in ['json', 'ctm', 'svg']:
-            srcfile = os.path.join(oldpath, "%s.%s"%(fname, ext))
+            if (ext=='svg') and (overlay_file is not None):
+                1/0
+                # Need to strip / parse SVG file
+                srcfile = overlay_file
+            else:
+                srcfile = os.path.join(oldpath, "%s.%s"%(fname, ext))
             newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
             if os.path.exists(newfile):
                 os.unlink(newfile)
@@ -286,8 +292,6 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         The layout of the viewer subwindows for showing multiple subjects.
         Default None, which selects the layout based on the number of subjects.
     """
-    if overlay_file is not None:
-        raise NotImplementedError("External overlay_file not supported yet, sorry!")
     
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
@@ -425,6 +429,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         def post(self):
             data = self.get_argument("svg", default=None)
             png = self.get_argument("png", default=None)
+            1/0
             with open(post_name.get(), "wb") as svgfile:
                 if png is not None:
                     data = png[22:].strip()
