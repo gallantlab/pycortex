@@ -35,7 +35,8 @@ def get_roipack(*args, **kwargs):
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False,
-                decimate=False):
+                decimate=False, external_svg=None,
+                overlays_available=None):
     """Creates ctm file for the specified input arguments.
 
     This is a cached file that specifies (1) the surfaces between which
@@ -49,13 +50,22 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     types : tuple
         Surfaces between which to interpolate.
     method : str
-
-    level :
-
+        string specifying method of how inverse transforms for
+        labels are computed (determines how labels are displayed
+        on 3D viewer) one of ['mg2','raw']
     recache : bool
-        Recache intermediate files? Can resolve some errors but is slower.
-
+        Whether to re-generate .ctm files. Can resolve some errors 
+        but takes more time to re-generate cached files.
     decimate : bool
+        whether to decimate the mesh geometry of the hemispheres
+        to reduce file size
+    external_svg : str or None
+        file string for .svg file containing alternative overlays 
+        for brain viewer. If None, the `overlays.svg` file for this
+        subject (in the pycortex_store folder for the subejct) is used.
+    overlays_available: tuple or None
+        Which overlays in the svg file to include in the viewer. If
+        None, all layers in the relevant svg file are included.
 
     Returns
     -------
@@ -79,7 +89,9 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
                                types=types,
                                method=method,
                                level=level,
-                               decimate=decimate)
+                               decimate=decimate,
+                               external_svg=external_svg,
+                               overlays_available=overlays_available)
     return ctmfile
 
 def get_ctmmap(subject, **kwargs):

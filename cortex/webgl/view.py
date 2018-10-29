@@ -41,7 +41,7 @@ colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
-                template="static.html", layout=None, anonymize=False,
+                template="static.html", layout=None, anonymize=False, overlays_available=None,
                 html_embed=True, overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
                 overlay_file=None, copy_ctmfiles=True, title='Brain', **kwargs):
     """
@@ -64,6 +64,11 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     anonymize : bool, optional
         Whether to rename CTM and SVG files generically, for public distribution.
         Default False
+    overlays_available : tuple, optional
+        Overlays availble in the viewer. If None, then all overlay layers of the
+        svg file will be potentially available in the viewer (whether initially
+        visible or not). This provides the option to include, e.g., only a subset
+        of layers for a given static viewer. 
     overlays_visible : tuple, optional
         The listed overlay layers will be set visible by default. Layers not listed
         here will be hidden by default (but can be enabled in the viewer GUI).
@@ -121,7 +126,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     package = Package(data)
     subjects = list(package.subjects)
 
-    ctmargs = dict(method='mg2', level=9, recache=recache)
+    ctmargs = dict(method='mg2', level=9, recache=recache, external_svg=overlay_file, 
+                   overlays_available=overlays_available)
     ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
                 for subj in subjects)
     package.reorder(ctms)
@@ -143,12 +149,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         ctms[subj] = newfname+".json"
 
         for ext in ['json', 'ctm', 'svg']:
-            if (ext=='svg') and (overlay_file is not None):
-                1/0
-                # Need to strip / parse SVG file
-                srcfile = overlay_file
-            else:
-                srcfile = os.path.join(oldpath, "%s.%s"%(fname, ext))
+            srcfile = os.path.join(oldpath, "%s.%s"%(fname, ext))
             newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
             if os.path.exists(newfile):
                 os.unlink(newfile)
@@ -232,8 +233,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
          autoclose=True, open_browser=True, port=None, pickerfun=None,
-         template="mixer.html", overlays_visible=('rois', 'sulci'),
-         labels_visible=('rois', ), overlay_file=None, title='Brain', **kwargs):
+         template="mixer.html", overlays_available=None, 
+         overlays_visible=('rois', 'sulci'), labels_visible=('rois', ), 
+         overlay_file=None, title='Brain', **kwargs):
     """
     Creates a webGL MRI viewer that is dynamically served by a tornado server
     running inside the current python process.
@@ -312,7 +314,8 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     images = package.images
     subjects = list(package.subjects)
 
-    ctmargs = dict(method='mg2', level=9, recache=recache)
+    ctmargs = dict(method='mg2', level=9, recache=recache, 
+        external_svg=overlay_file, overlays_available=overlays_available)
     ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
                 for subj in subjects)
     package.reorder(ctms)
@@ -429,7 +432,6 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         def post(self):
             data = self.get_argument("svg", default=None)
             png = self.get_argument("png", default=None)
-            1/0
             with open(post_name.get(), "wb") as svgfile:
                 if png is not None:
                     data = png[22:].strip()

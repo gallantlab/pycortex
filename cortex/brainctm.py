@@ -113,14 +113,22 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
-    def save(self, path, method='mg2', **kwargs):
+    def save(self, path, method='mg2', external_svg=None, 
+             overlays_available=None, **kwargs):
         """Save CTM file for static html display. 
 
         Parameters
         ----------
         path : string
             File path for cached ctm file to save
-        method : idkwtf
+        method : str
+            string specifying method of how inverse transforms for
+            labels are computed (determines how labels are displayed
+            on 3D viewer) one of ['mg2','raw']
+        overlays_available : str
+            Which overlays in the svg file to include in the viewer. If
+            None, all layers in the relevant svg file are included.
+
         """
         ctmname = path + ".ctm"
         svgname = path + ".svg"
@@ -165,7 +173,14 @@ class BrainCTM(object):
         # Save the SVG with remapped indices (map 2D flatmap locations to vertices)
         if self.left.flat is not None:
             flatpts = np.vstack([self.left.flat, self.right.flat])
-            svg = db.get_overlay(self.subject, pts=flatpts) # PROBLEM HERE
+            if external_svg is None:
+                svg = db.get_overlay(self.subject, pts=flatpts, 
+                                     overlays_available=overlays_available) 
+            else:
+                from .svgoverlay import get_overlay
+                _, polys = db.get_surf(self.subject, "flat", merge=True, nudge=True)
+                svg = get_overlay(self.subject, external_svg, flatpts, polys, 
+                                  overlays_available=overlays_available)
             
             # assign coordinates in left hemisphere negative values
             with open(svgname, "wb") as fp:
@@ -256,8 +271,14 @@ class DecimatedHemi(Hemi):
         super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
 
 def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
-              decimate=False, disp_layers=['rois'], extra_disp=None):
-    """Generates a cached CTM file"""
+              decimate=False, disp_layers=['rois'], 
+              external_svg=None, overlays_available=None,):
+    """Generates a cached CTM file
+
+    Parameters
+    ----------
+
+    """
 
     ctm = BrainCTM(subj, decimate=decimate)
     ctm.addCurvature()
@@ -268,7 +289,9 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
         os.makedirs(os.path.split(outfile)[0])
     return ctm.save(os.path.splitext(outfile)[0],
                     method=method,
-                    level=level)
+                    level=level,
+                    external_svg=external_svg,
+                    overlays_available=overlays_available)
 
 def read_pack(ctmfile):
     fname = os.path.splitext(ctmfile)[0]
