@@ -553,7 +553,7 @@ def scrub(svgfile, overlays_available=None):
         if overlays_available is not None:
             overlays_to_remove = [x for x in _find_layer_names(svg) if x not in overlays_available]
             layers_to_remove += overlays_to_remove
-        for layer in overlays_to_remove:
+        for layer in layers_to_remove:
             rmnode = _find_layer(svg, layer)
             rmnode.getparent().remove(rmnode)
     except ValueError:
