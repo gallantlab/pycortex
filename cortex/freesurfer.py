@@ -42,7 +42,7 @@ def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
     elif type == "curv":
         return os.path.join(base, "surf", hemi+".curv{name}")
     elif type == "slim":
-        return os.path.join(base, "surf", hemi+"{name}_slim.obj")
+        return os.path.join(base, "surf", hemi+".{name}_slim.obj")
 
 
 def autorecon(subject, type="all", parallel=False, n_cores=None):
@@ -207,7 +207,7 @@ def import_flat(subject, patch, sname=None,
         elif flat_type == 'slim':
             flat_file = get_paths(subject, hemi, type='slim',
                                   freesurfer_subject_dir=freesurfer_subject_dir)
-            flat_file = flat_file.format(patch)
+            flat_file = flat_file.format(name=patch + ".flat")
             flat, polys = formats.read_obj(flat_file)
         fname = surfs.format(hemi=hemi)
         print("saving to %s"%fname)

@@ -51,7 +51,7 @@ def init_subject(subject, filenames, run_all=False):
 
 
 def edit_segmentation(subject,
-                      volumes=('brain.mgz', 'aseg.mgz', 'brainmask.mgz', 'wm.mgz'),
+                      volumes=('aseg.mgz', 'brainmask.mgz', 'wm.mgz'),
                       surfaces=('lh.smoothwm', 'rh.smoothwm', 'lh.pial', 'rh.pial'),
                       freesurfer_subject_dir=None):
     """Edit automatic segmentation results using freeview
@@ -78,14 +78,15 @@ def edit_segmentation(subject,
         freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
     cmaps = {'brain': 'grayscale',
              'aseg': 'lut',
-             'brainmask': 'heat',
+             'brainmask': 'gray',
              'wm': 'heat',
              'smoothwm': 'yellow',
+             'white': 'green',
              'pial': 'blue'
              }
     opacity={'brain': 1.0,
              'aseg': 0.4,
-             'brainmask': 0.4,
+             'brainmask': 1.0,
              'wm': 0.4,
              }
     vols = []
@@ -272,33 +273,119 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
     #surfpath = os.path.join(freesurfer_subject_dir, subject, "surf", "flat_{hemi}.gii")
     #fname = surfpath.format(hemi=hemi)
     #print("Writing %s"%fname)
+    formats.write_obj(obj_out.replace('_slim','.flat_slim'), pts=pts_flat, polys=polys)
+    return
 
+def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None, 
+                freesurfer_subject_dir=None, flatten_with='freesurfer'):
+    """Initializes an interface to cut the segmented surface for flatmapping.
+    This function creates or opens a blend file in your filestore which allows
+    surfaces to be cut along hand-defined seams. Blender will automatically 
+    open the file. After edits are made, remember to save the file, then exit
+    Blender.
+
+    The surface will be automatically extracted from blender then run through
+    the mris_flatten command in freesurfer. The flatmap will be imported once
+    that command finishes.
+
+    Parameters
+    ----------
+    cx_subject : str
+        Name of the subject to edit (pycortex subject ID)
+    hemi : str
+        Which hemisphere to flatten. Should be "lh" or "rh"
+    name : str, optional
+        String name of the current flatten attempt. Defaults to "flatten"
+    data : Dataview
+        A data view object to display on the surface as a cutting guide.
+    fs_subject : str
+        Name of Freesurfer subject (if different from pycortex subject)
+        None defaults to `cx_subject`
+    freesurfer_subject_dir : str
+        Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR 
+        environment varible
+    """
+    if fs_subject is None:
+        fs_subject = cx_subject
+    opts = "[hemi=%s,name=%s]"%(hemi, name)
+    fname = db.get_paths(cx_subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
+    if not os.path.exists(fname):
+        blender.fs_cut(fname, fs_subject, hemi, freesurfer_subject_dir)
+    # Add localizer data to facilitate cutting
+    if data is not None:
+        blender.add_cutdata(fname, data, name=data.description)
+    blender_cmd = options.config.get('dependency_paths', 'blender')
+    sp.call([blender_cmd, fname])
+    patchpath = freesurfer.get_paths(fs_subject, hemi,
+                                     freesurfer_subject_dir=freesurfer_subject_dir)
+    patchpath = patchpath.format(name=name)
+    blender.write_patch(fname, patchpath)
+    if flatten_with == 'freesurfer':
+        freesurfer.flatten(fs_subject, hemi, patch=name, 
+                           freesurfer_subject_dir=freesurfer_subject_dir)
+        # Check to see if both hemispheres have been flattened
+        other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
+                                     freesurfer_subject_dir=freesurfer_subject_dir)
+        other = other.format(name=name+".flat")
+        # If so, go ahead and import subject
+        if os.path.exists(other):
+            freesurfer.import_flat(fs_subject, name, sname=cx_subject,
+                                   flat_type='freesurfer',
+                                   freesurfer_subject_dir=freesurfer_subject_dir)
+    elif flatten_with == 'SLIM':
+        flatten_slim(fs_subject, hemi, patch=name, freesurfer_subject_dir=freesurfer_subject_dir)
+        other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
+                                     type='slim',
+                                     freesurfer_subject_dir=freesurfer_subject_dir)
+        other = other.format(name=name + '.flat')
+        # If so, go ahead and import subject
+        if os.path.exists(other):
+            freesurfer.import_flat(fs_subject, name, sname=cx_subject,
+                                   flat_type='slim',
+                                   freesurfer_subject_dir=freesurfer_subject_dir)
     formats.write_obj(obj_out, pts=pts_flat, polys=polys, colors=cols)
     return
 
 
-def import_flat(fs_subject, name, sname=None, flat_type='freesurfer', 
-                freesurfer_subject_dir=None):
-    if flat_type=='freesurfer':
-        freesurfer.import_flat(fs_subject, name, sname=sname,
-                               freesurfer_subject_dir=freesurfer_subject_dir)
+def show_surface(subject, hemi, surface_type, patch=None, freesurfer_subject_dir=None):
+    """
+    Parameters
+    ----------
+    subject: str
+        freesurfer subject name
+    hemi: str
+        'lh' or 'rh' for left hemisphere or right hemisphere
+    surface_type : str
+        type of surface to show, e.g. 'patch', 'surf', etc if 'patch', 
+        patch name must be specified in patch kwarg
+    patch: str
+        name of patch, e.g. 'flatten.flat',  'flatten2.flat', etc
+
+    """
+
+    meshlab_path = options.config.get('dependency_paths', 'meshlab')
+    if meshlab_path == 'None':
+        raise Exception('You must have installed meshlab to call this function.')
+    if freesurfer_subject_dir is None:
+        freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
+    if surface_type in ('inflated', 'fiducial'):
+        input_type = 'surf'
     else:
-        _import_flat_slim(fs)
+        input_type = surface_type
+    fpath = freesurfer.get_paths(subject, hemi, input_type,
+                                     freesurfer_subject_dir=freesurfer_subject_dir)
 
+    if not 'obj' in fpath:
+        pts, polys, curv = freesurfer.get_surf(subject, hemi, surface_type, patch=patch, 
+                                    freesurfer_subject_dir=freesurfer_subject_dir)
+        # TODO: use tempfile here
+        objf = '/tmp/temp_surf.obj'
+        formats.write_obj(objf, pts, polys)
+    else:
+        objf = fpath.format(name=patch)
+    # Call meshlab to display surface
+    out = sp.check_output([meshlab_path, objf])
 
-def _import_flat_slim():
-    flat_file = get_paths(subject, hemi, type='slim',
-                          freesurfer_subject_dir=freesurfer_subject_dir)
-    flat_file = flat_file.format(patch)
-    flat, polys = formats.read_obj(flat_file)
-    fname = surfs.format(hemi=hemi)
-    print("saving to %s"%fname)
-    formats.write_gii(fname, pts=flat, polys=polys)
-
-    # clear the cache, per #81
-    cache = os.path.join(database.default_filestore, sname, "cache")
-    shutil.rmtree(cache)
-    os.makedirs(cache)    
 
 ### DEPRECATED ###
 
