@@ -552,11 +552,12 @@ def scrub(svgfile, overlays_available=None):
         layers_to_remove = ['data']
         if overlays_available is not None:
             overlays_to_remove = [x for x in _find_layer_names(svg) if x not in overlays_available]
-            layers_to_remove += overlays_to_remove
+            layers_to_remove = overlays_to_remove
         for layer in layers_to_remove:
             rmnode = _find_layer(svg, layer)
             rmnode.getparent().remove(rmnode)
     except ValueError:
+        # Seems sketch - should catch this? 
         pass
     svgtag = svg.getroot()
     svgtag.attrib['id'] = "svgoverlay"
@@ -607,6 +608,7 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
         # I think this should be an entirely separate function, and it should
         # be made clear when this file is created - opening a git issue on 
         # this soon...ML
+        print("WHAIIIII")
         with open(svgfile, "wb") as fp:
             fp.write(make_svg(pts.copy(), polys))
 
