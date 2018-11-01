@@ -1,2 +1,3 @@
 recursive-include filestore *
-recursive-include cortex/webgl/resources *
+recursive-include OpenCTM-1.0.3 *
+recursive-include cortex *

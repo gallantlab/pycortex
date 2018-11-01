@@ -62,7 +62,7 @@ formats = Extension('cortex.formats', ['cortex/formats.pyx'],
                     include_dirs=get_numpy_include_dirs())
 
 setup(name='pycortex',
-      version='0.1.1',
+      version='1.0.2',
       description='Python Cortical mapping software for fMRI data',
       author='James Gao',
       author_email='james@jamesgao.com',
@@ -88,7 +88,7 @@ setup(name='pycortex',
             ]
             },
       install_requires=[
-        'future', 'numpy', 'scipy', 'tornado==4.3',
+        'future', 'numpy', 'scipy', 'tornado>=4.3',
         'shapely', 'lxml', 'html5lib', 'h5py', 'numexpr', 'cython',
         'matplotlib', 'pillow', 'nibabel', 'networkx==2.1',
       ],

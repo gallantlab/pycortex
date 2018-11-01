@@ -3,7 +3,21 @@ import io
 
 from scipy.spatial import Delaunay
 import numpy as np
+import functools
 
+
+def _memo(fn):
+    """Helper decorator memoizes the given zero-argument function.
+    Really helpful for memoizing properties so they don't have to be recomputed
+    dozens of times.
+    """
+    @functools.wraps(fn)
+    def memofn(self, *args, **kwargs):
+        if id(fn) not in self._cache:
+            self._cache[id(fn)] = fn(self)
+        return self._cache[id(fn)]
+
+    return memofn
 
 def tetra_vol(pts):
     '''Volume of a tetrahedron'''
