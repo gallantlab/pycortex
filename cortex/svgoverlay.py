@@ -608,7 +608,6 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
         # I think this should be an entirely separate function, and it should
         # be made clear when this file is created - opening a git issue on 
         # this soon...ML
-        print("WHAIIIII")
         with open(svgfile, "wb") as fp:
             fp.write(make_svg(pts.copy(), polys))
 
