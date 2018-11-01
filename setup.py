@@ -88,7 +88,7 @@ setup(name='pycortex',
             ]
             },
       install_requires=[
-        'future', 'numpy', 'scipy', 'tornado==4.3',
+        'future', 'numpy', 'scipy', 'tornado>=4.3',
         'shapely', 'lxml', 'html5lib', 'h5py', 'numexpr', 'cython',
         'matplotlib', 'pillow', 'nibabel', 'networkx==2.1',
       ],
