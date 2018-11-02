@@ -4153,8 +4153,8 @@ THREE.Matrix3.prototype = {
 	},
 
 	multiplyVector3: function ( vector ) {
-
-		console.warn( 'THREE.Matrix3: .multiplyVector3() has been removed. Use vector.applyMatrix3( matrix ) instead.' );
+		//BE SILENT THREEJS
+		//console.warn( 'THREE.Matrix3: .multiplyVector3() has been removed. Use vector.applyMatrix3( matrix ) instead.' );
 		return vector.applyMatrix3( this );
 
 	},
@@ -4775,8 +4775,8 @@ THREE.Matrix4.prototype = {
 	},
 
 	multiplyVector3: function ( vector ) {
-
-		console.warn( 'THREE.Matrix4: .multiplyVector3() has been removed. Use vector.applyMatrix4( matrix ) or vector.applyProjection( matrix ) instead.' );
+		//BE SILENT THREEJS
+		//console.warn( 'THREE.Matrix4: .multiplyVector3() has been removed. Use vector.applyMatrix4( matrix ) or vector.applyProjection( matrix ) instead.' );
 		return vector.applyProjection( this );
 
 	},
@@ -24706,7 +24706,8 @@ THREE.WebGLShader = ( function () {
 		if ( gl.getShaderInfoLog( shader ) !== '' ) {
 
 			console.warn( 'THREE.WebGLShader: gl.getShaderInfoLog()', gl.getShaderInfoLog( shader ) );
-			console.warn( addLineNumbers( string ) );
+			//BE SILENT THREEJS
+			//console.warn( addLineNumbers( string ) );
 
 		}
 
@@ -31626,8 +31627,8 @@ THREE.LatheGeometry.prototype = Object.create( THREE.Geometry.prototype );
  */
 
 THREE.PlaneGeometry = function ( width, height, widthSegments, heightSegments ) {
-
-	console.info( 'THREE.PlaneGeometry: Consider using THREE.PlaneBufferGeometry for lower memory footprint.' );
+	//BE SILENT THREEJS
+	//console.info( 'THREE.PlaneGeometry: Consider using THREE.PlaneBufferGeometry for lower memory footprint.' );
 
 	THREE.Geometry.call( this );
 

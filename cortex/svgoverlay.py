@@ -36,9 +36,13 @@ class SVGOverlay(object):
         filestore
     coords : array-like
         (Unclear...)
+    overlays_available : list or tuple
+        list of layers of svg file to extract. If None, extracts all overlay layers 
+        (i.e. all layers that do not contain images)
     """
-    def __init__(self, svgfile, coords=None):
+    def __init__(self, svgfile, coords=None, overlays_available=None):
         self.svgfile = svgfile
+        self.overlays_available = overlays_available
         self.reload()
         if coords is not None:
             self.set_coords(coords)
@@ -48,13 +52,14 @@ class SVGOverlay(object):
 
         Strips out `data` layer of svg file, saves only layers consisting of vector paths.
         """
-        self.svg = scrub(self.svgfile)
+        self.svg = scrub(self.svgfile, overlays_available=self.overlays_available)
         w = float(self.svg.getroot().get("width"))
         h = float(self.svg.getroot().get("height"))
         self.svgshape = w, h
 
         # Grab relevant layers
         self.layers = dict()
+        
         for layer in self.svg.getroot().findall("{%s}g"%svgns):
             layer = Overlay(self, layer)
             self.layers[layer.name] = layer
@@ -353,7 +358,7 @@ class Labels(object):
         for shape in self.overlay.shapes.values():
             self.elements[shape.name] = shape.get_labelpos()
 
-        #match up existing labels with their respective paths
+        # match up existing labels with their respective paths
         def close(pt, x, y):
             return np.sqrt((pt[0] - x)**2 + (pt[1]-y)**2) < 250
         for text in self.layer.findall(".//{%s}text"%svgns):
@@ -364,7 +369,7 @@ class Labels(object):
                 if text.text == name:
                     for i, pos in enumerate(self.elements[name]):
                         if close(pos, x, y):
-                            self.elements[key][i] = text
+                            self.elements[name][i] = text
 
         #add missing elements
         self.override = []
@@ -471,6 +476,11 @@ class Shape(object):
 ###################################################################################
 # SVG Helper functions
 ###################################################################################
+def _find_layer_names(svg):
+    layers = svg.findall("{%s}g[@{%s}label]"%(svgns, inkns))
+    layer_names = [l.get("{%s}label"%inkns) for l in layers]
+    return layer_names
+
 def _find_layer(svg, label):
     layers = [l for l in svg.findall("{%s}g[@{%s}label]"%(svgns, inkns)) if l.get("{%s}label"%inkns) == label]
     if len(layers) < 1:
@@ -549,16 +559,22 @@ def _split_multipath(pathstr):
         # Need further parsing of multi-path strings? perhaps no.
         yield (header + subpath).strip()
 
-def scrub(svgfile):
+def scrub(svgfile, overlays_available=None):
     """Remove data layers from an svg object prior to rendering
 
     Returns etree-parsed svg object
     """
     svg = etree.parse(svgfile, parser=parser)
     try:
-        rmnode = _find_layer(svg, "data")
-        rmnode.getparent().remove(rmnode)
+        layers_to_remove = ['data']
+        if overlays_available is not None:
+            overlays_to_remove = [x for x in _find_layer_names(svg) if x not in overlays_available]
+            layers_to_remove = overlays_to_remove
+        for layer in layers_to_remove:
+            rmnode = _find_layer(svg, layer)
+            rmnode.getparent().remove(rmnode)
     except ValueError:
+        # Seems sketch - should catch this? 
         pass
     svgtag = svg.getroot()
     svgtag.attrib['id'] = "svgoverlay"
@@ -594,7 +610,11 @@ def make_svg(pts, polys):
 
     return svg
 
-def get_overlay(subject, svgfile, pts, polys, remove_medial=False, **kwargs):
+def get_overlay(subject, svgfile, pts, polys, remove_medial=False, 
+                overlays_available=None, **kwargs):
+    """Return a python represent of the overlays present in `svgfile`
+
+    """
     cullpts = pts[:,:2]
     if remove_medial:
         valid = np.unique(polys)
@@ -602,6 +622,9 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False, **kwargs):
 
     if not os.path.exists(svgfile):
         # Overlay file does not exist yet! We need to create and populate it
+        # I think this should be an entirely separate function, and it should
+        # be made clear when this file is created - opening a git issue on 
+        # this soon...ML
         with open(svgfile, "wb") as fp:
             fp.write(make_svg(pts.copy(), polys))
 
@@ -622,12 +645,20 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False, **kwargs):
         svg.rois.add_shape('curvature', binascii.b2a_base64(fp.read()).decode('utf-8'), False)
 
     else:
-        svg = SVGOverlay(svgfile, coords=cullpts, **kwargs)
-
-    # Assure all layers are present
-    for layer in ['sulci', 'cutouts', 'display']:
-        if layer not in svg.layers:
-            svg.add_layer(layer)
+        svg = SVGOverlay(svgfile, 
+                         coords=cullpts, 
+                         overlays_available=overlays_available,
+                         **kwargs)
+    
+    
+    if overlays_available is None:
+        # Assure all layers are present
+        # (only if some set of overlays is not specified)
+        # NOTE: this actually modifies the svg file. Do we
+        # want this in all cases? (e.g. w/ external svgs?)
+        for layer in ['sulci', 'cutouts', 'display']:
+            if layer not in svg.layers:
+                svg.add_layer(layer)
 
     if remove_medial:
         return svg, valid

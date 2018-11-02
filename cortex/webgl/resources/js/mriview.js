@@ -282,6 +282,8 @@ var mriview = (function(module) {
         }
         this.active.loaded.done(function() {
             this.active.set();
+            // Register event for dataset switching
+            this.dispatchEvent({type:"setData", name:this.active.name});            
         }.bind(this));
 
         // var surf, scene, grid = grid_shapes[this.active.data.length];

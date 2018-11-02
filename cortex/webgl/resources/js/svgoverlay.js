@@ -262,6 +262,12 @@ var svgoverlay = (function(module) {
     THREE.EventDispatcher.prototype.apply(module.Overlay.prototype);
     module.Overlay.prototype.set = function(options) {
         for (var name in this.shapes) {
+            var locked = 'sodipodi:insensitive' // Make this general w/ variable for sodipodi namespace?
+            if (this.shapes[name].hasAttribute(locked)){
+                if (this.shapes[name].getAttribute(locked) == 'true'){
+                    continue
+                }
+            }
             var paths = this.shapes[name].getElementsByTagNameNS(svgns, "path");
             for (var i = 0; i < paths.length; i++) {
                 for (var css in options)

@@ -37,7 +37,7 @@ def _call_blender(filename, code, blender_path=default_blender):
 
         tf.write((startcode+code+endcode).encode())
         tf.flush()
-        sp.call([w.encode() for w in shlex.split(cmd)])
+        sp.check_call([w.encode() for w in shlex.split(cmd)],)
 
 def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh="hemi"):
     """Add data as vertex colors to blender mesh

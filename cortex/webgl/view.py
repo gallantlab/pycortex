@@ -41,7 +41,7 @@ colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
 def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
-                template="static.html", layout=None, anonymize=False,
+                template="static.html", layout=None, anonymize=False, overlays_available=None,
                 html_embed=True, overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
                 overlay_file=None, copy_ctmfiles=True, title='Brain', **kwargs):
     """
@@ -64,6 +64,11 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     anonymize : bool, optional
         Whether to rename CTM and SVG files generically, for public distribution.
         Default False
+    overlays_available : tuple, optional
+        Overlays availble in the viewer. If None, then all overlay layers of the
+        svg file will be potentially available in the viewer (whether initially
+        visible or not). This provides the option to include, e.g., only a subset
+        of layers for a given static viewer. 
     overlays_visible : tuple, optional
         The listed overlay layers will be set visible by default. Layers not listed
         here will be hidden by default (but can be enabled in the viewer GUI).
@@ -103,12 +108,13 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     You will need a real web server to view this, since `file://` paths
     don't handle xsrf correctly
     """
-    if overlay_file is not None:
-        raise NotImplementedError("External overlay_file not supported yet, sorry!")
     
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
         os.makedirs(outpath)
+    if not os.path.exists(os.path.join(outpath, 'data')):
+        # Don't lump together w/ outpath, because of edge cases
+        # for which outpath exists but not sub-folder `data`
         os.makedirs(os.path.join(outpath, "data"))
 
     data = dataset.normalize(data)
@@ -120,7 +126,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     package = Package(data)
     subjects = list(package.subjects)
 
-    ctmargs = dict(method='mg2', level=9, recache=recache)
+    ctmargs = dict(method='mg2', level=9, recache=recache, external_svg=overlay_file, 
+                   overlays_available=overlays_available)
     ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
                 for subj in subjects)
     package.reorder(ctms)
@@ -226,8 +233,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
          autoclose=True, open_browser=True, port=None, pickerfun=None,
-         template="mixer.html", overlays_visible=('rois', 'sulci'),
-         labels_visible=('rois', ), overlay_file=None, title='Brain', **kwargs):
+         template="mixer.html", overlays_available=None, 
+         overlays_visible=('rois', 'sulci'), labels_visible=('rois', ), 
+         overlay_file=None, title='Brain', **kwargs):
     """
     Creates a webGL MRI viewer that is dynamically served by a tornado server
     running inside the current python process.
@@ -286,8 +294,6 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         The layout of the viewer subwindows for showing multiple subjects.
         Default None, which selects the layout based on the number of subjects.
     """
-    if overlay_file is not None:
-        raise NotImplementedError("External overlay_file not supported yet, sorry!")
     
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
@@ -308,7 +314,8 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     images = package.images
     subjects = list(package.subjects)
 
-    ctmargs = dict(method='mg2', level=9, recache=recache)
+    ctmargs = dict(method='mg2', level=9, recache=recache, 
+        external_svg=overlay_file, overlays_available=overlays_available)
     ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
                 for subj in subjects)
     package.reorder(ctms)
