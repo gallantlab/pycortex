@@ -689,7 +689,7 @@ def get_mri_surf2surf_matrix(source_subj, hemi, surface_type,
     for target_activation, source_inds in zip(
                                         transformed_test_images.T, indices):
         i += 1
-        print("{i}".format(i), end="\r")
+        print("{i}".format(i=i), end="\r")
         source_values = test_images[:, source_inds]
         r = lstsq(source_values, target_activation,
                  overwrite_a=True, overwrite_b=True)
