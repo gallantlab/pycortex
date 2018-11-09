@@ -81,7 +81,7 @@ def autorecon(subject, type="all", parallel=False, n_cores=None):
         # Parallelization only works for autorecon2 or autorecon2-wm
         if n_cores is None:
             import multiprocessing as mp
-            n_cores = mp.cup_count()
+            n_cores = mp.cpu_count()
         cmd += ' -parallel -openmp {n_cores:d}'.format(n_cores=n_cores)
     print("Calling:\n{cmd}".format(cmd=cmd))
     sp.check_call(shlex.split(cmd))
@@ -110,6 +110,8 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
         inpath = get_paths(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch)
         outpath = get_paths(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch+".flat")
         cmd = "mris_flatten -O fiducial {inpath} {outpath}".format(inpath=inpath, outpath=outpath)
+        print("Calling: ")
+        print(cmd)
         sp.check_call(shlex.split(cmd))
     else:
         print("Not going to flatten...")
@@ -174,6 +176,7 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
 
 
 def import_flat(subject, patch, sname=None,
+                flat_type='freesurfer',
                 freesurfer_subject_dir=None):
     """Imports a flat brain from freesurfer
 
@@ -217,7 +220,11 @@ def import_flat(subject, patch, sname=None,
     cache = os.path.join(database.default_filestore, sname, "cache")
     shutil.rmtree(cache)
     os.makedirs(cache)
-
+    # clear config-specified cache
+    from .options import config
+    config_cache = os.path.expanduser(os.path.join(config.get('basic', 'cache'), sname, 'cache'))
+    shutil.rmtree(config_cache)
+    os.makedirs(config_cache)
 
 def make_fiducial(subject, freesurfer_subject_dir=None):
     """Make fiducial surface (halfway between white matter and pial surfaces)
