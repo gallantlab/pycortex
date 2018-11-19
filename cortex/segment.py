@@ -181,8 +181,8 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
     return
 
 
-def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
-                 slim_path=slim_path):
+def flatten_slim(subject, hemi, patch, n_iterations=20, freesurfer_subject_dir=None,
+                 slim_path=slim_path, do_flatten=None):
     """Flatten brain w/ slim object flattening
 
     Parameters
@@ -205,10 +205,13 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
         raise ValueError("Please download SLIM ({slim_url}) and set the path to it in the `slim` field\n"
                          "in the `[dependency_paths]` section of your config file ({usercfg}) \n"
                          "if you wish to use slim!".format(slim_url=slim_url, usercfg=options.usercfg))
-    resp = input('Flattening with SLIM will take a few mins. Continue? (type y or n and press return)')
-    if not resp.lower() in ('y', 'yes'): 
+    if do_flatten is None:
+        resp = input('Flattening with SLIM will take a few mins. Continue? (type y or n and press return)')
+        do_flatten = resp.lower() in ('y', 'yes')
+    if not do_flatten: 
         print("Not flattening...")
         return
+
     # File paths
     if freesurfer_subject_dir is None:
         freesurfer_subject_dir = os.environ['SUBJECTS_DIR']    
@@ -232,7 +235,9 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
     formats.write_obj(obj_in, pts_new, polys_new)
     # Call slim to write new obj file
     print('Flattening with SLIM (will take a few minutes)...')
-    out = sp.check_output([slim_path, obj_in, obj_out])
+    slim_cmd = [slim_path, obj_in, obj_out, str(n_iterations)]
+    print('Calling: {}'.format(' '.join(slim_cmd)))
+    out = sp.check_output(slim_cmd)
     print("SLIM code wrote %s"%obj_out)
     # Load resulting obj file
     _, _, _, uv = formats.read_obj(obj_out, uv=True)
@@ -276,7 +281,7 @@ def flatten_slim(subject, hemi, patch, freesurfer_subject_dir=None,
     return
 
 
-def show_surface(subject, hemi, surface_type, patch=None, freesurfer_subject_dir=None):
+def show_surface(subject, hemi, surface_type, patch=None, flatten_step=None, freesurfer_subject_dir=None):
     """
     Parameters
     ----------
@@ -305,9 +310,11 @@ def show_surface(subject, hemi, surface_type, patch=None, freesurfer_subject_dir
                                      freesurfer_subject_dir=freesurfer_subject_dir)
 
     if not 'obj' in fpath:
-        pts, polys, curv = freesurfer.get_surf(subject, hemi, surface_type, patch=patch, 
-                                    freesurfer_subject_dir=freesurfer_subject_dir)
-        # TODO: use tempfile here
+        pts, polys, curv = freesurfer.get_surf(subject, hemi, surface_type, 
+                                               patch=patch, 
+                                               flatten_step=flatten_step,
+                                               freesurfer_subject_dir=freesurfer_subject_dir)
+        # TODO: use tempfile library here
         objf = '/tmp/temp_surf.obj'
         formats.write_obj(objf, pts, polys)
     else:

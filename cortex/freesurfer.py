@@ -87,7 +87,7 @@ def autorecon(subject, type="all", parallel=False, n_cores=None):
     sp.check_call(shlex.split(cmd))
 
 
-def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
+def flatten(subject, hemi, patch, freesurfer_subject_dir=None, save_every=None):
     """Perform flattening of a brain using freesurfer
 
     Parameters
@@ -101,7 +101,10 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
         of `get_paths()`)
     freesurfer_subject_dir : str
         Freesurfer subjects directory location. None defaults to $SUBJECTS_DIR
-
+    save_every: int
+        If not None, this saves a version of the mesh every `save_every` iterations
+        of the flattening process. Useful for determining why a flattening fails.
+    
     Returns
     -------
     """
@@ -109,7 +112,11 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
     if resp.lower() in ('y', 'yes'):
         inpath = get_paths(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch)
         outpath = get_paths(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch+".flat")
-        cmd = "mris_flatten -O fiducial {inpath} {outpath}".format(inpath=inpath, outpath=outpath)
+        if save_every is None:
+            save_every_str = ''
+        else:
+            save_every_str = ' -w %d'%save_every
+        cmd = "mris_flatten -O fiducial{save_every_str} {inpath} {outpath}".format(inpath=inpath, outpath=outpath, save_every_str=save_every_str)
         print("Calling: ")
         print(cmd)
         sp.check_call(shlex.split(cmd))
@@ -315,7 +322,7 @@ def parse_patch(filename):
         return data
 
 
-def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
+def get_surf(subject, hemi, type, patch=None, flatten_step=None, freesurfer_subject_dir=None):
     """Read freesurfer surface file
     """
     if type == "patch":
@@ -328,6 +335,8 @@ def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
 
     if patch is not None:
         patch_file = get_paths(subject, hemi, 'patch', freesurfer_subject_dir=freesurfer_subject_dir).format(name=patch)
+        if flatten_step is not None:
+            patch_file += '%04d'%flatten_step
         patch = parse_patch(patch_file)
         verts = patch[patch['vert'] > 0]['vert'] - 1
         edges = -patch[patch['vert'] < 0]['vert'] - 1
