@@ -80,7 +80,10 @@ class Package(object):
         for npz in indices.values():
             npz.close()
 
-    def metadata(self, **kwargs):
+    def metadata(self, submap=None, **kwargs):
+        if submap is not None:
+            for data in self.brains.values():
+                data['subject'] = submap[data['subject']]
         return dict(views=self.views, data=self.brains, images=self.image_names(**kwargs))
 
     def image_names(self, fmt="/data/{name}/{frame}/"):

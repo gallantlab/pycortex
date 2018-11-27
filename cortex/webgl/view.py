@@ -144,6 +144,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         if anonymize:
             newfname = "S%d"%i
             submap[subj] = newfname
+            del ctms[subj]
+            subj = newfname
         else:
             newfname = fname
         ctms[subj] = newfname+".json"
@@ -171,7 +173,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         submap = None
 
     #Process the data
-    metadata = package.metadata(fmt="data/{name}_{frame}.png")
+    metadata = package.metadata(fmt="data/{name}_{frame}.png", submap=submap)
     images = package.images
     #Write out the PNGs
     for name, imgs in images.items():
