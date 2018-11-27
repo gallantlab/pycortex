@@ -87,7 +87,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         and white matter) and flat surfaces. Default ('inflated', )
     cmap : string, optional
         Name of default colormap. Default 'RdBu_r'
-        TODO: WHAT THE FUCK GOOD DOES THIS DO ANYMORE?
+        TODO: DOES THIS DO ANYTHING ANYMORE?
     overlay_file : str, optional
         Totally replace the overlays.svg file for this subject with the given
         file (if not None). Default None.
@@ -136,7 +136,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     if layout is None:
         layout = [None, (1, 1), (2, 1), (3, 1), (2, 2), (3, 2), (3, 2), (3, 3), (3, 3), (3, 3)][len(subjects)]
 
-    ## Rename files to anonymize?
+    ## Rename files to anonymize
     submap = dict()
     for i, (subj, ctmfile) in enumerate(ctms.items()):
         oldpath, fname = os.path.split(ctmfile)
@@ -283,7 +283,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         and white matter) and flat surfaces. Default ('inflated', )
     cmap : string, optional
         Name of default colormap. Default 'RdBu_r'
-        TODO: WHAT THE FUCK GOOD DOES THIS DO ANYMORE?
+        TODO: DOES THIS DO ANYTHING ANYMORE?
     overlay_file : str or None, optional
         Totally replace the overlays.svg file for this subject with the given
         file (if not None). Default None.

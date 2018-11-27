@@ -107,6 +107,15 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None, save_every=None):
     
     Returns
     -------
+
+    Notes
+    -----
+    To look into: link below shows how to give continuous output for a subprocess. 
+    There maybe indications that a flattening is going badly that we could detect
+    in the stdout; perhaps even continuously update a visualization of the generated
+    files using segment.show_surface() with the outputs (triggered to update once stdout 
+    shows that a flattening iteration has completed)
+    https://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running
     """
     resp = input('Flattening takes approximately 2 hours! Continue? ')
     if resp.lower() in ('y', 'yes'):
