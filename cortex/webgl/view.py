@@ -138,14 +138,18 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
     ## Rename files to anonymize
     submap = dict()
+    print(list(ctms.keys()))
     for i, (subj, ctmfile) in enumerate(ctms.items()):
+        print("Iterating through ctms, on # %d"%i)
+        print(subj)
         oldpath, fname = os.path.split(ctmfile)
         fname, ext = os.path.splitext(fname)
         if anonymize:
             newfname = "S%d"%i
             submap[subj] = newfname
-            del ctms[subj]
-            subj = newfname
+            # del ctms[subj]
+            # subj = newfname
+            # print("--> changed to: %s"%subj)
         else:
             newfname = fname
         ctms[subj] = newfname+".json"
@@ -168,7 +172,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                 ofh = open(newfile, "w")
                 ofh.write(jsoncontents.replace(fname, newfname))
                 ofh.close()
-
+    if anonymize:
+        old_subjects = sorted(list(ctms.keys()))
+        ctms = dict(('S%d'%i, ctms[k]) for i, k in enumerate(old_subjects))
     if len(submap) == 0:
         submap = None
 
