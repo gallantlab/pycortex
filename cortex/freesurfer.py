@@ -129,8 +129,10 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None, save_every=None):
         print("Calling: ")
         print(cmd)
         sp.check_call(shlex.split(cmd))
+        return True
     else:
         print("Not going to flatten...")
+        return False
 
 
 def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_surf='smoothwm'):

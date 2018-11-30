@@ -112,7 +112,7 @@ def edit_segmentation(subject,
 
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None, 
-                freesurfer_subject_dir=None, flatten_with='freesurfer'):
+                freesurfer_subject_dir=None, flatten_with='freesurfer', **kwargs):
     """Initializes an interface to cut the segmented surface for flatmapping.
     This function creates or opens a blend file in your filestore which allows
     surfaces to be cut along hand-defined seams. Blender will automatically 
@@ -156,8 +156,13 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
     patchpath = patchpath.format(name=name)
     blender.write_patch(fname, patchpath)
     if flatten_with == 'freesurfer':
-        freesurfer.flatten(fs_subject, hemi, patch=name, 
-                           freesurfer_subject_dir=freesurfer_subject_dir)
+        done = freesurfer.flatten(fs_subject, hemi, patch=name, 
+                           freesurfer_subject_dir=freesurfer_subject_dir, 
+                           **kwargs)
+        if not done:
+            # If flattening is aborted, skip the rest of this function
+            # (Do not attempt to import completed flatmaps)
+            return
         # Check to see if both hemispheres have been flattened
         other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
                                      freesurfer_subject_dir=freesurfer_subject_dir)
@@ -168,7 +173,13 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
                         flat_type='freesurfer',
                         freesurfer_subject_dir=freesurfer_subject_dir)
     elif flatten_with == 'SLIM':
-        flatten_slim(fs_subject, hemi, patch=name, freesurfer_subject_dir=freesurfer_subject_dir)
+        done = flatten_slim(fs_subject, hemi, patch=name, 
+                            freesurfer_subject_dir=freesurfer_subject_dir,
+                            **kwargs)
+        if not done:
+            # If flattening is aborted, skip the rest of this function
+            # (Do not attempt to import completed flatmaps)
+            return
         other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
                                      type='slim',
                                      freesurfer_subject_dir=freesurfer_subject_dir)
