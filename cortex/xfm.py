@@ -10,6 +10,10 @@ class Transform(object):
     magnet space to epi file space.
     '''
     def __init__(self, xfm, reference):
+
+        if xfm == 'ident':
+            xfm = np.identity(4)
+
         self.xfm = xfm
         self.reference = None
 
