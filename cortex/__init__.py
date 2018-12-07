@@ -3,7 +3,7 @@
 import warnings
 
 from cortex.dataset import Dataset, Volume, Vertex, VolumeRGB, VertexRGB, Volume2D, Vertex2D
-from cortex import align, volume, quickflat, webgl, segment, options, fmriprep
+from cortex import align, volume, quickflat, webgl, segment, options
 from cortex.database import db
 from cortex.utils import *
 from cortex.quickflat import make_figure as quickshow
