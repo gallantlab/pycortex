@@ -46,15 +46,17 @@ def import_subj(subject,
     t1w = op.join(fmriprep_dir, 'sub-{subject}{session_str}_T1w_preproc.nii.gz')
     aseg = op.join(fmriprep_dir, 'sub-{subject}{session_str}_T1w_label-aseg_roi.nii.gz')
 
-    for fmp_fn, out_fn in zip([t1w.format(**locals()),
-                               aseg.format(**locals())],
+    for fmp_fn, out_fn in zip([t1w.format(subject=subject, session_str=session_str),
+                               aseg.format(subject=subject, session_str=session_str)],
                               [anats.format(name='raw'),
                                anats.format(name='aseg')]):
         shutil.copy(fmp_fn, out_fn)
 
     
     #import surfaces
-    fmpsurf = op.join(fmriprep_dir, 'sub-{subject}{session_str}_T1w_').format(**locals())
+    fmpsurf = op.join(fmriprep_dir, 
+                      'sub-{subject}{session_str}_T1w_').format(subject=subject,
+                                                                session_str=session_str)
     fmpsurf = fmpsurf + '{fmpname}.{fmphemi}.surf.gii'
 
     for fmpname, name in zip(['smoothwm', 'pial', 'midthickness', 'inflated'],
