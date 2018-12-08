@@ -82,7 +82,7 @@ def manual(subject, xfmname, reference=None, **kwargs):
 
     return m
 
-def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args=''):
+def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args='', use_fs_bbr=False):
     """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.
 
     If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting
@@ -111,6 +111,8 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
         The 'bbrtype' argument that is passed to FLIRT.
     pre_flirt_args : str, optional
         Additional arguments that are passed to the FLIRT pre-alignment step (not BBR).
+    use_fs_bbr : bool, optional
+        If True will use freesurfer bbregister instead of FSL BBR.
 
     Returns
     -------
@@ -132,28 +134,40 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
     try:
         cache = tempfile.mkdtemp()
         absreference = os.path.abspath(reference)
-        raw = db.get_anat(subject, type='raw').get_filename()
-        bet = db.get_anat(subject, type='brainmask').get_filename()
-        wmseg = db.get_anat(subject, type='whitematter').get_filename()
-        #Compute anatomical-to-epi transform
-        print('FLIRT pre-alignment')
-        cmd = '{fslpre}flirt  -in {epi} -ref {bet} -dof 6 {pre_flirt_args} -omat {cache}/init.mat'.format(
-           fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet, pre_flirt_args=pre_flirt_args)
-        if sp.call(cmd, shell=True) != 0:
-           raise IOError('Error calling initial FLIRT')
 
-        print('Running BBR')
-        # Run epi-to-anat transform (this is more stable than anat-to-epi in FSL!)
-        cmd = '{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile} -bbrtype {bbrtype}'
-        cmd = cmd.format(fslpre=fsl_prefix, cache=cache, raw=bet, wmseg=wmseg, epi=absreference, schfile=schfile, bbrtype=bbrtype)
-        if sp.call(cmd, shell=True) != 0:
-            raise IOError('Error calling BBR flirt')
+        if use_fs_bbr:
+            print('Running freesurfer BBR')
+            cmd = 'bbregister --s {sub} --mov {absref} --init-fsl --reg {cache}/register.dat --t1'
+            cmd = cmd.format(sub=subject, absref=absreference, cache=cache)
+            if sp.call(cmd, shell=True) != 0:
+                raise IOError('Error calling freesurfer BBR!')
 
-        x = np.loadtxt(os.path.join(cache, "out.mat"))
-        # Pass transform as FROM epi TO anat; transform will be inverted
-        # back to anat-to-epi, standard direction for pycortex internal
-        # storage by from_fsl
-        xfm = Transform.from_fsl(x,absreference,raw)
+            xfm = Transform.from_freesurfer(os.path.join(cache, "register.dat"), absreference, subject)
+        else:
+            raw = db.get_anat(subject, type='raw').get_filename()
+            bet = db.get_anat(subject, type='brainmask').get_filename()
+            wmseg = db.get_anat(subject, type='whitematter').get_filename()
+            #Compute anatomical-to-epi transform
+            print('FLIRT pre-alignment')
+            cmd = '{fslpre}flirt  -in {epi} -ref {bet} -dof 6 {pre_flirt_args} -omat {cache}/init.mat'.format(
+               fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet, pre_flirt_args=pre_flirt_args)
+            if sp.call(cmd, shell=True) != 0:
+               raise IOError('Error calling initial FLIRT')
+
+
+            print('Running BBR')
+            # Run epi-to-anat transform (this is more stable than anat-to-epi in FSL!)
+            cmd = '{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile} -bbrtype {bbrtype}'
+            cmd = cmd.format(fslpre=fsl_prefix, cache=cache, raw=bet, wmseg=wmseg, epi=absreference, schfile=schfile, bbrtype=bbrtype)
+            if sp.call(cmd, shell=True) != 0:
+                raise IOError('Error calling BBR flirt')
+
+            x = np.loadtxt(os.path.join(cache, "out.mat"))
+            # Pass transform as FROM epi TO anat; transform will be inverted
+            # back to anat-to-epi, standard direction for pycortex internal
+            # storage by from_fsl
+            xfm = Transform.from_fsl(x,absreference,raw)
+
         # Save as pycortex 'coord' transform
         xfm.save(subject,xfmname,'coord')
         print('Success')
