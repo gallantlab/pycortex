@@ -104,16 +104,16 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None, save_every=None):
     save_every: int
         If not None, this saves a version of the mesh every `save_every` iterations
         of the flattening process. Useful for determining why a flattening fails.
-    
+
     Returns
     -------
 
     Notes
     -----
-    To look into: link below shows how to give continuous output for a subprocess. 
+    To look into: link below shows how to give continuous output for a subprocess.
     There maybe indications that a flattening is going badly that we could detect
     in the stdout; perhaps even continuously update a visualization of the generated
-    files using segment.show_surface() with the outputs (triggered to update once stdout 
+    files using segment.show_surface() with the outputs (triggered to update once stdout
     shows that a flattening iteration has completed)
     https://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running
     """
@@ -191,7 +191,7 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
     database.db = database.Database()
 
 
-def import_flat(subject, patch, sname=None,
+def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
                 flat_type='freesurfer',
                 freesurfer_subject_dir=None):
     """Imports a flat brain from freesurfer
@@ -200,8 +200,10 @@ def import_flat(subject, patch, sname=None,
     ----------
     subject : str
         Freesurfer subject name
-    patch : sumting
-        idk
+    patch : str
+        Name of flat.patch.3d file; e.g., "flattenv01"
+    hemis : list
+        List of hemispheres to import. Defaults to both hemispheres.
     sname : str
         Pycortex subject name
     freesurfer_subject_dir : str
@@ -216,7 +218,7 @@ def import_flat(subject, patch, sname=None,
     surfs = os.path.join(database.default_filestore, sname, "surfaces", "flat_{hemi}.gii")
 
     from . import formats
-    for hemi in ['lh', 'rh']:
+    for hemi in hemis:
         if flat_type == 'freesurfer':
             pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat", freesurfer_subject_dir=freesurfer_subject_dir)
             # Reorder axes: X, Y, Z instead of Y, X, Z
@@ -253,7 +255,7 @@ def make_fiducial(subject, freesurfer_subject_dir=None):
 
 
 def parse_surf(filename):
-    """  
+    """
     """
     with open(filename, 'rb') as fp:
         #skip magic
@@ -312,7 +314,7 @@ def write_patch(filename, pts, edges=None):
 
 
 def parse_curv(filename):
-    """  
+    """
     """
     with open(filename, 'rb') as fp:
         fp.seek(15)
@@ -320,7 +322,7 @@ def parse_curv(filename):
 
 
 def parse_patch(filename):
-    """  
+    """
     """
     with open(filename, 'rb') as fp:
         header, = struct.unpack('>i', fp.read(4))
@@ -373,9 +375,9 @@ def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subjec
     if fs_dir is None:
         fs_dir = os.environ['SUBJECTS_DIR']
     for hemi in hemisphere:
-        srclabel = os.path.join(fs_dir, src_subject, 'label', 
+        srclabel = os.path.join(fs_dir, src_subject, 'label',
                                 '{hemi}.{label}.label'.format(hemi=hemi, label=label))
-        trglabel = os.path.join(fs_dir, subject, 'label', 
+        trglabel = os.path.join(fs_dir, subject, 'label',
                                 '{hemi}.{label}.label'.format(hemi=hemi, label=label))
         if not os.path.exists(srclabel):
             raise ValueError("Label {} doesn't exist!".format(srclabel))
@@ -385,7 +387,7 @@ def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subjec
         cmd = ("mri_label2label --srcsubject {src_subject} --trgsubject {subject} "
                "--srclabel {srclabel} --trglabel {trglabel} "
                "--regmethod surface --hemi {hemi}")
-        cmd_f = cmd.format(hemi=hemi, subject=subject, src_subject=src_subject, 
+        cmd_f = cmd.format(hemi=hemi, subject=subject, src_subject=src_subject,
                            srclabel=srclabel, trglabel=trglabel)
         print("Calling: ")
         print(cmd_f)
@@ -441,9 +443,9 @@ def get_label(subject, label, fs_subject=None, fs_dir=None, src_subject='fsavera
     fs_subject : str
         Freesurfer subject ID, if different from pycortex subject ID
     src_subject : str
-        Freesurfer subject ID from which to transfer the label. 
+        Freesurfer subject ID from which to transfer the label.
     fs_dir : str
-        Freesurfer subject directory; None defaults to OS environment variable 
+        Freesurfer subject directory; None defaults to OS environment variable
     hemisphere : list | tuple
 
     """
@@ -485,12 +487,12 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
         Freesurfer subject name
     hemi : str ['lh' | 'rh']
         Left or right hemisphere
-    type : 
-    
-    patch : 
-    
+    type :
+
+    patch :
+
     curv : bool
-    
+
     freesurfer_subject_dir :
     """
     from mayavi import mlab
@@ -532,7 +534,7 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
     return fig, surf
 
 def write_dot(fname, pts, polys, name="test"):
-    """  
+    """
     """
     import networkx as nx
     def iter_surfedges(tris):
@@ -555,7 +557,7 @@ def write_dot(fname, pts, polys, name="test"):
 
 
 def read_dot(fname, pts):
-    """  
+    """
     """
     import re
     parse = re.compile(r'\s(\d+)\s\[label="", pos="([\d\.]+),([\d\.]+)".*];')
@@ -574,7 +576,7 @@ def read_dot(fname, pts):
 
 
 def write_decimated(path, pts, polys):
-    """  
+    """
     """
     from .polyutils import decimate, boundary_edges
     dpts, dpolys = decimate(pts, polys)
@@ -593,7 +595,7 @@ def write_decimated(path, pts, polys):
 
 
 class SpringLayout(object):
-    """  
+    """
     """
     def __init__(self, pts, polys, dpts=None, pins=None, stepsize=1, neighborhood=0):
         self.pts = pts
@@ -604,7 +606,7 @@ class SpringLayout(object):
             pinmask[pins] = True
         self.pins = pinmask
         self.neighbors = [set() for _ in range(len(pts))]
-        
+
         for i, j, k in polys:
             self.neighbors[i].add(j)
             self.neighbors[i].add(k)
@@ -682,7 +684,7 @@ class SpringLayout(object):
         self.figure.mlab_source.set(x=self.pts[:,0], y=self.pts[:,1], z=self.pts[:,2])
 
 def stretch_mwall(pts, polys, mwall):
-    """  
+    """
     """
     inflated = pts.copy()
     center = pts[mwall].mean(0)
