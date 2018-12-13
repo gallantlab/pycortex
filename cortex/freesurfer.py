@@ -26,8 +26,8 @@ def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
     type : string ['patch'|'surf'|'curv']
         Which type of files to return
     freesurfer_subject_dir : string | None
-        Directory of freesurfer subjects. Defaults to the value for 
-        the environment variable 'SUBJECTS_DIR' (which should be set 
+        Directory of freesurfer subjects. Defaults to the value for
+        the environment variable 'SUBJECTS_DIR' (which should be set
         by freesurfer)
     """
     if freesurfer_subject_dir is None:
@@ -42,7 +42,7 @@ def get_paths(subject, hemi, type="patch", freesurfer_subject_dir=None):
 
 def autorecon(subject, type="all"):
     """Run Freesurfer's autorecon-all command for a given freesurfer subject
-    
+
     Parameters
     ----------
     subject : string
@@ -51,7 +51,7 @@ def autorecon(subject, type="all"):
         Which steps of autorecon-all to perform. {'all', '1','2','3','cp','wm', 'pia'}
 
     """
-    types = { 
+    types = {
         'all':'autorecon-all',
         '1':"autorecon1",
         '2':"autorecon2",
@@ -61,32 +61,32 @@ def autorecon(subject, type="all"):
         'pia':"autorecon2-pial"}
 
     times = {
-        'all':"12 hours", 
-        '2':"6 hours", 
-        'cp':"8 hours", 
+        'all':"12 hours",
+        '2':"6 hours",
+        'cp':"8 hours",
         'wm':"4 hours"
         }
     if str(type) in times:
         resp = input("recon-all will take approximately %s to run! Continue? "%times[str(type)])
         if resp.lower() not in ("yes", "y"):
             return
-            
+
     cmd = "recon-all -s {subj} -{cmd}".format(subj=subject, cmd=types[str(type)])
     sp.check_call(shlex.split(cmd))
 
 def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
     """Perform flattening of a brain using freesurfer
-    
+
     Parameters
     ----------
-    subject : 
-    
-    hemi : 
-    
-    patch : 
-    
+    subject :
+
+    hemi :
+
+    patch :
+
     freesurfer_subject_dir :
-    
+
     Returns
     -------
     """
@@ -101,7 +101,7 @@ def flatten(subject, hemi, patch, freesurfer_subject_dir=None):
 
 def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_surf='smoothwm'):
     """Imports a subject from freesurfer
-    
+
     Parameters
     ----------
     subject : string
@@ -158,19 +158,21 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
 
     database.db = database.Database()
 
-def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
+def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None, freesurfer_subject_dir=None):
     """Imports a flat brain from freesurfer
-    
+
     Parameters
     ----------
     subject : str
         Freesurfer subject name
-    patch : 
-    
+    patch : str
+        Name of blender/freesurfer file, e.g., "flattenv01"
+    hemis : list
+        Choose which hemispheres to import. Default is both hemispheres.
     sname : str
         Pycortex subject name3
     freesurfer_subject_dir : str
-    
+
     Returns
     -------
     """
@@ -179,7 +181,7 @@ def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     surfs = os.path.join(database.default_filestore, sname, "surfaces", "flat_{hemi}.gii")
 
     from . import formats
-    for hemi in ['lh', 'rh']:
+    for hemi in hemis:
         pts, polys, _ = get_surf(subject, hemi, "patch", patch+".flat", freesurfer_subject_dir=freesurfer_subject_dir)
         flat = pts[:,[1, 0, 2]]
         flat[:,1] = -flat[:,1]
@@ -193,7 +195,7 @@ def import_flat(subject, patch, sname=None, freesurfer_subject_dir=None):
     os.makedirs(cache)
 
 def make_fiducial(subject, freesurfer_subject_dir=None):
-    """  
+    """
     """
     for hemi in ['lh', 'rh']:
         spts, polys, _ = get_surf(subject, hemi, "smoothwm", freesurfer_subject_dir=freesurfer_subject_dir)
@@ -202,7 +204,7 @@ def make_fiducial(subject, freesurfer_subject_dir=None):
         write_surf(fname, (spts + ppts) / 2, polys)
 
 def parse_surf(filename):
-    """  
+    """
     """
     with open(filename, 'rb') as fp:
         #skip magic
@@ -217,7 +219,7 @@ def parse_surf(filename):
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
 def write_surf(filename, pts, polys, comment=''):
-    """  
+    """
     """
     with open(filename, 'wb') as fp:
         fp.write(b'\xff\xff\xfe')
@@ -228,14 +230,14 @@ def write_surf(filename, pts, polys, comment=''):
         fp.write(b'\n')
 
 def parse_curv(filename):
-    """  
+    """
     """
     with open(filename, 'rb') as fp:
         fp.seek(15)
         return np.fromstring(fp.read(), dtype='>f4').byteswap().newbyteorder()
 
 def parse_patch(filename):
-    """  
+    """
     """
     with open(filename, 'rb') as fp:
         header, = struct.unpack('>i', fp.read(4))
@@ -245,14 +247,14 @@ def parse_patch(filename):
         return data
 
 def get_surf(subject, hemi, type, patch=None, freesurfer_subject_dir=None):
-    """  
+    """
     """
     if type == "patch":
         assert patch is not None
         surf_file = get_paths(subject, hemi, 'surf', freesurfer_subject_dir=freesurfer_subject_dir).format(name='smoothwm')
     else:
         surf_file = get_paths(subject, hemi, 'surf', freesurfer_subject_dir=freesurfer_subject_dir).format(name=type)
-    
+
     pts, polys = parse_surf(surf_file)
 
     if patch is not None:
@@ -283,9 +285,9 @@ def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subjec
     if fs_dir is None:
         fs_dir = os.environ['SUBJECTS_DIR']
     for hemi in hemisphere:
-        srclabel = os.path.join(fs_dir, src_subject, 'label', 
+        srclabel = os.path.join(fs_dir, src_subject, 'label',
                                 '{hemi}.{label}.label'.format(hemi=hemi, label=label))
-        trglabel = os.path.join(fs_dir, subject, 'label', 
+        trglabel = os.path.join(fs_dir, subject, 'label',
                                 '{hemi}.{label}.label'.format(hemi=hemi, label=label))
         if not os.path.exists(srclabel):
             raise ValueError("Label {} doesn't exist!".format(srclabel))
@@ -295,7 +297,7 @@ def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subjec
         cmd = ("mri_label2label --srcsubject {src_subject} --trgsubject {subject} "
                "--srclabel {srclabel} --trglabel {trglabel} "
                "--regmethod surface --hemi {hemi}")
-        cmd_f = cmd.format(hemi=hemi, subject=subject, src_subject=src_subject, 
+        cmd_f = cmd.format(hemi=hemi, subject=subject, src_subject=src_subject,
                            srclabel=srclabel, trglabel=trglabel)
         print("Calling: ")
         print(cmd_f)
@@ -350,9 +352,9 @@ def get_label(subject, label, fs_subject=None, fs_dir=None, src_subject='fsavera
     fs_subject : str
         Freesurfer subject ID, if different from pycortex subject ID
     src_subject : str
-        Freesurfer subject ID from which to transfer the label. 
+        Freesurfer subject ID from which to transfer the label.
     fs_dir : str
-        Freesurfer subject directory; None defaults to OS environment variable 
+        Freesurfer subject directory; None defaults to OS environment variable
     hemisphere : list | tuple
 
     """
@@ -373,7 +375,7 @@ def get_label(subject, label, fs_subject=None, fs_dir=None, src_subject='fsavera
     return idx, values
 
 def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):
-    """  
+    """
     """
     if type == "wm":
         curv_file = get_paths(subject, hemi, 'curv', freesurfer_subject_dir=freesurfer_subject_dir).format(name='')
@@ -384,19 +386,19 @@ def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):
 
 def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir=None):
     """Show a surface from a Freesurfer subject directory
-    
+
     Parameters
     ----------
     subject : str
         Freesurfer subject name
-    hemi : 
-    
-    type : 
-    
-    patch : 
-    
+    hemi :
+
+    type :
+
+    patch :
+
     curv : bool
-    
+
     freesurfer_subject_dir :
     """
     from mayavi import mlab
@@ -407,7 +409,7 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
         curv = get_curv(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir)
     else:
         curv = idx
-    
+
     fig = mlab.figure()
     src = mlab.pipeline.triangular_mesh_source(pts[:,0], pts[:,1], pts[:,2], polys, scalars=curv, figure=fig)
     norms = mlab.pipeline.poly_data_normals(src, figure=fig)
@@ -438,7 +440,7 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
     return fig, surf
 
 def write_dot(fname, pts, polys, name="test"):
-    """  
+    """
     """
     import networkx as nx
     def iter_surfedges(tris):
@@ -460,7 +462,7 @@ def write_dot(fname, pts, polys, name="test"):
         fp.write("}")
 
 def read_dot(fname, pts):
-    """  
+    """
     """
     import re
     parse = re.compile(r'\s(\d+)\s\[label="", pos="([\d\.]+),([\d\.]+)".*];')
@@ -478,7 +480,7 @@ def read_dot(fname, pts):
     return data
 
 def write_decimated(path, pts, polys):
-    """  
+    """
     """
     from .polyutils import decimate, boundary_edges
     dpts, dpolys = decimate(pts, polys)
@@ -497,7 +499,7 @@ def write_decimated(path, pts, polys):
 
 import copy
 class SpringLayout(object):
-    """  
+    """
     """
     def __init__(self, pts, polys, dpts=None, pins=None, stepsize=1, neighborhood=0):
         self.pts = pts
@@ -508,7 +510,7 @@ class SpringLayout(object):
             pinmask[pins] = True
         self.pins = pinmask
         self.neighbors = [set() for _ in range(len(pts))]
-        
+
         for i, j, k in polys:
             self.neighbors[i].add(j)
             self.neighbors[i].add(k)
@@ -586,7 +588,7 @@ class SpringLayout(object):
         self.figure.mlab_source.set(x=self.pts[:,0], y=self.pts[:,1], z=self.pts[:,2])
 
 def stretch_mwall(pts, polys, mwall):
-    """  
+    """
     """
     inflated = pts.copy()
     center = pts[mwall].mean(0)
