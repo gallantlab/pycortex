@@ -169,8 +169,8 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
         cmd = "mri_convert {path} {out}".format(path=path, out=out)
         sp.check_output(shlex.split(cmd))
 
-    if not os.path.exists(curvs.format(hemi="lh", name="fiducial")):
-        make_fiducial(subject, freesurfer_subject_dir=freesurfer_subject_dir)
+    # Make the fiducial files. Just make them.
+    make_fiducial(subject, freesurfer_subject_dir=freesurfer_subject_dir)
 
     # Freesurfer uses FOV/2 for center, let's set the surfaces to use the
     # magnet isocenter
