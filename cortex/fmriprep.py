@@ -5,7 +5,7 @@ from .freesurfer import parse_curv
 import numpy as np
 
 def import_subj(subject,
-                derivatives_dir,
+                source_dir,
                 session=None,
                 sname=None):
     """Imports a subject from fmriprep-output.
@@ -15,8 +15,8 @@ def import_subj(subject,
     ----------
     subject : string
         Fmriprep subject name (without "sub-")
-    derivatives_dir : string
-       Directory that contains both fmriprep and freesurfer subfolders 
+    source_dir : string
+       Local directory that contains both fmriprep and freesurfer subfolders 
     session : string, optional
        BIDS session that contains the anatomical data (leave to default if
        not a specific session)
@@ -33,7 +33,7 @@ def import_subj(subject,
     anats = op.join(database.default_filestore, sname, "anatomicals", "{name}.nii.gz")
     surfinfo = op.join(database.default_filestore, sname, "surface-info", "{name}.npz")
 
-    fmriprep_dir = op.join(derivatives_dir, 'fmriprep')
+    fmriprep_dir = op.join(source_dir, 'fmriprep')
     if session is not None:
         fmriprep_dir = op.join(fmriprep_dir, 'ses-{session}')
         session_str = '_ses-{session}'.format(session=session)
@@ -71,7 +71,7 @@ def import_subj(subject,
             shutil.copy(source, target)
 
     #import surfinfo
-    curvs = op.join(derivatives_dir,
+    curvs = op.join(source_dir,
                          'freesurfer',
                          'sub-{subject}',
                          'surf',
