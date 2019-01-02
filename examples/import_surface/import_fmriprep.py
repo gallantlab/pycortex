@@ -13,8 +13,9 @@ https://openneuro.org/datasets/ds000164/versions/00001
 """
 
 import cortex
+from cortex import fmriprep
 
-cortex.fmriprep.import_subj('001', '/derivatives/ds000164')
+fmriprep.import_subj('001', '/derivatives/ds000164')
 
 # We can use the identity transform to visualize the T1-weighted image
 t1w = '/derivatives/ds000164/fmriprep/sub-001/anat/sub-001_T1w_preproc.nii.gz'
@@ -24,4 +25,4 @@ t1w_volume = cortex.Volume(t1w, '001', 'identity')
 
 # And show the result.
 ds = cortex.Dataset(t1w=t1w_volume)
-cortex.webshow(ds)
+cortex.webgl.show(ds)
