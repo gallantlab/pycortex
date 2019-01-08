@@ -329,7 +329,14 @@ var jsplot = (function (module) {
 
 		function mousewheel( event ) {
 			if (!event.altKey) {
-			    this.setRadius(this.radius + this.zoomSpeed * -1 * event.wheelDelta * 50.0);
+				delta = event.deltaY
+
+				// normalize across browsers
+				if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1){
+					delta = delta * 18
+				}
+
+			    this.setRadius(this.radius + this.zoomSpeed * delta * 110.0);
 			    this.dispatchEvent( changeEvent );
 			}
 		};
@@ -345,7 +352,7 @@ var jsplot = (function (module) {
 		object.addEventListener( 'mousemove', mousemove.bind(this), false );
 		object.addEventListener( 'mousedown', mousedown.bind(this), false );
 		object.addEventListener( 'mouseup', mouseup.bind(this), false );
-		object.addEventListener( 'mousewheel', mousewheel.bind(this), false);
+		object.addEventListener( 'wheel', mousewheel.bind(this), false);
 		object.addEventListener( 'mouseout', mouseup.bind(this), false );
 
 		window.addEventListener( 'keydown', keydown.bind(this), false );
