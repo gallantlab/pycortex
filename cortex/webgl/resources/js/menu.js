@@ -176,7 +176,7 @@ var jsplot = (function (module) {
                     }
                 }
 
-                if (String.fromCharCode(event.keyCode) == key) {
+                if (event.key == key) {
                     action();
                     event.preventDefault();
                     event.stopPropagation();
