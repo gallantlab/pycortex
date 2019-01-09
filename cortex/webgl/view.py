@@ -45,7 +45,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                 html_embed=True, overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
                 overlay_file=None, copy_ctmfiles=True, title='Brain', **kwargs):
     """
-    Creates a static webGL MRI viewer in your filesystem so that it can easily 
+    Creates a static webGL MRI viewer in your filesystem so that it can easily
     be posted publically for sharing or just saved for later viewing.
 
     Parameters
@@ -68,7 +68,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         Overlays availble in the viewer. If None, then all overlay layers of the
         svg file will be potentially available in the viewer (whether initially
         visible or not). This provides the option to include, e.g., only a subset
-        of layers for a given static viewer. 
+        of layers for a given static viewer.
     overlays_visible : tuple, optional
         The listed overlay layers will be set visible by default. Layers not listed
         here will be hidden by default (but can be enabled in the viewer GUI).
@@ -108,7 +108,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     You will need a real web server to view this, since `file://` paths
     don't handle xsrf correctly
     """
-    
+
     outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
     if not os.path.exists(outpath):
         os.makedirs(outpath)
@@ -126,7 +126,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     package = Package(data)
     subjects = list(package.subjects)
 
-    ctmargs = dict(method='mg2', level=9, recache=recache, external_svg=overlay_file, 
+    ctmargs = dict(method='mg2', level=9, recache=recache, external_svg=overlay_file,
                    overlays_available=overlays_available)
     ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
                 for subj in subjects)
@@ -210,7 +210,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     my_viewopts['brightness'] = options.config.get('curvature', 'brightness')
     my_viewopts['smoothness'] = options.config.get('curvature', 'webgl_smooth')
     my_viewopts['contrast'] = options.config.get('curvature', 'contrast')
-    
+
     for sec in options.config.sections():
         if 'paths' in sec or 'labels' in sec:
             my_viewopts[sec] = dict(options.config.items(sec))
@@ -235,8 +235,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
          autoclose=True, open_browser=True, port=None, pickerfun=None,
-         template="mixer.html", overlays_available=None, 
-         overlays_visible=('rois', 'sulci'), labels_visible=('rois', ), 
+         template="mixer.html", overlays_available=None,
+         overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
          overlay_file=None, title='Brain', **kwargs):
     """
     Creates a webGL MRI viewer that is dynamically served by a tornado server
@@ -250,7 +250,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         dictionary of Volume, Vertex. etc. objects.
     autoclose : bool, optional
         If True, the tornado server will automatically be destroyed when the last
-        web client has disconnected. If False, the server will stay open, 
+        web client has disconnected. If False, the server will stay open,
         allowing more connections. Default True
     open_browser : bool, optional
         If True, uses the webbrowser library to open the viewer in the default
@@ -260,7 +260,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         selected from the range 1024-65536. Default None
     pickerfun : funcion or None, optional
         Should be a function that takes two arguments, a voxel index and a vertex
-        index. Is called whenever a location on the surface is clicked in the 
+        index. Is called whenever a location on the surface is clicked in the
         viewer. This can be used to print information about individual voxels or
         vertices, plot receptive fields, or many other uses. Default None
     recache : bool, optional
@@ -296,7 +296,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         The layout of the viewer subwindows for showing multiple subjects.
         Default None, which selects the layout based on the number of subjects.
     """
-    
+
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
@@ -316,7 +316,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     images = package.images
     subjects = list(package.subjects)
 
-    ctmargs = dict(method='mg2', level=9, recache=recache, 
+    ctmargs = dict(method='mg2', level=9, recache=recache,
         external_svg=overlay_file, overlays_available=overlays_available)
     ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
                 for subj in subjects)
@@ -457,13 +457,16 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             _subject = list(self.ui.surface._folders.attrs.keys())[0]
             _surface = getattr(self.ui.surface, _subject)
             _surface_props = ['surface.{subject}.%s'%k for k in _surface._controls.attrs.keys()]
+            _curvature_props = ['surface.{subject}.curvature.brightness',
+                                'surface.{subject}.curvature.contrast',
+                                'surface.{subject}.curvature.smoothness']
             #view_props = _camera_props + _surface_props
-            return _camera_props + _surface_props
-            #['camera.altitude', 'camera.azimuth', 'camera.target', 'camera.radius', 
+            return _camera_props + _surface_props + _curvature_props
+            #['camera.altitude', 'camera.azimuth', 'camera.target', 'camera.radius',
             #'surface.{subject}.unfold', 'surface.{subject}.pivot', 'surface.{subject}.depth',
             #'surface.{subject}.shift', 'surface.{subject}.left', 'surface.{subject}.right']
             #'surface.{subject}.specularity', 'frame', 'bg_alpha'
-            #'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection', 
+            #'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection',
             #'volume_vis', 'frame', 'slices']
 
         def _set_view(self, **kwargs):
@@ -516,7 +519,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 try:
                     view[p] = self.ui.get(p.format(subject=subject) if '{subject}' in p else p)[0]
                 except Exception as err:
-                    # TO DO: Fix this hack with an error class in serve.py & catch it here 
+                    # TO DO: Fix this hack with an error class in serve.py & catch it here
                     print(err) #msg = "Cannot read property 'undefined'"
                     #if err.message[:len(msg)] != msg:
                     #    raise err
@@ -688,7 +691,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             fr = 0
             a = np.array
             func = mixes[interpolation]
-            skip_props = ['surface.{subject}.right', 'surface.{subject}.left', ] #'projection', 
+            skip_props = ['surface.{subject}.right', 'surface.{subject}.left', ] #'projection',
             # Get keyframes
             keyframes = sorted(keyframes, key=lambda x:x['time'])
             # Normalize all time to frame rate
