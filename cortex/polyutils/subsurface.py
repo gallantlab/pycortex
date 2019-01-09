@@ -97,6 +97,10 @@ class SubsurfaceMixin(object):
             vertex or set of vertices to use as seed
         - mask : boolean array
             mask of allowed neighbors
+        - old_version : boolean (default=False)
+            True = Use vertex adjacency to select patch (can cause errors in odd situations)
+            False = Use poly adjacency to select patch (solves problem where a single edge but
+            no polys connect two regions within the patch, makes geodesic distance errors)
         """
         n_vertices = self.pts.shape[0]
         n_polys = self.polys.shape[0]
@@ -147,6 +151,10 @@ class SubsurfaceMixin(object):
             vertex or set of vertices to use as seed
         - radius : number
             distance threshold
+        - old_version : boolean (default=False)
+            True = Use vertex adjacency to select patch (can cause errors in odd situations)
+            False = Use poly adjacency to select patch (solves problem where a single edge but
+            no polys connect two regions within the patch, makes geodesic distance errors)
         """
 
         if np.issubdtype(type(vertex), np.integer):
@@ -198,6 +206,12 @@ class SubsurfaceMixin(object):
             radius to use as threshold
         - attempts : int
             number of attempts to use for working with singular subsurfaces
+        - m : number
+            reverse Euler step length, passed to geodesic_distance
+        - old_version : boolean (default=False)
+            True = Use vertex adjacency to select patch (can cause errors in odd situations)
+            False = Use poly adjacency to select patch (solves problem where a single edge but
+            no polys connect two regions within the patch, makes geodesic distance errors)
 
         Output
         ------
