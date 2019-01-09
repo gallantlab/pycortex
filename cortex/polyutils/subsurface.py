@@ -1,5 +1,4 @@
 """utilities for efficiently working with patches of cortex (aka subsurfaces)"""
-
 import numpy as np
 import scipy.sparse
 
@@ -87,7 +86,7 @@ class SubsurfaceMixin(object):
     def subsurface_vertex_inverse(self):
         return np.nonzero(self.subsurface_vertex_mask)[0]
 
-    def get_connected_vertices(self, vertex, mask):
+    def get_connected_vertices(self, vertex, mask, old_version=False):
         """return vertices connected to vertex that satisfy mask
 
         - helper method for other methods
@@ -100,6 +99,7 @@ class SubsurfaceMixin(object):
             mask of allowed neighbors
         """
         n_vertices = self.pts.shape[0]
+        n_polys = self.polys.shape[0]
         output_mask = np.zeros(n_vertices, dtype=bool)
 
         if np.issubdtype(type(vertex), np.integer):
@@ -114,16 +114,31 @@ class SubsurfaceMixin(object):
         else:
             raise Exception('unknown vertex type:' + str(vertex))
 
-        while len(add_next) > 0:
-            check = np.zeros(n_vertices, dtype=bool)
-            check[self.adj[add_next, :].indices] = True
-            add_next = check * mask * (~output_mask)
-            output_mask[add_next] = True
-            add_next = np.nonzero(add_next)[0]
+        if old_version:
+            while len(add_next) > 0:
+                check = np.zeros(n_vertices, dtype=bool)
+                check[self.adj[add_next, :].indices] = True
+                add_next = check * mask * (~output_mask)
+                output_mask[add_next] = True
+                add_next = np.nonzero(add_next)[0]
+        else:
+            while len(add_next) > 0:
+                check = np.zeros(n_vertices, dtype=bool)
+                # Instead of just adjacent vertices, get adjacent polys
+                check_polys = self.connected[add_next,:].indices
+                # Will be checking within mask in this step for all verts for a poly being in the mask
+                good_polys = check_polys[np.all(mask[self.polys[check_polys,:]], axis=1)]
+                # Then get all verts from the good polys
+                good_verts = np.unique(self.polys[good_polys])
+                check[good_verts] = True
+                # Mask is already used in selecting checked ones
+                add_next = check * (~output_mask)
+                output_mask[add_next] = True
+                add_next = np.nonzero(add_next)[0]
 
         return output_mask
 
-    def get_euclidean_patch(self, vertex, radius):
+    def get_euclidean_patch(self, vertex, radius, old_version=False):
         """return connected vertices within some 3d euclidean distance of a vertex
 
         Parameters
@@ -146,7 +161,7 @@ class SubsurfaceMixin(object):
             raise Exception('unknown vertex type: ' + str(type(vertex)))
 
         return {
-            'vertex_mask': self.get_connected_vertices(vertex=vertex, mask=close_enough),
+            'vertex_mask': self.get_connected_vertices(vertex=vertex, mask=close_enough, old_version=old_version),
         }
 
     def get_euclidean_ball(self, xyz, radius):
@@ -172,7 +187,7 @@ class SubsurfaceMixin(object):
 
         return diff < radius
 
-    def get_geodesic_patch(self, vertex, radius, attempts=5):
+    def get_geodesic_patch(self, vertex, radius, attempts=5, m=1.0, old_version=False):
         """return vertices within some 2d geodesic distance of a vertex (or vertices)
 
         Parameters
@@ -192,7 +207,7 @@ class SubsurfaceMixin(object):
         working_radius = radius
         for attempt in range(attempts):
             try:
-                euclidean_vertices = self.get_euclidean_patch(vertex, working_radius)
+                euclidean_vertices = self.get_euclidean_patch(vertex, working_radius, old_version=old_version)
                 vertex_mask = euclidean_vertices['vertex_mask']
                 subsurface = self.create_subsurface(vertex_mask=vertex_mask)
                 vertex_map = subsurface.subsurface_vertex_map
@@ -200,7 +215,7 @@ class SubsurfaceMixin(object):
                 if np.isscalar(vertex):
                     vertex = [vertex]
 
-                geodesic_distance = subsurface.geodesic_distance(vertex_map[vertex])
+                geodesic_distance = subsurface.geodesic_distance(vertex_map[vertex], m=m)
                 break
 
             except RuntimeError:
@@ -212,10 +227,12 @@ class SubsurfaceMixin(object):
             raise Exception('could not find suitable radius')
 
         close_enough = geodesic_distance <= radius
+        close_enough = subsurface.lift_subsurface_data(close_enough)
+        geodesic_distance = subsurface.lift_subsurface_data(geodesic_distance) 
         geodesic_distance[~close_enough] = np.nan
 
         return {
-            'vertex_mask': subsurface.lift_subsurface_data(data=close_enough),
+            'vertex_mask': self.get_connected_vertices(vertex=vertex, mask=close_enough, old_version=old_version),
             'geodesic_distance': geodesic_distance[close_enough],
         }
 
