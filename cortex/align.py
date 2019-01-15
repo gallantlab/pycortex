@@ -82,7 +82,7 @@ def manual(subject, xfmname, reference=None, **kwargs):
 
     return m
 
-def fs_manual(subject, xfmname, input_reg="register.dat", surf_color="green"):
+def fs_manual(subject, xfmname, output_name="register", surf_color="green"):
     """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
     volume to the cortical surface for `subject`. This creates a new transform
     called `xfm`. The name of a nibabel-readable file (e.g. nii) should be
@@ -129,16 +129,16 @@ def fs_manual(subject, xfmname, input_reg="register.dat", surf_color="green"):
 
     # Command for FreeView and run
     cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
-           "{ref}:reg={xfm_dir}/register.dat "
+           "{ref}"
            "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={c} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={c}")
-    cmd = cmd.format(sub=subject, ref=reference, xfm_dir=xfm_dir, c=surf_color)
+    cmd = cmd.format(sub=subject, ref=reference, c=surf_color)
 
     # Run and save transform when user is done editing
     if sp.call(cmd, shell=True) != 0:
         raise IOError("Problem with FreeView!")
     else:
         # Save transform
-        reg_name = input_reg[:-4] + ".lta"
+        reg_name = output_name + ".lta"
         fs_xfm = os.path.join(xfm_dir, reg_name)
         xfm = Transform.from_freesurfer(fs_xfm, reference, subject, lta=True)
         db.save_xfm(subject, xfmname, xfm.xfm, xfmtype='magnet', reference=reference)
