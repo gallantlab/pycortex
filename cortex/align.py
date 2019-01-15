@@ -82,14 +82,14 @@ def manual(subject, xfmname, reference=None, **kwargs):
 
     return m
 
-def fs_manual(subject, xfmname, output_name="register.lta", surf_color="green"):
+def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pial_color="red", noclean=False):
     """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
     volume to the cortical surface for `subject`. This creates a new transform
     called `xfm`. The name of a nibabel-readable file (e.g. nii) should be
     supplied as `reference`. This image will be copied into the database.
 
     **IMPORTANT!!!** The function assumes that the resulting .lta file is saved as
-    "{default folder chosen by FreeView (this should be cache)}/{output_name}".
+    "{default folder chosen by FreeView (should be /tmp/fsalign_xxx)}/{output_name}".
 
     Parameters
     ----------
@@ -99,63 +99,81 @@ def fs_manual(subject, xfmname, output_name="register.lta", surf_color="green"):
         The name of the transform to be fixed.
     output_name : str
         The name of the .lta file generated after FreeView editing.
-    surf_color : str | "green"
-        Color of the (white matter) surfacesself. Default is "green". This can
+    wm_color : str | "blue"
+        Color of the white matter surface. Default is "blue". This can
         also be adjusted in the FreeView GUI.
+    pial_color : str | "red"
+        Color of the pial surface. Default is "red". This can also be adjusted
+        the FreeView GUI.
+    noclean : boolean | False
+        If True, intermediate files will not be removed from /tmp/fsalign_xxx
+        (this is useful for debugging things), and the returned value will be
+        the name of the temp directory. Default False.
 
     Returns
     -------
-    xfm : Transform object
-        The new pycortex transform.
+    Nothing unless noclean is true.
     """
 
     import subprocess as sp
     import tempfile
+    import shutil
     from .xfm import Transform
     from .database import db
 
     # All the checks
     # Check whether transform w/ this xfmname already exists
+    retval = None
+
     try:
-        cache = tempfile.mkdtemp()
-        sub_xfm = db.get_xfm(subject, xfmname)
+        try:
+            cache = tempfile.mkdtemp(prefix="fsalign_")
+            sub_xfm = db.get_xfm(subject, xfmname)
 
-        # if masks have been cached, quit! user must remove them by hand
-        from glob import glob
-        if len(glob(db.get_paths(subject)['masks'].format(xfmname=xfmname, type='*'))):
-            print('Refusing to overwrite existing transform %s because there are cached masks. Delete the masks manually if you want to modify the transform.' % xfmname)
-            raise ValueError('Exiting...')
-    except IOError:
-        print("Transform does not exist!")
+            # if masks have been cached, quit! user must remove them by hand
+            from glob import glob
+            if len(glob(db.get_paths(subject)['masks'].format(xfmname=xfmname, type='*'))):
+                print('Refusing to overwrite existing transform %s because there are cached masks. Delete the masks manually if you want to modify the transform.' % xfmname)
+                raise ValueError('Exiting...')
+        except IOError:
+            print("Transform does not exist!")
 
-    # Load transform-relevant things
-    reference = sub_xfm.reference.get_filename()
-    xfm_dir = os.path.dirname(reference)
-    _ = sub_xfm.to_freesurfer(os.path.join(cache, "register.dat"), subject) # Transform in freesurfer .dat format
+        # Load transform-relevant things
+        reference = sub_xfm.reference.get_filename()
+        xfm_dir = os.path.dirname(reference)
+        _ = sub_xfm.to_freesurfer(os.path.join(cache, "register.dat"), subject) # Transform in freesurfer .dat format
 
-    # Command for FreeView and run
-    cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
-            "{ref}:reg={reg} "
-           "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={c} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={c}")
-    cmd = cmd.format(sub=subject, ref=reference, reg=os.path.join(cache, "register.dat"), c=surf_color)
+        # Command for FreeView and run
+        cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
+                "{ref}:reg={reg} "
+               "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={wmc} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={wmc} "
+               "$SUBJECTS_DIR/{sub}/surf/lh.pial:edgecolor={pialc} $SUBJECTS_DIR/{sub}/surf/rh.pial:edgecolor={pialc}")
+        cmd = cmd.format(sub=subject, ref=reference, reg=os.path.join(cache, "register.dat"),
+                         wmc=wm_color, pialc=pial_color)
 
-    # Run and save transform when user is done editing
-    if sp.call(cmd, shell=True) != 0:
-        raise IOError("Problem with FreeView!")
-    else:
-        # Convert transform into .dat format
-        reg_dat = os.path.join(cache, output_name[:-4] + ".dat")
-        cmd = "lta_convert --inlta {inlta} --outreg {regdat}"
-        cmd = cmd.format(inlta=os.path.join(cache, output_name), regdat=reg_dat)
+        # Run and save transform when user is done editing
         if sp.call(cmd, shell=True) != 0:
-            raise IOError("Error converting lta into dat!")
+            raise IOError("Problem with FreeView!")
+        else:
+            # Convert transform into .dat format
+            reg_dat = os.path.join(cache, output_name[:-4] + ".dat")
+            cmd = "lta_convert --inlta {inlta} --outreg {regdat}"
+            cmd = cmd.format(inlta=os.path.join(cache, output_name), regdat=reg_dat)
+            if sp.call(cmd, shell=True) != 0:
+                raise IOError("Error converting lta into dat!")
 
-        # Save transform to pycortex
-        xfm = Transform.from_freesurfer(reg_dat, reference, subject)
-        db.save_xfm(subject, xfmname, xfm.xfm, xfmtype='coord', reference=reference)
-        print("saved xfm")
+            # Save transform to pycortex
+            xfm = Transform.from_freesurfer(reg_dat, reference, subject)
+            db.save_xfm(subject, xfmname, xfm.xfm, xfmtype='coord', reference=reference)
+            print("saved xfm")
 
-    return xfm
+    finally:
+        if not noclean:
+            shutil.rmtree(cache)
+        else:
+            retval = cache
+
+    return retval
 
 
 def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args='', use_fs_bbr=False):
