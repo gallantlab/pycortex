@@ -82,7 +82,72 @@ def manual(subject, xfmname, reference=None, **kwargs):
 
     return m
 
-def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args='', use_fs_bbr=False):
+def fs_manual(subject, xfmname, input_reg="register.dat", surf_color="green"):
+    """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
+    volume to the cortical surface for `subject`. This creates a new transform
+    called `xfm`. The name of a nibabel-readable file (e.g. nii) should be
+    supplied as `reference`. This image will be copied into the database.
+
+    **IMPORTANT!!!** The function assumes that the resulting .lta file is saved as
+    "/auto/k2/share/pycortex_store/subject/transform/xfmname/{input_reg_name}.lta".
+
+    subject : str
+        Subject identifier.
+    xfmname : str
+        The name of the transform to be fixed.
+    surf_color : str | "green"
+        Color of the (white matter) surfacesself. Default is "green". This can
+        also be adjusted in the FreeView GUI.
+
+    Returns
+    -------
+    xfm : Transform object
+        The new pycortex transform.
+    """
+
+    import subprocess as sp
+    from .xfm import Transform
+    from .database import db
+
+    # All the checks
+    # Check whether transform w/ this xfmname already exists
+    try:
+        sub_xfm = db.get_xfm(subject, xfmname)
+
+        # if masks have been cached, quit! user must remove them by hand
+        from glob import glob
+        if len(glob(db.get_paths(subject)['masks'].format(xfmname=xfmname, type='*'))):
+            print('Refusing to overwrite existing transform %s because there are cached masks. Delete the masks manually if you want to modify the transform.' % xfmname)
+            raise ValueError('Exiting...')
+
+        # Some filenames
+        reference = sub_xfm.reference.get_filename()
+        xfm_dir = os.path.dirname(reference)
+    except IOError:
+        print("Transform does not exist!")
+
+
+    # Command for FreeView and run
+    cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
+           "{ref}:reg={xfm_dir}/register.dat "
+           "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={c} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={c}")
+    cmd = cmd.format(sub=subject, ref=reference, xfm_dir=xfm_dir, c=surf_color)
+
+    # Run and save transform when user is done editing
+    if sp.call(cmd, shell=True) != 0:
+        raise IOError("Problem with FreeView!")
+    else:
+        # Save transform
+        reg_name = input_reg[:-4] + ".lta"
+        fs_xfm = os.path.join(xfm_dir, reg_name)
+        xfm = Transform.from_freesurfer(fs_xfm, reference, subject, lta=True)
+        db.save_xfm(subject, xfmname, xfm.xfm, xfmtype='magnet', reference=reference)
+        print("saved xfm")
+
+    return xfm
+
+
+def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args='', use_fs_bbr=False, save_dat=False):
     """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.
 
     If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting
@@ -113,6 +178,9 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
         Additional arguments that are passed to the FLIRT pre-alignment step (not BBR).
     use_fs_bbr : bool, optional
         If True will use freesurfer bbregister instead of FSL BBR.
+    save_dat : bool, optional
+        If True, will save the register.dat file from freesurfer bbregister into
+        freesurfer's $SUBJECTS_DIR/subject/tmp.
 
     Returns
     -------
@@ -139,6 +207,7 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
             print('Running freesurfer BBR')
             cmd = 'bbregister --s {sub} --mov {absref} --init-fsl --reg {cache}/register.dat --t1'
             cmd = cmd.format(sub=subject, absref=absreference, cache=cache)
+
             if sp.call(cmd, shell=True) != 0:
                 raise IOError('Error calling freesurfer BBR!')
 
@@ -171,6 +240,13 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
         # Save as pycortex 'coord' transform
         xfm.save(subject,xfmname,'coord')
         print('Success')
+
+        if save_dat:
+            cmd = 'mv {reg} /auto/k2/share/pycortex_store/{sub}/transforms/{xfm}'
+            cmd = cmd.format(reg=os.path.join(cache, "register.dat"), sub=subject,
+                             xfm=xfmname)
+            if sp.call(cmd, shell=True) != 0:
+                raise IOError('Error saving register.dat file')
 
     finally:
         if not noclean:
