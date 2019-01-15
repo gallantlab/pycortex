@@ -139,8 +139,7 @@ def fs_manual(subject, xfmname, output_name="register", surf_color="green"):
     else:
         # Save transform
         reg_name = output_name + ".lta"
-        fs_xfm = os.path.join(xfm_dir, reg_name)
-        xfm = Transform.from_freesurfer(fs_xfm, reference, subject, lta=True)
+        xfm = Transform.from_freesurfer(reg_name, reference, subject, lta=True)
         db.save_xfm(subject, xfmname, xfm.xfm, xfmtype='magnet', reference=reference)
         print("saved xfm")
 
