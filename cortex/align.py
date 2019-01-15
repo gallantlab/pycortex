@@ -85,10 +85,10 @@ def manual(subject, xfmname, reference=None, **kwargs):
 def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pial_color="red", noclean=False):
     """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
     volume to the cortical surface for `subject`. This creates a new transform
-    called `xfm`. The name of a nibabel-readable file (e.g. nii) should be
+    called `xfmname`. The name of a nibabel-readable file (e.g. NIfTI) should be
     supplied as `reference`. This image will be copied into the database.
 
-    **IMPORTANT!!!** The function assumes that the resulting .lta file is saved as
+    IMPORTANT: This function assumes that the resulting .lta file is saved as:
     "{default folder chosen by FreeView (should be /tmp/fsalign_xxx)}/{output_name}".
 
     Parameters
@@ -96,7 +96,7 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pia
     subject : str
         Subject identifier.
     xfmname : str
-        The name of the transform to be fixed.
+        The name of the transform to be modified.
     output_name : str
         The name of the .lta file generated after FreeView editing.
     wm_color : str | "blue"
