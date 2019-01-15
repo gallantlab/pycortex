@@ -154,7 +154,7 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pia
             raise IOError("Problem with FreeView!")
         else:
             # Convert transform into .dat format
-            reg_dat = os.path.join(cache, output_name[:-4] + ".dat")
+            reg_dat = os.path.join(cache, os.path.splitext(output_name)[0] + ".dat")
             cmd = "lta_convert --inlta {inlta} --outreg {regdat}"
             cmd = cmd.format(inlta=os.path.join(cache, output_name), regdat=reg_dat)
             if sp.call(cmd, shell=True) != 0:
