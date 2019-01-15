@@ -200,7 +200,7 @@ class Transform(object):
             return fslx
 
     @classmethod
-    def from_freesurfer(cls, fs_register, func_nii, subject, freesurfer_subject_dir=None, lta=False):
+    def from_freesurfer(cls, fs_register, func_nii, subject, freesurfer_subject_dir=None):
         """Converts a FreeSurfer transform to a pycortex transform.
 
         Converts a transform computed using FreeSurfer alignment tools (e.g., bbregister) to
@@ -223,8 +223,6 @@ class Transform(object):
             Directory of FreeSurfer subjects. Defaults to the value for
             the environment variable 'SUBJECTS_DIR' (which should be set
             by freesurfer)
-        lta : boolean | False
-            True if the input fs_register file is in LTA format. Defaults to False.
 
         Returns
         -------
@@ -248,10 +246,8 @@ class Transform(object):
         if isinstance(fs_register, string_types):
             with open(fs_register, 'r') as fid:
                 L = fid.readlines()
-            if lta:
-                anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[5:9]])
-            else:
-                anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[4:8]])
+
+            anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[4:8]])
         else:
             anat2func = fs_register
 
@@ -358,7 +354,7 @@ class Transform(object):
         # Read tkvox2ras transform for the functional volume
         try:
             cmd = ('mri_info', '--vox2ras-tkr', func_nii)
-            L = subprocess.check_output(cmd).splitlines()
+            L = subprocess.check_output(cmd).splitlines()[1:]
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -367,7 +363,7 @@ class Transform(object):
         # Read voxel resolution of the functional volume
         try:
             cmd = ('mri_info', '--res', func_nii)
-            ll = subprocess.check_output(cmd)
+            ll = subprocess.check_output(cmd).split("\n")[1]
             func_voxres = np.array([np.float(s) for s in ll.split() if s])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
