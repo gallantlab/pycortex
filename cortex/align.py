@@ -129,7 +129,7 @@ def fs_manual(subject, xfmname, output_name="register", surf_color="green"):
 
     # Command for FreeView and run
     cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
-           "{ref}"
+           "{ref} "
            "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={c} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={c}")
     cmd = cmd.format(sub=subject, ref=reference, c=surf_color)
 
