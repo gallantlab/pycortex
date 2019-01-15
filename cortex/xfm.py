@@ -200,7 +200,7 @@ class Transform(object):
             return fslx
 
     @classmethod
-    def from_freesurfer(cls, fs_register, func_nii, subject, freesurfer_subject_dir=None):
+    def from_freesurfer(cls, fs_register, func_nii, subject, freesurfer_subject_dir=None, lta=False):
         """Converts a FreeSurfer transform to a pycortex transform.
 
         Converts a transform computed using FreeSurfer alignment tools (e.g., bbregister) to
@@ -211,9 +211,9 @@ class Transform(object):
         Parameters
         ----------
         fs_register : array
-            4x4 transformation matrix, described in an FreeSurfer register.dat file, for a transform computed
+            4x4 transformation matrix, described in an FreeSurfer .dat or .lta file, for a transform computed
             FROM the func_nii volume TO the anatomical volume of the FreeSurfer subject `subject`.
-            Alternatively, a string file name for the FreeSurfer register.dat file.
+            Alternatively, a string file name for the FreeSurfer .dat or .lta file.
         func_nii : str or nibabel.Nifti1Image
             nibabel image object (or string path to nibabel-readable image) for (functional) data volume
             to be projected onto cortical surface
@@ -223,6 +223,8 @@ class Transform(object):
             Directory of FreeSurfer subjects. Defaults to the value for
             the environment variable 'SUBJECTS_DIR' (which should be set
             by freesurfer)
+        lta : boolean | False
+            True if the input fs_register file is in LTA format. Defaults to False.
 
         Returns
         -------
@@ -246,7 +248,10 @@ class Transform(object):
         if isinstance(fs_register, string_types):
             with open(fs_register, 'r') as fid:
                 L = fid.readlines()
-            anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[4:8]])
+            if lta:
+                anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[5:9]])
+            else:
+                anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[4:8]])
         else:
             anat2func = fs_register
 
