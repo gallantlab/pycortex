@@ -121,8 +121,6 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pia
     from .xfm import Transform
     from .database import db
 
-    # All the checks
-    # Check whether transform w/ this xfmname already exists
     retval = None
 
     try:
