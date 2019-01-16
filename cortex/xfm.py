@@ -211,9 +211,9 @@ class Transform(object):
         Parameters
         ----------
         fs_register : array
-            4x4 transformation matrix, described in an FreeSurfer register.dat file, for a transform computed
+            4x4 transformation matrix, described in an FreeSurfer .dat or .lta file, for a transform computed
             FROM the func_nii volume TO the anatomical volume of the FreeSurfer subject `subject`.
-            Alternatively, a string file name for the FreeSurfer register.dat file.
+            Alternatively, a string file name for the FreeSurfer .dat or .lta file.
         func_nii : str or nibabel.Nifti1Image
             nibabel image object (or string path to nibabel-readable image) for (functional) data volume
             to be projected onto cortical surface
@@ -246,6 +246,7 @@ class Transform(object):
         if isinstance(fs_register, string_types):
             with open(fs_register, 'r') as fid:
                 L = fid.readlines()
+
             anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[4:8]])
         else:
             anat2func = fs_register
@@ -353,7 +354,7 @@ class Transform(object):
         # Read tkvox2ras transform for the functional volume
         try:
             cmd = ('mri_info', '--vox2ras-tkr', func_nii)
-            L = subprocess.check_output(cmd).splitlines()
+            L = subprocess.check_output(cmd).splitlines()[1:]
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -362,7 +363,7 @@ class Transform(object):
         # Read voxel resolution of the functional volume
         try:
             cmd = ('mri_info', '--res', func_nii)
-            ll = subprocess.check_output(cmd)
+            ll = subprocess.check_output(cmd).split("\n")[1]
             func_voxres = np.array([np.float(s) for s in ll.split() if s])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
