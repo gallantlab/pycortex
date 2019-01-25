@@ -22,16 +22,17 @@ var jsplot = (function (module) {
         
         //These lights approximately match what's done by vtk
         this.lights = [
-            new THREE.DirectionalLight(0xffffff, .47), 
-            new THREE.DirectionalLight(0xffffff, .29), 
-            new THREE.DirectionalLight(0xffffff, .24)
+            //new THREE.DirectionalLight(0xffffff, 1.0), 
+            new THREE.DirectionalLight(0xffffff, 1.0), 
+            // new THREE.DirectionalLight(0xffffff, .29), 
+            // new THREE.DirectionalLight(0xffffff, .24)
         ];
-        this.lights[0].position.set( 1, -1, -1 ).normalize();
-        this.lights[1].position.set( -1, -.25, .75 ).normalize();
-        this.lights[2].position.set( 1, -.25, .75 ).normalize();
+        this.lights[0].position.set( -100, 200, 10 );
+        // this.lights[1].position.set( -1, -.25, .75 ).normalize();
+        // this.lights[2].position.set( 1, -.25, .75 ).normalize();
         this.camera.add( this.lights[0] );
-        this.camera.add( this.lights[1] );
-        this.camera.add( this.lights[2] );
+        // this.camera.add( this.lights[1] );
+        // this.camera.add( this.lights[2] );
 
         this.views = [];
 
