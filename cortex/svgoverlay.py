@@ -706,6 +706,10 @@ def _parse_svg_pts(datastr):
             offset += list([float(x) for x in [data.pop(0), data.pop(0)]])
         elif mode == "L":
             offset = np.array(list([float(x) for x in [data.pop(0), data.pop(0)]]))
+        elif mode == "h":
+            offset += list([float(x) for x in [data.pop(0), 0]])
+        elif mode == "v":
+            offset += list([float(x) for x in [0, data.pop(0)]])
         elif mode == "c":
             data = data[4:]
             offset += list([float(x) for x in [data.pop(0), data.pop(0)]])
@@ -773,7 +777,7 @@ def import_roi(roifile, outfile):
             svgo.add_layer(new_layer)
 
 def gen_path(path):
-    mdict = dict(m=Path.MOVETO, l=Path.LINETO)
+    mdict = dict(m=Path.MOVETO, l=Path.LINETO, h=Path.LINETO, v=Path.LINETO)
     verts, codes = [], []
     mode, pen = None, np.array([0.,0.])
 
@@ -805,7 +809,12 @@ def gen_path(path):
                 codes.append(Path.CURVE4)
                 codes.append(Path.CURVE4)
             else:
-                val = [float(cc) for cc in cmd.split(',')]
+                if mode.lower() == 'h':
+                    val = [float(cmd), 0]
+                elif mode.lower() == 'v':
+                    val = [0, float(cmd)]
+                else:
+                    val = [float(cc) for cc in cmd.split(',')]
                 codes.append(mdict[mode.lower()])
                 if mode.lower() == mode:
                     pen += val
