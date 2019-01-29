@@ -178,7 +178,8 @@ class Database(object):
         self._subjects = dict([(sname, SubjectDB(sname, filestore=self.filestore)) for sname in subjs])
         return self._subjects
 
-    def get_anat(self, subject, type='raw', xfmname=None, recache=False, order=1, **kwargs):
+    def get_anat(self, subject, type='raw', xfmname=None, recache=False, order=1,
+                 voxelize_function=None, **kwargs):
         """Return anatomical information from the filestore. Anatomical information is defined as
         any volume-space anatomical information pertaining to the subject, such as T1 image,
         white matter masks, etc. Volumes not found in the database will be automatically generated.
@@ -191,6 +192,14 @@ class Database(object):
             Type of anatomical volume to return. This should be the name of one of the 
         recache : bool
             Regenerate the information
+        order : int
+            The order of the anatomical to epi space resampler, in terms of splines. 0 is nearest,
+            1 is linear.
+        voxelize_function : function
+            The function used to voxelize the surface. Takes subject name and kwargs as parameters
+            and outputs a nibabel nifti image contained a voxelized version of the surface. If
+            none is provided, use function cortex.anat.<type>, e.g., cortex.anat.voxelize if
+            type='voxelize'
 
         Returns
         -------
@@ -205,8 +214,13 @@ class Database(object):
 
         if not os.path.exists(anatfile) or recache:
             print("Generating %s anatomical..."%type)
-            from . import anat
-            getattr(anat, type)(anatfile, subject, **kwargs)
+            if voxelize_function:
+                anatnib = voxelize_function(subject, **kwargs)
+                anatnib.to_filename(anatfile)
+
+            else:
+                from . import anat
+                getattr(anat, type)(anatfile, subject, **kwargs)
 
         import nibabel
         anatnib = nibabel.load(anatfile)
