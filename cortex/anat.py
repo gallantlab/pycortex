@@ -18,6 +18,7 @@ def brainmask(outfile, subject):
     raw = db.get_anat(subject, type='raw').get_filename()
     print('Brain masking anatomical...')
     cmd = '{fsl_prefix}bet {raw} {bet} -B -v'.format(fsl_prefix=fsl_prefix, raw=raw, bet=outfile)
+    print("Calling: %s"%cmd)
     assert sp.call(cmd, shell=True) == 0, "Error calling fsl-bet"
 
 def whitematter(outfile, subject, do_voxelize=False):

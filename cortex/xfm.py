@@ -6,7 +6,7 @@ from six import string_types
 
 class Transform(object):
     '''
-    A standard affine transform. Typically holds a transform from anatomical 
+    A standard affine transform. Typically holds a transform from anatomical
     magnet space to epi file space.
     '''
     def __init__(self, xfm, reference):
@@ -70,26 +70,26 @@ class Transform(object):
         """Converts an fsl transform to a pycortex transform.
 
         Converts a transform computed using FSL's FLIRT to a transform ("xfm") object in pycortex.
-        The transform must have been computed FROM the nifti volume specified in `func_nii` TO the 
+        The transform must have been computed FROM the nifti volume specified in `func_nii` TO the
         volume specified in `anat_nii` (See Notes below).
 
         Parameters
         ----------
         xfm : array
-            4x4 transformation matrix, loaded from an FSL .mat file, for a transform computed 
+            4x4 transformation matrix, loaded from an FSL .mat file, for a transform computed
             FROM the func_nii volume TO the anat_nii volume. Alternatively, a string file name
             for the FSL .mat file.
         anat_nii : str or nibabel.Nifti1Image
-            nibabel image object (or path to nibabel-readable image) for anatomical volume from 
+            nibabel image object (or path to nibabel-readable image) for anatomical volume from
             which cortical surface was created
         func_nii : str or nibabel.Nifti1Image
-            nibabel image object (or string path to nibabel-readable image) for (functional) data volume 
+            nibabel image object (or string path to nibabel-readable image) for (functional) data volume
             to be projected onto cortical surface
 
         Returns
         -------
         xfm : cortex.xfm.Transform object
-            A pycortex COORD transform. 
+            A pycortex COORD transform.
 
         Notes
         -----
@@ -109,7 +109,7 @@ class Transform(object):
                 L = fid.readlines()
             xfm  = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
 
-        # Internally, pycortex computes the OPPOSITE transform: from anatomical volume to functional volume. 
+        # Internally, pycortex computes the OPPOSITE transform: from anatomical volume to functional volume.
         # Thus, assign anat to "infile" (starting point for transform)
         infile = anat_nii
         # Assign func to "reffile" (end point for transform)
@@ -121,15 +121,15 @@ class Transform(object):
             inIm = nibabel.load(infile)
         except AttributeError:
             inIm = infile
-        
+
         refIm = nibabel.load(reffile)
         in_hdr = inIm.get_header()
         ref_hdr = refIm.get_header()
         # get_zooms gets the positive voxel sizes as returned in the header
         inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        # Since FSL does not use the full transform info in the nifti header, 
-        # determine whether the transform indicates that the X axis should be 
+        # Since FSL does not use the full transform info in the nifti header,
+        # determine whether the transform indicates that the X axis should be
         # flipped; if so, flip the X axis (for both infile and reffile)
         if npl.det(in_hdr.get_best_affine())>=0:
             inspace = np.dot(inspace, _x_flipper(in_hdr.get_data_shape()[0]))
@@ -137,22 +137,22 @@ class Transform(object):
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
         inAffine = inIm.get_affine()
-        
+
         coord = np.dot(inv(refspace),np.dot(xfm,np.dot(inspace,inv(inAffine))))
         return cls(coord, refIm)
 
     def to_fsl(self, anat_nii, direction='func>anat'):
         """Converts a pycortex transform to an FSL transform.
 
-        Uses the stored "reference" file provided when the transform was created (usually 
-        a functional data or statistical volume) and the supplied anatomical file to 
+        Uses the stored "reference" file provided when the transform was created (usually
+        a functional data or statistical volume) and the supplied anatomical file to
         create an FSL transform. By default, returns the transform FROM the refernce volume
-        (usually the functional data volume) to the anatomical volume (`anat_nii` input). 
+        (usually the functional data volume) to the anatomical volume (`anat_nii` input).
 
         Parameters
         ----------
         anat_nii : str or nibabel.Nifti1Image
-            nibabel image object (or path to nibabel-readable image) for anatomical volume from 
+            nibabel image object (or path to nibabel-readable image) for anatomical volume from
             which cortical surface was created
 
         direction : str, optional {'func>anat', 'anat>func'}
@@ -160,14 +160,14 @@ class Transform(object):
 
         Notes
         -----
-        This function will only work for "coord" transform objects, (those retrieved with 
+        This function will only work for "coord" transform objects, (those retrieved with
         cortex.db.get_xfm(xfmtype='coord',...)). It will fail hard for "magnet" transforms!
 
         """
         import nibabel
         import numpy.linalg as npl
         inv = npl.inv
-        ## -- Internal notes -- ## 
+        ## -- Internal notes -- ##
         # pycortex transforms are internally stored as anatomical space -> functional data space
         # transforms. Thus the anatomical file is the "infile" in FSL-speak.
         infile = anat_nii
@@ -181,8 +181,8 @@ class Transform(object):
         # get_zooms gets the positive voxel sizes as returned in the header
         inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
-        # Since FSL does not use the full transform info in the nifti header, 
-        # determine whether the transform indicates that the X axis should be 
+        # Since FSL does not use the full transform info in the nifti header,
+        # determine whether the transform indicates that the X axis should be
         # flipped; if so, flip the X axis (for both infile and reffile)
         if npl.det(in_hdr.get_best_affine())>=0:
             print("Determinant is > 0: FLIPPING!")
@@ -192,7 +192,7 @@ class Transform(object):
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
         inAffine = inIm.get_affine()
-        
+
         fslx = np.dot(refspace,np.dot(self.xfm,np.dot(inAffine,inv(inspace))))
         if direction=='func>anat':
             return inv(fslx)
@@ -211,9 +211,9 @@ class Transform(object):
         Parameters
         ----------
         fs_register : array
-            4x4 transformation matrix, described in an FreeSurfer register.dat file, for a transform computed
+            4x4 transformation matrix, described in an FreeSurfer .dat or .lta file, for a transform computed
             FROM the func_nii volume TO the anatomical volume of the FreeSurfer subject `subject`.
-            Alternatively, a string file name for the FreeSurfer register.dat file.
+            Alternatively, a string file name for the FreeSurfer .dat or .lta file.
         func_nii : str or nibabel.Nifti1Image
             nibabel image object (or string path to nibabel-readable image) for (functional) data volume
             to be projected onto cortical surface
@@ -246,6 +246,7 @@ class Transform(object):
         if isinstance(fs_register, string_types):
             with open(fs_register, 'r') as fid:
                 L = fid.readlines()
+
             anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[4:8]])
         else:
             anat2func = fs_register
@@ -279,6 +280,7 @@ class Transform(object):
         try:
             cmd = ('mri_info', '--vox2ras-tkr', func_nii)
             L = subprocess.check_output(cmd).splitlines()
+            L = L[1:]
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -352,7 +354,7 @@ class Transform(object):
         # Read tkvox2ras transform for the functional volume
         try:
             cmd = ('mri_info', '--vox2ras-tkr', func_nii)
-            L = subprocess.check_output(cmd).splitlines()
+            L = subprocess.check_output(cmd).splitlines()[1:]
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -361,7 +363,7 @@ class Transform(object):
         # Read voxel resolution of the functional volume
         try:
             cmd = ('mri_info', '--res', func_nii)
-            ll = subprocess.check_output(cmd)
+            ll = subprocess.check_output(cmd).split("\n")[1]
             func_voxres = np.array([np.float(s) for s in ll.split() if s])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))

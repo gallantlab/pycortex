@@ -28,7 +28,7 @@ def _call_blender(filename, code, blender_path=default_blender):
     """
     with tempfile.NamedTemporaryFile() as tf:
         print("In new named temp file: %s"%tf.name)
-        startcode=_base_imports
+        startcode = _base_imports
         endcode = "\nbpy.ops.wm.save_mainfile(filepath='{fname}')".format(fname=filename)
         cmd = "{blender_path} -b {fname} -P {tfname}".format(blender_path=blender_path, fname=filename, tfname=tf.name)
         if not os.path.exists(filename):
@@ -165,6 +165,15 @@ def fs_cut(fname, subject, hemi, freesurfer_subject_dir=None):
 def write_patch(bname, pname, mesh="hemi"):
     """Write out the mesh 'mesh' in the blender file 'bname' into patch file 'pname'
     This is a necessary step for flattening the surface in freesurfer
+
+    Parameters
+    ----------
+    bname : str
+        blender file name that contains the mesh
+    pname : str
+        name of patch file to be saved
+    mesh : str
+        name of mesh in blender file
     """
     p = xdrlib.Packer()
     p.pack_string(pname.encode())

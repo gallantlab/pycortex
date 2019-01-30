@@ -597,7 +597,7 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
         if d is None:
             d = self.geodesic_distance([b], **kwargs)
         while path[-1] != b:
-            n = np.array(list(self.graph.neighbors(path[-1])))
+            n = np.array([v for v in self.graph.neighbors(path[-1])])
             path.append(n[d[n].argmin()])
             if len(path) > max_len:
                 return path

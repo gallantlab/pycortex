@@ -82,7 +82,99 @@ def manual(subject, xfmname, reference=None, **kwargs):
 
     return m
 
-def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args=''):
+def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pial_color="red", noclean=False):
+    """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
+    volume to the cortical surface for `subject`. This creates a new transform
+    called `xfmname`. The name of a nibabel-readable file (e.g. NIfTI) should be
+    supplied as `reference`. This image will be copied into the database.
+
+    IMPORTANT: This function assumes that the resulting .lta file is saved as:
+    "{default folder chosen by FreeView (should be /tmp/fsalign_xxx)}/{output_name}".
+
+    Parameters
+    ----------
+    subject : str
+        Subject identifier.
+    xfmname : str
+        The name of the transform to be modified.
+    output_name : str
+        The name of the .lta file generated after FreeView editing.
+    wm_color : str | "blue"
+        Color of the white matter surface. Default is "blue". This can
+        also be adjusted in the FreeView GUI.
+    pial_color : str | "red"
+        Color of the pial surface. Default is "red". This can also be adjusted
+        the FreeView GUI.
+    noclean : boolean | False
+        If True, intermediate files will not be removed from /tmp/fsalign_xxx
+        (this is useful for debugging things), and the returned value will be
+        the name of the temp directory. Default False.
+
+    Returns
+    -------
+    Nothing unless noclean is true.
+    """
+
+    import subprocess as sp
+    import tempfile
+    import shutil
+    from .xfm import Transform
+    from .database import db
+
+    retval = None
+
+    try:
+        try:
+            cache = tempfile.mkdtemp(prefix="fsalign_")
+            sub_xfm = db.get_xfm(subject, xfmname)
+
+            # if masks have been cached, quit! user must remove them by hand
+            from glob import glob
+            if len(glob(db.get_paths(subject)['masks'].format(xfmname=xfmname, type='*'))):
+                print('Refusing to overwrite existing transform %s because there are cached masks. Delete the masks manually if you want to modify the transform.' % xfmname)
+                raise ValueError('Exiting...')
+        except IOError:
+            print("Transform does not exist!")
+
+        # Load transform-relevant things
+        reference = sub_xfm.reference.get_filename()
+        xfm_dir = os.path.dirname(reference)
+        _ = sub_xfm.to_freesurfer(os.path.join(cache, "register.dat"), subject) # Transform in freesurfer .dat format
+
+        # Command for FreeView and run
+        cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
+                "{ref}:reg={reg} "
+               "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={wmc} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={wmc} "
+               "$SUBJECTS_DIR/{sub}/surf/lh.pial:edgecolor={pialc} $SUBJECTS_DIR/{sub}/surf/rh.pial:edgecolor={pialc}")
+        cmd = cmd.format(sub=subject, ref=reference, reg=os.path.join(cache, "register.dat"),
+                         wmc=wm_color, pialc=pial_color)
+
+        # Run and save transform when user is done editing
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError("Problem with FreeView!")
+        else:
+            # Convert transform into .dat format
+            reg_dat = os.path.join(cache, os.path.splitext(output_name)[0] + ".dat")
+            cmd = "lta_convert --inlta {inlta} --outreg {regdat}"
+            cmd = cmd.format(inlta=os.path.join(cache, output_name), regdat=reg_dat)
+            if sp.call(cmd, shell=True) != 0:
+                raise IOError("Error converting lta into dat!")
+
+            # Save transform to pycortex
+            xfm = Transform.from_freesurfer(reg_dat, reference, subject)
+            db.save_xfm(subject, xfmname, xfm.xfm, xfmtype='coord', reference=reference)
+            print("saved xfm")
+
+    finally:
+        if not noclean:
+            shutil.rmtree(cache)
+        else:
+            retval = cache
+
+    return retval
+
+
+def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args='', use_fs_bbr=False):
     """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.
 
     If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting
@@ -111,6 +203,11 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
         The 'bbrtype' argument that is passed to FLIRT.
     pre_flirt_args : str, optional
         Additional arguments that are passed to the FLIRT pre-alignment step (not BBR).
+    use_fs_bbr : bool, optional
+        If True will use freesurfer bbregister instead of FSL BBR.
+    save_dat : bool, optional
+        If True, will save the register.dat file from freesurfer bbregister into
+        freesurfer's $SUBJECTS_DIR/subject/tmp.
 
     Returns
     -------
@@ -132,28 +229,41 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
     try:
         cache = tempfile.mkdtemp()
         absreference = os.path.abspath(reference)
-        raw = db.get_anat(subject, type='raw').get_filename()
-        bet = db.get_anat(subject, type='brainmask').get_filename()
-        wmseg = db.get_anat(subject, type='whitematter').get_filename()
-        #Compute anatomical-to-epi transform
-        print('FLIRT pre-alignment')
-        cmd = '{fslpre}flirt  -in {epi} -ref {bet} -dof 6 {pre_flirt_args} -omat {cache}/init.mat'.format(
-           fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet, pre_flirt_args=pre_flirt_args)
-        if sp.call(cmd, shell=True) != 0:
-           raise IOError('Error calling initial FLIRT')
 
-        print('Running BBR')
-        # Run epi-to-anat transform (this is more stable than anat-to-epi in FSL!)
-        cmd = '{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile} -bbrtype {bbrtype}'
-        cmd = cmd.format(fslpre=fsl_prefix, cache=cache, raw=bet, wmseg=wmseg, epi=absreference, schfile=schfile, bbrtype=bbrtype)
-        if sp.call(cmd, shell=True) != 0:
-            raise IOError('Error calling BBR flirt')
+        if use_fs_bbr:
+            print('Running freesurfer BBR')
+            cmd = 'bbregister --s {sub} --mov {absref} --init-fsl --reg {cache}/register.dat --t1'
+            cmd = cmd.format(sub=subject, absref=absreference, cache=cache)
 
-        x = np.loadtxt(os.path.join(cache, "out.mat"))
-        # Pass transform as FROM epi TO anat; transform will be inverted
-        # back to anat-to-epi, standard direction for pycortex internal
-        # storage by from_fsl
-        xfm = Transform.from_fsl(x,absreference,raw)
+            if sp.call(cmd, shell=True) != 0:
+                raise IOError('Error calling freesurfer BBR!')
+
+            xfm = Transform.from_freesurfer(os.path.join(cache, "register.dat"), absreference, subject)
+        else:
+            raw = db.get_anat(subject, type='raw').get_filename()
+            bet = db.get_anat(subject, type='brainmask').get_filename()
+            wmseg = db.get_anat(subject, type='whitematter').get_filename()
+            #Compute anatomical-to-epi transform
+            print('FLIRT pre-alignment')
+            cmd = '{fslpre}flirt  -in {epi} -ref {bet} -dof 6 {pre_flirt_args} -omat {cache}/init.mat'.format(
+               fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet, pre_flirt_args=pre_flirt_args)
+            if sp.call(cmd, shell=True) != 0:
+               raise IOError('Error calling initial FLIRT')
+
+
+            print('Running BBR')
+            # Run epi-to-anat transform (this is more stable than anat-to-epi in FSL!)
+            cmd = '{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile} -bbrtype {bbrtype}'
+            cmd = cmd.format(fslpre=fsl_prefix, cache=cache, raw=bet, wmseg=wmseg, epi=absreference, schfile=schfile, bbrtype=bbrtype)
+            if sp.call(cmd, shell=True) != 0:
+                raise IOError('Error calling BBR flirt')
+
+            x = np.loadtxt(os.path.join(cache, "out.mat"))
+            # Pass transform as FROM epi TO anat; transform will be inverted
+            # back to anat-to-epi, standard direction for pycortex internal
+            # storage by from_fsl
+            xfm = Transform.from_fsl(x,absreference,raw)
+
         # Save as pycortex 'coord' transform
         xfm.save(subject,xfmname,'coord')
         print('Success')
