@@ -165,7 +165,8 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
     fspath = os.path.join(freesurfer_subject_dir, subject, 'mri')
     curvs = os.path.join(freesurfer_subject_dir, subject, 'surf', '{hemi}.{name}')
 
-    for fsname, name in dict(T1="raw", aseg="aseg").items():
+    #import anatomicals
+    for fsname, name in dict(T1="raw", aseg="aseg", wm="raw_wm").items():
         path = os.path.join(fspath, "{fsname}.mgz").format(fsname=fsname)
         out = anats.format(subj=sname, name=name)
         cmd = "mri_convert {path} {out}".format(path=path, out=out)
