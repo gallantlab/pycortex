@@ -342,7 +342,6 @@ def make_gif(output_destination, volumes, frame_duration=1):
     """
     import imageio
     from matplotlib import pyplot as plt
-    from six import string_types
 
     tmpdir = tempfile.TemporaryDirectory()
 
