@@ -1,5 +1,6 @@
 import io
 import os
+import tempfile
 import binascii
 import numpy as np
 
@@ -321,6 +322,51 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
     ## Create and save SVG file
     roipack = utils.get_roipack(braindata.subject)
     roipack.get_svg(fname, layers=layers, labels=with_labels, with_ims=image_data)
+
+
+def make_gif(output_destination, volumes, frame_duration=1):
+    """Make an animated gif from several pycortex volumes
+
+    Parameters
+    ----------
+    output_destination : str or stream-like
+        The destination for the created gif. If a str, saves to a file. If stream-like (file handle
+        or io.BytesIO), writes to the stream
+    volumes : dict of pycortex Volumes
+    duration : float
+        The duration of each frame in seconds
+
+    Returns
+    -------
+    If output_destination is a file path, return the path. If stream-like, return the stream data.
+    """
+    import imageio
+    from matplotlib import pyplot as plt
+    from six import string_types
+
+    tmpdir = tempfile.TemporaryDirectory()
+
+    images = []
+    for i, name in enumerate(volumes):
+        fig = plt.figure(figsize=(12, 6), dpi=100)
+        _ = make_figure(volumes[name], title=name, fig=fig)
+        _ = fig.suptitle(name)
+        path = os.path.join(tmpdir.name, str(i) + '.png')
+        fig.savefig(path)
+        images.append(imageio.imread(path))
+        _ = plt.close(fig)
+
+    tmpdir.cleanup()
+
+    imageio.mimsave(output_destination, images, format='gif', duration=frame_duration)
+
+    if hasattr(output_destination, 'seek'):
+        output_destination.seek(0)
+        return output_destination.read()
+
+    elif isinstance(output_destination, string_types):
+        return output_destination
+
 
 def show(*args, **kwargs):
     """Wrapper for make_figure()"""
