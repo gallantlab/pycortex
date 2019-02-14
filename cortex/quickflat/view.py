@@ -348,7 +348,7 @@ def make_gif(output_destination, volumes, frame_duration=1):
     images = []
     for i, name in enumerate(volumes):
         fig = plt.figure(figsize=(12, 6), dpi=100)
-        _ = make_figure(volumes[name], title=name, fig=fig)
+        _ = make_figure(volumes[name], fig=fig)
         _ = fig.suptitle(name)
         path = os.path.join(tmpdir.name, str(i) + '.png')
         fig.savefig(path)
