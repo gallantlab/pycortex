@@ -362,10 +362,6 @@ def make_gif(output_destination, volumes, frame_duration=1):
 
     if hasattr(output_destination, 'seek'):
         output_destination.seek(0)
-        return output_destination.read()
-
-    elif isinstance(output_destination, string_types):
-        return output_destination
 
 
 def show(*args, **kwargs):
