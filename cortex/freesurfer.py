@@ -1,5 +1,6 @@
 """Contains functions for interfacing with freesurfer
 """
+from __future__ import print_function
 import os
 import copy
 import shutil
