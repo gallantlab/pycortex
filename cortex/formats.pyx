@@ -101,8 +101,6 @@ def read_obj(filename, norm=False, uv=False):
 
 @cython.boundscheck(False)
 def read_vtk(filename):
-    cdef str vtk, line
-    cdef bytes svtk
     cdef char *cstr = NULL, *cvtk = NULL
     cdef np.ndarray[np.float_t, ndim=2] pts = None
     cdef np.ndarray[np.uint32_t, ndim=2] polys = None
@@ -116,7 +114,7 @@ def read_vtk(filename):
 
     cstr = strtok(cvtk, "\n")
     while pts is None or polys is None and cstr is not NULL:
-        line = cstr.encode('UTF-8')
+        line = cstr.decode('UTF-8')
         if line.startswith("POINTS"):
             _, sn, dtype = line.split()
             n = int(sn)
