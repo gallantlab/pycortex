@@ -588,7 +588,7 @@ def mri_surf2surf(data, source_subj, target_subj, hemi):
     if exit_code != 0:
         import warnings
         warnings.warn(
-            ("Exit code {exit_code} means that "
+            ("Exit code {} means that "
             "mri_surf2surf didn't work").format(exit_code))
 
     tf_in.close()
