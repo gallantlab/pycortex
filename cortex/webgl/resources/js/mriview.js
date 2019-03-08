@@ -968,11 +968,12 @@ var mriview = (function(module) {
             flatten: {action:flatten, key:'f'},
         });
 
-        var _old_html = '';
+        var _show_help = false;
         var helpmenu = function() {
-            var helpmenu = $(this.object).find('#dataname');
-            if (_old_html == ''){
-                var new_html = ''
+            var helpmenu = $(this.object).find('#helpmenu');
+            if (!_show_help){
+                var new_html = '<table>'
+                new_html += '<tr><td> Shorcut list </td>'
                 list = [this.ui._desc,
                         this.ui._desc.camera._desc,
                         this.ui._desc.sliceplanes._desc.move._desc,
@@ -980,20 +981,21 @@ var mriview = (function(module) {
                 for (var i = 0; i < list.length; i++){
                     for (var name in list[i]){
                         if ('key' in list[i][name]){
-                            new_html += name + ': "' + list[i][name]['key'] + '"\n' 
+                            new_html += '<tr><td>' + list[i][name]['key'] + '</td><td>' + name + '</td></tr>'
                         }
                         if ('wheel' in list[i][name]){
-                            new_html += name + ': "' + list[i][name]['modKeys'] + '" + scroll\n' 
+                            new_html += '<tr><td>' + list[i][name]['modKeys'] + ' + scroll  </td><td>' + name + '</td></tr>'
                         }
                     }
                 }
-                _old_html = helpmenu.text();
+                new_html += '</table>'
                 helpmenu.html(new_html);
+                helpmenu.show()
             }
             else{
-                helpmenu.html(_old_html);
-                _old_html = ''
+                helpmenu.hide()
             }
+            _show_help = !_show_help;
         }.bind(this);
         cam_ui.add({
             helpmenu: {action:helpmenu, key:'h'},
