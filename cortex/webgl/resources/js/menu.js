@@ -195,6 +195,9 @@ var jsplot = (function (module) {
                     }
                 }
 
+                event.preventDefault();
+                event.stopPropagation();
+
                 desc.action(event.deltaY);
 
                 for (var i in gui.__controllers) {
