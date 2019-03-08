@@ -976,6 +976,7 @@ var mriview = (function(module) {
                 var new_html = '<table>'
                 list = [this.ui._desc,
                         this.ui._desc.camera._desc,
+                        this.ui._desc.sliceplanes._desc,
                         this.ui._desc.sliceplanes._desc.move._desc,
                         this.ui._desc.surface.S1._desc]
                 for (var i = 0; i < list.length; i++){
@@ -1003,7 +1004,7 @@ var mriview = (function(module) {
             _show_help = !_show_help;
         }.bind(this);
         cam_ui.add({
-            helpmenu: {action:helpmenu, key:'h', help:'Show/Hide the Help'},
+            helpmenu: {action:helpmenu, key:'h', help:'Toggle this help'},
         });
 
         var _hidelabels = false;
@@ -1020,18 +1021,18 @@ var mriview = (function(module) {
             this.schedule();
         }.bind(this);
         this.ui.add({
-            hide_labels: {action:hidelabels, key:'l', hidden:true, help:'Show/Hide labels'},
+            hide_labels: {action:hidelabels, key:'l', hidden:true, help:'Toggle labels'},
         });
 
         //add sliceplane gui
         var sliceplane_ui = this.ui.addFolder("sliceplanes", true)
         sliceplane_ui.add({
             x: {action:[this.sliceplanes.x, "setVisible"]},
-            xToggle: {action: this.toggleXVis.bind(this), key: 'e', hidden: true},
+            xToggle: {action: this.toggleXVis.bind(this), key: 'e', hidden: true, help:'Toggle X slice'},
             y: {action:[this.sliceplanes.y, "setVisible"]},
-            yToggle: {action: this.toggleYVis.bind(this), key: 'd', hidden: true},
+            yToggle: {action: this.toggleYVis.bind(this), key: 'd', hidden: true, help:'Toggle Y slice'},
             z: {action:[this.sliceplanes.z, "setVisible"]},
-            zToggle: {action: this.toggleZVis.bind(this), key: 'c', hidden: true},
+            zToggle: {action: this.toggleZVis.bind(this), key: 'c', hidden: true, help:'Toggle Z slice'},
         });
         var sliceplane_move = sliceplane_ui.addFolder("move", true);
         sliceplane_move.add({
