@@ -86,6 +86,7 @@ var mriview = (function(module) {
             equivolume: {action:[this, "setEquivolume"]},
             changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true},
             opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
+            toggleOpacity: {action: this.toggleOpacity.bind(this), key: 'o', hidden: true},
             left: {action:[this, "setLeftVis"]},
             leftToggle: {action: this.toggleLeftVis.bind(this), key: 'L', modKeys: ['shiftKey'], hidden: true},
             right: {action:[this, "setRightVis"]},
@@ -567,6 +568,11 @@ var mriview = (function(module) {
     };
     module.Surface.prototype.toggleRightVis = function() {
         this.setRightVis(!this._rightvis);
+        viewer.schedule();
+    };
+    module.Surface.prototype.toggleOpacity = function() {
+        let newValue = 1 - Math.round(this.uniforms.dataAlpha.value)
+        viewer.ui.set('surface.S1.opacity', newValue)
         viewer.schedule();
     };
     module.Surface.prototype.setLayers = function(val) {
