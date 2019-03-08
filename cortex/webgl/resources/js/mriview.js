@@ -968,6 +968,37 @@ var mriview = (function(module) {
             flatten: {action:flatten, key:'f'},
         });
 
+        var _old_html = '';
+        var helpmenu = function() {
+            var helpmenu = $(this.object).find('#dataname');
+            if (_old_html == ''){
+                var new_html = ''
+                list = [this.ui._desc,
+                        this.ui._desc.camera._desc,
+                        this.ui._desc.sliceplanes._desc.move._desc,
+                        this.ui._desc.surface.S1._desc]
+                for (var i = 0; i < list.length; i++){
+                    for (var name in list[i]){
+                        if ('key' in list[i][name]){
+                            new_html += name + ': "' + list[i][name]['key'] + '"\n' 
+                        }
+                        if ('wheel' in list[i][name]){
+                            new_html += name + ': "' + list[i][name]['modKeys'] + '" + scroll\n' 
+                        }
+                    }
+                }
+                _old_html = helpmenu.text();
+                helpmenu.html(new_html);
+            }
+            else{
+                helpmenu.html(_old_html);
+                _old_html = ''
+            }
+        }.bind(this);
+        cam_ui.add({
+            helpmenu: {action:helpmenu, key:'h'},
+        });
+
         var _hidelabels = false;
         var hidelabels = function() {
             for (var i = 0; i < this.surfs.length; i++) {
