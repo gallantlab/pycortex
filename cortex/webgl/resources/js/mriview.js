@@ -989,8 +989,11 @@ var mriview = (function(module) {
         var sliceplane_ui = this.ui.addFolder("sliceplanes", true)
         sliceplane_ui.add({
             x: {action:[this.sliceplanes.x, "setVisible"]},
+            xToggle: {action: this.toggleXVis.bind(this), key: 'e', hidden: true},
             y: {action:[this.sliceplanes.y, "setVisible"]},
+            yToggle: {action: this.toggleYVis.bind(this), key: 'd', hidden: true},
             z: {action:[this.sliceplanes.z, "setVisible"]},
+            zToggle: {action: this.toggleZVis.bind(this), key: 'c', hidden: true},
         });
         var sliceplane_move = sliceplane_ui.addFolder("move", true);
         sliceplane_move.add({
@@ -1127,6 +1130,18 @@ var mriview = (function(module) {
         //     _this.setFrame(this.value);
         //     _this.figure.notify("setFrame", _this, [this.value]);
         // });
+    };
+    module.Viewer.prototype.toggleXVis = function() {
+        this.sliceplanes.x.setVisible(!this.sliceplanes.x._visible);
+        viewer.schedule();
+    };
+    module.Viewer.prototype.toggleYVis = function() {
+        this.sliceplanes.y.setVisible(!this.sliceplanes.y._visible);
+        viewer.schedule();
+    };
+    module.Viewer.prototype.toggleZVis = function() {
+        this.sliceplanes.z.setVisible(!this.sliceplanes.z._visible);
+        viewer.schedule();
     };
 
     return module;
