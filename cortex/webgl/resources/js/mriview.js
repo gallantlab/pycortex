@@ -990,7 +990,7 @@ var mriview = (function(module) {
                         }
                         if ('wheel' in list[i][name]){
                             new_html += '<tr><td style="text-align: center;">' 
-                            new_html += list[i][name]['modKeys'] + ' + scroll  </td><td>' + diplay_name + '</td></tr>'
+                            new_html += list[i][name]['modKeys'] + ' + wheel  </td><td>' + diplay_name + '</td></tr>'
                         }
                     }
                 }
@@ -1036,12 +1036,12 @@ var mriview = (function(module) {
         });
         var sliceplane_move = sliceplane_ui.addFolder("move", true);
         sliceplane_move.add({
-            x_up: {action:this.sliceplanes.x.next.bind(this.sliceplanes.x), key:'q', hidden:true, help:'Move X slice up'},
-            x_down: {action:this.sliceplanes.x.prev.bind(this.sliceplanes.x), key:'w', hidden:true, help:'Move X slice down'},
-            y_up: {action:this.sliceplanes.y.next.bind(this.sliceplanes.y), key:'a', hidden:true, help:'Move Y slice up'},
-            y_down: {action:this.sliceplanes.y.prev.bind(this.sliceplanes.y), key:'s', hidden:true, help:'Move Y slice down'},
-            z_up: {action:this.sliceplanes.z.next.bind(this.sliceplanes.z), key:'z', hidden:true, help:'Move Z slice up'},
-            z_down: {action:this.sliceplanes.z.prev.bind(this.sliceplanes.z), key:'x', hidden:true, help:'Move Z slice down'},
+            x_up: {action:this.sliceplanes.x.next.bind(this.sliceplanes.x), key:'q', hidden:true, help:'Next X slice'},
+            x_down: {action:this.sliceplanes.x.prev.bind(this.sliceplanes.x), key:'w', hidden:true, help:'Previous X slice'},
+            y_up: {action:this.sliceplanes.y.next.bind(this.sliceplanes.y), key:'a', hidden:true, help:'Next Y slice'},
+            y_down: {action:this.sliceplanes.y.prev.bind(this.sliceplanes.y), key:'s', hidden:true, help:'Previous Y slice'},
+            z_up: {action:this.sliceplanes.z.next.bind(this.sliceplanes.z), key:'z', hidden:true, help:'Next Z slice'},
+            z_down: {action:this.sliceplanes.z.prev.bind(this.sliceplanes.z), key:'x', hidden:true, help:'Previous Z slice'},
         });
         sliceplane_move.add({
             move_x: {action:[this.sliceplanes.x, 'setSmoothSlice', 0, 1, 0.001]},
