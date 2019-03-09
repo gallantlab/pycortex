@@ -981,16 +981,21 @@ var mriview = (function(module) {
                         this.ui._desc.surface.S1._desc]
                 for (var i = 0; i < list.length; i++){
                     for (var name in list[i]){
-                        if ('help' in list[i][name]){var diplay_name = list[i][name]['help']}
-                        else{var diplay_name = name}
+                        if ('help' in list[i][name]){
+                            var diplay_name = list[i][name]['help']
+                        }
+                        else{
+                            var diplay_name = name
+                        }
                         
                         if ('key' in list[i][name]){
                             new_html += '<tr><td style="text-align: center;">'
                             new_html += list[i][name]['key'] + '</td><td>' + diplay_name + '</td></tr>'
                         }
                         if ('wheel' in list[i][name]){
-                            new_html += '<tr><td style="text-align: center;">' 
-                            new_html += list[i][name]['modKeys'] + ' + wheel  </td><td>' + diplay_name + '</td></tr>'
+                            new_html += '<tr><td style="text-align: center;">'
+                            var modKeys = list[i][name]['modKeys'].substring(list[i][name]['modKeys'].length - 3)
+                            new_html += modKeys + ' + wheel  </td><td>' + diplay_name + '</td></tr>'
                         }
                     }
                 }

@@ -86,7 +86,7 @@ var mriview = (function(module) {
             equivolume: {action:[this, "setEquivolume"]},
             changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true, help:'Change depth'},
             opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
-            toggleOpacity: {action: this.toggleOpacity.bind(this), key: 'o', hidden: true, help:'Toggle opacity'},
+            toggleOpacity: {action: this.toggleOpacity.bind(this), key: 'o', hidden: true, help:'Toggle data opacity'},
             left: {action:[this, "setLeftVis"]},
             leftToggle: {action: this.toggleLeftVis.bind(this), key: 'L', modKeys: ['shiftKey'], hidden: true, help:'Toggle left hemisphere'},
             right: {action:[this, "setRightVis"]},
