@@ -973,9 +973,25 @@ var mriview = (function(module) {
             for (var i = 0; i < this.surfs.length; i++) {
                 if (this.surfs[i].surf) { //only do this for surfdelegate objects
                     var svg = this.surfs[i].surf.svg;
-                    for (var name in svg.layers) {
-                        svg.layers[name].labels.showhide(_hidelabels);
+
+                    if (_hidelabels) {
+                        // if layers were hidden
+                        var toggledLayers = this.toggledLayers || Object.keys(svg.layers)
+                        for (var name of toggledLayers) {
+                            svg.layers[name].labels.showhide(_hidelabels);
+                        }
+                    } else {
+                        // if layers were not hidden
+                        var toggledLayers = []
+                        for (var name of Object.keys(svg.layers)) {
+                            if (!svg.layers[name]._hidden) {
+                                toggledLayers.push(name)
+                            }
+                            svg.layers[name].labels.showhide(_hidelabels);
+                        }
+                        this.toggledLayers = toggledLayers
                     }
+                    
                 }
             }
             _hidelabels = !_hidelabels;
