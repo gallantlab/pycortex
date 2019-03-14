@@ -994,7 +994,9 @@ var mriview = (function(module) {
                         }
                         if ('wheel' in list[i][name]){
                             new_html += '<tr><td style="text-align: center;">'
-                            var modKeys = list[i][name]['modKeys'].substring(list[i][name]['modKeys'].length - 3)
+                            var modKeys = list[i][name]['modKeys']
+                            modKeys = modKeys.map((modKey) => modKey.substring(0, modKey.length - 3))
+                            modKyes = modKeys.join(' + ')
                             new_html += modKeys + ' + wheel  </td><td>' + diplay_name + '</td></tr>'
                         }
                     }
