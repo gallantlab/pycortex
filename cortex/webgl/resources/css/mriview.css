@@ -142,6 +142,30 @@ a:visited { color:white; }
     font-size:24pt;
     font-weight:bold;
 }
+#helpmenu {
+    position:absolute;
+    z-index:8;
+    top: 50%;
+    left: 0%;
+    transform: translate(0%, -50%);
+    padding:15px;
+    margin:20px;
+    border-radius:10px;
+    background:rgba(255,255,255,.2);
+    max-width:400px;
+    display:none;
+    font-size:12pt;
+    color:white;
+    transition:all .3s;
+    transition-timing-function:ease;
+    transition-delay:1s;
+    -moz-transition: all .3s;
+    -moz-transition-timing-function: ease;
+    -moz-transition-delay:1s;
+    -webkit-transition: all .3s;
+    -webkit-transition-timing-function: ease;
+    -webkit-transition-delay:1s;
+}
 
 /* mouseover data styles */
 

@@ -963,9 +963,53 @@ var mriview = (function(module) {
             this.animate([ {state:'mix', idx:parseFloat(viewopts.anim_speed), value:1}]);
         }.bind(this);
         cam_ui.add({
-            reset: {action:this.reset_view, key:'r'},
-            inflate: {action:inflate, key:'i'},
-            flatten: {action:flatten, key:'f'},
+            reset: {action:this.reset_view, key:'r', help:'Reset view'},
+            inflate: {action:inflate, key:'i', help:'Inflate'},
+            flatten: {action:flatten, key:'f', help:'Flatten'},
+        });
+
+        // keyboard shortcut menu
+        var _show_help = false;
+        var helpmenu = function() {
+            var helpmenu = $(this.object).find('#helpmenu');
+            if (!_show_help){
+                var new_html = '<table>'
+                list = [this.ui._desc,
+                        this.ui._desc.camera._desc,
+                        this.ui._desc.sliceplanes._desc,
+                        this.ui._desc.sliceplanes._desc.move._desc,
+                        this.ui._desc.surface.S1._desc]
+                for (var i = 0; i < list.length; i++){
+                    for (var name in list[i]){
+                        if ('help' in list[i][name]){
+                            var diplay_name = list[i][name]['help']
+                        }
+                        else{
+                            var diplay_name = name
+                        }
+                        
+                        if ('key' in list[i][name]){
+                            new_html += '<tr><td style="text-align: center;">'
+                            new_html += list[i][name]['key'] + '</td><td>' + diplay_name + '</td></tr>'
+                        }
+                        if ('wheel' in list[i][name]){
+                            new_html += '<tr><td style="text-align: center;">'
+                            var modKeys = list[i][name]['modKeys'].substring(list[i][name]['modKeys'].length - 3)
+                            new_html += modKeys + ' + wheel  </td><td>' + diplay_name + '</td></tr>'
+                        }
+                    }
+                }
+                new_html += '</table>'
+                helpmenu.html(new_html);
+                helpmenu.show()
+            }
+            else{
+                helpmenu.hide()
+            }
+            _show_help = !_show_help;
+        }.bind(this);
+        cam_ui.add({
+            helpmenu: {action:helpmenu, key:'h', help:'Toggle this help'},
         });
 
         var _hidelabels = false;
@@ -998,27 +1042,27 @@ var mriview = (function(module) {
             this.schedule();
         }.bind(this);
         this.ui.add({
-            hide_labels: {action:hidelabels, key:'l', hidden:true},
+            hide_labels: {action:hidelabels, key:'l', hidden:true, help:'Toggle labels'},
         });
 
         //add sliceplane gui
         var sliceplane_ui = this.ui.addFolder("sliceplanes", true)
         sliceplane_ui.add({
             x: {action:[this.sliceplanes.x, "setVisible"]},
-            xToggle: {action: this.toggleXVis.bind(this), key: 'e', hidden: true},
+            xToggle: {action: this.toggleXVis.bind(this), key: 'e', hidden: true, help:'Toggle X slice'},
             y: {action:[this.sliceplanes.y, "setVisible"]},
-            yToggle: {action: this.toggleYVis.bind(this), key: 'd', hidden: true},
+            yToggle: {action: this.toggleYVis.bind(this), key: 'd', hidden: true, help:'Toggle Y slice'},
             z: {action:[this.sliceplanes.z, "setVisible"]},
-            zToggle: {action: this.toggleZVis.bind(this), key: 'c', hidden: true},
+            zToggle: {action: this.toggleZVis.bind(this), key: 'c', hidden: true, help:'Toggle Z slice'},
         });
         var sliceplane_move = sliceplane_ui.addFolder("move", true);
         sliceplane_move.add({
-            x_up: {action:this.sliceplanes.x.next.bind(this.sliceplanes.x), key:'q', hidden:true},
-            x_down: {action:this.sliceplanes.x.prev.bind(this.sliceplanes.x), key:'w', hidden:true},
-            y_up: {action:this.sliceplanes.y.next.bind(this.sliceplanes.y), key:'a', hidden:true},
-            y_down: {action:this.sliceplanes.y.prev.bind(this.sliceplanes.y), key:'s', hidden:true},
-            z_up: {action:this.sliceplanes.z.next.bind(this.sliceplanes.z), key:'z', hidden:true},
-            z_down: {action:this.sliceplanes.z.prev.bind(this.sliceplanes.z), key:'x', hidden:true},
+            x_up: {action:this.sliceplanes.x.next.bind(this.sliceplanes.x), key:'q', hidden:true, help:'Next X slice'},
+            x_down: {action:this.sliceplanes.x.prev.bind(this.sliceplanes.x), key:'w', hidden:true, help:'Previous X slice'},
+            y_up: {action:this.sliceplanes.y.next.bind(this.sliceplanes.y), key:'a', hidden:true, help:'Next Y slice'},
+            y_down: {action:this.sliceplanes.y.prev.bind(this.sliceplanes.y), key:'s', hidden:true, help:'Previous Y slice'},
+            z_up: {action:this.sliceplanes.z.next.bind(this.sliceplanes.z), key:'z', hidden:true, help:'Next Z slice'},
+            z_down: {action:this.sliceplanes.z.prev.bind(this.sliceplanes.z), key:'x', hidden:true, help:'Previous Z slice'},
         });
         sliceplane_move.add({
             move_x: {action:[this.sliceplanes.x, 'setSmoothSlice', 0, 1, 0.001]},
@@ -1107,9 +1151,9 @@ var mriview = (function(module) {
 
         // add keybindings for cycling through datasets
         this.ui.add({
-          next_dset: {action: this.nextData.bind(this), key: '+', hidden: true},
-          next_dset_alt: {action: this.nextData.bind(this), key: '=', hidden: true},
-          prev_dset: {action: this.nextData.bind(this, -1), key: '-', hidden: true}});
+          next_dset: {action: this.nextData.bind(this), key: '+', hidden: true, help:'Next dataset'},
+          next_dset_alt: {action: this.nextData.bind(this), key: '=', hidden: true, help:'Next dataset (alt)'},
+          prev_dset: {action: this.nextData.bind(this, -1), key: '-', hidden: true, help:'Previous dataset'}});
 
         $(this.object).find("#datasets")
             .sortable({
