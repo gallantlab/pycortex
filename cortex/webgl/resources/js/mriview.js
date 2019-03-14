@@ -1010,8 +1010,10 @@ var mriview = (function(module) {
             }
             _show_help = !_show_help;
         }.bind(this);
-        cam_ui.add({
-            helpmenu: {action:helpmenu, key:'h', help:'Toggle this help'},
+
+        var help_ui = this.ui.addFolder("help", true)
+        help_ui.add({
+            shortcuts: {action:helpmenu, key:'h', help:'Toggle this help'},
         });
 
         var _hidelabels = false;
