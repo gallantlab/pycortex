@@ -977,8 +977,13 @@ var mriview = (function(module) {
                 list = [this.ui._desc,
                         this.ui._desc.camera._desc,
                         this.ui._desc.sliceplanes._desc,
-                        this.ui._desc.sliceplanes._desc.move._desc,
-                        this.ui._desc.surface.S1._desc]
+                        this.ui._desc.sliceplanes._desc.move._desc]
+
+                // add surface items to list
+                surface_names = Object.keys(this.ui._desc.surface)
+                    .filter((key) => key[0] != '_')
+                    .forEach((key) => list.push(this.ui._desc.surface[key]._desc))
+
                 for (var i = 0; i < list.length; i++){
                     for (var name in list[i]){
                         if ('help' in list[i][name]){
