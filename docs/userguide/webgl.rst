@@ -28,16 +28,26 @@ Keyboard Shortcuts
 
 There are many keyboard shortcuts that allow for more fluid interaction with the WebGL viewer. A complete list of keyboard shortcuts and also be displayed in the viewer by pressing the **h** key.
 
-=== ====================================
-Key Action
-=== ====================================
-f   flatten brain
-i 	inflate brain
-r   fold brain into original coordinates
-l   toggle labels
-h   toggle keyboard shortcut overview
-+/-	switch between datasets
-=== ====================================
+=========== ====================================
+Key         Action
+=========== ====================================
+f           flatten brain
+i 	        inflate brain
+r           fold brain into original coordinates
+l           toggle labels
+h           toggle keyboard shortcut overview
++/-	        switch between datasets
+e           Toggle X slice
+d           Toggle Y slice
+c           Toggle Z slice
+q/w         Switch Between X slices
+a/s         Switch Between Y slices
+z/x         Switch Between Z slices
+o           Toggle Data Opacity
+L           Toggle Left Hemisphere
+R           Toggle Right Hemisphere
+alt + wheel Change Cortical Depth
+=========== ====================================
 
 
 View Controls
