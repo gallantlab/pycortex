@@ -977,8 +977,13 @@ var mriview = (function(module) {
                 list = [this.ui._desc,
                         this.ui._desc.camera._desc,
                         this.ui._desc.sliceplanes._desc,
-                        this.ui._desc.sliceplanes._desc.move._desc,
-                        this.ui._desc.surface.S1._desc]
+                        this.ui._desc.sliceplanes._desc.move._desc]
+
+                // add surface items to list
+                surface_names = Object.keys(this.ui._desc.surface)
+                    .filter((key) => key[0] != '_')
+                    .forEach((key) => list.push(this.ui._desc.surface[key]._desc))
+
                 for (var i = 0; i < list.length; i++){
                     for (var name in list[i]){
                         if ('help' in list[i][name]){
@@ -994,7 +999,9 @@ var mriview = (function(module) {
                         }
                         if ('wheel' in list[i][name]){
                             new_html += '<tr><td style="text-align: center;">'
-                            var modKeys = list[i][name]['modKeys'].substring(list[i][name]['modKeys'].length - 3)
+                            var modKeys = list[i][name]['modKeys']
+                            modKeys = modKeys.map((modKey) => modKey.substring(0, modKey.length - 3))
+                            modKeys = modKeys.join(' + ')
                             new_html += modKeys + ' + wheel  </td><td>' + diplay_name + '</td></tr>'
                         }
                     }
@@ -1008,8 +1015,10 @@ var mriview = (function(module) {
             }
             _show_help = !_show_help;
         }.bind(this);
-        cam_ui.add({
-            helpmenu: {action:helpmenu, key:'h', help:'Toggle this help'},
+
+        var help_ui = this.ui.addFolder("help", true)
+        help_ui.add({
+            shortcuts: {action:helpmenu, key:'h', help:'Toggle this help'},
         });
 
         var _hidelabels = false;

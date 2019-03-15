@@ -572,7 +572,8 @@ var mriview = (function(module) {
     };
     module.Surface.prototype.toggleOpacity = function() {
         let newValue = 1 - Math.round(this.uniforms.dataAlpha.value)
-        viewer.ui.set('surface.S1.opacity', newValue)
+        surface = Object.keys(viewer.ui._desc.surface).filter((key) => key[0] != '_')[0]
+        viewer.ui.set('surface.' + surface + '.opacity', newValue)
         viewer.schedule();
     };
     module.Surface.prototype.setLayers = function(val) {
