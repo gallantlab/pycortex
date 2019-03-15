@@ -1001,7 +1001,7 @@ var mriview = (function(module) {
                             new_html += '<tr><td style="text-align: center;">'
                             var modKeys = list[i][name]['modKeys']
                             modKeys = modKeys.map((modKey) => modKey.substring(0, modKey.length - 3))
-                            modKyes = modKeys.join(' + ')
+                            modKeys = modKeys.join(' + ')
                             new_html += modKeys + ' + wheel  </td><td>' + diplay_name + '</td></tr>'
                         }
                     }
