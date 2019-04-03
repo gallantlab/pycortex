@@ -82,7 +82,8 @@ def manual(subject, xfmname, reference=None, **kwargs):
 
     return m
 
-def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pial_color="red", noclean=False):
+def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", 
+    pial_color="red", noclean=False, reference=None, inspect_only=False):
     """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
     volume to the cortical surface for `subject`. This creates a new transform
     called `xfmname`. The name of a nibabel-readable file (e.g. NIfTI) should be
@@ -109,6 +110,13 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pia
         If True, intermediate files will not be removed from /tmp/fsalign_xxx
         (this is useful for debugging things), and the returned value will be
         the name of the temp directory. Default False.
+    reference : str
+        name of reference (generally, functional) volume. Only provide this if
+        you are working from scratch (if no transform exists already), else
+        it will throw an error.
+    inspect_only : boolean | False
+        Whether to open transform to view only (if True, nothing is saved
+        when freeview is closed)
 
     Returns
     -------
@@ -130,25 +138,45 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pia
 
             # if masks have been cached, quit! user must remove them by hand
             from glob import glob
-            if len(glob(db.get_paths(subject)['masks'].format(xfmname=xfmname, type='*'))):
+            masks_exist = len(glob(db.get_paths(subject)['masks'].format(xfmname=xfmname, type='*')))
+            if masks_exist and not inspect_only:
                 print('Refusing to overwrite existing transform %s because there are cached masks. Delete the masks manually if you want to modify the transform.' % xfmname)
                 raise ValueError('Exiting...')
+            if reference is not None:
+                raise ValueError('Refusing to overwrite extant reference for transform')
         except IOError:
-            print("Transform does not exist!")
+            if reference is None: 
+                print("Transform does not exist!")
 
-        # Load transform-relevant things
-        reference = sub_xfm.reference.get_filename()
-        xfm_dir = os.path.dirname(reference)
-        _ = sub_xfm.to_freesurfer(os.path.join(cache, "register.dat"), subject) # Transform in freesurfer .dat format
+        if reference is None:
+            # Load load extant transform-relevant things
+            reference = sub_xfm.reference.get_filename()
+            #xfm_dir = os.path.dirname(reference)
+            _ = sub_xfm.to_freesurfer(os.path.join(cache, "register.dat"), subject) # Transform in freesurfer .dat format
 
-        # Command for FreeView and run
-        cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
-                "{ref}:reg={reg} "
-               "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={wmc} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={wmc} "
-               "$SUBJECTS_DIR/{sub}/surf/lh.pial:edgecolor={pialc} $SUBJECTS_DIR/{sub}/surf/rh.pial:edgecolor={pialc}")
-        cmd = cmd.format(sub=subject, ref=reference, reg=os.path.join(cache, "register.dat"),
-                         wmc=wm_color, pialc=pial_color)
-
+            # Command for FreeView and run
+            cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
+                    "{ref}:reg={reg} "
+                   "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={wmc} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={wmc} "
+                   "$SUBJECTS_DIR/{sub}/surf/lh.pial:edgecolor={pialc} $SUBJECTS_DIR/{sub}/surf/rh.pial:edgecolor={pialc}")
+            cmd = cmd.format(sub=subject, ref=reference, reg=os.path.join(cache, "register.dat"),
+                             wmc=wm_color, pialc=pial_color)
+            print('=== Calling (NO REFERENCE PROVIDED): ===')
+            print(cmd)
+        else:
+            # Reference provided
+            #xfm_file = db.get_paths(subject)['xfmdir']
+            #_ = sub_xfm.to_freesurfer(os.path.join(cache, "register.dat"), subject)
+            #xfm_dir = os.path.dirname(xfm_file)
+            # Command for FreeView and run
+            cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
+                    "{ref} " #:reg={reg} "
+                   "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={wmc} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={wmc} "
+                   "$SUBJECTS_DIR/{sub}/surf/lh.pial:edgecolor={pialc} $SUBJECTS_DIR/{sub}/surf/rh.pial:edgecolor={pialc}")
+            cmd = cmd.format(sub=subject, ref=reference, #reg=os.path.join(cache, "register.dat"),
+                             wmc=wm_color, pialc=pial_color)
+            print('=== Calling: ===')
+            print(cmd)
         # Run and save transform when user is done editing
         if sp.call(cmd, shell=True) != 0:
             raise IOError("Problem with FreeView!")
@@ -160,11 +188,13 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pia
             if sp.call(cmd, shell=True) != 0:
                 raise IOError("Error converting lta into dat!")
 
-            # Save transform to pycortex
-            xfm = Transform.from_freesurfer(reg_dat, reference, subject)
-            db.save_xfm(subject, xfmname, xfm.xfm, xfmtype='coord', reference=reference)
-            
-            print("saved xfm:", subject, xfmname)
+            if not inspect_only:
+                # Save transform to pycortex
+                xfm = Transform.from_freesurfer(reg_dat, reference, subject)
+                db.save_xfm(subject, xfmname, xfm.xfm, xfmtype='coord', reference=reference)
+                print("saved xfm")
+    except Exception as e:
+        raise(e)
 
     finally:
         if not noclean:
