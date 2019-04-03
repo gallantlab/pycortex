@@ -178,6 +178,7 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue",
         if not inspect_only:
             sfile = os.path.join(cache, output_name)
             print('\nREGISTRATION MUST BE SAVED AS:\n\n{}'.format(sfile))
+
         # Run and save transform when user is done editing
         if sp.call(cmd, shell=True) != 0:
             raise IOError("Problem with FreeView!")
@@ -196,13 +197,11 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue",
                 print("saved xfm")
     except Exception as e:
         raise(e)
-
     finally:
         if not noclean:
             shutil.rmtree(cache)
         else:
             retval = cache
-
     return retval
 
 
