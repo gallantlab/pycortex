@@ -6,7 +6,6 @@ import numpy as np
 
 from .. import utils
 from .. import dataset
-from . import utils as qutils
 from .utils import make_flatmap_image
 from . import composite
 
@@ -103,7 +102,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     ax = fig.add_axes((0, 0, 1, 1))
     # Add data
     data_im, extents = composite.add_data(fig, dataview, pixelwise=pixelwise, thick=thick, sampler=sampler,
-                       height=height, depth=depth, recache=recache)
+                                          height=height, depth=depth, recache=recache)
 
     layers = dict(data=data_im)
     # Add curvature
@@ -112,8 +111,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         if any([x in kwargs for x in ['cvmin', 'cvmax', 'cvthr']]):
             import warnings
             warnings.warn(("Use of `cvmin`, `cvmax`, and `cvthr` is deprecated! Please use \n"
-                             "`curvature_brightness`, `curvature_contrast`, and `curvature_threshold`\n"
-                             "to set appearance of background curvature."))
+                           "`curvature_brightness`, `curvature_contrast`, and `curvature_threshold`\n"
+                           "to set appearance of background curvature."))
             legacy_mode = True
             if ('cvmin' in kwargs) and ('cvmax' in kwargs):
                 # Assumes that if one is specified, both are; weird case where only one is
@@ -143,33 +142,34 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             dropout_power = 20 if with_dropout is True else with_dropout
         if hatch_data is None:
             hatch_data = utils.get_dropout(dataview.subject, dataview.xfmname,
-                                         power=dropout_power)
+                                           power=dropout_power)
 
         drop_im = composite.add_hatch(fig, hatch_data, extents=extents, height=height,
-            sampler=sampler)
+                                      sampler=sampler)
         layers['dropout'] = drop_im
     # Add extra hatching
     if extra_hatch is not None:
         hatch_data2, hatch_color = extra_hatch
         hatch_im = composite.add_hatch(fig, hatch_data2, extents=extents, height=height,
-            sampler=sampler)
+                                       sampler=sampler)
         layers['hatch'] = hatch_im
     # Add rois
     if with_rois:
         roi_im = composite.add_rois(fig, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
-             roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels)
+                                    roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor,
+                                    with_labels=with_labels)
         layers['rois'] = roi_im
     # Add sulci
     if with_sulci:
         sulc_im = composite.add_sulci(fig, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
-             shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels)
+                                      shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels)
         layers['sulci'] = sulc_im
     # Add custom
     if extra_disp is not None:
         svgfile, layer = extra_disp
         custom_im = composite.add_custom(fig, dataview, svgfile, layer, height=height, extents=extents,
-            linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor,
-            with_labels=with_labels)
+                                         linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize,
+                                         labelcolor=labelcolor, with_labels=with_labels)
         layers['custom'] = custom_im
     # Add connector lines btw connected vertices
     if with_connected_vertices:
@@ -191,7 +191,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         # Allow 2D colorbars:
         if isinstance(dataview, dataset.view2D.Dataview2D):
             colorbar = composite.add_colorbar_2d(fig, dataview.cmap,
-                [dataview.vmin, dataview.vmax, dataview.vmin2, dataview.vmax2])
+                                                 [dataview.vmin, dataview.vmax, dataview.vmin2, dataview.vmax2])
         else:
             colorbar = composite.add_colorbar(fig, data_im)
         # Reset axis to main figure axis

@@ -3,12 +3,9 @@ import numpy as np
 from .. import dataset
 from ..database import db
 from ..options import config
-from ..svgoverlay import get_overlay
-from ..utils import get_shared_voxels, get_mapper
 from .utils import _get_height, _get_extents, _convert_svg_kwargs, _has_cmap, _get_images, _parse_defaults
-from .utils import make_flatmap_image, _make_hatch_image, _return_pixel_pairs, get_flatmask, get_flatcache
+from .utils import make_flatmap_image, _make_hatch_image, get_flatmask, get_flatcache
 
-import time
 
 """ --- Individual compositing functions --- """
 
@@ -161,7 +158,7 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
         raise TypeError('Please provide a Dataview, not a Dataset')
     # Generate image (2D array, maybe 3D array)
     im, extents = make_flatmap_image(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
-                       height=height, thick=thick, depth=depth)
+                                     height=height, thick=thick, depth=depth)
     # Check whether dataview has a cmap instance
     cmapdict = _has_cmap(dataview)
     # Plot
@@ -201,7 +198,6 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
     img : matplotlib.image.AxesImage
         matplotlib axes image object for plotted data
     """
-    from ..svgoverlay import get_overlay
     if extents is None:
         extents = _get_extents(fig)
     if height is None:
@@ -249,7 +245,6 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, **kwar
     img : matplotlib.image.AxesImage
         matplotlib axes image object for plotted data
     """
-    from ..svgoverlay import get_overlay
     svgobject = db.get_overlay(dataview.subject)
     svg_kws = _convert_svg_kwargs(kwargs)
     layer_kws = _parse_defaults('sulci_paths')
@@ -268,7 +263,7 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, **kwar
 
 
 def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
-    hatch_color=(0, 0, 0), sampler='nearest', recache=False):
+              hatch_color=(0, 0, 0), sampler='nearest', recache=False):
     """Add hatching to figure at locations specified in hatch_data
 
     Parameters
@@ -303,13 +298,12 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
     -----
     Possibly to add: add hatch_width, hatch_offset arguments.
     """
-    from ..svgoverlay import get_overlay
     if extents is None:
         extents = _get_extents(fig)
     if height is None:
         height = _get_height(fig)
     hatchim = _make_hatch_image(hatch_data, height, sampler, recache=recache, 
-        hatch_space=hatch_space)
+                                hatch_space=hatch_space)
     hatchim[:,:,0] = hatch_color[0]
     hatchim[:,:,1] = hatch_color[1]
     hatchim[:,:,2] = hatch_color[2]
@@ -325,7 +319,7 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
 
 
 def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(0.4, 0.07, 0.2, 0.04), 
-    orientation='horizontal'):
+                 orientation='horizontal'):
     """Add a colorbar to a flatmap plot
 
     Parameters
@@ -349,7 +343,7 @@ def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(0.4, 0.07, 0
 
 
 def add_colorbar_2d(fig, cmap_name, colorbar_ticks,
-    colorbar_location=(0.425, 0.02, 0.15, 0.15), fontsize=12):
+                    colorbar_location=(0.425, 0.02, 0.15, 0.15), fontsize=12):
     """Add a 2D colorbar to a flatmap plot
 
     Parameters
@@ -381,7 +375,7 @@ def add_colorbar_2d(fig, cmap_name, colorbar_ticks,
     return cbar
 
 def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_labels=False, 
-    shape_list=None, **kwargs):
+               shape_list=None, **kwargs):
     """Add a custom data layer
 
     Parameters
@@ -562,13 +556,12 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
         extents of figure. None defaults to previously specified extents.
         [unclear if it's worth it to keep this input.]
     """
-    from ..svgoverlay import get_overlay
     if layers is None:
         layers = _get_images(fig)
     if height is None:
         height = _get_height(fig)
     if extents is None:
-        extents  = _get_extents(fig)
+        extents = _get_extents(fig)
     svgobject = db.get_overlay(dataview.subject)
     # Set other cutouts to be invisible
     for co_name, co_shape in svgobject.cutouts.shapes.items():
