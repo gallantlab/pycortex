@@ -87,6 +87,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple.
     colorbar_location : tuple, optional
         Location of the colorbar! Not sure of what the numbers actually mean. Left, bottom, width, height, maybe?
+    fig : figure or ax
+        figure into which to plot flatmap
     """
     from matplotlib import pyplot as plt
 
@@ -96,12 +98,18 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if fig is None:
         fig_resize = True
         fig = plt.figure()
-    else:
+        ax = fig.add_axes((0, 0, 1, 1))
+    elif isinstance(fig, plt.Figure):
         fig_resize = False
         fig = plt.figure(fig.number)
-    ax = fig.add_axes((0, 0, 1, 1))
+        ax = fig.add_axes((0, 0, 1, 1))
+    elif isinstance(fig, plt.Axes):
+        fig_resize = False
+        ax = fig
+        fig = ax.figure
+
     # Add data
-    data_im, extents = composite.add_data(fig, dataview, pixelwise=pixelwise, thick=thick, sampler=sampler,
+    data_im, extents = composite.add_data(ax, dataview, pixelwise=pixelwise, thick=thick, sampler=sampler,
                                           height=height, depth=depth, recache=recache)
 
     layers = dict(data=data_im)
@@ -125,7 +133,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         else:
             curvature_lims = 0.5
             legacy_mode = False
-        curv_im = composite.add_curvature(fig, dataview, extents,
+        curv_im = composite.add_curvature(ax, dataview, extents,
                                           brightness=curvature_brightness,
                                           contrast=curvature_contrast,
                                           threshold=curvature_threshold,
@@ -144,36 +152,36 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             hatch_data = utils.get_dropout(dataview.subject, dataview.xfmname,
                                            power=dropout_power)
 
-        drop_im = composite.add_hatch(fig, hatch_data, extents=extents, height=height,
+        drop_im = composite.add_hatch(ax, hatch_data, extents=extents, height=height,
                                       sampler=sampler)
         layers['dropout'] = drop_im
     # Add extra hatching
     if extra_hatch is not None:
         hatch_data2, hatch_color = extra_hatch
-        hatch_im = composite.add_hatch(fig, hatch_data2, extents=extents, height=height,
+        hatch_im = composite.add_hatch(ax, hatch_data2, extents=extents, height=height,
                                        sampler=sampler)
         layers['hatch'] = hatch_im
     # Add rois
     if with_rois:
-        roi_im = composite.add_rois(fig, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
+        roi_im = composite.add_rois(ax, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
                                     roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor,
                                     with_labels=with_labels)
         layers['rois'] = roi_im
     # Add sulci
     if with_sulci:
-        sulc_im = composite.add_sulci(fig, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
+        sulc_im = composite.add_sulci(ax, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
                                       shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels)
         layers['sulci'] = sulc_im
     # Add custom
     if extra_disp is not None:
         svgfile, layer = extra_disp
-        custom_im = composite.add_custom(fig, dataview, svgfile, layer, height=height, extents=extents,
+        custom_im = composite.add_custom(ax, dataview, svgfile, layer, height=height, extents=extents,
                                          linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize,
                                          labelcolor=labelcolor, with_labels=with_labels)
         layers['custom'] = custom_im
     # Add connector lines btw connected vertices
     if with_connected_vertices:
-        vertex_lines = composite.add_connected_vertices(fig, dataview)
+        vertex_lines = composite.add_connected_vertices(ax, dataview)
 
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
@@ -185,17 +193,17 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     # Add (apply) cutout of flatmap
     if cutout is not None:
-        extents = composite.add_cutout(fig, cutout, dataview, layers)
+        extents = composite.add_cutout(ax, cutout, dataview, layers)
 
     if with_colorbar:
         # Allow 2D colorbars:
         if isinstance(dataview, dataset.view2D.Dataview2D):
-            colorbar = composite.add_colorbar_2d(fig, dataview.cmap,
+            colorbar = composite.add_colorbar_2d(ax, dataview.cmap,
                                                  [dataview.vmin, dataview.vmax, dataview.vmin2, dataview.vmax2])
         else:
-            colorbar = composite.add_colorbar(fig, data_im)
+            colorbar = composite.add_colorbar(ax, data_im)
         # Reset axis to main figure axis
-        plt.axes(ax)
+        plt.sca(ax)
 
     return fig
 

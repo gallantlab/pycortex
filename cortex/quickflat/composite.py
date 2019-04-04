@@ -4,7 +4,7 @@ from .. import dataset
 from ..database import db
 from ..options import config
 from .utils import _get_height, _get_extents, _convert_svg_kwargs, _has_cmap, _get_images, _parse_defaults
-from .utils import make_flatmap_image, _make_hatch_image, get_flatmask, get_flatcache
+from .utils import make_flatmap_image, _make_hatch_image, _get_fig_and_ax, get_flatmask, get_flatcache
 
 
 """ --- Individual compositing functions --- """
@@ -17,7 +17,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
 
     Parameters
     ----------
-    fig : figure
+    fig : figure or ax
         figure into which to plot image of curvature
     dataview : cortex.Dataview object
         dataview containing data to be plotted, subject (surface identifier), and transform.
@@ -109,7 +109,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
         curv_im = (curv_im - 0.5) * contrast + brightness
     if extents is None:
         extents = _get_extents(fig)
-    ax = fig.gca()
+    _, ax = _get_fig_and_ax(fig)
     cvimg = ax.imshow(curv_im,
                       aspect='equal',
                       extent=extents,
@@ -126,7 +126,7 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
 
     Parameters
     ----------
-    fig : figure
+    fig : figure or ax
         Figure into which to plot image of curvature
     braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview)
         Object containing containing data to be plotted, subject (surface identifier),
@@ -162,7 +162,7 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     # Check whether dataview has a cmap instance
     cmapdict = _has_cmap(dataview)
     # Plot
-    ax = fig.gca()
+    _, ax = _get_fig_and_ax(fig)
     img = ax.imshow(im,
                     aspect='equal',
                     extent=extents,
@@ -178,7 +178,7 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
 
     Parameters
     ----------
-    fig : figure
+    fig : figure or ax
         figure into which to plot image of curvature
     dataview : cortex.Dataview object
         dataview containing data to be plotted, subject (surface identifier), and transform.
@@ -207,7 +207,7 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
     layer_kws = _parse_defaults('rois_paths')
     layer_kws.update(svg_kws)
     im = svgobject.get_texture('rois', height, labels=with_labels, shape_list=roi_list, **layer_kws)
-    ax = fig.gca()
+    _, ax = _get_fig_and_ax(fig)
     img = ax.imshow(im,
                     aspect='equal',
                     interpolation='bicubic',
@@ -222,7 +222,7 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, **kwar
 
     Parameters
     ----------
-    fig : figure
+    fig : figure or ax
         figure into which to plot image of curvature
     dataview : cortex.Dataview object
         dataview containing data to be plotted, subject (surface identifier), and transform.
@@ -252,7 +252,7 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, **kwar
     sulc = svgobject.get_texture('sulci', height, labels=with_labels, **layer_kws)
     if extents is None:
         extents = _get_extents(fig)
-    ax = fig.gca()
+    _, ax = _get_fig_and_ax(fig)
     img = ax.imshow(sulc,
                     aspect='equal',
                     interpolation='bicubic',
@@ -308,7 +308,7 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
     hatchim[:,:,1] = hatch_color[1]
     hatchim[:,:,2] = hatch_color[2]
 
-    ax = fig.gca()
+    _, ax = _get_fig_and_ax(fig)
     img = ax.imshow(hatchim, 
                     aspect="equal", 
                     interpolation="bicubic", 
@@ -337,6 +337,7 @@ def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(0.4, 0.07, 0
     orientation : string
         'vertical' or 'horizontal'
     """
+    fig, _ = _get_fig_and_ax(fig)
     cbar = fig.add_axes(colorbar_location)
     fig.colorbar(cimg, cax=cbar, orientation=orientation, ticks=colorbar_ticks)
     return cbar
@@ -365,6 +366,7 @@ def add_colorbar_2d(fig, cmap_name, colorbar_ticks,
     import os
     cmap_dir = config.get('webgl', 'colormaps')
     cim = plt.imread(os.path.join(cmap_dir, cmap_name + '.png'))
+    fig, _ = _get_fig_and_ax(fig)
     fig.add_axes(colorbar_location)
     cbar = plt.imshow(cim, extent=colorbar_ticks, interpolation='bilinear')
     cbar.axes.set_xticks(colorbar_ticks[:2])
@@ -429,7 +431,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
                                labels=with_labels, 
                                shape_list=shape_list, 
                                **layer_kws)
-    ax = fig.gca()
+    _, ax = _get_fig_and_ax(fig)
     img = ax.imshow(im, 
                     aspect="equal", 
                     interpolation="nearest", 
@@ -524,13 +526,13 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     # Add line collection
     # (This is the most time consuming step, as it draws many lines)
     # print('plotting lines...')
+    fig, ax = _get_fig_and_ax(fig)
     lc = LineCollection(pix_array_scaled,
                         transform=fig.transFigure,
                         figure=fig,
                         colors=color,
                         alpha=alpha,
                         linewidths=linewidth)
-    ax = fig.gca()
     lc_object = ax.add_collection(lc)
     return lc_object
 
@@ -539,7 +541,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
 
     Parameters
     ----------
-    fig : figure
+    fig : figure or ax
         figure to which to add cutouts
     name : str
         name of cutout shape within cutouts layer to use to crop the rest of the figure
@@ -627,7 +629,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
         imsize = (np.abs(np.diff(iy))[0], np.abs(np.diff(ix))[0])
 
     # Re-set figure limits
-    ax = fig.gca()
+    fig, ax = _get_fig_and_ax(fig)
     ax.set_xlim(LL, RR)
     ax.set_ylim(BB, TT)
     inch_size = np.array(imsize)[::-1] / float(fig.dpi)
