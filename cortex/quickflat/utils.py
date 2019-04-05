@@ -237,10 +237,23 @@ def _parse_defaults(section):
             defaults[k] = '{}, {}'.format(*defaults[k])
     return defaults
 
+def _get_fig_and_ax(fig):
+    """Get figure and current ax. Input can be either a figure or an ax."""
+    import matplotlib.pyplot as plt
+    if isinstance(fig, plt.Axes):
+        ax = fig
+        fig = ax.figure
+    elif isinstance(fig, plt.Figure):
+        ax = fig.gca()
+    else:
+        raise ValueError("fig should be a matplotlib Figure or Axes instance.")
+
+    return fig, ax
+
 def _get_images(fig):
     """Get all images in a given matplotlib axis"""
     from matplotlib.image import AxesImage
-    ax = fig.gca()
+    _, ax = _get_fig_and_ax(fig)
     images = dict((x.get_label(), x) for x in ax.get_children() if isinstance(x, AxesImage))
     return images
 
