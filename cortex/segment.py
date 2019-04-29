@@ -32,7 +32,7 @@ def init_subject(subject, filenames, run_all=False):
     subject : str
         The name of the subject (this subject is created in the Freesurfer
         SUBJECTS_DIR)
-    filenames : str | list
+    filenames : str 
         Freesurfer-compatible filename(s) for the anatomical image(s). This can
         be the first dicom file of a series of dicoms, a nifti file, an mgz
         file, etc.
@@ -42,7 +42,7 @@ def init_subject(subject, filenames, run_all=False):
         least inspecting) the brain mask and white matter segmentations prior
         to importing into pycortex.
     """
-    cmd = "recon-all -i {fname} -s {subj}".format(subj=subject, fname=filename)
+    cmd = "recon-all -i {fname} -s {subj}".format(subj=subject, fname=filenames)
     print("Calling:\n%{}".format(cmd))
     sp.call(shlex.split(cmd))
     if run_all:
