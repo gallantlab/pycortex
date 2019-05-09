@@ -692,8 +692,9 @@ class Database(object):
 
         See Also
         --------
-        compute_mni_transform, transform_to_mni, and transform_mni_to_subject in
-        cortex.mni
+        cortex.mni.compute_mni_transform
+        cortex.mni.transform_to_mni
+        cortex.mni.transform_mni_to_subject
         """
         from . import mni
 
