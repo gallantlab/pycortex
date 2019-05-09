@@ -627,11 +627,6 @@ class Database(object):
         -----
         Equivalent to call to vw.save_view(subject,name)
         For a list of the view parameters saved, see viewer._capture_view
-        
-        See Also
-        --------
-        viewer methods save_view, get_view, _set_view, _capture_view
-        database method get_view
         """
         view = vw._capture_view()
         sName = os.path.join(self.filestore, subject, "views", name+'.json')
@@ -658,11 +653,6 @@ class Database(object):
         -----
         Equivalent to call to vw.get_view(subject,name)
         For a list of the view parameters saved, see viewer._capture_view
-
-        See Also
-        --------
-        viewer methods save_view, get_view, _set_view, _capture_view
-        database method save_view
         """
         sName = os.path.join(self.filestore, subject, "views", name+'.json')
         view = json.load(open(sName))

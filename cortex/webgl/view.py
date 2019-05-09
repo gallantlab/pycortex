@@ -543,10 +543,6 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             -----
             Equivalent to call to cortex.db.save_view(subject, vw, name)
             For a list of the view parameters saved, see viewer._capture_view
-
-            See Also
-            --------
-            viewer methods get_view, _set_view, _capture_view
             """
             db.save_view(self, subject, name, is_overwrite)
 
@@ -567,10 +563,6 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             -----
             Equivalent to call to cortex.db.get_view(subject, vw, name)
             For a list of the view parameters set, see viewer._capture_view
-
-            See Also
-            --------
-            viewer methods save_view, _set_view, _capture_view
             """
             view = db.get_view(self, subject, name)
 
