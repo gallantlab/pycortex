@@ -138,7 +138,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                                           contrast=curvature_contrast,
                                           threshold=curvature_threshold,
                                           curvature_lims=curvature_lims,
-                                          legacy_mode=legacy_mode)
+                                          legacy_mode=legacy_mode,
+                                          recache=recache)
         layers['curvature'] = curv_im
     # Add dropout
     if with_dropout is not False:
@@ -153,13 +154,13 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                                            power=dropout_power)
 
         drop_im = composite.add_hatch(ax, hatch_data, extents=extents, height=height,
-                                      sampler=sampler)
+                                      sampler=sampler, recache=recache)
         layers['dropout'] = drop_im
     # Add extra hatching
     if extra_hatch is not None:
         hatch_data2, hatch_color = extra_hatch
         hatch_im = composite.add_hatch(ax, hatch_data2, extents=extents, height=height,
-                                       sampler=sampler)
+                                       sampler=sampler, recache=recache)
         layers['hatch'] = hatch_im
     # Add rois
     if with_rois:
@@ -181,7 +182,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         layers['custom'] = custom_im
     # Add connector lines btw connected vertices
     if with_connected_vertices:
-        vertex_lines = composite.add_connected_vertices(ax, dataview)
+        vertex_lines = composite.add_connected_vertices(ax, dataview, recache=recache)
 
     ax.axis('off')
     ax.set_xlim(extents[0], extents[1])
