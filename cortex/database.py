@@ -269,7 +269,7 @@ class Database(object):
             return Vertex(verts, subject)
         return npz
 
-    def get_overlay(self, subject, **kwargs):
+    def get_overlay(self, subject, overlay_file=None, **kwargs):
         from . import svgoverlay
         pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
 
@@ -293,7 +293,9 @@ class Database(object):
         if os.path.exists(paths['rois']) and not os.path.exists(paths['overlays']):
             svgoverlay.import_roi(paths['rois'], paths['overlays'])
 
-        return svgoverlay.get_overlay(subject, paths['overlays'], pts, polys, **kwargs)
+        if overlay_file is None:
+            overlay_file = paths['overlays']
+        return svgoverlay.get_overlay(subject, overlay_file, pts, polys, **kwargs)
     
     def save_xfm(self, subject, name, xfm, xfmtype="magnet", reference=None):
         """
