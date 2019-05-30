@@ -249,8 +249,8 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
         If True, also adds a sub-layer to the `rois` new SVG layer will automatically
         be created in the ROI group with the same `name` as the overlay.
     overlay_file : str, optional
-        Totally replace the overlays.svg file for this subject with the given
-        file (if not None). Default None.
+        Custom overlays.svg file to use instead of the default one for this
+        subject (if not None). Default None.
     kwargs : dict
         Passed to cortex.quickflat.make_png
     """

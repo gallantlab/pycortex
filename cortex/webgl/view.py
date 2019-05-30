@@ -89,8 +89,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         Name of default colormap. Default 'RdBu_r'
         TODO: DOES THIS DO ANYTHING ANYMORE?
     overlay_file : str, optional
-        Totally replace the overlays.svg file for this subject with the given
-        file (if not None). Default None.
+        Custom overlays.svg file to use instead of the default one for this
+        subject (if not None). Default None.
     html_embed : bool, optional
         Whether to embed the webgl resources in the html output.  Default 'True'.
         If 'False', the webgl resources must be served by your web server.
@@ -287,8 +287,8 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         Name of default colormap. Default 'RdBu_r'
         TODO: DOES THIS DO ANYTHING ANYMORE?
     overlay_file : str or None, optional
-        Totally replace the overlays.svg file for this subject with the given
-        file (if not None). Default None.
+        Custom overlays.svg file to use instead of the default one for this
+        subject (if not None). Default None.
     title : str, optional
         The title that is displayed on the viewer website when it is loaded in
         a browser.
