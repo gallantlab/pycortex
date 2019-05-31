@@ -223,6 +223,9 @@ class SubsurfaceMixin(object):
             try:
                 euclidean_vertices = self.get_euclidean_patch(vertex, working_radius, old_version=old_version)
                 vertex_mask = euclidean_vertices['vertex_mask']
+                if vertex_mask.sum() <= 1:
+                    working_radius *= 1.1
+                    continue
                 subsurface = self.create_subsurface(vertex_mask=vertex_mask)
                 vertex_map = subsurface.subsurface_vertex_map
 
