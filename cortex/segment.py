@@ -108,6 +108,7 @@ def edit_segmentation(subject,
             "`cortex.segment.run_freesurfer_recon('%s', 'wm')`\n"%subject,
             "If you have edited the brainmask (pial surface), you should run:\n",
             "`cortex.segment.run_freesurfer_recon('%s', 'pia')`"%subject)
+    print(disp)
 
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
