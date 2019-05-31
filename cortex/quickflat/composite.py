@@ -513,11 +513,9 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     vtx1valid = np.in1d(shared_voxels[:, 1], valid_verts)
     vtx2valid = np.in1d(shared_voxels[:, 2], valid_verts)
     va, vb = shared_voxels[vtx1valid & vtx2valid, 1:].T
-    # Get X, Y coordinates per vertex, scale to 0-1 range
+    # Get X, Y coordinates per vertex
     [lpt, lpoly], [rpt, rpoly] = db.get_surf(subject, "flat", nudge=True)
     vert_xyz = np.vstack([lpt, rpt])
-    vert_xyz -= vert_xyz.min(0)
-    vert_xyz /= vert_xyz.max(0)
     x, y = vert_xyz[:, :2].T
     # Map vertices to X, Y coordinates suitable for LineCollection input
     pix_array_x = np.vstack([x[va], x[vb]]).T
@@ -528,7 +526,6 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     # print('plotting lines...')
     fig, ax = _get_fig_and_ax(fig)
     lc = LineCollection(pix_array_scaled,
-                        transform=fig.transFigure,
                         figure=fig,
                         colors=color,
                         alpha=alpha,
