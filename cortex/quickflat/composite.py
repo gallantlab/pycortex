@@ -443,7 +443,8 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
 def add_connected_vertices(fig, dataview, exclude_border_width=None,
                            height=None, extents=None, recache=False,
                            color=(1.0, 0.5, 0.1, 0.6), linewidth=0.75,
-                           alpha=1.0, **kwargs):
+                           alpha=1.0, min_len=5, max_len=100,
+                           **kwargs):
     """Plot lines btw distant vertices that are within the same voxel
 
     Parameters
@@ -469,6 +470,12 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
         width of plotted lines
     alpha : scalar, [0-1]
         alpha value for plotted lines
+    min_len : scalar
+        minimum length of line on the flatmap to be plotted
+        None, shows all short lines
+    max_len : scalar
+        maximum length of line on the flatmap to be plotted
+        None, shows all long lines
     kwargs are mapped to cortex.db.get_shared_voxels
 
     Notes
@@ -520,12 +527,19 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     # Map vertices to X, Y coordinates suitable for LineCollection input
     pix_array_x = np.vstack([x[va], x[vb]]).T
     pix_array_y = np.vstack([y[va], y[vb]]).T
-    pix_array_scaled = np.dstack([pix_array_x, pix_array_y])
+    pix_array = np.dstack([pix_array_x, pix_array_y])
+    if min_len is not None:
+        long_enough = np.array([np.linalg.norm(p[0]-p[1])>=min_len for p in pix_array])
+        pix_array = pix_array[long_enough]
+    if max_len is not None:
+        short_enough = np.array([np.linalg.norm(p[0]-p[1])<=max_len for p in pix_array])
+        pix_array = pix_array[short_enough]
+
     # Add line collection
     # (This is the most time consuming step, as it draws many lines)
     # print('plotting lines...')
     fig, ax = _get_fig_and_ax(fig)
-    lc = LineCollection(pix_array_scaled,
+    lc = LineCollection(pix_array,
                         figure=fig,
                         colors=color,
                         alpha=alpha,
