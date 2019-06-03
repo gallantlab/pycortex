@@ -63,7 +63,7 @@ def autorecon(subject, type="all", parallel=False, n_cores=None):
         '3': "autorecon3",
         'cp': "autorecon2-cp",
         'wm': "autorecon2-wm",
-        'pia': "autorecon2-pial"}
+        'pia': "autorecon-pial"}
 
     times = {
         'all': "12 hours",

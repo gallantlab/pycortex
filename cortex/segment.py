@@ -104,11 +104,10 @@ def edit_segmentation(subject,
     cmd = ["freeview", '-v'] + vols + ['-f'] + surfs
     print("Calling: {}".format(' '.join(cmd)))
     sp.call(cmd)
-    disp = ("If you have edited the white matter surface, you should run:",
-            "`cortex.segment.run_freesurfer_recon('%s', 'wm')`\n"%subject,
-            "If you have edited the brainmask (pial surface), you should run:\n",
-            "`cortex.segment.run_freesurfer_recon('%s', 'pia')`"%subject)
-    print(disp)
+    print("If you have edited the white matter surface, you should run:\n")
+    print("    `cortex.segment.run_freesurfer_recon('%s', 'wm')`\n"%subject)
+    print("If you have edited the brainmask (pial surface), you should run:\n")
+    print("    `cortex.segment.run_freesurfer_recon('%s', 'pia')`"%subject)
 
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
