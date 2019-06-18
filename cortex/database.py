@@ -598,7 +598,9 @@ class Database(object):
 
     def make_subj(self, subject):
         if os.path.exists(os.path.join(self.filestore, subject)):
-            if input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
+            if input("Are you sure you want to overwrite this existing subject?\n"
+                     "This will delete all files for this subject in the filestore, "
+                     "including all blender cuts. Type YES\n") == "YES":
                 shutil.rmtree(os.path.join(self.filestore, subject))
             else:
                 raise ValueError('Do not overwrite')
