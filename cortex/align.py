@@ -177,6 +177,8 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue",
                              wmc=wm_color, pialc=pial_color)
             print('=== Calling: ===')
             print(cmd)
+            sfile = os.path.join(cache, output_name)
+            print('\nREGISTRATION MUST BE SAVED AS:\n\n{sname}'.format(sfile))
         # Run and save transform when user is done editing
         if sp.call(cmd, shell=True) != 0:
             raise IOError("Problem with FreeView!")

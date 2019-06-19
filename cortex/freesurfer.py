@@ -590,13 +590,15 @@ def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
     else:
         env = None
 
+    print('Calling:')
+    print(' '.join(cmd))
     p = sp.Popen(cmd, env=env)
     exit_code = p.wait()
     if exit_code != 0:
         import warnings
         warnings.warn(
-            ("Exit code {} means that "
-            "mri_surf2surf didn't work").format(exit_code))
+            ("Exit code {exit_code} means that "
+            "mri_surf2surf didn't work").format(exit_code=exit_code))
 
     tf_in.close()
     output_img = nibabel.load(tf_out.name)
