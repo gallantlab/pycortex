@@ -166,7 +166,7 @@ var jsplot = (function (module) {
 		// 	this._flatazimuth = az;
 		// }
 
-		az = (1 - this.mix) * this._foldedazimuth + this.mix * this._flatazimuth;
+		// az = (1 - this.mix) * this._foldedazimuth + this.mix * this._flatazimuth;
 
 		this.azimuth = az < 0 ? az + 360 : az % 360;
 	}
@@ -200,7 +200,7 @@ var jsplot = (function (module) {
 		// } else if (this.mix == 1) {
 		// 	this._flataltitude = alt;
 		// }
-		alt = (1 - this.mix) * this._foldedaltitude + this.mix * this._flataltitude;
+		// alt = (1 - this.mix) * this._foldedaltitude + this.mix * this._flataltitude;
 		// alt = (1 - this.mix) * this._foldedaltitude + this.mix * this._flataltitude;
 		this.altitude = Math.min(Math.max(alt, 0.1), 179.9);
 	}
@@ -221,9 +221,9 @@ var jsplot = (function (module) {
 		} else if (mix == 1) {
 			this._flattarget.set(xyz[0], xyz[1], 0);
 		}
-		this.target.set(this._foldedtarget.x * (1-mix) + mix*this._flattarget.x,
-		                this._foldedtarget.y * (1-mix) + mix*this._flattarget.y,
-		                this._foldedtarget.z * (1-mix) + mix*this._flattarget.z);
+		// this.target.set(this._foldedtarget.x * (1-mix) + mix*this._flattarget.x,
+		//                 this._foldedtarget.y * (1-mix) + mix*this._flattarget.y,
+		//                 this._foldedtarget.z * (1-mix) + mix*this._flattarget.z);
 	}
 
 	module.LandscapeControls.prototype.enable2Dbutton = function() {
