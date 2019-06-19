@@ -85,6 +85,7 @@ var mriview = (function(module) {
             allow_tilt: {action:[this.uniforms.allowtilt, "value"]},
             equivolume: {action:[this, "setEquivolume"]},
             changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true, help:'Change depth'},
+            changeInflation: {action: this.changeInflation.bind(this), wheel: true, modKeys: ['shiftKey'], hidden: true, help:'Change inflation'},
             opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
             toggleOpacity: {action: this.toggleOpacity.bind(this), key: 'o', hidden: true, help:'Toggle data opacity'},
             left: {action:[this, "setLeftVis"]},
@@ -513,6 +514,20 @@ var mriview = (function(module) {
         let newVal = this.uniforms.thickmix.value + inc;
         if (-.01 <= newVal && newVal <= 1.01) {
             this.setThickMix(newVal);
+        }
+    }
+    module.Surface.prototype.changeInflation = function(direction) {
+        let inc;
+        if (direction > 0) {
+            inc = .01
+        } else {
+            inc = -.01
+        }
+
+        let newVal = this.uniforms.surfmix.value + inc;
+        if (0.0 <= newVal && newVal <= 1.0) {
+            this.setMix(newVal);
+            viewer.schedule();
         }
     }
     module.Surface.prototype.setPivot = function(val) {
