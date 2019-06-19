@@ -959,12 +959,16 @@ var mriview = (function(module) {
         var inflate = function() {
             this.animate([{state:'mix', idx:parseFloat(viewopts.anim_speed), value:.5}]);
         }.bind(this);
+        var inflate_to_cuts = function() {
+            this.animate([{state:'mix', idx:parseFloat(viewopts.anim_speed), value:.501}]);
+        }.bind(this);
         var flatten = function() {
             this.animate([ {state:'mix', idx:parseFloat(viewopts.anim_speed), value:1}]);
         }.bind(this);
         cam_ui.add({
             reset: {action:this.reset_view, key:'r', help:'Reset view'},
             inflate: {action:inflate, key:'i', help:'Inflate'},
+            "inflate to cuts": {action:inflate_to_cuts, key:'k', help:'Inflate to cuts'},
             flatten: {action:flatten, key:'f', help:'Flatten'},
         });
 
