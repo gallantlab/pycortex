@@ -218,8 +218,10 @@ var jsplot = (function (module) {
 		var mix = this.mix;
 		if (mix < 1) {
 			this._foldedtarget.set(xyz[0], xyz[1], xyz[2]);
+			this.target.set(xyz[0], xyz[1], xyz[2]);
 		} else if (mix == 1) {
 			this._flattarget.set(xyz[0], xyz[1], 0);
+			this.target.set(xyz[0], xyz[1], 0);
 		}
 		// this.target.set(this._foldedtarget.x * (1-mix) + mix*this._flattarget.x,
 		//                 this._foldedtarget.y * (1-mix) + mix*this._flattarget.y,
