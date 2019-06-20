@@ -142,14 +142,7 @@ var jsplot = (function (module) {
 		if (az === undefined)
 			return this.azimuth;
 
-		if (this.mix > 0 && false) { // THIS IS DISABLED, NO AZIMUTH LIMITS
-			var azlim = this.mix * 180;
-			if (azlim > az || az > (360 - azlim)) {
-				var d1 = azlim - az;
-				var d2 = 360 - azlim - az;
-				az = Math.abs(d1) > Math.abs(d2) ? 360-azlim : azlim;
-			}
-		}
+		az = az < 0 ? az + 360 : az % 360;
 		this._foldedazimuth = this.mix * this._foldedazimuth + (1 - this.mix) * az;
 		// this._flatazimuth = (1 - this.mix) * this._flatazimuth + this.mix * az;
 		if ( this.mix == 1.0 ) {
@@ -160,26 +153,11 @@ var jsplot = (function (module) {
 
 			this._flatazimuth = az;
 		}
-		// if (this.mix == 0) {
-		// 	this._foldedazimuth = az;
-		// } else if (this.mix == 1) {
-		// 	this._flatazimuth = az;
-		// }
-
-		// az = (1 - this.mix) * this._foldedazimuth + this.mix * this._flatazimuth;
-
-		this.azimuth = az < 0 ? az + 360 : az % 360;
+		this.azimuth = az;
 	}
 	module.LandscapeControls.prototype.setAltitude = function(alt) {
 		if (alt === undefined)
 			return this.altitude;
-
-		// var altlim = this.mix * 90;
-		// var altlim = 0; // THIS IS DISABLED, NO ALTITUDE LIMITS
-		// alt = alt > 179.9999-altlim ? 179.9999-altlim : alt;
-		// this.altitude = alt < 0.0001+altlim ? 0.0001+altlim : alt;
-		// this._basealtitude = Math.min(Math.max(alt, 0.1), 179.9);
-		// this.altitude = Math.max(this._basealtitude - 90 * this.mix, 0.1);
 
 		this._foldedaltitude = this.mix * this._foldedaltitude + (1 - this.mix) * alt;
 		// this._flataltitude = (1 - this.mix) * this._flataltitude + this.mix * alt;
@@ -190,20 +168,13 @@ var jsplot = (function (module) {
 				this.disable2Dbutton();
 			
 			this._flataltitude = alt;
-			
 		}
 
 		this._flataltitude = Math.min(Math.max(this._flataltitude, 0.1), 75);
-
-		// if (this.mix == 0) {
-		// 	this._foldedaltitude = alt;
-		// } else if (this.mix == 1) {
-		// 	this._flataltitude = alt;
-		// }
-		// alt = (1 - this.mix) * this._foldedaltitude + this.mix * this._flataltitude;
-		// alt = (1 - this.mix) * this._foldedaltitude + this.mix * this._flataltitude;
+		this._foldedaltitude = Math.min(Math.max(this._foldedaltitude, 0.1), 179.9);
 		this.altitude = Math.min(Math.max(alt, 0.1), 179.9);
 	}
+
 	module.LandscapeControls.prototype.setRadius = function(rad) {
 		if (rad === undefined)
 			return this.radius;
@@ -215,17 +186,13 @@ var jsplot = (function (module) {
 		if (!(xyz instanceof Array))
 			return [this.target.x, this.target.y, this.target.z];
 
-		var mix = this.mix;
-		if (mix < 1) {
+		if (this.mix < 1) {
 			this._foldedtarget.set(xyz[0], xyz[1], xyz[2]);
 			this.target.set(xyz[0], xyz[1], xyz[2]);
-		} else if (mix == 1) {
+		} else{
 			this._flattarget.set(xyz[0], xyz[1], 0);
 			this.target.set(xyz[0], xyz[1], 0);
 		}
-		// this.target.set(this._foldedtarget.x * (1-mix) + mix*this._flattarget.x,
-		//                 this._foldedtarget.y * (1-mix) + mix*this._flattarget.y,
-		//                 this._foldedtarget.z * (1-mix) + mix*this._flattarget.z);
 	}
 
 	module.LandscapeControls.prototype.enable2Dbutton = function() {
