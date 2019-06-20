@@ -133,9 +133,7 @@ var jsplot = (function (module) {
 			this.setTarget(this.target.toArray());
 		}
 
-		if ( mix < 1 ) {
-			this.twodbutton.hide();
-		}
+		this.update2Dbutton();
 	}
 
 	module.LandscapeControls.prototype.setAzimuth = function(az) {
@@ -144,34 +142,26 @@ var jsplot = (function (module) {
 
 		az = az < 0 ? az + 360 : az % 360;
 		
-		if ( this.mix == 1.0 ) {
-			if ( az != 180 )
-				this.enable2Dbutton();
-			else
-				this.disable2Dbutton();
-
+		if ( this.mix == 1.0 )
 			this._flatazimuth = az;
-		}
 		else
 			this._foldedazimuth = az;
 		this.azimuth = az;
+		this.update2Dbutton();
 	}
 	module.LandscapeControls.prototype.setAltitude = function(alt) {
 		if (alt === undefined)
 			return this.altitude;
 
 		if ( this.mix == 1.0 ) {
-			if ( alt != 0.1 )
-				this.enable2Dbutton();
-			else
-				this.disable2Dbutton();
-			
 			this._flataltitude = Math.min(Math.max(alt, 0.1), 75);
 			this.altitude = this._flataltitude
 		}
-		else
+		else {
 			this._foldedaltitude = Math.min(Math.max(alt, 0.1), 179.9);
 			this.altitude = this._foldedaltitude;
+		}
+		this.update2Dbutton();
 	}
 
 	module.LandscapeControls.prototype.setRadius = function(rad) {
@@ -194,6 +184,17 @@ var jsplot = (function (module) {
 		}
 	}
 
+	module.LandscapeControls.prototype.update2Dbutton = function() {
+		if ( this.mix == 1.0 ){
+			if ( this.altitude > 0.1  ||  this.azimuth != 180 )
+				this.enable2Dbutton();
+			else
+				this.disable2Dbutton();
+		}
+		else
+			this.disable2Dbutton();
+			
+	}
 	module.LandscapeControls.prototype.enable2Dbutton = function() {
 		// this.twodbutton.prop('disabled', false);
 		this.twodbutton.show();
