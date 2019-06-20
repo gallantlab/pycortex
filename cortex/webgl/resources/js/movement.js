@@ -143,8 +143,7 @@ var jsplot = (function (module) {
 			return this.azimuth;
 
 		az = az < 0 ? az + 360 : az % 360;
-		this._foldedazimuth = this.mix * this._foldedazimuth + (1 - this.mix) * az;
-		// this._flatazimuth = (1 - this.mix) * this._flatazimuth + this.mix * az;
+		
 		if ( this.mix == 1.0 ) {
 			if ( az != 180 )
 				this.enable2Dbutton();
@@ -153,26 +152,26 @@ var jsplot = (function (module) {
 
 			this._flatazimuth = az;
 		}
+		else
+			this._foldedazimuth = az;
 		this.azimuth = az;
 	}
 	module.LandscapeControls.prototype.setAltitude = function(alt) {
 		if (alt === undefined)
 			return this.altitude;
 
-		this._foldedaltitude = this.mix * this._foldedaltitude + (1 - this.mix) * alt;
-		// this._flataltitude = (1 - this.mix) * this._flataltitude + this.mix * alt;
 		if ( this.mix == 1.0 ) {
 			if ( alt != 0.1 )
 				this.enable2Dbutton();
 			else
 				this.disable2Dbutton();
 			
-			this._flataltitude = alt;
+			this._flataltitude = Math.min(Math.max(alt, 0.1), 75);
+			this.altitude = this._flataltitude
 		}
-
-		this._flataltitude = Math.min(Math.max(this._flataltitude, 0.1), 75);
-		this._foldedaltitude = Math.min(Math.max(this._foldedaltitude, 0.1), 179.9);
-		this.altitude = Math.min(Math.max(alt, 0.1), 179.9);
+		else
+			this._foldedaltitude = Math.min(Math.max(alt, 0.1), 179.9);
+			this.altitude = this._foldedaltitude;
 	}
 
 	module.LandscapeControls.prototype.setRadius = function(rad) {
