@@ -234,7 +234,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 
 def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
-         autoclose=True, open_browser=True, port=None, pickerfun=None,
+         autoclose=None, open_browser=None, port=None, pickerfun=None,
          template="mixer.html", overlays_available=None,
          overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
          overlay_file=None, title='Brain', **kwargs):
@@ -296,6 +296,10 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         The layout of the viewer subwindows for showing multiple subjects.
         Default None, which selects the layout based on the number of subjects.
     """
+
+    # populate default webshow args
+    autoclose = options.config.get('webshow', 'autoclose', fallback='true') == 'true'
+    open_browser = options.config.get('webshow', 'open_browser', fallback='true') == 'true'
 
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
