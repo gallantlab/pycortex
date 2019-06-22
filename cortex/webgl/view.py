@@ -298,8 +298,10 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     """
 
     # populate default webshow args
-    autoclose = options.config.get('webshow', 'autoclose', fallback='true') == 'true'
-    open_browser = options.config.get('webshow', 'open_browser', fallback='true') == 'true'
+    if autoclose is None:
+        autoclose = options.config.get('webshow', 'autoclose', fallback='true') == 'true'
+    if open_browser is None:
+        open_browser = options.config.get('webshow', 'open_browser', fallback='true') == 'true'
 
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
