@@ -967,8 +967,10 @@ var mriview = (function(module) {
         }.bind(this);
 
         // saves out current view as a png
+        this.imageWidth = 2400;
+        this.imageHeight = 1200;
         var saveImage = function() {
-            var image = viewer.getImage(2400, 1200);
+            var image = viewer.getImage(this.imageWidth.toFixed(), this.imageHeight.toFixed());
             var a = document.createElement('a');
             a.download = 'image.png';
             a.href = image.toDataURL();
@@ -980,7 +982,14 @@ var mriview = (function(module) {
             inflate: {action:inflate, key:'i', help:'Inflate'},
             "inflate to cuts": {action:inflate_to_cuts, key:'k', help:'Inflate to cuts'},
             flatten: {action:flatten, key:'f', help:'Flatten'},
-            "Save image": {action:saveImage, key:'S', modKeys: ['shiftKey'], help:'Save current view as a png'}
+        });
+
+        // UI controls for saving image and selecting image size
+        var imageFolder = cam_ui.addFolder('Save image');
+        imageFolder.add({
+            "Save": {action:saveImage, key:'S', modKeys: ['shiftKey'], help:'Save current view as a png'},
+            "Width": {action:[this, 'imageWidth', 500, 4000]},
+            "Height": {action:[this, 'imageHeight', 500, 4000]}
         });
 
         // keyboard shortcut menu
