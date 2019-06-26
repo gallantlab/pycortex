@@ -1001,7 +1001,8 @@ var mriview = (function(module) {
                 list = [this.ui._desc,
                         this.ui._desc.camera._desc,
                         this.ui._desc.sliceplanes._desc,
-                        this.ui._desc.sliceplanes._desc.move._desc]
+                        this.ui._desc.sliceplanes._desc.move._desc,
+                        imageFolder._desc];
 
                 // add surface items to list
                 surface_names = Object.keys(this.ui._desc.surface)
@@ -1019,7 +1020,13 @@ var mriview = (function(module) {
                         
                         if ('key' in list[i][name]){
                             new_html += '<tr><td style="text-align: center;">'
-                            new_html += list[i][name]['key'] + '</td><td>' + diplay_name + '</td></tr>'
+                            if ('modKeys' in list[i][name]){
+                                let modKeys = list[i][name]['modKeys'];
+                                modKeys = modKeys.map((modKey) => modKey.substring(0, modKey.length - 3));
+                                modKeys = modKeys.join(' + ');
+                                new_html += modKeys + ' + ';
+                            }
+                            new_html += list[i][name]['key'].toUpperCase() + '</td><td>' + diplay_name + '</td></tr>'
                         }
                         if ('wheel' in list[i][name]){
                             new_html += '<tr><td style="text-align: center;">'
