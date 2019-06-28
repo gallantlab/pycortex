@@ -163,7 +163,8 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", pia
             # Save transform to pycortex
             xfm = Transform.from_freesurfer(reg_dat, reference, subject)
             db.save_xfm(subject, xfmname, xfm.xfm, xfmtype='coord', reference=reference)
-            print("saved xfm")
+            
+            print("saved xfm:", subject, xfmname)
 
     finally:
         if not noclean:

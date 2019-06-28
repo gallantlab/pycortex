@@ -261,7 +261,7 @@ class Transform(object):
         # Read vox2ras transform for the anatomical volume
         try:
             cmd = ('mri_info', '--vox2ras', anat_mgz)
-            L = subprocess.check_output(cmd).splitlines()
+            L = decode(subprocess.check_output(cmd)).splitlines()
             anat_vox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -270,7 +270,7 @@ class Transform(object):
         # Read tkrvox2ras transform for the  anatomical volume
         try:
             cmd = ('mri_info', '--vox2ras-tkr', anat_mgz)
-            L = subprocess.check_output(cmd).splitlines()
+            L = decode(subprocess.check_output(cmd)).splitlines()
             anat_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -279,7 +279,7 @@ class Transform(object):
         # Read tkvox2ras transform for the functional volume
         try:
             cmd = ('mri_info', '--vox2ras-tkr', func_nii)
-            L = subprocess.check_output(cmd).splitlines()
+            L = decode(subprocess.check_output(cmd)).splitlines()
             L = L[1:]
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
@@ -336,7 +336,7 @@ class Transform(object):
         # Read vox2ras transform for the anatomical volume
         try:
             cmd = ('mri_info', '--vox2ras', anat_mgz)
-            L = subprocess.check_output(cmd).splitlines()
+            L = decode(subprocess.check_output(cmd)).splitlines()
             anat_vox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -345,7 +345,7 @@ class Transform(object):
         # Read tkrvox2ras transform for the  anatomical volume
         try:
             cmd = ('mri_info', '--vox2ras-tkr', anat_mgz)
-            L = subprocess.check_output(cmd).splitlines()
+            L = decode(subprocess.check_output(cmd)).splitlines()
             anat_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -354,7 +354,7 @@ class Transform(object):
         # Read tkvox2ras transform for the functional volume
         try:
             cmd = ('mri_info', '--vox2ras-tkr', func_nii)
-            L = subprocess.check_output(cmd).splitlines()[1:]
+            L = decode(subprocess.check_output(cmd)).splitlines()[1:]
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -363,7 +363,7 @@ class Transform(object):
         # Read voxel resolution of the functional volume
         try:
             cmd = ('mri_info', '--res', func_nii)
-            ll = subprocess.check_output(cmd).split("\n")[1]
+            ll = decode(subprocess.check_output(cmd)).split("\n")[1]
             func_voxres = np.array([np.float(s) for s in ll.split() if s])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -391,6 +391,12 @@ def isstr(obj):
         return isinstance(obj, basestring)
     except NameError:
         return isinstance(obj, str)
+    
+def decode(obj):
+    if isinstance(obj, bytes):
+        obj = obj.decode()
+    return obj
+        
 
 def _x_flipper(N_i):
     #Copied from dipy
