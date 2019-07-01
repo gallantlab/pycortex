@@ -81,6 +81,9 @@ var mriview = (function(module) {
             pivot: {action:[this, "setPivot", -180, 180]},
             shift: {action:[this, "setShift", 0, 200]},
             depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
+            "pial surface": {action: this.to_pial_surface.bind(this), key: 'p', help: "Pial surface"},
+            "fiducial surface": {action: this.to_fiducial_surface.bind(this), key: 'u', help: "Fiducial surface"},
+            "WM surface": {action: this.to_white_matter_surface.bind(this), key: 'y', help: "White matter surface"},
             bumpy_flatmap: {action:[this.uniforms.bumpyflat, "value"]},
             allow_tilt: {action:[this.uniforms.allowtilt, "value"]},
             equivolume: {action:[this, "setEquivolume"]},
@@ -94,6 +97,7 @@ var mriview = (function(module) {
             rightToggle: {action: this.toggleRightVis.bind(this), key: 'R', modKeys: ['shiftKey'], hidden: true, help:'Toggle right hemisphere'},
 	        specularity: {action:[this, "setSpecular", 0, 1]},
             layers: {action:[this, "setLayers", {1:1, 4:4, 8:8, 16:16, 32:32}]},
+            toggleMultipleLayers: {action: this.toggleMultipleLayers.bind(this), key: 'm', hidden: true, help: "Toggle multiple layers"},
             dither: {action:[this, "setDither"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
         });
@@ -502,6 +506,11 @@ var mriview = (function(module) {
         let clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
         this.dispatchEvent({type:'mix', flat:clipped, mix:mix, thickmix:this.uniforms.thickmix.value});
         viewer.schedule()
+
+        var gui = this.ui._gui
+        for (var i in gui.__controllers) {
+            gui.__controllers[i].updateDisplay();
+        }
     };
     module.Surface.prototype.changeDepth = function(direction) {
         let inc;
@@ -516,6 +525,15 @@ var mriview = (function(module) {
             this.setThickMix(newVal);
         }
     }
+    module.Surface.prototype.to_pial_surface = function() {
+        this.setThickMix(0.0)
+    };
+    module.Surface.prototype.to_fiducial_surface = function() {
+        this.setThickMix(0.5)
+    };
+    module.Surface.prototype.to_white_matter_surface = function() {
+        this.setThickMix(1.0)
+    };
     module.Surface.prototype.changeInflation = function(direction) {
         let inc;
         if (direction > 0) {
@@ -596,6 +614,19 @@ var mriview = (function(module) {
             return this._layers;
         this._layers = val;
         this.resetShaders();
+    }
+    module.Surface.prototype.toggleMultipleLayers = function() {
+        if (this._layers == 1) {
+            this._layers = 32;
+        } else {
+            this._layers = 1;
+        }
+        this.resetShaders();
+        viewer.schedule();
+        var gui = this.ui._gui
+        for (var i in gui.__controllers) {
+            gui.__controllers[i].updateDisplay();
+        }
     }
     module.Surface.prototype.setDither = function(val) {
         if (val === undefined)
