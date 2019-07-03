@@ -381,7 +381,8 @@ class Database(object):
 
         fname = os.path.join(self.filestore, subject, "transforms", name, "matrices.xfm")
         reference = os.path.join(self.filestore, subject, "transforms", name, "reference.nii.gz")
-        xfmdict = json.load(open(fname))
+        with open(fname) as f:
+            xfmdict = json.load(f)
         return Transform(xfmdict[xfmtype], reference)
 
     @_memo

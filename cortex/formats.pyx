@@ -42,8 +42,8 @@ def read_npz(filename):
     return pts, polys
 
 def read_gii(filename):
-    from nibabel import gifti
-    gii = gifti.read(filename)
+    from nibabel import load
+    gii = load(filename)
     pts = gii.getArraysFromIntent('pointset')[0].data
     polys = gii.getArraysFromIntent('triangle')[0].data
     return pts, polys
