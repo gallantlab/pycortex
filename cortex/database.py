@@ -111,7 +111,8 @@ class XfmSet(object):
         self.subject = subj
         self.name = name
         jspath = os.path.join(filestore, subj, 'transforms', name, 'matrices.xfm')
-        self._jsdat = json.load(open(jspath))
+        with open(jspath) as fp:
+            self._jsdat = json.load(fp)
         self.masks = MaskSet(subj, name, filestore=filestore)
         self.db = Database(filestore)
     
@@ -325,7 +326,8 @@ class Database(object):
         path = os.path.join(self.filestore, subject, "transforms", name)
         fname = os.path.join(path, "matrices.xfm")
         if os.path.exists(fname):
-            jsdict = json.load(open(fname))
+            with open(fname) as fp:
+                jsdict = json.load(fp)
         else:
             os.mkdir(path)
             if reference is None:
@@ -354,7 +356,8 @@ class Database(object):
         if len(glob.glob(files['masks'].format(xfmname=name, type="*"))) > 0:
             raise ValueError('Refusing to change a transform with masks')
             
-        json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
+        with open(fname, "w") as fp:
+            json.dump(jsdict, fp, sort_keys=True, indent=4)
     
     def get_xfm(self, subject, name, xfmtype="coord"):
         """Retrieves a transform from the filestore
@@ -638,7 +641,8 @@ class Database(object):
         if os.path.exists(sName):
             if not is_overwrite:
                 raise IOError('Refusing to over-write extant view If you want to do this, set is_overwrite=True!')
-        json.dump(view,open(sName,'w'))
+        with open(sName,'w') as fp:
+            json.dump(view, fp)
 
     def get_view(self,vw,subject,name):
         """Set the view for an open webshow instance from a saved view
@@ -660,7 +664,8 @@ class Database(object):
         For a list of the view parameters saved, see viewer._capture_view
         """
         sName = os.path.join(self.filestore, subject, "views", name+'.json')
-        view = json.load(open(sName))
+        with open(sName) as fp:
+            view = json.load(fp)
         vw._set_view(**view)
 
     def get_mnixfm(self, subject, xfm, template=None):
