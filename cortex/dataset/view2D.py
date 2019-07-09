@@ -237,7 +237,7 @@ class Vertex2D(Dataview2D):
             vmax2 = dim2.vmax if vmax2 is None else vmax2
         else:
             self.dim1 = Vertex(dim1, subject, vmin=vmin, vmax=vmax)
-            self.dim2 = Vertex(dim2, subject, vmin2=vmin2, vmax2=vmax2)
+            self.dim2 = Vertex(dim2, subject, vmin=vmin2, vmax=vmax2)
 
         super(Vertex2D, self).__init__(description=description, cmap=cmap,
                                        vmin=vmin, vmax=vmax, vmin2=vmin2,
