@@ -12,7 +12,9 @@ from cortex.volume import mosaic, unmask
 try:
     from cortex import formats
 except ImportError:
-    raise ImportError("You are running pycortex from the source directory. Don't do that!")
+    raise ImportError("Either are running pycortex from the source directory, or the build is broken. "
+                      "If your current working directory is 'cortex', where pycortex is installed, then change this. "
+                      "If your current working directory is somewhere else, then you may have to rebuild pycortex.")
 
 load = Dataset.from_file
 
