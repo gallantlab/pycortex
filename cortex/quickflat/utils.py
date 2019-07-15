@@ -317,7 +317,13 @@ def _make_flatmask(subject, height=1024):
     try:
         left, right = bounds.next(), bounds.next() # python 2.X
     except AttributeError:
-        left, right = next(bounds), next(bounds) # python 3.X
+        bounds = list(bounds) # python 3.x
+        bound_polys = []
+        for item in bounds:
+            if len(item) > 10:
+                bound_polys.append(item)
+        left, right = bound_polys
+        
     aspect = (height / (pts.max(0) - pts.min(0))[1])
     lpts = (pts[left] - pts.min(0)) * aspect
     rpts = (pts[right] - pts.min(0)) * aspect
