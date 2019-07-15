@@ -111,7 +111,8 @@ class XfmSet(object):
         self.subject = subj
         self.name = name
         jspath = os.path.join(filestore, subj, 'transforms', name, 'matrices.xfm')
-        self._jsdat = json.load(open(jspath))
+        with open(jspath) as fp:
+            self._jsdat = json.load(fp)
         self.masks = MaskSet(subj, name, filestore=filestore)
         self.db = Database(filestore)
     
@@ -269,7 +270,7 @@ class Database(object):
             return Vertex(verts, subject)
         return npz
 
-    def get_overlay(self, subject, **kwargs):
+    def get_overlay(self, subject, overlay_file=None, **kwargs):
         from . import svgoverlay
         pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
 
@@ -293,7 +294,9 @@ class Database(object):
         if os.path.exists(paths['rois']) and not os.path.exists(paths['overlays']):
             svgoverlay.import_roi(paths['rois'], paths['overlays'])
 
-        return svgoverlay.get_overlay(subject, paths['overlays'], pts, polys, **kwargs)
+        if overlay_file is None:
+            overlay_file = paths['overlays']
+        return svgoverlay.get_overlay(subject, overlay_file, pts, polys, **kwargs)
     
     def save_xfm(self, subject, name, xfm, xfmtype="magnet", reference=None):
         """
@@ -323,7 +326,8 @@ class Database(object):
         path = os.path.join(self.filestore, subject, "transforms", name)
         fname = os.path.join(path, "matrices.xfm")
         if os.path.exists(fname):
-            jsdict = json.load(open(fname))
+            with open(fname) as fp:
+                jsdict = json.load(fp)
         else:
             os.mkdir(path)
             if reference is None:
@@ -352,7 +356,8 @@ class Database(object):
         if len(glob.glob(files['masks'].format(xfmname=name, type="*"))) > 0:
             raise ValueError('Refusing to change a transform with masks')
             
-        json.dump(jsdict, open(fname, "w"), sort_keys=True, indent=4)
+        with open(fname, "w") as fp:
+            json.dump(jsdict, fp, sort_keys=True, indent=4)
     
     def get_xfm(self, subject, name, xfmtype="coord"):
         """Retrieves a transform from the filestore
@@ -379,7 +384,8 @@ class Database(object):
 
         fname = os.path.join(self.filestore, subject, "transforms", name, "matrices.xfm")
         reference = os.path.join(self.filestore, subject, "transforms", name, "reference.nii.gz")
-        xfmdict = json.load(open(fname))
+        with open(fname) as f:
+            xfmdict = json.load(f)
         return Transform(xfmdict[xfmtype], reference)
 
     @_memo
@@ -596,7 +602,9 @@ class Database(object):
 
     def make_subj(self, subject):
         if os.path.exists(os.path.join(self.filestore, subject)):
-            if input("Are you sure you want to overwrite this existing subject? Type YES\n") == "YES":
+            if input("Are you sure you want to overwrite this existing subject?\n"
+                     "This will delete all files for this subject in the filestore, "
+                     "including all blender cuts. Type YES\n") == "YES":
                 shutil.rmtree(os.path.join(self.filestore, subject))
             else:
                 raise ValueError('Do not overwrite')
@@ -627,18 +635,14 @@ class Database(object):
         -----
         Equivalent to call to vw.save_view(subject,name)
         For a list of the view parameters saved, see viewer._capture_view
-        
-        See Also
-        --------
-        viewer methods save_view, get_view, _set_view, _capture_view
-        database method get_view
         """
         view = vw._capture_view()
         sName = os.path.join(self.filestore, subject, "views", name+'.json')
         if os.path.exists(sName):
             if not is_overwrite:
                 raise IOError('Refusing to over-write extant view If you want to do this, set is_overwrite=True!')
-        json.dump(view,open(sName,'w'))
+        with open(sName,'w') as fp:
+            json.dump(view, fp)
 
     def get_view(self,vw,subject,name):
         """Set the view for an open webshow instance from a saved view
@@ -658,14 +662,10 @@ class Database(object):
         -----
         Equivalent to call to vw.get_view(subject,name)
         For a list of the view parameters saved, see viewer._capture_view
-
-        See Also
-        --------
-        viewer methods save_view, get_view, _set_view, _capture_view
-        database method save_view
         """
         sName = os.path.join(self.filestore, subject, "views", name+'.json')
-        view = json.load(open(sName))
+        with open(sName) as fp:
+            view = json.load(fp)
         vw._set_view(**view)
 
     def get_mnixfm(self, subject, xfm, template=None):
@@ -692,8 +692,9 @@ class Database(object):
 
         See Also
         --------
-        compute_mni_transform, transform_to_mni, and transform_mni_to_subject in
-        cortex.mni
+        cortex.mni.compute_mni_transform
+        cortex.mni.transform_to_mni
+        cortex.mni.transform_mni_to_subject
         """
         from . import mni
 

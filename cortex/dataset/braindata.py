@@ -32,7 +32,7 @@ class BrainData(object):
     @property
     def data(self):
         if isinstance(self._data, h5py.Dataset):
-            return self._data.value
+            return self._data[()]
         return self._data
 
     @data.setter
@@ -62,9 +62,9 @@ class BrainData(object):
     def _write_hdf(self, h5, name=None):
         if name is None:
             name = self.name
-
         dgrp = h5.require_group("/data")
-        if name in dgrp and "__%s"%_hash(dgrp[name].value)[:16] == name:
+        
+        if name in dgrp and "__%s" % _hash(dgrp[name][()])[:16] == name:
             #don't need to update anything, since it's the same data
             return h5.get("/data/%s"%name)
 

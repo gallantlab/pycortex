@@ -223,6 +223,9 @@ class SubsurfaceMixin(object):
             try:
                 euclidean_vertices = self.get_euclidean_patch(vertex, working_radius, old_version=old_version)
                 vertex_mask = euclidean_vertices['vertex_mask']
+                if vertex_mask.sum() <= 1:
+                    working_radius *= 1.1
+                    continue
                 subsurface = self.create_subsurface(vertex_mask=vertex_mask)
                 vertex_map = subsurface.subsurface_vertex_map
 
@@ -244,10 +247,12 @@ class SubsurfaceMixin(object):
         close_enough = subsurface.lift_subsurface_data(close_enough)
         geodesic_distance = subsurface.lift_subsurface_data(geodesic_distance) 
         geodesic_distance[~close_enough] = np.nan
+        
+        vertex_mask = self.get_connected_vertices(vertex=vertex, mask=close_enough, old_version=old_version)
 
         return {
-            'vertex_mask': self.get_connected_vertices(vertex=vertex, mask=close_enough, old_version=old_version),
-            'geodesic_distance': geodesic_distance[close_enough],
+            'vertex_mask': vertex_mask,
+            'geodesic_distance': geodesic_distance[vertex_mask],
         }
 
     def get_geodesic_patches(self, radius, seeds=None, n_random_seeds=None, output='dense'):

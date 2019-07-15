@@ -17,13 +17,13 @@ class Mapper(object):
         self.xfmname = xfmname
 
     @classmethod
-    def from_cache(cls, cachefile):
+    def from_cache(cls, cachefile, subject, xfmname):
         npz = np.load(cachefile)
         left = (npz['left_data'], npz['left_indices'], npz['left_indptr'])
         right = (npz['right_data'], npz['right_indices'], npz['right_indptr'])
         lsparse = sparse.csr_matrix(left, shape=npz['left_shape'])
         rsparse = sparse.csr_matrix(right, shape=npz['right_shape'])
-        return cls(lsparse, rsparse, npz['shape'])
+        return cls(lsparse, rsparse, npz['shape'], subject, xfmname)
 
     @property
     def mask(self):

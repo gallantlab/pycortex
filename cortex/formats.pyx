@@ -1,4 +1,5 @@
 import os
+import warnings
 import glob
 import struct
 import numpy as np
@@ -42,10 +43,12 @@ def read_npz(filename):
     return pts, polys
 
 def read_gii(filename):
-    from nibabel import gifti
-    gii = gifti.read(filename)
-    pts = gii.getArraysFromIntent('pointset')[0].data
-    polys = gii.getArraysFromIntent('triangle')[0].data
+    from nibabel import load
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', ResourceWarning)
+        gii = load(filename)
+    pts = gii.get_arrays_from_intent('pointset')[0].data
+    polys = gii.get_arrays_from_intent('triangle')[0].data
     return pts, polys
 
 @cython.boundscheck(False)

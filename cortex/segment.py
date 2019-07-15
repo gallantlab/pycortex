@@ -32,7 +32,7 @@ def init_subject(subject, filenames, run_all=False):
     subject : str
         The name of the subject (this subject is created in the Freesurfer
         SUBJECTS_DIR)
-    filenames : str | list
+    filenames : str 
         Freesurfer-compatible filename(s) for the anatomical image(s). This can
         be the first dicom file of a series of dicoms, a nifti file, an mgz
         file, etc.
@@ -42,7 +42,7 @@ def init_subject(subject, filenames, run_all=False):
         least inspecting) the brain mask and white matter segmentations prior
         to importing into pycortex.
     """
-    cmd = "recon-all -i {fname} -s {subj}".format(subj=subject, fname=filename)
+    cmd = "recon-all -i {fname} -s {subj}".format(subj=subject, fname=filenames)
     print("Calling:\n%{}".format(cmd))
     sp.call(shlex.split(cmd))
     if run_all:
@@ -104,10 +104,10 @@ def edit_segmentation(subject,
     cmd = ["freeview", '-v'] + vols + ['-f'] + surfs
     print("Calling: {}".format(' '.join(cmd)))
     sp.call(cmd)
-    disp = ("If you have edited the white matter surface, you should run:",
-            "`cortex.segment.run_freesurfer_recon('%s', 'wm')`\n"%subject,
-            "If you have edited the brainmask (pial surface), you should run:\n",
-            "`cortex.segment.run_freesurfer_recon('%s', 'pia')`"%subject)
+    print("If you have edited the white matter surface, you should run:\n")
+    print("    `cortex.segment.run_freesurfer_recon('%s', 'wm')`\n"%subject)
+    print("If you have edited the brainmask (pial surface), you should run:\n")
+    print("    `cortex.segment.run_freesurfer_recon('%s', 'pia')`"%subject)
 
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,

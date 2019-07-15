@@ -55,7 +55,12 @@ def face_volume(pts1, pts2, polys):
 def decimate(pts, polys):
     from tvtk.api import tvtk
     pd = tvtk.PolyData(points=pts, polys=polys)
-    dec = tvtk.DecimatePro(input=pd)
+    try:
+        dec = tvtk.DecimatePro()
+        dec.set_input_data(pd)
+    except Exception:
+        dec = tvtk.DecimatePro(input=pd)  # VTK version < 6
+
     dec.set(preserve_topology=True, splitting=False, boundary_vertex_deletion=False, target_reduction=1.0)
     dec.update()
     dpts = dec.output.points.to_array()

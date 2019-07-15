@@ -222,7 +222,8 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
     '''
     return get_mapper(subject, xfmname, type=type).hemimasks
 
-def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
+def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
+            overlay_file=None, **kwargs):
     """Add new flatmap image to the ROI file for a subject.
 
     (The subject is specified in creation of the data object)
@@ -247,6 +248,9 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     add_path : bool, optional
         If True, also adds a sub-layer to the `rois` new SVG layer will automatically
         be created in the ROI group with the same `name` as the overlay.
+    overlay_file : str, optional
+        Custom overlays.svg file to use instead of the default one for this
+        subject (if not None). Default None.
     kwargs : dict
         Passed to cortex.quickflat.make_png
     """
@@ -258,7 +262,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True, **kwargs):
     if isinstance(dv, dataset.Dataset):
         raise TypeError("Please specify a data view")
 
-    svg = db.get_overlay(dv.subject)
+    svg = db.get_overlay(dv.subject, overlay_file=overlay_file)
     fp = io.BytesIO()
 
     quickflat.make_png(fp, dv, height=1024, with_rois=False, with_labels=False, **kwargs)

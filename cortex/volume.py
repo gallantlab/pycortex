@@ -122,11 +122,11 @@ def mosaic(data, dim=0, show=True, **kwargs):
                 hsl = slice(h*(height+1)+1, (h+1)*(height+1))
                 wsl = slice(w*(width+1)+1, (w+1)*(width+1))
                 if data.dtype == np.uint8:
-                    output[hsl, wsl, :data.shape[3]] = data[sl]
+                    output[hsl, wsl, :data.shape[3]] = data[tuple(sl)]
                     if data.shape[3] == 3:
                         output[hsl, wsl, 3] = 255
                 else:    
-                    output[hsl, wsl] = data[sl]
+                    output[hsl, wsl] = data[tuple(sl)]
     
     if show:
         from matplotlib import pyplot as plt

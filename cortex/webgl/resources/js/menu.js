@@ -8,6 +8,7 @@ var jsplot = (function (module) {
         this._bubble_evt = function() {
             this.dispatchEvent({type:"update"});
         }.bind(this);
+        this._wheelListeners = {};
     }
     THREE.EventDispatcher.prototype.apply(module.Menu.prototype);
     module.Menu.prototype.init = function(gui) {
@@ -185,8 +186,8 @@ var jsplot = (function (module) {
         }
 
         // setup mousewheel shortcuts
-        if (desc.wheel) {
-            window.addEventListener("wheel", function(event) {
+        if (desc.wheel && !(desc.help in this._wheelListeners)) {
+            this._wheelListeners[desc.help] = window.addEventListener("wheel", function(event) {
                 if (desc.hasOwnProperty('modKeys')) {
                     for (let modKey of desc.modKeys) {
                         if (!event[modKey]) {
@@ -194,6 +195,9 @@ var jsplot = (function (module) {
                         }
                     }
                 }
+
+                event.preventDefault();
+                event.stopPropagation();
 
                 desc.action(event.deltaY);
 

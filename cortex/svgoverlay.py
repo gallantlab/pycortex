@@ -708,8 +708,12 @@ def _parse_svg_pts(datastr):
             offset = np.array(list([float(x) for x in [data.pop(0), data.pop(0)]]))
         elif mode == "h":
             offset += list([float(x) for x in [data.pop(0), 0]])
+        elif mode == 'H':
+            offset = np.array(list([float(x) for x in [data.pop(0), 0]]))
         elif mode == "v":
             offset += list([float(x) for x in [0, data.pop(0)]])
+        elif mode == "V":
+            offset = np.array(list([float(x) for x in [0, data.pop(0)]]))
         elif mode == "c":
             data = data[4:]
             offset += list([float(x) for x in [data.pop(0), data.pop(0)]])
