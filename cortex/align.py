@@ -83,7 +83,7 @@ def manual(subject, xfmname, reference=None, **kwargs):
     return m
 
 def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", 
-    pial_color="red", noclean=False, reference=None, inspect_only=False):
+    pial_color="red", wm_surface='white', noclean=False, reference=None, inspect_only=False):
     """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
     volume to the cortical surface for `subject`. This creates a new transform
     called `xfmname`. The name of a nibabel-readable file (e.g. NIfTI) should be
@@ -117,6 +117,8 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue",
     inspect_only : boolean | False
         Whether to open transform to view only (if True, nothing is saved
         when freeview is closed)
+    wm_surface : string
+        name for white matter surface to use. 'white' or 'smoothwm'
 
     Returns
     -------
@@ -151,34 +153,31 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue",
         if reference is None:
             # Load load extant transform-relevant things
             reference = sub_xfm.reference.get_filename()
-            #xfm_dir = os.path.dirname(reference)
             _ = sub_xfm.to_freesurfer(os.path.join(cache, "register.dat"), subject) # Transform in freesurfer .dat format
-
             # Command for FreeView and run
             cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
                     "{ref}:reg={reg} "
-                   "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={wmc} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={wmc} "
+                   "-f $SUBJECTS_DIR/{sub}/surf/lh.{wms}:edgecolor={wmc} $SUBJECTS_DIR/{sub}/surf/rh.{wms}:edgecolor={wmc} "
                    "$SUBJECTS_DIR/{sub}/surf/lh.pial:edgecolor={pialc} $SUBJECTS_DIR/{sub}/surf/rh.pial:edgecolor={pialc}")
             cmd = cmd.format(sub=subject, ref=reference, reg=os.path.join(cache, "register.dat"),
-                             wmc=wm_color, pialc=pial_color)
+                             wmc=wm_color, pialc=pial_color, wms=wm_surface)
             print('=== Calling (NO REFERENCE PROVIDED): ===')
             print(cmd)
         else:
-            # Reference provided
-            #xfm_file = db.get_paths(subject)['xfmdir']
-            #_ = sub_xfm.to_freesurfer(os.path.join(cache, "register.dat"), subject)
-            #xfm_dir = os.path.dirname(xfm_file)
             # Command for FreeView and run
             cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
-                    "{ref} " #:reg={reg} "
-                   "-f $SUBJECTS_DIR/{sub}/surf/lh.white:edgecolor={wmc} $SUBJECTS_DIR/{sub}/surf/rh.white:edgecolor={wmc} "
+                   "{ref} "
+                   "-f $SUBJECTS_DIR/{sub}/surf/lh.{wms}:edgecolor={wmc} $SUBJECTS_DIR/{sub}/surf/rh.{wms}:edgecolor={wmc} "
                    "$SUBJECTS_DIR/{sub}/surf/lh.pial:edgecolor={pialc} $SUBJECTS_DIR/{sub}/surf/rh.pial:edgecolor={pialc}")
-            cmd = cmd.format(sub=subject, ref=reference, #reg=os.path.join(cache, "register.dat"),
-                             wmc=wm_color, pialc=pial_color)
+            cmd = cmd.format(sub=subject, ref=reference,
+                             wmc=wm_color, pialc=pial_color, 
+                             wms=wm_surface)
             print('=== Calling: ===')
             print(cmd)
+            
+        if not inspect_only:
             sfile = os.path.join(cache, output_name)
-            print('\nREGISTRATION MUST BE SAVED AS:\n\n{sname}'.format(sfile))
+            print('\nREGISTRATION MUST BE SAVED AS:\n\n{}'.format(sfile))
         # Run and save transform when user is done editing
         if sp.call(cmd, shell=True) != 0:
             raise IOError("Problem with FreeView!")
