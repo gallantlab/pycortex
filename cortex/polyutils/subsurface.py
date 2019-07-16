@@ -584,8 +584,7 @@ class SubsurfaceMixin(object):
             angles = zip(elev, azim)
 
         fig = plt.figure()
-        ax = fig.gca(projection='3d', aspect='equal')
-        plt.axis('equal')
+        ax = fig.gca(projection='3d')
         plt.axis('off')
 
         def init():
