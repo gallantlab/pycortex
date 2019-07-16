@@ -581,7 +581,7 @@ class SubsurfaceMixin(object):
         if angles is None:
             elev = 10 * np.ones((N_frames,))
             azim = np.linspace(0, 360, N_frames, endpoint=False)
-            angles = zip(elev, azim)
+            angles = list(zip(elev, azim))
 
         fig = plt.figure()
         ax = fig.gca(projection='3d')
