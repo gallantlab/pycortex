@@ -446,7 +446,7 @@ class SubsurfaceMixin(object):
 
         return output
 
-    def get_strip_coordinates(self, v0, v1, geodesic_path, distance_algorithm='softmax'):
+    def get_strip_coordinates(self, v0, v1, geodesic_path=None, distance_algorithm='softmax'):
         """get 2D coordinates of surface from v0 to v1
 
         - first coordinate: distance along geodesic path from v0
@@ -467,6 +467,8 @@ class SubsurfaceMixin(object):
         - distance_algorithm : str
             method to use for computing distance along path, 'softmax' or 'closest'
         """
+        if geodesic_path is None:
+            geodesic_path = self.geodesic_path(v0, v1)
 
         geodesic_distances = np.vstack([self.geodesic_distance([v]) for v in geodesic_path])
         v0_distance = geodesic_distances[0, :]
