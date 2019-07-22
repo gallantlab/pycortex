@@ -346,10 +346,10 @@ class Database(object):
 
         nib = nibabel.load(os.path.join(path, "reference.nii.gz"))
         if xfmtype == "magnet":
-            jsdict['magnet'] = xfm.tolist()
+            jsdict['magnet'] = np.array(xfm).tolist()
             jsdict['coord'] = np.dot(np.linalg.inv(nib.get_affine()), xfm).tolist()
         elif xfmtype == "coord":
-            jsdict['coord'] = xfm.tolist()
+            jsdict['coord'] = np.array(xfm).tolist()
             jsdict['magnet'] = np.dot(nib.get_affine(), xfm).tolist()
         
         files = self.get_paths(subject)
