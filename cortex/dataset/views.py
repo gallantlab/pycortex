@@ -256,9 +256,11 @@ class Volume(VolumeData, Dataview):
         Colormap (or colormap name) to use. If not given defaults to matplotlib
         default colormap.
     vmin : float, optional
-        Minimum value in colormap. If not given, defaults to TODO:WHAT
+        Minimum value in colormap. If not given, defaults to the 1st percentile
+        of the data.
     vmax : float, optional
-        Maximum value in colormap. If not given defaults to TODO:WHAT
+        Maximum value in colormap. If not given defaults to the 99th percentile
+        of the data.
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
     **kwargs
@@ -269,6 +271,12 @@ class Volume(VolumeData, Dataview):
         cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Volume, self).__init__(data, subject, xfmname, mask=mask, 
             cmap=cmap, vmin=vmin, vmax=vmax, description=description, **kwargs)
+        # set vmin and vmax
+        self.vmin = self.vmin if self.vmin is not None else \
+            np.percentile(np.nan_to_num(self.data), 1)
+        self.vmax = self.vmax if self.vmax is not None else \
+            np.percentile(np.nan_to_num(self.data), 99)
+
 
     def _write_hdf(self, h5, name="data"):
         datanode = VolumeData._write_hdf(self, h5)
