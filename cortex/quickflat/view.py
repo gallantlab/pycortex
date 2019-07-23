@@ -9,6 +9,7 @@ from .. import dataset
 from .utils import make_flatmap_image
 from . import composite
 
+
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
                 height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
                 with_labels=True, with_colorbar=True, with_borders=False,
@@ -86,7 +87,14 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     extra_hatch : tuple, optional
         Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple.
     colorbar_location : tuple, optional
-        Location of the colorbar! Not sure of what the numbers actually mean. Left, bottom, width, height, maybe?
+        Location of the colorbar. The dimensions are
+        [left, bottom, width, height]. All quantities are in fractions of
+        figure width and height.
+    colorbar_ticks : array-like, optional
+        For 1D colormaps indicates the ticks of the colorbar. If None,
+        it defaults to equally spaced values between vmin and vmax.
+        This parameter is not used for 2D colormaps, and it defaults to the
+        vmin, vmax specified in the Volume2D object.
     fig : figure or ax
         figure into which to plot flatmap
     """
@@ -199,10 +207,19 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if with_colorbar:
         # Allow 2D colorbars:
         if isinstance(dataview, dataset.view2D.Dataview2D):
-            colorbar = composite.add_colorbar_2d(ax, dataview.cmap,
-                                                 [dataview.vmin, dataview.vmax, dataview.vmin2, dataview.vmax2])
+            colorbar_ticks = np.round([
+                    dataview.vmin, dataview.vmax,
+                    dataview.vmin2, dataview.vmax2
+                ], 2)
+            colorbar = composite.add_colorbar_2d(
+                ax, dataview.cmap, colorbar_ticks,
+                colorbar_location=colorbar_location)
         else:
-            colorbar = composite.add_colorbar(ax, data_im)
+            colorbar = composite.add_colorbar(
+                ax, data_im,
+                colorbar_location=colorbar_location,
+                colorbar_ticks=colorbar_ticks
+            )
         # Reset axis to main figure axis
         plt.sca(ax)
 
