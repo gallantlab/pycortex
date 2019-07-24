@@ -42,7 +42,7 @@ class BrainData(object):
     @property
     def name(self):
         """Name of this BrainData, computed from hash of data.
-        TODO:WHAT THE FUCK IS THIS USEFUL FOR
+        TODO:WHAT IS THIS USEFUL FOR
         """
         return "__%s"%_hash(self.data)[:16]
 
@@ -52,7 +52,7 @@ class BrainData(object):
         return self.copy(np.exp(self.data))
 
     def uniques(self, collapse=False):
-        """TODO: WHAT THE FUCK IS THIS
+        """TODO: WHAT IS THIS
         """
         yield self
 

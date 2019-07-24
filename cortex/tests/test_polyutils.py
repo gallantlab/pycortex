@@ -1,7 +1,7 @@
 import numpy as np
 from cortex import polyutils
 
-## Fuck this test is annoying
+## this test is annoying
 # def test_cube():
 # 	from mayavi import mlab
 # 	pts, polys = polyutils.make_cube((.5, .5, .5), 1)

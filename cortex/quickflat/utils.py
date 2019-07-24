@@ -299,7 +299,7 @@ def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, reca
     hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
 
     hatchpat = (hx+hy)%(2*hatch_space) < 2
-    # Leila code that breaks shit:
+    # Leila code that breaks:
     #hatch_size = [0, 4, 4]
     #hatchpat = (hx + hy + hatch_size[0])%(hatch_size[1] * hatch_space) < hatch_size[2]
 

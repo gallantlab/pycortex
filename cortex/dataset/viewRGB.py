@@ -101,7 +101,7 @@ class VolumeRGB(DataviewRGB):
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
     state : optional
-        TODO: WHAT THE FUCK IS THIS
+        TODO: describe what this is
     **kwargs
         All additional arguments in kwargs are passed to the VolumeData and 
         Dataview.
@@ -221,7 +221,7 @@ class VertexRGB(DataviewRGB):
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
     state : optional
-        TODO: WHAT THE FUCK IS THIS
+        TODO: describe what this is
     **kwargs
         All additional arguments in kwargs are passed to the VertexData and 
         Dataview.
