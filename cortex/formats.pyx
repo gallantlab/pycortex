@@ -1,4 +1,5 @@
 import os
+import sys
 import warnings
 import glob
 import struct
@@ -11,6 +12,9 @@ from libc.string cimport strtok
 from libc.stdlib cimport atoi, atof
 
 np.import_array()
+
+PY3 = sys.version_info[0] > 3
+
 
 def read(globname):
     readers = OrderedDict([('gii', read_gii), ('npz', read_npz), ('vtk', read_vtk), ('off', read_off), ('stl', read_stl)])
@@ -45,7 +49,10 @@ def read_npz(filename):
 def read_gii(filename):
     from nibabel import load
     with warnings.catch_warnings():
-        warnings.simplefilter('ignore', ResourceWarning)
+        # Note that cython < 0.28 will fail to compile in python 2 since
+        # ResourceWarning does not exist in python 2.
+        if PY3:  
+            warnings.simplefilter('ignore', ResourceWarning)
         gii = load(filename)
     pts = gii.get_arrays_from_intent('pointset')[0].data
     polys = gii.get_arrays_from_intent('triangle')[0].data
