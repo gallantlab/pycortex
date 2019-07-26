@@ -11,6 +11,7 @@ from .. import utils
 from .. import dataset
 from ..database import db
 from ..options import config
+from .. import polyutils
 
 
 def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
@@ -310,20 +311,21 @@ def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, reca
     return hatchim
 
 def _make_flatmask(subject, height=1024):
-    from .. import polyutils
+    
     from PIL import Image, ImageDraw
     pts, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     left, right = polyutils.trace_poly(polyutils.boundary_edges(polys))
+    fmin, fmax = polyutils.get_surface_min_max(pts, polys)
 
-    aspect = (height / (pts.max(0) - pts.min(0))[1])
-    lpts = (pts[left] - pts.min(0)) * aspect
-    rpts = (pts[right] - pts.min(0)) * aspect
+    aspect = (height / (fmax - fmin)[1])
+    lpts = (pts[left] - fmin) * aspect
+    rpts = (pts[right] - fmin) * aspect
 
-    im = Image.new('L', (int(aspect * (pts.max(0) - pts.min(0))[0]), height))
+    im = Image.new('L', (int(aspect * (fmax - fmin)[0]), height))
     draw = ImageDraw.Draw(im)
     draw.polygon(lpts[:,:2].ravel().tolist(), fill=255)
     draw.polygon(rpts[:,:2].ravel().tolist(), fill=255)
-    extents = np.hstack([pts.min(0), pts.max(0)])[[0,3,1,4]]
+    extents = np.hstack([fmin, fmax])[[0,3,1,4]]
 
     return np.array(im).T > 0, extents
 
@@ -332,7 +334,7 @@ def _make_vertex_cache(subject, height=1024):
     from scipy.spatial import cKDTree
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
-    fmax, fmin = flat.max(0), flat.min(0)
+    fmin, fmax = polyutils.get_surface_min_max(flat, polys)
     size = fmax - fmin
     aspect = size[0] / size[1]
     width = int(aspect * height)
@@ -351,7 +353,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
     from scipy.spatial import Delaunay
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(polys)
-    fmax, fmin = flat.max(0), flat.min(0)
+    fmin, fmax = polyutils.get_surface_min_max(flat, polys)
     size = fmax - fmin
     aspect = size[0] / size[1]
     width = int(aspect * height)

@@ -483,6 +483,7 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     """
     from matplotlib.collections import LineCollection
     from scipy.ndimage import binary_dilation
+    from ..polyutils import get_surface_min_max
 
     if extents is None:
         extents = _get_extents(fig)
@@ -514,10 +515,10 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     vtx2valid = np.in1d(shared_voxels[:, 2], valid_verts)
     va, vb = shared_voxels[vtx1valid & vtx2valid, 1:].T
     # Get X, Y coordinates per vertex, scale to 0-1 range
-    [lpt, lpoly], [rpt, rpoly] = db.get_surf(subject, "flat", nudge=True)
-    vert_xyz = np.vstack([lpt, rpt])
-    vert_xyz -= vert_xyz.min(0)
-    vert_xyz /= vert_xyz.max(0)
+    vert_xyz, polys = db.get_surf(subject, "flat", nudge=True, merge=True)
+    fmin, fmax = get_surface_min_max(vert_xyz, polys)
+    vert_xyz -= fmin
+    vert_xyz /= (fmax - fmin)
     x, y = vert_xyz[:, :2].T
     # Map vertices to X, Y coordinates suitable for LineCollection input
     pix_array_x = np.vstack([x[va], x[vb]]).T

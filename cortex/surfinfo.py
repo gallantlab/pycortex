@@ -151,7 +151,9 @@ def tissots_indicatrix(outfile, sub, radius=10, spacing=50):
     np.savez(outfile, left=tissots[0], right=tissots[1], centers=allcenters)
 
 def flat_border(outfile, subject):
+    from .polyutils import get_surface_min_max
     flatpts, flatpolys = db.get_surf(subject, "flat", merge=True, nudge=True)
+    fmin, fmax = get_surface_min_max(flatpts, flatpolys)
     flatpolyset = set([tuple(x) for x in flatpolys])
     
     fidpts, fidpolys = db.get_surf(subject, "fiducial", merge=True, nudge=True)
@@ -199,11 +201,11 @@ def flat_border(outfile, subject):
     
     ismwall = [[s.mean()>0.5 for s in np.split(mwb, c)] for mwb,c in zip(mwallbounds, changes)]
     
-    aspect = (height / (flatpts.max(0) - flatpts.min(0))[1])
-    lpts = (flatpts - flatpts.min(0)) * aspect
-    rpts = (flatpts - flatpts.min(0)) * aspect
+    aspect = (height / (fmax - fmin)[1])
+    lpts = (flatpts - fmin) * aspect
+    rpts = (flatpts - fmin) * aspect
     
-    #im = Image.new('RGBA', (int(aspect * (flatpts.max(0) - flatpts.min(0))[0]), height))
+    #im = Image.new('RGBA', (int(aspect * (fmax - fmin)[0]), height))
     #draw = ImageDraw.Draw(im)
 
     ismwalls = []
