@@ -238,6 +238,7 @@ def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
 
         if clean:
             polys = _remove_disconnected_polys(polys)
+            flat = _move_disconnect_points_to_zero(flat, polys)
 
         fname = surfs.format(hemi=hemi)
         print("saving to %s"%fname)
@@ -291,6 +292,19 @@ def _remove_disconnected_polys(polys):
     disconnected_pts = np.where(np.isin(labels, extra_components))[0]
     disconnected_polys_mask = np.isin(polys[:, 0], disconnected_pts)
     return polys[~disconnected_polys_mask]
+
+
+def _move_disconnect_points_to_zero(pts, polys):
+    """Change coordinates of points not in polygons to zero.
+    
+    This cleaning step is useful after _remove_disconnected_polys, to
+    avoid using this points in boundaries computations (through pts.max(axis=0)
+    here and there).
+    """
+    mask = np.zeros(len(pts), dtype=bool)
+    mask[np.unique(polys)] = True
+    pts[~mask] = 0
+    return pts
 
 
 def make_fiducial(subject, freesurfer_subject_dir=None):
