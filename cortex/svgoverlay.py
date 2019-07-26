@@ -598,13 +598,9 @@ def make_svg(pts, polys):
     pts *= 1024 / pts.max(0)[1]
     pts[:,1] = 1024 - pts[:,1]
     path = ""
-    polyiter = trace_poly(boundary_edges(polys))
-    bound_polys = []
-    for item in polyiter:
-        if len(item) > 10:
-            bound_polys.append(item)
+    left, right = trace_poly(boundary_edges(polys))
 
-    for poly in bound_polys: #[polyiter.next(), polyiter.next()]:
+    for poly in [left, right]:
         path +="M%f %f L"%tuple(pts[poly.pop(0), :2])
         path += ', '.join(['%f %f'%tuple(pts[p, :2]) for p in poly])
         path += 'Z '
