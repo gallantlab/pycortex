@@ -11,7 +11,7 @@ from db import surfs
 from svgroi import get_roipack, _make_layer, _find_layer, parser
 from lxml import etree
 from dataset import VertexData
-from polyutils import Surface, boundary_edges, get_surface_min_max
+from polyutils import Surface, boundary_edges
 from utils import get_curvature, add_roi
 import quickflat
 
@@ -69,10 +69,9 @@ class ROIpack(object):
             filename = tempfile.mktemp(suffix=".svg", prefix=self.subject+"-rois-")
         
         mpts, mpolys = surfs.getSurf(self.subject, "flat", merge=True, nudge=True)
-        fmin, fmax = get_surface_min_max(mpts, mpolys)
         svgmpts = mpts[:,:2].copy()
-        svgmpts -= fmin
-        svgmpts *= 1024 / (fmax - fmin)[1]
+        svgmpts -= svgmpts.min(0)
+        svgmpts *= 1024 / svgmpts.max(0)[1]
         svgmpts[:,1] = 1024 - svgmpts[:,1]
         
         npts = len(mpts)

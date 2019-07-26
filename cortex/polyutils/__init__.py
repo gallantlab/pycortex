@@ -12,7 +12,6 @@ from .misc import (
     make_cube,
     boundary_edges,
     trace_poly,
-    get_surface_min_max,
     rasterize,
     voxelize,
     measure_volume,

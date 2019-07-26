@@ -137,34 +137,6 @@ def trace_poly(edges):
     return hemisphere_0, hemisphere_1
 
 
-def get_surface_min_max(pts, polys):
-    """Compute the min and max of the surface, filtering points not connected
-    to the hemispheres (i.e. points not in `polys`).
-    
-    Parameters
-    ----------
-    pts : array, shape (n_pts, 3)
-        Coordinates of the surface vertices.
-    polys: array, shape (n_polys, 3)
-        Indices of the vertices in each polygon.
-        
-    Returns
-    -------
-    fmin : array, shape (3)
-        Minimum coordinates of vertices in given polygons.
-    fmax : array, shape (3)
-        Maximum coordinates of vertices in given polygons.
-    
-    Example
-    -------
-    >>> import cortex
-    >>> pts, polys = cortex.db.get_surf(subject, "flat", merge=True, nudge=True)
-    >>> fmin, fmax = cortex.polyutils.get_surface_min_max(pts, polys)
-    """
-
-    return pts[np.unique(polys)].min(0), pts[np.unique(polys)].max(0)
-
-
 def rasterize(poly, shape=(256, 256)):
     #ImageDraw sucks at its job, so we'll use imagemagick to do rasterization
     import subprocess as sp

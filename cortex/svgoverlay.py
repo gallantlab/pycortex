@@ -592,11 +592,10 @@ def scrub(svgfile, overlays_available=None):
     return svg
 
 def make_svg(pts, polys):
-    from .polyutils import trace_poly, boundary_edges, get_surface_min_max
+    from .polyutils import trace_poly, boundary_edges
     pts = pts.copy()
-    fmin, fmax = get_surface_min_max(pts, polys)
-    pts -= fmin
-    pts *= 1024 / (fmax - fmin)[1]
+    pts -= pts.min(0)
+    pts *= 1024 / pts.max(0)[1]
     pts[:,1] = 1024 - pts[:,1]
     path = ""
     left, right = trace_poly(boundary_edges(polys))
@@ -606,7 +605,7 @@ def make_svg(pts, polys):
         path += ', '.join(['%f %f'%tuple(pts[p, :2]) for p in poly])
         path += 'Z '
 
-    w, h = (fmax - fmin)[:2]
+    w, h = pts.max(0)[:2]
     with open(os.path.join(cwd, "svgbase.xml")) as fp:
         svg = fp.read().format(width=w, height=h, clip=path)
 
