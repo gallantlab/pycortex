@@ -135,7 +135,7 @@ def trace_poly(edges):
     order = np.argsort(lengths)
     hemisphere_0, hemisphere_1 = components[order[-1]], components[order[-2]]
     return hemisphere_0, hemisphere_1
-    
+
 
 def rasterize(poly, shape=(256, 256)):
     #ImageDraw sucks at its job, so we'll use imagemagick to do rasterization

@@ -196,7 +196,7 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
 
 def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
                 flat_type='freesurfer',
-                freesurfer_subject_dir=None):
+                freesurfer_subject_dir=None, clean=False):
     """Imports a flat brain from freesurfer
 
     Parameters
@@ -212,6 +212,8 @@ def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
     freesurfer_subject_dir : str
         directory for freesurfer subjects. None defaults to evironment variable
         $SUBJECTS_DIR
+    clean : bool
+        If True, the flat surface is cleaned to remove the disconnected polys.
 
     Returns
     -------
@@ -233,6 +235,10 @@ def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
                                   freesurfer_subject_dir=freesurfer_subject_dir)
             flat_file = flat_file.format(name=patch + ".flat")
             flat, polys = formats.read_obj(flat_file)
+
+        if clean:
+            polys = _remove_disconnected_polys(polys)
+
         fname = surfs.format(hemi=hemi)
         print("saving to %s"%fname)
         formats.write_gii(fname, pts=flat, polys=polys)
@@ -246,6 +252,46 @@ def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
     config_cache = os.path.expanduser(os.path.join(config.get('basic', 'cache'), sname, 'cache'))
     shutil.rmtree(config_cache)
     os.makedirs(config_cache)
+
+
+def _remove_disconnected_polys(polys):
+    """Remove polygons that are not in the main connected component.
+    
+    This function creates a sparse graph based on edges in the input.
+    Then it computes the connected components, and returns only the polygons
+    that are in the largest component.
+    
+    This filtering is useful to remove disconnected vertices resulting from a
+    poor surface cut.
+    """
+    n_points = np.max(polys) + 1
+    import scipy.sparse as sp
+
+    # create the sparse graph
+    row = np.concatenate([
+        polys[:, 0], polys[:, 1], polys[:, 0],
+        polys[:, 2], polys[:, 1], polys[:, 2]
+    ])
+    col = np.concatenate([
+        polys[:, 1], polys[:, 0], polys[:, 2],
+        polys[:, 0], polys[:, 2], polys[:, 1]
+    ])
+    data = np.ones(len(col), dtype=bool)
+    graph = sp.coo_matrix((data, (row, col)), shape=(n_points, n_points),
+                          dtype=bool)
+    
+    # compute connected components
+    n_components, labels = sp.csgraph.connected_components(graph)
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    non_trivial_components = unique_labels[np.where(counts > 1)[0]]
+    main_component = unique_labels[np.argmax(counts)]
+    extra_components = non_trivial_components[non_trivial_components != main_component]
+
+    # filter all components not in the largest component
+    disconnected_pts = np.where(np.isin(labels, extra_components))[0]
+    disconnected_polys_mask = np.isin(polys[:, 0], disconnected_pts)
+    return polys[~disconnected_polys_mask]
+
 
 def make_fiducial(subject, freesurfer_subject_dir=None):
     """Make fiducial surface (halfway between white matter and pial surfaces)
