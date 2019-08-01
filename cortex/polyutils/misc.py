@@ -103,11 +103,15 @@ def boundary_edges(polys):
     return np.array(epts)
 
 def trace_poly(edges):
+    """Returns the two largest connected components, out of a set of boundary
+    edges (as returned by `boundary_edges`)
+    """
     conn = dict((e, []) for e in np.unique(np.array(edges).ravel()))
     for a, b in edges:
         conn[a].append(b)
         conn[b].append(a)
     
+    components = []
     while len(conn) > 0:
         vert, nverts = next(iter(conn.items()))
         poly = [vert]
@@ -122,7 +126,16 @@ def trace_poly(edges):
             
             poly.append(nvert)
 
-        yield poly
+        components.append(poly)
+    
+    # If the flat surfaces have more than 2 components due to cut leftovers,
+    # we filter them by keeping only the two largest components.
+    # Note that they are not necessarily ordered as (left, right).
+    lengths = [len(comp) for comp in components]
+    order = np.argsort(lengths)
+    hemisphere_0, hemisphere_1 = components[order[-1]], components[order[-2]]
+    return hemisphere_0, hemisphere_1
+
 
 def rasterize(poly, shape=(256, 256)):
     #ImageDraw sucks at its job, so we'll use imagemagick to do rasterization

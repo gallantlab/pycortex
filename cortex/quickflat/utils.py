@@ -313,11 +313,8 @@ def _make_flatmask(subject, height=1024):
     from .. import polyutils
     from PIL import Image, ImageDraw
     pts, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
-    bounds = polyutils.trace_poly(polyutils.boundary_edges(polys))
-    try:
-        left, right = bounds.next(), bounds.next() # python 2.X
-    except AttributeError:
-        left, right = next(bounds), next(bounds) # python 3.X
+    left, right = polyutils.trace_poly(polyutils.boundary_edges(polys))
+
     aspect = (height / (pts.max(0) - pts.min(0))[1])
     lpts = (pts[left] - pts.min(0)) * aspect
     rpts = (pts[right] - pts.min(0)) * aspect
