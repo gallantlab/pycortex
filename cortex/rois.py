@@ -7,13 +7,13 @@ import numpy as np
 
 import networkx as nx
 
-from cortex import db
-from svgoverlay import get_overlay, _make_layer, _find_layer, parser
+from . import db
+from .svgoverlay import get_overlay, _make_layer, _find_layer, parser
 from lxml import etree
-from dataset import Vertex
-from polyutils import Surface, boundary_edges
-from utils import add_roi
-import quickflat
+from .dataset import Vertex
+from .polyutils import Surface, boundary_edges
+from .utils import add_roi
+from . import quickflat
 
 class ROIpack(object):
     def __init__(self, subject, roifile):
@@ -160,7 +160,7 @@ class ROIpack(object):
                 svgpath.attrib["d"] = path
                 #svgpath.attrib["sodipodi:nodetypes"] = "c" * len(pts)
         
-        with open(svgroipack.svgfile, "w") as xml:
+        with open(svgroipack.svgfile, "wb") as xml:
             xml.write(etree.tostring(svg, pretty_print=True))
 
 
@@ -179,7 +179,7 @@ def poly_graph(surf):
     #ii,jj = np.vstack(edges.values()).T
     #polymat = sparse.coo_matrix((np.ones((nedges,)), (ii, jj)), shape=[len(self.polys)]*2)
     polygraph = nx.Graph()
-    polygraph.add_edges_from(((p[0], p[1], dict(verts=k)) for k,p in edges.iteritems()))
+    polygraph.add_edges_from(((p[0], p[1], dict(verts=k)) for k,p in edges.items()))
     return polygraph
 
 def get_boundary(surf, vertices, remove_danglers=False):
