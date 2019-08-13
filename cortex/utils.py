@@ -862,6 +862,56 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
         else:
             return tuple(out)
 
+
+def load_sparse_array(fname, varname):
+    """Load a numpy sparse array from an hdf file
+
+    Parameters
+    ----------
+    fname: string
+        file name containing array to be loaded
+    varname: string
+        name of variable to be loaded
+
+    Notes
+    -----
+    This function relies on variables being stored with specific naming
+    conventions, so cannot be used to load arbitrary sparse arrays.
+    """
+    with h5py.File(fname) as hf:
+        data = (hf['%s_data'%varname], hf['%s_indices'%varname], hf['%s_indptr'%varname])
+        sparsemat = scipy.sparse.csr_matrix(data, shape=hf['%s_shape'%varname])
+    return sparsemat
+
+
+def save_sparse_array(fname, data, varname, mode='w'):
+    """Save a numpy sparse array to an hdf file
+    
+    Results in relatively smaller file size than numpy.savez
+
+    Parameters
+    ----------
+    fname : string
+        file name to save
+    data : sparse array
+        data to save
+    varname : string
+        name of variable to save
+    mode : string
+        write / append mode set, one of ['w','a'] (passed to h5py.File())
+    """
+
+    with h5py.File(fname, mode=mode) as hf:
+        # Save indices
+        hf.create_dataset(varname + '_indices', data=data.indices, compression='gzip')
+        # Save data
+        hf.create_dataset(varname + '_data', data=data.data, compression='gzip')
+        # Save indptr
+        hf.create_dataset(varname + '_indptr', data=data.indptr, compression='gzip')
+        # Save shape
+        hf.create_dataset(varname + '_shape', data=data.shape, compression='gzip')
+
+
 def get_cmap(name):
     """Gets a colormaps
 

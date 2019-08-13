@@ -309,6 +309,7 @@ class Database(object):
 
         """
         from .freesurfer import get_mri_surf2surf_matrix as s2s
+        from .utils import load_sparse_array, save_sparse_array
         if fs_subj is None:
             fs_subj = subject
         fpath = self.get_paths(subject)['surf2surf'].format(source=fs_subj, target_subj=target_subj)
@@ -322,13 +323,14 @@ class Database(object):
         else:
             hemis = [hemi]
         if os.path.exists(fname):
-            mats = [_load_sparse_matrix(fpath, h) for h in hemis]
+            mats = [load_sparse_array(fpath, h) for h in hemis]
         else:
             mats = []
             for h in hemis:
                 tmp = mri_s2s(fs_subj, h, surface_type, 
                     target_subj=target_subj, **kwargs)
                 mat.append(tmp)
+                save_sparse_array(fpath, mat, h)
         return mats
 
     def get_overlay(self, subject, overlay_file=None, **kwargs):
