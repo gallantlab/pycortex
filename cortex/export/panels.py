@@ -6,7 +6,7 @@ import tempfile
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .export import save_3d_views
+from .save_views import save_3d_views
 
 
 def plot_panels(volume, panels, figsize=(16, 9), save_name=None):
