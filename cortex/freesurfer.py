@@ -595,10 +595,17 @@ def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
     p = sp.Popen(cmd, env=env)
     exit_code = p.wait()
     if exit_code != 0:
-        import warnings
-        warnings.warn(
-            ("Exit code {exit_code} means that "
-            "mri_surf2surf didn't work").format(exit_code=exit_code))
+        if exit_code == 255:
+            raise Exception(("Missing file (see above). "
+                             "If lh.sphere.reg is missing,\n"
+                             "you likely need to run the 3rd "
+                             "stage of freesurfer autorecon\n"
+                             "(sphere registration) for this subject:\n"
+                             ">>> cortex.freesurfer.autorecon('{fs_subject}', type='3')"
+                             ).format(fs_subject=source_subj))
+        #from subprocess import CalledProcessError # handle with this, maybe?
+        raise Exception(("Exit code {exit_code} means that "
+            "mri_surf2surf failed").format(exit_code=exit_code))
 
     tf_in.close()
     output_img = nibabel.load(tf_out.name)

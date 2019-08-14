@@ -2,6 +2,7 @@
 """
 import io
 import os
+import h5py
 import copy
 import binascii
 import warnings
@@ -878,13 +879,14 @@ def load_sparse_array(fname, varname):
     This function relies on variables being stored with specific naming
     conventions, so cannot be used to load arbitrary sparse arrays.
     """
+    import scipy.sparse
     with h5py.File(fname) as hf:
         data = (hf['%s_data'%varname], hf['%s_indices'%varname], hf['%s_indptr'%varname])
         sparsemat = scipy.sparse.csr_matrix(data, shape=hf['%s_shape'%varname])
     return sparsemat
 
 
-def save_sparse_array(fname, data, varname, mode='w'):
+def save_sparse_array(fname, data, varname, mode='a'):
     """Save a numpy sparse array to an hdf file
     
     Results in relatively smaller file size than numpy.savez
@@ -900,16 +902,20 @@ def save_sparse_array(fname, data, varname, mode='w'):
     mode : string
         write / append mode set, one of ['w','a'] (passed to h5py.File())
     """
-
+    import scipy.sparse
+    if not isinstance(data, scipy.sparse.csr.csr_matrix):
+        data_ = scipy.sparse.csr_matrix(data)
+    else:
+        data_ = data
     with h5py.File(fname, mode=mode) as hf:
         # Save indices
-        hf.create_dataset(varname + '_indices', data=data.indices, compression='gzip')
+        hf.create_dataset(varname + '_indices', data=data_.indices, compression='gzip')
         # Save data
-        hf.create_dataset(varname + '_data', data=data.data, compression='gzip')
+        hf.create_dataset(varname + '_data', data=data_.data, compression='gzip')
         # Save indptr
-        hf.create_dataset(varname + '_indptr', data=data.indptr, compression='gzip')
+        hf.create_dataset(varname + '_indptr', data=data_.indptr, compression='gzip')
         # Save shape
-        hf.create_dataset(varname + '_shape', data=data.shape, compression='gzip')
+        hf.create_dataset(varname + '_shape', data=data_.shape, compression='gzip')
 
 
 def get_cmap(name):

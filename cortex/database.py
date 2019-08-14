@@ -168,7 +168,8 @@ class Database(object):
     
     def __dir__(self):
         return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "subjects", # "get_paths", # Add?
-                "get_mask", "get_overlay","get_cache", "get_view", "save_view", "get_mnixfm"] + list(self.subjects.keys())
+                "get_mask", "get_overlay","get_cache", "get_view", "save_view", "get_mnixfm",
+                'get_mri_surf2surf_matrix'] + list(self.subjects.keys())
 
     @property
     def subjects(self):
@@ -308,11 +309,11 @@ class Database(object):
             ...
 
         """
-        from .freesurfer import get_mri_surf2surf_matrix as s2s
+        from .freesurfer import get_mri_surf2surf_matrix as mri_s2s
         from .utils import load_sparse_array, save_sparse_array
         if fs_subj is None:
             fs_subj = subject
-        fpath = self.get_paths(subject)['surf2surf'].format(source=fs_subj, target_subj=target_subj)
+        fpath = self.get_paths(subject)['surf2surf'].format(source=fs_subj, target=target_subj)
         # Backward compatiblity
         fdir, _ = os.path.split(fpath)
         if not os.path.exists(fdir):
@@ -322,15 +323,15 @@ class Database(object):
             hemis = ['lh', 'rh']
         else:
             hemis = [hemi]
-        if os.path.exists(fname):
+        if os.path.exists(fpath):
             mats = [load_sparse_array(fpath, h) for h in hemis]
         else:
             mats = []
             for h in hemis:
                 tmp = mri_s2s(fs_subj, h, surface_type, 
                     target_subj=target_subj, **kwargs)
-                mat.append(tmp)
-                save_sparse_array(fpath, mat, h)
+                mats.append(tmp)
+                save_sparse_array(fpath, tmp, h, mode='a')
         return mats
 
     def get_overlay(self, subject, overlay_file=None, **kwargs):
