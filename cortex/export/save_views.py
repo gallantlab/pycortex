@@ -25,14 +25,14 @@ def save_3d_views(volume, base_name='fig', list_angles=['lateral_pivot'],
     base_name: str
         Base name for images.
 
-    list_angles: list of str
+    list_angles: list of (str or dict)
         Views to be used. Should be of length one, or of the same length as
         `list_surfaces`. Choices are:
             'left', 'right', 'front', 'back', 'top', 'bottom', 'flatmap',
             'medial_pivot', 'lateral_pivot', 'bottom_pivot',
             or a custom dictionary of parameters.
 
-    list_surfaces: list of str
+    list_surfaces: list of (str or dict)
         Surfaces to be used. Should be of length one, or of the same length as
         `list_angles`. Choices are:
             'inflated', 'flatmap', 'fiducial', 'inflated_cut',
@@ -69,14 +69,18 @@ def save_3d_views(volume, base_name='fig', list_angles=['lateral_pivot'],
             if view == 'flatmap' or surface == 'flatmap':
                 # force flatmap correspondence
                 view = surface = 'flatmap'
-            view = angle_view_params[view]
+            view_params = angle_view_params[view]
+        else:
+            view_params = view
         if isinstance(surface, str):
-            surface = unfold_view_params[surface]
+            surface_params = unfold_view_params[surface]
+        else:
+            surface_params = surface
 
         # Combine view parameters
         this_view_params = default_view_params.copy()
-        this_view_params.update(view)
-        this_view_params.update(surface)
+        this_view_params.update(view_params)
+        this_view_params.update(surface_params)
         print(this_view_params)
 
         # apply params

@@ -50,7 +50,7 @@ plt.show()
 # List all predefined angles
 
 base_name = os.path.join(tempfile.mkdtemp(), 'fig')
-list_angles = list(cortex.export.export.angle_view_params.keys())
+list_angles = list(cortex.export.save_views.angle_view_params.keys())
 
 filenames = cortex.export.save_3d_views(
     volume, base_name=base_name, list_angles=list_angles,
@@ -66,7 +66,7 @@ for filename, angle in zip(filenames, list_angles):
 # List all predefined surfaces
 
 base_name = os.path.join(tempfile.mkdtemp(), 'fig')
-list_surfaces = list(cortex.export.export.unfold_view_params.keys())
+list_surfaces = list(cortex.export.save_views.unfold_view_params.keys())
 
 filenames = cortex.export.save_3d_views(
     volume, base_name=base_name,
