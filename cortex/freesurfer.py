@@ -256,11 +256,11 @@ def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
     cache = os.path.join(database.default_filestore, sname, "cache")
     shutil.rmtree(cache)
     os.makedirs(cache)
-    # clear config-specified cache
-    from .options import config
-    config_cache = os.path.expanduser(os.path.join(config.get('basic', 'cache'), sname, 'cache'))
-    shutil.rmtree(config_cache)
-    os.makedirs(config_cache)
+    # clear config-specified cache, if different
+    config_cache = database.db.get_cache(sname)
+    if config_cache != cache:
+        shutil.rmtree(config_cache)
+        os.makedirs(config_cache)
 
 
 def _remove_disconnected_polys(polys):
