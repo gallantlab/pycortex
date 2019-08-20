@@ -1,5 +1,4 @@
 import json
-import warnings
 import h5py
 import numpy as np
 from six import string_types
@@ -52,10 +51,10 @@ def _from_hdf_data(h5, name, xfmname=None, **kwargs):
 
         if xfmname is None:
             return VertexRGB(dnode[...,0], dnode[...,1], dnode[...,2], subj, 
-                alpha=alpha, **kwargs)
+                             alpha=alpha, **kwargs)
 
         return VolumeRGB(dnode[...,0], dnode[...,1], dnode[...,2], subj, xfmname, 
-            alpha=alpha, mask=mask, **kwargs)
+                         alpha=alpha, mask=mask, **kwargs)
 
     if xfmname is None:
         return Vertex(dnode, subj, **kwargs)
@@ -73,7 +72,7 @@ def _from_hdf_view(h5, data, xfmname=None, vmin=None, vmax=None,  **kwargs):
         dim2 = _from_hdf_data(h5, data[1], xfmname=xfmname[1])
         cls = Vertex2D if isinstance(dim1, Vertex) else Volume2D
         return cls(dim1, dim2, vmin=vmin[0], vmin2=vmin[1], 
-            vmax=vmax[0], vmax2=vmax[1], **kwargs)
+                   vmax=vmax[0], vmax2=vmax[1], **kwargs)
     elif len(data) == 4:
         red, green, blue = [_from_hdf_data(h5, d, xfmname=xfmname) for d in data[:3]]
         alpha = None 
@@ -102,12 +101,12 @@ class Dataview(object):
     def copy(self, *args, **kwargs):
         kwargs.update(self.attrs)
         return self.__class__(*args, 
-            cmap=self.cmap, 
-            vmin=self.vmin, 
-            vmax=self.vmax, 
-            description=self.description, 
-            state=self.state, 
-            **kwargs)
+                              cmap=self.cmap, 
+                              vmin=self.vmin, 
+                              vmax=self.vmax, 
+                              description=self.description, 
+                              state=self.state, 
+                              **kwargs)
 
     @property
     def priority(self):
@@ -120,18 +119,18 @@ class Dataview(object):
     def to_json(self, simple=False):
         if simple:
             return dict()
-        
+
         desc = self.description
         if hasattr(desc, 'decode'):
             desc = desc.decode()
         sdict = dict(
-            state=self.state, 
-            attrs=self.attrs.copy(), 
+            state=self.state,
+            attrs=self.attrs.copy(),
             desc=desc)
         try:
             sdict.update(dict(
-                cmap=[self.cmap], 
-                vmin=[self.vmin if self.vmin is not None else np.percentile(np.nan_to_num(self.data), 1)], 
+                cmap=[self.cmap],
+                vmin=[self.vmin if self.vmin is not None else np.percentile(np.nan_to_num(self.data), 1)],
                 vmax=[self.vmax if self.vmax is not None else np.percentile(np.nan_to_num(self.data), 99)]
                 ))
         except AttributeError:
@@ -165,7 +164,7 @@ class Dataview(object):
         if len(data) == 1:
             xfm = None if xfmname is None else xfmname[0]
             return _from_hdf_view(node.file, data[0], xfmname=xfm, cmap=cmap[0], description=desc, 
-                vmin=vmin[0], vmax=vmax[0], state=state, **attrs)
+                                  vmin=vmin[0], vmax=vmax[0], state=state, **attrs)
         else:
             views = [_from_hdf_view(node.file, d, xfmname=x) for d, x in zip(data, xfname)]
             raise NotImplementedError
@@ -267,27 +266,29 @@ class Volume(VolumeData, Dataview):
 
     """
     def __init__(self, data, subject, xfmname, mask=None, 
-        cmap=None, vmin=None, vmax=None, description="", **kwargs):
+                 cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Volume, self).__init__(data, subject, xfmname, mask=mask, 
-            cmap=cmap, vmin=vmin, vmax=vmax, description=description, **kwargs)
+                                     cmap=cmap, vmin=vmin, vmax=vmax,
+                                     description=description, **kwargs)
         # set vmin and vmax
         self.vmin = self.vmin if self.vmin is not None else \
             np.percentile(np.nan_to_num(self.data), 1)
         self.vmax = self.vmax if self.vmax is not None else \
             np.percentile(np.nan_to_num(self.data), 99)
 
-
     def _write_hdf(self, h5, name="data"):
         datanode = VolumeData._write_hdf(self, h5)
         viewnode = Dataview._write_hdf(self, h5, name=name,
-            data=[self.name], xfmname=[self.xfmname])
+                                       data=[self.name],
+                                       xfmname=[self.xfmname])
         return viewnode
 
     @property
     def raw(self):
         r, g, b, a = super(Volume, self).raw
         return VolumeRGB(r, g, b, self.subject, self.xfmname, a, 
-            description=self.description, state=self.state, **self.attrs)
+                         description=self.description, state=self.state,
+                         **self.attrs)
 
 class Vertex(VertexData, Dataview):
     """
@@ -318,7 +319,7 @@ class Vertex(VertexData, Dataview):
     """
     def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
-            description=description, **kwargs)
+                                     description=description, **kwargs)
 
     def _write_hdf(self, h5, name="data"):
         datanode = VertexData._write_hdf(self, h5)
@@ -329,7 +330,8 @@ class Vertex(VertexData, Dataview):
     def raw(self):
         r, g, b, a = super(Vertex, self).raw
         return VertexRGB(r, g, b, self.subject, a, 
-            description=self.description, state=self.state, **self.attrs)
+                         description=self.description, state=self.state,
+                         **self.attrs)
 
 
 def u(s, encoding='utf8'):
