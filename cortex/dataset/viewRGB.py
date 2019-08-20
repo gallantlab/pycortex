@@ -128,6 +128,8 @@ class VolumeRGB(DataviewRGB):
 
         if alpha is None:
             alpha = np.ones(self.red.volume.shape)
+            alpha = Volume(alpha, self.red.subject, self.red.xfmname,
+                           vmin=0, vmax=1)
 
         if not isinstance(alpha, Volume):
             alpha = Volume(alpha, self.red.subject, self.red.xfmname)
@@ -257,6 +259,8 @@ class VertexRGB(DataviewRGB):
         alpha = self.alpha
         if alpha is None:
             alpha = np.ones_like(self.red.data)
+            alpha = Vertex(alpha, self.subject, vmin=0, vmax=1)
+
         if not isinstance(alpha, Vertex):
             alpha = Vertex(alpha, self.subject)
 

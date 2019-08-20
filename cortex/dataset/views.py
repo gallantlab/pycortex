@@ -5,8 +5,7 @@ import numpy as np
 from six import string_types
 
 from .. import options
-from ..database import db
-from .braindata import BrainData, VolumeData, VertexData, _hash
+from .braindata import BrainData, VolumeData, VertexData
 
 default_cmap = options.config.get("basic", "default_cmap")
 
