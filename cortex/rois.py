@@ -105,7 +105,7 @@ class ROIpack(object):
             print("Adding %s.." % roi)
             masks = self.rois[roi].left, self.rois[roi].right
             mmpts = svgmpts[:len(masks[0])], svgmpts[len(masks[0]):]
-            roilayer = _make_layer(_find_layer(svg, "rois"), roi)
+            roilayer = _make_layer(_find_layer(_find_layer(svg, "rois"),"shapes"), roi)
             for valid, pgraph, surf, mask, mmp in zip(valids, polygraphs,
                                                       [lsurf, rsurf], masks, mmpts):
                 if mask.sum() == 0:
@@ -131,10 +131,13 @@ class ROIpack(object):
                     for pb in set(pgraph[pa]) & boundpolyinds:
                         edge = pgraph[pa][pb]["verts"]
                         validverts = list(valid & edge)
-                        pos[edge] = mmp[validverts].mean(0)
-                        bgraph.add_edge(*edge)
+                        if len(validverts) > 0:
+                            pos[edge] = mmp[validverts].mean(0)
+                            bgraph.add_edge(*edge)
 
                 cc = nx.cycles.cycle_basis(bgraph)
+                if len(cc) == 0:
+                    continue
                 if len(cc) > 1:
                     # Need to deal with this later: map/reduce calls not python3 compatible
                     edges = reduce(set.symmetric_difference,
@@ -150,8 +153,8 @@ class ROIpack(object):
                                                                      path_order[1:])]
 
                 # Store poly
-                path = "M %f %f L" % tuple(path_points[0])
-                path += ", ".join(["%f %f"%p for p in path_points[1:]])
+                path = "M %f %f L" % tuple(np.nan_to_num(path_points[0]))
+                path += ", ".join(["%f %f"%tuple(np.nan_to_num(p)) for p in path_points[1:]])
                 path += "Z "
 
                 # Insert into SVG
