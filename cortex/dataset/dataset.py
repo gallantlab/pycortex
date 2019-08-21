@@ -1,5 +1,4 @@
 import tempfile
-import warnings
 import numpy as np
 import h5py
 
@@ -8,7 +7,7 @@ from ..xfm import Transform
 
 from .braindata import _hdf_write
 from .views import normalize as _vnorm
-from .views import Dataview
+from .views import Dataview, Volume, _from_hdf_data
 
 class Dataset(object):
     """
@@ -85,7 +84,7 @@ class Dataset(object):
         for name, node in ds.h5['views'].items():
             try:
                 ds.views[name] = Dataview.from_hdf(node)
-            except:
+            except Exception:
                 import traceback
                 traceback.print_exc()
 
@@ -209,9 +208,9 @@ def normalize(data):
 
 def _pack_subjs(h5, subjects):
     for subject in subjects:
-        rois = db.get_overlay(subject, type='rois')
+        rois = db.get_overlay(subject)
         rnode = h5.require_dataset("/subjects/%s/rois"%subject, (1,),
-            dtype=h5py.special_dtype(vlen=str))
+                                   dtype=h5py.special_dtype(vlen=str))
         rnode[0] = rois.toxml(pretty=False)
 
         surfaces = db.get_paths(subject)['surfs']

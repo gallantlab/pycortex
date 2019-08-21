@@ -89,6 +89,7 @@ var mriview = (function(module) {
             equivolume: {action:[this, "setEquivolume"]},
             changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true, help:'Change depth'},
             changeInflation: {action: this.changeInflation.bind(this), wheel: true, modKeys: ['shiftKey'], hidden: true, help:'Change inflation'},
+            colorbar: {action:[this, "toggleColorbar"]},
             opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
             toggleOpacity: {action: this.toggleOpacity.bind(this), key: 'o', hidden: true, help:'Toggle data opacity'},
             left: {action:[this, "setLeftVis"]},
@@ -587,6 +588,18 @@ var mriview = (function(module) {
         this._leftvis = val;
         //this.surfs[0].surf.pivots.left.front.visible = val;
         this.pivots.left.front.visible = val;
+    };
+    module.Surface.prototype.toggleColorbar = function(val) {
+        if (val === true || val === undefined) {
+            $('#colorlegend').css('display', 'block')
+            return true
+        } else {
+            $('#colorlegend').css('display', 'none')
+            return false
+        }
+
+        // necessary due to datgui library's extremely hacky introspection of functions
+        return true
     };
     module.Surface.prototype.toggleLeftVis = function() {
         this.setLeftVis(!this._leftvis);

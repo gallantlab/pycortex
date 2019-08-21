@@ -45,6 +45,7 @@ def test_rgb():
     rgb = dataset.VolumeRGB(red, green, blue, subj, xfmname)
     assert rgb.volume.shape == tuple([1] + list(volshape) + [4])
     assert rgb.volume.dtype == np.uint8
+    assert rgb.volume[..., 3].max() > 0
 
     rgba = dataset.VolumeRGB(red, green, blue, subj, xfmname, alpha=alpha)
     assert rgba.volume.shape == tuple([1] + list(volshape) + [4])
@@ -58,6 +59,7 @@ def test_rgb():
     rgb = dataset.VertexRGB(red, green, blue, subj)
     assert rgb.vertices.shape == (1, nverts, 4)
     assert rgb.vertices.dtype == np.uint8
+    assert rgb.vertices[..., 3].max() > 0
 
     rgba = dataset.VertexRGB(red, green, blue, subj, alpha=alpha)
     assert rgba.vertices.shape == (1, nverts, 4)
