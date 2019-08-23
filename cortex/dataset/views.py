@@ -332,7 +332,42 @@ class Vertex(VertexData, Dataview):
         return VertexRGB(r, g, b, self.subject, a, 
             description=self.description, state=self.state, **self.attrs)
 
+    def map(self, target_subj, surface_type='fiducial', 
+            hemi='both', fs_subj=None, **kwargs):
+        """Map this data from this surface to another surface
+        
+        Calls `cortex.freesurfer.vertex_to_vertex()`  with this 
+        vertex object as the first argument.
 
+        NOTE: Requires either previous computation of mapping matrices
+        (with `cortex.db.get_mri_surf2surf_matrix`) or active 
+        freesurfer environment.
+
+        Parameters
+        ----------
+        target_subj : str
+            freesurfer subject to which to map
+        
+        Other Parameters
+        ----------------
+        kwargs map to `cortex.freesurfer.vertex_to_vertex()`
+        """
+        # Input check
+        if hemi not in ['lh', 'rh', 'both']:
+            raise ValueError("`hemi` kwarg must be 'lh', 'rh', or 'both'")
+        mats = db.get_mri_surf2surf_matrix(self.subject, surface_type, 
+                hemi='both', target_subj=target_subj, fs_subj=fs_subj, 
+                **kwargs)
+        new_data = [mats[0].dot(self.left), mats[1].dot(self.right)]
+        if hemi == 'both':
+            new_data = np.hstack(new_data)
+        elif hemi == 'lh':
+            new_data = np.hstack([new_data[0], np.nan * np.zeros(new_data[1].shape)])
+        elif hemi == 'rh':
+            new_data = np.hstack([np.nan * np.zeros(new_data[0].shape), new_data[1]])
+        vx = Vertex(new_data, target_subj, vmin=self.vmin, vmax=self.vmax, cmap=self.cmap)
+        return vx
+        
 def u(s, encoding='utf8'):
     try:
         return s.decode(encoding)

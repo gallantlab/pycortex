@@ -256,6 +256,11 @@ class VolumeData(BrainData):
         from cortex import utils
         mapper = utils.get_mapper(self.subject, self.xfmname, projection)
         data = mapper(self)
+        # This seems useful to do, but will prob break VolumeRGB, Volume2D etc objects. 
+        # Need to think more / add if statements or whatever before committing. 
+        #data.vmin = self.vmin
+        #data.vmax = self.vmax
+        #data.cmap = self.cmap
         return data
 
     def __repr__(self):
