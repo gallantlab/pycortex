@@ -261,8 +261,15 @@ class SVGOverlay(object):
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
         cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
         cmd = cmd.format(inkscape_cmd=inkscape_cmd, height=height, outfile=pngfile)
-        proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE)
-        proc.communicate(etree.tostring(self.svg))
+        proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
+        stdout, stderr = proc.communicate(etree.tostring(self.svg))
+        
+        # print stderr, except the warning "Format autodetect failed."
+        if hasattr(stderr, 'decode'):
+            stderr = stderr.decode()
+        for line in stderr.split('\n'):
+            if line != '' and 'Format autodetect failed.' not in line:
+                print(line)
 
         if background is not None:
             self.svg.getroot().remove(img)
