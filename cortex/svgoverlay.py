@@ -528,7 +528,7 @@ try:
             # This may not be worth being so verbose about... I think this is only for label positions.
             import warnings
             warnings.warn("Shapely error - computing mean of points instead of geometric center")
-            return np.nanmean(pts, 0)
+            return np.nanmean(pts, 0) * max + min
 
 except (ImportError, OSError):
     print("Cannot find shapely, using simple label placement")
