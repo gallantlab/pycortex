@@ -504,11 +504,13 @@ def _make_layer(parent, name):
 
 try:
     from shapely.geometry import Polygon
+
     def _center_pts(pts):
         '''Fancy label position generator, using erosion to get label coordinate'''
         min = pts.min(0)
         pts -= min
         max = pts.max(0)
+        max[max == 0] = 1        
         pts /= max
 
         #probably don't need more than 20 points, reduce detail of the polys
@@ -516,24 +518,31 @@ try:
             pts = pts[::len(pts)//20]
 
         try:
+            if len(pts) < 3:
+                raise RuntimeError()
             poly = Polygon([tuple(p) for p in pts])
+            last_i = None
             for i in np.linspace(0,1,100):
                 if poly.buffer(-i).is_empty:
-                    return list(poly.buffer(-last_i).centroid.coords)[0] * max + min
+                    if last_i is None:
+                        raise RuntimeError()
+                    a = list(poly.buffer(-last_i).centroid.coords)[0] * max + min
+                    return a
                 last_i = i
 
-            print("unable to find zero centroid...")
-            return list(poly.buffer(-100).centroid.coords)[0] * max + min
-        except:
-            # This may not be worth being so verbose about... I think this is only for label positions.
             import warnings
-            warnings.warn("Shapely error - computing mean of points instead of geometric center")
+            warnings.warn("Unable to find zero centroid.")
+            return list(poly.buffer(-100).centroid.coords)[0] * max + min
+        except RuntimeError:
             return np.nanmean(pts, 0) * max + min
 
 except (ImportError, OSError):
-    print("Cannot find shapely, using simple label placement")
+    import warnings
+    warnings.warn("Cannot find shapely, using simple label placement.")
+
     def _center_pts(pts):
-        return pts.mean(0)
+        return np.nanmean(pts, 0)
+
 
 def _labelpos(pts):
     if pts.ndim < 3:
