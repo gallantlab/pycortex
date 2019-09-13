@@ -75,13 +75,16 @@ class Dataview2D(Dataview):
         dim2 = np.nan_to_num(dim2).astype(np.uint32)
 
         colored = cmap[dim2.ravel(), dim1.ravel()]
+        # map r, g, b, a values between 0 and 255 to avoid problems with
+        # VolumeRGB when plotting flatmaps with quickflat
+        colored = (colored * 255).astype(np.uint8)
         r, g, b, a = colored.T
         r.shape = dim1.shape
         g.shape = dim1.shape
         b.shape = dim1.shape
         a.shape = dim1.shape
         # Preserve nan values as alpha = 0
-        aidx = np.logical_or(np.isnan(data1),np.isnan(data2))
+        aidx = np.logical_or(np.isnan(data1), np.isnan(data2))
         a[aidx] = 0
         # Code from master, to handle alpha input, prob better here but not tested.
         # # Possibly move this above setting nans to alpha = 0;
