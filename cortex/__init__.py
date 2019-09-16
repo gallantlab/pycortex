@@ -8,6 +8,7 @@ from cortex.database import db
 from cortex.utils import *
 from cortex.quickflat import make_figure as quickshow
 from cortex.volume import mosaic, unmask
+import cortex.export
 
 try:
     from cortex import formats
