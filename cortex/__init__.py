@@ -46,3 +46,5 @@ if sys.version_info.major == 2:
     reload(sys)
     sys.setdefaultencoding('utf8')
     sys.stdout = stdout
+
+__version__ = '1.1.dev0'
