@@ -82,8 +82,8 @@ def manual(subject, xfmname, reference=None, **kwargs):
 
     return m
 
-def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue", 
-    pial_color="red", wm_surface='white', noclean=False, reference=None, inspect_only=False):
+def fs_manual(subject, xfmname, output_name="register.lta", wm_color="yellow", 
+    pial_color="blue", wm_surface='white', noclean=False, reference=None, inspect_only=False):
     """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
     volume to the cortical surface for `subject`. This creates a new transform
     called `xfmname`. The name of a nibabel-readable file (e.g. NIfTI) should be
@@ -91,6 +91,16 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue",
 
     IMPORTANT: This function assumes that the resulting .lta file is saved as:
     "{default folder chosen by FreeView (should be /tmp/fsalign_xxx)}/{output_name}".
+    
+    NOTE: Half-fixed some potential bugs in here, related to assumptions about how 
+    results from mri_info calls would be formatted. IFF .dat files are written
+    based on nii files that have been stripped of their headers, then there will 
+    be an extra line at the top stating that the coordinates are assumed to be in mm.
+    Without this line, the code here fails. Seems brittle, ripe for future bugs.
+
+    ALSO: all the freesurfer environment stuff shouldn't be necessary, except that
+    I don't know what vox2ras-tkr is doing.
+
 
     Parameters
     ----------
@@ -183,14 +193,14 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="blue",
         if sp.call(cmd, shell=True) != 0:
             raise IOError("Problem with FreeView!")
         else:
-            # Convert transform into .dat format
-            reg_dat = os.path.join(cache, os.path.splitext(output_name)[0] + ".dat")
-            cmd = "lta_convert --inlta {inlta} --outreg {regdat}"
-            cmd = cmd.format(inlta=os.path.join(cache, output_name), regdat=reg_dat)
-            if sp.call(cmd, shell=True) != 0:
-                raise IOError("Error converting lta into dat!")
-
             if not inspect_only:
+                # Convert transform into .dat format
+                # Unclear why we're not just saving in .dat format above...?
+                reg_dat = os.path.join(cache, os.path.splitext(output_name)[0] + ".dat")
+                cmd = "lta_convert --inlta {inlta} --outreg {regdat}"
+                cmd = cmd.format(inlta=os.path.join(cache, output_name), regdat=reg_dat)
+                if sp.call(cmd, shell=True) != 0:
+                    raise IOError("Error converting lta into dat!")
                 # Save transform to pycortex
                 xfm = Transform.from_freesurfer(reg_dat, reference, subject)
                 db.save_xfm(subject, xfmname, xfm.xfm, xfmtype='coord', reference=reference)
