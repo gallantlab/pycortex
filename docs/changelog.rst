@@ -11,6 +11,8 @@ Unreleased
 
 **Added**
 
+- Vertex objects have a new method ``.map()`` that allows mapping from one surface to another (`#334 <https://github.com/gallantlab/pycortex/pull/334>`_)
+- Add ``cortex.freesurfer.get_mri_surf2surf_matrix`` to create a sparse matrix implementing the ``mri_surf2surf`` command (`#334 <https://github.com/gallantlab/pycortex/pull/334>`_)
 - Add function to plot and save 3D views and plot panels (`#337 <https://github.com/gallantlab/pycortex/pull/337>`_)
 - Axis object can be passed to ``quickshow`` (`#325 <https://github.com/gallantlab/pycortex/pull/325>`_)
 - Help menu for the 3D WebGL viewer can be accessed with a shortcut (`#319 <https://github.com/gallantlab/pycortex/pull/319>`_, `#321 <https://github.com/gallantlab/pycortex/pull/321>`_)
