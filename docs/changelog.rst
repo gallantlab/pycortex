@@ -11,7 +11,7 @@ Unreleased
 
 **Added**
 
-- Added function to download new subjects for pycortex from web URLs. This function allows users to download FreeSurfer's ``fsaverage`` surface, with a flatmap and ROI labels made by Mark Lescroart (`#344 <https://github.com/gallantlab/pycortex/pull/344>`_)
+- Added function ``cortex.utils.download_subject`` to download new subjects for pycortex from web URLs. This function allows users to download FreeSurfer's ``fsaverage`` surface, with a flatmap and ROI labels made by Mark Lescroart (`#344 <https://github.com/gallantlab/pycortex/pull/344>`_)
 - Vertex objects have a new method ``.map()`` that allows mapping from one surface to another (`#334 <https://github.com/gallantlab/pycortex/pull/334>`_)
 - Add ``cortex.freesurfer.get_mri_surf2surf_matrix`` to create a sparse matrix implementing the ``mri_surf2surf`` command (`#334 <https://github.com/gallantlab/pycortex/pull/334>`_)
 - Add function to plot and save 3D views and plot panels (`#337 <https://github.com/gallantlab/pycortex/pull/337>`_)
