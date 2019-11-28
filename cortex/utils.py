@@ -973,3 +973,46 @@ def add_cmap(cmap, name, cmapdir=None):
         # Probably won't work due to permissions...
         cmapdir = config.get('webgl', 'colormaps')
     plt.imsave(os.path.join(cmapdir, name), cmap_im)
+
+def download_subject(subject_id='fsaverage', url=None, pycortex_store=None):
+    """Download subjects to pycortex store
+    
+    Parameters
+    ----------
+    subject_id : string
+        subject identifying string in pycortex. This assumes that 
+        the file downloaded from some URL is of the form <subject_id>.tar.gz
+    url: string or None
+        URL from which to download. Not necessary to specify for subjects 
+        known to pycortex (None is OK). Known subjects will have a default URL. 
+        Currently,the only known subjects is 'fsaverage', but there are plans 
+        to add more in the future. If provided, URL overrides `subject_id`
+    pycortex_store : string or None
+        Directory to which to put the new subject folder. If None, defaults to
+        the `filestore` variable specified in the pycortex config file. 
+    
+    """
+    # Lazy imports
+    import tarfile
+    import wget
+    import os
+    # Map codes to URLs; more coming eventually
+    id_to_url = dict(fsaverage='https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758',
+                     )
+    if url is None:
+        if not subject_id in id_to_url:
+            raise ValueError('Unknown subject_id!')
+        url = id_to_url[subject_id]
+    print("Downloading from: {}".format(url))
+    # Download to temp dir
+    tmp_dir = tempfile.gettempdir()
+    wget.download(url , tmp_dir)
+    print('Downloaded subject {} to {}'.format(subject_id, tmp_dir))
+    # Un-tar to pycortex store
+    if pycortex_store is None:
+        # Default location is config file pycortex store.
+        pycortex_store = options.config.get('basic', 'filestore')
+    pycortex_store = os.path.expanduser(pycortex_store)
+    with tarfile.open(os.path.join(tmp_dir, subject_id + '.tar.gz'), "r:gz") as tar:
+        print("Extracting subject {} to {}".format(subject_id, pycortex_store))
+        tar.extractall(path=pycortex_store)

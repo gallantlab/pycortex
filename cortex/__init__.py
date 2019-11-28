@@ -55,7 +55,7 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None):
         URL from which to download. Not necessary to specify for subjects 
         known to pycortex (None is OK). Known subjects will have a default URL. 
         Currently,the only known subjects is 'fsaverage', but there are plans 
-        to add more in the future.
+        to add more in the future. If provided, URL overrides `subject_id`
     pycortex_store : string or None
         Directory to which to put the new subject folder. If None, defaults to
         the `filestore` variable specified in the pycortex config file. 
