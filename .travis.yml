@@ -16,6 +16,9 @@ install:
   - pip install -e .
 
 script:
+  # install necessary packages to run tests and run tests
+  - travis_retry pip install -q pytest pytest-cov codecov
+  - pytest --cov=./
   # test installation
   - python setup.py install
   # install packages for docs and make docs
@@ -23,6 +26,9 @@ script:
   - cd docs && make html && cd ..
   # Tell GitHub not to use jekyll to compile the docs
   - touch docs/_build/html/.nojekyll
+
+after_success:
+  - codecov
 
 deploy:
   - provider: pages
