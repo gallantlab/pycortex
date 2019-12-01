@@ -25,12 +25,24 @@ script:
   - touch docs/_build/html/.nojekyll
 
 deploy:
-  provider: pages
-  skip_cleanup: true
-  github_token: $GITHUB_TOKEN  # Set in travis-ci.org dashboard, marked secure
-  keep-history: true
-  on:
-    branch: master
-    # push only once
-    python: "3.7"
-  local_dir: docs/_build/html/
+  - provider: pages
+    skip_cleanup: true
+    github_token: $GITHUB_TOKEN  # Set in travis-ci.org dashboard, marked secure
+    keep-history: true
+    on:
+      branch: master
+      # push only once
+      python: "3.7"
+    local_dir: docs/_build/html/
+
+  - provider: pages
+    skip_cleanup: true
+    github_token: $GITHUB_TOKEN
+    keep-history: true
+    on:
+      branch: master
+      # push only once
+      python: "3.7"
+    local_dir: docs/_build/html/
+    repo: pycortex/pycortex.github.io
+    target_branch: master
