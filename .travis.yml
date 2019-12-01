@@ -11,7 +11,7 @@ cache:
   - pip
 
 before_install:
-  - travis_retry apt-get install -y inkscape
+  - travis_retry sudo apt-get install -y inkscape
 
 install:
   - pip install -e .
