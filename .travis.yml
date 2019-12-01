@@ -1,7 +1,6 @@
 language: python
 
 python:
-  - "2.7"
   - "3.5"
   - "3.6"
   - "3.7"
@@ -13,7 +12,7 @@ before_install:
   - travis_retry sudo apt-get install -y inkscape
 
 install:
-  - pip install cython numpy
+  - travis_retry pip install -q cython numpy
   - pip install -e .
 
 script:
@@ -35,4 +34,3 @@ deploy:
     # push only once
     python: "3.7"
   local_dir: docs/_build/html/
-  repo: gallantlab/gallantlab.github.io
