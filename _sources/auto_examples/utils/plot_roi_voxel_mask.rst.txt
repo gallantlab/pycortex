@@ -30,19 +30,6 @@ overlays.svg file in the pycortex filestore for this subject.
 
  .. code-block:: none
 
-    Caching mapper...
-    /home/travis/build/gallantlab/pycortex/cortex/mapper/samplers.py:10: RuntimeWarning: invalid value encountered in greater
-      valid = np.logical_and(valid, np.logical_and(coords[:,0] > -.5, coords[:,0] < shape[2]+.5))
-    /home/travis/build/gallantlab/pycortex/cortex/mapper/samplers.py:10: RuntimeWarning: invalid value encountered in less
-      valid = np.logical_and(valid, np.logical_and(coords[:,0] > -.5, coords[:,0] < shape[2]+.5))
-    /home/travis/build/gallantlab/pycortex/cortex/mapper/samplers.py:11: RuntimeWarning: invalid value encountered in greater
-      valid = np.logical_and(valid, np.logical_and(coords[:,1] > -.5, coords[:,1] < shape[1]+.5))
-    /home/travis/build/gallantlab/pycortex/cortex/mapper/samplers.py:11: RuntimeWarning: invalid value encountered in less
-      valid = np.logical_and(valid, np.logical_and(coords[:,1] > -.5, coords[:,1] < shape[1]+.5))
-    /home/travis/build/gallantlab/pycortex/cortex/mapper/samplers.py:12: RuntimeWarning: invalid value encountered in greater
-      valid = np.logical_and(valid, np.logical_and(coords[:,2] > -.5, coords[:,2] < shape[0]+.5))
-    /home/travis/build/gallantlab/pycortex/cortex/mapper/samplers.py:12: RuntimeWarning: invalid value encountered in less
-      valid = np.logical_and(valid, np.logical_and(coords[:,2] > -.5, coords[:,2] < shape[0]+.5))
     Found 100.00% of EBA
     Cutting 0 overlapping voxels (should be < ~50)
     Generating a flatmap cache
@@ -92,7 +79,7 @@ overlays.svg file in the pycortex filestore for this subject.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  10.892 seconds)
+   **Total running time of the script:** ( 0 minutes  10.432 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_roi_voxel_mask.py:
