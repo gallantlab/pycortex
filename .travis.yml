@@ -20,8 +20,8 @@ install:
 script:
   # test installation
   - python setup.py install
-  # install ipython for docs and make docs
-  - travis_retry pip install -q ipython
+  # install packages for docs and make docs
+  - travis_retry pip install -q ipython Sphinx sphinx-gallery
   - cd docs && make html && cd ..
   # Tell GitHub not to use jekyll to compile the docs
   - touch docs/_build/html/.nojekyll
