@@ -5,18 +5,18 @@
 
 Computation times
 =================
-**00:31.329** total execution time for **auto_examples_utils** files:
+**00:31.078** total execution time for **auto_examples_utils** files:
 
 +-------------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_utils_plot_roi_voxel_index_volume.py` (``plot_roi_voxel_index_volume.py``)           | 00:12.002 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_utils_plot_roi_voxel_index_volume.py` (``plot_roi_voxel_index_volume.py``)           | 00:11.843 | 0.0 MB |
 +-------------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_utils_plot_roi_voxel_mask.py` (``plot_roi_voxel_mask.py``)                           | 00:10.876 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_utils_plot_roi_voxel_mask.py` (``plot_roi_voxel_mask.py``)                           | 00:10.892 | 0.0 MB |
 +-------------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_utils_plot_voxel_distance_from_surface.py` (``plot_voxel_distance_from_surface.py``) | 00:05.131 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_utils_plot_voxel_distance_from_surface.py` (``plot_voxel_distance_from_surface.py``) | 00:05.057 | 0.0 MB |
 +-------------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_utils_plot_get_roi_vertices.py` (``plot_get_roi_vertices.py``)                       | 00:02.966 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_utils_plot_get_roi_vertices.py` (``plot_get_roi_vertices.py``)                       | 00:02.938 | 0.0 MB |
 +-------------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_utils_plot_mosaic.py` (``plot_mosaic.py``)                                           | 00:00.354 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_utils_plot_mosaic.py` (``plot_mosaic.py``)                                           | 00:00.348 | 0.0 MB |
 +-------------------------------------------------------------------------------------------------------------------+-----------+--------+
 | :ref:`sphx_glr_auto_examples_utils_mni_to_subject.py` (``mni_to_subject.py``)                                     | 00:00.000 | 0.0 MB |
 +-------------------------------------------------------------------------------------------------------------------+-----------+--------+
