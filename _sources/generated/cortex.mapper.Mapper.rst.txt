@@ -1,0 +1,31 @@
+cortex.mapper.Mapper
+====================
+
+.. currentmodule:: cortex.mapper
+
+.. autoclass:: Mapper
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Mapper.__init__
+      ~Mapper.backwards
+      ~Mapper.from_cache
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Mapper.hemimasks
+      ~Mapper.mask
+   
+   

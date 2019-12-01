@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Installation &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Surface Segmentation and Flattening" href="segmentation_guide.html" />
+    <link rel="prev" title="Pycortex Documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<p>The best way to install pycortex currently is by getting the latest source code from github:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">gallantlab</span><span class="o">/</span><span class="n">pycortex</span><span class="o">.</span><span class="n">git</span>
+<span class="n">cd</span> <span class="n">pycortex</span>
+
+<span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">develop</span>
+</pre></div>
+</div>
+<div class="section" id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h2>
+<p>The easiest way to get most of the dependencies is using <a class="reference external" href="https://store.continuum.io/cshop/anaconda/">Anaconda</a>. To use pycortex with <a class="reference external" href="https://store.continuum.io/cshop/anaconda/">Anaconda</a>, first install anaconda as instructed, then:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">numpy</span> <span class="n">Cython</span> <span class="n">scipy</span> <span class="n">h5py</span> <span class="n">nibabel</span> <span class="n">matplotlib</span> <span class="n">Pillow</span> <span class="n">numexpr</span> <span class="n">tornado</span> <span class="n">lxml</span> <span class="n">networkx</span>
+</pre></div>
+</div>
+<p>You will also need to install <a class="reference external" href="https://inkscape.org/en/">Inkscape</a> using whatever method is appropriate for your system. On Mac OS X you will also need to enable access to Inkscape on the command line, see these <a class="reference external" href="http://wiki.inkscape.org/wiki/index.php/Mac_OS_X#Inkscape_command_line">instructions</a>.</p>
+<p>If you are running Ubuntu without Anaconda, use the following commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="n">python</span><span class="o">-</span><span class="n">dev</span> <span class="n">python</span><span class="o">-</span><span class="n">numpy</span> <span class="n">python</span><span class="o">-</span><span class="n">scipy</span> <span class="n">python</span><span class="o">-</span><span class="n">matplotlib</span> <span class="n">python</span><span class="o">-</span><span class="n">h5py</span> <span class="n">python</span><span class="o">-</span><span class="n">nibabel</span> <span class="n">python</span><span class="o">-</span><span class="n">lxml</span> <span class="n">python</span><span class="o">-</span><span class="n">shapely</span> <span class="n">python</span><span class="o">-</span><span class="n">html5lib</span> <span class="n">inkscape</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="demo">
+<h2>Demo<a class="headerlink" href="#demo" title="Permalink to this headline">¶</a></h2>
+<p>To test if your install went well, first download the <a class="reference external" href="http://gallantlab.org/pycortex/S1_retinotopy.hdf">example dataset</a>. Then run the following commands at a terminal:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ipython
+In [1]: import cortex
+In [2]: ds = cortex.load(&quot;S1_retinotopy.hdf&quot;)
+In [3]: cortex.webshow(ds)
+</pre></div>
+</div>
+<p>If everything went well, this should pop up a web browser window with the same view as <a class="reference external" href="http://gallantlab.org/pycortex/retinotopy_demo/">http://gallantlab.org/pycortex/retinotopy_demo/</a>.</p>
+</div>
+<div class="section" id="basic-configuration">
+<h2>Basic Configuration<a class="headerlink" href="#basic-configuration" title="Permalink to this headline">¶</a></h2>
+<p>Pycortex will automatically create a database filestore when it is first installed. In Linux, this filestore is located at <code class="file docutils literal notranslate"><span class="pre">/usr/local/share/pycortex/</span></code>. On first import, it will also create a configuration file in your user directory which allows you to specify additional options, including alternate filestore locations. In Linux, this user configuration file is located in <code class="file docutils literal notranslate"><span class="pre">~/.config/pycortex/options.cfg</span></code>.</p>
+<p>You can check the location of the filestore after installing by running:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span>
+</pre></div>
+</div>
+<p>And you can check the location of the config file by running:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">usercfg</span>
+</pre></div>
+</div>
+<p>If you want to move the filestore, you need to update the config file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">basic</span><span class="p">]</span>
+<span class="n">filestore</span><span class="o">=/</span><span class="nb">abs</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">filestore</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#demo">Demo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#basic-configuration">Basic Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Pycortex Documentation</a></li>
+      <li>Next: <a href="segmentation_guide.html" title="next chapter">Surface Segmentation and Flattening</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/install.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

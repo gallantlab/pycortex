@@ -1,0 +1,6 @@
+cortex.dataset.VolumeRGB.\_\_init\_\_
+=====================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VolumeRGB.__init__

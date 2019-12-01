@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.dataset.VertexRGB &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-dataset-vertexrgb">
+<h1>cortex.dataset.VertexRGB<a class="headerlink" href="#cortex-dataset-vertexrgb" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="cortex.dataset.VertexRGB">
+<em class="property">class </em><code class="sig-prename descclassname">cortex.dataset.</code><code class="sig-name descname">VertexRGB</code><span class="sig-paren">(</span><em class="sig-param">red</em>, <em class="sig-param">green</em>, <em class="sig-param">blue</em>, <em class="sig-param">subject=None</em>, <em class="sig-param">alpha=None</em>, <em class="sig-param">description=''</em>, <em class="sig-param">state=None</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/dataset/viewRGB.html#VertexRGB"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.dataset.VertexRGB" title="Permalink to this definition">¶</a></dt>
+<dd><p>Contains RGB (or RGBA) colors for each vertex in a surface dataset. 
+Includes information about the subject.</p>
+<p>Each color channel is represented as a separate Vertex object (these can 
+either be supplied explicitly as Vertex objects or implicitly as numpy 
+arrays). The vmin for each Vertex will be mapped to the minimum value for
+that color channel, and the vmax will be mapped to the maximum value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>red</strong><span class="classifier">ndarray or Vertex</span></dt><dd><p>Array or Vertex that represents the red component of the color for each 
+voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.</p>
+</dd>
+<dt><strong>green</strong><span class="classifier">ndarray or Vertex</span></dt><dd><p>Array or Vertex that represents the green component of the color for each 
+voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.</p>
+</dd>
+<dt><strong>blue</strong><span class="classifier">ndarray or Vertex</span></dt><dd><p>Array or Vertex that represents the blue component of the color for each 
+voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.</p>
+</dd>
+<dt><strong>subject</strong><span class="classifier">str, optional</span></dt><dd><p>Subject identifier. Must exist in the pycortex database. If not given,
+red must be a Vertex from which the subject can be extracted.</p>
+</dd>
+<dt><strong>alpha</strong><span class="classifier">ndarray or Vertex, optional</span></dt><dd><p>Array or Vertex that represents the alpha component of the color for each 
+voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex. If
+None, all vertices will be assumed to have alpha=1.0.</p>
+</dd>
+<dt><strong>description</strong><span class="classifier">str, optional</span></dt><dd><p>String describing this dataset. Displayed in webgl viewer.</p>
+</dd>
+<dt><strong>state</strong><span class="classifier">optional</span></dt><dd><p>TODO: describe what this is</p>
+</dd>
+<dt><strong>**kwargs</strong></dt><dd><p>All additional arguments in kwargs are passed to the VertexData and 
+Dataview.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.__init__.html#cortex.dataset.VertexRGB.__init__" title="cortex.dataset.VertexRGB.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(self, red, green, blue[, subject, …])</p></td>
+<td><p>Initialize self.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.copy.html#cortex.dataset.VertexRGB.copy" title="cortex.dataset.VertexRGB.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>(self, \*args, \*\*kwargs)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.from_hdf.html#cortex.dataset.VertexRGB.from_hdf" title="cortex.dataset.VertexRGB.from_hdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_hdf</span></code></a>(node)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.to_json.html#cortex.dataset.VertexRGB.to_json" title="cortex.dataset.VertexRGB.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a>(self[, simple])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.uniques.html#cortex.dataset.VertexRGB.uniques" title="cortex.dataset.VertexRGB.uniques"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uniques</span></code></a>(self[, collapse])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.left.html#cortex.dataset.VertexRGB.left" title="cortex.dataset.VertexRGB.left"><code class="xref py py-obj docutils literal notranslate"><span class="pre">left</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.name.html#cortex.dataset.VertexRGB.name" title="cortex.dataset.VertexRGB.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.priority.html#cortex.dataset.VertexRGB.priority" title="cortex.dataset.VertexRGB.priority"><code class="xref py py-obj docutils literal notranslate"><span class="pre">priority</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.raw.html#cortex.dataset.VertexRGB.raw" title="cortex.dataset.VertexRGB.raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">raw</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.right.html#cortex.dataset.VertexRGB.right" title="cortex.dataset.VertexRGB.right"><code class="xref py py-obj docutils literal notranslate"><span class="pre">right</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="VertexRGB/cortex.dataset.VertexRGB.vertices.html#cortex.dataset.VertexRGB.vertices" title="cortex.dataset.VertexRGB.vertices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertices</span></code></a></p></td>
+<td><p>3-dimensional volume (t, v, rgba) with data that has been mapped into 8-bit unsigned integers that correspond to colors.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.dataset.VertexRGB.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

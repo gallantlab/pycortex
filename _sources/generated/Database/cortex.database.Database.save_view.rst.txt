@@ -1,0 +1,6 @@
+cortex.database.Database.save\_view
+===================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.save_view

@@ -1,0 +1,36 @@
+cortex.dataset.VolumeRGB
+========================
+
+.. currentmodule:: cortex.dataset
+
+.. autoclass:: VolumeRGB
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: VolumeRGB
+   
+     ~VolumeRGB.__init__
+     ~VolumeRGB.copy
+     ~VolumeRGB.from_hdf
+     ~VolumeRGB.to_json
+     ~VolumeRGB.uniques
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: VolumeRGB
+   
+      ~VolumeRGB.name
+      ~VolumeRGB.priority
+      ~VolumeRGB.raw
+      ~VolumeRGB.volume
+   
+   

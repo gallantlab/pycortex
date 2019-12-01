@@ -1,0 +1,6 @@
+cortex.freesurfer.get\_paths
+============================
+
+.. currentmodule:: cortex.freesurfer
+
+.. autofunction:: get_paths

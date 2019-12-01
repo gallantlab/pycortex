@@ -1,0 +1,6 @@
+cortex.freesurfer.import\_flat
+==============================
+
+.. currentmodule:: cortex.freesurfer
+
+.. autofunction:: import_flat

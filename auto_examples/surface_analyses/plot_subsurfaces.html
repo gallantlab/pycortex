@@ -1,0 +1,571 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Plot and Use Subsurface Tools &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Interpolate Data" href="plot_interpolate_data.html" />
+    <link rel="prev" title="Flatmap Distortion" href="plot_flatmap_distortion.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p>Click <a class="reference internal" href="#sphx-glr-download-auto-examples-surface-analyses-plot-subsurfaces-py"><span class="std std-ref">here</span></a> to download the full example code</p>
+</div>
+<div class="sphx-glr-example-title section" id="plot-and-use-subsurface-tools">
+<span id="sphx-glr-auto-examples-surface-analyses-plot-subsurfaces-py"></span><h1>Plot and Use Subsurface Tools<a class="headerlink" href="#plot-and-use-subsurface-tools" title="Permalink to this headline">¶</a></h1>
+<p>Subsurfaces can be used for efficient operations on subsets of cortical surface</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tempfile</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">cortex.polyutils</span>
+
+
+<span class="n">subject</span> <span class="o">=</span> <span class="s1">&#39;S1&#39;</span>
+
+<span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">)</span>
+<span class="n">left_surface</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="n">left</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">left</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">right_surface</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="n">right</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">right</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>create subsurface</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">center</span> <span class="o">=</span> <span class="mi">125000</span>
+<span class="n">radius</span> <span class="o">=</span> <span class="mi">7</span>
+
+<span class="n">patch</span> <span class="o">=</span> <span class="n">left_surface</span><span class="o">.</span><span class="n">get_geodesic_patch</span><span class="p">(</span><span class="n">center</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">)</span>
+<span class="n">subsurface</span> <span class="o">=</span> <span class="n">left_surface</span><span class="o">.</span><span class="n">create_subsurface</span><span class="p">(</span><span class="n">vertex_mask</span><span class="o">=</span><span class="n">patch</span><span class="p">[</span><span class="s1">&#39;vertex_mask&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+</pre></div>
+</div>
+<p>plot data on subsurface</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">subsurface</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="mi">20</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">subsurface</span><span class="o">.</span><span class="n">lift_subsurface_data</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">subject</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;example subsurface data&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img alt="../../_images/sphx_glr_plot_subsurfaces_001.png" class="sphx-glr-single-img" src="../../_images/sphx_glr_plot_subsurfaces_001.png" />
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+</pre></div>
+</div>
+<p>plot subsurface as gif</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">f</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">()</span>
+<span class="n">path</span> <span class="o">=</span> <span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;.gif&#39;</span>
+<span class="c1"># subsurface.plot_subsurface_rotating_gif(path=path)</span>
+</pre></div>
+</div>
+<img alt="../../_images/example_subsurface.gif" src="../../_images/example_subsurface.gif" />
+<p>create many patches</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">patches</span> <span class="o">=</span> <span class="n">left_surface</span><span class="o">.</span><span class="n">get_geodesic_patches</span><span class="p">(</span>
+    <span class="n">seeds</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">150000</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span>
+    <span class="n">radius</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span>
+    <span class="n">patches</span><span class="p">[</span><span class="s1">&#39;vertex_masks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+    <span class="n">subject</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span>
+    <span class="n">vmin</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;patches&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img alt="../../_images/sphx_glr_plot_subsurfaces_002.png" class="sphx-glr-single-img" src="../../_images/sphx_glr_plot_subsurfaces_002.png" />
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+</pre></div>
+</div>
+<p>create geodesic strip patch</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">patch</span> <span class="o">=</span> <span class="n">left_surface</span><span class="o">.</span><span class="n">get_geodesic_strip_patch</span><span class="p">(</span><span class="n">v0</span><span class="o">=</span><span class="mi">70000</span><span class="p">,</span> <span class="n">v1</span><span class="o">=</span><span class="mi">125000</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">patch</span><span class="p">[</span><span class="s1">&#39;vertex_mask&#39;</span><span class="p">],</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;strip patch&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">patch</span><span class="p">[</span><span class="s1">&#39;coordinates&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span> <span class="p">:],</span> <span class="n">subject</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;first coordinate, distance along central geodesic axis&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">patch</span><span class="p">[</span><span class="s1">&#39;coordinates&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">,</span> <span class="p">:],</span> <span class="n">subject</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">5</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;second coordinate, distance from central geodesic axis&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<ul class="sphx-glr-horizontal">
+<li><img alt="../../_images/sphx_glr_plot_subsurfaces_003.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_subsurfaces_003.png" />
+</li>
+<li><img alt="../../_images/sphx_glr_plot_subsurfaces_004.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_subsurfaces_004.png" />
+</li>
+<li><img alt="../../_images/sphx_glr_plot_subsurfaces_005.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_subsurfaces_005.png" />
+</li>
+</ul>
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  36.016 seconds)</p>
+<div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-surface-analyses-plot-subsurfaces-py">
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/d1b7d62a14297494745367355b59d04d/plot_subsurfaces.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_subsurfaces.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/387ca9e74b721456c024802f5fb1210c/plot_subsurfaces.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_subsurfaces.ipynb</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="plot_tissots_indicatrix.html">Tissot’s Indicatrix</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_geodesic_path.html">Plotting Geodesic Paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_geodesic_distance.html">Plotting Geodesic Distances</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_flatmap_distortion.html">Flatmap Distortion</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Plot and Use Subsurface Tools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_interpolate_data.html">Interpolate Data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Example Gallery</a><ul>
+      <li>Previous: <a href="plot_flatmap_distortion.html" title="previous chapter">Flatmap Distortion</a></li>
+      <li>Next: <a href="plot_interpolate_data.html" title="next chapter">Interpolate Data</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/auto_examples/surface_analyses/plot_subsurfaces.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

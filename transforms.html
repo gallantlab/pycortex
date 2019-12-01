@@ -1,0 +1,139 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Transform formats &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Colormaps" href="colormaps.html" />
+    <link rel="prev" title="Surface-defined ROIs" href="rois.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="transform-formats">
+<h1>Transform formats<a class="headerlink" href="#transform-formats" title="Permalink to this headline">¶</a></h1>
+<p>Functional data, usually collected by an epi sequence, typically does not have the same scan parameters as the anatomical MPRAGE scan used to generate the surfaces. Additionally, fMRI sequences which are usually optimized for T2* have drastically different and larger distortions than a typical T1 anatomical sequence. While automatic algorithms exist to align these two scan types, they will sometimes fail spectacularly, especially if a partial volume slice prescription is necessary.</p>
+<p>pycortex includes a tool based on <a class="reference external" href="http://docs.enthought.com/mayavi/mayavi/">mayavi</a> to do manual <strong>affine</strong> alignments. Please see the <a href="#id1"><span class="problematic" id="id2">:module:`align`</span></a> module for more information. Alternatively, if an automatic algorithm works well enough, you can also commit your own transform to the database. Transforms in pycortex always go from <strong>fiducial to functional</strong> space. They have four variables associated:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>Subject</strong> : name of the subject, must match the surfaces used to create the transform</p></li>
+<li><p><strong>Name</strong> : A unique identifier for this transform</p></li>
+<li><p><strong>type</strong> : The type of transform – from fiducial to functional <strong>magnet</strong> space, or fiducial to <strong>coord</strong> inate space</p></li>
+<li><p><strong>epifile</strong> : the filename of the functional data that the fiducial is aligned to</p></li>
+</ul>
+</div></blockquote>
+<p>Transforms always store the epifile in order to allow visual validation of alignment using the <a href="#id3"><span class="problematic" id="id4">:module:`align`</span></a> module.</p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="rois.html" title="previous chapter">Surface-defined ROIs</a></li>
+      <li>Next: <a href="colormaps.html" title="next chapter">Colormaps</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/transforms.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

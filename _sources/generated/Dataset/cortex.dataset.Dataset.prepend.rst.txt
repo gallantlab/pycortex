@@ -1,0 +1,6 @@
+cortex.dataset.Dataset.prepend
+==============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Dataset.prepend

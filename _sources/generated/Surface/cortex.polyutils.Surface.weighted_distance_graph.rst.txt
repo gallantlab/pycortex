@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.weighted\_distance\_graph
+==================================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.weighted_distance_graph

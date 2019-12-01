@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.geodesic\_distance
+===========================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.geodesic_distance

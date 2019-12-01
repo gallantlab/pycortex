@@ -1,0 +1,6 @@
+cortex.database.Database.get\_mnixfm
+====================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.get_mnixfm

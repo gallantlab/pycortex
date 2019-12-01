@@ -1,0 +1,6 @@
+cortex.dataset.Dataset.from\_file
+=================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Dataset.from_file

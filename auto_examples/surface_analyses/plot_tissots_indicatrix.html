@@ -1,0 +1,346 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tissot’s Indicatrix &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Plotting Geodesic Paths" href="plot_geodesic_path.html" />
+    <link rel="prev" title="Plot Example Retinotopy Flatmaps" href="../quickstart/plot_retinotopy_flatmap.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p>Click <a class="reference internal" href="#sphx-glr-download-auto-examples-surface-analyses-plot-tissots-indicatrix-py"><span class="std std-ref">here</span></a> to download the full example code</p>
+</div>
+<div class="sphx-glr-example-title section" id="tissot-s-indicatrix">
+<span id="sphx-glr-auto-examples-surface-analyses-plot-tissots-indicatrix-py"></span><h1>Tissot’s Indicatrix<a class="headerlink" href="#tissot-s-indicatrix" title="Permalink to this headline">¶</a></h1>
+<p>Creating a flatmap from a folded cortical surface always introduces some
+distortion. This is similar to what happens when a map of the globe is flattened
+into a 2-D map like a Mercator projection. For the cortical surface the amount
+and type of distortion will depend on the curvature of the surface (i.e. whether
+it is on a gyrus or a sulcus) and on the distance to the nearest cut.</p>
+<p>In general, we recommend examining data both in flattened and original 3-D space
+using the interactive webGL viewer, but it is also informative to visualize the
+distortion directly.</p>
+<p>One method to show distortion is to visualize how geodesic discs, which contain
+all of the points within some geodesic distance of a central point, appear on the
+flattened cortical surface.</p>
+<p>This technique is traditionally used to characterize and visualize distortions
+introduced by flattening the globe onto a map:</p>
+<img alt="../../_images/sphx_glr_plot_tissots_indicatrix_001.png" class="sphx-glr-single-img" src="../../_images/sphx_glr_plot_tissots_indicatrix_001.png" />
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Generating tissots_indicatrix surface info...
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+Adding vertex 88060..
+Adding vertex 93467..
+Adding vertex 51981..
+Adding vertex 142197..
+Adding vertex 104363..
+Adding vertex 37286..
+Adding vertex 34977..
+Adding vertex 14831..
+Adding vertex 3410..
+Adding vertex 34140..
+Adding vertex 63509..
+Adding vertex 117329..
+Adding vertex 151274..
+Adding vertex 83445..
+Adding vertex 112573..
+Adding vertex 69703..
+Adding vertex 140612..
+Adding vertex 148039..
+Adding vertex 96212..
+Adding vertex 82334..
+Adding vertex 136892..
+Adding vertex 104986..
+Adding vertex 131087..
+Adding vertex 53098..
+Adding vertex 87927..
+Adding vertex 63163..
+Adding vertex 129645..
+Adding vertex 85764..
+Adding vertex 1468..
+Adding vertex 68143..
+Adding vertex 38041..
+Adding vertex 132644..
+Adding vertex 62457..
+Adding vertex 18279..
+Adding vertex 30252..
+Adding vertex 50858..
+Adding vertex 29449..
+Adding vertex 101205..
+Adding vertex 42921..
+Adding vertex 143519..
+Adding vertex 15421..
+Adding vertex 17795..
+Adding vertex 105061..
+Adding vertex 39035..
+Adding vertex 91669..
+Adding vertex 87313..
+Adding vertex 117295..
+Adding vertex 134981..
+Adding vertex 1322..
+Adding vertex 115310..
+Adding vertex 24973..
+Adding vertex 126891..
+Adding vertex 5865..
+Adding vertex 27294..
+Adding vertex 45685..
+Adding vertex 17361..
+Adding vertex 100552..
+Adding vertex 91083..
+Adding vertex 150218..
+Adding vertex 65499..
+Adding vertex 54894..
+Adding vertex 68573..
+Adding vertex 60742..
+Adding vertex 111236..
+Adding vertex 2270..
+Adding vertex 98973..
+Adding vertex 63777..
+Adding vertex 133921..
+Adding vertex 119121..
+Adding vertex 48711..
+Adding vertex 5575..
+Adding vertex 28653..
+Adding vertex 53732..
+Adding vertex 108776..
+Adding vertex 79220..
+Adding vertex 137886..
+Adding vertex 53144..
+Adding vertex 111002..
+Adding vertex 66629..
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+Adding vertex 33559..
+Adding vertex 19745..
+Adding vertex 130690..
+Adding vertex 84877..
+Adding vertex 37341..
+Adding vertex 51690..
+Adding vertex 97968..
+Adding vertex 20283..
+Adding vertex 133522..
+Adding vertex 93414..
+Adding vertex 35202..
+Adding vertex 78917..
+Adding vertex 80437..
+Adding vertex 111103..
+Adding vertex 64118..
+Adding vertex 2164..
+Adding vertex 55676..
+Adding vertex 24564..
+Adding vertex 52639..
+Adding vertex 73271..
+Adding vertex 147408..
+Adding vertex 104325..
+Adding vertex 138164..
+Adding vertex 12066..
+Adding vertex 5184..
+Adding vertex 73282..
+Adding vertex 58398..
+Adding vertex 35979..
+Adding vertex 68649..
+Adding vertex 106574..
+Adding vertex 151133..
+Adding vertex 111829..
+Adding vertex 125877..
+Adding vertex 104544..
+Adding vertex 16600..
+Adding vertex 104120..
+Adding vertex 76213..
+Adding vertex 22684..
+Adding vertex 118700..
+Adding vertex 32727..
+Adding vertex 86588..
+Adding vertex 134423..
+Adding vertex 92918..
+Adding vertex 57640..
+Adding vertex 120087..
+Adding vertex 134233..
+Adding vertex 48005..
+Adding vertex 86454..
+Adding vertex 29528..
+Adding vertex 118781..
+Adding vertex 22902..
+Adding vertex 94980..
+Adding vertex 87476..
+Adding vertex 56426..
+Adding vertex 146615..
+Adding vertex 75261..
+Adding vertex 95071..
+Adding vertex 16063..
+Adding vertex 42800..
+Adding vertex 9344..
+Adding vertex 133844..
+Adding vertex 139446..
+Adding vertex 146241..
+Adding vertex 38306..
+Adding vertex 132129..
+Adding vertex 41503..
+Adding vertex 108688..
+Adding vertex 6044..
+Adding vertex 67298..
+Adding vertex 40064..
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">tissot</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surfinfo</span><span class="p">(</span><span class="s2">&quot;S1&quot;</span><span class="p">,</span> <span class="s2">&quot;tissots_indicatrix&quot;</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">spacing</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">tissot</span><span class="o">.</span><span class="n">cmap</span> <span class="o">=</span> <span class="s1">&#39;plasma&#39;</span>
+
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">tissot</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  57.664 seconds)</p>
+<div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-surface-analyses-plot-tissots-indicatrix-py">
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/3b8551027c0ebeddec92c73b044f4182/plot_tissots_indicatrix.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_tissots_indicatrix.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/71eedfa1e15eeae1d50e837a5d00378d/plot_tissots_indicatrix.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_tissots_indicatrix.ipynb</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Tissot’s Indicatrix</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_geodesic_path.html">Plotting Geodesic Paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_geodesic_distance.html">Plotting Geodesic Distances</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_flatmap_distortion.html">Flatmap Distortion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_subsurfaces.html">Plot and Use Subsurface Tools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_interpolate_data.html">Interpolate Data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Example Gallery</a><ul>
+      <li>Previous: <a href="../quickstart/plot_retinotopy_flatmap.html" title="previous chapter">Plot Example Retinotopy Flatmaps</a></li>
+      <li>Next: <a href="plot_geodesic_path.html" title="next chapter">Plotting Geodesic Paths</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/auto_examples/surface_analyses/plot_tissots_indicatrix.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

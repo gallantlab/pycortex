@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.to\_json
+==============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.to_json

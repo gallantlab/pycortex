@@ -1,0 +1,6 @@
+cortex.database.Database.make\_subj
+===================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.make_subj

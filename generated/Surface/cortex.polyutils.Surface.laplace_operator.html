@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.polyutils.Surface.laplace_operator &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-polyutils-surface-laplace-operator">
+<h1>cortex.polyutils.Surface.laplace_operator<a class="headerlink" href="#cortex-polyutils-surface-laplace-operator" title="Permalink to this headline">¶</a></h1>
+<dl class="method">
+<dt id="cortex.polyutils.Surface.laplace_operator">
+<em class="property">property </em><code class="sig-prename descclassname">Surface.</code><code class="sig-name descname">laplace_operator</code><a class="headerlink" href="#cortex.polyutils.Surface.laplace_operator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Laplace-Beltrami operator for this surface. A sparse adjacency matrix with
+edge weights determined by the cotangents of the angles opposite each edge.
+Returns a 4-tuple (B,D,W,V) where D is the ‘lumped mass matrix’, W is the weighted
+adjacency matrix, and V is a diagonal matrix that normalizes the adjacencies.
+The ‘stiffness matrix’, A, can be computed as V - W.</p>
+<p>The full LB operator can be computed as D^{-1} (V - W).</p>
+<p>B is the finite element method (FEM) ‘mass matrix’, which replaces D in FEM analyses.</p>
+<p>See ‘Discrete Laplace-Beltrami operators for shape analysis and segmentation’
+by Reuter et al., 2009 for details.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/generated/Surface/cortex.polyutils.Surface.laplace_operator.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

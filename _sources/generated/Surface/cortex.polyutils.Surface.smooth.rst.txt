@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.smooth
+===============================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.smooth

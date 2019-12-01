@@ -1,0 +1,6 @@
+cortex.dataset.Volume.random
+============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Volume.random

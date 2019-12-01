@@ -1,0 +1,6 @@
+cortex.mni.transform\_mni\_to\_subject
+======================================
+
+.. currentmodule:: cortex.mni
+
+.. autofunction:: transform_mni_to_subject

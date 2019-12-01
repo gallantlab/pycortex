@@ -1,0 +1,6 @@
+cortex.freesurfer.write\_decimated
+==================================
+
+.. currentmodule:: cortex.freesurfer
+
+.. autofunction:: write_decimated

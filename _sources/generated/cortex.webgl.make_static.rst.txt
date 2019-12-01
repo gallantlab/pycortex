@@ -1,0 +1,6 @@
+cortex.webgl.make\_static
+=========================
+
+.. currentmodule:: cortex.webgl
+
+.. autofunction:: make_static

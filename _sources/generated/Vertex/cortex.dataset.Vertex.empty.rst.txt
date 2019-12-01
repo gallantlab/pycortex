@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.empty
+===========================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.empty

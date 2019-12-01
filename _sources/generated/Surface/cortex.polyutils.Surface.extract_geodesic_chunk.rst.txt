@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.extract\_geodesic\_chunk
+=================================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.extract_geodesic_chunk

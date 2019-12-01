@@ -1,0 +1,293 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.polyutils.Surface &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-polyutils-surface">
+<h1>cortex.polyutils.Surface<a class="headerlink" href="#cortex-polyutils-surface" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="cortex.polyutils.Surface">
+<em class="property">class </em><code class="sig-prename descclassname">cortex.polyutils.</code><code class="sig-name descname">Surface</code><span class="sig-paren">(</span><em class="sig-param">pts</em>, <em class="sig-param">polys</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/polyutils/surface.html#Surface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.polyutils.Surface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a single cortical hemisphere surface. Can be the white matter surface,
+pial surface, fiducial (mid-cortical) surface, inflated surface, flattened surface,
+etc.</p>
+<p>Implements some useful functions for dealing with functions across surfaces.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>pts</strong><span class="classifier">2D ndarray, shape (total_verts, 3)</span></dt><dd><p>Location of each vertex in space (mm). Order is x, y, z.</p>
+</dd>
+<dt><strong>polys</strong><span class="classifier">2D ndarray, shape (total_polys, 3)</span></dt><dd><p>Indices of the vertices in each triangle in the surface.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.__init__.html#cortex.polyutils.Surface.__init__" title="cortex.polyutils.Surface.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(self, pts, polys)</p></td>
+<td><p>Initialize self.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.approx_geodesic_distance.html#cortex.polyutils.Surface.approx_geodesic_distance" title="cortex.polyutils.Surface.approx_geodesic_distance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">approx_geodesic_distance</span></code></a>(self, verts[, m])</p></td>
+<td><p>Computes approximate geodesic distance (in mm) from each vertex in  the surface to any vertex in the collection <cite>verts</cite>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.call_vtp_geodesic.html#cortex.polyutils.Surface.call_vtp_geodesic" title="cortex.polyutils.Surface.call_vtp_geodesic"><code class="xref py py-obj docutils literal notranslate"><span class="pre">call_vtp_geodesic</span></code></a>(self, vertex)</p></td>
+<td><p>Compute geodesic distance using VTP method</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.create_biharmonic_solver.html#cortex.polyutils.Surface.create_biharmonic_solver" title="cortex.polyutils.Surface.create_biharmonic_solver"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_biharmonic_solver</span></code></a>(self, boundary_verts)</p></td>
+<td><p>Set up biharmonic equation with Dirichlet boundary conditions on the cortical mesh and precompute Cholesky factorization for solving it.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.create_subsurface.html#cortex.polyutils.Surface.create_subsurface" title="cortex.polyutils.Surface.create_subsurface"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_subsurface</span></code></a>(self[, vertex_mask, …])</p></td>
+<td><p>Create subsurface for efficient operations on subset of Surface</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.edge_collapse.html#cortex.polyutils.Surface.edge_collapse" title="cortex.polyutils.Surface.edge_collapse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge_collapse</span></code></a>(self, p1, p2, target)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.exact_geodesic_distance.html#cortex.polyutils.Surface.exact_geodesic_distance" title="cortex.polyutils.Surface.exact_geodesic_distance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">exact_geodesic_distance</span></code></a>(self, vertex)</p></td>
+<td><p>Compute exact geodesic distance along surface</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.extract_chunk.html#cortex.polyutils.Surface.extract_chunk" title="cortex.polyutils.Surface.extract_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_chunk</span></code></a>(self[, nfaces, seed, auxpts])</p></td>
+<td><p>Extract a chunk of the surface using breadth first search, for testing purposes</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.extract_geodesic_chunk.html#cortex.polyutils.Surface.extract_geodesic_chunk" title="cortex.polyutils.Surface.extract_geodesic_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_geodesic_chunk</span></code></a>(self, origin, radius)</p></td>
+<td><p>Extract a chunk of the surface that is within radius of the origin by geodesic distance.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.geodesic_distance.html#cortex.polyutils.Surface.geodesic_distance" title="cortex.polyutils.Surface.geodesic_distance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geodesic_distance</span></code></a>(self, verts[, m, fem])</p></td>
+<td><p>Minimum mesh geodesic distance (in mm) from each vertex in surface to any vertex in the collection <cite>verts</cite>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.geodesic_path.html#cortex.polyutils.Surface.geodesic_path" title="cortex.polyutils.Surface.geodesic_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geodesic_path</span></code></a>(self, a, b[, max_len, d])</p></td>
+<td><p>Finds the shortest path between two points <cite>a</cite> and <cite>b</cite>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.get_connected_vertices.html#cortex.polyutils.Surface.get_connected_vertices" title="cortex.polyutils.Surface.get_connected_vertices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_connected_vertices</span></code></a>(self, vertex, mask[, …])</p></td>
+<td><p>return vertices connected to vertex that satisfy mask</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.get_euclidean_ball.html#cortex.polyutils.Surface.get_euclidean_ball" title="cortex.polyutils.Surface.get_euclidean_ball"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_euclidean_ball</span></code></a>(self, xyz, radius)</p></td>
+<td><p>return vertices within some 3d euclidean distance of an xyz coordinate</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.get_euclidean_patch.html#cortex.polyutils.Surface.get_euclidean_patch" title="cortex.polyutils.Surface.get_euclidean_patch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_euclidean_patch</span></code></a>(self, vertex, radius[, …])</p></td>
+<td><p>return connected vertices within some 3d euclidean distance of a vertex</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.get_geodesic_patch.html#cortex.polyutils.Surface.get_geodesic_patch" title="cortex.polyutils.Surface.get_geodesic_patch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_geodesic_patch</span></code></a>(self, vertex, radius[, …])</p></td>
+<td><p>return vertices within some 2d geodesic distance of a vertex (or vertices)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.get_geodesic_patches.html#cortex.polyutils.Surface.get_geodesic_patches" title="cortex.polyutils.Surface.get_geodesic_patches"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_geodesic_patches</span></code></a>(self, radius[, seeds, …])</p></td>
+<td><p>create patches of cortex centered around each vertex seed</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.get_geodesic_strip_patch.html#cortex.polyutils.Surface.get_geodesic_strip_patch" title="cortex.polyutils.Surface.get_geodesic_strip_patch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_geodesic_strip_patch</span></code></a>(self, v0, v1, radius)</p></td>
+<td><p>return patch that includes v0, v1, their geodesic path, and all points within some radius</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.get_graph.html#cortex.polyutils.Surface.get_graph" title="cortex.polyutils.Surface.get_graph"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_graph</span></code></a>(self)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.get_strip_coordinates.html#cortex.polyutils.Surface.get_strip_coordinates" title="cortex.polyutils.Surface.get_strip_coordinates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_strip_coordinates</span></code></a>(self, v0, v1[, …])</p></td>
+<td><p>get 2D coordinates of surface from v0 to v1</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.interp.html#cortex.polyutils.Surface.interp" title="cortex.polyutils.Surface.interp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">interp</span></code></a>(self, verts, vals)</p></td>
+<td><p>Interpolates a function between N knot points <cite>verts</cite> with the values <cite>vals</cite>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.lift_subsurface_data.html#cortex.polyutils.Surface.lift_subsurface_data" title="cortex.polyutils.Surface.lift_subsurface_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lift_subsurface_data</span></code></a>(self, data[, vertex_mask])</p></td>
+<td><p>expand vertex dimension of data to original surface’s size</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.mean_curvature.html#cortex.polyutils.Surface.mean_curvature" title="cortex.polyutils.Surface.mean_curvature"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mean_curvature</span></code></a>(self)</p></td>
+<td><p>Compute mean curvature of this surface using the Laplace-Beltrami operator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.patches.html#cortex.polyutils.Surface.patches" title="cortex.polyutils.Surface.patches"><code class="xref py py-obj docutils literal notranslate"><span class="pre">patches</span></code></a>(self[, auxpts, n])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.plot_subsurface_rotating_gif.html#cortex.polyutils.Surface.plot_subsurface_rotating_gif" title="cortex.polyutils.Surface.plot_subsurface_rotating_gif"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_subsurface_rotating_gif</span></code></a>(self, path[, …])</p></td>
+<td><p>create a rotating gif of subsurface</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.polyhedra.html#cortex.polyutils.Surface.polyhedra" title="cortex.polyutils.Surface.polyhedra"><code class="xref py py-obj docutils literal notranslate"><span class="pre">polyhedra</span></code></a>(self, wm)</p></td>
+<td><p>Iterates through the polyhedra that make up the closest volume to a certain vertex</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.smooth.html#cortex.polyutils.Surface.smooth" title="cortex.polyutils.Surface.smooth"><code class="xref py py-obj docutils literal notranslate"><span class="pre">smooth</span></code></a>(self, scalars[, factor, iterations])</p></td>
+<td><p>Smooth vertex-wise function given by <cite>scalars</cite> across the surface using mean curvature flow method (see <a class="reference external" href="http://brickisland.net/cs177fa12/?p=302">http://brickisland.net/cs177fa12/?p=302</a>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.surface_gradient.html#cortex.polyutils.Surface.surface_gradient" title="cortex.polyutils.Surface.surface_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">surface_gradient</span></code></a>(self, scalars[, at_verts])</p></td>
+<td><p>Gradient of a function with values <cite>scalars</cite> at each vertex on the surface.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.adj.html#cortex.polyutils.Surface.adj" title="cortex.polyutils.Surface.adj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adj</span></code></a></p></td>
+<td><p>Sparse vertex adjacency matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.avg_edge_length.html#cortex.polyutils.Surface.avg_edge_length" title="cortex.polyutils.Surface.avg_edge_length"><code class="xref py py-obj docutils literal notranslate"><span class="pre">avg_edge_length</span></code></a></p></td>
+<td><p>Average length of all edges in the surface.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.boundary_vertices.html#cortex.polyutils.Surface.boundary_vertices" title="cortex.polyutils.Surface.boundary_vertices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_vertices</span></code></a></p></td>
+<td><p>return mask of boundary vertices</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.connected.html#cortex.polyutils.Surface.connected" title="cortex.polyutils.Surface.connected"><code class="xref py py-obj docutils literal notranslate"><span class="pre">connected</span></code></a></p></td>
+<td><p>Sparse matrix of vertex-face associations.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.cotangent_weights.html#cortex.polyutils.Surface.cotangent_weights" title="cortex.polyutils.Surface.cotangent_weights"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cotangent_weights</span></code></a></p></td>
+<td><p>Cotangent of angle opposite each vertex in each face.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.edge_lengths.html#cortex.polyutils.Surface.edge_lengths" title="cortex.polyutils.Surface.edge_lengths"><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge_lengths</span></code></a></p></td>
+<td><p>return vector of edge lengths</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.face_areas.html#cortex.polyutils.Surface.face_areas" title="cortex.polyutils.Surface.face_areas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">face_areas</span></code></a></p></td>
+<td><p>Area of each face.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.face_normals.html#cortex.polyutils.Surface.face_normals" title="cortex.polyutils.Surface.face_normals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">face_normals</span></code></a></p></td>
+<td><p>Normal vector for each face.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.furthest_border_points.html#cortex.polyutils.Surface.furthest_border_points" title="cortex.polyutils.Surface.furthest_border_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">furthest_border_points</span></code></a></p></td>
+<td><p>return pair of points on surface border that have largest pairwise geodesic distance</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.graph.html#cortex.polyutils.Surface.graph" title="cortex.polyutils.Surface.graph"><code class="xref py py-obj docutils literal notranslate"><span class="pre">graph</span></code></a></p></td>
+<td><p>NetworkX undirected graph representing this Surface.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.iter_surfedges.html#cortex.polyutils.Surface.iter_surfedges" title="cortex.polyutils.Surface.iter_surfedges"><code class="xref py py-obj docutils literal notranslate"><span class="pre">iter_surfedges</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.iter_surfedges_weighted.html#cortex.polyutils.Surface.iter_surfedges_weighted" title="cortex.polyutils.Surface.iter_surfedges_weighted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">iter_surfedges_weighted</span></code></a></p></td>
+<td><p>iterate through edges</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.laplace_operator.html#cortex.polyutils.Surface.laplace_operator" title="cortex.polyutils.Surface.laplace_operator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">laplace_operator</span></code></a></p></td>
+<td><p>Laplace-Beltrami operator for this surface.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.ppts.html#cortex.polyutils.Surface.ppts" title="cortex.polyutils.Surface.ppts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ppts</span></code></a></p></td>
+<td><p>3D matrix of points in each face: n faces x 3 points per face x 3 coords per point.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.subsurface_vertex_inverse.html#cortex.polyutils.Surface.subsurface_vertex_inverse" title="cortex.polyutils.Surface.subsurface_vertex_inverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">subsurface_vertex_inverse</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.vertex_normals.html#cortex.polyutils.Surface.vertex_normals" title="cortex.polyutils.Surface.vertex_normals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_normals</span></code></a></p></td>
+<td><p>Normal vector for each vertex (average of normals for neighboring faces).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.weighted_distance_graph.html#cortex.polyutils.Surface.weighted_distance_graph" title="cortex.polyutils.Surface.weighted_distance_graph"><code class="xref py py-obj docutils literal notranslate"><span class="pre">weighted_distance_graph</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.polyutils.Surface.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

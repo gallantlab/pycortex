@@ -1,0 +1,30 @@
+cortex.polyutils.Distortion
+===========================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoclass:: Distortion
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: Distortion
+   
+     ~Distortion.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: Distortion
+   
+      ~Distortion.areal
+      ~Distortion.metric
+   
+   

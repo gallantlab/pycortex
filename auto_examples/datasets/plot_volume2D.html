@@ -1,0 +1,220 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Plot 2D Volume Data &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Plot RGB Vertex Data" href="plot_vertexRGB.html" />
+    <link rel="prev" title="Plot RGB Volume Data" href="plot_volumeRGB.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p>Click <a class="reference internal" href="#sphx-glr-download-auto-examples-datasets-plot-volume2d-py"><span class="std std-ref">here</span></a> to download the full example code</p>
+</div>
+<div class="sphx-glr-example-title section" id="plot-2d-volume-data">
+<span id="sphx-glr-auto-examples-datasets-plot-volume2d-py"></span><h1>Plot 2D Volume Data<a class="headerlink" href="#plot-2d-volume-data" title="Permalink to this headline">¶</a></h1>
+<p>This plots example volume data onto an example subject, S1, onto a flatmap
+using quickflat. In order for this to run, you have to have a flatmap for
+this subject in the pycortex filestore.</p>
+<p>The cortex.Volume2D object is instantiated with two numpy arrays of the same
+size as the scan for this subject and transform. Here, there are two datasets
+that have been generated to look like gradients across the brain, but you can
+replace these with any numpy arrays of the correct dimensionality.</p>
+<p>The colormap used in the first two flatmaps is</p>
+<img alt="../../_images/RdBu_covar.png" src="../../_images/RdBu_covar.png" />
+<p>As with a 1D Volume, you can change vmin and vmax to threshold, but here
+they can be manipulated individually for the two arrays.</p>
+<p>You can also change the colormap when creating a new 2D volume.  The colormap
+used in the last flatmap is</p>
+<img alt="../../_images/GreenWhiteBlue_2D.png" src="../../_images/GreenWhiteBlue_2D.png" />
+<ul class="sphx-glr-horizontal">
+<li><img alt="../../_images/sphx_glr_plot_volume2D_001.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_volume2D_001.png" />
+</li>
+<li><img alt="../../_images/sphx_glr_plot_volume2D_002.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_volume2D_002.png" />
+</li>
+<li><img alt="../../_images/sphx_glr_plot_volume2D_003.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_volume2D_003.png" />
+</li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">subject</span> <span class="o">=</span> <span class="s2">&quot;S1&quot;</span>
+<span class="n">xfm</span> <span class="o">=</span> <span class="s2">&quot;fullhead&quot;</span>
+
+<span class="c1"># Creating two different test datasets that are both the same shape as this</span>
+<span class="c1"># transform with one entry for each voxel</span>
+<span class="c1"># The matrices have just been reordered in different ways so that they make</span>
+<span class="c1"># gradients across the brain in different directions</span>
+<span class="n">test_data1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">31</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">31</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;C&#39;</span><span class="p">)</span>
+<span class="n">test_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">31</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">31</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">)</span>
+
+<span class="c1"># This creates a 2D Volume object for both of our test datasets for the given</span>
+<span class="c1"># subject and transform</span>
+<span class="n">vol_data</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume2D</span><span class="p">(</span><span class="n">test_data1</span><span class="p">,</span> <span class="n">test_data2</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vol_data</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># You can alter the minimum and maximum values shown on the colorbar and this</span>
+<span class="c1"># can be done separately for the two different datasets</span>
+<span class="n">vol_data</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume2D</span><span class="p">(</span><span class="n">test_data1</span><span class="p">,</span> <span class="n">test_data2</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span>
+                           <span class="n">vmin</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">test_data1</span><span class="p">),</span> <span class="n">vmax</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">test_data1</span><span class="p">),</span>
+                           <span class="n">vmin2</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">test_data2</span><span class="p">),</span> <span class="n">vmax2</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">test_data2</span><span class="p">))</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vol_data</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># To change the colormap, you have to create a new Volume2D object</span>
+<span class="n">vol_color</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume2D</span><span class="p">(</span><span class="n">test_data1</span><span class="p">,</span> <span class="n">test_data2</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span>
+                            <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;GreenWhiteBlue_2D&quot;</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vol_color</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  8.565 seconds)</p>
+<div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-datasets-plot-volume2d-py">
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/9678ad75a5693c67b96cdc1c23d5700c/plot_volume2D.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_volume2D.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/c4a1569322d832cb845e73fb64382cd3/plot_volume2D.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_volume2D.ipynb</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="plot_dataset_arithmetic.html">Dataset Arithmetic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_volume_to_vertex.html">Map from Volume to Vertex Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_volume.html">Plot Volume Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_vertex.html">Plot Vertex Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_vertex2D.html">Plot 2D Vertex Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_volumeRGB.html">Plot RGB Volume Data</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Plot 2D Volume Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_vertexRGB.html">Plot RGB Vertex Data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Example Gallery</a><ul>
+      <li>Previous: <a href="plot_volumeRGB.html" title="previous chapter">Plot RGB Volume Data</a></li>
+      <li>Next: <a href="plot_vertexRGB.html" title="next chapter">Plot RGB Vertex Data</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/auto_examples/datasets/plot_volume2D.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

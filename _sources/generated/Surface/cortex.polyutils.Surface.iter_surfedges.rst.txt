@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.iter\_surfedges
+========================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.iter_surfedges

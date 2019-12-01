@@ -1,0 +1,6 @@
+cortex.dataset.Dataset.get\_mask
+================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Dataset.get_mask

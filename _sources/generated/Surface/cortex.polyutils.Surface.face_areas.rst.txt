@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.face\_areas
+====================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.face_areas

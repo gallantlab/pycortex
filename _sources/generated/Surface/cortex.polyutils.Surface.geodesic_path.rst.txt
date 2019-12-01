@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.geodesic\_path
+=======================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.geodesic_path

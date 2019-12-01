@@ -1,0 +1,6 @@
+cortex.dataset.Volume.from\_hdf
+===============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Volume.from_hdf

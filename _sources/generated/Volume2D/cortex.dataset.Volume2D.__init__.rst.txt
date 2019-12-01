@@ -1,0 +1,6 @@
+cortex.dataset.Volume2D.\_\_init\_\_
+====================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Volume2D.__init__

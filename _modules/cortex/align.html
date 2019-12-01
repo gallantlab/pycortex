@@ -1,0 +1,488 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.align &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.align</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Contains functions for making alignments between functional data and the surface, or, finding where the brain is.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">builtins</span> <span class="kn">import</span> <span class="nb">input</span>
+
+<div class="viewcode-block" id="manual"><a class="viewcode-back" href="../../generated/cortex.align.manual.html#cortex.align.manual">[docs]</a><span class="k">def</span> <span class="nf">manual</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Open GUI for manually aligning a functional volume to the cortical surface for `subject`. This</span>
+<span class="sd">    creates a new transform called `xfm`. The name of a nibabel-readable file (e.g. nii) should be</span>
+<span class="sd">    supplied as `reference`. This image will be copied into the database.</span>
+
+<span class="sd">    To modify an existing functional-anatomical transform, `reference` can be left blank, and the</span>
+<span class="sd">    previously used reference will be loaded.</span>
+
+<span class="sd">    &lt;&lt;ADD DETAILS ABOUT TRANSFORMATION MATRIX FORMAT HERE&gt;&gt;</span>
+
+<span class="sd">    When the GUI is closed, the transform will be saved into the pycortex database. The GUI requires</span>
+<span class="sd">    Mayavi support.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject identifier.</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        String identifying the transform to be created or loaded.</span>
+<span class="sd">    reference : str, optional</span>
+<span class="sd">        Path to a nibabel-readable image that will be used as the reference for this transform.</span>
+<span class="sd">        If given the default value of None, this function will attempt to load an existing reference</span>
+<span class="sd">        image from the database.</span>
+<span class="sd">    kwargs : dict</span>
+<span class="sd">        Passed to mayavi_aligner.get_aligner.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    m : 2D ndarray, shape (4, 4)</span>
+<span class="sd">        Transformation matrix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+    <span class="kn">from</span> <span class="nn">.mayavi_aligner</span> <span class="kn">import</span> <span class="n">get_aligner</span>
+    <span class="k">def</span> <span class="nf">save_callback</span><span class="p">(</span><span class="n">aligner</span><span class="p">):</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">save_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">aligner</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="s2">&quot;magnet&quot;</span><span class="p">),</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s1">&#39;magnet&#39;</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="n">reference</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;saved xfm&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">view_callback</span><span class="p">(</span><span class="n">aligner</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;view-only mode! ignoring changes&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Check whether transform w/ this xfmname already exists</span>
+    <span class="n">view_only_mode</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+        <span class="c1"># Transform exists, make sure that reference is None</span>
+        <span class="k">if</span> <span class="n">reference</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Refusing to overwrite reference for existing transform </span><span class="si">%s</span><span class="s1">, use reference=None to load stored reference&#39;</span> <span class="o">%</span> <span class="n">xfmname</span><span class="p">)</span>
+
+        <span class="c1"># if masks have been cached, quit! user must remove them by hand</span>
+        <span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">glob</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)[</span><span class="s1">&#39;masks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">))):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Refusing to overwrite existing transform </span><span class="si">%s</span><span class="s1"> because there are cached masks. Delete the masks manually if you want to modify the transform.&#39;</span> <span class="o">%</span> <span class="n">xfmname</span><span class="p">)</span>
+            <span class="n">checked</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="n">checked</span><span class="p">:</span>
+                <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Do you want to continue in view-only mode? (Y/N) &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">resp</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">]:</span>
+                    <span class="n">checked</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">if</span> <span class="n">resp</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">]:</span>
+                        <span class="n">view_only_mode</span> <span class="o">=</span> <span class="kc">True</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Continuing in view-only mode...&quot;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Exiting...&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Didn&#39;t get that, please try again..&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+        <span class="c1"># Transform does not exist, make sure that reference exists</span>
+        <span class="k">if</span> <span class="n">reference</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">reference</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Reference image file (</span><span class="si">%s</span><span class="s1">) does not exist&#39;</span> <span class="o">%</span> <span class="n">reference</span><span class="p">)</span>
+
+
+
+
+    <span class="n">m</span> <span class="o">=</span> <span class="n">get_aligner</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">epifile</span><span class="o">=</span><span class="n">reference</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">save_callback</span> <span class="o">=</span> <span class="n">view_callback</span> <span class="k">if</span> <span class="n">view_only_mode</span> <span class="k">else</span> <span class="n">save_callback</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">configure_traits</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">m</span></div>
+
+<span class="k">def</span> <span class="nf">fs_manual</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">output_name</span><span class="o">=</span><span class="s2">&quot;register.lta&quot;</span><span class="p">,</span> <span class="n">wm_color</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span> 
+    <span class="n">pial_color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="n">wm_surface</span><span class="o">=</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="n">noclean</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inspect_only</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Open Freesurfer FreeView GUI for manually aligning/adjusting a functional</span>
+<span class="sd">    volume to the cortical surface for `subject`. This creates a new transform</span>
+<span class="sd">    called `xfmname`. The name of a nibabel-readable file (e.g. NIfTI) should be</span>
+<span class="sd">    supplied as `reference`. This image will be copied into the database.</span>
+
+<span class="sd">    IMPORTANT: This function assumes that the resulting .lta file is saved as:</span>
+<span class="sd">    &quot;{default folder chosen by FreeView (should be /tmp/fsalign_xxx)}/{output_name}&quot;.</span>
+<span class="sd">    </span>
+<span class="sd">    NOTE: Half-fixed some potential bugs in here, related to assumptions about how </span>
+<span class="sd">    results from mri_info calls would be formatted. IFF .dat files are written</span>
+<span class="sd">    based on nii files that have been stripped of their headers, then there will </span>
+<span class="sd">    be an extra line at the top stating that the coordinates are assumed to be in mm.</span>
+<span class="sd">    Without this line, the code here fails. Seems brittle, ripe for future bugs.</span>
+
+<span class="sd">    ALSO: all the freesurfer environment stuff shouldn&#39;t be necessary, except that</span>
+<span class="sd">    I don&#39;t know what vox2ras-tkr is doing.</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject identifier.</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        The name of the transform to be modified.</span>
+<span class="sd">    output_name : str</span>
+<span class="sd">        The name of the .lta file generated after FreeView editing.</span>
+<span class="sd">    wm_color : str | &quot;blue&quot;</span>
+<span class="sd">        Color of the white matter surface. Default is &quot;blue&quot;. This can</span>
+<span class="sd">        also be adjusted in the FreeView GUI.</span>
+<span class="sd">    pial_color : str | &quot;red&quot;</span>
+<span class="sd">        Color of the pial surface. Default is &quot;red&quot;. This can also be adjusted</span>
+<span class="sd">        the FreeView GUI.</span>
+<span class="sd">    noclean : boolean | False</span>
+<span class="sd">        If True, intermediate files will not be removed from /tmp/fsalign_xxx</span>
+<span class="sd">        (this is useful for debugging things), and the returned value will be</span>
+<span class="sd">        the name of the temp directory. Default False.</span>
+<span class="sd">    reference : str</span>
+<span class="sd">        name of reference (generally, functional) volume. Only provide this if</span>
+<span class="sd">        you are working from scratch (if no transform exists already), else</span>
+<span class="sd">        it will throw an error.</span>
+<span class="sd">    inspect_only : boolean | False</span>
+<span class="sd">        Whether to open transform to view only (if True, nothing is saved</span>
+<span class="sd">        when freeview is closed)</span>
+<span class="sd">    wm_surface : string</span>
+<span class="sd">        name for white matter surface to use. &#39;white&#39; or &#39;smoothwm&#39;</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Nothing unless noclean is true.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+    <span class="kn">import</span> <span class="nn">tempfile</span>
+    <span class="kn">import</span> <span class="nn">shutil</span>
+    <span class="kn">from</span> <span class="nn">.xfm</span> <span class="kn">import</span> <span class="n">Transform</span>
+    <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+
+    <span class="n">retval</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cache</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;fsalign_&quot;</span><span class="p">)</span>
+            <span class="n">sub_xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+
+            <span class="c1"># if masks have been cached, quit! user must remove them by hand</span>
+            <span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
+            <span class="n">masks_exist</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">glob</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)[</span><span class="s1">&#39;masks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">)))</span>
+            <span class="k">if</span> <span class="n">masks_exist</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">inspect_only</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Refusing to overwrite existing transform </span><span class="si">%s</span><span class="s1"> because there are cached masks. Delete the masks manually if you want to modify the transform.&#39;</span> <span class="o">%</span> <span class="n">xfmname</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Exiting...&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">reference</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Refusing to overwrite extant reference for transform&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">reference</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> 
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transform does not exist!&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">reference</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Load load extant transform-relevant things</span>
+            <span class="n">reference</span> <span class="o">=</span> <span class="n">sub_xfm</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="n">sub_xfm</span><span class="o">.</span><span class="n">to_freesurfer</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="s2">&quot;register.dat&quot;</span><span class="p">),</span> <span class="n">subject</span><span class="p">)</span> <span class="c1"># Transform in freesurfer .dat format</span>
+            <span class="c1"># Command for FreeView and run</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;freeview -v $SUBJECTS_DIR/</span><span class="si">{sub}</span><span class="s2">/mri/orig.mgz &quot;</span>
+                    <span class="s2">&quot;</span><span class="si">{ref}</span><span class="s2">:reg=</span><span class="si">{reg}</span><span class="s2"> &quot;</span>
+                   <span class="s2">&quot;-f $SUBJECTS_DIR/</span><span class="si">{sub}</span><span class="s2">/surf/lh.</span><span class="si">{wms}</span><span class="s2">:edgecolor=</span><span class="si">{wmc}</span><span class="s2"> $SUBJECTS_DIR/</span><span class="si">{sub}</span><span class="s2">/surf/rh.</span><span class="si">{wms}</span><span class="s2">:edgecolor=</span><span class="si">{wmc}</span><span class="s2"> &quot;</span>
+                   <span class="s2">&quot;$SUBJECTS_DIR/</span><span class="si">{sub}</span><span class="s2">/surf/lh.pial:edgecolor=</span><span class="si">{pialc}</span><span class="s2"> $SUBJECTS_DIR/</span><span class="si">{sub}</span><span class="s2">/surf/rh.pial:edgecolor=</span><span class="si">{pialc}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sub</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">ref</span><span class="o">=</span><span class="n">reference</span><span class="p">,</span> <span class="n">reg</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="s2">&quot;register.dat&quot;</span><span class="p">),</span>
+                             <span class="n">wmc</span><span class="o">=</span><span class="n">wm_color</span><span class="p">,</span> <span class="n">pialc</span><span class="o">=</span><span class="n">pial_color</span><span class="p">,</span> <span class="n">wms</span><span class="o">=</span><span class="n">wm_surface</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;=== Calling (NO REFERENCE PROVIDED): ===&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Command for FreeView and run</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;freeview -v $SUBJECTS_DIR/</span><span class="si">{sub}</span><span class="s2">/mri/orig.mgz &quot;</span>
+                   <span class="s2">&quot;</span><span class="si">{ref}</span><span class="s2"> &quot;</span>
+                   <span class="s2">&quot;-f $SUBJECTS_DIR/</span><span class="si">{sub}</span><span class="s2">/surf/lh.</span><span class="si">{wms}</span><span class="s2">:edgecolor=</span><span class="si">{wmc}</span><span class="s2"> $SUBJECTS_DIR/</span><span class="si">{sub}</span><span class="s2">/surf/rh.</span><span class="si">{wms}</span><span class="s2">:edgecolor=</span><span class="si">{wmc}</span><span class="s2"> &quot;</span>
+                   <span class="s2">&quot;$SUBJECTS_DIR/</span><span class="si">{sub}</span><span class="s2">/surf/lh.pial:edgecolor=</span><span class="si">{pialc}</span><span class="s2"> $SUBJECTS_DIR/</span><span class="si">{sub}</span><span class="s2">/surf/rh.pial:edgecolor=</span><span class="si">{pialc}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sub</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">ref</span><span class="o">=</span><span class="n">reference</span><span class="p">,</span>
+                             <span class="n">wmc</span><span class="o">=</span><span class="n">wm_color</span><span class="p">,</span> <span class="n">pialc</span><span class="o">=</span><span class="n">pial_color</span><span class="p">,</span> 
+                             <span class="n">wms</span><span class="o">=</span><span class="n">wm_surface</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;=== Calling: ===&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect_only</span><span class="p">:</span>
+            <span class="n">sfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">output_name</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">REGISTRATION MUST BE SAVED AS:</span><span class="se">\n\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sfile</span><span class="p">))</span>
+
+        <span class="c1"># Run and save transform when user is done editing</span>
+        <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;Problem with FreeView!&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect_only</span><span class="p">:</span>
+                <span class="c1"># Convert transform into .dat format</span>
+                <span class="c1"># Unclear why we&#39;re not just saving in .dat format above...?</span>
+                <span class="n">reg_dat</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">output_name</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.dat&quot;</span><span class="p">)</span>
+                <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;lta_convert --inlta </span><span class="si">{inlta}</span><span class="s2"> --outreg </span><span class="si">{regdat}</span><span class="s2">&quot;</span>
+                <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">inlta</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">output_name</span><span class="p">),</span> <span class="n">regdat</span><span class="o">=</span><span class="n">reg_dat</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;Error converting lta into dat!&quot;</span><span class="p">)</span>
+                <span class="c1"># Save transform to pycortex</span>
+                <span class="n">xfm</span> <span class="o">=</span> <span class="n">Transform</span><span class="o">.</span><span class="n">from_freesurfer</span><span class="p">(</span><span class="n">reg_dat</span><span class="p">,</span> <span class="n">reference</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">save_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">xfm</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s1">&#39;coord&#39;</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="n">reference</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;saved xfm&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">noclean</span><span class="p">:</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">retval</span> <span class="o">=</span> <span class="n">cache</span>
+    <span class="k">return</span> <span class="n">retval</span>
+
+
+<div class="viewcode-block" id="automatic"><a class="viewcode-back" href="../../generated/cortex.align.automatic.html#cortex.align.automatic">[docs]</a><span class="k">def</span> <span class="nf">automatic</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">reference</span><span class="p">,</span> <span class="n">noclean</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bbrtype</span><span class="o">=</span><span class="s2">&quot;signed&quot;</span><span class="p">,</span> <span class="n">pre_flirt_args</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">use_fs_bbr</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.</span>
+
+<span class="sd">    If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting</span>
+<span class="sd">    transform called `xfmname` will be automatically stored in the database.</span>
+
+<span class="sd">    It&#39;s good practice to open up this transform afterward in the manual aligner and check how it worked.</span>
+<span class="sd">    Do that using the following (with the same `subject` and `xfmname` used here, no need for `reference`):</span>
+<span class="sd">    &gt; align.manual(subject, xfmname)</span>
+
+<span class="sd">    If automatic alignment gives you a very bad answer, you can try giving the pre-BBR FLIRT</span>
+<span class="sd">    some hints by passing &#39;-usesqform&#39; in as `pre_flirt_args`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject identifier.</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        String identifying the transform to be created.</span>
+<span class="sd">    reference : str</span>
+<span class="sd">        Path to a nibabel-readable image that will be used as the reference for this transform.</span>
+<span class="sd">        Usually, this is a single (3D) functional data volume.</span>
+<span class="sd">    noclean : bool, optional</span>
+<span class="sd">        If True intermediate files will not be removed from /tmp (this is useful for debugging things),</span>
+<span class="sd">        and the returned value will be the name of the temp directory. Default False.</span>
+<span class="sd">    bbrtype : str, optional</span>
+<span class="sd">        The &#39;bbrtype&#39; argument that is passed to FLIRT.</span>
+<span class="sd">    pre_flirt_args : str, optional</span>
+<span class="sd">        Additional arguments that are passed to the FLIRT pre-alignment step (not BBR).</span>
+<span class="sd">    use_fs_bbr : bool, optional</span>
+<span class="sd">        If True will use freesurfer bbregister instead of FSL BBR.</span>
+<span class="sd">    save_dat : bool, optional</span>
+<span class="sd">        If True, will save the register.dat file from freesurfer bbregister into</span>
+<span class="sd">        freesurfer&#39;s $SUBJECTS_DIR/subject/tmp.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Nothing unless `noclean` is True.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">shlex</span>
+    <span class="kn">import</span> <span class="nn">shutil</span>
+    <span class="kn">import</span> <span class="nn">tempfile</span>
+    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+
+    <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+    <span class="kn">from</span> <span class="nn">.xfm</span> <span class="kn">import</span> <span class="n">Transform</span>
+    <span class="kn">from</span> <span class="nn">.options</span> <span class="kn">import</span> <span class="n">config</span>
+
+    <span class="n">fsl_prefix</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basic&quot;</span><span class="p">,</span> <span class="s2">&quot;fsl_prefix&quot;</span><span class="p">)</span>
+    <span class="n">schfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;bbr.sch&quot;</span><span class="p">)</span>
+
+    <span class="n">retval</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">absreference</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">use_fs_bbr</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Running freesurfer BBR&#39;</span><span class="p">)</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;bbregister --s </span><span class="si">{sub}</span><span class="s1"> --mov </span><span class="si">{absref}</span><span class="s1"> --init-fsl --reg </span><span class="si">{cache}</span><span class="s1">/register.dat --t1&#39;</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sub</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">absref</span><span class="o">=</span><span class="n">absreference</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s1">&#39;Error calling freesurfer BBR!&#39;</span><span class="p">)</span>
+
+            <span class="n">xfm</span> <span class="o">=</span> <span class="n">Transform</span><span class="o">.</span><span class="n">from_freesurfer</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="s2">&quot;register.dat&quot;</span><span class="p">),</span> <span class="n">absreference</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;raw&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+            <span class="n">bet</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;brainmask&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+            <span class="n">wmseg</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;whitematter&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+            <span class="c1">#Compute anatomical-to-epi transform</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;FLIRT pre-alignment&#39;</span><span class="p">)</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{fslpre}</span><span class="s1">flirt  -in </span><span class="si">{epi}</span><span class="s1"> -ref </span><span class="si">{bet}</span><span class="s1"> -dof 6 </span><span class="si">{pre_flirt_args}</span><span class="s1"> -omat </span><span class="si">{cache}</span><span class="s1">/init.mat&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+               <span class="n">fslpre</span><span class="o">=</span><span class="n">fsl_prefix</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span> <span class="n">epi</span><span class="o">=</span><span class="n">absreference</span><span class="p">,</span> <span class="n">bet</span><span class="o">=</span><span class="n">bet</span><span class="p">,</span> <span class="n">pre_flirt_args</span><span class="o">=</span><span class="n">pre_flirt_args</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+               <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s1">&#39;Error calling initial FLIRT&#39;</span><span class="p">)</span>
+
+
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Running BBR&#39;</span><span class="p">)</span>
+            <span class="c1"># Run epi-to-anat transform (this is more stable than anat-to-epi in FSL!)</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{fslpre}</span><span class="s1">flirt -in </span><span class="si">{epi}</span><span class="s1"> -ref </span><span class="si">{raw}</span><span class="s1"> -dof 6 -cost bbr -wmseg </span><span class="si">{wmseg}</span><span class="s1"> -init </span><span class="si">{cache}</span><span class="s1">/init.mat -omat </span><span class="si">{cache}</span><span class="s1">/out.mat -schedule </span><span class="si">{schfile}</span><span class="s1"> -bbrtype </span><span class="si">{bbrtype}</span><span class="s1">&#39;</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fslpre</span><span class="o">=</span><span class="n">fsl_prefix</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">bet</span><span class="p">,</span> <span class="n">wmseg</span><span class="o">=</span><span class="n">wmseg</span><span class="p">,</span> <span class="n">epi</span><span class="o">=</span><span class="n">absreference</span><span class="p">,</span> <span class="n">schfile</span><span class="o">=</span><span class="n">schfile</span><span class="p">,</span> <span class="n">bbrtype</span><span class="o">=</span><span class="n">bbrtype</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s1">&#39;Error calling BBR flirt&#39;</span><span class="p">)</span>
+
+            <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="s2">&quot;out.mat&quot;</span><span class="p">))</span>
+            <span class="c1"># Pass transform as FROM epi TO anat; transform will be inverted</span>
+            <span class="c1"># back to anat-to-epi, standard direction for pycortex internal</span>
+            <span class="c1"># storage by from_fsl</span>
+            <span class="n">xfm</span> <span class="o">=</span> <span class="n">Transform</span><span class="o">.</span><span class="n">from_fsl</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">absreference</span><span class="p">,</span><span class="n">raw</span><span class="p">)</span>
+
+        <span class="c1"># Save as pycortex &#39;coord&#39; transform</span>
+        <span class="n">xfm</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span><span class="n">xfmname</span><span class="p">,</span><span class="s1">&#39;coord&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Success&#39;</span><span class="p">)</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">noclean</span><span class="p">:</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">retval</span> <span class="o">=</span> <span class="n">cache</span>
+
+    <span class="k">return</span> <span class="n">retval</span></div>
+
+<div class="viewcode-block" id="autotweak"><a class="viewcode-back" href="../../generated/cortex.align.autotweak.html#cortex.align.autotweak">[docs]</a><span class="k">def</span> <span class="nf">autotweak</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Tweak an alignment using the FLIRT boundary-based alignment (BBR) from FSL.</span>
+<span class="sd">    Ideally this function should actually use a limited search range, but it doesn&#39;t.</span>
+<span class="sd">    It&#39;s probably not very useful.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject identifier.</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        String identifying the transform to be tweaked.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">shlex</span>
+    <span class="kn">import</span> <span class="nn">shutil</span>
+    <span class="kn">import</span> <span class="nn">tempfile</span>
+    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+
+    <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+    <span class="kn">from</span> <span class="nn">.xfm</span> <span class="kn">import</span> <span class="n">Transform</span>
+    <span class="kn">from</span> <span class="nn">.options</span> <span class="kn">import</span> <span class="n">config</span>
+
+    <span class="n">fsl_prefix</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basic&quot;</span><span class="p">,</span> <span class="s2">&quot;fsl_prefix&quot;</span><span class="p">)</span>
+    <span class="n">schfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;bbr.sch&quot;</span><span class="p">)</span>
+
+    <span class="n">magnet</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s1">&#39;magnet&#39;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">epifile</span> <span class="o">=</span> <span class="n">magnet</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;raw&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+        <span class="n">bet</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;brainmask&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+        <span class="n">wmseg</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;whitematter&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+        <span class="n">initmat</span> <span class="o">=</span> <span class="n">magnet</span><span class="o">.</span><span class="n">to_fsl</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;raw&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="s1">&#39;init.mat&#39;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">initmat</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%f</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Running BBR&#39;</span><span class="p">)</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{fslpre}</span><span class="s1">flirt -in </span><span class="si">{epi}</span><span class="s1"> -ref </span><span class="si">{raw}</span><span class="s1"> -dof 6 -cost bbr -wmseg </span><span class="si">{wmseg}</span><span class="s1"> -init </span><span class="si">{cache}</span><span class="s1">/init.mat -omat </span><span class="si">{cache}</span><span class="s1">/out.mat -schedule </span><span class="si">{schfile}</span><span class="s1">&#39;</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">,</span> <span class="n">wmseg</span><span class="o">=</span><span class="n">wmseg</span><span class="p">,</span> <span class="n">epi</span><span class="o">=</span><span class="n">epifile</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s1">&#39;Error calling BBR flirt&#39;</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="s2">&quot;out.mat&quot;</span><span class="p">))</span>
+        <span class="c1"># Pass transform as FROM epi TO anat; transform will be inverted</span>
+        <span class="c1"># back to anat-to-epi, standard direction for pycortex internal</span>
+        <span class="c1"># storage by from_fsl</span>
+        <span class="n">Transform</span><span class="o">.</span><span class="n">from_fsl</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">epifile</span><span class="p">,</span> <span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">+</span><span class="s2">&quot;_auto&quot;</span><span class="p">,</span> <span class="s1">&#39;coord&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Saved transform as (</span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">)&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">+</span><span class="s1">&#39;_auto&#39;</span><span class="p">))</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

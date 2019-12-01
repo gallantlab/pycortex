@@ -1,0 +1,6 @@
+cortex.volume.show\_mip
+=======================
+
+.. currentmodule:: cortex.volume
+
+.. autofunction:: show_mip

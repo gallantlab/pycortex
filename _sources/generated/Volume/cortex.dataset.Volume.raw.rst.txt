@@ -1,0 +1,6 @@
+cortex.dataset.Volume.raw
+=========================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: Volume.raw

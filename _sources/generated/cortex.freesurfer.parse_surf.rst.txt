@@ -1,0 +1,6 @@
+cortex.freesurfer.parse\_surf
+=============================
+
+.. currentmodule:: cortex.freesurfer
+
+.. autofunction:: parse_surf

@@ -1,0 +1,6 @@
+cortex.dataset.Dataset.\_\_init\_\_
+===================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Dataset.__init__

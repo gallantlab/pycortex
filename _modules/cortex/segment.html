@@ -1,0 +1,565 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.segment &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.segment</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Controls functions for segmentation of white/gray matter and other things in the brain.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">shlex</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+<span class="kn">from</span> <span class="nn">builtins</span> <span class="kn">import</span> <span class="nb">input</span>
+<span class="kn">import</span> <span class="nn">multiprocessing</span> <span class="k">as</span> <span class="nn">mp</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">formats</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">blender</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">freesurfer</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">options</span>
+<span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+
+<span class="kn">from</span> <span class="nn">.freesurfer</span> <span class="kn">import</span> <span class="n">autorecon</span> <span class="k">as</span> <span class="n">run_freesurfer_recon</span>
+<span class="kn">from</span> <span class="nn">.freesurfer</span> <span class="kn">import</span> <span class="n">import_subj</span> <span class="k">as</span> <span class="n">import_freesurfer_subject</span>
+
+<span class="n">slim_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;slim&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="init_subject"><a class="viewcode-back" href="../../generated/cortex.segment.init_subject.html#cortex.segment.init_subject">[docs]</a><span class="k">def</span> <span class="nf">init_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">filenames</span><span class="p">,</span> <span class="n">run_all</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Run the first initial segmentation for a subject&#39;s anatomy.</span>
+
+<span class="sd">    This function runs autorecon-all, then (optionally) imports the subject</span>
+<span class="sd">    into the pycortex database.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        The name of the subject (this subject is created in the Freesurfer</span>
+<span class="sd">        SUBJECTS_DIR)</span>
+<span class="sd">    filenames : str </span>
+<span class="sd">        Freesurfer-compatible filename(s) for the anatomical image(s). This can</span>
+<span class="sd">        be the first dicom file of a series of dicoms, a nifti file, an mgz</span>
+<span class="sd">        file, etc.</span>
+<span class="sd">    run_all : bool</span>
+<span class="sd">        Whether to run recon-all all the way through to importing the subject</span>
+<span class="sd">        into pycortex. False by default, since we recommend editing (or at</span>
+<span class="sd">        least inspecting) the brain mask and white matter segmentations prior</span>
+<span class="sd">        to importing into pycortex.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;recon-all -i </span><span class="si">{fname}</span><span class="s2"> -s </span><span class="si">{subj}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="n">filenames</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calling:</span><span class="se">\n</span><span class="s2">%</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span>
+    <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">run_all</span><span class="p">:</span>
+        <span class="n">run_freesurfer_recon</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;all&quot;</span><span class="p">)</span>
+        <span class="n">import_freesurfer_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">edit_segmentation</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span>
+                      <span class="n">volumes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;aseg.mgz&#39;</span><span class="p">,</span> <span class="s1">&#39;brainmask.mgz&#39;</span><span class="p">,</span> <span class="s1">&#39;wm.mgz&#39;</span><span class="p">),</span>
+                      <span class="n">surfaces</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;lh.smoothwm&#39;</span><span class="p">,</span> <span class="s1">&#39;rh.smoothwm&#39;</span><span class="p">,</span> <span class="s1">&#39;lh.pial&#39;</span><span class="p">,</span> <span class="s1">&#39;rh.pial&#39;</span><span class="p">),</span>
+                      <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Edit automatic segmentation results using freeview</span>
+
+<span class="sd">    Opens an instance of freeview with relevant files loaded.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        freesurfer subject identifier. Note that subject must be in your</span>
+<span class="sd">        SUBJECTS_DIR for freesurfer. If the environment variable SUBJECTS_DIR</span>
+<span class="sd">        is not set in your shell, then the location of the directory must be</span>
+<span class="sd">        specified in `freesurfer_subject_dir`.</span>
+<span class="sd">    volumes : tuple | list</span>
+<span class="sd">        Names of volumes to load in freeview</span>
+<span class="sd">    surfaces : tuple | list</span>
+<span class="sd">        Names of surfaces to load in freeview</span>
+<span class="sd">    freesurfer_subject_dir : str | None</span>
+<span class="sd">        Location of freesurfer subjects directory. If None, defaults to value</span>
+<span class="sd">        of SUBJECTS_DIR environment variable.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">freesurfer_subject_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SUBJECTS_DIR&#39;</span><span class="p">]</span>
+    <span class="n">cmaps</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;brain&#39;</span><span class="p">:</span> <span class="s1">&#39;grayscale&#39;</span><span class="p">,</span>
+             <span class="s1">&#39;aseg&#39;</span><span class="p">:</span> <span class="s1">&#39;lut&#39;</span><span class="p">,</span>
+             <span class="s1">&#39;brainmask&#39;</span><span class="p">:</span> <span class="s1">&#39;gray&#39;</span><span class="p">,</span>
+             <span class="s1">&#39;wm&#39;</span><span class="p">:</span> <span class="s1">&#39;heat&#39;</span><span class="p">,</span>
+             <span class="s1">&#39;smoothwm&#39;</span><span class="p">:</span> <span class="s1">&#39;yellow&#39;</span><span class="p">,</span>
+             <span class="s1">&#39;white&#39;</span><span class="p">:</span> <span class="s1">&#39;green&#39;</span><span class="p">,</span>
+             <span class="s1">&#39;pial&#39;</span><span class="p">:</span> <span class="s1">&#39;blue&#39;</span>
+             <span class="p">}</span>
+    <span class="n">opacity</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;brain&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+             <span class="s1">&#39;aseg&#39;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+             <span class="s1">&#39;brainmask&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+             <span class="s1">&#39;wm&#39;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+             <span class="p">}</span>
+    <span class="n">vols</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">volumes</span><span class="p">:</span>
+        <span class="n">vpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;mri&#39;</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+        <span class="n">vv</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="n">vextra</span> <span class="o">=</span> <span class="s1">&#39;:colormap=</span><span class="si">{cm}</span><span class="s1">:opacity=</span><span class="si">{op:0.2f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cm</span><span class="o">=</span><span class="n">cmaps</span><span class="p">[</span><span class="n">vv</span><span class="p">],</span> <span class="n">op</span><span class="o">=</span><span class="n">opacity</span><span class="p">[</span><span class="n">vv</span><span class="p">])</span>
+        <span class="n">vols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vpath</span> <span class="o">+</span> <span class="n">vextra</span><span class="p">)</span>
+    <span class="n">surfs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">surfaces</span><span class="p">:</span>
+        <span class="n">spath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;surf&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ss</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+        <span class="n">sextra</span> <span class="o">=</span> <span class="s1">&#39;:edgecolor=</span><span class="si">{col}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">col</span><span class="o">=</span><span class="n">cmaps</span><span class="p">[</span><span class="n">ss</span><span class="p">])</span>
+        <span class="n">surfs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spath</span> <span class="o">+</span> <span class="n">sextra</span><span class="p">)</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;freeview&quot;</span><span class="p">,</span> <span class="s1">&#39;-v&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">vols</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;-f&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">surfs</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calling: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
+    <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;If you have edited the white matter surface, you should run:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    `cortex.segment.run_freesurfer_recon(&#39;</span><span class="si">%s</span><span class="s2">&#39;, &#39;wm&#39;)`</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">subject</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;If you have edited the brainmask (pial surface), you should run:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    `cortex.segment.run_freesurfer_recon(&#39;</span><span class="si">%s</span><span class="s2">&#39;, &#39;pia&#39;)`&quot;</span><span class="o">%</span><span class="n">subject</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="cut_surface"><a class="viewcode-back" href="../../generated/cortex.segment.cut_surface.html#cortex.segment.cut_surface">[docs]</a><span class="k">def</span> <span class="nf">cut_surface</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;flatten&#39;</span><span class="p">,</span> <span class="n">fs_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">flatten_with</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Initializes an interface to cut the segmented surface for flatmapping.</span>
+<span class="sd">    This function creates or opens a blend file in your filestore which allows</span>
+<span class="sd">    surfaces to be cut along hand-defined seams. Blender will automatically</span>
+<span class="sd">    open the file. After edits are made, remember to save the file, then exit</span>
+<span class="sd">    Blender.</span>
+
+<span class="sd">    The surface will be automatically extracted from blender then run through</span>
+<span class="sd">    the mris_flatten command in freesurfer. The flatmap will be imported once</span>
+<span class="sd">    that command finishes.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cx_subject : str</span>
+<span class="sd">        Name of the subject to edit (pycortex subject ID)</span>
+<span class="sd">    hemi : str</span>
+<span class="sd">        Which hemisphere to flatten. Should be &quot;lh&quot; or &quot;rh&quot;</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        String name of the current flatten attempt. Defaults to &quot;flatten&quot;</span>
+<span class="sd">    data : Dataview</span>
+<span class="sd">        A data view object to display on the surface as a cutting guide.</span>
+<span class="sd">    fs_subject : str</span>
+<span class="sd">        Name of Freesurfer subject (if different from pycortex subject)</span>
+<span class="sd">        None defaults to `cx_subject`</span>
+<span class="sd">    freesurfer_subject_dir : str</span>
+<span class="sd">        Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR</span>
+<span class="sd">        environment varible</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">fs_subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fs_subject</span> <span class="o">=</span> <span class="n">cx_subject</span>
+    <span class="n">opts</span> <span class="o">=</span> <span class="s2">&quot;[hemi=</span><span class="si">%s</span><span class="s2">,name=</span><span class="si">%s</span><span class="s2">]&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="n">fname</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">)[</span><span class="s1">&#39;anats&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;cutsurf&#39;</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="s1">&#39;blend&#39;</span><span class="p">)</span>
+    <span class="c1"># Double-check that fiducial and inflated vertex counts match</span>
+    <span class="c1"># (these may not match if a subject is initially imported from freesurfer to pycortex, </span>
+    <span class="c1"># and then edited further for a better segmentation and not re-imported)</span>
+    <span class="n">ipt</span><span class="p">,</span> <span class="n">ipoly</span><span class="p">,</span> <span class="n">inrm</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s1">&#39;inflated&#39;</span><span class="p">)</span>
+    <span class="n">fpt</span><span class="p">,</span> <span class="n">fpoly</span><span class="p">,</span> <span class="n">fnrm</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ipt</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">fpt</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Please re-import subject - fiducial and inflated vertex counts don&#39;t match!&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Vert check ok!&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
+        <span class="n">blender</span><span class="o">.</span><span class="n">fs_cut</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+    <span class="c1"># Add localizer data to facilitate cutting</span>
+    <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">blender</span><span class="o">.</span><span class="n">add_cutdata</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
+    <span class="n">blender_cmd</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;blender&#39;</span><span class="p">)</span>
+    <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="n">blender_cmd</span><span class="p">,</span> <span class="n">fname</span><span class="p">])</span>
+    <span class="n">patchpath</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span>
+                                     <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+    <span class="n">patchpath</span> <span class="o">=</span> <span class="n">patchpath</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">blender</span><span class="o">.</span><span class="n">write_patch</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">patchpath</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;freesurfer&#39;</span><span class="p">:</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                           <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
+                           <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+            <span class="c1"># If flattening is aborted, skip the rest of this function</span>
+            <span class="c1"># (Do not attempt to import completed flatmaps)</span>
+            <span class="k">return</span>
+        <span class="c1"># Check to see if both hemispheres have been flattened</span>
+        <span class="n">other</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="s2">&quot;lh&quot;</span> <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span> <span class="k">else</span> <span class="s2">&quot;rh&quot;</span><span class="p">,</span>
+                                     <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+        <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;.flat&quot;</span><span class="p">)</span>
+        <span class="c1"># If so, go ahead and import subject</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">sname</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span>
+                        <span class="n">flat_type</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span>
+                        <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;SLIM&#39;</span><span class="p">:</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="n">flatten_slim</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
+                            <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+            <span class="c1"># If flattening is aborted, skip the rest of this function</span>
+            <span class="c1"># (Do not attempt to import completed flatmaps)</span>
+            <span class="k">return</span>
+        <span class="n">other</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="s2">&quot;lh&quot;</span> <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span> <span class="k">else</span> <span class="s2">&quot;rh&quot;</span><span class="p">,</span>
+                                     <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;slim&#39;</span><span class="p">,</span>
+                                     <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+        <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="c1"># If so, go ahead and import subject</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">sname</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span>
+                        <span class="n">flat_type</span><span class="o">=</span><span class="s1">&#39;slim&#39;</span><span class="p">,</span>
+                        <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+
+    <span class="k">return</span></div>
+
+
+<span class="k">def</span> <span class="nf">flatten_slim</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">n_iterations</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">slim_path</span><span class="o">=</span><span class="n">slim_path</span><span class="p">,</span> <span class="n">do_flatten</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Flatten brain w/ slim object flattening</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        freesurfer subject</span>
+<span class="sd">    hemi : str</span>
+<span class="sd">        &#39;lh&#39; or &#39;rh&#39; for left or right hemisphere</span>
+<span class="sd">    patch : str</span>
+<span class="sd">        name of patch, often &quot;flatten&quot; (obj file used here is {hemi}_{patch}.obj</span>
+<span class="sd">        in the subject&#39;s freesurfer directory)</span>
+<span class="sd">    freesurfer_subject_dir : str</span>
+<span class="sd">        path to freesurfer subejct dir. Defaults to environment variable</span>
+<span class="sd">        SUBJECTS_DIR</span>
+<span class="sd">    slim_path : str</span>
+<span class="sd">        path to SLIM flattening. Defaults to path specified in config file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">slim_path</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+        <span class="n">slim_url</span> <span class="o">=</span> <span class="s1">&#39;https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings&#39;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Please download SLIM (</span><span class="si">{slim_url}</span><span class="s2">) and set the path to it in the `slim` field</span><span class="se">\n</span><span class="s2">&quot;</span>
+                         <span class="s2">&quot;in the `[dependency_paths]` section of your config file (</span><span class="si">{usercfg}</span><span class="s2">) </span><span class="se">\n</span><span class="s2">&quot;</span>
+                         <span class="s2">&quot;if you wish to use slim!&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">slim_url</span><span class="o">=</span><span class="n">slim_url</span><span class="p">,</span> <span class="n">usercfg</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">usercfg</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">do_flatten</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Flattening with SLIM will take a few mins. Continue? (type y or n and press return)&#39;</span><span class="p">)</span>
+        <span class="n">do_flatten</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;yes&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">do_flatten</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Not flattening...&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># File paths</span>
+    <span class="k">if</span> <span class="n">freesurfer_subject_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SUBJECTS_DIR&#39;</span><span class="p">]</span>
+    <span class="n">patchpath</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span>
+                                     <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+    <span class="n">patchpath</span> <span class="o">=</span> <span class="n">patchpath</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">patch</span><span class="p">)</span>
+    <span class="n">obj_in</span> <span class="o">=</span> <span class="n">patchpath</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.patch.3d&#39;</span><span class="p">,</span> <span class="s1">&#39;.obj&#39;</span><span class="p">)</span>
+    <span class="n">obj_out</span> <span class="o">=</span> <span class="n">obj_in</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.obj&#39;</span><span class="p">,</span> <span class="s1">&#39;_slim.obj&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Load freesurfer surface exported from blender</span>
+    <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;patch&quot;</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">patch</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+    <span class="c1"># Cull pts that are not in manifold</span>
+    <span class="n">pi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pts</span><span class="p">))</span>
+    <span class="n">pii</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">in1d</span><span class="p">(</span><span class="n">pi</span><span class="p">,</span> <span class="n">polys</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">pii</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">pts_new</span> <span class="o">=</span> <span class="n">pts</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+    <span class="c1"># Match indices in polys to new index for pts</span>
+    <span class="n">polys_new</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">polys</span><span class="o">.</span><span class="n">T</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+    <span class="c1"># save out obj file</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Writing input to SLIM: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">obj_in</span><span class="p">)</span>
+    <span class="n">formats</span><span class="o">.</span><span class="n">write_obj</span><span class="p">(</span><span class="n">obj_in</span><span class="p">,</span> <span class="n">pts_new</span><span class="p">,</span> <span class="n">polys_new</span><span class="p">)</span>
+    <span class="c1"># Call slim to write new obj file</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Flattening with SLIM (will take a few minutes)...&#39;</span><span class="p">)</span>
+    <span class="n">slim_cmd</span> <span class="o">=</span> <span class="p">[</span><span class="n">slim_path</span><span class="p">,</span> <span class="n">obj_in</span><span class="p">,</span> <span class="n">obj_out</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">n_iterations</span><span class="p">)]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Calling: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">slim_cmd</span><span class="p">)))</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">slim_cmd</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;SLIM code wrote </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">obj_out</span><span class="p">)</span>
+    <span class="c1"># Load resulting obj file</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">uv</span> <span class="o">=</span> <span class="n">formats</span><span class="o">.</span><span class="n">read_obj</span><span class="p">(</span><span class="n">obj_out</span><span class="p">,</span> <span class="n">uv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">uv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">uv</span><span class="p">)</span>
+    <span class="c1"># Re-center UV &amp; scale to match scale of inflated brain. It is necessary</span>
+    <span class="c1"># to re-scale the uv coordinates generated by SLIM, since they have</span>
+    <span class="c1"># arbitrary units that don&#39;t match the scale of the inflated /</span>
+    <span class="c1"># fiducial brains.</span>
+    <span class="n">uv</span> <span class="o">-=</span> <span class="n">uv</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">uv</span> <span class="o">/=</span> <span class="n">uv</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">uv</span> <span class="o">-=</span> <span class="p">(</span><span class="n">uv</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">infl_scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">pts_new</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">-</span><span class="n">pts_new</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)))</span>
+    <span class="c1"># This is a magic number based on the approximate scale of the flatmap</span>
+    <span class="c1"># (created by freesurfer) to the inflated map in a couple other subjects.</span>
+    <span class="c1"># For two hemispheres in two other subjects, it ranged from 1.37 to 1.5.</span>
+    <span class="c1"># There doesn&#39;t seem to be a principled way to set this number, since the</span>
+    <span class="c1"># flatmap is stretched and distorted anyway, and that stretch varies by</span>
+    <span class="c1"># subject and by hemisphere. Note, tho,that  this doesn&#39;t change</span>
+    <span class="c1"># distortions, just the overall scale of the thing. So here we are.</span>
+    <span class="c1"># ML 2018.07.05</span>
+    <span class="n">extra_scale</span> <span class="o">=</span> <span class="mf">1.4</span>
+    <span class="n">uv</span> <span class="o">*=</span> <span class="p">(</span><span class="n">infl_scale</span> <span class="o">*</span> <span class="n">extra_scale</span><span class="p">)</span>
+    <span class="c1"># put back polys, etc that were missing</span>
+    <span class="n">pts_flat</span> <span class="o">=</span> <span class="n">pts</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">pts_flat</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">uv</span>
+    <span class="c1"># Set z coords for the manifold vertices to 0</span>
+    <span class="n">pts_flat</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># Re-set scale for non-manifold vertices</span>
+    <span class="n">nz</span> <span class="o">=</span> <span class="n">pts_flat</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span>
+    <span class="n">pts_flat</span><span class="p">[</span><span class="n">nz</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">pts_flat</span><span class="p">[</span><span class="n">nz</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+    <span class="c1"># Flip X axis for right hem (necessary?)</span>
+    <span class="k">if</span> <span class="n">hemi</span><span class="o">==</span><span class="s1">&#39;rh&#39;</span><span class="p">:</span>
+        <span class="c1"># Flip Y axis upside down</span>
+        <span class="n">pts_flat</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">pts_flat</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">pts_flat</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">pts_flat</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Modify output .obj file to reflect flattening</span>
+    <span class="c1">#surfpath = os.path.join(freesurfer_subject_dir, subject, &quot;surf&quot;, &quot;flat_{hemi}.gii&quot;)</span>
+    <span class="c1">#fname = surfpath.format(hemi=hemi)</span>
+    <span class="c1">#print(&quot;Writing %s&quot;%fname)</span>
+    <span class="n">formats</span><span class="o">.</span><span class="n">write_obj</span><span class="p">(</span><span class="n">obj_out</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;_slim&#39;</span><span class="p">,</span><span class="s1">&#39;.flat_slim&#39;</span><span class="p">),</span> <span class="n">pts</span><span class="o">=</span><span class="n">pts_flat</span><span class="p">,</span> <span class="n">polys</span><span class="o">=</span><span class="n">polys</span><span class="p">)</span>
+    <span class="k">return</span>
+
+
+<span class="k">def</span> <span class="nf">show_surface</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">surface_type</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">flatten_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject: str</span>
+<span class="sd">        freesurfer subject name</span>
+<span class="sd">    hemi: str</span>
+<span class="sd">        &#39;lh&#39; or &#39;rh&#39; for left hemisphere or right hemisphere</span>
+<span class="sd">    surface_type : str</span>
+<span class="sd">        type of surface to show, e.g. &#39;patch&#39;, &#39;surf&#39;, etc if &#39;patch&#39;,</span>
+<span class="sd">        patch name must be specified in patch kwarg</span>
+<span class="sd">    patch: str</span>
+<span class="sd">        name of patch, e.g. &#39;flatten.flat&#39;,  &#39;flatten2.flat&#39;, etc</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">meshlab_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;meshlab&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">meshlab_path</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># exists in system but not available in config</span>
+            <span class="n">meshlab_path</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="s1">&#39;command -v meshlab&#39;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Using system meshlab: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">meshlab_path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">sp</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;You must have installed meshlab to call this function.&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">freesurfer_subject_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SUBJECTS_DIR&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">surface_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;inflated&#39;</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">):</span>
+        <span class="n">input_type</span> <span class="o">=</span> <span class="s1">&#39;surf&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">input_type</span> <span class="o">=</span> <span class="n">surface_type</span>
+    <span class="n">fpath</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">input_type</span><span class="p">,</span>
+                                     <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;obj&#39;</span> <span class="ow">in</span> <span class="n">fpath</span><span class="p">:</span>
+        <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">curv</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">surface_type</span><span class="p">,</span>
+                                               <span class="n">patch</span><span class="o">=</span><span class="n">patch</span><span class="p">,</span>
+                                               <span class="n">flatten_step</span><span class="o">=</span><span class="n">flatten_step</span><span class="p">,</span>
+                                               <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+        <span class="c1"># TODO: use tempfile library here</span>
+        <span class="n">objf</span> <span class="o">=</span> <span class="s1">&#39;/tmp/temp_surf.obj&#39;</span>
+        <span class="n">formats</span><span class="o">.</span><span class="n">write_obj</span><span class="p">(</span><span class="n">objf</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">objf</span> <span class="o">=</span> <span class="n">fpath</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">patch</span><span class="p">)</span>
+    <span class="c1"># Call meshlab to display surface</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">check_output</span><span class="p">([</span><span class="n">meshlab_path</span><span class="p">,</span> <span class="n">objf</span><span class="p">])</span>
+
+
+<span class="c1">### DEPRECATED ###</span>
+
+<div class="viewcode-block" id="fix_wm"><a class="viewcode-back" href="../../generated/cortex.segment.fix_wm.html#cortex.segment.fix_wm">[docs]</a><span class="k">def</span> <span class="nf">fix_wm</span><span class="p">(</span><span class="n">subject</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Initializes an interface to make white matter edits to the surface.</span>
+<span class="sd">    This will open two windows -- a tkmedit window that makes the actual edits,</span>
+<span class="sd">    as well as a mayavi window to display the surface. Clicking on the mayavi window</span>
+<span class="sd">    will drop markers which can be loaded using the &quot;Goto Save Point&quot; button in tkmedit.</span>
+
+<span class="sd">    If you wish to load the other hemisphere, simply close the mayavi window and the</span>
+<span class="sd">    other hemisphere will pop up. Mayavi will stop popping up once the tkmedit window</span>
+<span class="sd">    is closed.</span>
+
+<span class="sd">    Once the tkmedit window is closed, a variety of autorecon options are available.</span>
+<span class="sd">    When autorecon finishes, the new surfaces are immediately imported into the pycortex</span>
+<span class="sd">    database.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of the subject to edit</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Deprecated! We recommend using edit_segmentation() and rerun_recon() instead of fix_wm() and fix_pia().&quot;</span><span class="p">)</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">_cycle_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;smoothwm&quot;</span><span class="p">)</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;tkmedit </span><span class="si">{subj}</span><span class="s2"> wm.mgz lh.smoothwm -aux brainmask.mgz -aux-surface rh.smoothwm&quot;</span>
+    <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">)))</span>
+    <span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;1) Run autorecon-wm?</span><span class="se">\n</span><span class="s2">2) Run autorecon-cp?</span><span class="se">\n</span><span class="s2">3) Do nothing?</span><span class="se">\n</span><span class="s2"> (Choose 1, 2, or 3)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">resp</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span>
+        <span class="n">freesurfer</span><span class="o">.</span><span class="n">autorecon</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;wm&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">resp</span> <span class="o">==</span> <span class="s2">&quot;2&quot;</span><span class="p">:</span>
+        <span class="n">freesurfer</span><span class="o">.</span><span class="n">autorecon</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;cp&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">resp</span> <span class="o">==</span> <span class="s2">&quot;3&quot;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Doing nothing...&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">import_freesurfer_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="fix_pia"><a class="viewcode-back" href="../../generated/cortex.segment.fix_pia.html#cortex.segment.fix_pia">[docs]</a><span class="k">def</span> <span class="nf">fix_pia</span><span class="p">(</span><span class="n">subject</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Initializes an interface to make pial surface edits.</span>
+<span class="sd">    This function will open two windows -- a tkmedit window that makse the actual edits,</span>
+<span class="sd">    as well as a mayavi window to display the surface. Clicking on the mayavi window</span>
+<span class="sd">    will drop markers which can be loaded using the &quot;Goto Save Point&quot; button in tkmedit.</span>
+
+<span class="sd">    If you wish to load the other hemisphere, simply close the mayavi window and the</span>
+<span class="sd">    other hemisphere will pop up. Mayavi will stop popping up once the tkmedit window</span>
+<span class="sd">    is closed.</span>
+
+<span class="sd">    Once the tkmedit window is closed, a variety of autorecon options are available.</span>
+<span class="sd">    When autorecon finishes, the new surfaces are immediately imported into the pycortex</span>
+<span class="sd">    database.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of the subject to edit</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Deprecated! We recommend using edit_segmentation() and rerun_recon() instead of fix_wm() and fix_pia().&quot;</span><span class="p">)</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">_cycle_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;pial&quot;</span><span class="p">)</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;tkmedit </span><span class="si">{subj}</span><span class="s2"> brainmask.mgz lh.smoothwm -aux T1.mgz -aux-surface rh.smoothwm&quot;</span>
+    <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">)))</span>
+    <span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;1) Run autorecon-pia?</span><span class="se">\n</span><span class="s2">2) Run autorecon-wm?</span><span class="se">\n</span><span class="s2">3) Do nothing?</span><span class="se">\n</span><span class="s2"> (Choose 1, 2, or 3)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">resp</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span>
+        <span class="n">freesurfer</span><span class="o">.</span><span class="n">autorecon</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;pia&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">resp</span> <span class="o">==</span> <span class="s2">&quot;2&quot;</span><span class="p">:</span>
+        <span class="n">freesurfer</span><span class="o">.</span><span class="n">autorecon</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;wm&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">resp</span> <span class="o">==</span> <span class="s2">&quot;3&quot;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Doing nothing...&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">import_freesurfer_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_cycle_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surf</span><span class="p">):</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Value</span><span class="p">(</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">cycle_surf</span><span class="p">():</span>
+        <span class="n">idx</span><span class="p">,</span> <span class="n">hemis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">]</span>
+        <span class="k">while</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">hemi</span> <span class="o">=</span> <span class="n">hemis</span><span class="p">[</span><span class="n">idx</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="n">hemis</span><span class="p">)]</span>
+            <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1">#HELLISH CODE FOLLOWS, I heavily apologize for this awful code</span>
+            <span class="c1">#In order for this to work well, mayavi has to block until you close the window</span>
+            <span class="c1">#Unfortunately, with IPython&#39;s event hook, mlab.show does not block anymore</span>
+            <span class="c1">#There is no way to force mayavi to block, and hooking directly into backend vtk objects cause it to crash out</span>
+            <span class="c1">#Thus, the only safe way is to call python using subprocess</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;python -m cortex.freesurfer </span><span class="si">{subj}</span><span class="s2"> </span><span class="si">{hemi}</span><span class="s2"> </span><span class="si">{surf}</span><span class="s2">&quot;</span>
+            <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="n">hemi</span><span class="p">,</span> <span class="n">surf</span><span class="o">=</span><span class="n">surf</span><span class="p">)))</span>
+
+    <span class="n">proc</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">cycle_surf</span><span class="p">)</span>
+    <span class="n">proc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">status</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

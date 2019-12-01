@@ -1,0 +1,6 @@
+cortex.anat.brainmask
+=====================
+
+.. currentmodule:: cortex.anat
+
+.. autofunction:: brainmask

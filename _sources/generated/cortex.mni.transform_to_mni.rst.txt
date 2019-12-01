@@ -1,0 +1,6 @@
+cortex.mni.transform\_to\_mni
+=============================
+
+.. currentmodule:: cortex.mni
+
+.. autofunction:: transform_to_mni

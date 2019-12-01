@@ -1,0 +1,147 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.freesurfer.import_subj &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-freesurfer-import-subj">
+<h1>cortex.freesurfer.import_subj<a class="headerlink" href="#cortex-freesurfer-import-subj" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="cortex.freesurfer.import_subj">
+<code class="sig-prename descclassname">cortex.freesurfer.</code><code class="sig-name descname">import_subj</code><span class="sig-paren">(</span><em class="sig-param">subject</em>, <em class="sig-param">sname=None</em>, <em class="sig-param">freesurfer_subject_dir=None</em>, <em class="sig-param">whitematter_surf='smoothwm'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#import_subj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.freesurfer.import_subj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Imports a subject from freesurfer</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>subject</strong><span class="classifier">string</span></dt><dd><p>Freesurfer subject name</p>
+</dd>
+<dt><strong>sname</strong><span class="classifier">string, optional</span></dt><dd><p>Pycortex subject name (These variable names should be changed). By default uses
+the same name as the freesurfer subject.</p>
+</dd>
+<dt><strong>freesurfer_subject_dir</strong><span class="classifier">string, optional</span></dt><dd><p>Freesurfer subject directory to pull data from. By default uses the directory
+given by the environment variable $SUBJECTS_DIR.</p>
+</dd>
+<dt><strong>whitematter_surf</strong><span class="classifier">string, optional</span></dt><dd><p>Which whitematter surface to import as ‘wm’. By default uses ‘smoothwm’, but that
+surface is smoothed and may not be appropriate. A good alternative is ‘white’.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.freesurfer.import_subj.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

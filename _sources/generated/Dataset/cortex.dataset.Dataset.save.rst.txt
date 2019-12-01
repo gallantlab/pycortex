@@ -1,0 +1,6 @@
+cortex.dataset.Dataset.save
+===========================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Dataset.save

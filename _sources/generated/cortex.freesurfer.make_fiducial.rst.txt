@@ -1,0 +1,6 @@
+cortex.freesurfer.make\_fiducial
+================================
+
+.. currentmodule:: cortex.freesurfer
+
+.. autofunction:: make_fiducial

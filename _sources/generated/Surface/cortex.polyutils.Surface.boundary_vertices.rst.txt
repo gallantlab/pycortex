@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.boundary\_vertices
+===========================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.boundary_vertices

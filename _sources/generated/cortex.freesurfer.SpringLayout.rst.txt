@@ -1,0 +1,25 @@
+cortex.freesurfer.SpringLayout
+==============================
+
+.. currentmodule:: cortex.freesurfer
+
+.. autoclass:: SpringLayout
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SpringLayout.__init__
+      ~SpringLayout.run
+      ~SpringLayout.step
+      ~SpringLayout.view_step
+   
+   
+
+   
+   
+   

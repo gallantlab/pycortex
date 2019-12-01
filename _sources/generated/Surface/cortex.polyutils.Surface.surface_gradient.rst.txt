@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.surface\_gradient
+==========================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.surface_gradient

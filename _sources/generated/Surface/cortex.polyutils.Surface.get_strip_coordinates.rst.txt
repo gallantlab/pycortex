@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.get\_strip\_coordinates
+================================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.get_strip_coordinates

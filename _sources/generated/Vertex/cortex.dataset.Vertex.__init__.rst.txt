@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.\_\_init\_\_
+==================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.__init__

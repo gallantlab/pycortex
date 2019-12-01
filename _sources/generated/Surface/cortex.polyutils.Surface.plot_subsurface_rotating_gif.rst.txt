@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.plot\_subsurface\_rotating\_gif
+========================================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.plot_subsurface_rotating_gif

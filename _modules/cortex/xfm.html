@@ -1,0 +1,518 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.xfm &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.xfm</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Affine transformation class</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">string_types</span>
+
+<div class="viewcode-block" id="Transform"><a class="viewcode-back" href="../../generated/cortex.xfm.Transform.html#cortex.xfm.Transform">[docs]</a><span class="k">class</span> <span class="nc">Transform</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    A standard affine transform. Typically holds a transform from anatomical</span>
+<span class="sd">    magnet space to epi file space.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="Transform.__init__"><a class="viewcode-back" href="../../generated/cortex.xfm.Transform.html#cortex.xfm.Transform.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">reference</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xfm</span> <span class="o">=</span> <span class="n">xfm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">isstr</span><span class="p">(</span><span class="n">reference</span><span class="p">):</span>
+            <span class="kn">import</span> <span class="nn">nibabel</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="n">reference</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">reference</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="n">reference</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pts</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">pts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">pts</span><span class="p">),</span><span class="mi">1</span><span class="p">))])</span><span class="o">.</span><span class="n">T</span><span class="p">)[:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">inv</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span>
+        <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">),</span> <span class="n">ref</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span>
+        <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Transform</span><span class="p">):</span>
+            <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">xfm</span>
+        <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span> <span class="n">other</span><span class="p">),</span> <span class="n">ref</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span>
+        <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Transform</span><span class="p">):</span>
+            <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">xfm</span>
+        <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">),</span> <span class="n">ref</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span><span class="p">,</span> <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
+            <span class="k">return</span> <span class="s2">&quot;&lt;Transform into </span><span class="si">%s</span><span class="s2"> space&gt;&quot;</span><span class="o">%</span><span class="n">fname</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&lt;Reference free affine transform&gt;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s2">&quot;magnet&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Cannot save reference-free transforms into the database&#39;</span><span class="p">)</span>
+        <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">save_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="n">xfmtype</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_fsl</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">,</span> <span class="n">anat_nii</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Converts an fsl transform to a pycortex transform.</span>
+
+<span class="sd">        Converts a transform computed using FSL&#39;s FLIRT to a transform (&quot;xfm&quot;) object in pycortex.</span>
+<span class="sd">        The transform must have been computed FROM the nifti volume specified in `func_nii` TO the</span>
+<span class="sd">        volume specified in `anat_nii` (See Notes below).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xfm : array</span>
+<span class="sd">            4x4 transformation matrix, loaded from an FSL .mat file, for a transform computed</span>
+<span class="sd">            FROM the func_nii volume TO the anat_nii volume. Alternatively, a string file name</span>
+<span class="sd">            for the FSL .mat file.</span>
+<span class="sd">        anat_nii : str or nibabel.Nifti1Image</span>
+<span class="sd">            nibabel image object (or path to nibabel-readable image) for anatomical volume from</span>
+<span class="sd">            which cortical surface was created</span>
+<span class="sd">        func_nii : str or nibabel.Nifti1Image</span>
+<span class="sd">            nibabel image object (or string path to nibabel-readable image) for (functional) data volume</span>
+<span class="sd">            to be projected onto cortical surface</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        xfm : cortex.xfm.Transform object</span>
+<span class="sd">            A pycortex COORD transform.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The transform is assumed to be computed FROM the functional data TO the anatomical data.</span>
+<span class="sd">        In FSL speak, that means that the arguments to flirt should have been:</span>
+<span class="sd">        flirt -in &lt;func_nii&gt; -ref &lt;anat_nii&gt; ...</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">## -- Adapted from dipy.external.fsl.flirt2aff -- ##</span>
+        <span class="kn">import</span> <span class="nn">nibabel</span>
+        <span class="kn">import</span> <span class="nn">numpy.linalg</span> <span class="k">as</span> <span class="nn">npl</span>
+        <span class="n">inv</span> <span class="o">=</span> <span class="n">npl</span><span class="o">.</span><span class="n">inv</span>
+
+        <span class="c1"># Load transform from text file, if string is provided</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">xfm</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">xfm</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fid</span><span class="p">:</span>
+                <span class="n">L</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+            <span class="n">xfm</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
+
+        <span class="c1"># Internally, pycortex computes the OPPOSITE transform: from anatomical volume to functional volume.</span>
+        <span class="c1"># Thus, assign anat to &quot;infile&quot; (starting point for transform)</span>
+        <span class="n">infile</span> <span class="o">=</span> <span class="n">anat_nii</span>
+        <span class="c1"># Assign func to &quot;reffile&quot; (end point for transform)</span>
+        <span class="n">reffile</span> <span class="o">=</span> <span class="n">func_nii</span>
+        <span class="c1"># and invert the usual direction (change from func&gt;anat to anat&gt;func)</span>
+        <span class="n">xfm</span> <span class="o">=</span> <span class="n">inv</span><span class="p">(</span><span class="n">xfm</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">inIm</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">inIm</span> <span class="o">=</span> <span class="n">infile</span>
+
+        <span class="n">refIm</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">reffile</span><span class="p">)</span>
+        <span class="n">in_hdr</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">get_header</span><span class="p">()</span>
+        <span class="n">ref_hdr</span> <span class="o">=</span> <span class="n">refIm</span><span class="o">.</span><span class="n">get_header</span><span class="p">()</span>
+        <span class="c1"># get_zooms gets the positive voxel sizes as returned in the header</span>
+        <span class="n">inspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">in_hdr</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+        <span class="n">refspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+        <span class="c1"># Since FSL does not use the full transform info in the nifti header,</span>
+        <span class="c1"># determine whether the transform indicates that the X axis should be</span>
+        <span class="c1"># flipped; if so, flip the X axis (for both infile and reffile)</span>
+        <span class="k">if</span> <span class="n">npl</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">in_hdr</span><span class="o">.</span><span class="n">get_best_affine</span><span class="p">())</span><span class="o">&gt;=</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">inspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inspace</span><span class="p">,</span> <span class="n">_x_flipper</span><span class="p">(</span><span class="n">in_hdr</span><span class="o">.</span><span class="n">get_data_shape</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="n">npl</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_best_affine</span><span class="p">())</span><span class="o">&gt;=</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">refspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">refspace</span><span class="p">,</span> <span class="n">_x_flipper</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_data_shape</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
+
+        <span class="n">inAffine</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">get_affine</span><span class="p">()</span>
+
+        <span class="n">coord</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inv</span><span class="p">(</span><span class="n">refspace</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">xfm</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inspace</span><span class="p">,</span><span class="n">inv</span><span class="p">(</span><span class="n">inAffine</span><span class="p">))))</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">refIm</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_fsl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anat_nii</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">&#39;func&gt;anat&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Converts a pycortex transform to an FSL transform.</span>
+
+<span class="sd">        Uses the stored &quot;reference&quot; file provided when the transform was created (usually</span>
+<span class="sd">        a functional data or statistical volume) and the supplied anatomical file to</span>
+<span class="sd">        create an FSL transform. By default, returns the transform FROM the refernce volume</span>
+<span class="sd">        (usually the functional data volume) to the anatomical volume (`anat_nii` input).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        anat_nii : str or nibabel.Nifti1Image</span>
+<span class="sd">            nibabel image object (or path to nibabel-readable image) for anatomical volume from</span>
+<span class="sd">            which cortical surface was created</span>
+
+<span class="sd">        direction : str, optional {&#39;func&gt;anat&#39;, &#39;anat&gt;func&#39;}</span>
+<span class="sd">            Direction of transform to return. Defaults to &#39;func&gt;anat&#39;</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This function will only work for &quot;coord&quot; transform objects, (those retrieved with</span>
+<span class="sd">        cortex.db.get_xfm(xfmtype=&#39;coord&#39;,...)). It will fail hard for &quot;magnet&quot; transforms!</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">nibabel</span>
+        <span class="kn">import</span> <span class="nn">numpy.linalg</span> <span class="k">as</span> <span class="nn">npl</span>
+        <span class="n">inv</span> <span class="o">=</span> <span class="n">npl</span><span class="o">.</span><span class="n">inv</span>
+        <span class="c1">## -- Internal notes -- ##</span>
+        <span class="c1"># pycortex transforms are internally stored as anatomical space -&gt; functional data space</span>
+        <span class="c1"># transforms. Thus the anatomical file is the &quot;infile&quot; in FSL-speak.</span>
+        <span class="n">infile</span> <span class="o">=</span> <span class="n">anat_nii</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">inIm</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">inIm</span> <span class="o">=</span> <span class="n">infile</span>
+        <span class="n">in_hdr</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">get_header</span><span class="p">()</span>
+        <span class="n">ref_hdr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_header</span><span class="p">()</span>
+        <span class="c1"># get_zooms gets the positive voxel sizes as returned in the header</span>
+        <span class="n">inspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">in_hdr</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+        <span class="n">refspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+        <span class="c1"># Since FSL does not use the full transform info in the nifti header,</span>
+        <span class="c1"># determine whether the transform indicates that the X axis should be</span>
+        <span class="c1"># flipped; if so, flip the X axis (for both infile and reffile)</span>
+        <span class="k">if</span> <span class="n">npl</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">in_hdr</span><span class="o">.</span><span class="n">get_best_affine</span><span class="p">())</span><span class="o">&gt;=</span><span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Determinant is &gt; 0: FLIPPING!&quot;</span><span class="p">)</span>
+            <span class="n">inspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inspace</span><span class="p">,</span> <span class="n">_x_flipper</span><span class="p">(</span><span class="n">in_hdr</span><span class="o">.</span><span class="n">get_data_shape</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="n">npl</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_best_affine</span><span class="p">())</span><span class="o">&gt;=</span><span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Determinant is &gt; 0: FLIPPING!&quot;</span><span class="p">)</span>
+            <span class="n">refspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">refspace</span><span class="p">,</span> <span class="n">_x_flipper</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_data_shape</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
+
+        <span class="n">inAffine</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">get_affine</span><span class="p">()</span>
+
+        <span class="n">fslx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">refspace</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inAffine</span><span class="p">,</span><span class="n">inv</span><span class="p">(</span><span class="n">inspace</span><span class="p">))))</span>
+        <span class="k">if</span> <span class="n">direction</span><span class="o">==</span><span class="s1">&#39;func&gt;anat&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">inv</span><span class="p">(</span><span class="n">fslx</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">direction</span><span class="o">==</span><span class="s1">&#39;anat&gt;func&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">fslx</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_freesurfer</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">fs_register</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Converts a FreeSurfer transform to a pycortex transform.</span>
+
+<span class="sd">        Converts a transform computed using FreeSurfer alignment tools (e.g., bbregister) to</span>
+<span class="sd">        a transform (&quot;xfm&quot;) object in pycortex. The transform must have been computed</span>
+<span class="sd">        FROM the nifti volume specified in `func_nii` TO the anatomical volume of</span>
+<span class="sd">        the FreeSurfer subject `subject` (See Notes below).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fs_register : array</span>
+<span class="sd">            4x4 transformation matrix, described in an FreeSurfer .dat or .lta file, for a transform computed</span>
+<span class="sd">            FROM the func_nii volume TO the anatomical volume of the FreeSurfer subject `subject`.</span>
+<span class="sd">            Alternatively, a string file name for the FreeSurfer .dat or .lta file.</span>
+<span class="sd">        func_nii : str or nibabel.Nifti1Image</span>
+<span class="sd">            nibabel image object (or string path to nibabel-readable image) for (functional) data volume</span>
+<span class="sd">            to be projected onto cortical surface</span>
+<span class="sd">        subject : str</span>
+<span class="sd">            FreeSurfer subject name for which the anatomical volume was registered for.</span>
+<span class="sd">        freesurfer_subject_dir : str | None</span>
+<span class="sd">            Directory of FreeSurfer subjects. Defaults to the value for</span>
+<span class="sd">            the environment variable &#39;SUBJECTS_DIR&#39; (which should be set</span>
+<span class="sd">            by freesurfer)</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        xfm : cortex.xfm.Transform object</span>
+<span class="sd">            A pycortex COORD transform.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The transform is assumed to be computed FROM the functional data TO the anatomical data of</span>
+<span class="sd">        the specified FreeSurfer subject. In FreeSurfer speak, that means that the arguments to</span>
+<span class="sd">        FreeSurfer alignment tools should have been:</span>
+<span class="sd">        bbregister --s &lt;subject&gt; --mov &lt;func_nii&gt; --reg &lt;fs_register&gt; ...</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">subprocess</span>
+        <span class="kn">import</span> <span class="nn">nibabel</span>
+        <span class="kn">import</span> <span class="nn">numpy.linalg</span> <span class="k">as</span> <span class="nn">npl</span>
+        <span class="n">inv</span> <span class="o">=</span> <span class="n">npl</span><span class="o">.</span><span class="n">inv</span>
+
+        <span class="c1"># Load anatomical to functional transform from register.dat file, if string is provided</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fs_register</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fs_register</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fid</span><span class="p">:</span>
+                <span class="n">L</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+
+            <span class="n">anat2func</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">[</span><span class="mi">4</span><span class="p">:</span><span class="mi">8</span><span class="p">]])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">anat2func</span> <span class="o">=</span> <span class="n">fs_register</span>
+
+        <span class="c1"># Set FreeSurfer subject directory</span>
+        <span class="k">if</span> <span class="n">freesurfer_subject_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SUBJECTS_DIR&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Set path to the anatomical volume used to compute fs_register</span>
+        <span class="n">anat_mgz</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;mri&#39;</span><span class="p">,</span> <span class="s1">&#39;orig.mgz&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Read vox2ras transform for the anatomical volume</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras&#39;</span><span class="p">,</span> <span class="n">anat_mgz</span><span class="p">)</span>
+            <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+            <span class="n">anat_vox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occured while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
+            <span class="k">raise</span>
+
+        <span class="c1"># Read tkrvox2ras transform for the  anatomical volume</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras-tkr&#39;</span><span class="p">,</span> <span class="n">anat_mgz</span><span class="p">)</span>
+            <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+            <span class="n">anat_tkrvox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occured while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
+            <span class="k">raise</span>
+
+        <span class="c1"># Read tkvox2ras transform for the functional volume</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras-tkr&#39;</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">)</span>
+            <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+            <span class="n">L</span> <span class="o">=</span> <span class="n">L</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="n">func_tkrvox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occured while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
+            <span class="k">raise</span>
+
+        <span class="c1"># Calculate pycorex transform (i.e. scanner to functional transform)</span>
+        <span class="n">coord</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inv</span><span class="p">(</span><span class="n">func_tkrvox2ras</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">anat2func</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">anat_tkrvox2ras</span><span class="p">,</span> <span class="n">inv</span><span class="p">(</span><span class="n">anat_vox2ras</span><span class="p">))))</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">refIm</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">func_nii</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">refIm</span> <span class="o">=</span> <span class="n">func_nii</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">refIm</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_freesurfer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fs_register</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Converts a pycortex transform to a FreeSurfer transform.</span>
+
+<span class="sd">        Converts a transform stored in pycortex xfm object to the FreeSurfer format</span>
+<span class="sd">        (i.e., register.dat format: https://surfer.nmr.mgh.harvard.edu/fswiki/RegisterDat)</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fs_register : str</span>
+<span class="sd">            Output path for the FreeSurfer formatted transform to be output.</span>
+<span class="sd">        subject : str</span>
+<span class="sd">            FreeSurfer subject name from which the pycortex subject was imported</span>
+
+<span class="sd">        freesurfer_subject_dir : str | None</span>
+<span class="sd">            Directory of FreeSurfer subjects. If None, defaults to the value for</span>
+<span class="sd">            the environment variable &#39;SUBJECTS_DIR&#39; (which should be set</span>
+<span class="sd">            by freesurfer)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">tempfile</span>
+        <span class="kn">import</span> <span class="nn">subprocess</span>
+        <span class="kn">import</span> <span class="nn">nibabel</span>
+        <span class="kn">import</span> <span class="nn">numpy.linalg</span> <span class="k">as</span> <span class="nn">npl</span>
+        <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+        <span class="n">inv</span> <span class="o">=</span> <span class="n">npl</span><span class="o">.</span><span class="n">inv</span>
+
+        <span class="c1"># Set path to the anatomical volume for the FreeSurfer subject</span>
+        <span class="n">anat</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;raw&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Read vox2ras transform for the anatomical volume</span>
+        <span class="n">anat_vox2ras</span> <span class="o">=</span> <span class="n">anat</span><span class="o">.</span><span class="n">affine</span>
+
+        <span class="c1"># Read tkrvox2ras transform for the  anatomical volume</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras-tkr&#39;</span><span class="p">,</span> <span class="n">anat</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
+            <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+            <span class="n">anat_tkrvox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occured while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
+            <span class="k">raise</span>
+
+        <span class="c1"># Read tkvox2ras transform for the functional volume</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras-tkr&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
+            <span class="c1"># This next line is potentially problematic. The [1:] index</span>
+            <span class="c1"># skips a first line that is present only if an error occurs</span>
+            <span class="c1"># or some info is missing when the transform is created - i.e.</span>
+            <span class="c1"># not in all cases, just in the case that the transform is </span>
+            <span class="c1"># created exactly as it is now. Better would be to check the first</span>
+            <span class="c1"># line e.g. with a regular expression. </span>
+            <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="n">func_tkrvox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occured while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
+            <span class="k">raise</span>
+        <span class="c1"># Debugging code</span>
+        <span class="c1">#print(&#39;Shape of func_tkrvox2ras is: [SHOULD BE (4,4) !!]&#39;)</span>
+        <span class="c1">#print(func_tkrvox2ras.shape)</span>
+
+        <span class="c1"># Read voxel resolution of the functional volume</span>
+        <span class="n">func_voxres</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()</span>
+
+        <span class="c1"># Calculate FreeSurfer transform</span>
+        <span class="n">fs_anat2func</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">func_tkrvox2ras</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">anat_vox2ras</span><span class="p">,</span> <span class="n">inv</span><span class="p">(</span><span class="n">anat_tkrvox2ras</span><span class="p">))))</span>
+
+        <span class="c1"># Debugging code</span>
+        <span class="c1">#if not fs_anat2func.shape == (4, 4):</span>
+        <span class="c1">#    raise Exception(&quot;bad assumptions led to bad transformation matrix.&quot;)</span>
+        <span class="c1"># Write out to `fs_register` in register.dat format</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fs_register</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fid</span><span class="p">:</span>
+            <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject</span><span class="p">))</span>
+            <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{:.6f}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">func_voxres</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+            <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{:.6f}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">func_voxres</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;0.150000</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">fs_anat2func</span><span class="p">:</span>
+                <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;</span><span class="si">{:.15e}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">row</span><span class="p">])</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Wrote:&#39;</span><span class="p">)</span>
+        <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">((</span><span class="s1">&#39;cat&#39;</span><span class="p">,</span> <span class="n">fs_register</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">fs_anat2func</span></div>
+
+<span class="k">def</span> <span class="nf">isstr</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Check for stringy-ness in python 2.7 or 3&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">basestring</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+    
+<span class="k">def</span> <span class="nf">decode</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">obj</span>
+        
+
+<span class="k">def</span> <span class="nf">_x_flipper</span><span class="p">(</span><span class="n">N_i</span><span class="p">):</span>
+    <span class="c1">#Copied from dipy</span>
+    <span class="n">flipr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="n">flipr</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">N_i</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">flipr</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

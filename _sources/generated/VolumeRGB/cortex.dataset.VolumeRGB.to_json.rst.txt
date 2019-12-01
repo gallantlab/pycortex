@@ -1,0 +1,6 @@
+cortex.dataset.VolumeRGB.to\_json
+=================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VolumeRGB.to_json

@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.polyutils.Surface.geodesic_path &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-polyutils-surface-geodesic-path">
+<h1>cortex.polyutils.Surface.geodesic_path<a class="headerlink" href="#cortex-polyutils-surface-geodesic-path" title="Permalink to this headline">¶</a></h1>
+<dl class="method">
+<dt id="cortex.polyutils.Surface.geodesic_path">
+<code class="sig-prename descclassname">Surface.</code><code class="sig-name descname">geodesic_path</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">a</em>, <em class="sig-param">b</em>, <em class="sig-param">max_len=1000</em>, <em class="sig-param">d=None</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/cortex/polyutils/surface.html#Surface.geodesic_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.polyutils.Surface.geodesic_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds the shortest path between two points <cite>a</cite> and <cite>b</cite>.</p>
+<p>This shortest path is based on geodesic distances across the surface.
+The path starts at point <cite>a</cite> and selects the neighbor of <cite>a</cite> in the 
+graph that is closest to <cite>b</cite>. This is done iteratively with the last
+vertex in the path until the last point in the path is <cite>b</cite>.</p>
+<p>Other Parameters in kwargs are passed to the geodesic_distance 
+function to alter how geodesic distances are actually measured</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>a</strong><span class="classifier">int</span></dt><dd><p>Vertex that is the start of the path</p>
+</dd>
+<dt><strong>b</strong><span class="classifier">int</span></dt><dd><p>Vertex that is the end of the path</p>
+</dd>
+<dt><strong>d</strong><span class="classifier">array</span></dt><dd><p>array of geodesic distances, will be computed if not provided</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>path</strong><span class="classifier">list</span></dt><dd><p>List of the vertices in the path from a to b</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Other Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>max_len</strong><span class="classifier">int, optional, default=1000</span></dt><dd><p>Maximum path length before the function quits. Sometimes it can get stuck
+in loops, causing infinite paths.</p>
+</dd>
+<dt><strong>m</strong><span class="classifier">float, optional</span></dt><dd><p>Reverse Euler step length. The optimal value is likely between 0.5 and 1.5.
+Default is 1.0, which should be fine for most cases.</p>
+</dd>
+<dt><strong>fem</strong><span class="classifier">bool, optional</span></dt><dd><p>Whether to use Finite Element Method lumped mass matrix. Wasn’t used in 
+Crane 2012 paper. Doesn’t seem to help any.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/generated/Surface/cortex.polyutils.Surface.geodesic_path.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

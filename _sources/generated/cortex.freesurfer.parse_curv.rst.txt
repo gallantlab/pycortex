@@ -1,0 +1,6 @@
+cortex.freesurfer.parse\_curv
+=============================
+
+.. currentmodule:: cortex.freesurfer
+
+.. autofunction:: parse_curv

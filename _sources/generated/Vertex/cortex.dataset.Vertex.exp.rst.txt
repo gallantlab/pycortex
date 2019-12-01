@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.exp
+=========================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.exp

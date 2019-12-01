@@ -1,0 +1,6 @@
+cortex.database.Database.save\_xfm
+==================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.save_xfm

@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.from\_hdf
+==================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VertexRGB.from_hdf

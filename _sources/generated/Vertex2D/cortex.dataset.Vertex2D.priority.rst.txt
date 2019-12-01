@@ -1,0 +1,6 @@
+cortex.dataset.Vertex2D.priority
+================================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: Vertex2D.priority

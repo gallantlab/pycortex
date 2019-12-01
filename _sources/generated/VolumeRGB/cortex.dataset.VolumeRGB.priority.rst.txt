@@ -1,0 +1,6 @@
+cortex.dataset.VolumeRGB.priority
+=================================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: VolumeRGB.priority

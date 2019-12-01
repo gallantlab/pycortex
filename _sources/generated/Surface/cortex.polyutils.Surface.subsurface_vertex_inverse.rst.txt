@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.subsurface\_vertex\_inverse
+====================================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.subsurface_vertex_inverse

@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.uniques
+=============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.uniques

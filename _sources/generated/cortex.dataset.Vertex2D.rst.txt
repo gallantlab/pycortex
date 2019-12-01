@@ -1,0 +1,36 @@
+cortex.dataset.Vertex2D
+=======================
+
+.. currentmodule:: cortex.dataset
+
+.. autoclass:: Vertex2D
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: Vertex2D
+   
+     ~Vertex2D.__init__
+     ~Vertex2D.copy
+     ~Vertex2D.from_hdf
+     ~Vertex2D.to_json
+     ~Vertex2D.uniques
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: Vertex2D
+   
+      ~Vertex2D.priority
+      ~Vertex2D.raw
+      ~Vertex2D.subject
+      ~Vertex2D.vertices
+   
+   

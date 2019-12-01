@@ -1,0 +1,6 @@
+cortex.anat.voxelize
+====================
+
+.. currentmodule:: cortex.anat
+
+.. autofunction:: voxelize

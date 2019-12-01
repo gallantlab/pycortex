@@ -1,0 +1,1378 @@
+Colormaps
+=========
+
+There are a number of colormaps available in pycortex.
+A full list of those that can be used are below.
+
+Accent
+
+.. image:: ../filestore/colormaps/Accent.png
+   :height: 25px
+   :width: 200px
+
+
+Accent_r
+
+.. image:: ../filestore/colormaps/Accent_r.png
+   :height: 25px
+   :width: 200px
+
+
+BROYG
+
+.. image:: ../filestore/colormaps/BROYG.png
+   :height: 25px
+   :width: 200px
+
+
+BROYG_2D
+
+.. image:: ../filestore/colormaps/BROYG_2D.png
+   :height: 200px
+   :width: 200px
+
+
+Blues
+
+.. image:: ../filestore/colormaps/Blues.png
+   :height: 25px
+   :width: 200px
+
+
+Blues_r
+
+.. image:: ../filestore/colormaps/Blues_r.png
+   :height: 25px
+   :width: 200px
+
+
+BrBG
+
+.. image:: ../filestore/colormaps/BrBG.png
+   :height: 25px
+   :width: 200px
+
+
+BrBG_r
+
+.. image:: ../filestore/colormaps/BrBG_r.png
+   :height: 25px
+   :width: 200px
+
+
+BuBkRd
+
+.. image:: ../filestore/colormaps/BuBkRd.png
+   :height: 25px
+   :width: 200px
+
+
+BuBkRd_alpha_2D
+
+.. image:: ../filestore/colormaps/BuBkRd_alpha_2D.png
+   :height: 200px
+   :width: 200px
+
+
+BuGn
+
+.. image:: ../filestore/colormaps/BuGn.png
+   :height: 25px
+   :width: 200px
+
+
+BuGn_r
+
+.. image:: ../filestore/colormaps/BuGn_r.png
+   :height: 25px
+   :width: 200px
+
+
+BuOr_2D
+
+.. image:: ../filestore/colormaps/BuOr_2D.png
+   :height: 200px
+   :width: 200px
+
+
+BuPu
+
+.. image:: ../filestore/colormaps/BuPu.png
+   :height: 25px
+   :width: 200px
+
+
+BuPu_r
+
+.. image:: ../filestore/colormaps/BuPu_r.png
+   :height: 25px
+   :width: 200px
+
+
+BuWtRd
+
+.. image:: ../filestore/colormaps/BuWtRd.png
+   :height: 25px
+   :width: 200px
+
+
+BuWtRd_alpha
+
+.. image:: ../filestore/colormaps/BuWtRd_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+BuWtRd_black_2D
+
+.. image:: ../filestore/colormaps/BuWtRd_black_2D.png
+   :height: 200px
+   :width: 200px
+
+
+CyanBlueGrayRedPink
+
+.. image:: ../filestore/colormaps/CyanBlueGrayRedPink.png
+   :height: 25px
+   :width: 200px
+
+
+Dark2
+
+.. image:: ../filestore/colormaps/Dark2.png
+   :height: 25px
+   :width: 200px
+
+
+Dark2_r
+
+.. image:: ../filestore/colormaps/Dark2_r.png
+   :height: 25px
+   :width: 200px
+
+
+GnBu
+
+.. image:: ../filestore/colormaps/GnBu.png
+   :height: 25px
+   :width: 200px
+
+
+GnBu_r
+
+.. image:: ../filestore/colormaps/GnBu_r.png
+   :height: 25px
+   :width: 200px
+
+
+GreenWhiteBlue
+
+.. image:: ../filestore/colormaps/GreenWhiteBlue.png
+   :height: 25px
+   :width: 200px
+
+
+GreenWhiteBlue_2D
+
+.. image:: ../filestore/colormaps/GreenWhiteBlue_2D.png
+   :height: 200px
+   :width: 200px
+
+
+GreenWhiteRed
+
+.. image:: ../filestore/colormaps/GreenWhiteRed.png
+   :height: 25px
+   :width: 200px
+
+
+GreenWhiteRed_2D
+
+.. image:: ../filestore/colormaps/GreenWhiteRed_2D.png
+   :height: 200px
+   :width: 200px
+
+
+Greens
+
+.. image:: ../filestore/colormaps/Greens.png
+   :height: 25px
+   :width: 200px
+
+
+Greens_r
+
+.. image:: ../filestore/colormaps/Greens_r.png
+   :height: 25px
+   :width: 200px
+
+
+Greys
+
+.. image:: ../filestore/colormaps/Greys.png
+   :height: 25px
+   :width: 200px
+
+
+Greys_r
+
+.. image:: ../filestore/colormaps/Greys_r.png
+   :height: 25px
+   :width: 200px
+
+
+J4
+
+.. image:: ../filestore/colormaps/J4.png
+   :height: 25px
+   :width: 200px
+
+
+J4R
+
+.. image:: ../filestore/colormaps/J4R.png
+   :height: 25px
+   :width: 200px
+
+
+J4s
+
+.. image:: ../filestore/colormaps/J4s.png
+   :height: 25px
+   :width: 200px
+
+
+J5
+
+.. image:: ../filestore/colormaps/J5.png
+   :height: 25px
+   :width: 200px
+
+
+J5R
+
+.. image:: ../filestore/colormaps/J5R.png
+   :height: 25px
+   :width: 200px
+
+
+J6
+
+.. image:: ../filestore/colormaps/J6.png
+   :height: 25px
+   :width: 200px
+
+
+J6R
+
+.. image:: ../filestore/colormaps/J6R.png
+   :height: 25px
+   :width: 200px
+
+
+OrRd
+
+.. image:: ../filestore/colormaps/OrRd.png
+   :height: 25px
+   :width: 200px
+
+
+OrRd_r
+
+.. image:: ../filestore/colormaps/OrRd_r.png
+   :height: 25px
+   :width: 200px
+
+
+Oranges
+
+.. image:: ../filestore/colormaps/Oranges.png
+   :height: 25px
+   :width: 200px
+
+
+Oranges_r
+
+.. image:: ../filestore/colormaps/Oranges_r.png
+   :height: 25px
+   :width: 200px
+
+
+PRGn
+
+.. image:: ../filestore/colormaps/PRGn.png
+   :height: 25px
+   :width: 200px
+
+
+PRGn_r
+
+.. image:: ../filestore/colormaps/PRGn_r.png
+   :height: 25px
+   :width: 200px
+
+
+PU_BuOr_covar
+
+.. image:: ../filestore/colormaps/PU_BuOr_covar.png
+   :height: 200px
+   :width: 200px
+
+
+PU_BuOr_covar_alpha
+
+.. image:: ../filestore/colormaps/PU_BuOr_covar_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+PU_PinkBlue_covar
+
+.. image:: ../filestore/colormaps/PU_PinkBlue_covar.png
+   :height: 200px
+   :width: 200px
+
+
+PU_RdBu_covar
+
+.. image:: ../filestore/colormaps/PU_RdBu_covar.png
+   :height: 200px
+   :width: 200px
+
+
+PU_RdBu_covar_alpha
+
+.. image:: ../filestore/colormaps/PU_RdBu_covar_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+PU_RdGn_covar
+
+.. image:: ../filestore/colormaps/PU_RdGn_covar.png
+   :height: 200px
+   :width: 200px
+
+
+Paired
+
+.. image:: ../filestore/colormaps/Paired.png
+   :height: 25px
+   :width: 200px
+
+
+Paired_r
+
+.. image:: ../filestore/colormaps/Paired_r.png
+   :height: 25px
+   :width: 200px
+
+
+Pastel1
+
+.. image:: ../filestore/colormaps/Pastel1.png
+   :height: 25px
+   :width: 200px
+
+
+Pastel1_r
+
+.. image:: ../filestore/colormaps/Pastel1_r.png
+   :height: 25px
+   :width: 200px
+
+
+Pastel2
+
+.. image:: ../filestore/colormaps/Pastel2.png
+   :height: 25px
+   :width: 200px
+
+
+Pastel2_r
+
+.. image:: ../filestore/colormaps/Pastel2_r.png
+   :height: 25px
+   :width: 200px
+
+
+PiYG
+
+.. image:: ../filestore/colormaps/PiYG.png
+   :height: 25px
+   :width: 200px
+
+
+PiYG_r
+
+.. image:: ../filestore/colormaps/PiYG_r.png
+   :height: 25px
+   :width: 200px
+
+
+PuBu
+
+.. image:: ../filestore/colormaps/PuBu.png
+   :height: 25px
+   :width: 200px
+
+
+PuBuGn
+
+.. image:: ../filestore/colormaps/PuBuGn.png
+   :height: 25px
+   :width: 200px
+
+
+PuBuGn_r
+
+.. image:: ../filestore/colormaps/PuBuGn_r.png
+   :height: 25px
+   :width: 200px
+
+
+PuBu_r
+
+.. image:: ../filestore/colormaps/PuBu_r.png
+   :height: 25px
+   :width: 200px
+
+
+PuOr
+
+.. image:: ../filestore/colormaps/PuOr.png
+   :height: 25px
+   :width: 200px
+
+
+PuOr_r
+
+.. image:: ../filestore/colormaps/PuOr_r.png
+   :height: 25px
+   :width: 200px
+
+
+PuRd
+
+.. image:: ../filestore/colormaps/PuRd.png
+   :height: 25px
+   :width: 200px
+
+
+PuRd_r
+
+.. image:: ../filestore/colormaps/PuRd_r.png
+   :height: 25px
+   :width: 200px
+
+
+Purples
+
+.. image:: ../filestore/colormaps/Purples.png
+   :height: 25px
+   :width: 200px
+
+
+Purples_r
+
+.. image:: ../filestore/colormaps/Purples_r.png
+   :height: 25px
+   :width: 200px
+
+
+RGrB_tsi
+
+.. image:: ../filestore/colormaps/RGrB_tsi.png
+   :height: 25px
+   :width: 200px
+
+
+RdBu
+
+.. image:: ../filestore/colormaps/RdBu.png
+   :height: 25px
+   :width: 200px
+
+
+RdBu_2D
+
+.. image:: ../filestore/colormaps/RdBu_2D.png
+   :height: 200px
+   :width: 200px
+
+
+RdBu_2D_r
+
+.. image:: ../filestore/colormaps/RdBu_2D_r.png
+   :height: 200px
+   :width: 200px
+
+
+RdBu_covar
+
+.. image:: ../filestore/colormaps/RdBu_covar.png
+   :height: 200px
+   :width: 200px
+
+
+RdBu_covar2
+
+.. image:: ../filestore/colormaps/RdBu_covar2.png
+   :height: 200px
+   :width: 200px
+
+
+RdBu_covar_alpha
+
+.. image:: ../filestore/colormaps/RdBu_covar_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+RdBu_r
+
+.. image:: ../filestore/colormaps/RdBu_r.png
+   :height: 25px
+   :width: 200px
+
+
+RdBu_r_alpha
+
+.. image:: ../filestore/colormaps/RdBu_r_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+RdGn_covar
+
+.. image:: ../filestore/colormaps/RdGn_covar.png
+   :height: 200px
+   :width: 200px
+
+
+RdGy
+
+.. image:: ../filestore/colormaps/RdGy.png
+   :height: 25px
+   :width: 200px
+
+
+RdGy_r
+
+.. image:: ../filestore/colormaps/RdGy_r.png
+   :height: 25px
+   :width: 200px
+
+
+RdPu
+
+.. image:: ../filestore/colormaps/RdPu.png
+   :height: 25px
+   :width: 200px
+
+
+RdPu_r
+
+.. image:: ../filestore/colormaps/RdPu_r.png
+   :height: 25px
+   :width: 200px
+
+
+RdYlBu
+
+.. image:: ../filestore/colormaps/RdYlBu.png
+   :height: 25px
+   :width: 200px
+
+
+RdYlBu_r
+
+.. image:: ../filestore/colormaps/RdYlBu_r.png
+   :height: 25px
+   :width: 200px
+
+
+RdYlGn
+
+.. image:: ../filestore/colormaps/RdYlGn.png
+   :height: 25px
+   :width: 200px
+
+
+RdYlGn_r
+
+.. image:: ../filestore/colormaps/RdYlGn_r.png
+   :height: 25px
+   :width: 200px
+
+
+Reds
+
+.. image:: ../filestore/colormaps/Reds.png
+   :height: 25px
+   :width: 200px
+
+
+Reds_cov
+
+.. image:: ../filestore/colormaps/Reds_cov.png
+   :height: 25px
+   :width: 200px
+
+
+Reds_r
+
+.. image:: ../filestore/colormaps/Reds_r.png
+   :height: 25px
+   :width: 200px
+
+
+Retinotopy_RYBCR
+
+.. image:: ../filestore/colormaps/Retinotopy_RYBCR.png
+   :height: 25px
+   :width: 200px
+
+
+Retinotopy_RYBCR_2D
+
+.. image:: ../filestore/colormaps/Retinotopy_RYBCR_2D.png
+   :height: 200px
+   :width: 200px
+
+
+Retinotopy_RYBCR_alpha
+
+.. image:: ../filestore/colormaps/Retinotopy_RYBCR_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+Set1
+
+.. image:: ../filestore/colormaps/Set1.png
+   :height: 25px
+   :width: 200px
+
+
+Set1_r
+
+.. image:: ../filestore/colormaps/Set1_r.png
+   :height: 25px
+   :width: 200px
+
+
+Set2
+
+.. image:: ../filestore/colormaps/Set2.png
+   :height: 25px
+   :width: 200px
+
+
+Set2_r
+
+.. image:: ../filestore/colormaps/Set2_r.png
+   :height: 25px
+   :width: 200px
+
+
+Set3
+
+.. image:: ../filestore/colormaps/Set3.png
+   :height: 25px
+   :width: 200px
+
+
+Set3_r
+
+.. image:: ../filestore/colormaps/Set3_r.png
+   :height: 25px
+   :width: 200px
+
+
+Spectral
+
+.. image:: ../filestore/colormaps/Spectral.png
+   :height: 25px
+   :width: 200px
+
+
+Spectral_r
+
+.. image:: ../filestore/colormaps/Spectral_r.png
+   :height: 25px
+   :width: 200px
+
+
+YlGn
+
+.. image:: ../filestore/colormaps/YlGn.png
+   :height: 25px
+   :width: 200px
+
+
+YlGnBu
+
+.. image:: ../filestore/colormaps/YlGnBu.png
+   :height: 25px
+   :width: 200px
+
+
+YlGnBu_r
+
+.. image:: ../filestore/colormaps/YlGnBu_r.png
+   :height: 25px
+   :width: 200px
+
+
+YlGn_r
+
+.. image:: ../filestore/colormaps/YlGn_r.png
+   :height: 25px
+   :width: 200px
+
+
+YlOrBr
+
+.. image:: ../filestore/colormaps/YlOrBr.png
+   :height: 25px
+   :width: 200px
+
+
+YlOrBr_r
+
+.. image:: ../filestore/colormaps/YlOrBr_r.png
+   :height: 25px
+   :width: 200px
+
+
+YlOrRd
+
+.. image:: ../filestore/colormaps/YlOrRd.png
+   :height: 25px
+   :width: 200px
+
+
+YlOrRd_r
+
+.. image:: ../filestore/colormaps/YlOrRd_r.png
+   :height: 25px
+   :width: 200px
+
+
+afmhot
+
+.. image:: ../filestore/colormaps/afmhot.png
+   :height: 25px
+   :width: 200px
+
+
+afmhot_r
+
+.. image:: ../filestore/colormaps/afmhot_r.png
+   :height: 25px
+   :width: 200px
+
+
+autumn
+
+.. image:: ../filestore/colormaps/autumn.png
+   :height: 25px
+   :width: 200px
+
+
+autumn_alpha
+
+.. image:: ../filestore/colormaps/autumn_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+autumn_blkmin
+
+.. image:: ../filestore/colormaps/autumn_blkmin.png
+   :height: 25px
+   :width: 200px
+
+
+autumn_blkmin_alpha_2D
+
+.. image:: ../filestore/colormaps/autumn_blkmin_alpha_2D.png
+   :height: 200px
+   :width: 200px
+
+
+autumn_r
+
+.. image:: ../filestore/colormaps/autumn_r.png
+   :height: 25px
+   :width: 200px
+
+
+autumnblack
+
+.. image:: ../filestore/colormaps/autumnblack.png
+   :height: 25px
+   :width: 200px
+
+
+autumnblack_alpha_2D
+
+.. image:: ../filestore/colormaps/autumnblack_alpha_2D.png
+   :height: 200px
+   :width: 200px
+
+
+binary
+
+.. image:: ../filestore/colormaps/binary.png
+   :height: 25px
+   :width: 200px
+
+
+binary_r
+
+.. image:: ../filestore/colormaps/binary_r.png
+   :height: 25px
+   :width: 200px
+
+
+bone
+
+.. image:: ../filestore/colormaps/bone.png
+   :height: 25px
+   :width: 200px
+
+
+bone_r
+
+.. image:: ../filestore/colormaps/bone_r.png
+   :height: 25px
+   :width: 200px
+
+
+brg
+
+.. image:: ../filestore/colormaps/brg.png
+   :height: 25px
+   :width: 200px
+
+
+brg_r
+
+.. image:: ../filestore/colormaps/brg_r.png
+   :height: 25px
+   :width: 200px
+
+
+bwr
+
+.. image:: ../filestore/colormaps/bwr.png
+   :height: 25px
+   :width: 200px
+
+
+bwr_r
+
+.. image:: ../filestore/colormaps/bwr_r.png
+   :height: 25px
+   :width: 200px
+
+
+cool
+
+.. image:: ../filestore/colormaps/cool.png
+   :height: 25px
+   :width: 200px
+
+
+cool_r
+
+.. image:: ../filestore/colormaps/cool_r.png
+   :height: 25px
+   :width: 200px
+
+
+coolwarm
+
+.. image:: ../filestore/colormaps/coolwarm.png
+   :height: 25px
+   :width: 200px
+
+
+coolwarm_r
+
+.. image:: ../filestore/colormaps/coolwarm_r.png
+   :height: 25px
+   :width: 200px
+
+
+copper
+
+.. image:: ../filestore/colormaps/copper.png
+   :height: 25px
+   :width: 200px
+
+
+copper_r
+
+.. image:: ../filestore/colormaps/copper_r.png
+   :height: 25px
+   :width: 200px
+
+
+cubehelix
+
+.. image:: ../filestore/colormaps/cubehelix.png
+   :height: 25px
+   :width: 200px
+
+
+cubehelix_r
+
+.. image:: ../filestore/colormaps/cubehelix_r.png
+   :height: 25px
+   :width: 200px
+
+
+fire
+
+.. image:: ../filestore/colormaps/fire.png
+   :height: 25px
+   :width: 200px
+
+
+fire_alpha
+
+.. image:: ../filestore/colormaps/fire_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+flag
+
+.. image:: ../filestore/colormaps/flag.png
+   :height: 25px
+   :width: 200px
+
+
+flag_r
+
+.. image:: ../filestore/colormaps/flag_r.png
+   :height: 25px
+   :width: 200px
+
+
+freesurfer_aseg_256
+
+.. image:: ../filestore/colormaps/freesurfer_aseg_256.png
+   :height: 25px
+   :width: 200px
+
+
+gist_earth
+
+.. image:: ../filestore/colormaps/gist_earth.png
+   :height: 25px
+   :width: 200px
+
+
+gist_earth_r
+
+.. image:: ../filestore/colormaps/gist_earth_r.png
+   :height: 25px
+   :width: 200px
+
+
+gist_gray
+
+.. image:: ../filestore/colormaps/gist_gray.png
+   :height: 25px
+   :width: 200px
+
+
+gist_gray_r
+
+.. image:: ../filestore/colormaps/gist_gray_r.png
+   :height: 25px
+   :width: 200px
+
+
+gist_heat
+
+.. image:: ../filestore/colormaps/gist_heat.png
+   :height: 25px
+   :width: 200px
+
+
+gist_heat_r
+
+.. image:: ../filestore/colormaps/gist_heat_r.png
+   :height: 25px
+   :width: 200px
+
+
+gist_ncar
+
+.. image:: ../filestore/colormaps/gist_ncar.png
+   :height: 25px
+   :width: 200px
+
+
+gist_ncar_r
+
+.. image:: ../filestore/colormaps/gist_ncar_r.png
+   :height: 25px
+   :width: 200px
+
+
+gist_rainbow
+
+.. image:: ../filestore/colormaps/gist_rainbow.png
+   :height: 25px
+   :width: 200px
+
+
+gist_rainbow_r
+
+.. image:: ../filestore/colormaps/gist_rainbow_r.png
+   :height: 25px
+   :width: 200px
+
+
+gist_stern
+
+.. image:: ../filestore/colormaps/gist_stern.png
+   :height: 25px
+   :width: 200px
+
+
+gist_stern_r
+
+.. image:: ../filestore/colormaps/gist_stern_r.png
+   :height: 25px
+   :width: 200px
+
+
+gist_yarg
+
+.. image:: ../filestore/colormaps/gist_yarg.png
+   :height: 25px
+   :width: 200px
+
+
+gist_yarg_r
+
+.. image:: ../filestore/colormaps/gist_yarg_r.png
+   :height: 25px
+   :width: 200px
+
+
+gnuplot
+
+.. image:: ../filestore/colormaps/gnuplot.png
+   :height: 25px
+   :width: 200px
+
+
+gnuplot2
+
+.. image:: ../filestore/colormaps/gnuplot2.png
+   :height: 25px
+   :width: 200px
+
+
+gnuplot2_r
+
+.. image:: ../filestore/colormaps/gnuplot2_r.png
+   :height: 25px
+   :width: 200px
+
+
+gnuplot_r
+
+.. image:: ../filestore/colormaps/gnuplot_r.png
+   :height: 25px
+   :width: 200px
+
+
+gray
+
+.. image:: ../filestore/colormaps/gray.png
+   :height: 25px
+   :width: 200px
+
+
+gray_r
+
+.. image:: ../filestore/colormaps/gray_r.png
+   :height: 25px
+   :width: 200px
+
+
+hot
+
+.. image:: ../filestore/colormaps/hot.png
+   :height: 25px
+   :width: 200px
+
+
+hot_alpha
+
+.. image:: ../filestore/colormaps/hot_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+hot_r
+
+.. image:: ../filestore/colormaps/hot_r.png
+   :height: 25px
+   :width: 200px
+
+
+hsv
+
+.. image:: ../filestore/colormaps/hsv.png
+   :height: 25px
+   :width: 200px
+
+
+hsv_r
+
+.. image:: ../filestore/colormaps/hsv_r.png
+   :height: 25px
+   :width: 200px
+
+
+inferno
+
+.. image:: ../filestore/colormaps/inferno.png
+   :height: 25px
+   :width: 200px
+
+
+inferno_r
+
+.. image:: ../filestore/colormaps/inferno_r.png
+   :height: 25px
+   :width: 200px
+
+
+jet
+
+.. image:: ../filestore/colormaps/jet.png
+   :height: 25px
+   :width: 200px
+
+
+jet_r
+
+.. image:: ../filestore/colormaps/jet_r.png
+   :height: 25px
+   :width: 200px
+
+
+magma
+
+.. image:: ../filestore/colormaps/magma.png
+   :height: 25px
+   :width: 200px
+
+
+magma_r
+
+.. image:: ../filestore/colormaps/magma_r.png
+   :height: 25px
+   :width: 200px
+
+
+nipy_spectral
+
+.. image:: ../filestore/colormaps/nipy_spectral.png
+   :height: 25px
+   :width: 200px
+
+
+nipy_spectral_r
+
+.. image:: ../filestore/colormaps/nipy_spectral_r.png
+   :height: 25px
+   :width: 200px
+
+
+ocean
+
+.. image:: ../filestore/colormaps/ocean.png
+   :height: 25px
+   :width: 200px
+
+
+ocean_r
+
+.. image:: ../filestore/colormaps/ocean_r.png
+   :height: 25px
+   :width: 200px
+
+
+pink
+
+.. image:: ../filestore/colormaps/pink.png
+   :height: 25px
+   :width: 200px
+
+
+pink_r
+
+.. image:: ../filestore/colormaps/pink_r.png
+   :height: 25px
+   :width: 200px
+
+
+plasma
+
+.. image:: ../filestore/colormaps/plasma.png
+   :height: 25px
+   :width: 200px
+
+
+plasma_alpha
+
+.. image:: ../filestore/colormaps/plasma_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+plasma_r
+
+.. image:: ../filestore/colormaps/plasma_r.png
+   :height: 25px
+   :width: 200px
+
+
+prism
+
+.. image:: ../filestore/colormaps/prism.png
+   :height: 25px
+   :width: 200px
+
+
+prism_r
+
+.. image:: ../filestore/colormaps/prism_r.png
+   :height: 25px
+   :width: 200px
+
+
+rainbow
+
+.. image:: ../filestore/colormaps/rainbow.png
+   :height: 25px
+   :width: 200px
+
+
+rainbow_r
+
+.. image:: ../filestore/colormaps/rainbow_r.png
+   :height: 25px
+   :width: 200px
+
+
+seismic
+
+.. image:: ../filestore/colormaps/seismic.png
+   :height: 25px
+   :width: 200px
+
+
+seismic_r
+
+.. image:: ../filestore/colormaps/seismic_r.png
+   :height: 25px
+   :width: 200px
+
+
+spectral
+
+.. image:: ../filestore/colormaps/spectral.png
+   :height: 25px
+   :width: 200px
+
+
+spectral_r
+
+.. image:: ../filestore/colormaps/spectral_r.png
+   :height: 25px
+   :width: 200px
+
+
+spring
+
+.. image:: ../filestore/colormaps/spring.png
+   :height: 25px
+   :width: 200px
+
+
+spring_r
+
+.. image:: ../filestore/colormaps/spring_r.png
+   :height: 25px
+   :width: 200px
+
+
+summer
+
+.. image:: ../filestore/colormaps/summer.png
+   :height: 25px
+   :width: 200px
+
+
+summer_r
+
+.. image:: ../filestore/colormaps/summer_r.png
+   :height: 25px
+   :width: 200px
+
+
+terrain
+
+.. image:: ../filestore/colormaps/terrain.png
+   :height: 25px
+   :width: 200px
+
+
+terrain_r
+
+.. image:: ../filestore/colormaps/terrain_r.png
+   :height: 25px
+   :width: 200px
+
+
+viridis
+
+.. image:: ../filestore/colormaps/viridis.png
+   :height: 25px
+   :width: 200px
+
+
+viridis_r
+
+.. image:: ../filestore/colormaps/viridis_r.png
+   :height: 25px
+   :width: 200px
+
+
+winter
+
+.. image:: ../filestore/colormaps/winter.png
+   :height: 25px
+   :width: 200px
+
+
+winter_r
+
+.. image:: ../filestore/colormaps/winter_r.png
+   :height: 25px
+   :width: 200px
+
+

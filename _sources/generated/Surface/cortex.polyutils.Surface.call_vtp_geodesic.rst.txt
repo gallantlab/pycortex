@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.call\_vtp\_geodesic
+============================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.call_vtp_geodesic

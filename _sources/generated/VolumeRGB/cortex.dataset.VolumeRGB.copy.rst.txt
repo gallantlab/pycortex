@@ -1,0 +1,6 @@
+cortex.dataset.VolumeRGB.copy
+=============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VolumeRGB.copy

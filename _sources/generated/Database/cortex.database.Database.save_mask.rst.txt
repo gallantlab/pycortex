@@ -1,0 +1,6 @@
+cortex.database.Database.save\_mask
+===================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.save_mask

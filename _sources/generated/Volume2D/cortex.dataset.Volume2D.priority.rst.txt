@@ -1,0 +1,6 @@
+cortex.dataset.Volume2D.priority
+================================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: Volume2D.priority

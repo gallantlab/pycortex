@@ -1,0 +1,6 @@
+cortex.utils.get\_roi\_verts
+============================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: get_roi_verts

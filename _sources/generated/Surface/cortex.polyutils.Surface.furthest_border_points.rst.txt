@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.furthest\_border\_points
+=================================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.furthest_border_points

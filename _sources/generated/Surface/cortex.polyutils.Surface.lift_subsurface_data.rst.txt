@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.lift\_subsurface\_data
+===============================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.lift_subsurface_data

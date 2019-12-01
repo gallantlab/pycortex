@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.\_\_init\_\_
+=====================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.__init__

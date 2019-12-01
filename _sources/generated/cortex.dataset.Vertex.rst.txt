@@ -1,0 +1,44 @@
+cortex.dataset.Vertex
+=====================
+
+.. currentmodule:: cortex.dataset
+
+.. autoclass:: Vertex
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: Vertex
+   
+     ~Vertex.__init__
+     ~Vertex.copy
+     ~Vertex.empty
+     ~Vertex.exp
+     ~Vertex.from_hdf
+     ~Vertex.map
+     ~Vertex.random
+     ~Vertex.to_json
+     ~Vertex.uniques
+     ~Vertex.volume
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: Vertex
+   
+      ~Vertex.data
+      ~Vertex.left
+      ~Vertex.name
+      ~Vertex.priority
+      ~Vertex.raw
+      ~Vertex.right
+      ~Vertex.vertices
+   
+   

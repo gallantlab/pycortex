@@ -1,0 +1,6 @@
+cortex.dataset.Volume.copy
+==========================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Volume.copy

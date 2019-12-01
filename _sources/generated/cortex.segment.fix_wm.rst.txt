@@ -1,0 +1,6 @@
+cortex.segment.fix\_wm
+======================
+
+.. currentmodule:: cortex.segment
+
+.. autofunction:: fix_wm

@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.create\_subsurface
+===========================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.create_subsurface

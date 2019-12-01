@@ -1,0 +1,6 @@
+cortex.database.Database.get\_cache
+===================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.get_cache

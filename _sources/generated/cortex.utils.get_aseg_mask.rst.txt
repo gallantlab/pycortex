@@ -1,0 +1,6 @@
+cortex.utils.get\_aseg\_mask
+============================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: get_aseg_mask

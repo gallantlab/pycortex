@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.random
+============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.random

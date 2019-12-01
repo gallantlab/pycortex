@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.get\_geodesic\_patches
+===============================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.get_geodesic_patches

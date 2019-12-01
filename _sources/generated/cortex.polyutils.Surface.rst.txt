@@ -1,0 +1,71 @@
+cortex.polyutils.Surface
+========================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoclass:: Surface
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: Surface
+   
+     ~Surface.__init__
+     ~Surface.approx_geodesic_distance
+     ~Surface.call_vtp_geodesic
+     ~Surface.create_biharmonic_solver
+     ~Surface.create_subsurface
+     ~Surface.edge_collapse
+     ~Surface.exact_geodesic_distance
+     ~Surface.extract_chunk
+     ~Surface.extract_geodesic_chunk
+     ~Surface.geodesic_distance
+     ~Surface.geodesic_path
+     ~Surface.get_connected_vertices
+     ~Surface.get_euclidean_ball
+     ~Surface.get_euclidean_patch
+     ~Surface.get_geodesic_patch
+     ~Surface.get_geodesic_patches
+     ~Surface.get_geodesic_strip_patch
+     ~Surface.get_graph
+     ~Surface.get_strip_coordinates
+     ~Surface.interp
+     ~Surface.lift_subsurface_data
+     ~Surface.mean_curvature
+     ~Surface.patches
+     ~Surface.plot_subsurface_rotating_gif
+     ~Surface.polyhedra
+     ~Surface.smooth
+     ~Surface.surface_gradient
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: Surface
+   
+      ~Surface.adj
+      ~Surface.avg_edge_length
+      ~Surface.boundary_vertices
+      ~Surface.connected
+      ~Surface.cotangent_weights
+      ~Surface.edge_lengths
+      ~Surface.face_areas
+      ~Surface.face_normals
+      ~Surface.furthest_border_points
+      ~Surface.graph
+      ~Surface.iter_surfedges
+      ~Surface.iter_surfedges_weighted
+      ~Surface.laplace_operator
+      ~Surface.ppts
+      ~Surface.subsurface_vertex_inverse
+      ~Surface.vertex_normals
+      ~Surface.weighted_distance_graph
+   
+   

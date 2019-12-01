@@ -1,0 +1,6 @@
+cortex.dataset.Volume2D.to\_json
+================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Volume2D.to_json

@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.edge\_collapse
+=======================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.edge_collapse

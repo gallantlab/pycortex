@@ -1,0 +1,6 @@
+cortex.surfinfo.flat\_border
+============================
+
+.. currentmodule:: cortex.surfinfo
+
+.. autofunction:: flat_border

@@ -1,0 +1,43 @@
+cortex.dataset.Volume
+=====================
+
+.. currentmodule:: cortex.dataset
+
+.. autoclass:: Volume
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: Volume
+   
+     ~Volume.__init__
+     ~Volume.copy
+     ~Volume.empty
+     ~Volume.exp
+     ~Volume.from_hdf
+     ~Volume.map
+     ~Volume.random
+     ~Volume.save
+     ~Volume.save_nii
+     ~Volume.to_json
+     ~Volume.uniques
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: Volume
+   
+      ~Volume.data
+      ~Volume.name
+      ~Volume.priority
+      ~Volume.raw
+      ~Volume.volume
+   
+   

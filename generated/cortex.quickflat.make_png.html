@@ -1,0 +1,181 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.quickflat.make_png &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-quickflat-make-png">
+<h1>cortex.quickflat.make_png<a class="headerlink" href="#cortex-quickflat-make-png" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="cortex.quickflat.make_png">
+<code class="sig-prename descclassname">cortex.quickflat.</code><code class="sig-name descname">make_png</code><span class="sig-paren">(</span><em class="sig-param">fname</em>, <em class="sig-param">braindata</em>, <em class="sig-param">recache=False</em>, <em class="sig-param">pixelwise=True</em>, <em class="sig-param">sampler='nearest'</em>, <em class="sig-param">height=1024</em>, <em class="sig-param">bgcolor=None</em>, <em class="sig-param">dpi=100</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/quickflat/view.html#make_png"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.quickflat.make_png" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a PNG of the VertexData or VolumeData on a flatmap.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>fname</strong><span class="classifier">str</span></dt><dd><p>Filename for where to save the PNG file</p>
+</dd>
+<dt><strong>braindata</strong><span class="classifier">Dataview (e.g. instance of cortex.Volume, cortex.Vertex, …)</span></dt><dd><p>the data you would like to plot on a flatmap</p>
+</dd>
+<dt><strong>recache</strong><span class="classifier">boolean</span></dt><dd><p>Whether or not to recache intermediate files. Takes longer to plot this way, potentially
+resolves some errors. Useful if you’ve made changes to the alignment</p>
+</dd>
+<dt><strong>pixelwise</strong><span class="classifier">bool</span></dt><dd><p>Use pixel-wise mapping</p>
+</dd>
+<dt><strong>thick</strong><span class="classifier">int</span></dt><dd><p>Number of layers through the cortical sheet to sample. Only applies for pixelwise = True</p>
+</dd>
+<dt><strong>sampler</strong><span class="classifier">str</span></dt><dd><p>Name of sampling function used to sample underlying volume data</p>
+</dd>
+<dt><strong>height</strong><span class="classifier">int</span></dt><dd><p>Height of the image to render. Automatically scales the width for the aspect of
+the subject’s flatmap</p>
+</dd>
+<dt><strong>depth</strong><span class="classifier">float</span></dt><dd><p>Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
+boundary, 1 = pial surface)</p>
+</dd>
+<dt><strong>with_rois, with_labels, with_colorbar, with_borders, with_dropout</strong><span class="classifier">bool, optional</span></dt><dd><p>Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?</p>
+</dd>
+<dt><strong>sampler</strong><span class="classifier">str</span></dt><dd><p>Name of sampling function used to sample underlying volume data. Options include
+‘trilinear’, ‘nearest’, ‘lanczos’; see functions in cortex.mapper.samplers.py for all options</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Other Parameters</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>dpi</strong><span class="classifier">int</span></dt><dd><p>DPI of the generated image. Only applies to the scaling of matplotlib elements,
+specifically the colormap</p>
+</dd>
+<dt><strong>bgcolor</strong><span class="classifier">matplotlib colorspec</span></dt><dd><p>Color of background of image. <cite>None</cite> gives transparent background.</p>
+</dd>
+<dt><strong>linewidth</strong><span class="classifier">int, optional</span></dt><dd><p>Width of ROI lines. Defaults to roi options in your local <cite>options.cfg</cite></p>
+</dd>
+<dt><strong>linecolor</strong><span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) specification of line color</p>
+</dd>
+<dt><strong>roifill</strong><span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) sepcification for the fill of each ROI region</p>
+</dd>
+<dt><strong>shadow</strong><span class="classifier">int, optional</span></dt><dd><p>Standard deviation of the gaussian shadow. Set to 0 if you want no shadow</p>
+</dd>
+<dt><strong>labelsize</strong><span class="classifier">str, optional</span></dt><dd><p>Font size for the label, e.g. “16pt”</p>
+</dd>
+<dt><strong>labelcolor</strong><span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) specification for the label color</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.quickflat.make_png.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

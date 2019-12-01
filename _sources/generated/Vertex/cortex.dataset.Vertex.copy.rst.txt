@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.copy
+==========================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.copy

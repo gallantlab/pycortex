@@ -1,0 +1,6 @@
+cortex.segment.cut\_surface
+===========================
+
+.. currentmodule:: cortex.segment
+
+.. autofunction:: cut_surface

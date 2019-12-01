@@ -1,0 +1,6 @@
+cortex.database.Database.get\_overlay
+=====================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.get_overlay

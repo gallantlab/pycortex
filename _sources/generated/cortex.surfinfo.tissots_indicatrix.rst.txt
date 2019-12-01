@@ -1,0 +1,6 @@
+cortex.surfinfo.tissots\_indicatrix
+===================================
+
+.. currentmodule:: cortex.surfinfo
+
+.. autofunction:: tissots_indicatrix

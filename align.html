@@ -1,0 +1,233 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Alignments &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Surface-defined ROIs" href="rois.html" />
+    <link rel="prev" title="Surface Database" href="database.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="alignments">
+<h1>Alignments<a class="headerlink" href="#alignments" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">cortex.align</span></code> module.</p>
+<p>Aligning functional data, or finding where the brain is.</p>
+<p>To correctly visualise cortical activity, we need to know where cortical surface is in the functional data.
+The brain surface in the functional images need to be lined up with the surface mesh made from the high-resolution anatomical scans.
+This alignment is a rigid body transform, i.e. 6 degrees of freedom in translation and rotation, but no scaling, skewing, or non-linear warping.</p>
+<p>Pycortex can automatically try to align the brain, and there is also a manual mode.
+To get started, you need a reference image from the functional run in a nibabel-readable format.
+In most cases, this would be the temporal mean image. (You can also use something else like the first image, or whatever.)
+Let’s say the subject is <code class="docutils literal notranslate"><span class="pre">S1</span></code>, you are making a transform named <code class="docutils literal notranslate"><span class="pre">example-transform</span></code>, and the reference image is <code class="docutils literal notranslate"><span class="pre">ref-image.nii.gz</span></code>.</p>
+<div class="section" id="automatic-alignment">
+<h2>Automatic Alignment<a class="headerlink" href="#automatic-alignment" title="Permalink to this headline">¶</a></h2>
+<p>Pycortex can automatically align the brain using FSL.
+This step creates a new transform folder in your pycortex store, and should be the first step for any alignment.</p>
+<p>To have pycortex automagically align the brain, simply call</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cortex</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">automatic</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;example-transform&#39;</span><span class="p">,</span> <span class="s1">&#39;./ref-image.nii.gz&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And the alignment should be done! This is done using FSL.
+If you look in the pycortex store in <code class="docutils literal notranslate"><span class="pre">S1/transforms/example-transform</span></code>, you will find the following files:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">matrices.xfm</span></code>, which stores the transformation parameters</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reference.nii.gz</span></code>, the reference image you used</p></li>
+</ul>
+<p>There is another argument to <code class="docutils literal notranslate"><span class="pre">align.automatic</span></code>, <code class="docutils literal notranslate"><span class="pre">noclean</span></code>, a <code class="docutils literal notranslate"><span class="pre">bool</span></code> that defaults to <code class="docutils literal notranslate"><span class="pre">true</span></code>.
+The automatic alignment generates a bunch of intermediate files in <code class="docutils literal notranslate"><span class="pre">/tmp</span></code>, which are deleted upon completion of the alignment process.
+Setting <code class="docutils literal notranslate"><span class="pre">noclean</span></code> to <code class="docutils literal notranslate"><span class="pre">false</span></code> will keep those files there, which is useful for debugging.</p>
+</div>
+<div class="section" id="automatically-tweaking-alignments">
+<h2>Automatically Tweaking Alignments<a class="headerlink" href="#automatically-tweaking-alignments" title="Permalink to this headline">¶</a></h2>
+<p>In theory, a pre-existing alignment can be tweaked automatically.
+Like the automatic alignment, this is done via FSL.
+However, in practice, the search range is too big to be pratically useful, and tweaking should be done using manual alignment instead.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cortex</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">autotweak</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;example-transform&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="manual-alignment">
+<h2>Manual Alignment<a class="headerlink" href="#manual-alignment" title="Permalink to this headline">¶</a></h2>
+<p><strong>NOTE</strong>: As of right now, the aligner only works on 14.04. Ubuntu 16.04 changed things up and Mayavi doesn’t work.</p>
+<p>Unfortunately, the automatic alignment only gets you like 95% of the way to a good alignment.
+To do the final 5%, you need to manually fix it up.
+Pycortex offers a GUI aligner, built using Mayavi.</p>
+<p>To start the manual aligner, call</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cortex</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">manual</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;example-transform&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note: if you are fixing a transform you had previous used for things, you will need to delete the mask files in the transform’s folder.</p>
+<p>You will see a window like this pop up:</p>
+<a class="reference internal image-reference" href="_images/snapshot1.png"><img alt="_images/snapshot1.png" src="_images/snapshot1.png" style="width: 600px;" /></a>
+<p>There’s weird gray blobs - click anywhere to get rid of them.</p>
+<a class="reference internal image-reference" href="_images/snapshot2.png"><img alt="_images/snapshot2.png" src="_images/snapshot2.png" style="width: 600px;" /></a>
+<p>Here you see 4 different views, showing the saggital, coronal, and transverse slices, and also the three slices in 3D.
+The background image is the reference image, and the mesh that you see is the surface that you will be aligning.
+You’ll be moving the mesh until it’s aligned as much as possible with the reference.</p>
+<p>To make things easier to see, the aligner offers different color options.</p>
+<div class="section" id="changing-the-views">
+<h3>Changing the views<a class="headerlink" href="#changing-the-views" title="Permalink to this headline">¶</a></h3>
+<p>You can change the color scale for the images with the color map option:</p>
+<a class="reference internal image-reference" href="_images/colormap.png"><img alt="_images/colormap.png" src="_images/colormap.png" style="width: 600px;" /></a>
+<p>Here, we’ve set it to the red-blue color map.</p>
+<a class="reference internal image-reference" href="_images/snapshot4.png"><img alt="_images/snapshot4.png" src="_images/snapshot4.png" style="width: 600px;" /></a>
+<p><code class="docutils literal notranslate"><span class="pre">Fliplut</span></code> can be used to reverse the color map.</p>
+<a class="reference internal image-reference" href="_images/flipcolor.png"><img alt="_images/flipcolor.png" src="_images/flipcolor.png" style="width: 600px;" /></a>
+<p>You can also use the <code class="docutils literal notranslate"><span class="pre">contrast</span></code> and <code class="docutils literal notranslate"><span class="pre">brightness</span></code> sliders to adjust the colors.</p>
+<a class="reference internal image-reference" href="_images/contrast.png"><img alt="_images/contrast.png" src="_images/contrast.png" style="width: 600px;" /></a>
+<p>The <code class="docutils literal notranslate"><span class="pre">Outline</span> <span class="pre">color</span></code> and <code class="docutils literal notranslate"><span class="pre">Outline</span> <span class="pre">rep</span></code> can be used to change the surface color, and the surface from a mesh (the default), to points only, to a solid surface.
+Also, the sliders can be used to chane line and point weights.
+Here, we changed it to a green points only representation, with smaller points.</p>
+<a class="reference internal image-reference" href="_images/surface.png"><img alt="_images/surface.png" src="_images/surface.png" style="width: 600px;" /></a>
+<p>You will notice two black lines in each view. You can click anywhere in a view to select a different voxel.
+Selecting another voxel will update all the other views to show the slices that particular voxel belongs to.</p>
+<a class="reference internal image-reference" href="_images/lines1.png"><img alt="_images/lines1.png" src="_images/lines1.png" style="width: 600px;" /></a>
+<a class="reference internal image-reference" href="_images/snapshot13.png"><img alt="_images/snapshot13.png" src="_images/snapshot13.png" style="width: 600px;" /></a>
+<p>Use these views to change the slices of the brain that you’re looking at, to line things up.</p>
+</div>
+<div class="section" id="manually-aligning-the-brain">
+<h3>Manually aligning the brain<a class="headerlink" href="#manually-aligning-the-brain" title="Permalink to this headline">¶</a></h3>
+<p>On each view, there is a ball surrounded by a ring. These can be used to adjust the brain using the mouse.
+Click and drag the center ball to translate in each view, and use the ball on the ring to rotate and scale.
+It will take a few seconds for the aligner to update the mesh position.</p>
+<a class="reference internal image-reference" href="_images/adjring.png"><img alt="_images/adjring.png" src="_images/adjring.png" style="width: 600px;" /></a>
+<p><strong>Note</strong>: you should not use the ring to make adjustments. There is no way to fix the scaling, and the ring will screw the scaling up.</p>
+<p>You can also use the keyboard to make adjustments.
+Holding down the shift key allows you to make fine adjustments.
+The aligner will apply the transformation in whatever view currently under your mouse cursor.</p>
+<a class="reference internal image-reference" href="_images/key-controls.png"><img alt="_images/key-controls.png" src="_images/key-controls.png" style="width: 663.5px; height: 806.5px;" /></a>
+<p><strong>Note</strong>: you shouldn’t touch the keys outlined in red. There is no reason to stretch the brain.</p>
+<p>To save the alignment, just click the <code class="docutils literal notranslate"><span class="pre">Save</span> <span class="pre">Transform</span></code> button and close the window.</p>
+<a class="reference internal image-reference" href="_images/save.png"><img alt="_images/save.png" src="_images/save.png" style="width: 600px;" /></a>
+</div>
+<div class="section" id="tips-for-aligning-the-brain">
+<h3>Tips for aligning the brain<a class="headerlink" href="#tips-for-aligning-the-brain" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Holding down the shift key while using the keyboard controls will let you move the brain in fine-tuned, smaller increments.</p></li>
+<li><p>The really deep sulci work great as landmarks to align stuff up.</p></li>
+<li><p>Changing the color map, brightness, and contrast really helps highlight the sulci.</p></li>
+<li><p>To check how well the brain is aligned, make a flatmap out of the reference image using the transformation. A good alignment results in a smooth color gradient across the brain; bad ones will have a lot of voxels that are starkly different from their neighbours.</p></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Alignments</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#automatic-alignment">Automatic Alignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#automatically-tweaking-alignments">Automatically Tweaking Alignments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#manual-alignment">Manual Alignment</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="database.html" title="previous chapter">Surface Database</a></li>
+      <li>Next: <a href="rois.html" title="next chapter">Surface-defined ROIs</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/align.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

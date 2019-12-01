@@ -1,0 +1,31 @@
+cortex.dataset.Dataset
+======================
+
+.. currentmodule:: cortex.dataset
+
+.. autoclass:: Dataset
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: Dataset
+   
+     ~Dataset.__init__
+     ~Dataset.append
+     ~Dataset.from_file
+     ~Dataset.get_mask
+     ~Dataset.get_overlay
+     ~Dataset.get_surf
+     ~Dataset.get_xfm
+     ~Dataset.prepend
+     ~Dataset.save
+     ~Dataset.uniques
+   
+   
+
+   
+   
+   

@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Segmentation Tutorial &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="segmentation-tutorial">
+<h1>Segmentation Tutorial<a class="headerlink" href="#segmentation-tutorial" title="Permalink to this headline">¶</a></h1>
+<p>In order to plot data, you will need to create surfaces for your particular subject. General surfaces such as fsaverage is NOT recommended, since individual subject anatomay can be highly variable. Averaging across subjects will destroy your signal specificity!  The recommended path for generating surfaces is with <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a>.</p>
+<p>This document will walk you through a general guide for how to create a Freesurfer surface usable with pycortex.</p>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>Unfortunately, there is no simple unified method for installing Freesurfer on your computer. You will need to download a package, then acquire a (free) registration. For additional instructions, go to <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/fswiki/Download">http://surfer.nmr.mgh.harvard.edu/fswiki/Download</a>.</p>
+</div>
+<div class="section" id="segmentation">
+<h2>Segmentation<a class="headerlink" href="#segmentation" title="Permalink to this headline">¶</a></h2>
+<p>Segmentation is the process of identifying the boundary between white matter and gray matter, and between gray matter and dura. With <a class="reference external" href="http://brainvis.wustl.edu/wiki/index.php/Caret:Download">Caret</a>, only one surface is estimated: the midway point between white matter and pia, also known as the “fiducial” surface. This boundary is converted into a triangular mesh representation using a <a class="reference external" href="http://en.wikipedia.org/wiki/Marching_Cubes">marching cubes</a> algorithm. However, segmenting this boundary is nontrivial.</p>
+<p>Pycortex wraps many of the segmentation steps from <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a> for a simpler, more integrated process. Generally, the four functions in cortex.segment is all that’s required to go from anatomical image to segmented and flattened surface.</p>
+</div>
+<div class="section" id="quickstart">
+<h2>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Collect a T1 MPRAGE image of the subject. <a class="reference external" href="http://freesurfer.net/fswiki/FreeSurferWiki?action=AttachFile&amp;do=get&amp;target=FreeSurfer_Suggested_Morphometry_Protocols.pdf">Preferred protocols</a>: some variety of multiecho T1.</p></li>
+<li><p>cortex.segment.init_subject</p></li>
+</ol>
+</div></blockquote>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/segmentation.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

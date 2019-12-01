@@ -1,0 +1,6 @@
+cortex.dataset.Dataset.get\_overlay
+===================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Dataset.get_overlay

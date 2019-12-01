@@ -1,0 +1,6 @@
+cortex.dataset.Vertex2D.subject
+===============================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: Vertex2D.subject

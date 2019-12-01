@@ -1,0 +1,6 @@
+cortex.surfinfo.curvature
+=========================
+
+.. currentmodule:: cortex.surfinfo
+
+.. autofunction:: curvature

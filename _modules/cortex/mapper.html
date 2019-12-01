@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.mapper &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.mapper</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">dataset</span>
+<span class="kn">from</span> <span class="nn">.mapper</span> <span class="kn">import</span> <span class="n">Mapper</span><span class="p">,</span> <span class="n">_savecache</span>
+
+
+<div class="viewcode-block" id="get_mapper"><a class="viewcode-back" href="../../generated/cortex.mapper.get_mapper.html#cortex.mapper.get_mapper">[docs]</a><span class="k">def</span> <span class="nf">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">..database</span> <span class="kn">import</span> <span class="n">db</span>
+    <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">point</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">line</span>
+
+    <span class="n">mapcls</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">nearest</span><span class="o">=</span><span class="n">point</span><span class="o">.</span><span class="n">PointNN</span><span class="p">,</span>
+        <span class="n">trilinear</span><span class="o">=</span><span class="n">point</span><span class="o">.</span><span class="n">PointTrilin</span><span class="p">,</span>
+        <span class="n">gaussian</span><span class="o">=</span><span class="n">point</span><span class="o">.</span><span class="n">PointGauss</span><span class="p">,</span>
+        <span class="n">lanczos</span><span class="o">=</span><span class="n">point</span><span class="o">.</span><span class="n">PointLanczos</span><span class="p">,</span>
+        <span class="n">const_patch_nn</span><span class="o">=</span><span class="n">patch</span><span class="o">.</span><span class="n">ConstPatchNN</span><span class="p">,</span>
+        <span class="n">const_patch_trilin</span><span class="o">=</span><span class="n">patch</span><span class="o">.</span><span class="n">ConstPatchTrilin</span><span class="p">,</span>
+        <span class="n">const_patch_lanczos</span><span class="o">=</span><span class="n">patch</span><span class="o">.</span><span class="n">ConstPatchLanczos</span><span class="p">,</span>
+        <span class="n">line_nearest</span><span class="o">=</span><span class="n">line</span><span class="o">.</span><span class="n">LineNN</span><span class="p">,</span>
+        <span class="n">line_trilinear</span><span class="o">=</span><span class="n">line</span><span class="o">.</span><span class="n">LineTrilin</span><span class="p">)</span>
+    <span class="n">Map</span> <span class="o">=</span> <span class="n">mapcls</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span>
+    <span class="n">ptype</span> <span class="o">=</span> <span class="n">Map</span><span class="o">.</span><span class="vm">__name__</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="n">kwds</span> <span class="o">=</span><span class="s1">&#39;_&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">())])</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">ptype</span> <span class="o">+=</span> <span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">kwds</span>
+
+    <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{xfmname}</span><span class="s2">_</span><span class="si">{projection}</span><span class="s2">.npz&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="n">ptype</span><span class="p">)</span>
+
+    <span class="n">xfmfile</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)[</span><span class="s1">&#39;xfmdir&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">)</span>
+    <span class="n">cachefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_cache</span><span class="p">(</span><span class="n">subject</span><span class="p">),</span> <span class="n">fname</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">recache</span> <span class="ow">and</span> <span class="p">(</span><span class="n">xfmname</span> <span class="o">==</span> <span class="s2">&quot;identity&quot;</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">cachefile</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span> <span class="o">&gt;</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">xfmfile</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Map</span><span class="o">.</span><span class="n">from_cache</span><span class="p">(</span><span class="n">cachefile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">Exception</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Map</span><span class="o">.</span><span class="n">_cache</span><span class="p">(</span><span class="n">cachefile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

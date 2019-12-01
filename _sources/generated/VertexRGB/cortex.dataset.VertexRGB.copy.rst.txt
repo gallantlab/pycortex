@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.copy
+=============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VertexRGB.copy

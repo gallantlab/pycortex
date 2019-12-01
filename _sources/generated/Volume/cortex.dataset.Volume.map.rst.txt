@@ -1,0 +1,6 @@
+cortex.dataset.Volume.map
+=========================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Volume.map

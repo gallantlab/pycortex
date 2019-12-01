@@ -1,0 +1,6 @@
+cortex.dataset.Dataset.get\_xfm
+===============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Dataset.get_xfm

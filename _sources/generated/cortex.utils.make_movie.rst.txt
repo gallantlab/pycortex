@@ -1,0 +1,6 @@
+cortex.utils.make\_movie
+========================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: make_movie

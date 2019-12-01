@@ -1,0 +1,189 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.webgl.show &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-webgl-show">
+<h1>cortex.webgl.show<a class="headerlink" href="#cortex-webgl-show" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="cortex.webgl.show">
+<code class="sig-prename descclassname">cortex.webgl.</code><code class="sig-name descname">show</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">types=('inflated'</em>, <em class="sig-param">)</em>, <em class="sig-param">recache=False</em>, <em class="sig-param">cmap='RdBu_r'</em>, <em class="sig-param">layout=None</em>, <em class="sig-param">autoclose=None</em>, <em class="sig-param">open_browser=None</em>, <em class="sig-param">port=None</em>, <em class="sig-param">pickerfun=None</em>, <em class="sig-param">template='mixer.html'</em>, <em class="sig-param">overlays_available=None</em>, <em class="sig-param">overlays_visible=('rois'</em>, <em class="sig-param">'sulci')</em>, <em class="sig-param">labels_visible=('rois'</em>, <em class="sig-param">)</em>, <em class="sig-param">overlay_file=None</em>, <em class="sig-param">title='Brain'</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/webgl/view.html#show"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.webgl.show" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a webGL MRI viewer that is dynamically served by a tornado server
+running inside the current python process.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>data</strong><span class="classifier">Dataset object or implicit Dataset</span></dt><dd><p>Dataset object containing all the data you wish to plot. Can be any type
+of implicit dataset, such as a single Volume, Vertex, etc. object or a
+dictionary of Volume, Vertex. etc. objects.</p>
+</dd>
+<dt><strong>autoclose</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, the tornado server will automatically be destroyed when the last
+web client has disconnected. If False, the server will stay open,
+allowing more connections. Default True</p>
+</dd>
+<dt><strong>open_browser</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, uses the webbrowser library to open the viewer in the default
+local browser. Default True</p>
+</dd>
+<dt><strong>port</strong><span class="classifier">int or None, optional</span></dt><dd><p>The port that will be used by the server. If None, a random port will be
+selected from the range 1024-65536. Default None</p>
+</dd>
+<dt><strong>pickerfun</strong><span class="classifier">funcion or None, optional</span></dt><dd><p>Should be a function that takes two arguments, a voxel index and a vertex
+index. Is called whenever a location on the surface is clicked in the
+viewer. This can be used to print information about individual voxels or
+vertices, plot receptive fields, or many other uses. Default None</p>
+</dd>
+<dt><strong>recache</strong><span class="classifier">bool, optional</span></dt><dd><p>Force recreation of CTM and SVG files for surfaces. Default False</p>
+</dd>
+<dt><strong>template</strong><span class="classifier">string, optional</span></dt><dd><p>Name of template HTML file. Default ‘mixer.html’</p>
+</dd>
+<dt><strong>overlays_visible</strong><span class="classifier">tuple, optional</span></dt><dd><p>The listed overlay layers will be set visible by default. Layers not listed
+here will be hidden by default (but can be enabled in the viewer GUI).
+Default (‘rois’, ‘sulci’)</p>
+</dd>
+<dt><strong>labels_visible</strong><span class="classifier">tuple, optional</span></dt><dd><p>Labels for the listed layers will be set visible by default. Labels for
+layers not listed here will be hidden by default (but can be enabled in
+the viewer GUI). Default (‘rois’, )</p>
+</dd>
+<dt><strong>**kwargs</strong></dt><dd><p>All additional keyword arguments are passed to the template renderer.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Other Parameters</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>types</strong><span class="classifier">tuple, optional</span></dt><dd><p>Types of surfaces to include in addition to the original (fiducial, pial,
+and white matter) and flat surfaces. Default (‘inflated’, )</p>
+</dd>
+<dt><strong>cmap</strong><span class="classifier">string, optional</span></dt><dd><p>Name of default colormap. Default ‘RdBu_r’
+TODO: DOES THIS DO ANYTHING ANYMORE?</p>
+</dd>
+<dt><strong>overlay_file</strong><span class="classifier">str or None, optional</span></dt><dd><p>Custom overlays.svg file to use instead of the default one for this
+subject (if not None). Default None.</p>
+</dd>
+<dt><strong>title</strong><span class="classifier">str, optional</span></dt><dd><p>The title that is displayed on the viewer website when it is loaded in
+a browser.</p>
+</dd>
+<dt><strong>layout</strong><span class="classifier">(int, int), optional</span></dt><dd><p>The layout of the viewer subwindows for showing multiple subjects.
+Default None, which selects the layout based on the number of subjects.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.webgl.show.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

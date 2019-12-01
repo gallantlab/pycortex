@@ -1,0 +1,990 @@
+:orphan:
+
+
+
+.. _sphx_glr_auto_examples:
+
+.. _general_examples:
+
+Example Gallery
+================
+
+.. contents:: Contents
+   :local:
+   :depth: 2
+
+
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. _sphx_glr_auto_examples_datasets:
+
+Datasets Examples
+------------------------------
+
+Examples demonstrating how to create, manipulate, plot datasets.
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/datasets/images/thumb/sphx_glr_plot_dataset_arithmetic_thumb.png
+
+     :ref:`sphx_glr_auto_examples_datasets_plot_dataset_arithmetic.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/datasets/plot_dataset_arithmetic
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="In order to move from Volume data to Vertex data, you start with data from voxels and then crea...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume_to_vertex_thumb.png
+
+     :ref:`sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/datasets/plot_volume_to_vertex
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume_thumb.png
+
+     :ref:`sphx_glr_auto_examples_datasets_plot_volume.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/datasets/plot_volume
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example vertex data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertex_thumb.png
+
+     :ref:`sphx_glr_auto_examples_datasets_plot_vertex.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/datasets/plot_vertex
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example 2D vertex data onto an example subject, S1, onto a flatmap using quickflat. ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertex2D_thumb.png
+
+     :ref:`sphx_glr_auto_examples_datasets_plot_vertex2D.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/datasets/plot_vertex2D
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots an example RGB dataset onto an example subject, S1, onto a flatmap using quickflat. ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volumeRGB_thumb.png
+
+     :ref:`sphx_glr_auto_examples_datasets_plot_volumeRGB.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/datasets/plot_volumeRGB
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume2D_thumb.png
+
+     :ref:`sphx_glr_auto_examples_datasets_plot_volume2D.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/datasets/plot_volume2D
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example RGB vertex data onto an example subject, S1, onto a flatmap using quickflat....">
+
+.. only:: html
+
+ .. figure:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertexRGB_thumb.png
+
+     :ref:`sphx_glr_auto_examples_datasets_plot_vertexRGB.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/datasets/plot_vertexRGB
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. _sphx_glr_auto_examples_import_surface:
+
+Importing Surfaces Examples
+------------------------------
+
+Examples demonstrating how to import surfraces from other software (e.g.
+FreeSurfer, fmriprep).
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Recently, many people have start to use fmriprep as a complete preprocessing workflow of anatom...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/import_surface/images/thumb/sphx_glr_import_fmriprep_thumb.png
+
+     :ref:`sphx_glr_auto_examples_import_surface_import_fmriprep.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/import_surface/import_fmriprep
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. _sphx_glr_auto_examples_quickflat:
+
+Quickflat Examples
+------------------------------
+
+Examples demonstrating how to create flatmaps.
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="The sulci are defined in a sub-layer of the sulci layer in &lt;filestore&gt;/&lt;subject&gt;/overlays.svg.">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_sulci_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_sulci.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_sulci
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A dropout region is a region with very low EPI signal. In pycortex a crosshatch is used to disp...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_dropout_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_dropout.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_dropout
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as SVG file.">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_svg_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_make_svg
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as PNG file.">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_png_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_make_png
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Cutouts are manually generated cuts of the cortical surface to highlight a region of interest.">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_cutouts_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_cutouts.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_cutouts
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="ROIs are defined as sub-layers of the roi layer in &lt;filestore&gt;/&lt;subject&gt;/overlays.svg">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_rois_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_rois.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_rois
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Show lines connecting vertices on the flatmap that are actually within the same voxels in a giv...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_connected_vertices_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_connected_vertices.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_connected_vertices
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A convenient way to compare two flat maps (e.g., prediction performance or tuning weights) is t...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_gif_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_make_gif.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_make_gif
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Sometimes it is useful to create a flatmap that is zoomed in one just a single ROI. The locatio...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_zoom_to_roi_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_zoom_to_roi.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_zoom_to_roi
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="quickflat visualizations use matplotlib to generate figure-quality 2D flatmaps.">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_figure_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_make_figure.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_make_figure
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="The way flatmap plotting works in pycortex is to create different image layers (data, ROIs, sul...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_advanced_compositing_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_advanced_compositing.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_advanced_compositing
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. _sphx_glr_auto_examples_quickstart:
+
+Quickstart Examples
+------------------------------
+
+Examples demonstrating how to get started with pycortex.
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain in a web viewer. In ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickstart/images/thumb/sphx_glr_retinotopy_webgl_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickstart_retinotopy_webgl.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickstart/retinotopy_webgl
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Easily locating your config file and filestore locations. This comes in useful when things don&#x27;...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickstart/images/thumb/sphx_glr_show_config_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickstart_show_config.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickstart/show_config
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain on a flatmap. In ord...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickstart/images/thumb/sphx_glr_plot_retinotopy_flatmap_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickstart_plot_retinotopy_flatmap.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickstart/plot_retinotopy_flatmap
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. _sphx_glr_auto_examples_surface_analyses:
+
+Surface Analysis Examples
+------------------------------
+
+Examples demonstrating operations and analyses done on brain surfaces.
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is si...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_tissots_indicatrix_thumb.png
+
+     :ref:`sphx_glr_auto_examples_surface_analyses_plot_tissots_indicatrix.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/surface_analyses/plot_tissots_indicatrix
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This will plot a geodesic path between two vertices on the cortical surface. This path is based...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_geodesic_path_thumb.png
+
+     :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/surface_analyses/plot_geodesic_path
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots the distances (in mm) between a vertex or set of vertices and all other vertices on ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_geodesic_distance_thumb.png
+
+     :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_distance.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/surface_analyses/plot_geodesic_distance
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is si...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_flatmap_distortion_thumb.png
+
+     :ref:`sphx_glr_auto_examples_surface_analyses_plot_flatmap_distortion.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/surface_analyses/plot_flatmap_distortion
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Subsurfaces can be used for efficient operations on subsets of cortical surface">
+
+.. only:: html
+
+ .. figure:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_subsurfaces_thumb.png
+
+     :ref:`sphx_glr_auto_examples_surface_analyses_plot_subsurfaces.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/surface_analyses/plot_subsurfaces
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to interpolate data from a sparse collection of points to all the p...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_interpolate_data_thumb.png
+
+     :ref:`sphx_glr_auto_examples_surface_analyses_plot_interpolate_data.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/surface_analyses/plot_interpolate_data
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. _sphx_glr_auto_examples_utils:
+
+Utility Examples
+------------------------------
+
+Examples demonstrating how to do all sorts of beautiful things using pycortex. 
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to get the vertices that are inside an ROI that was defined in the ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/utils/images/thumb/sphx_glr_plot_get_roi_vertices_thumb.png
+
+     :ref:`sphx_glr_auto_examples_utils_plot_get_roi_vertices.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/utils/plot_get_roi_vertices
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="The utility function get_vox_dist returns the distance from each voxel in some space to the nea...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/utils/images/thumb/sphx_glr_plot_voxel_distance_from_surface_thumb.png
+
+     :ref:`sphx_glr_auto_examples_utils_plot_voxel_distance_from_surface.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/utils/plot_voxel_distance_from_surface
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="The function mosaic plots all of the slices in a volume in a matplotlib figure. Good for quick ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/utils/images/thumb/sphx_glr_plot_mosaic_thumb.png
+
+     :ref:`sphx_glr_auto_examples_utils_plot_mosaic.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/utils/plot_mosaic
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has built-in functionality for linearly transforming data to and from standard atlas s...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/utils/images/thumb/sphx_glr_subject_to_mni_thumb.png
+
+     :ref:`sphx_glr_auto_examples_utils_subject_to_mni.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/utils/subject_to_mni
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Get proportion of each voxel that exists within a named ROI (this  constitutes a probability ma...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/utils/images/thumb/sphx_glr_plot_roi_voxel_mask_thumb.png
+
+     :ref:`sphx_glr_auto_examples_utils_plot_roi_voxel_mask.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/utils/plot_roi_voxel_mask
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has built-in functionality for linearly transforming data to and from standard atlas s...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/utils/images/thumb/sphx_glr_mni_to_subject_thumb.png
+
+     :ref:`sphx_glr_auto_examples_utils_mni_to_subject.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/utils/mni_to_subject
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="The function cortex.export.plot_panels plots a number of 3d views of a given volume, in the sam...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/utils/images/thumb/sphx_glr_multi_panels_plots_thumb.png
+
+     :ref:`sphx_glr_auto_examples_utils_multi_panels_plots.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/utils/multi_panels_plots
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Create an index volume (similar to the aseg masks in freesurfer) with a different  integer inde...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/utils/images/thumb/sphx_glr_plot_roi_voxel_index_volume_thumb.png
+
+     :ref:`sphx_glr_auto_examples_utils_plot_roi_voxel_index_volume.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/utils/plot_roi_voxel_index_volume
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. _sphx_glr_auto_examples_webgl:
+
+WebGL Examples
+------------------------------
+
+Examples demonstrating how to make beautiful interactive 3-D viewers
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A webgl viewer displays a 3D view of brain data in a web browser">
+
+.. only:: html
+
+ .. figure:: /auto_examples/webgl/images/thumb/sphx_glr_single_dataset_thumb.png
+
+     :ref:`sphx_glr_auto_examples_webgl_single_dataset.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/webgl/single_dataset
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A static viewer is a brain viewer that exists permanently on a filesystem">
+
+.. only:: html
+
+ .. figure:: /auto_examples/webgl/images/thumb/sphx_glr_static_thumb.png
+
+     :ref:`sphx_glr_auto_examples_webgl_static.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/webgl/static
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has the functionality of provide a custom html template to specify  the attributes of ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/webgl/images/thumb/sphx_glr_dynamic_with_custom_template_thumb.png
+
+     :ref:`sphx_glr_auto_examples_webgl_dynamic_with_custom_template.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/webgl/dynamic_with_custom_template
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has the functionality of provide a custom html template to specify  the attributes of ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/webgl/images/thumb/sphx_glr_static_with_custom_template_thumb.png
+
+     :ref:`sphx_glr_auto_examples_webgl_static_with_custom_template.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/webgl/static_with_custom_template
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A webgl viewer displays a 3D view of brain data in a web browser">
+
+.. only:: html
+
+ .. figure:: /auto_examples/webgl/images/thumb/sphx_glr_multiple_datasets_thumb.png
+
+     :ref:`sphx_glr_auto_examples_webgl_multiple_datasets.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/webgl/multiple_datasets
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. only :: html
+
+ .. container:: sphx-glr-footer
+    :class: sphx-glr-footer-gallery
+
+
+  .. container:: sphx-glr-download
+
+    :download:`Download all examples in Python source code: auto_examples_python.zip <//home/travis/build/gallantlab/pycortex/docs/auto_examples/auto_examples_python.zip>`
+
+
+
+  .. container:: sphx-glr-download
+
+    :download:`Download all examples in Jupyter notebooks: auto_examples_jupyter.zip <//home/travis/build/gallantlab/pycortex/docs/auto_examples/auto_examples_jupyter.zip>`
+
+
+.. only:: html
+
+ .. rst-class:: sphx-glr-signature
+
+    `Gallery generated by Sphinx-Gallery <https://sphinx-gallery.github.io>`_

@@ -1,0 +1,6 @@
+cortex.database.Database.\_\_init\_\_
+=====================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.__init__

@@ -1,0 +1,784 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.polyutils.subsurface &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.polyutils.subsurface</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;utilities for efficiently working with patches of cortex (aka subsurfaces)&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.sparse</span>
+
+<span class="kn">from</span> <span class="nn">.misc</span> <span class="kn">import</span> <span class="n">_memo</span>
+
+
+<span class="k">class</span> <span class="nc">SubsurfaceMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;mixin for Surface of efficient methods for working with subsurfaces</span>
+
+
+<span class="sd">    - see pycortex documentation for example usage</span>
+
+
+<span class="sd">    Use Cases</span>
+<span class="sd">    ---------</span>
+<span class="sd">    - performing many operations on a subset of cortex</span>
+<span class="sd">    - finding patches/patchs in cortical suface (see Performance Characteristics)</span>
+
+
+<span class="sd">    Performance Characteristics</span>
+<span class="sd">    ---------------------------</span>
+<span class="sd">    - main use case is faster implementation of geodesic_distance()</span>
+<span class="sd">    - original geodesic_distance:</span>
+<span class="sd">        - large startup cost (~10 s)</span>
+<span class="sd">        - small subsequent cost (~200 ms)</span>
+<span class="sd">        - use case: performing many repeated operations on large subsets of cortex</span>
+<span class="sd">    - subsurface geodesic_distance:</span>
+<span class="sd">        - cost is based on radius</span>
+<span class="sd">            - 5 mm -&gt; (~40 ms startup cost)</span>
+<span class="sd">            - 25 mm -&gt; (~200 ms startup cost)</span>
+<span class="sd">        - use cases: calling operations small number of times or on medium subsets of cortex</span>
+<span class="sd">    - [benchmarks recorded on lab desktop workstation]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">create_subsurface</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vertex_mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">polygon_mask</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create subsurface for efficient operations on subset of Surface</span>
+
+<span class="sd">        - should specify either vertex_mask or polygon_mask</span>
+<span class="sd">        - input vertex_mask is not necessarily the final vertex_mask used</span>
+<span class="sd">            - final vertex_mask is always derived from polygon_mask</span>
+<span class="sd">            - this prevents dangling vertices</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - vertex_mask : boolean array</span>
+<span class="sd">            - mask of which vertices to include</span>
+<span class="sd">        - polygon_mask : boolean array</span>
+<span class="sd">            - mask of which polygons to include</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">polygon_mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">vertex_mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;must specify vertex_mask or polygon_mask&#39;</span><span class="p">)</span>
+
+            <span class="n">polygon_mask</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">vertex_mask</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]]</span>
+                <span class="o">*</span> <span class="n">vertex_mask</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]]</span>
+                <span class="o">*</span> <span class="n">vertex_mask</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]]</span>
+            <span class="p">)</span>
+
+        <span class="c1"># select only vertices that appear in a polygon of polygon_mask</span>
+        <span class="n">vertex_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">vertex_mask</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">[</span><span class="n">polygon_mask</span><span class="p">]</span><span class="o">.</span><span class="n">flat</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># build map from old index to new index</span>
+        <span class="c1"># vertices not in the subsurface are represented with large numbers</span>
+        <span class="n">vertex_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span><span class="o">.</span><span class="n">max</span>
+        <span class="n">vertex_map</span><span class="p">[</span><span class="n">vertex_mask</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">vertex_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+
+        <span class="c1"># reindex vertices and polygons</span>
+        <span class="n">subsurface_vertices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">vertex_mask</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">subsurface_polygons</span> <span class="o">=</span> <span class="n">vertex_map</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">[</span><span class="n">polygon_mask</span><span class="p">,</span> <span class="p">:]]</span>
+
+        <span class="c1"># create subsurface</span>
+        <span class="n">subsurface</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">pts</span><span class="o">=</span><span class="n">subsurface_vertices</span><span class="p">,</span> <span class="n">polys</span><span class="o">=</span><span class="n">subsurface_polygons</span><span class="p">)</span>
+        <span class="n">subsurface</span><span class="o">.</span><span class="n">subsurface_vertex_mask</span> <span class="o">=</span> <span class="n">vertex_mask</span>
+        <span class="n">subsurface</span><span class="o">.</span><span class="n">subsurface_vertex_map</span> <span class="o">=</span> <span class="n">vertex_map</span>
+        <span class="n">subsurface</span><span class="o">.</span><span class="n">subsurface_polygon_mask</span> <span class="o">=</span> <span class="n">polygon_mask</span>
+
+        <span class="k">return</span> <span class="n">subsurface</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@_memo</span>
+    <span class="k">def</span> <span class="nf">subsurface_vertex_inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subsurface_vertex_mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">get_connected_vertices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vertex</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">old_version</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;return vertices connected to vertex that satisfy mask</span>
+
+<span class="sd">        - helper method for other methods</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        - vertex : one of [scalar int index | list of int indices | numpy array of int indices]</span>
+<span class="sd">            vertex or set of vertices to use as seed</span>
+<span class="sd">        - mask : boolean array</span>
+<span class="sd">            mask of allowed neighbors</span>
+<span class="sd">        - old_version : boolean (default=False)</span>
+<span class="sd">            True = Use vertex adjacency to select patch (can cause errors in odd situations)</span>
+<span class="sd">            False = Use poly adjacency to select patch (solves problem where a single edge but</span>
+<span class="sd">            no polys connect two regions within the patch, makes geodesic distance errors)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n_vertices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">n_polys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">output_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_vertices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">vertex</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
+            <span class="n">add_next</span> <span class="o">=</span> <span class="p">[</span><span class="n">vertex</span><span class="p">]</span>
+            <span class="n">output_mask</span><span class="p">[</span><span class="n">vertex</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">vertex</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">))</span>
+        <span class="p">):</span>
+            <span class="n">add_next</span> <span class="o">=</span> <span class="n">vertex</span>
+            <span class="n">output_mask</span><span class="p">[</span><span class="n">vertex</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;unknown vertex type:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">vertex</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">old_version</span><span class="p">:</span>
+            <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">add_next</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">check</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_vertices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="n">check</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">adj</span><span class="p">[</span><span class="n">add_next</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">add_next</span> <span class="o">=</span> <span class="n">check</span> <span class="o">*</span> <span class="n">mask</span> <span class="o">*</span> <span class="p">(</span><span class="o">~</span><span class="n">output_mask</span><span class="p">)</span>
+                <span class="n">output_mask</span><span class="p">[</span><span class="n">add_next</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">add_next</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">add_next</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">add_next</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">check</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_vertices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="c1"># Instead of just adjacent vertices, get adjacent polys</span>
+                <span class="n">check_polys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="p">[</span><span class="n">add_next</span><span class="p">,:]</span><span class="o">.</span><span class="n">indices</span>
+                <span class="c1"># Will be checking within mask in this step for all verts for a poly being in the mask</span>
+                <span class="n">good_polys</span> <span class="o">=</span> <span class="n">check_polys</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">mask</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">[</span><span class="n">check_polys</span><span class="p">,:]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span>
+                <span class="c1"># Then get all verts from the good polys</span>
+                <span class="n">good_verts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">[</span><span class="n">good_polys</span><span class="p">])</span>
+                <span class="n">check</span><span class="p">[</span><span class="n">good_verts</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="c1"># Mask is already used in selecting checked ones</span>
+                <span class="n">add_next</span> <span class="o">=</span> <span class="n">check</span> <span class="o">*</span> <span class="p">(</span><span class="o">~</span><span class="n">output_mask</span><span class="p">)</span>
+                <span class="n">output_mask</span><span class="p">[</span><span class="n">add_next</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">add_next</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">add_next</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">output_mask</span>
+
+    <span class="k">def</span> <span class="nf">get_euclidean_patch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vertex</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">old_version</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;return connected vertices within some 3d euclidean distance of a vertex</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - vertex : one of [scalar int index | list of int indices | numpy array of int indices]</span>
+<span class="sd">            vertex or set of vertices to use as seed</span>
+<span class="sd">        - radius : number</span>
+<span class="sd">            distance threshold</span>
+<span class="sd">        - old_version : boolean (default=False)</span>
+<span class="sd">            True = Use vertex adjacency to select patch (can cause errors in odd situations)</span>
+<span class="sd">            False = Use poly adjacency to select patch (solves problem where a single edge but</span>
+<span class="sd">            no polys connect two regions within the patch, makes geodesic distance errors)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">vertex</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
+            <span class="n">close_enough</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_euclidean_ball</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">vertex</span><span class="p">,</span> <span class="p">:],</span> <span class="n">radius</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">vertex</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">))</span>
+        <span class="p">):</span>
+            <span class="n">mask_list</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_euclidean_ball</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="p">:],</span> <span class="n">radius</span><span class="p">)</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">vertex</span><span class="p">]</span>
+            <span class="n">close_enough</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mask_list</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;unknown vertex type: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">vertex</span><span class="p">)))</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;vertex_mask&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connected_vertices</span><span class="p">(</span><span class="n">vertex</span><span class="o">=</span><span class="n">vertex</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">close_enough</span><span class="p">,</span> <span class="n">old_version</span><span class="o">=</span><span class="n">old_version</span><span class="p">),</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">get_euclidean_ball</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xyz</span><span class="p">,</span> <span class="n">radius</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;return vertices within some 3d euclidean distance of an xyz coordinate</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - xyz : array of shape (3,)</span>
+<span class="sd">            center of euclidean ball</span>
+<span class="sd">        - radius : number</span>
+<span class="sd">            radius of euclidean ball</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># unoptimized version:</span>
+        <span class="c1"># distances = ((surface.pts - xyz) ** 2).sum(1) ** 0.5</span>
+        <span class="c1"># return distances &lt; radius</span>
+
+        <span class="c1"># optimized version:</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pts</span> <span class="o">-</span> <span class="n">xyz</span>
+        <span class="n">diff</span> <span class="o">**=</span> <span class="mi">2</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">diff</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">diff</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>  <span class="c1"># precision fine because only summing 3 values</span>
+        <span class="n">diff</span> <span class="o">**=</span> <span class="mf">0.5</span>
+
+        <span class="k">return</span> <span class="n">diff</span> <span class="o">&lt;</span> <span class="n">radius</span>
+
+    <span class="k">def</span> <span class="nf">get_geodesic_patch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vertex</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">attempts</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">old_version</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;return vertices within some 2d geodesic distance of a vertex (or vertices)</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - vertex : int</span>
+<span class="sd">            index (or list of int indices) of seed vertex (or vertices)</span>
+<span class="sd">        - radius : number</span>
+<span class="sd">            radius to use as threshold</span>
+<span class="sd">        - attempts : int</span>
+<span class="sd">            number of attempts to use for working with singular subsurfaces</span>
+<span class="sd">        - m : number</span>
+<span class="sd">            reverse Euler step length, passed to geodesic_distance</span>
+<span class="sd">        - old_version : boolean (default=False)</span>
+<span class="sd">            True = Use vertex adjacency to select patch (can cause errors in odd situations)</span>
+<span class="sd">            False = Use poly adjacency to select patch (solves problem where a single edge but</span>
+<span class="sd">            no polys connect two regions within the patch, makes geodesic distance errors)</span>
+
+<span class="sd">        Output</span>
+<span class="sd">        ------</span>
+<span class="sd">        - &#39;vertex_mask&#39; : boolean mask of selected vertices</span>
+<span class="sd">        - &#39;geodesic_distance&#39; : array of geodesic distances of selected points</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">working_radius</span> <span class="o">=</span> <span class="n">radius</span>
+        <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">attempts</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">euclidean_vertices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_euclidean_patch</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="n">working_radius</span><span class="p">,</span> <span class="n">old_version</span><span class="o">=</span><span class="n">old_version</span><span class="p">)</span>
+                <span class="n">vertex_mask</span> <span class="o">=</span> <span class="n">euclidean_vertices</span><span class="p">[</span><span class="s1">&#39;vertex_mask&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">vertex_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">working_radius</span> <span class="o">*=</span> <span class="mf">1.1</span>
+                    <span class="k">continue</span>
+                <span class="n">subsurface</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_subsurface</span><span class="p">(</span><span class="n">vertex_mask</span><span class="o">=</span><span class="n">vertex_mask</span><span class="p">)</span>
+                <span class="n">vertex_map</span> <span class="o">=</span> <span class="n">subsurface</span><span class="o">.</span><span class="n">subsurface_vertex_map</span>
+
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">vertex</span><span class="p">):</span>
+                    <span class="n">vertex</span> <span class="o">=</span> <span class="p">[</span><span class="n">vertex</span><span class="p">]</span>
+
+                <span class="n">geodesic_distance</span> <span class="o">=</span> <span class="n">subsurface</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">(</span><span class="n">vertex_map</span><span class="p">[</span><span class="n">vertex</span><span class="p">],</span> <span class="n">m</span><span class="o">=</span><span class="n">m</span><span class="p">)</span>
+                <span class="k">break</span>
+
+            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+                <span class="c1"># singular subsurface</span>
+                <span class="n">working_radius</span> <span class="o">*=</span> <span class="mf">1.1</span>
+                <span class="k">continue</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;could not find suitable radius&#39;</span><span class="p">)</span>
+
+        <span class="n">close_enough</span> <span class="o">=</span> <span class="n">geodesic_distance</span> <span class="o">&lt;=</span> <span class="n">radius</span>
+        <span class="n">close_enough</span> <span class="o">=</span> <span class="n">subsurface</span><span class="o">.</span><span class="n">lift_subsurface_data</span><span class="p">(</span><span class="n">close_enough</span><span class="p">)</span>
+        <span class="n">geodesic_distance</span> <span class="o">=</span> <span class="n">subsurface</span><span class="o">.</span><span class="n">lift_subsurface_data</span><span class="p">(</span><span class="n">geodesic_distance</span><span class="p">)</span> 
+        <span class="n">geodesic_distance</span><span class="p">[</span><span class="o">~</span><span class="n">close_enough</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        
+        <span class="n">vertex_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connected_vertices</span><span class="p">(</span><span class="n">vertex</span><span class="o">=</span><span class="n">vertex</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">close_enough</span><span class="p">,</span> <span class="n">old_version</span><span class="o">=</span><span class="n">old_version</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;vertex_mask&#39;</span><span class="p">:</span> <span class="n">vertex_mask</span><span class="p">,</span>
+            <span class="s1">&#39;geodesic_distance&#39;</span><span class="p">:</span> <span class="n">geodesic_distance</span><span class="p">[</span><span class="n">vertex_mask</span><span class="p">],</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">get_geodesic_patches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">seeds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n_random_seeds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s1">&#39;dense&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;create patches of cortex centered around each vertex seed</span>
+
+<span class="sd">        - must specify seeds or n_random_seeds</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - radius : number</span>
+<span class="sd">            radius of searchlights</span>
+<span class="sd">        - seeds : list of ints</span>
+<span class="sd">            centers of each patch</span>
+<span class="sd">        - n_random_seeds : int</span>
+<span class="sd">            number of vertex seeds to generate</span>
+<span class="sd">        - output : &#39;dense&#39; or &#39;sparse&#39;</span>
+<span class="sd">            &#39;dense&#39;: output as dense binary array (faster, less memory efficient)</span>
+<span class="sd">            &#39;sparse&#39;: output as sparse binary array (slower, more memory efficient)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># gather seeds</span>
+        <span class="k">if</span> <span class="n">n_random_seeds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">seeds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">n_random_seeds</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">seeds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;must specify seeds or n_random_seeds&#39;</span><span class="p">)</span>
+
+        <span class="c1"># intialize output</span>
+        <span class="n">output_dims</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seeds</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">output</span> <span class="o">==</span> <span class="s1">&#39;dense&#39;</span><span class="p">:</span>
+            <span class="n">patches</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">output_dims</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">output</span> <span class="o">==</span> <span class="s1">&#39;sparse&#39;</span><span class="p">:</span>
+            <span class="n">patches</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">dok_matrix</span><span class="p">(</span><span class="n">output_dims</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;output: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">output</span><span class="p">))</span>
+
+        <span class="c1"># compute patches</span>
+        <span class="k">for</span> <span class="n">vs</span><span class="p">,</span> <span class="n">vertex_seed</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">seeds</span><span class="p">):</span>
+            <span class="n">patch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_geodesic_patch</span><span class="p">(</span><span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span> <span class="n">vertex</span><span class="o">=</span><span class="n">vertex_seed</span><span class="p">)</span>
+            <span class="n">patches</span><span class="p">[</span><span class="n">vs</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">[</span><span class="s1">&#39;vertex_mask&#39;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;vertex_masks&#39;</span><span class="p">:</span> <span class="n">patches</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">lift_subsurface_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">vertex_mask</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;expand vertex dimension of data to original surface&#39;s size</span>
+
+<span class="sd">        - agnostic to dtype and dimensionality of data</span>
+<span class="sd">            - vertex dimension should be last dimension</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - data : array</span>
+<span class="sd">            data to lift into original surface dimension</span>
+<span class="sd">        - vertex_mask : boolean array</span>
+<span class="sd">            custom mask to use instead of subsurface_vertex_mask</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">vertex_mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">vertex_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subsurface_vertex_mask</span>
+
+        <span class="n">new_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">vertex_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">new_shape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">new_shape</span>
+        <span class="n">lifted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">new_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">lifted</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">vertex_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span>
+
+        <span class="k">return</span> <span class="n">lifted</span>
+
+    <span class="k">def</span> <span class="nf">get_geodesic_strip_patch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v0</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">room_factor</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bb&#39;</span><span class="p">,</span>
+                                 <span class="n">graph_search</span><span class="o">=</span><span class="s1">&#39;astar&#39;</span><span class="p">,</span> <span class="n">include_strip_coordinates</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;return patch that includes v0, v1, their geodesic path, and all points within some radius</span>
+
+<span class="sd">        Algorithms</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - selection algorithms:</span>
+<span class="sd">            - &#39;bb&#39; = big ball</span>
+<span class="sd">                1. use euclidean ball big enough to contain v0 and v1</span>
+<span class="sd">                    - center = (v0 + v1) / 2</span>
+<span class="sd">                    - radius = euclidean_distance(v0, v1) / 2</span>
+<span class="sd">                2. only proceed if geodesic path [v0 -&gt; v1] does not touch boundary</span>
+<span class="sd">                    - otherwise expand ball and try again</span>
+<span class="sd">                3. go along each point in geodesic path, taking geodesic ball of radius r</span>
+<span class="sd">            - &#39;graph_distance&#39; = get graph shortest graph path from v0 to v1</span>
+<span class="sd">                1. take eucidean tube around graph path</span>
+<span class="sd">                2. will want to use weighted graph instead of just graph</span>
+<span class="sd">                - this is the fastest method, but requires further implementation tuning</span>
+<span class="sd">            - &#39;whole_surface&#39; = use entire surface</span>
+<span class="sd">        - when geodesic touches the boundary</span>
+<span class="sd">            1. add euclidean ball of boundary point to working set</span>
+<span class="sd">            2. recompute</span>
+<span class="sd">        - for now use:</span>
+<span class="sd">            - &#39;bb&#39; when creating single strips or small strips</span>
+<span class="sd">            - &#39;whole_surface&#39; when creating many large strips</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - v0 : int</span>
+<span class="sd">            index of start point</span>
+<span class="sd">        - v1 : int</span>
+<span class="sd">            index of end point</span>
+<span class="sd">        - radius : number</span>
+<span class="sd">            radius of section around geodesic path</span>
+<span class="sd">        - method : str</span>
+<span class="sd">            algorithm, either &#39;bb&#39; or &#39;graph_distance&#39;</span>
+<span class="sd">        - room_factor : number</span>
+<span class="sd">            in bb method, how much extra room in big ball</span>
+<span class="sd">        - graph_search : &#39;astar&#39; or &#39;dijkstra&#39;</span>
+<span class="sd">            graph search method to use</span>
+<span class="sd">        - include_strip_coordinates : bool</span>
+<span class="sd">            whether to compute coordinates of strip</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># find initial submesh that contains v0, v1, and their geodesic path</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;bb&#39;</span><span class="p">:</span>
+            <span class="c1"># use a big ball centered between v0 and v1</span>
+            <span class="n">xyz_0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">v0</span><span class="p">]</span>
+            <span class="n">xyz_1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">v1</span><span class="p">]</span>
+            <span class="n">bb_center</span> <span class="o">=</span> <span class="p">(</span><span class="n">xyz_0</span> <span class="o">+</span> <span class="n">xyz_1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+            <span class="n">bb_radius</span> <span class="o">=</span> <span class="n">room_factor</span> <span class="o">*</span> <span class="p">(((</span><span class="n">xyz_0</span> <span class="o">-</span> <span class="n">xyz_1</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">bb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_euclidean_ball</span><span class="p">(</span><span class="n">xyz</span><span class="o">=</span><span class="n">bb_center</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">bb_radius</span><span class="p">)</span>
+            <span class="n">initial_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connected_vertices</span><span class="p">(</span><span class="n">vertex</span><span class="o">=</span><span class="n">v0</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">bb</span><span class="p">)</span>
+            <span class="n">initial_mask</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connected_vertices</span><span class="p">(</span><span class="n">vertex</span><span class="o">=</span><span class="n">v1</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">bb</span><span class="p">)</span>
+            <span class="n">initial_surface</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_subsurface</span><span class="p">(</span><span class="n">vertex_mask</span><span class="o">=</span><span class="n">initial_mask</span><span class="p">)</span>
+
+            <span class="n">geodesic_path</span> <span class="o">=</span> <span class="n">initial_surface</span><span class="o">.</span><span class="n">geodesic_path</span><span class="p">(</span>
+                <span class="n">a</span><span class="o">=</span><span class="n">initial_surface</span><span class="o">.</span><span class="n">subsurface_vertex_map</span><span class="p">[</span><span class="n">v0</span><span class="p">],</span>
+                <span class="n">b</span><span class="o">=</span><span class="n">initial_surface</span><span class="o">.</span><span class="n">subsurface_vertex_map</span><span class="p">[</span><span class="n">v1</span><span class="p">],</span>
+            <span class="p">)</span>
+
+            <span class="c1"># collect points within radius of each point in geodesic path</span>
+            <span class="n">strip_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_geodesic_patch</span><span class="p">(</span>
+                <span class="n">vertex</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">initial_surface</span><span class="o">.</span><span class="n">subsurface_vertex_mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="n">geodesic_path</span><span class="p">],</span>
+                <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;graph_distance&#39;</span><span class="p">:</span>
+
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+            <span class="c1"># # use shortest path between v0 and v1 along graph edges</span>
+            <span class="c1"># import networkx</span>
+
+            <span class="c1"># graph = self.weighted_distance_graph</span>
+            <span class="c1"># if graph_search == &#39;dijkstra&#39;:</span>
+            <span class="c1">#     graph_path = networkx.shortest_path(graph, v0, v1, weight=&#39;weight&#39;)</span>
+            <span class="c1"># elif graph_search == &#39;astar&#39;:</span>
+            <span class="c1">#     graph_path = networkx.shortest_paths.astar.astar_path(graph, v0, v1, weight=&#39;weight&#39;)</span>
+            <span class="c1"># else:</span>
+            <span class="c1">#     raise Exception(str(graph_search))</span>
+
+            <span class="c1"># initial_vertices = self.get_euclidean_patch(</span>
+            <span class="c1">#     vertex=graph_path,</span>
+            <span class="c1">#     radius=(radius * room_factor),</span>
+            <span class="c1"># )</span>
+            <span class="c1"># initial_mask = initial_vertices[&#39;vertex_mask&#39;]</span>
+            <span class="c1"># initial_surface = self.create_subsurface(vertex_mask=initial_mask)</span>
+
+        <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;whole_surface&#39;</span><span class="p">:</span>
+
+            <span class="n">initial_surface</span> <span class="o">=</span> <span class="bp">self</span>
+            <span class="n">geodesic_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodesic_path</span><span class="p">(</span><span class="n">v0</span><span class="p">,</span> <span class="n">v1</span><span class="p">)</span>
+            <span class="n">strip_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_geodesic_patch</span><span class="p">(</span>
+                <span class="n">vertex</span><span class="o">=</span><span class="n">geodesic_path</span><span class="p">,</span>
+                <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;method: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">method</span><span class="p">))</span>
+
+        <span class="n">geodesic_path_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">initial_surface</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">geodesic_path_mask</span><span class="p">[</span><span class="n">geodesic_path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># verify geodesic path does not touch boundary</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">geodesic_path_mask</span> <span class="o">*</span> <span class="n">initial_surface</span><span class="o">.</span><span class="n">boundary_vertices</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;irregular submesh, geodesic path touches boundary&#39;</span><span class="p">)</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;vertex_mask&#39;</span><span class="p">:</span> <span class="n">strip_mask</span><span class="p">[</span><span class="s1">&#39;vertex_mask&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;geodesic_path&#39;</span><span class="p">:</span> <span class="n">geodesic_path</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">include_strip_coordinates</span><span class="p">:</span>
+            <span class="n">subsurface</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_subsurface</span><span class="p">(</span><span class="n">vertex_mask</span><span class="o">=</span><span class="n">strip_mask</span><span class="p">[</span><span class="s1">&#39;vertex_mask&#39;</span><span class="p">])</span>
+            <span class="n">coordinates</span> <span class="o">=</span> <span class="n">subsurface</span><span class="o">.</span><span class="n">get_strip_coordinates</span><span class="p">(</span>
+                <span class="n">v0</span><span class="o">=</span><span class="n">subsurface</span><span class="o">.</span><span class="n">subsurface_vertex_map</span><span class="p">[</span><span class="n">v0</span><span class="p">],</span>
+                <span class="n">v1</span><span class="o">=</span><span class="n">subsurface</span><span class="o">.</span><span class="n">subsurface_vertex_map</span><span class="p">[</span><span class="n">v1</span><span class="p">],</span>
+                <span class="n">geodesic_path</span><span class="o">=</span><span class="n">subsurface</span><span class="o">.</span><span class="n">subsurface_vertex_map</span><span class="p">[</span><span class="n">geodesic_path</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="n">output</span><span class="p">[</span><span class="s1">&#39;subsurface&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">subsurface</span>
+            <span class="n">output</span><span class="p">[</span><span class="s1">&#39;coordinates&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">subsurface</span><span class="o">.</span><span class="n">lift_subsurface_data</span><span class="p">(</span><span class="n">coordinates</span><span class="p">[</span><span class="s1">&#39;coordinates&#39;</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">output</span>
+
+    <span class="k">def</span> <span class="nf">get_strip_coordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v0</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">geodesic_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">distance_algorithm</span><span class="o">=</span><span class="s1">&#39;softmax&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;get 2D coordinates of surface from v0 to v1</span>
+
+<span class="sd">        - first coordinate: distance along geodesic path from v0</span>
+<span class="sd">        - second coordinate: distance from geodesic path</span>
+<span class="sd">        - v0 and v1 should be on boundary of patch</span>
+<span class="sd">            - if not, they are reassigned to boundary_vertices</span>
+<span class="sd">        - could be optimized by</span>
+<span class="sd">            - reusing information from get_geodesic_strip_patch()</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - v0 : int</span>
+<span class="sd">            index of starting point</span>
+<span class="sd">        - v1 : int</span>
+<span class="sd">            index of starting point</span>
+<span class="sd">        - geodesic_path : list of int</span>
+<span class="sd">            geodesic_path to use</span>
+<span class="sd">        - distance_algorithm : str</span>
+<span class="sd">            method to use for computing distance along path, &#39;softmax&#39; or &#39;closest&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">geodesic_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">geodesic_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodesic_path</span><span class="p">(</span><span class="n">v0</span><span class="p">,</span> <span class="n">v1</span><span class="p">)</span>
+
+        <span class="n">geodesic_distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">([</span><span class="n">v</span><span class="p">])</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">geodesic_path</span><span class="p">])</span>
+        <span class="n">v0_distance</span> <span class="o">=</span> <span class="n">geodesic_distances</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+
+        <span class="n">bound</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boundary_vertices</span>
+
+        <span class="c1"># reassign v0 and v1 to border vertices</span>
+        <span class="c1"># find boundary vertex maximizing distance to 2nd point in geodesic path</span>
+        <span class="c1"># s.t. (distance to second point) - (distance to first point) &gt; 0</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">bound</span><span class="p">[</span><span class="n">v0</span><span class="p">]:</span>
+
+            <span class="c1"># use boundary vertex v that minimizes [ d(geopath[0], v) - d(geopath[1], v) ] &amp; &gt; 0</span>
+            <span class="n">candidates</span> <span class="o">=</span> <span class="n">bound</span> <span class="o">*</span> <span class="p">(</span><span class="n">geodesic_distances</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">geodesic_distances</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:])</span>
+            <span class="k">if</span> <span class="n">candidates</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">bound_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span>
+                    <span class="n">geodesic_distances</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">bound</span><span class="p">]</span>
+                    <span class="o">-</span> <span class="n">geodesic_distances</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">bound</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="n">candidates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="n">candidates</span><span class="p">[</span><span class="n">bound</span><span class="p">[</span><span class="n">bound_max</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">geodesic_distances</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:][</span><span class="n">candidates</span><span class="p">])</span>
+            <span class="n">new_v0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">candidates</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+            <span class="n">new_path_0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodesic_path</span><span class="p">(</span><span class="n">new_v0</span><span class="p">,</span> <span class="n">v0</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">new_geodesic_distances_0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">([</span><span class="n">v</span><span class="p">])</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">new_path_0</span><span class="p">])</span>
+
+            <span class="n">v0</span> <span class="o">=</span> <span class="n">new_v0</span>
+            <span class="n">geodesic_path</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">new_path_0</span><span class="p">,</span> <span class="n">geodesic_path</span><span class="p">])</span>
+            <span class="n">geodesic_distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">new_geodesic_distances_0</span><span class="p">,</span> <span class="n">geodesic_distances</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">bound</span><span class="p">[</span><span class="n">v1</span><span class="p">]:</span>
+
+            <span class="c1"># use boundary vertex v that minimizes [ d(geopath[-1], v) - d(geopath[-2], v) ] &amp; &gt; 0</span>
+            <span class="n">candidates</span> <span class="o">=</span> <span class="n">bound</span> <span class="o">*</span> <span class="p">(</span><span class="n">geodesic_distances</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">geodesic_distances</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="p">:])</span>
+            <span class="k">if</span> <span class="n">candidates</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">bound_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span>
+                    <span class="n">geodesic_distances</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">bound</span><span class="p">]</span>
+                    <span class="o">-</span> <span class="n">geodesic_distances</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">bound</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="n">candidates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="n">candidates</span><span class="p">[</span><span class="n">bound</span><span class="p">[</span><span class="n">bound_max</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">geodesic_distances</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:][</span><span class="n">candidates</span><span class="p">])</span>
+            <span class="n">new_v1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">candidates</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+            <span class="n">new_path_1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodesic_path</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">new_v1</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="n">new_geodesic_distances_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">([</span><span class="n">v</span><span class="p">])</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">new_path_1</span><span class="p">])</span>
+
+            <span class="n">v1</span> <span class="o">=</span> <span class="n">new_v1</span>
+            <span class="n">geodesic_path</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">geodesic_path</span><span class="p">,</span> <span class="n">new_path_1</span><span class="p">])</span>
+            <span class="n">geodesic_distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">geodesic_distances</span><span class="p">,</span> <span class="n">new_geodesic_distances_1</span><span class="p">])</span>
+
+        <span class="c1"># compute distance along line</span>
+        <span class="k">if</span> <span class="n">distance_algorithm</span> <span class="o">==</span> <span class="s1">&#39;softmax&#39;</span><span class="p">:</span>
+            <span class="n">path_distances</span> <span class="o">=</span> <span class="n">geodesic_distances</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">geodesic_path</span><span class="p">]</span>
+            <span class="n">exp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">geodesic_distances</span><span class="p">)</span>
+            <span class="n">softmax</span> <span class="o">=</span> <span class="p">(</span><span class="n">exp</span> <span class="o">/</span> <span class="n">exp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+            <span class="n">distance_along_line</span> <span class="o">=</span> <span class="n">softmax</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">path_distances</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">distance_algorithm</span> <span class="o">==</span> <span class="s1">&#39;closest&#39;</span><span class="p">:</span>
+            <span class="n">closest_path_vertex</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">geodesic_path</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">geodesic_distances</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)]</span>
+            <span class="n">distance_along_line</span> <span class="o">=</span> <span class="n">v0_distance</span><span class="p">[</span><span class="n">closest_path_vertex</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">distance_algorithm</span><span class="p">)</span>
+
+        <span class="c1"># compute distance from line</span>
+        <span class="c1"># Calling directly self.geodesic_distance(geodesic_path) is somehow</span>
+        <span class="c1"># not precise enough on patches, probably because we don&#39;t deal</span>
+        <span class="c1"># correctly with boundaries in the heat method solver. Here instead,</span>
+        <span class="c1"># we call self.geodesic_distance on each point and take the min.</span>
+        <span class="n">distance_from_line</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">([</span><span class="n">ii</span><span class="p">])</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">geodesic_path</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        
+        <span class="c1"># compute the sign for each side of the line</span>
+        <span class="n">geodesic_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">geodesic_mask</span><span class="p">[</span><span class="n">geodesic_path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">subsurface</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_subsurface</span><span class="p">(</span><span class="n">vertex_mask</span><span class="o">=</span><span class="p">(</span><span class="o">~</span><span class="n">geodesic_mask</span><span class="p">))</span>
+        <span class="n">whole_submask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">subsurface</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">connected_component</span> <span class="o">=</span> <span class="n">subsurface</span><span class="o">.</span><span class="n">get_connected_vertices</span><span class="p">(</span><span class="n">vertex</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">whole_submask</span><span class="p">)</span>
+        <span class="n">subsubmask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">subsurface</span><span class="o">.</span><span class="n">subsurface_vertex_mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="n">connected_component</span><span class="p">]</span>
+        <span class="n">distance_from_line</span><span class="p">[</span><span class="n">subsubmask</span><span class="p">]</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;geodesic_path&#39;</span><span class="p">:</span> <span class="n">geodesic_path</span><span class="p">,</span>
+            <span class="s1">&#39;coordinates&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">distance_along_line</span><span class="p">,</span> <span class="n">distance_from_line</span><span class="p">]),</span>
+            <span class="s1">&#39;v0&#39;</span><span class="p">:</span> <span class="n">v0</span><span class="p">,</span>
+            <span class="s1">&#39;v1&#39;</span><span class="p">:</span> <span class="n">v1</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">furthest_border_points</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;return pair of points on surface border that have largest pairwise geodesic distance&quot;&quot;&quot;</span>
+
+        <span class="n">border_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boundary_vertices</span>
+        <span class="n">border_vertices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">border_mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">n_border_vertices</span> <span class="o">=</span> <span class="n">border_vertices</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">border_pairwise_distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_border_vertices</span><span class="p">,</span> <span class="n">n_border_vertices</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">vertex</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">border_vertices</span><span class="p">):</span>
+            <span class="n">border_pairwise_distances</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">([</span><span class="n">vertex</span><span class="p">])[</span><span class="n">border_mask</span><span class="p">]</span>
+        <span class="n">max_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">border_pairwise_distances</span><span class="p">)</span>
+        <span class="n">v0</span><span class="p">,</span> <span class="n">v1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="n">max_index</span><span class="p">,</span> <span class="n">border_pairwise_distances</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;v0&#39;</span><span class="p">:</span> <span class="n">border_vertices</span><span class="p">[</span><span class="n">v0</span><span class="p">],</span> <span class="s1">&#39;v1&#39;</span><span class="p">:</span> <span class="n">border_vertices</span><span class="p">[</span><span class="n">v1</span><span class="p">]}</span>
+
+    <span class="k">def</span> <span class="nf">plot_subsurface_rotating_gif</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">N_frames</span><span class="o">=</span><span class="mi">48</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">angles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vis_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">disp_patch_verticies</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">disp_patch_edges</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">disp_patch_triangles</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">disp_subpatch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">disp_rim_points</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">disp_rim_edges</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">point_color</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="n">line_color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">face_color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;create a rotating gif of subsurface</span>
+
+<span class="sd">        - matplotlib has extremely limited support for 3d plotting</span>
+<span class="sd">            - expect graphical artifacts when combining multiple features</span>
+<span class="sd">            - e.g. plotted vertices are not properly obscured by plotted faces</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.animation</span> <span class="k">as</span> <span class="nn">animation</span>
+        <span class="kn">import</span> <span class="nn">mpl_toolkits.mplot3d</span> <span class="k">as</span> <span class="nn">a3</span>
+
+        <span class="k">if</span> <span class="n">angles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">elev</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">N_frames</span><span class="p">,))</span>
+            <span class="n">azim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">360</span><span class="p">,</span> <span class="n">N_frames</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">angles</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">elev</span><span class="p">,</span> <span class="n">azim</span><span class="p">))</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">gca</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="s1">&#39;3d&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">init</span><span class="p">():</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">view_init</span><span class="p">(</span><span class="n">elev</span><span class="o">=</span><span class="n">angles</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">azim</span><span class="o">=</span><span class="n">angles</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="n">vis_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">plot</span> <span class="ow">in</span> <span class="n">vis_data</span><span class="p">:</span>
+                    <span class="n">defaults</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;c&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;marker&#39;</span><span class="p">:</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;markersize&#39;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
+                        <span class="s1">&#39;linestyle&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                    <span class="p">}</span>
+                    <span class="n">defaults</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">plot</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">plot</span><span class="p">[</span><span class="s1">&#39;mask&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">plot</span><span class="p">[</span><span class="s1">&#39;mask&#39;</span><span class="p">],</span> <span class="mi">1</span><span class="p">],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">plot</span><span class="p">[</span><span class="s1">&#39;mask&#39;</span><span class="p">],</span> <span class="mi">2</span><span class="p">],</span>
+                        <span class="o">**</span><span class="n">defaults</span>
+                    <span class="p">)</span>
+
+                <span class="n">tri_poly</span> <span class="o">=</span> <span class="n">a3</span><span class="o">.</span><span class="n">art3d</span><span class="o">.</span><span class="n">Poly3DCollection</span><span class="p">(</span>
+                    <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ppts</span><span class="p">[</span><span class="n">p</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ppts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])],</span>
+                    <span class="c1"># facecolor=&#39;none&#39;,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                    <span class="n">linewidths</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">tri_poly</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+                <span class="n">tri_poly</span><span class="o">.</span><span class="n">set_edgecolor</span><span class="p">(</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">add_collection3d</span><span class="p">(</span><span class="n">tri_poly</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="n">alpha</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">disp_patch_verticies</span> <span class="k">else</span> <span class="mi">0</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span>
+                        <span class="p">(</span><span class="n">point_color</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span><span class="p">),</span>
+                        <span class="n">markersize</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+                        <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">disp_patch_edges</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+                <span class="k">if</span> <span class="n">disp_patch_triangles</span><span class="p">:</span>
+                    <span class="n">tri_poly</span> <span class="o">=</span> <span class="n">a3</span><span class="o">.</span><span class="n">art3d</span><span class="o">.</span><span class="n">Poly3DCollection</span><span class="p">(</span>
+                        <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ppts</span><span class="p">[</span><span class="n">p</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ppts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])],</span>
+                        <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">tri_poly</span><span class="o">.</span><span class="n">set_color</span><span class="p">(</span><span class="n">face_color</span><span class="p">)</span>
+                    <span class="n">tri_poly</span><span class="o">.</span><span class="n">set_edgecolor</span><span class="p">(</span><span class="n">line_color</span><span class="p">)</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">add_collection3d</span><span class="p">(</span><span class="n">tri_poly</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">animate</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">view_init</span><span class="p">(</span><span class="n">elev</span><span class="o">=</span><span class="n">angles</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">azim</span><span class="o">=</span><span class="n">angles</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="n">anim</span> <span class="o">=</span> <span class="n">animation</span><span class="o">.</span><span class="n">FuncAnimation</span><span class="p">(</span>
+            <span class="n">fig</span><span class="p">,</span>
+            <span class="n">animate</span><span class="p">,</span>
+            <span class="n">N_frames</span><span class="p">,</span>
+            <span class="n">interval</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span>
+            <span class="n">blit</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">init_func</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">anim</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">writer</span><span class="o">=</span><span class="s1">&#39;imagemagick&#39;</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

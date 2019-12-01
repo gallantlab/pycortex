@@ -1,0 +1,210 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.quickflat.make_figure &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-quickflat-make-figure">
+<h1>cortex.quickflat.make_figure<a class="headerlink" href="#cortex-quickflat-make-figure" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="cortex.quickflat.make_figure">
+<code class="sig-prename descclassname">cortex.quickflat.</code><code class="sig-name descname">make_figure</code><span class="sig-paren">(</span><em class="sig-param">braindata</em>, <em class="sig-param">recache=False</em>, <em class="sig-param">pixelwise=True</em>, <em class="sig-param">thick=32</em>, <em class="sig-param">sampler='nearest'</em>, <em class="sig-param">height=1024</em>, <em class="sig-param">dpi=100</em>, <em class="sig-param">depth=0.5</em>, <em class="sig-param">with_rois=True</em>, <em class="sig-param">with_sulci=False</em>, <em class="sig-param">with_labels=True</em>, <em class="sig-param">with_colorbar=True</em>, <em class="sig-param">with_borders=False</em>, <em class="sig-param">with_dropout=False</em>, <em class="sig-param">with_curvature=False</em>, <em class="sig-param">extra_disp=None</em>, <em class="sig-param">with_connected_vertices=False</em>, <em class="sig-param">linewidth=None</em>, <em class="sig-param">linecolor=None</em>, <em class="sig-param">roifill=None</em>, <em class="sig-param">shadow=None</em>, <em class="sig-param">labelsize=None</em>, <em class="sig-param">labelcolor=None</em>, <em class="sig-param">cutout=None</em>, <em class="sig-param">curvature_brightness=None</em>, <em class="sig-param">curvature_contrast=None</em>, <em class="sig-param">curvature_threshold=None</em>, <em class="sig-param">fig=None</em>, <em class="sig-param">extra_hatch=None</em>, <em class="sig-param">colorbar_ticks=None</em>, <em class="sig-param">colorbar_location=(0.4</em>, <em class="sig-param">0.07</em>, <em class="sig-param">0.2</em>, <em class="sig-param">0.04)</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/quickflat/view.html#make_figure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.quickflat.make_figure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Show a Volume or Vertex on a flatmap with matplotlib.</p>
+<p>Note that <a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs are ONLY present now for backward compatibility / warnings. No kwargs
+should be used.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>braindata</strong><span class="classifier">Dataview (e.g. instance of cortex.Volume, cortex.Vertex,…)</span></dt><dd><p>the data you would like to plot on a flatmap</p>
+</dd>
+<dt><strong>recache</strong><span class="classifier">boolean</span></dt><dd><p>Whether or not to recache intermediate files. Takes longer to plot this way, potentially
+resolves some errors. Useful if you’ve made changes to the alignment</p>
+</dd>
+<dt><strong>pixelwise</strong><span class="classifier">bool</span></dt><dd><p>Use pixel-wise mapping</p>
+</dd>
+<dt><strong>thick</strong><span class="classifier">int</span></dt><dd><p>Number of layers through the cortical sheet to sample. Only applies for pixelwise = True</p>
+</dd>
+<dt><strong>sampler</strong><span class="classifier">str</span></dt><dd><p>Name of sampling function used to sample underlying volume data. Options include
+‘trilinear’, ‘nearest’, ‘lanczos’; see functions in cortex.mapper.samplers.py for all options</p>
+</dd>
+<dt><strong>height</strong><span class="classifier">int</span></dt><dd><p>Height of the image to render. Automatically scales the width for the aspect
+of the subject’s flatmap</p>
+</dd>
+<dt><strong>depth</strong><span class="classifier">float</span></dt><dd><p>Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
+boundary, 1 = pial surface)</p>
+</dd>
+<dt><strong>with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature, etc</strong><span class="classifier">bool, optional</span></dt><dd><p>Display the rois, labels, colorbar, annotated flatmap borders, etc</p>
+</dd>
+<dt><strong>cutout</strong><span class="classifier">str</span></dt><dd><p>Name of flatmap cutout with which to clip the full flatmap. Should be the name
+of a sub-layer of the ‘cutouts’ layer in &lt;filestore&gt;/&lt;subject&gt;/overlays.svg</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Other Parameters</dt>
+<dd class="field-even"><dl>
+<dt><strong>dpi</strong><span class="classifier">int</span></dt><dd><p>DPI of the generated image. Only applies to the scaling of matplotlib elements,
+specifically the colormap</p>
+</dd>
+<dt><strong>linewidth</strong><span class="classifier">int, optional</span></dt><dd><p>Width of ROI lines. Defaults to roi options in your local <cite>options.cfg</cite></p>
+</dd>
+<dt><strong>linecolor</strong><span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) specification of line color</p>
+</dd>
+<dt><strong>roifill</strong><span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) sepcification for the fill of each ROI region</p>
+</dd>
+<dt><strong>shadow</strong><span class="classifier">int, optional</span></dt><dd><p>Standard deviation of the gaussian shadow. Set to 0 if you want no shadow</p>
+</dd>
+<dt><strong>labelsize</strong><span class="classifier">str, optional</span></dt><dd><p>Font size for the label, e.g. “16pt”</p>
+</dd>
+<dt><strong>labelcolor</strong><span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) specification for the label color</p>
+</dd>
+<dt><strong>curvature_brightness</strong><span class="classifier">float, optional</span></dt><dd><p>Mean* brightness of background. 0 = black, 1 = white, intermediate values are corresponding
+grayscale values. If None, Defaults to config file value. (<a href="#id3"><span class="problematic" id="id4">*</span></a>this does not precisely specify
+the mean; the actual mean luminance of the curvature depends on the value for
+<cite>curvature_contrast</cite>. It’s easiest to think about it as the mean brightness, though.)</p>
+</dd>
+<dt><strong>curvature_contrast</strong><span class="classifier">float, optional</span></dt><dd><p>Contrast of curvature. 1 = maximal contrast (black/white), 0 = no contrast (solid color for
+curvature equal to <cite>curvature_brightness</cite>).</p>
+</dd>
+<dt><strong>cvmax</strong><span class="classifier">float, optional [DEPRECATED! use <cite>curvature_brightness</cite> and <cite>curvature_contrast</cite> instead]</span></dt><dd><p>Maximum value for background curvature colormap. Defaults to config file value.</p>
+</dd>
+<dt><strong>cvthr</strong><span class="classifier">bool, optional [DEPRECATED! use <cite>curvature_threshold</cite> instead]</span></dt><dd><p>Apply threshold to background curvature</p>
+</dd>
+<dt><strong>extra_disp</strong><span class="classifier">tuple, optional</span></dt><dd><p>Optional extra display layer from external .svg file. Tuple specifies (filename, layer)
+filename should be a full path. External svg file should be structured exactly as
+overlays.svg for the subject. (Best to just copy overlays.svg somewhere else and add
+layers to it.) Default value is None.</p>
+</dd>
+<dt><strong>extra_hatch</strong><span class="classifier">tuple, optional</span></dt><dd><p>Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple.</p>
+</dd>
+<dt><strong>colorbar_location</strong><span class="classifier">tuple, optional</span></dt><dd><p>Location of the colorbar. The dimensions are
+[left, bottom, width, height]. All quantities are in fractions of
+figure width and height.</p>
+</dd>
+<dt><strong>colorbar_ticks</strong><span class="classifier">array-like, optional</span></dt><dd><p>For 1D colormaps indicates the ticks of the colorbar. If None,
+it defaults to equally spaced values between vmin and vmax.
+This parameter is not used for 2D colormaps, and it defaults to the
+vmin, vmax specified in the Volume2D object.</p>
+</dd>
+<dt><strong>fig</strong><span class="classifier">figure or ax</span></dt><dd><p>figure into which to plot flatmap</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.quickflat.make_figure.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

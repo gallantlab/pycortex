@@ -1,0 +1,6 @@
+cortex.utils.get\_hemi\_masks
+=============================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: get_hemi_masks

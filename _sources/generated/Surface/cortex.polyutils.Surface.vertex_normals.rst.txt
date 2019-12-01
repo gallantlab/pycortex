@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.vertex\_normals
+========================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.vertex_normals

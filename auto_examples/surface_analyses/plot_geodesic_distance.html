@@ -1,0 +1,226 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Plotting Geodesic Distances &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Flatmap Distortion" href="plot_flatmap_distortion.html" />
+    <link rel="prev" title="Plotting Geodesic Paths" href="plot_geodesic_path.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p>Click <a class="reference internal" href="#sphx-glr-download-auto-examples-surface-analyses-plot-geodesic-distance-py"><span class="std std-ref">here</span></a> to download the full example code</p>
+</div>
+<div class="sphx-glr-example-title section" id="plotting-geodesic-distances">
+<span id="sphx-glr-auto-examples-surface-analyses-plot-geodesic-distance-py"></span><h1>Plotting Geodesic Distances<a class="headerlink" href="#plotting-geodesic-distances" title="Permalink to this headline">¶</a></h1>
+<p>This plots the distances (in mm) between a vertex or set of vertices and
+all other vertices on a surface. These two operations take the exact same
+amount of time to run.</p>
+<p>To look at the distance to a single point, just supply the index of that
+vertex. To look at the distance to a set of points, supply a numpy array of
+all of the vertices in the area. In the case of a set of points, the
+geodesic distance measure will return the minimum distance to the set of
+points as a whole.</p>
+<p>The two hemispheres must be run separately.</p>
+<ul class="sphx-glr-horizontal">
+<li><img alt="../../_images/sphx_glr_plot_geodesic_distance_001.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_geodesic_distance_001.png" />
+</li>
+<li><img alt="../../_images/sphx_glr_plot_geodesic_distance_002.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_geodesic_distance_002.png" />
+</li>
+</ul>
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:296: SparseEfficiencyWarning: splu requires CSC matrix format
+  warn(&#39;splu requires CSC matrix format&#39;, SparseEfficiencyWarning)
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<span class="kn">import</span> <span class="nn">cortex.polyutils</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">subject</span> <span class="o">=</span> <span class="s2">&quot;S1&quot;</span>
+
+<span class="c1"># First we need to import the surfaces for this subject</span>
+<span class="n">surfs</span> <span class="o">=</span> <span class="p">[</span><span class="n">cortex</span><span class="o">.</span><span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="o">*</span><span class="n">d</span><span class="p">)</span>
+         <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">)]</span>
+
+<span class="c1"># Then we will pick one vertex in each hemisphere to find distances to</span>
+<span class="n">vert</span> <span class="o">=</span> <span class="mi">10000</span>
+<span class="n">dists</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">(</span><span class="n">vert</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">surfs</span><span class="p">]</span>
+
+<span class="c1"># Now we can plot these distances onto a flatmap</span>
+<span class="n">all_dists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">dists</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dists</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+<span class="n">dist_map</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">all_dists</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;hot&quot;</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">dist_map</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># Alternatively, you can find the minimum distance from a set of points to the</span>
+<span class="c1"># surface</span>
+<span class="c1"># Here, we use an example of an ROI</span>
+<span class="n">all_eba</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">get_roi_verts</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;EBA&quot;</span><span class="p">)[</span><span class="s2">&quot;EBA&quot;</span><span class="p">]</span>
+
+<span class="c1"># We have to then separate these vertices by hemisphere</span>
+<span class="n">numl</span> <span class="o">=</span> <span class="n">surfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">eba_verts</span> <span class="o">=</span> <span class="p">[</span><span class="n">all_eba</span><span class="p">[</span><span class="n">all_eba</span> <span class="o">&lt;</span> <span class="n">numl</span><span class="p">],</span> <span class="n">all_eba</span><span class="p">[</span><span class="n">all_eba</span> <span class="o">&gt;=</span> <span class="n">numl</span><span class="p">]</span> <span class="o">-</span> <span class="n">numl</span><span class="p">]</span>
+
+<span class="c1"># Now look at geodesic distances for each hemisphere separately</span>
+<span class="n">dists</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">(</span><span class="n">verts</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">verts</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">surfs</span><span class="p">,</span> <span class="n">eba_verts</span><span class="p">)]</span>
+<span class="n">all_dists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">dists</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dists</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+<span class="c1"># And now plot these distances onto the cortical surface</span>
+<span class="n">dist_map</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">all_dists</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;hot&quot;</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">dist_map</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  26.388 seconds)</p>
+<div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-surface-analyses-plot-geodesic-distance-py">
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/6f21d9b4cf1e506c27a0e3ae52a74bce/plot_geodesic_distance.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_geodesic_distance.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/fc8b05be95bda3f3431b5b5752f2c0fd/plot_geodesic_distance.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_geodesic_distance.ipynb</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="plot_tissots_indicatrix.html">Tissot’s Indicatrix</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_geodesic_path.html">Plotting Geodesic Paths</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Plotting Geodesic Distances</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_flatmap_distortion.html">Flatmap Distortion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_subsurfaces.html">Plot and Use Subsurface Tools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_interpolate_data.html">Interpolate Data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Example Gallery</a><ul>
+      <li>Previous: <a href="plot_geodesic_path.html" title="previous chapter">Plotting Geodesic Paths</a></li>
+      <li>Next: <a href="plot_flatmap_distortion.html" title="next chapter">Flatmap Distortion</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/auto_examples/surface_analyses/plot_geodesic_distance.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

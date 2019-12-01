@@ -1,0 +1,431 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.dataset.viewRGB &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.dataset.viewRGB</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">.views</span> <span class="kn">import</span> <span class="n">Dataview</span><span class="p">,</span> <span class="n">Volume</span><span class="p">,</span> <span class="n">Vertex</span>
+<span class="kn">from</span> <span class="nn">.braindata</span> <span class="kn">import</span> <span class="n">VolumeData</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">,</span> <span class="n">_hash</span>
+<span class="kn">from</span> <span class="nn">..database</span> <span class="kn">import</span> <span class="n">db</span>
+
+<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">options</span>
+<span class="n">default_cmap</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basic&quot;</span><span class="p">,</span> <span class="s2">&quot;default_cmap&quot;</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">DataviewRGB</span><span class="p">(</span><span class="n">Dataview</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Abstract base class for RGB data views.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subject</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">subject</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">movie</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">movie</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">description</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">kwargs</span>
+        <span class="k">if</span> <span class="s1">&#39;priority&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;priority&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># If movie, make sure each channel has the same number of time points</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">movie</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;For movie data, all three channels have to be the same length&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">uniques</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collapse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">collapse</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>
+
+    <span class="k">def</span> <span class="nf">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="p">,</span> <span class="n">h5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="p">,</span> <span class="n">h5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="p">,</span> <span class="n">h5</span><span class="p">)</span>
+
+        <span class="n">alpha</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="n">h5</span><span class="p">)</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">alpha</span><span class="p">]</span>
+        <span class="n">viewnode</span> <span class="o">=</span> <span class="n">Dataview</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> 
+                                       <span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">data</span><span class="p">],</span> <span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">viewnode</span>
+
+    <span class="k">def</span> <span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simple</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">sdict</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">DataviewRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">simple</span><span class="o">=</span><span class="n">simple</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">simple</span><span class="p">:</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;subject&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subject</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">255</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;cmap&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">default_cmap</span><span class="p">]</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;vmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;vmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">255</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">sdict</span>
+
+<div class="viewcode-block" id="VolumeRGB"><a class="viewcode-back" href="../../../generated/cortex.dataset.VolumeRGB.html#cortex.dataset.VolumeRGB">[docs]</a><span class="k">class</span> <span class="nc">VolumeRGB</span><span class="p">(</span><span class="n">DataviewRGB</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Contains RGB (or RGBA) colors for each voxel in a volumetric dataset. </span>
+<span class="sd">    Includes information about the subject and transform for the data.</span>
+
+<span class="sd">    Each color channel is represented as a separate Volume object (these can </span>
+<span class="sd">    either be supplied explicitly as Volume objects or implicitly as numpy </span>
+<span class="sd">    arrays). The vmin for each Volume will be mapped to the minimum value for</span>
+<span class="sd">    that color channel, and the vmax will be mapped to the maximum value.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    red : ndarray or Volume</span>
+<span class="sd">        Array or Volume that represents the red component of the color for each </span>
+<span class="sd">        voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.</span>
+<span class="sd">    green : ndarray or Volume</span>
+<span class="sd">        Array or Volume that represents the green component of the color for each </span>
+<span class="sd">        voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.</span>
+<span class="sd">    blue : ndarray or Volume</span>
+<span class="sd">        Array or Volume that represents the blue component of the color for each </span>
+<span class="sd">        voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.</span>
+<span class="sd">    subject : str, optional</span>
+<span class="sd">        Subject identifier. Must exist in the pycortex database. If not given,</span>
+<span class="sd">        red must be a Volume from which the subject can be extracted.</span>
+<span class="sd">    xfmname : str, optional</span>
+<span class="sd">        Transform name. Must exist in the pycortex database. If not given,</span>
+<span class="sd">        red must be a Volume from which the subject can be extracted.</span>
+<span class="sd">    alpha : ndarray or Volume, optional</span>
+<span class="sd">        Array or Volume that represents the alpha component of the color for each </span>
+<span class="sd">        voxel. Can be a 1D or 3D array (see Volume for details), or a Volume. If</span>
+<span class="sd">        None, all voxels will be assumed to have alpha=1.0.</span>
+<span class="sd">    description : str, optional</span>
+<span class="sd">        String describing this dataset. Displayed in webgl viewer.</span>
+<span class="sd">    state : optional</span>
+<span class="sd">        TODO: describe what this is</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        All additional arguments in kwargs are passed to the VolumeData and </span>
+<span class="sd">        Dataview.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_cls</span> <span class="o">=</span> <span class="n">VolumeData</span>
+
+<div class="viewcode-block" id="VolumeRGB.__init__"><a class="viewcode-back" href="../../../generated/VolumeRGB/cortex.dataset.VolumeRGB.__init__.html#cortex.dataset.VolumeRGB.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> 
+                 <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">)</span> <span class="ow">or</span> <span class="n">red</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">green</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Invalid data for green channel&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blue</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">)</span> <span class="ow">or</span> <span class="n">red</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">blue</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Invalid data for blue channel&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">red</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">green</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">blue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">xfmname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Subject and xfmname are required&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">volume</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span>
+                           <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">Volume</span><span class="p">):</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="o">.</span><span class="n">xfmname</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="o">.</span><span class="n">xfmname</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="o">.</span><span class="n">xfmname</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">xfmname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Cannot handle different transforms per volume&#39;</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">VolumeRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="VolumeRGB.to_json"><a class="viewcode-back" href="../../../generated/VolumeRGB/cortex.dataset.VolumeRGB.to_json.html#cortex.dataset.VolumeRGB.to_json">[docs]</a>    <span class="k">def</span> <span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simple</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">sdict</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">VolumeRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">simple</span><span class="o">=</span><span class="n">simple</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">simple</span><span class="p">:</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;xfm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span> <span class="s1">&#39;coord&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">xfm</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">())]</span>
+
+        <span class="k">return</span> <span class="n">sdict</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;5-dimensional volume (t, z, y, x, rgba) with data that has been mapped</span>
+<span class="sd">        into 8-bit unsigned integers that correspond to colors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">volume</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">):</span>
+            <span class="n">vol</span> <span class="o">=</span> <span class="n">dv</span><span class="o">.</span><span class="n">volume</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">vol</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">dv</span><span class="o">.</span><span class="n">vmin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">vol</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">vol</span> <span class="o">-=</span> <span class="n">vol</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">vol</span> <span class="o">-=</span> <span class="n">dv</span><span class="o">.</span><span class="n">vmin</span>
+
+                <span class="k">if</span> <span class="n">dv</span><span class="o">.</span><span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">vol</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">vol</span> <span class="o">/=</span> <span class="n">vol</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">vol</span> <span class="o">/=</span> <span class="n">dv</span><span class="o">.</span><span class="n">vmax</span> <span class="o">-</span> <span class="n">dv</span><span class="o">.</span><span class="n">vmin</span>
+
+                <span class="n">vol</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">vol</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="n">volume</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vol</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">volume</span><span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;RGB volumetric data for (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)&gt;&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="n">_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volume</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;__</span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volume</span><span class="p">)[:</span><span class="mi">16</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">VolumeRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">xfmname</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="VertexRGB"><a class="viewcode-back" href="../../../generated/cortex.dataset.VertexRGB.html#cortex.dataset.VertexRGB">[docs]</a><span class="k">class</span> <span class="nc">VertexRGB</span><span class="p">(</span><span class="n">DataviewRGB</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Contains RGB (or RGBA) colors for each vertex in a surface dataset. </span>
+<span class="sd">    Includes information about the subject.</span>
+
+<span class="sd">    Each color channel is represented as a separate Vertex object (these can </span>
+<span class="sd">    either be supplied explicitly as Vertex objects or implicitly as numpy </span>
+<span class="sd">    arrays). The vmin for each Vertex will be mapped to the minimum value for</span>
+<span class="sd">    that color channel, and the vmax will be mapped to the maximum value.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    red : ndarray or Vertex</span>
+<span class="sd">        Array or Vertex that represents the red component of the color for each </span>
+<span class="sd">        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.</span>
+<span class="sd">    green : ndarray or Vertex</span>
+<span class="sd">        Array or Vertex that represents the green component of the color for each </span>
+<span class="sd">        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.</span>
+<span class="sd">    blue : ndarray or Vertex</span>
+<span class="sd">        Array or Vertex that represents the blue component of the color for each </span>
+<span class="sd">        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.</span>
+<span class="sd">    subject : str, optional</span>
+<span class="sd">        Subject identifier. Must exist in the pycortex database. If not given,</span>
+<span class="sd">        red must be a Vertex from which the subject can be extracted.</span>
+<span class="sd">    alpha : ndarray or Vertex, optional</span>
+<span class="sd">        Array or Vertex that represents the alpha component of the color for each </span>
+<span class="sd">        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex. If</span>
+<span class="sd">        None, all vertices will be assumed to have alpha=1.0.</span>
+<span class="sd">    description : str, optional</span>
+<span class="sd">        String describing this dataset. Displayed in webgl viewer.</span>
+<span class="sd">    state : optional</span>
+<span class="sd">        TODO: describe what this is</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        All additional arguments in kwargs are passed to the VertexData and </span>
+<span class="sd">        Dataview.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_cls</span> <span class="o">=</span> <span class="n">VertexData</span>
+<div class="viewcode-block" id="VertexRGB.__init__"><a class="viewcode-back" href="../../../generated/VertexRGB/cortex.dataset.VertexRGB.__init__.html#cortex.dataset.VertexRGB.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> 
+                 <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">)</span> <span class="ow">or</span> <span class="n">red</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">green</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Invalid data for green channel&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blue</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">)</span> <span class="ow">or</span> <span class="n">red</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">blue</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Invalid data for blue channel&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">red</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">green</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">blue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Subject name is required&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">VertexRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span> 
+                                        <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">vertices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;3-dimensional volume (t, v, rgba) with data that has been mapped</span>
+<span class="sd">        into 8-bit unsigned integers that correspond to colors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">):</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
+
+        <span class="n">verts</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+            <span class="n">vert</span> <span class="o">=</span> <span class="n">dv</span><span class="o">.</span><span class="n">vertices</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">vert</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">dv</span><span class="o">.</span><span class="n">vmin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">vert</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">vert</span> <span class="o">-=</span> <span class="n">vert</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">vert</span> <span class="o">-=</span> <span class="n">dv</span><span class="o">.</span><span class="n">vmin</span>
+
+                <span class="k">if</span> <span class="n">dv</span><span class="o">.</span><span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">vert</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">vert</span> <span class="o">/=</span> <span class="n">vert</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">vert</span> <span class="o">/=</span> <span class="n">dv</span><span class="o">.</span><span class="n">vmax</span> <span class="o">-</span> <span class="n">dv</span><span class="o">.</span><span class="n">vmin</span>
+
+                <span class="n">vert</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">vert</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="n">verts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vert</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">verts</span><span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+<div class="viewcode-block" id="VertexRGB.to_json"><a class="viewcode-back" href="../../../generated/VertexRGB/cortex.dataset.VertexRGB.to_json.html#cortex.dataset.VertexRGB.to_json">[docs]</a>    <span class="k">def</span> <span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simple</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">sdict</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">VertexRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">simple</span><span class="o">=</span><span class="n">simple</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">simple</span><span class="p">:</span>
+            <span class="n">sdict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">split</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">llen</span><span class="p">,</span> <span class="n">frames</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+        <span class="k">return</span> <span class="n">sdict</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">left</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">[:,:</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">llen</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">right</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">[:,</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">llen</span><span class="p">:]</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;RGB vertex data for (</span><span class="si">%s</span><span class="s2">)&gt;&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="n">_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;__</span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">)[:</span><span class="mi">16</span><span class="p">]</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

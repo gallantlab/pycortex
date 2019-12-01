@@ -1,0 +1,6 @@
+cortex.utils.anat2epispace
+==========================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: anat2epispace

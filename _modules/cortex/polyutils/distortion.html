@@ -1,0 +1,222 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.polyutils.distortion &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.polyutils.distortion</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<div class="viewcode-block" id="Distortion"><a class="viewcode-back" href="../../../generated/cortex.polyutils.Distortion.html#cortex.polyutils.Distortion">[docs]</a><span class="k">class</span> <span class="nc">Distortion</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Used to compute distortion metrics between fiducial and another (e.g. flat)</span>
+<span class="sd">    surface.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    flat : 2D ndarray, shape (total_verts, 3)</span>
+<span class="sd">        Location of each vertex in flatmap space.</span>
+<span class="sd">    ref : 2D ndarray, shape (total_verts, 3)</span>
+<span class="sd">        Location of each vertex in fiducial (reference) space.</span>
+<span class="sd">    polys : 2D ndarray, shape (total_polys, 3)</span>
+<span class="sd">        Triangle vertex indices in both `flat` and `ref`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Distortion.__init__"><a class="viewcode-back" href="../../../generated/Distortion/cortex.polyutils.Distortion.__init__.html#cortex.polyutils.Distortion.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flat</span><span class="p">,</span> <span class="n">ref</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flat</span> <span class="o">=</span> <span class="n">flat</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref</span> <span class="o">=</span> <span class="n">ref</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">polys</span> <span class="o">=</span> <span class="n">polys</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">areal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compute areal distortion of the flatmap.</span>
+
+<span class="sd">        Areal distortion is calculated at each triangle as the log2 ratio of</span>
+<span class="sd">        the triangle area in the flatmap to the area in the reference surface.</span>
+<span class="sd">        Distortion values are then resampled onto the vertices.</span>
+
+<span class="sd">        Thus a value of 0 indicates the areas are equal (no distortion), a </span>
+<span class="sd">        value of +1 indicates that the area in the flatmap is 2x the area</span>
+<span class="sd">        in the reference surface (expansion), and a value of -1 indicates</span>
+<span class="sd">        that the area in the flatmap is 1/2x the area in the reference</span>
+<span class="sd">        surface (compression).</span>
+
+<span class="sd">        See: http://brainvis.wustl.edu/wiki/index.php/Caret:Operations/Morphing</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        vertratios : 1D ndarray, shape (total_verts,)</span>
+<span class="sd">            Areal distortion at each vertex.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">area</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
+            <span class="n">ppts</span> <span class="o">=</span> <span class="n">pts</span><span class="p">[</span><span class="n">polys</span><span class="p">]</span>
+            <span class="n">cross</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">ppts</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ppts</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">ppts</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">ppts</span><span class="p">[:,</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">cross</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">refarea</span> <span class="o">=</span> <span class="n">area</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">)</span>
+        <span class="n">flatarea</span> <span class="o">=</span> <span class="n">area</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flat</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">)</span>
+        <span class="n">tridists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">flatarea</span><span class="o">/</span><span class="n">refarea</span><span class="p">)</span>
+        
+        <span class="n">vertratios</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="p">),))</span>
+        <span class="n">vertratios</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">tridists</span>
+        <span class="n">vertratios</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">tridists</span>
+        <span class="n">vertratios</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">tridists</span>
+        <span class="n">vertratios</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">minlength</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="p">))</span>
+        <span class="n">vertratios</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">vertratios</span><span class="p">)</span>
+        <span class="n">vertratios</span><span class="p">[</span><span class="n">vertratios</span><span class="o">==</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">vertratios</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">metric</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compute metric distortion of the flatmap.</span>
+
+<span class="sd">        Metric distortion is calculated as the difference in squared distance</span>
+<span class="sd">        from each vertex to its neighbors between the flatmap and the reference.</span>
+
+<span class="sd">        Positive values of metric distortion mean that vertices are farther from</span>
+<span class="sd">        their neighbors in the flatmap than in the reference surface (expansion),</span>
+<span class="sd">        etc.</span>
+
+<span class="sd">        See: Fishl, Sereno, and Dale, 1999.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        vertdists : 1D ndarray, shape (total_verts,)</span>
+<span class="sd">            Metric distortion at each vertex.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+        <span class="k">def</span> <span class="nf">iter_surfedges</span><span class="p">(</span><span class="n">tris</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span> <span class="ow">in</span> <span class="n">tris</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span>
+                <span class="k">yield</span> <span class="n">b</span><span class="p">,</span><span class="n">c</span>
+                <span class="k">yield</span> <span class="n">a</span><span class="p">,</span><span class="n">c</span>
+
+        <span class="k">def</span> <span class="nf">make_surface_graph</span><span class="p">(</span><span class="n">tris</span><span class="p">):</span>
+            <span class="n">graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+            <span class="n">graph</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">iter_surfedges</span><span class="p">(</span><span class="n">tris</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">graph</span>
+
+        <span class="n">G</span> <span class="o">=</span> <span class="n">make_surface_graph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">)</span>
+        <span class="n">selverts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+        <span class="n">ref_dists</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">ii</span><span class="p">)])]</span> <span class="o">-</span> 
+                               <span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="p">[</span><span class="n">ii</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">selverts</span><span class="p">]</span>
+        <span class="n">flat_dists</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="bp">self</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">ii</span><span class="p">)])]</span> <span class="o">-</span> 
+                                <span class="bp">self</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">ii</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">selverts</span><span class="p">]</span>
+        <span class="n">msdists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">f</span><span class="o">-</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">for</span> <span class="n">r</span><span class="p">,</span><span class="n">f</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ref_dists</span><span class="p">,</span> <span class="n">flat_dists</span><span class="p">)])</span>
+        <span class="n">alldists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="p">),))</span>
+        <span class="n">alldists</span><span class="p">[</span><span class="n">selverts</span><span class="p">]</span> <span class="o">=</span> <span class="n">msdists</span>
+        <span class="k">return</span> <span class="n">alldists</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

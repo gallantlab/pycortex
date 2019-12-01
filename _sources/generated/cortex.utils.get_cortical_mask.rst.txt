@@ -1,0 +1,6 @@
+cortex.utils.get\_cortical\_mask
+================================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: get_cortical_mask

@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.connected
+==================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.connected

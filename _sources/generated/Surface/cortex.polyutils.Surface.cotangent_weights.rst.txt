@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.cotangent\_weights
+===========================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.cotangent_weights

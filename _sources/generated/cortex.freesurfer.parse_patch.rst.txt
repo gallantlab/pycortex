@@ -1,0 +1,6 @@
+cortex.freesurfer.parse\_patch
+==============================
+
+.. currentmodule:: cortex.freesurfer
+
+.. autofunction:: parse_patch

@@ -1,0 +1,206 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.dataset.Vertex2D &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-dataset-vertex2d">
+<h1>cortex.dataset.Vertex2D<a class="headerlink" href="#cortex-dataset-vertex2d" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="cortex.dataset.Vertex2D">
+<em class="property">class </em><code class="sig-prename descclassname">cortex.dataset.</code><code class="sig-name descname">Vertex2D</code><span class="sig-paren">(</span><em class="sig-param">dim1</em>, <em class="sig-param">dim2</em>, <em class="sig-param">subject=None</em>, <em class="sig-param">description=''</em>, <em class="sig-param">cmap=None</em>, <em class="sig-param">vmin=None</em>, <em class="sig-param">vmax=None</em>, <em class="sig-param">vmin2=None</em>, <em class="sig-param">vmax2=None</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/dataset/view2D.html#Vertex2D"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.dataset.Vertex2D" title="Permalink to this definition">¶</a></dt>
+<dd><p>Contains two vertex maps for simultaneous visualization. Includes information
+on how the maps should be jointly colormapped.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>dim1</strong><span class="classifier">ndarray or Vertex</span></dt><dd><p>The first vertex map. Can be a 1D array (see Vertex for details), or
+a Vertex.</p>
+</dd>
+<dt><strong>dim2</strong><span class="classifier">ndarray or Vertex</span></dt><dd><p>The second vertex map. Can be a 1D array (see Vertex for details), or
+a Vertex.</p>
+</dd>
+<dt><strong>subject</strong><span class="classifier">str, optional</span></dt><dd><p>Subject identifier. Must exist in the pycortex database. If not given,
+dim1 must be a Vertex from which the subject can be extracted.</p>
+</dd>
+<dt><strong>description</strong><span class="classifier">str, optional</span></dt><dd><p>String describing this dataset. Displayed in webgl viewer.</p>
+</dd>
+<dt><strong>cmap</strong><span class="classifier">str, optional</span></dt><dd><p>Colormap (or colormap name) to use. If not given defaults to the 
+<cite>default_cmap2d</cite> in your pycortex options.cfg file.</p>
+</dd>
+<dt><strong>vmin</strong><span class="classifier">float, optional</span></dt><dd><p>Minimum value in colormap for dim1. If not given defaults to TODO:WHAT</p>
+</dd>
+<dt><strong>vmax</strong><span class="classifier">float, optional</span></dt><dd><p>Maximum value in colormap for dim1. If not given defaults to TODO:WHAT</p>
+</dd>
+<dt><strong>vmin2</strong><span class="classifier">float, optional</span></dt><dd><p>Minimum value in colormap for dim2. If not given defaults to TODO:WHAT</p>
+</dd>
+<dt><strong>vmax2</strong><span class="classifier">float, optional</span></dt><dd><p>Maximum value in colormap for dim2. If not given defaults to TODO:WHAT</p>
+</dd>
+<dt><strong>**kwargs</strong></dt><dd><p>All additional arguments in kwargs are passed to the VolumeData and Dataview</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex2D/cortex.dataset.Vertex2D.__init__.html#cortex.dataset.Vertex2D.__init__" title="cortex.dataset.Vertex2D.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(self, dim1, dim2[, subject, …])</p></td>
+<td><p>Initialize self.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex2D/cortex.dataset.Vertex2D.copy.html#cortex.dataset.Vertex2D.copy" title="cortex.dataset.Vertex2D.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>(self, \*args, \*\*kwargs)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex2D/cortex.dataset.Vertex2D.from_hdf.html#cortex.dataset.Vertex2D.from_hdf" title="cortex.dataset.Vertex2D.from_hdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_hdf</span></code></a>(node)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex2D/cortex.dataset.Vertex2D.to_json.html#cortex.dataset.Vertex2D.to_json" title="cortex.dataset.Vertex2D.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a>(self[, simple])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex2D/cortex.dataset.Vertex2D.uniques.html#cortex.dataset.Vertex2D.uniques" title="cortex.dataset.Vertex2D.uniques"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uniques</span></code></a>(self[, collapse])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex2D/cortex.dataset.Vertex2D.priority.html#cortex.dataset.Vertex2D.priority" title="cortex.dataset.Vertex2D.priority"><code class="xref py py-obj docutils literal notranslate"><span class="pre">priority</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex2D/cortex.dataset.Vertex2D.raw.html#cortex.dataset.Vertex2D.raw" title="cortex.dataset.Vertex2D.raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">raw</span></code></a></p></td>
+<td><p>VertexRGB object containing the colormapped data from this object.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex2D/cortex.dataset.Vertex2D.subject.html#cortex.dataset.Vertex2D.subject" title="cortex.dataset.Vertex2D.subject"><code class="xref py py-obj docutils literal notranslate"><span class="pre">subject</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex2D/cortex.dataset.Vertex2D.vertices.html#cortex.dataset.Vertex2D.vertices" title="cortex.dataset.Vertex2D.vertices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertices</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.dataset.Vertex2D.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

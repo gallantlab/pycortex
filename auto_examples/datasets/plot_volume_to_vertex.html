@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Map from Volume to Vertex Data &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Plot Volume Data" href="plot_volume.html" />
+    <link rel="prev" title="Dataset Arithmetic" href="plot_dataset_arithmetic.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p>Click <a class="reference internal" href="#sphx-glr-download-auto-examples-datasets-plot-volume-to-vertex-py"><span class="std std-ref">here</span></a> to download the full example code</p>
+</div>
+<div class="sphx-glr-example-title section" id="map-from-volume-to-vertex-data">
+<span id="sphx-glr-auto-examples-datasets-plot-volume-to-vertex-py"></span><h1>Map from Volume to Vertex Data<a class="headerlink" href="#map-from-volume-to-vertex-data" title="Permalink to this headline">¶</a></h1>
+<p>In order to move from Volume data to Vertex data, you start with data from
+voxels and then create a cortex.Volume object. Then, you get a mapper to go
+between voxels and vertices for the specific subject and transform you are
+working with. Pass the voxel volume through the mapper and you get out a
+vertex mapping of that data. You can plot both of these as you normally would.</p>
+<ul class="sphx-glr-horizontal">
+<li><img alt="../../_images/sphx_glr_plot_volume_to_vertex_001.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_volume_to_vertex_001.png" />
+</li>
+<li><img alt="../../_images/sphx_glr_plot_volume_to_vertex_002.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_volume_to_vertex_002.png" />
+</li>
+</ul>
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Generating a flatmap cache
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<span class="kn">import</span> <span class="nn">cortex.polyutils</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">subject</span> <span class="o">=</span> <span class="s1">&#39;S1&#39;</span>
+<span class="n">xfm</span> <span class="o">=</span> <span class="s1">&#39;fullhead&#39;</span>
+
+<span class="c1"># First create example voxel data for this subject and transform</span>
+<span class="n">voxel_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">31</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">voxel_vol</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="n">voxel_data</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">)</span>
+
+<span class="c1"># Then we have to get a mapper from voxels to vertices for this transform</span>
+<span class="n">mapper</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="s1">&#39;line_nearest&#39;</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Just pass the voxel data through the mapper to get vertex data</span>
+<span class="n">vertex_map</span> <span class="o">=</span> <span class="n">mapper</span><span class="p">(</span><span class="n">voxel_vol</span><span class="p">)</span>
+
+<span class="c1"># You can plot both as you would normally plot Volume and Vertex data</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">voxel_vol</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vertex_map</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  9.695 seconds)</p>
+<div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-datasets-plot-volume-to-vertex-py">
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/c30a2339f912a1a9735b474029e920d0/plot_volume_to_vertex.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_volume_to_vertex.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/813e10fd805fb08e209798753ce45729/plot_volume_to_vertex.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_volume_to_vertex.ipynb</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="plot_dataset_arithmetic.html">Dataset Arithmetic</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Map from Volume to Vertex Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_volume.html">Plot Volume Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_vertex.html">Plot Vertex Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_vertex2D.html">Plot 2D Vertex Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_volumeRGB.html">Plot RGB Volume Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_volume2D.html">Plot 2D Volume Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_vertexRGB.html">Plot RGB Vertex Data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Example Gallery</a><ul>
+      <li>Previous: <a href="plot_dataset_arithmetic.html" title="previous chapter">Dataset Arithmetic</a></li>
+      <li>Next: <a href="plot_volume.html" title="next chapter">Plot Volume Data</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/auto_examples/datasets/plot_volume_to_vertex.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

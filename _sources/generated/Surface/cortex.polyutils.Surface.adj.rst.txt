@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.adj
+============================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.adj

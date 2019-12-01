@@ -1,0 +1,16 @@
+
+:orphan:
+
+.. _sphx_glr_auto_examples_quickstart_sg_execution_times:
+
+Computation times
+=================
+**00:08.130** total execution time for **auto_examples_quickstart** files:
+
++------------------------------------------------------------------------------------------------------+-----------+--------+
+| :ref:`sphx_glr_auto_examples_quickstart_plot_retinotopy_flatmap.py` (``plot_retinotopy_flatmap.py``) | 00:08.130 | 0.0 MB |
++------------------------------------------------------------------------------------------------------+-----------+--------+
+| :ref:`sphx_glr_auto_examples_quickstart_retinotopy_webgl.py` (``retinotopy_webgl.py``)               | 00:00.000 | 0.0 MB |
++------------------------------------------------------------------------------------------------------+-----------+--------+
+| :ref:`sphx_glr_auto_examples_quickstart_show_config.py` (``show_config.py``)                         | 00:00.000 | 0.0 MB |
++------------------------------------------------------------------------------------------------------+-----------+--------+

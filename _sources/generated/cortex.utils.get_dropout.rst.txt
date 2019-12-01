@@ -1,0 +1,6 @@
+cortex.utils.get\_dropout
+=========================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: get_dropout

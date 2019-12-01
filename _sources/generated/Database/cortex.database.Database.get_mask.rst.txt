@@ -1,0 +1,6 @@
+cortex.database.Database.get\_mask
+==================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.get_mask

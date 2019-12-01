@@ -1,0 +1,559 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.quickflat.view &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.quickflat.view</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">binascii</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">utils</span>
+<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">dataset</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">make_flatmap_image</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">composite</span>
+
+
+<div class="viewcode-block" id="make_figure"><a class="viewcode-back" href="../../../generated/cortex.quickflat.make_figure.html#cortex.quickflat.make_figure">[docs]</a><span class="k">def</span> <span class="nf">make_figure</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pixelwise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">thick</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span>
+                <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_sulci</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_borders</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">with_dropout</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">extra_disp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">with_connected_vertices</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">linewidth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">linecolor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">roifill</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">labelsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">labelcolor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cutout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">curvature_brightness</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">curvature_contrast</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">curvature_threshold</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fig</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">extra_hatch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">colorbar_ticks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="p">(</span><span class="o">.</span><span class="mi">4</span><span class="p">,</span> <span class="o">.</span><span class="mi">07</span><span class="p">,</span> <span class="o">.</span><span class="mi">2</span><span class="p">,</span> <span class="o">.</span><span class="mi">04</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Show a Volume or Vertex on a flatmap with matplotlib.</span>
+
+<span class="sd">    Note that **kwargs are ONLY present now for backward compatibility / warnings. No kwargs</span>
+<span class="sd">    should be used.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    braindata : Dataview (e.g. instance of cortex.Volume, cortex.Vertex,...)</span>
+<span class="sd">        the data you would like to plot on a flatmap</span>
+<span class="sd">    recache : boolean</span>
+<span class="sd">        Whether or not to recache intermediate files. Takes longer to plot this way, potentially</span>
+<span class="sd">        resolves some errors. Useful if you&#39;ve made changes to the alignment</span>
+<span class="sd">    pixelwise : bool</span>
+<span class="sd">        Use pixel-wise mapping</span>
+<span class="sd">    thick : int</span>
+<span class="sd">        Number of layers through the cortical sheet to sample. Only applies for pixelwise = True</span>
+<span class="sd">    sampler : str</span>
+<span class="sd">        Name of sampling function used to sample underlying volume data. Options include</span>
+<span class="sd">        &#39;trilinear&#39;, &#39;nearest&#39;, &#39;lanczos&#39;; see functions in cortex.mapper.samplers.py for all options</span>
+<span class="sd">    height : int</span>
+<span class="sd">        Height of the image to render. Automatically scales the width for the aspect</span>
+<span class="sd">        of the subject&#39;s flatmap</span>
+<span class="sd">    depth : float</span>
+<span class="sd">        Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter</span>
+<span class="sd">        boundary, 1 = pial surface)</span>
+<span class="sd">    with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature, etc : bool, optional</span>
+<span class="sd">        Display the rois, labels, colorbar, annotated flatmap borders, etc</span>
+<span class="sd">    cutout : str</span>
+<span class="sd">        Name of flatmap cutout with which to clip the full flatmap. Should be the name</span>
+<span class="sd">        of a sub-layer of the &#39;cutouts&#39; layer in &lt;filestore&gt;/&lt;subject&gt;/overlays.svg</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    dpi : int</span>
+<span class="sd">        DPI of the generated image. Only applies to the scaling of matplotlib elements,</span>
+<span class="sd">        specifically the colormap</span>
+<span class="sd">    linewidth : int, optional</span>
+<span class="sd">        Width of ROI lines. Defaults to roi options in your local `options.cfg`</span>
+<span class="sd">    linecolor : tuple of float, optional</span>
+<span class="sd">        (R, G, B, A) specification of line color</span>
+<span class="sd">    roifill : tuple of float, optional</span>
+<span class="sd">        (R, G, B, A) sepcification for the fill of each ROI region</span>
+<span class="sd">    shadow : int, optional</span>
+<span class="sd">        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow</span>
+<span class="sd">    labelsize : str, optional</span>
+<span class="sd">        Font size for the label, e.g. &quot;16pt&quot;</span>
+<span class="sd">    labelcolor : tuple of float, optional</span>
+<span class="sd">        (R, G, B, A) specification for the label color</span>
+<span class="sd">    curvature_brightness : float, optional</span>
+<span class="sd">        Mean* brightness of background. 0 = black, 1 = white, intermediate values are corresponding</span>
+<span class="sd">        grayscale values. If None, Defaults to config file value. (*this does not precisely specify</span>
+<span class="sd">        the mean; the actual mean luminance of the curvature depends on the value for</span>
+<span class="sd">        `curvature_contrast`. It&#39;s easiest to think about it as the mean brightness, though.)</span>
+<span class="sd">    curvature_contrast : float, optional</span>
+<span class="sd">        Contrast of curvature. 1 = maximal contrast (black/white), 0 = no contrast (solid color for</span>
+<span class="sd">        curvature equal to `curvature_brightness`).</span>
+<span class="sd">    cvmax : float, optional [DEPRECATED! use `curvature_brightness` and `curvature_contrast` instead]</span>
+<span class="sd">        Maximum value for background curvature colormap. Defaults to config file value.</span>
+<span class="sd">    cvthr : bool, optional [DEPRECATED! use `curvature_threshold` instead]</span>
+<span class="sd">        Apply threshold to background curvature</span>
+<span class="sd">    extra_disp : tuple, optional</span>
+<span class="sd">        Optional extra display layer from external .svg file. Tuple specifies (filename, layer)</span>
+<span class="sd">        filename should be a full path. External svg file should be structured exactly as</span>
+<span class="sd">        overlays.svg for the subject. (Best to just copy overlays.svg somewhere else and add</span>
+<span class="sd">        layers to it.) Default value is None.</span>
+<span class="sd">    extra_hatch : tuple, optional</span>
+<span class="sd">        Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple.</span>
+<span class="sd">    colorbar_location : tuple, optional</span>
+<span class="sd">        Location of the colorbar. The dimensions are</span>
+<span class="sd">        [left, bottom, width, height]. All quantities are in fractions of</span>
+<span class="sd">        figure width and height.</span>
+<span class="sd">    colorbar_ticks : array-like, optional</span>
+<span class="sd">        For 1D colormaps indicates the ticks of the colorbar. If None,</span>
+<span class="sd">        it defaults to equally spaced values between vmin and vmax.</span>
+<span class="sd">        This parameter is not used for 2D colormaps, and it defaults to the</span>
+<span class="sd">        vmin, vmax specified in the Volume2D object.</span>
+<span class="sd">    fig : figure or ax</span>
+<span class="sd">        figure into which to plot flatmap</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+    <span class="n">dataview</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">braindata</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataview</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Dataview</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Please provide a Dataview (e.g. an instance of cortex.Volume, cortex.Vertex, etc), not a Dataset&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">fig</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig_resize</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_axes</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">):</span>
+        <span class="n">fig_resize</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">fig</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_axes</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+        <span class="n">fig_resize</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">figure</span>
+
+    <span class="c1"># Add data</span>
+    <span class="n">data_im</span><span class="p">,</span> <span class="n">extents</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">dataview</span><span class="p">,</span> <span class="n">pixelwise</span><span class="o">=</span><span class="n">pixelwise</span><span class="p">,</span> <span class="n">thick</span><span class="o">=</span><span class="n">thick</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="n">sampler</span><span class="p">,</span>
+                                          <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="n">depth</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">)</span>
+
+    <span class="n">layers</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data_im</span><span class="p">)</span>
+    <span class="c1"># Add curvature</span>
+    <span class="k">if</span> <span class="n">with_curvature</span><span class="p">:</span>
+        <span class="c1"># backward compatibility</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">x</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;cvmin&#39;</span><span class="p">,</span> <span class="s1">&#39;cvmax&#39;</span><span class="p">,</span> <span class="s1">&#39;cvthr&#39;</span><span class="p">]]):</span>
+            <span class="kn">import</span> <span class="nn">warnings</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">((</span><span class="s2">&quot;Use of `cvmin`, `cvmax`, and `cvthr` is deprecated! Please use </span><span class="se">\n</span><span class="s2">&quot;</span>
+                           <span class="s2">&quot;`curvature_brightness`, `curvature_contrast`, and `curvature_threshold`</span><span class="se">\n</span><span class="s2">&quot;</span>
+                           <span class="s2">&quot;to set appearance of background curvature.&quot;</span><span class="p">))</span>
+            <span class="n">legacy_mode</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;cvmin&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="s1">&#39;cvmax&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">):</span>
+                <span class="c1"># Assumes that if one is specified, both are; weird case where only one is</span>
+                <span class="c1"># specified will still break.</span>
+                <span class="n">curvature_lims</span> <span class="o">=</span> <span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;cvmin&#39;</span><span class="p">),</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;cvmax&#39;</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">curvature_lims</span> <span class="o">=</span> <span class="mf">0.5</span>
+            <span class="k">if</span> <span class="s1">&#39;cvthr&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+                <span class="n">curvature_threshold</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;cvthr&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">curvature_lims</span> <span class="o">=</span> <span class="mf">0.5</span>
+            <span class="n">legacy_mode</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">curv_im</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_curvature</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">dataview</span><span class="p">,</span> <span class="n">extents</span><span class="p">,</span>
+                                          <span class="n">brightness</span><span class="o">=</span><span class="n">curvature_brightness</span><span class="p">,</span>
+                                          <span class="n">contrast</span><span class="o">=</span><span class="n">curvature_contrast</span><span class="p">,</span>
+                                          <span class="n">threshold</span><span class="o">=</span><span class="n">curvature_threshold</span><span class="p">,</span>
+                                          <span class="n">curvature_lims</span><span class="o">=</span><span class="n">curvature_lims</span><span class="p">,</span>
+                                          <span class="n">legacy_mode</span><span class="o">=</span><span class="n">legacy_mode</span><span class="p">,</span>
+                                          <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">)</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s1">&#39;curvature&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">curv_im</span>
+    <span class="c1"># Add dropout</span>
+    <span class="k">if</span> <span class="n">with_dropout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="c1"># Support old api:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">with_dropout</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Dataview</span><span class="p">):</span>
+            <span class="n">hatch_data</span> <span class="o">=</span> <span class="n">with_dropout</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">hatch_data</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">dropout_power</span> <span class="o">=</span> <span class="mi">20</span> <span class="k">if</span> <span class="n">with_dropout</span> <span class="ow">is</span> <span class="kc">True</span> <span class="k">else</span> <span class="n">with_dropout</span>
+        <span class="k">if</span> <span class="n">hatch_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hatch_data</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">get_dropout</span><span class="p">(</span><span class="n">dataview</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">dataview</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span>
+                                           <span class="n">power</span><span class="o">=</span><span class="n">dropout_power</span><span class="p">)</span>
+
+        <span class="n">drop_im</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_hatch</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">hatch_data</span><span class="p">,</span> <span class="n">extents</span><span class="o">=</span><span class="n">extents</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span>
+                                      <span class="n">sampler</span><span class="o">=</span><span class="n">sampler</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">)</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s1">&#39;dropout&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">drop_im</span>
+    <span class="c1"># Add extra hatching</span>
+    <span class="k">if</span> <span class="n">extra_hatch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">hatch_data2</span><span class="p">,</span> <span class="n">hatch_color</span> <span class="o">=</span> <span class="n">extra_hatch</span>
+        <span class="n">hatch_im</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_hatch</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">hatch_data2</span><span class="p">,</span> <span class="n">extents</span><span class="o">=</span><span class="n">extents</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span>
+                                       <span class="n">sampler</span><span class="o">=</span><span class="n">sampler</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">)</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s1">&#39;hatch&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hatch_im</span>
+    <span class="c1"># Add rois</span>
+    <span class="k">if</span> <span class="n">with_rois</span><span class="p">:</span>
+        <span class="n">roi_im</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_rois</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">dataview</span><span class="p">,</span> <span class="n">extents</span><span class="o">=</span><span class="n">extents</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="n">linewidth</span><span class="p">,</span> <span class="n">linecolor</span><span class="o">=</span><span class="n">linecolor</span><span class="p">,</span>
+                                    <span class="n">roifill</span><span class="o">=</span><span class="n">roifill</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="n">shadow</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="n">labelsize</span><span class="p">,</span> <span class="n">labelcolor</span><span class="o">=</span><span class="n">labelcolor</span><span class="p">,</span>
+                                    <span class="n">with_labels</span><span class="o">=</span><span class="n">with_labels</span><span class="p">)</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s1">&#39;rois&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roi_im</span>
+    <span class="c1"># Add sulci</span>
+    <span class="k">if</span> <span class="n">with_sulci</span><span class="p">:</span>
+        <span class="n">sulc_im</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_sulci</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">dataview</span><span class="p">,</span> <span class="n">extents</span><span class="o">=</span><span class="n">extents</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="n">linewidth</span><span class="p">,</span> <span class="n">linecolor</span><span class="o">=</span><span class="n">linecolor</span><span class="p">,</span>
+                                      <span class="n">shadow</span><span class="o">=</span><span class="n">shadow</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="n">labelsize</span><span class="p">,</span> <span class="n">labelcolor</span><span class="o">=</span><span class="n">labelcolor</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="n">with_labels</span><span class="p">)</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s1">&#39;sulci&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sulc_im</span>
+    <span class="c1"># Add custom</span>
+    <span class="k">if</span> <span class="n">extra_disp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">svgfile</span><span class="p">,</span> <span class="n">layer</span> <span class="o">=</span> <span class="n">extra_disp</span>
+        <span class="n">custom_im</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_custom</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">dataview</span><span class="p">,</span> <span class="n">svgfile</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">extents</span><span class="o">=</span><span class="n">extents</span><span class="p">,</span>
+                                         <span class="n">linewidth</span><span class="o">=</span><span class="n">linewidth</span><span class="p">,</span> <span class="n">linecolor</span><span class="o">=</span><span class="n">linecolor</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="n">shadow</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="n">labelsize</span><span class="p">,</span>
+                                         <span class="n">labelcolor</span><span class="o">=</span><span class="n">labelcolor</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="n">with_labels</span><span class="p">)</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s1">&#39;custom&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">custom_im</span>
+    <span class="c1"># Add connector lines btw connected vertices</span>
+    <span class="k">if</span> <span class="n">with_connected_vertices</span><span class="p">:</span>
+        <span class="n">vertex_lines</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_connected_vertices</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">dataview</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">extents</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">extents</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">extents</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">extents</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">fig_resize</span><span class="p">:</span>
+        <span class="n">imsize</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">get_axes</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_images</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_size</span><span class="p">()</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">imsize</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">dpi</span><span class="p">))</span>
+
+    <span class="c1"># Add (apply) cutout of flatmap</span>
+    <span class="k">if</span> <span class="n">cutout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">extents</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_cutout</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">cutout</span><span class="p">,</span> <span class="n">dataview</span><span class="p">,</span> <span class="n">layers</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">with_colorbar</span><span class="p">:</span>
+        <span class="c1"># Allow 2D colorbars:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataview</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">view2D</span><span class="o">.</span><span class="n">Dataview2D</span><span class="p">):</span>
+            <span class="n">colorbar_ticks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">([</span>
+                    <span class="n">dataview</span><span class="o">.</span><span class="n">vmin</span><span class="p">,</span> <span class="n">dataview</span><span class="o">.</span><span class="n">vmax</span><span class="p">,</span>
+                    <span class="n">dataview</span><span class="o">.</span><span class="n">vmin2</span><span class="p">,</span> <span class="n">dataview</span><span class="o">.</span><span class="n">vmax2</span>
+                <span class="p">],</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">colorbar</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_colorbar_2d</span><span class="p">(</span>
+                <span class="n">ax</span><span class="p">,</span> <span class="n">dataview</span><span class="o">.</span><span class="n">cmap</span><span class="p">,</span> <span class="n">colorbar_ticks</span><span class="p">,</span>
+                <span class="n">colorbar_location</span><span class="o">=</span><span class="n">colorbar_location</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">colorbar</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_colorbar</span><span class="p">(</span>
+                <span class="n">ax</span><span class="p">,</span> <span class="n">data_im</span><span class="p">,</span>
+                <span class="n">colorbar_location</span><span class="o">=</span><span class="n">colorbar_location</span><span class="p">,</span>
+                <span class="n">colorbar_ticks</span><span class="o">=</span><span class="n">colorbar_ticks</span>
+            <span class="p">)</span>
+        <span class="c1"># Reset axis to main figure axis</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+<div class="viewcode-block" id="make_png"><a class="viewcode-back" href="../../../generated/cortex.quickflat.make_png.html#cortex.quickflat.make_png">[docs]</a><span class="k">def</span> <span class="nf">make_png</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">braindata</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pixelwise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+             <span class="n">bgcolor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create a PNG of the VertexData or VolumeData on a flatmap.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fname : str</span>
+<span class="sd">        Filename for where to save the PNG file</span>
+<span class="sd">    braindata : Dataview (e.g. instance of cortex.Volume, cortex.Vertex, ...)</span>
+<span class="sd">        the data you would like to plot on a flatmap</span>
+<span class="sd">    recache : boolean</span>
+<span class="sd">        Whether or not to recache intermediate files. Takes longer to plot this way, potentially</span>
+<span class="sd">        resolves some errors. Useful if you&#39;ve made changes to the alignment</span>
+<span class="sd">    pixelwise : bool</span>
+<span class="sd">        Use pixel-wise mapping</span>
+<span class="sd">    thick : int</span>
+<span class="sd">        Number of layers through the cortical sheet to sample. Only applies for pixelwise = True</span>
+<span class="sd">    sampler : str</span>
+<span class="sd">        Name of sampling function used to sample underlying volume data</span>
+<span class="sd">    height : int</span>
+<span class="sd">        Height of the image to render. Automatically scales the width for the aspect of</span>
+<span class="sd">        the subject&#39;s flatmap</span>
+<span class="sd">    depth : float</span>
+<span class="sd">        Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter</span>
+<span class="sd">        boundary, 1 = pial surface)</span>
+<span class="sd">    with_rois, with_labels, with_colorbar, with_borders, with_dropout : bool, optional</span>
+<span class="sd">        Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?</span>
+<span class="sd">    sampler : str</span>
+<span class="sd">        Name of sampling function used to sample underlying volume data. Options include</span>
+<span class="sd">        &#39;trilinear&#39;, &#39;nearest&#39;, &#39;lanczos&#39;; see functions in cortex.mapper.samplers.py for all options</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    dpi : int</span>
+<span class="sd">        DPI of the generated image. Only applies to the scaling of matplotlib elements,</span>
+<span class="sd">        specifically the colormap</span>
+<span class="sd">    bgcolor : matplotlib colorspec</span>
+<span class="sd">        Color of background of image. `None` gives transparent background.</span>
+<span class="sd">    linewidth : int, optional</span>
+<span class="sd">        Width of ROI lines. Defaults to roi options in your local `options.cfg`</span>
+<span class="sd">    linecolor : tuple of float, optional</span>
+<span class="sd">        (R, G, B, A) specification of line color</span>
+<span class="sd">    roifill : tuple of float, optional</span>
+<span class="sd">        (R, G, B, A) sepcification for the fill of each ROI region</span>
+<span class="sd">    shadow : int, optional</span>
+<span class="sd">        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow</span>
+<span class="sd">    labelsize : str, optional</span>
+<span class="sd">        Font size for the label, e.g. &quot;16pt&quot;</span>
+<span class="sd">    labelcolor : tuple of float, optional</span>
+<span class="sd">        (R, G, B, A) specification for the label color</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">make_figure</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span>
+                      <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">,</span>
+                      <span class="n">pixelwise</span><span class="o">=</span><span class="n">pixelwise</span><span class="p">,</span>
+                      <span class="n">sampler</span><span class="o">=</span><span class="n">sampler</span><span class="p">,</span>
+                      <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span>
+                      <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="n">imsize</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">get_axes</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_images</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_size</span><span class="p">()</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">imsize</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">dpi</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">bgcolor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="n">bgcolor</span><span class="p">,</span> <span class="n">transparent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="make_svg"><a class="viewcode-back" href="../../../generated/cortex.quickflat.make_svg.html#cortex.quickflat.make_svg">[docs]</a><span class="k">def</span> <span class="nf">make_svg</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">braindata</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rois&#39;</span><span class="p">],</span>
+             <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Save an svg file of the desired flatmap.</span>
+
+<span class="sd">    This function creates an SVG file with vector graphic ROIs overlaid on a single png image.</span>
+<span class="sd">    Ideally, this function would layer different images (curvature, data, dropout, etc), but</span>
+<span class="sd">    that has been left to implement at a future date if anyone really wants it.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fname : string</span>
+<span class="sd">        file name to save</span>
+<span class="sd">    braindata : Dataview</span>
+<span class="sd">        the data you would like to plot on a flatmap</span>
+<span class="sd">    with_labels : bool</span>
+<span class="sd">        Whether to display text labels on ROIs</span>
+<span class="sd">    with_curvature : bool</span>
+<span class="sd">        Whether to include background curvature</span>
+<span class="sd">    layers : list</span>
+<span class="sd">        List of layer names to show</span>
+<span class="sd">    height : int</span>
+<span class="sd">        Height of PNG in pixels</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fp</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+    <span class="kn">from</span> <span class="nn">matplotlib.pylab</span> <span class="kn">import</span> <span class="n">imsave</span>
+
+    <span class="c1">## Render PNG file &amp; retrieve image data</span>
+    <span class="n">arr</span><span class="p">,</span> <span class="n">extents</span> <span class="o">=</span> <span class="n">make_flatmap_image</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span> <span class="s1">&#39;cmap&#39;</span><span class="p">):</span>
+        <span class="n">imsave</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">braindata</span><span class="o">.</span><span class="n">cmap</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">braindata</span><span class="o">.</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">braindata</span><span class="o">.</span><span class="n">vmax</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">imsave</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">arr</span><span class="p">)</span>
+    <span class="n">fp</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">pngdata</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">b2a_base64</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+    <span class="n">image_data</span> <span class="o">=</span> <span class="p">[</span><span class="n">pngdata</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">with_curvature</span><span class="p">:</span>
+        <span class="c1"># no options. learn to love it.</span>
+        <span class="kn">from</span> <span class="nn">cortex</span> <span class="kn">import</span> <span class="n">db</span>
+        <span class="n">fpc</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+        <span class="n">curv_vertices</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surfinfo</span><span class="p">(</span><span class="n">braindata</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
+        <span class="n">curv_arr</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">make_flatmap_image</span><span class="p">(</span><span class="n">curv_vertices</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">curv_arr</span><span class="p">)</span>
+        <span class="n">curv_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">curv_arr</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">)</span>
+        <span class="n">curv_arr</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+        <span class="n">imsave</span><span class="p">(</span><span class="n">fpc</span><span class="p">,</span> <span class="n">curv_arr</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;Greys_r&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">fpc</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">image_data</span> <span class="o">=</span> <span class="p">[</span><span class="n">binascii</span><span class="o">.</span><span class="n">b2a_base64</span><span class="p">(</span><span class="n">fpc</span><span class="o">.</span><span class="n">read</span><span class="p">()),</span> <span class="n">pngdata</span><span class="p">]</span>
+
+    <span class="c1">## Create and save SVG file</span>
+    <span class="n">roipack</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">get_roipack</span><span class="p">(</span><span class="n">braindata</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
+    <span class="n">roipack</span><span class="o">.</span><span class="n">get_svg</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="n">layers</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">with_labels</span><span class="p">,</span> <span class="n">with_ims</span><span class="o">=</span><span class="n">image_data</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">make_gif</span><span class="p">(</span><span class="n">output_destination</span><span class="p">,</span> <span class="n">volumes</span><span class="p">,</span> <span class="n">frame_duration</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Make an animated gif from several pycortex volumes</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    output_destination : str or stream-like</span>
+<span class="sd">        The destination for the created gif. If a str, saves to a file. If stream-like (file handle</span>
+<span class="sd">        or io.BytesIO), writes to the stream</span>
+<span class="sd">    volumes : dict of pycortex Volumes</span>
+<span class="sd">    duration : float</span>
+<span class="sd">        The duration of each frame in seconds</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    If output_destination is a file path, return the path. If stream-like, return the stream data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">imageio</span>
+    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+    <span class="n">tmpdir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span>
+
+    <span class="n">images</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">volumes</span><span class="p">):</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">make_figure</span><span class="p">(</span><span class="n">volumes</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">fig</span><span class="o">=</span><span class="n">fig</span><span class="p">)</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmpdir</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">images</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">imageio</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+
+    <span class="n">tmpdir</span><span class="o">.</span><span class="n">cleanup</span><span class="p">()</span>
+
+    <span class="n">imageio</span><span class="o">.</span><span class="n">mimsave</span><span class="p">(</span><span class="n">output_destination</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;gif&#39;</span><span class="p">,</span> <span class="n">duration</span><span class="o">=</span><span class="n">frame_duration</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">output_destination</span><span class="p">,</span> <span class="s1">&#39;seek&#39;</span><span class="p">):</span>
+        <span class="n">output_destination</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">show</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Wrapper for make_figure()&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">make_figure</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">make_movie</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+               <span class="n">sampler</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">tr</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">interp</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+               <span class="n">vcodec</span><span class="o">=</span><span class="s1">&#39;libtheora&#39;</span><span class="p">,</span> <span class="n">bitrate</span><span class="o">=</span><span class="s2">&quot;8000k&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create a movie of an 4D data set&quot;&quot;&quot;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+    <span class="kn">import</span> <span class="nn">shlex</span>
+    <span class="kn">import</span> <span class="nn">shutil</span>
+    <span class="kn">import</span> <span class="nn">tempfile</span>
+    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+    <span class="kn">import</span> <span class="nn">multiprocessing</span> <span class="k">as</span> <span class="nn">mp</span>
+
+    <span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+
+    <span class="c1"># Make the flatmaps</span>
+    <span class="n">ims</span><span class="p">,</span> <span class="n">extents</span> <span class="o">=</span> <span class="n">make_flatmap_image</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="n">sampler</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">vmin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">vmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">ims</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">vmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">ims</span><span class="p">)</span>
+
+    <span class="c1"># Create the matplotlib figure</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">make_figure</span><span class="p">(</span><span class="n">ims</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ims</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">ims</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">dpi</span><span class="p">))</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Set up interpolation</span>
+    <span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ims</span><span class="p">)</span><span class="o">*</span><span class="n">tr</span><span class="p">,</span> <span class="n">tr</span><span class="p">)</span>
+    <span class="n">interp</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">ims</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">interp</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">frames</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">tr</span><span class="o">*</span><span class="n">fps</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">impath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;im</span><span class="si">{:09d}</span><span class="s2">.png&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">frame</span><span class="p">,</span> <span class="n">frame_time</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">frames</span><span class="p">):</span>
+            <span class="n">img</span><span class="o">.</span><span class="n">set_data</span><span class="p">(</span><span class="n">interp</span><span class="p">(</span><span class="n">frame_time</span><span class="p">))</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">impath</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">frame</span><span class="p">),</span> <span class="n">transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">)</span>
+        <span class="c1"># avconv might not be relevant function for all operating systems.</span>
+        <span class="c1"># Introduce operating system check here?</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;avconv -i </span><span class="si">{path}</span><span class="s2"> -vcodec </span><span class="si">{vcodec}</span><span class="s2"> -r </span><span class="si">{fps}</span><span class="s2"> -b </span><span class="si">{br}</span><span class="s2"> </span><span class="si">{name}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">impath</span><span class="p">,</span> <span class="n">vcodec</span><span class="o">=</span><span class="n">vcodec</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">br</span><span class="o">=</span><span class="n">bitrate</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

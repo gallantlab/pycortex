@@ -1,0 +1,6 @@
+cortex.dataset.VolumeRGB.uniques
+================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VolumeRGB.uniques

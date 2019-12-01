@@ -1,0 +1,6 @@
+cortex.polyutils.Distortion.areal
+=================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Distortion.areal

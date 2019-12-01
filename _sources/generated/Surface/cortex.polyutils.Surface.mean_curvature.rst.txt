@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.mean\_curvature
+========================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.mean_curvature

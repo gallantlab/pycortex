@@ -1,0 +1,6 @@
+cortex.dataset.Volume.name
+==========================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: Volume.name

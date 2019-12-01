@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.avg\_edge\_length
+==========================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.avg_edge_length

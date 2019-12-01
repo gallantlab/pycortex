@@ -1,0 +1,6 @@
+cortex.freesurfer.read\_dot
+===========================
+
+.. currentmodule:: cortex.freesurfer
+
+.. autofunction:: read_dot

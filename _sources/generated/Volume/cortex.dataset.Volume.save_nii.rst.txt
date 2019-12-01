@@ -1,0 +1,6 @@
+cortex.dataset.Volume.save\_nii
+===============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Volume.save_nii

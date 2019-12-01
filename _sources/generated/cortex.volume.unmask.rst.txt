@@ -1,0 +1,6 @@
+cortex.volume.unmask
+====================
+
+.. currentmodule:: cortex.volume
+
+.. autofunction:: unmask

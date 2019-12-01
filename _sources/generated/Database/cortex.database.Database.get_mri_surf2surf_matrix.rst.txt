@@ -1,0 +1,6 @@
+cortex.database.Database.get\_mri\_surf2surf\_matrix
+====================================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.get_mri_surf2surf_matrix

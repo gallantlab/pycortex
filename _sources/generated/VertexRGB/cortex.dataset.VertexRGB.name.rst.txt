@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.name
+=============================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: VertexRGB.name

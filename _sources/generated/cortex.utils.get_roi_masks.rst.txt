@@ -1,0 +1,6 @@
+cortex.utils.get\_roi\_masks
+============================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: get_roi_masks

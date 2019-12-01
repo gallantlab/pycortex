@@ -1,0 +1,6 @@
+cortex.dataset.VolumeRGB.from\_hdf
+==================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VolumeRGB.from_hdf

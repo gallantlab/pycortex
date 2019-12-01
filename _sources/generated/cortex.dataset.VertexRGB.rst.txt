@@ -1,0 +1,38 @@
+cortex.dataset.VertexRGB
+========================
+
+.. currentmodule:: cortex.dataset
+
+.. autoclass:: VertexRGB
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: VertexRGB
+   
+     ~VertexRGB.__init__
+     ~VertexRGB.copy
+     ~VertexRGB.from_hdf
+     ~VertexRGB.to_json
+     ~VertexRGB.uniques
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: VertexRGB
+   
+      ~VertexRGB.left
+      ~VertexRGB.name
+      ~VertexRGB.priority
+      ~VertexRGB.raw
+      ~VertexRGB.right
+      ~VertexRGB.vertices
+   
+   

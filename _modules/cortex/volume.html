@@ -1,0 +1,506 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.volume &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.volume</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Contains functions for working with volume data</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">dataset</span>
+<span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+<span class="kn">from</span> <span class="nn">.xfm</span> <span class="kn">import</span> <span class="n">Transform</span>
+
+<div class="viewcode-block" id="unmask"><a class="viewcode-back" href="../../generated/cortex.volume.unmask.html#cortex.utils.unmask">[docs]</a><span class="k">def</span> <span class="nf">unmask</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;unmask(mask, data)</span>
+
+<span class="sd">    Unmask the data, assuming it&#39;s been masked. Creates a volume</span>
+<span class="sd">    the same size as `mask` containing `data` at the locations</span>
+<span class="sd">    where `mask` is True.</span>
+
+<span class="sd">    If `data` is RGB valued (dtype uint8 and last dim is 3 or 4),</span>
+<span class="sd">    the area outside the mask will be filled with zeros.</span>
+
+<span class="sd">    Otherwise, a numpy MaskedArray will be returned.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mask : array_like</span>
+<span class="sd">        The data mask</span>
+<span class="sd">    data : array_like</span>
+<span class="sd">        Actual MRI data to unmask</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    unmasked : array_like</span>
+<span class="sd">        Volume same size as `mask` but same dtype as `data`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nvox</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">nvox</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">nvox</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid mask for the data&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Invalid dtype for raw dataset&#39;</span><span class="p">)</span>
+        <span class="c1">#raw dataset, unmask with an alpha channel</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),)</span><span class="o">+</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="o">+</span><span class="p">(</span><span class="mi">4</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">output</span><span class="p">[:,</span> <span class="n">mask</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">output</span><span class="p">[:,</span> <span class="n">mask</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mi">255</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1">#output = (np.nan*np.ones((len(data),)+mask.shape)).astype(data.dtype)</span>
+        <span class="n">outdata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),)</span><span class="o">+</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">outdata</span><span class="p">[:,</span> <span class="n">mask</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">outmask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="o">~</span><span class="n">mask</span><span class="p">[</span><span class="kc">None</span><span class="p">,:,:,:],</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">MaskedArray</span><span class="p">(</span><span class="n">outdata</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">outmask</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">output</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span></div>
+
+<span class="k">def</span> <span class="nf">detrend_median</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="mi">15</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">scipy.signal</span> <span class="kn">import</span> <span class="n">medfilt</span>
+    <span class="n">lowfreq</span> <span class="o">=</span> <span class="n">medfilt</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">kernel</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">data</span> <span class="o">-</span> <span class="n">lowfreq</span>
+
+<span class="k">def</span> <span class="nf">detrend_gradient</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">diff</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">diff</span><span class="p">,</span> <span class="n">diff</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">detrend_poly</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">polyorder</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">scipy.special</span> <span class="kn">import</span> <span class="n">legendre</span>
+    <span class="n">polys</span> <span class="o">=</span> <span class="p">[</span><span class="n">legendre</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">polyorder</span><span class="p">)]</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">ravel</span><span class="p">()[:,</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="n">lins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="mi">1</span><span class="p">:</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="mi">1</span><span class="n">j</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="mi">1</span><span class="p">:</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="mi">1</span><span class="n">j</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="mi">1</span><span class="p">:</span><span class="n">s</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="mi">1</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">lins</span> <span class="o">=</span> <span class="n">lins</span><span class="p">[:,</span><span class="n">mask</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="n">mask</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+    
+    <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([[</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">lins</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">polys</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">res</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">sing</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+
+    <span class="n">detrended</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">filled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="n">filled</span><span class="p">[</span><span class="n">mask</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">detrended</span>
+        <span class="k">return</span> <span class="n">filled</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">detrended</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">s</span><span class="p">)</span>
+
+<div class="viewcode-block" id="mosaic"><a class="viewcode-back" href="../../generated/cortex.volume.mosaic.html#cortex.utils.mosaic">[docs]</a><span class="k">def</span> <span class="nf">mosaic</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Turns volume data into a mosaic, useful for quickly viewing volumetric data</span>
+<span class="sd">    with radiological convention (left side of figure is right side of subject).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : array_like</span>
+<span class="sd">        3D volumetric data to mosaic</span>
+<span class="sd">    dim : int</span>
+<span class="sd">        Dimension across which to mosaic. Default 0.</span>
+<span class="sd">    show : bool</span>
+<span class="sd">        Display mosaic with matplotlib? Default True.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid data shape&quot;</span><span class="p">)</span>
+    <span class="n">plane</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">slices</span> <span class="o">=</span> <span class="n">plane</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>
+    <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">plane</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">aspect</span> <span class="o">=</span> <span class="n">width</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">height</span><span class="p">)</span>
+    <span class="n">square</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">slices</span> <span class="o">/</span> <span class="n">aspect</span><span class="p">)</span>
+    <span class="n">nwide</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">square</span><span class="p">))</span>
+    <span class="n">ntall</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">slices</span><span class="p">)</span> <span class="o">/</span> <span class="n">nwide</span><span class="p">))</span>
+
+    <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">ntall</span> <span class="o">*</span> <span class="p">(</span><span class="n">height</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nwide</span> <span class="o">*</span> <span class="p">(</span><span class="n">width</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">+</span><span class="p">(</span><span class="mi">4</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">shape</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+    <span class="n">sl</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ntall</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nwide</span><span class="p">):</span>
+            <span class="n">sl</span><span class="p">[</span><span class="n">dim</span><span class="p">]</span> <span class="o">=</span> <span class="n">h</span><span class="o">*</span><span class="n">nwide</span><span class="o">+</span><span class="n">w</span>
+            <span class="k">if</span> <span class="n">sl</span><span class="p">[</span><span class="n">dim</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">slices</span><span class="p">:</span>
+                <span class="n">hsl</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">h</span><span class="o">*</span><span class="p">(</span><span class="n">height</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">h</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">height</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+                <span class="n">wsl</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">w</span><span class="o">*</span><span class="p">(</span><span class="n">width</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">w</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">width</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+                    <span class="n">output</span><span class="p">[</span><span class="n">hsl</span><span class="p">,</span> <span class="n">wsl</span><span class="p">,</span> <span class="p">:</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">]]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">sl</span><span class="p">)]</span>
+                    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                        <span class="n">output</span><span class="p">[</span><span class="n">hsl</span><span class="p">,</span> <span class="n">wsl</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mi">255</span>
+                <span class="k">else</span><span class="p">:</span>    
+                    <span class="n">output</span><span class="p">[</span><span class="n">hsl</span><span class="p">,</span> <span class="n">wsl</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">sl</span><span class="p">)]</span>
+    
+    <span class="k">if</span> <span class="n">show</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">output</span><span class="p">,</span> <span class="p">(</span><span class="n">nwide</span><span class="p">,</span> <span class="n">ntall</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="show_slice"><a class="viewcode-back" href="../../generated/cortex.volume.show_slice.html#cortex.utils.show_slice">[docs]</a><span class="k">def</span> <span class="nf">show_slice</span><span class="p">(</span><span class="n">dataview</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">nibabel</span>
+    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">cm</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+    <span class="n">dataview</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">dataview</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataview</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Volume</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Only volumetric data may be visualized in show_slice&#39;</span><span class="p">)</span>
+
+    <span class="n">subject</span> <span class="o">=</span> <span class="n">dataview</span><span class="o">.</span><span class="n">subject</span>
+    <span class="n">xfmname</span> <span class="o">=</span> <span class="n">dataview</span><span class="o">.</span><span class="n">xfmname</span>
+    <span class="n">imshow_kw</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">vmin</span><span class="o">=</span><span class="n">dataview</span><span class="o">.</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">dataview</span><span class="o">.</span><span class="n">vmax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">dataview</span><span class="o">.</span><span class="n">cmap</span><span class="p">)</span>
+    <span class="n">imshow_kw</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="n">anat</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;raw&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">epi2anatspace</span><span class="p">(</span><span class="n">dataview</span><span class="p">)</span>
+
+    <span class="n">data</span><span class="p">[</span><span class="n">data</span> <span class="o">&lt;</span> <span class="n">dataview</span><span class="o">.</span><span class="n">vmin</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="n">state</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">slice</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*.</span><span class="mi">66</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="p">())</span>
+
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+    <span class="n">anatomical</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">anat</span><span class="p">[</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pad&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;slice&#39;</span><span class="p">],)],</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cm</span><span class="o">.</span><span class="n">gray</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+    <span class="n">functional</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pad&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;slice&#39;</span><span class="p">],)],</span> <span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;equal&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">imshow_kw</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;showing dim </span><span class="si">%d</span><span class="s2">, slice </span><span class="si">%d</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;dim&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="mi">3</span><span class="p">,</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;slice&#39;</span><span class="p">]))</span>
+        <span class="n">functional</span><span class="o">.</span><span class="n">set_data</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pad&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;slice&#39;</span><span class="p">],)])</span>
+        <span class="n">anatomical</span><span class="o">.</span><span class="n">set_data</span><span class="p">(</span><span class="n">anat</span><span class="p">[</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pad&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;slice&#39;</span><span class="p">],)])</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">switchslice</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+        <span class="n">state</span><span class="p">[</span><span class="s1">&#39;dim&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pad&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">),)</span><span class="o">*</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;dim&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">update</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">scrollslice</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span> <span class="o">==</span> <span class="s1">&#39;up&#39;</span><span class="p">:</span>
+            <span class="n">state</span><span class="p">[</span><span class="s1">&#39;slice&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span> <span class="o">==</span> <span class="s1">&#39;down&#39;</span><span class="p">:</span>
+            <span class="n">state</span><span class="p">[</span><span class="s1">&#39;slice&#39;</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="n">update</span><span class="p">()</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s1">&#39;scroll_event&#39;</span><span class="p">,</span> <span class="n">scrollslice</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s1">&#39;button_press_event&#39;</span><span class="p">,</span> <span class="n">switchslice</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+<div class="viewcode-block" id="show_mip"><a class="viewcode-back" href="../../generated/cortex.volume.show_mip.html#cortex.utils.show_mip">[docs]</a><span class="k">def</span> <span class="nf">show_mip</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Display a maximum intensity projection for the data, using three subplots&#39;&#39;&#39;</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">221</span><span class="p">)</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">222</span><span class="p">)</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">223</span><span class="p">)</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+<div class="viewcode-block" id="show_glass"><a class="viewcode-back" href="../../generated/cortex.volume.show_glass.html#cortex.utils.show_glass">[docs]</a><span class="k">def</span> <span class="nf">show_glass</span><span class="p">(</span><span class="n">dataview</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Create a classic &quot;glass brain&quot; view of the data, with the outline&#39;&#39;&#39;</span>
+    <span class="kn">import</span> <span class="nn">nibabel</span>
+    <span class="n">nib</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+
+    <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)))[</span><span class="mi">0</span><span class="p">][[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="n">front</span><span class="p">,</span> <span class="n">back</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)))[</span><span class="mi">0</span><span class="p">][[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="n">top</span><span class="p">,</span> <span class="n">bottom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)))[</span><span class="mi">0</span><span class="p">][[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+
+    <span class="n">glass</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">glass</span><span class="p">[:,</span> <span class="p">:</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="c1">#this requires a lot of logic to put the image into a canonical orientation</span>
+    <span class="c1">#too much work for something we&#39;ll never use</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+<div class="viewcode-block" id="epi2anatspace"><a class="viewcode-back" href="../../generated/cortex.volume.epi2anatspace.html#cortex.utils.epi2anatspace">[docs]</a><span class="k">def</span> <span class="nf">epi2anatspace</span><span class="p">(</span><span class="n">volumedata</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Resample an epi volume data into anatomical space using scipy.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    volumedata : VolumeData</span>
+<span class="sd">        The input epi volumedata object.</span>
+<span class="sd">    order : int</span>
+<span class="sd">        The order of the resampler, in terms of splines. 0 is nearest, 1 is linear.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    anatspace : ndarray</span>
+<span class="sd">        The ND array of the anatomy space data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">scipy.ndimage.interpolation</span> <span class="kn">import</span> <span class="n">affine_transform</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">volumedata</span><span class="p">)</span>
+    <span class="n">volumedata</span> <span class="o">=</span> <span class="n">ds</span><span class="c1">#.data</span>
+
+    <span class="n">anat</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">volumedata</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
+    <span class="n">xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">volumedata</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">volumedata</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span> <span class="s2">&quot;coord&quot;</span><span class="p">)</span>
+
+    <span class="c1">#allxfm =  Transform(anat.get_affine(), anat.shape).inv * xfm.inv</span>
+    <span class="n">allxfm</span> <span class="o">=</span> <span class="n">xfm</span> <span class="o">*</span> <span class="n">Transform</span><span class="p">(</span><span class="n">anat</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">anat</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="n">rotpart</span> <span class="o">=</span> <span class="n">allxfm</span><span class="o">.</span><span class="n">xfm</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">transpart</span> <span class="o">=</span> <span class="n">allxfm</span><span class="o">.</span><span class="n">xfm</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">affine_transform</span><span class="p">(</span><span class="n">volumedata</span><span class="o">.</span><span class="n">volume</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(),</span> <span class="n">rotpart</span><span class="p">,</span>
+                            <span class="n">offset</span><span class="o">=</span><span class="n">transpart</span><span class="p">,</span> <span class="n">output_shape</span><span class="o">=</span><span class="n">anat</span><span class="o">.</span><span class="n">shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                            <span class="n">cval</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span><span class="o">.</span><span class="n">T</span></div>
+
+<div class="viewcode-block" id="anat2epispace"><a class="viewcode-back" href="../../generated/cortex.volume.anat2epispace.html#cortex.utils.anat2epispace">[docs]</a><span class="k">def</span> <span class="nf">anat2epispace</span><span class="p">(</span><span class="n">anatdata</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Resamples data from anatomical space into epi space</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    anatdata : ndarray</span>
+<span class="sd">        data in anatomical space</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of subject</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        Name of transform</span>
+<span class="sd">    order : int</span>
+<span class="sd">        Order of spline interpolation</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    epidata : ndarray</span>
+<span class="sd">        data in EPI space</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">scipy.ndimage.interpolation</span> <span class="kn">import</span> <span class="n">affine_transform</span>
+    <span class="n">anatref</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="s2">&quot;coord&quot;</span><span class="p">)</span>
+
+    <span class="n">allxfm</span> <span class="o">=</span>  <span class="n">Transform</span><span class="p">(</span><span class="n">anatref</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">anatref</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">inv</span> <span class="o">*</span> <span class="n">target</span><span class="o">.</span><span class="n">inv</span>
+    <span class="c1">#allxfm = xfm * Transform(anat.get_affine(), anat.shape)</span>
+
+    <span class="n">rotpart</span> <span class="o">=</span> <span class="n">allxfm</span><span class="o">.</span><span class="n">xfm</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">transpart</span> <span class="o">=</span> <span class="n">allxfm</span><span class="o">.</span><span class="n">xfm</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="k">return</span> <span class="n">affine_transform</span><span class="p">(</span><span class="n">anatdata</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">rotpart</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">transpart</span><span class="p">,</span> <span class="n">output_shape</span><span class="o">=</span><span class="n">target</span><span class="o">.</span><span class="n">shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">cval</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span><span class="o">.</span><span class="n">T</span></div>
+
+
+<div class="viewcode-block" id="epi2anatspace_fsl"><a class="viewcode-back" href="../../generated/cortex.volume.epi2anatspace_fsl.html#cortex.utils.epi2anatspace_fsl">[docs]</a><span class="k">def</span> <span class="nf">epi2anatspace_fsl</span><span class="p">(</span><span class="n">volumedata</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Resamples epi-space [data] into the anatomical space for the given [subject]</span>
+<span class="sd">    using the given transformation [xfm].</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#This function is currently broken! do not use it!</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="kn">import</span> <span class="nn">tempfile</span>
+    <span class="kn">import</span> <span class="nn">subprocess</span>
+    <span class="kn">import</span> <span class="nn">nibabel</span>
+
+    <span class="n">volumedata</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">volumedata</span><span class="p">)</span><span class="o">.</span><span class="n">data</span>
+    <span class="n">subject</span> <span class="o">=</span> <span class="n">volumedata</span><span class="o">.</span><span class="n">subject</span>
+    <span class="n">xfmname</span> <span class="o">=</span> <span class="n">volumedata</span><span class="o">.</span><span class="n">xfmname</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">volumedata</span><span class="o">.</span><span class="n">volume</span>
+
+    <span class="c1">## Get transform (pycortex estimates anat-to-epi)</span>
+    <span class="n">xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+    <span class="n">fslxfm</span> <span class="o">=</span> <span class="n">xfm</span><span class="o">.</span><span class="n">to_fsl</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;raw&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
+    <span class="c1">## Invert transform to epi-to-anat</span>
+    <span class="n">fslxfm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">fslxfm</span><span class="p">)</span>
+    <span class="c1">## Save out into ascii file</span>
+    <span class="n">xfmfilename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.mat&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">xfmfilename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">xfmh</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">fslxfm</span><span class="o">.</span><span class="n">tolist</span><span class="p">():</span>      
+            <span class="n">xfmh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">&quot;</span><span class="si">%0.5f</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">ll</span><span class="p">])</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1">## Save out data into nifti file</span>
+    <span class="n">datafile</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">xfm</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">xfm</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_header</span><span class="p">())</span>
+    <span class="n">datafilename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.nii&quot;</span><span class="p">)</span>
+    <span class="n">nibabel</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">datafilename</span><span class="p">)</span>
+
+    <span class="c1">## Reslice epi-space image</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;raw&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+    <span class="n">outfilename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.nii&quot;</span><span class="p">)</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s2">&quot;fsl5.0-flirt&quot;</span><span class="p">,</span>
+                     <span class="s2">&quot;-ref&quot;</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span>
+                     <span class="s2">&quot;-in&quot;</span><span class="p">,</span> <span class="n">datafilename</span><span class="p">,</span>
+                     <span class="s2">&quot;-applyxfm&quot;</span><span class="p">,</span>
+                     <span class="s2">&quot;-init&quot;</span><span class="p">,</span> <span class="n">xfmfilename</span><span class="p">,</span>
+                     <span class="c1">#&quot;-interp&quot;, &quot;sinc&quot;,</span>
+                     <span class="s2">&quot;-out&quot;</span><span class="p">,</span> <span class="n">outfilename</span><span class="p">])</span>
+
+    <span class="c1">## Load resliced image</span>
+    <span class="n">outdata</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">outfilename</span><span class="o">+</span><span class="s2">&quot;.gz&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+    <span class="c1">## Clean up</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">outfilename</span><span class="o">+</span><span class="s2">&quot;.gz&quot;</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">datafilename</span><span class="p">)</span>
+    <span class="c1">## Done!</span>
+    <span class="k">return</span> <span class="n">outdata</span></div>
+
+<div class="viewcode-block" id="anat2epispace_fsl"><a class="viewcode-back" href="../../generated/cortex.volume.anat2epispace_fsl.html#cortex.utils.anat2epispace_fsl">[docs]</a><span class="k">def</span> <span class="nf">anat2epispace_fsl</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">subject</span><span class="p">,</span><span class="n">xfmname</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Resamples anat-space data into the epi space for the given [subject]</span>
+<span class="sd">    and transformation [xfm] </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">tempfile</span>
+    <span class="kn">import</span> <span class="nn">subprocess</span>
+    <span class="kn">import</span> <span class="nn">nibabel</span>
+
+    <span class="c1">## Get transform (pycortex estimates anat-to-epi)</span>
+    <span class="n">xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+    <span class="n">anatNII</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;raw&#39;</span><span class="p">)</span>
+    <span class="n">fslxfm</span> <span class="o">=</span> <span class="n">xfm</span><span class="o">.</span><span class="n">to_fsl</span><span class="p">(</span><span class="n">anatNII</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
+    <span class="c1">## Save out into ascii file</span>
+    <span class="n">xfmfilename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.mat&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;xfm file: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">xfmfilename</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">xfmfilename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">xfmh</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">fslxfm</span><span class="o">.</span><span class="n">tolist</span><span class="p">():</span>
+            <span class="n">xfmh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">&quot;</span><span class="si">%0.5f</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">ll</span><span class="p">])</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1">## Save out data into nifti file</span>
+    <span class="n">datafile</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">anatNII</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">anatNII</span><span class="o">.</span><span class="n">get_header</span><span class="p">())</span>
+    <span class="n">datafilename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.nii&quot;</span><span class="p">)</span>
+    <span class="n">nibabel</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">datafilename</span><span class="p">)</span>
+
+    <span class="c1">## Reslice epi-space image</span>
+    <span class="n">epiNIIf</span> <span class="o">=</span> <span class="n">xfm</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+    <span class="n">outfilename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.nii&quot;</span><span class="p">)</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s2">&quot;fsl5.0-flirt&quot;</span><span class="p">,</span>
+                     <span class="s2">&quot;-in&quot;</span><span class="p">,</span> <span class="n">datafilename</span><span class="p">,</span>
+                     <span class="s2">&quot;-ref&quot;</span><span class="p">,</span> <span class="n">epiNIIf</span><span class="p">,</span>
+                     <span class="s2">&quot;-out&quot;</span><span class="p">,</span> <span class="n">outfilename</span><span class="p">,</span>
+                     <span class="s2">&quot;-init&quot;</span><span class="p">,</span> <span class="n">xfmfilename</span><span class="p">,</span>
+                     <span class="c1">#&quot;-interp&quot;, &quot;sinc&quot;,</span>
+                     <span class="s2">&quot;-applyxfm&quot;</span><span class="p">])</span>
+
+    <span class="c1">## Load resliced image</span>
+    <span class="n">outdata</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">outfilename</span><span class="o">+</span><span class="s2">&quot;.gz&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+    <span class="c1">## Clean up</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">outfilename</span><span class="o">+</span><span class="s2">&quot;.gz&quot;</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">datafilename</span><span class="p">)</span>
+    <span class="c1">## Done!</span>
+    <span class="k">return</span> <span class="n">outdata</span></div>
+
+<span class="k">def</span> <span class="nf">fslview</span><span class="p">(</span><span class="o">*</span><span class="n">ims</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">tempfile</span>
+    <span class="kn">import</span> <span class="nn">subprocess</span>
+
+    <span class="n">fnames</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">tempfiles</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">im</span> <span class="ow">in</span> <span class="n">ims</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">im</span><span class="p">)):</span>
+            <span class="kn">import</span> <span class="nn">nibabel</span>
+            <span class="n">tf</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;.nii.gz&quot;</span><span class="p">)</span>
+            <span class="n">tempfiles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tf</span><span class="p">)</span>
+            <span class="n">nib</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+            <span class="n">nib</span><span class="o">.</span><span class="n">to_filename</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">fnames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fnames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s2">&quot;fslview&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">fnames</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

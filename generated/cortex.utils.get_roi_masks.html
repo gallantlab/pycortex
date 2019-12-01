@@ -1,0 +1,218 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.utils.get_roi_masks &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-utils-get-roi-masks">
+<h1>cortex.utils.get_roi_masks<a class="headerlink" href="#cortex-utils-get-roi-masks" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="cortex.utils.get_roi_masks">
+<code class="sig-prename descclassname">cortex.utils.</code><code class="sig-name descname">get_roi_masks</code><span class="sig-paren">(</span><em class="sig-param">subject</em>, <em class="sig-param">xfmname</em>, <em class="sig-param">roi_list=None</em>, <em class="sig-param">gm_sampler='cortical'</em>, <em class="sig-param">split_lr=False</em>, <em class="sig-param">allow_overlap=False</em>, <em class="sig-param">fail_for_missing_rois=True</em>, <em class="sig-param">exclude_empty_rois=False</em>, <em class="sig-param">threshold=None</em>, <em class="sig-param">return_dict=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/utils.html#get_roi_masks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.utils.get_roi_masks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a dictionary of roi masks</p>
+<p>This function returns a single 3D array with a separate numerical index for each ROI,</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl>
+<dt><strong>subject</strong><span class="classifier">string</span></dt><dd><p>pycortex subject ID</p>
+</dd>
+<dt><strong>xfmname</strong><span class="classifier">string</span></dt><dd><p>pycortex transformation name</p>
+</dd>
+<dt><strong>roi_list</strong><span class="classifier">list or None</span></dt><dd><p>List of names of ROIs to retrieve (e.g. [‘FFA’,’OFA’,’EBA’]). Names should match
+the ROI layers in the overlays.svg file for the <cite>subject</cite> specified. If None is
+provided (default), all available ROIs for the subject are returned. If ‘Cortex’
+is included in roi_list*, a mask of all cortical voxels NOT included in other
+requested rois is included in the output.
+* works for gm_sampler = ‘cortical’, ‘think’, ‘thick’, or (any scalar value);
+does not work for mapper-based gray matter samplers.</p>
+</dd>
+<dt><strong>gm_sampler</strong><span class="classifier">scalar or string</span></dt><dd><p>How to sample the cortical gray matter. Options are:
+&lt;an integer&gt; - Distance from fiducial surface to define ROI. Reasonable values</p>
+<blockquote>
+<div><p>for this input range from 1-3.</p>
+</div></blockquote>
+<p>The following will only work if you have used Freesurfer to define the subject’s
+surface, and so have separate pial and white matter surfaces:
+‘cortical’ - selection of all voxels with centers within the cortical ribbon</p>
+<blockquote>
+<div><p>(directly computed from distance of each voxel from fiducial surface)</p>
+</div></blockquote>
+<p>‘thick’ - selection of voxels within ‘thick’ mask (see cortex.get_mask())
+‘thin’ - selection of voxels within ‘thin’ mask (see cortex.get_mask())
+‘cortical-liberal’ - selection of all voxels that have any part within the</p>
+<blockquote>
+<div><p>cortical ribbon (‘line_nearest’ mapper)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>‘cortical-conservative’ - selection of only the closest voxel to each surface</dt><dd><p>vertex (‘nearest’ mapper)</p>
+</dd>
+</dl>
+<p>mapper-based gm_samplers will return floating point values from 0-1 for each
+voxel (reflecting the fraction of that voxel inside the ROI) unless a threshold
+is provided.</p>
+</dd>
+<dt><strong>threshold</strong><span class="classifier">float [0-1]</span></dt><dd><p>value used to convert probablistic ROI values to a boolean mask for the ROI.</p>
+</dd>
+<dt><strong>split_lr</strong><span class="classifier">bool</span></dt><dd><p>Whether to separate ROIs in to left and right hemispheres (e.g., ‘V1’ becomes
+‘V1_L’ and ‘V1_R’)</p>
+</dd>
+<dt><strong>allow_overlap</strong><span class="classifier">bool</span></dt><dd><p>Whether to allow ROIs to include voxels in other ROIs (default:False). This
+should only be relevant if (a) spline shapes defining ROIs in overlays.svg
+overlap at all, or (b) a low threshold is set for a mapper-based gm_sampler</p>
+</dd>
+<dt><strong>fail_for_missing_rois</strong><span class="classifier">bool</span></dt><dd><p>Whether to fail if one or more of the rois specified in roi_list are not
+defined in the overlays.svg file</p>
+</dd>
+<dt><strong>exclude_empty_rois</strong><span class="classifier">bool</span></dt><dd><p>Whether to fail if an ROI that is present in the overlays.svg file contains no
+voxels due to the scan not targeting that region of the brain.</p>
+</dd>
+<dt><strong>return_dict</strong><span class="classifier">bool</span></dt><dd><p>If True (default), function returns a dictionary of ROI masks; if False, a volume
+with integer indices for each ROI (similar to Freesurfer’s aseg masks) and a
+dictionary of how the indices map to ROI names are returned.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>roi_masks</strong><span class="classifier">dict</span></dt><dd><p>Dictionary of arrays; keys are ROI names, values are roi masks.</p>
+</dd>
+</dl>
+<ul class="simple">
+<li><dl class="simple">
+<dt>OR -</dt><dd></dd>
+</dl>
+</li>
+</ul>
+<dl class="simple">
+<dt><strong>index_volume, index_labels</strong><span class="classifier">array, dict</span></dt><dd><p><cite>index_volume</cite> is a 3D array with a separate numerical index value for each ROI. Index values
+in the left hemisphere are negative. (For example, if V1 in the right hemisphere is 1, then V1 in
+the left hemisphere will be -1). <cite>index_labels</cite> is a dict that maps roi names to index values
+(e.g. {‘V1’: 1}).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Some gm_samplers may fail if you have very high-resolution data (i.e., with voxels on the
+order of the spacing between vertices in your cortical mesh). In such cases, there may be
+voxels in the middle of your ROI that are not assigned to the ROI (because no vertex falls
+within that voxel). For such cases, it is recommended to use ‘cortical’, ‘thick’, or
+‘thin’ as your <cite>gm_sampler</cite>.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.utils.get_roi_masks.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

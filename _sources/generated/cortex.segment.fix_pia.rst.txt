@@ -1,0 +1,6 @@
+cortex.segment.fix\_pia
+=======================
+
+.. currentmodule:: cortex.segment
+
+.. autofunction:: fix_pia

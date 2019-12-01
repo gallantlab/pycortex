@@ -1,0 +1,332 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>WebGL Viewer Overview &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="webgl-viewer-overview">
+<h1>WebGL Viewer Overview<a class="headerlink" href="#webgl-viewer-overview" title="Permalink to this headline">¶</a></h1>
+<p>WebGL viewers enable interactive 3D displays of brain data in the web browser using a simple set of commands (see demo examples). The use of a web browser as the front end for pycortex also allows an unprecedented level of interactivity. For example, the anatomical surface can be flattened interactively simply by dragging a slider. This interactive design helps the user to develop a clear sense of the correspondence between flattened and folded surfaces.</p>
+<ul class="simple">
+<li><p>adjust camera angle and zoom in real time</p></li>
+<li><p>toggle display of ROIs and various labels</p></li>
+<li><p>switch between multiple datasets</p></li>
+<li><p>flatten and inflate cortical surface</p></li>
+<li><p>create scripted animations</p></li>
+<li><p>select points by clicking on them</p></li>
+<li><p>switch between colormaps</p></li>
+</ul>
+<p>Pycortex can also display temporally varying time-series data on the cortical surface in real time. This allows simultaneous visualization of the experimental paradigm and the functional data in real time</p>
+<p>It is simple to post pycortex visualizations to a web page for public viewing. These static visualizations are generated using a simple command that generates a single web page with most resources embedded directly. The surface structure, data, and the webpage can then be posted to any public facing web site. For example, the online Neurovault data repository (<a class="reference external" href="http://neurovault.org">http://neurovault.org</a>) now makes use of pycortex, and any fMRI data uploaded to Neurovault can be visualized automatically in pycortex. These visualizations are visible at a static web address that can be referenced in papers and shared with anyone with a web browser.</p>
+<div class="section" id="using-the-webgl-viewer">
+<h2>Using the WebGL Viewer<a class="headerlink" href="#using-the-webgl-viewer" title="Permalink to this headline">¶</a></h2>
+<p>There are two ways to create a WebGL viewer. A <strong>dynamic viewer</strong> is temporary viewer that is hosted by the pyhton process that generated it. A <strong>static viewer</strong> is a viewer that is saved permanently to disk and will persist beyond the lifetime of the python process. Using a static viewer requires hosting the created directory with a webserver such as nginx.</p>
+<div class="section" id="keyboard-shortcuts">
+<h3>Keyboard Shortcuts<a class="headerlink" href="#keyboard-shortcuts" title="Permalink to this headline">¶</a></h3>
+<p>There are many keyboard shortcuts that allow for more fluid interaction with the WebGL viewer. A complete list of keyboard shortcuts can also be displayed in the viewer by pressing the <strong>h</strong> key.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 27%" />
+<col style="width: 73%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Action</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>f</p></td>
+<td><p>flatten brain</p></td>
+</tr>
+<tr class="row-odd"><td><p>i</p></td>
+<td><p>inflate brain</p></td>
+</tr>
+<tr class="row-even"><td><p>k</p></td>
+<td><p>inflate brain to surface cuts</p></td>
+</tr>
+<tr class="row-odd"><td><p>r</p></td>
+<td><p>fold brain into original coordinates</p></td>
+</tr>
+<tr class="row-even"><td><p>shift + wheel</p></td>
+<td><p>change inflation level</p></td>
+</tr>
+<tr class="row-odd"><td><p>p</p></td>
+<td><p>show pial surface</p></td>
+</tr>
+<tr class="row-even"><td><p>u</p></td>
+<td><p>show fiducial surface</p></td>
+</tr>
+<tr class="row-odd"><td><p>y</p></td>
+<td><p>show white matter surface</p></td>
+</tr>
+<tr class="row-even"><td><p>l</p></td>
+<td><p>toggle labels</p></td>
+</tr>
+<tr class="row-odd"><td><p>h</p></td>
+<td><p>toggle keyboard shortcut overview</p></td>
+</tr>
+<tr class="row-even"><td><p>+/-</p></td>
+<td><p>switch between datasets</p></td>
+</tr>
+<tr class="row-odd"><td><p>e</p></td>
+<td><p>toggle X slice</p></td>
+</tr>
+<tr class="row-even"><td><p>d</p></td>
+<td><p>toggle Y slice</p></td>
+</tr>
+<tr class="row-odd"><td><p>c</p></td>
+<td><p>toggle Z slice</p></td>
+</tr>
+<tr class="row-even"><td><p>q/w</p></td>
+<td><p>switch between X slices</p></td>
+</tr>
+<tr class="row-odd"><td><p>a/s</p></td>
+<td><p>switch between Y slices</p></td>
+</tr>
+<tr class="row-even"><td><p>z/x</p></td>
+<td><p>switch between Z slices</p></td>
+</tr>
+<tr class="row-odd"><td><p>o</p></td>
+<td><p>toggle data opacity</p></td>
+</tr>
+<tr class="row-even"><td><p>m</p></td>
+<td><p>toggle multiple layers</p></td>
+</tr>
+<tr class="row-odd"><td><p>alt + wheel</p></td>
+<td><p>change cortical depth</p></td>
+</tr>
+<tr class="row-even"><td><p>shift + l</p></td>
+<td><p>toggle left hemisphere</p></td>
+</tr>
+<tr class="row-odd"><td><p>shift + r</p></td>
+<td><p>toggle right hemisphere</p></td>
+</tr>
+<tr class="row-even"><td><p>shift + s</p></td>
+<td><p>save current view as png</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="view-controls">
+<h3>View Controls<a class="headerlink" href="#view-controls" title="Permalink to this headline">¶</a></h3>
+<p>The <strong>Open Controls</strong> button in the upper right corner opens a control panel for many different display options.</p>
+<div class="section" id="camera-controls">
+<h4>Camera Controls<a class="headerlink" href="#camera-controls" title="Permalink to this headline">¶</a></h4>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 81%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>name</p></th>
+<th class="head"><p>description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>azimuth</p></td>
+<td><p>camera rotation within the xy plane</p></td>
+</tr>
+<tr class="row-odd"><td><p>altitude</p></td>
+<td><p>angle above the xy plane</p></td>
+</tr>
+<tr class="row-even"><td><p>radius</p></td>
+<td><p>zoom level</p></td>
+</tr>
+<tr class="row-odd"><td><p>reset</p></td>
+<td><p>reset view to original position</p></td>
+</tr>
+<tr class="row-even"><td><p>inflate</p></td>
+<td><p>inflate cortical surface</p></td>
+</tr>
+<tr class="row-odd"><td><p>flatten</p></td>
+<td><p>flatten cortical surface</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="surface-controls">
+<h4>Surface Controls<a class="headerlink" href="#surface-controls" title="Permalink to this headline">¶</a></h4>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 74%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>name</p></th>
+<th class="head"><p>description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>unfold</p></td>
+<td><p>level of unfolding</p></td>
+</tr>
+<tr class="row-odd"><td><p>pivot</p></td>
+<td><p>angle between hemispheres</p></td>
+</tr>
+<tr class="row-even"><td><p>shift</p></td>
+<td><p>distance between hemispheres</p></td>
+</tr>
+<tr class="row-odd"><td><p>depth</p></td>
+<td><p>cortical depth</p></td>
+</tr>
+<tr class="row-even"><td><p>left</p></td>
+<td><p>toggle left hemisphere</p></td>
+</tr>
+<tr class="row-odd"><td><p>right</p></td>
+<td><p>toggle right hemisphere</p></td>
+</tr>
+<tr class="row-even"><td><p>specularity</p></td>
+<td><p>specular reflection level</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="overlay-controls">
+<h4>Overlay Controls<a class="headerlink" href="#overlay-controls" title="Permalink to this headline">¶</a></h4>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 27%" />
+<col style="width: 73%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>name</p></th>
+<th class="head"><p>description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>visible</p></td>
+<td><p>toggle roi outlines</p></td>
+</tr>
+<tr class="row-odd"><td><p>labels</p></td>
+<td><p>toggle roi labels</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="section" id="webgl-viewer-technical-details">
+<h2>WebGL Viewer Technical Details<a class="headerlink" href="#webgl-viewer-technical-details" title="Permalink to this headline">¶</a></h2>
+<p>Pycortex uses custom shaders that implement pixel-based mapping. During 3D graphics rendering, the color of each pixel is determined by some predefined code at the fragment shading step. Under a traditional fixed-function pipeline, fragment shading is performed by a rasterizer that implements vertex-based mapping (Woo et al., 1999). In contrast, the fragment shader in pycortex projects each pixel into the functional space in 3D, and then samples the underlying volume data by reading from a texture. Nearest-neighbor or trilinear sampling is automatically performed by OpenGL when the data is read from the texture. This generates a fully interactive and accurate real-time visualization.</p>
+<p>The webgl module contains code that parses and generates the HTML and javascript code required to display surface data in a web browser. It provides two possible use cases: a dynamic view that can be controlled by a back end python web server, and a static view that generates static HTML files for upload into an existing web server. The OpenCTM library (Geelnard, 2009) is used to compress the surface mesh into a form that can be utilized by the web browser. If a dynamic view is requested, the webgl module sets up a local web server with all the required surface and data files accessible to the web browser. If a static view is requested, all HTML and javascript code is embedded into a single HTML document and saved to a set of files. Data (in the form of compressed mosaic images) and surface structures are stored separately. These standalone visualizations can then be copied to a web server to be shared with colleagues, included as links in published articles, or shared online with a broad audience.</p>
+<p>The data display can be modified interactively in numerous ways. The dynamic view has two sliding windows that contain display options. The <strong>unfold</strong> slider in the control panel linearly interpolates the shape of the cortical mesh between the original (folded) anatomical, inflated, and flattened surfaces. This allows the unfolding process to be visualized continuously, and it clarifies the correspondence between 3D anatomical features and the cortical flatmap. The sliding window located at the top contains options that change how the data is displayed. Different colormaps can be selected and the colormap ranges can be altered dynamically. 2D colormaps are also supported, allowing two datasets to be contrasted simultaneously. Multiple datasets can be loaded and compared directly by simply toggling between them. Sliders are provided to change the transparency of the dropout, overlay, data, and curvature layers.</p>
+<p>Pycortex also includes a javascript plugin architecture that allows new interactive visualizations to be developed easily. For example, the static viewer released with Huth et al. (2012) <a class="reference external" href="http://gallantlab.org/brainviewer/huthetal2012/">http://gallantlab.org/brainviewer/huthetal2012/</a> contains a plugin that allows the user to visualize how 1765 distinct semantic features are mapped across the cortical surface (Figure 7). Clicking a point on the brain picks the closest voxel and the viewer displays the semantic category tuning for the associated voxel.</p>
+<p>Finally, pycortex provides a bi-directional communication framework between python and javascript, so that actions in javascript can be scripted and manipulated in python. This powerful interaction dynamic allows exploratory data analysis in a way never before possible for fMRI.</p>
+<p>For further details see <em>Gao JS, Huth AG, Lescroart MD and Gallant JL (2015) Pycortex: an interactive surface visualizer for fMRI. Front. Neuroinform. 9:23. doi: 10.3389/fninf.2015.00023</em></p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/userguide/webgl.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

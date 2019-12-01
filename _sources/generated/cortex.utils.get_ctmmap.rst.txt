@@ -1,0 +1,6 @@
+cortex.utils.get\_ctmmap
+========================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: get_ctmmap

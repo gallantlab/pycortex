@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.from\_hdf
+===============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.from_hdf

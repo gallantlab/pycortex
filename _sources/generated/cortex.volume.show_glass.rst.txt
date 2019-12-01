@@ -1,0 +1,6 @@
+cortex.volume.show\_glass
+=========================
+
+.. currentmodule:: cortex.volume
+
+.. autofunction:: show_glass

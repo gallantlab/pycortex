@@ -1,0 +1,6 @@
+cortex.dataset.Vertex2D.raw
+===========================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: Vertex2D.raw

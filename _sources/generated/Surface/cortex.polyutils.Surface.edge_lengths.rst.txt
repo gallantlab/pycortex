@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.edge\_lengths
+======================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.edge_lengths

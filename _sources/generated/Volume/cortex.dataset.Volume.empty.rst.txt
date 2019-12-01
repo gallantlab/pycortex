@@ -1,0 +1,6 @@
+cortex.dataset.Volume.empty
+===========================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Volume.empty

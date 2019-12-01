@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.volume
+============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.volume

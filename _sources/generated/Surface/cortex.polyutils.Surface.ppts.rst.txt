@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.ppts
+=============================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.ppts

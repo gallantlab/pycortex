@@ -1,0 +1,1139 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.utils &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Contain utility functions</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">h5py</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">binascii</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">string_types</span>
+<span class="kn">from</span> <span class="nn">importlib</span> <span class="kn">import</span> <span class="n">import_module</span>
+<span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+<span class="kn">from</span> <span class="nn">.volume</span> <span class="kn">import</span> <span class="n">anat2epispace</span>
+<span class="kn">from</span> <span class="nn">.options</span> <span class="kn">import</span> <span class="n">config</span>
+<span class="kn">from</span> <span class="nn">.freesurfer</span> <span class="kn">import</span> <span class="n">fs_aseg_dict</span>
+<span class="kn">from</span> <span class="nn">.polyutils</span> <span class="kn">import</span> <span class="n">Surface</span> 
+
+<span class="k">class</span> <span class="nc">DocLoader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">package</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">import_module</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">package</span><span class="p">),</span> <span class="n">func</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">()(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">&quot;_load&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">(),</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_roipack</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Please use db.get_overlay instead&#39;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">db</span><span class="o">.</span><span class="n">get_overlay</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<span class="n">get_mapper</span> <span class="o">=</span> <span class="n">DocLoader</span><span class="p">(</span><span class="s2">&quot;get_mapper&quot;</span><span class="p">,</span> <span class="s2">&quot;.mapper&quot;</span><span class="p">,</span> <span class="s2">&quot;cortex&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="get_ctmpack"><a class="viewcode-back" href="../../generated/cortex.utils.get_ctmpack.html#cortex.utils.get_ctmpack">[docs]</a><span class="k">def</span> <span class="nf">get_ctmpack</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,),</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;raw&quot;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">decimate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">external_svg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">overlays_available</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates ctm file for the specified input arguments.</span>
+
+<span class="sd">    This is a cached file that specifies (1) the surfaces between which</span>
+<span class="sd">    to interpolate (`types` argument), (2) the `method` to interpolate</span>
+<span class="sd">    between surfaces</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of subject in pycortex stored</span>
+<span class="sd">    types : tuple</span>
+<span class="sd">        Surfaces between which to interpolate.</span>
+<span class="sd">    method : str</span>
+<span class="sd">        string specifying method of how inverse transforms for</span>
+<span class="sd">        labels are computed (determines how labels are displayed</span>
+<span class="sd">        on 3D viewer) one of [&#39;mg2&#39;,&#39;raw&#39;]</span>
+<span class="sd">    recache : bool</span>
+<span class="sd">        Whether to re-generate .ctm files. Can resolve some errors </span>
+<span class="sd">        but takes more time to re-generate cached files.</span>
+<span class="sd">    decimate : bool</span>
+<span class="sd">        whether to decimate the mesh geometry of the hemispheres</span>
+<span class="sd">        to reduce file size</span>
+<span class="sd">    external_svg : str or None</span>
+<span class="sd">        file string for .svg file containing alternative overlays </span>
+<span class="sd">        for brain viewer. If None, the `overlays.svg` file for this</span>
+<span class="sd">        subject (in the pycortex_store folder for the subejct) is used.</span>
+<span class="sd">    overlays_available: tuple or None</span>
+<span class="sd">        Which overlays in the svg file to include in the viewer. If</span>
+<span class="sd">        None, all layers in the relevant svg file are included.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ctmfile :</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lvlstr</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">d&quot;</span> <span class="k">if</span> <span class="n">decimate</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">%</span><span class="n">level</span>
+    <span class="c1"># Generates different cache files for each combination of disp_layers</span>
+    <span class="n">ctmcache</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_[</span><span class="si">{types}</span><span class="s2">]_</span><span class="si">{method}</span><span class="s2">_</span><span class="si">{level}</span><span class="s2">_v3.json&quot;</span><span class="o">%</span><span class="n">subject</span>
+    <span class="n">ctmcache</span> <span class="o">=</span> <span class="n">ctmcache</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">types</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">types</span><span class="p">),</span>
+                               <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+                               <span class="n">level</span><span class="o">=</span><span class="n">lvlstr</span><span class="p">)</span>
+    <span class="n">ctmfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_cache</span><span class="p">(</span><span class="n">subject</span><span class="p">),</span> <span class="n">ctmcache</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">ctmfile</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">recache</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ctmfile</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generating new ctm file...&quot;</span><span class="p">)</span>
+    <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">brainctm</span>
+    <span class="n">ptmap</span> <span class="o">=</span> <span class="n">brainctm</span><span class="o">.</span><span class="n">make_pack</span><span class="p">(</span><span class="n">ctmfile</span><span class="p">,</span>
+                               <span class="n">subject</span><span class="p">,</span>
+                               <span class="n">types</span><span class="o">=</span><span class="n">types</span><span class="p">,</span>
+                               <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+                               <span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span>
+                               <span class="n">decimate</span><span class="o">=</span><span class="n">decimate</span><span class="p">,</span>
+                               <span class="n">external_svg</span><span class="o">=</span><span class="n">external_svg</span><span class="p">,</span>
+                               <span class="n">overlays_available</span><span class="o">=</span><span class="n">overlays_available</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ctmfile</span></div>
+
+<div class="viewcode-block" id="get_ctmmap"><a class="viewcode-back" href="../../generated/cortex.utils.get_ctmmap.html#cortex.utils.get_ctmmap">[docs]</a><span class="k">def</span> <span class="nf">get_ctmmap</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject name</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    lnew :</span>
+
+<span class="sd">    rnew :</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">scipy.spatial</span> <span class="kn">import</span> <span class="n">cKDTree</span>
+    <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">brainctm</span>
+    <span class="n">jsfile</span> <span class="o">=</span> <span class="n">get_ctmpack</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">ctmfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">jsfile</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="s2">&quot;.ctm&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;pia&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+        <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">)</span>
+
+    <span class="n">lmap</span><span class="p">,</span> <span class="n">rmap</span> <span class="o">=</span> <span class="n">cKDTree</span><span class="p">(</span><span class="n">left</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">cKDTree</span><span class="p">(</span><span class="n">right</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">brainctm</span><span class="o">.</span><span class="n">read_pack</span><span class="p">(</span><span class="n">ctmfile</span><span class="p">)</span>
+    <span class="n">lnew</span> <span class="o">=</span> <span class="n">lmap</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">left</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">rnew</span> <span class="o">=</span> <span class="n">rmap</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">right</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">lnew</span><span class="p">,</span> <span class="n">rnew</span></div>
+
+<div class="viewcode-block" id="get_cortical_mask"><a class="viewcode-back" href="../../generated/cortex.utils.get_cortical_mask.html#cortex.utils.get_cortical_mask">[docs]</a><span class="k">def</span> <span class="nf">get_cortical_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Gets the cortical mask for a particular transform</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject name</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        Transform name</span>
+<span class="sd">    type : str</span>
+<span class="sd">        Mask type, one of {&#39;cortical&#39;,&#39;thin&#39;,&#39;thick&#39;, &#39;nearest&#39;}. &#39;cortical&#39; is exactly the</span>
+<span class="sd">        cortical ribbon, between the freesurfer-estimated white matter and pial</span>
+<span class="sd">        surfaces; &#39;thin&#39; is &lt; 2mm away from fiducial surface; &#39;thick&#39; is &lt; 8mm</span>
+<span class="sd">        away from fiducial surface.</span>
+<span class="sd">        &#39;nearest&#39; is nearest voxel only (??)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mask : array</span>
+<span class="sd">        boolean mask array for cortical voxels in functional space</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span> <span class="o">==</span> <span class="s1">&#39;cortical&#39;</span><span class="p">:</span>
+        <span class="n">ppts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;pia&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">wpts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;wm&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">thickness</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="n">ppts</span> <span class="o">-</span> <span class="n">wpts</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">dist</span><span class="p">,</span> <span class="n">idx</span> <span class="o">=</span> <span class="n">get_vox_dist</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+        <span class="n">cortex</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">verts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">vert</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">verts</span><span class="p">):</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">idx</span> <span class="o">==</span> <span class="n">vert</span>
+            <span class="n">cortex</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">dist</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">thickness</span><span class="p">[</span><span class="n">vert</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%0.3f%%</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">verts</span><span class="p">))</span> <span class="o">*</span> <span class="mi">100</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">cortex</span>
+    <span class="k">elif</span> <span class="nb">type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;thick&#39;</span><span class="p">,</span> <span class="s1">&#39;thin&#39;</span><span class="p">):</span>
+        <span class="n">dist</span><span class="p">,</span> <span class="n">idx</span> <span class="o">=</span> <span class="n">get_vox_dist</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dist</span> <span class="o">&lt;</span> <span class="nb">dict</span><span class="p">(</span><span class="n">thick</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="mi">2</span><span class="p">)[</span><span class="nb">type</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">)</span><span class="o">.</span><span class="n">mask</span></div>
+
+
+<div class="viewcode-block" id="get_vox_dist"><a class="viewcode-back" href="../../generated/cortex.utils.get_vox_dist.html#cortex.utils.get_vox_dist">[docs]</a><span class="k">def</span> <span class="nf">get_vox_dist</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">surface</span><span class="o">=</span><span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">max_dist</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the distance (in mm) from each functional voxel to the closest</span>
+<span class="sd">    point on the surface.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of the subject</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        Name of the transform</span>
+<span class="sd">    shape : tuple</span>
+<span class="sd">        Output shape for the mask</span>
+<span class="sd">    max_dist : nonnegative float, optional</span>
+<span class="sd">        Limit computation to only voxels within `max_dist` mm of the surface.</span>
+<span class="sd">        Makes computation orders of magnitude faster for high-resolution</span>
+<span class="sd">        volumes.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dist : ndarray</span>
+<span class="sd">        Distance (in mm) to the closest point on the surface</span>
+
+<span class="sd">    argdist : ndarray</span>
+<span class="sd">        Point index for the closest point</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">scipy.spatial</span> <span class="kn">import</span> <span class="n">cKDTree</span>
+
+    <span class="n">fiducial</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surface</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+    <span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[:</span><span class="n">x</span><span class="p">,</span> <span class="p">:</span><span class="n">y</span><span class="p">,</span> <span class="p">:</span><span class="n">z</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">mm</span> <span class="o">=</span> <span class="n">xfm</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+
+    <span class="n">tree</span> <span class="o">=</span> <span class="n">cKDTree</span><span class="p">(</span><span class="n">fiducial</span><span class="p">)</span>
+    <span class="n">dist</span><span class="p">,</span> <span class="n">argdist</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">mm</span><span class="p">,</span> <span class="n">distance_upper_bound</span><span class="o">=</span><span class="n">max_dist</span><span class="p">)</span>
+    <span class="n">dist</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+    <span class="n">argdist</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dist</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">argdist</span><span class="o">.</span><span class="n">T</span></div>
+
+<div class="viewcode-block" id="get_hemi_masks"><a class="viewcode-back" href="../../generated/cortex.utils.get_hemi_masks.html#cortex.utils.get_hemi_masks">[docs]</a><span class="k">def</span> <span class="nf">get_hemi_masks</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Returns a binary mask of the left and right hemisphere</span>
+<span class="sd">    surface voxels for the given subject.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of subject</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        Name of transform</span>
+<span class="sd">    type : str</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">)</span><span class="o">.</span><span class="n">hemimasks</span></div>
+
+<div class="viewcode-block" id="add_roi"><a class="viewcode-back" href="../../generated/cortex.utils.add_roi.html#cortex.utils.add_roi">[docs]</a><span class="k">def</span> <span class="nf">add_roi</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;new_roi&quot;</span><span class="p">,</span> <span class="n">open_inkscape</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_path</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add new flatmap image to the ROI file for a subject.</span>
+
+<span class="sd">    (The subject is specified in creation of the data object)</span>
+
+<span class="sd">    Creates a flatmap image from the `data` input, and adds that image as</span>
+<span class="sd">    a sub-layer to the data layer in the rois.svg file stored for</span>
+<span class="sd">    the subject  in the pycortex database. Most often, this is data to be</span>
+<span class="sd">    used for defining a region (or several regions) of interest, such as a</span>
+<span class="sd">    localizer contrast (e.g. a t map of Faces &gt; Houses).</span>
+
+<span class="sd">    Use the **kwargs inputs to specify</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : DataView</span>
+<span class="sd">        The data used to generate the flatmap image.</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        Name that will be assigned to the `data` sub-layer in the rois.svg file</span>
+<span class="sd">            (e.g. &#39;Faces &gt; Houses, t map, p&lt;.005&#39; or &#39;Retinotopy - Rotating Wedge&#39;)</span>
+<span class="sd">    open_inkscape : bool, optional</span>
+<span class="sd">        If True, Inkscape will automatically open the ROI file.</span>
+<span class="sd">    add_path : bool, optional</span>
+<span class="sd">        If True, also adds a sub-layer to the `rois` new SVG layer will automatically</span>
+<span class="sd">        be created in the ROI group with the same `name` as the overlay.</span>
+<span class="sd">    overlay_file : str, optional</span>
+<span class="sd">        Custom overlays.svg file to use instead of the default one for this</span>
+<span class="sd">        subject (if not None). Default None.</span>
+<span class="sd">    kwargs : dict</span>
+<span class="sd">        Passed to cortex.quickflat.make_png</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+    <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">quickflat</span>
+    <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">dataset</span>
+
+    <span class="n">dv</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dv</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Please specify a data view&quot;</span><span class="p">)</span>
+
+    <span class="n">svg</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_overlay</span><span class="p">(</span><span class="n">dv</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="n">overlay_file</span><span class="p">)</span>
+    <span class="n">fp</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+
+    <span class="n">quickflat</span><span class="o">.</span><span class="n">make_png</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">dv</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">fp</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">svg</span><span class="o">.</span><span class="n">rois</span><span class="o">.</span><span class="n">add_shape</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">binascii</span><span class="o">.</span><span class="n">b2a_base64</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">read</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">),</span> <span class="n">add_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">open_inkscape</span><span class="p">:</span>
+        <span class="n">inkscape_cmd</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;inkscape&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="n">inkscape_cmd</span><span class="p">,</span> <span class="s1">&#39;-f&#39;</span><span class="p">,</span> <span class="n">svg</span><span class="o">.</span><span class="n">svgfile</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="get_roi_verts"><a class="viewcode-back" href="../../generated/cortex.utils.get_roi_verts.html#cortex.utils.get_roi_verts">[docs]</a><span class="k">def</span> <span class="nf">get_roi_verts</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return vertices for the given ROIs, or all ROIs if none are given.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of the subject</span>
+<span class="sd">    roi : str, list or None, optional</span>
+<span class="sd">        ROIs to fetch. Can be ROI name (string), a list of ROI names, or</span>
+<span class="sd">        None, in which case all ROIs will be fetched.</span>
+<span class="sd">    mask : bool</span>
+<span class="sd">        if True, return a logical mask across vertices for the roi</span>
+<span class="sd">        if False, return a list of indices for the ROI</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    roidict : dict</span>
+<span class="sd">        Dictionary of {roi name : roi verts}. ROI verts are for both</span>
+<span class="sd">        hemispheres, with right hemisphere vertex numbers sequential</span>
+<span class="sd">        after left hemisphere vertex numbers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Get overlays</span>
+    <span class="n">svg</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_overlay</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span>
+
+    <span class="c1"># Get flat surface so we can figure out which verts are in medial wall</span>
+    <span class="c1"># or in cuts</span>
+    <span class="c1"># This assumes subject has flat surface, which they must to have ROIs.</span>
+    <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">goodpts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">polys</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">roi</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">roi</span> <span class="o">=</span> <span class="n">svg</span><span class="o">.</span><span class="n">rois</span><span class="o">.</span><span class="n">shapes</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="n">roidict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+        <span class="n">roi</span> <span class="o">=</span> <span class="p">[</span><span class="n">roi</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">roi</span><span class="p">:</span>
+        <span class="n">roi_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">intersect1d</span><span class="p">(</span><span class="n">svg</span><span class="o">.</span><span class="n">rois</span><span class="o">.</span><span class="n">get_mask</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">goodpts</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mask</span><span class="p">:</span>
+            <span class="n">roidict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">1</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">roi_idx</span><span class="p">):</span>
+                <span class="n">roidict</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="n">roi_idx</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;No vertices found in </span><span class="si">{}</span><span class="s2">!&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">roidict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">roi_idx</span>
+
+    <span class="k">return</span> <span class="n">roidict</span></div>
+
+
+<span class="k">def</span> <span class="nf">get_roi_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surf_type</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Similar to get_roi_verts, but gets both the points and the polys for an roi.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of subject</span>
+<span class="sd">    surf_type : str</span>
+<span class="sd">        Type of surface to return, probably in (fiducial, inflated, veryinflated, hyperinflated,</span>
+<span class="sd">        superinflated, flat)</span>
+<span class="sd">    roi : str</span>
+<span class="sd">        Name of ROI to get the surface geometry for.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pts, polys : (array, array)</span>
+<span class="sd">        The points, specified in 3D space, as well as indices into pts specifying the polys.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">roi_verts_mask</span> <span class="o">=</span> <span class="n">get_roi_verts</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surf_type</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">vert_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">roi_verts_mask</span><span class="p">[</span><span class="n">roi</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">vert_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">vert_idx</span><span class="p">)</span>
+    <span class="n">roi_polys</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">polys</span><span class="p">)[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">vert_set</span><span class="p">,</span> <span class="n">polys</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]))</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+            <span class="n">roi_polys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">polys</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:])</span>
+    <span class="n">reindexed_polys</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">vert_rev_hash_idx</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">vert_idx</span><span class="p">):</span>
+        <span class="n">vert_rev_hash_idx</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+    <span class="k">for</span> <span class="n">poly</span> <span class="ow">in</span> <span class="n">roi_polys</span><span class="p">:</span>
+        <span class="n">reindexed_polys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">vert_rev_hash_idx</span><span class="o">.</span><span class="n">get</span><span class="p">,</span> <span class="n">poly</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">pts</span><span class="p">[</span><span class="n">vert_idx</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">reindexed_polys</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="get_roi_mask"><a class="viewcode-back" href="../../generated/cortex.utils.get_roi_mask.html#cortex.utils.get_roi_mask">[docs]</a><span class="k">def</span> <span class="nf">get_roi_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return a mask for the given ROI(s)</span>
+
+<span class="sd">    Deprecated - use get_roi_masks()</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of subject</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        Name of transform</span>
+<span class="sd">    roi : tuple</span>
+<span class="sd">        Name of ROI(s) to get masks for. None gets all of them.</span>
+<span class="sd">    projection : str</span>
+<span class="sd">        Which mapper to use.</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    output : dict</span>
+<span class="sd">        Dict of ROIs and their masks</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Deprecated! Use get_roi_masks&#39;</span><span class="p">)</span>
+
+    <span class="n">mapper</span> <span class="o">=</span> <span class="n">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">projection</span><span class="p">)</span>
+    <span class="n">rois</span> <span class="o">=</span> <span class="n">get_roi_verts</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="n">roi</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">verts</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">rois</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+        <span class="c1"># This is broken; unclear when/if backward mappers ever worked this way.</span>
+        <span class="c1">#left, right = mapper.backwards(vert_mask)</span>
+        <span class="c1">#output[name] = left + right</span>
+        <span class="n">output</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapper</span><span class="o">.</span><span class="n">backwards</span><span class="p">(</span><span class="n">verts</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">))</span>
+        <span class="c1"># Threshold?</span>
+    <span class="k">return</span> <span class="n">output</span></div>
+
+
+<div class="viewcode-block" id="get_aseg_mask"><a class="viewcode-back" href="../../generated/cortex.utils.get_aseg_mask.html#cortex.utils.get_aseg_mask">[docs]</a><span class="k">def</span> <span class="nf">get_aseg_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">aseg_name</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return an epi space mask of the given ID from freesurfer&#39;s automatic segmentation</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        pycortex subject ID</span>
+<span class="sd">    aseg_name : str or list</span>
+<span class="sd">        Name of brain partition or partitions to return. See freesurfer web site for partition names:</span>
+<span class="sd">        https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT</span>
+<span class="sd">        ... or inspect `cortex.freesurfer.fs_aseg_mask.keys()` Currently (2017.03) only the first</span>
+<span class="sd">        256 indices in the freesurfer lookup table are supported. If a name is provided that does not</span>
+<span class="sd">        exactly match any of the freesurfer partitions, the function will search for all partitions</span>
+<span class="sd">        that contain that name (caps are ignored). For example, &#39;white-matter&#39; will generate a mask</span>
+<span class="sd">        that combines masks for the following partitions: &#39;Right-Cerebral-White-Matter&#39;,</span>
+<span class="sd">        &#39;Left-Cerebellum-White-Matter&#39;, &#39;Right-Cerebellum-White-Matter&#39;, and &#39;Left-Cerebral-White-Matter&#39;)</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        Name for transform of mask to functional space. If `None`, anatomical-space</span>
+<span class="sd">        mask is returned.</span>
+<span class="sd">    order : int, [0-5]</span>
+<span class="sd">        Order of spline interpolation for transform from anatomical to functional space</span>
+<span class="sd">        (ignored if xfmname is None). 0 is like nearest neighbor; 1 returns bilinear</span>
+<span class="sd">        interpolation of mask from anatomical space. To convert either of these volumes to</span>
+<span class="sd">        a binary mask for voxel selection, set the `threshold` argument.</span>
+<span class="sd">        Setting order &gt; 1 is not recommended, as it will give values outside the range of 0-1.</span>
+<span class="sd">    threshold : scalar</span>
+<span class="sd">        Threshold value for aseg mask. If None, function returns result of spline</span>
+<span class="sd">        interpolation of mask as transformed to functional space (will have continuous</span>
+<span class="sd">        float values from 0-1)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mask : array</span>
+<span class="sd">        array with float or boolean values denoting the location of the requested cortical</span>
+<span class="sd">        partition.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    See also get_anat(subject, type=&#39;aseg&#39;)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">.freesurfer</span> <span class="kn">import</span> <span class="n">fs_aseg_dict</span>
+    <span class="n">aseg</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;aseg&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">aseg_name</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="n">aseg_name</span> <span class="o">=</span> <span class="p">[</span><span class="n">aseg_name</span><span class="p">]</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">aseg</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">aseg_name</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">fs_aseg_dict</span><span class="p">:</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">aseg</span><span class="o">==</span><span class="n">fs_aseg_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Combine all masks containing `name` (e.g. all masks with &#39;cerebellum&#39; in the name)</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">fs_aseg_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">k</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unknown aseg_name!&#39;</span><span class="p">)</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">aseg</span><span class="o">==</span><span class="n">fs_aseg_dict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">tmp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">xfmname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">anat2epispace</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">threshold</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&gt;</span> <span class="n">threshold</span>
+    <span class="k">return</span> <span class="n">mask</span></div>
+
+
+<div class="viewcode-block" id="get_roi_masks"><a class="viewcode-back" href="../../generated/cortex.utils.get_roi_masks.html#cortex.utils.get_roi_masks">[docs]</a><span class="k">def</span> <span class="nf">get_roi_masks</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">roi_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gm_sampler</span><span class="o">=</span><span class="s1">&#39;cortical&#39;</span><span class="p">,</span> <span class="n">split_lr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                  <span class="n">allow_overlap</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fail_for_missing_rois</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exclude_empty_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                  <span class="n">threshold</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">return_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return a dictionary of roi masks</span>
+
+<span class="sd">    This function returns a single 3D array with a separate numerical index for each ROI,</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : string</span>
+<span class="sd">        pycortex subject ID</span>
+<span class="sd">    xfmname : string</span>
+<span class="sd">        pycortex transformation name</span>
+<span class="sd">    roi_list : list or None</span>
+<span class="sd">        List of names of ROIs to retrieve (e.g. [&#39;FFA&#39;,&#39;OFA&#39;,&#39;EBA&#39;]). Names should match</span>
+<span class="sd">        the ROI layers in the overlays.svg file for the `subject` specified. If None is</span>
+<span class="sd">        provided (default), all available ROIs for the subject are returned. If &#39;Cortex&#39;</span>
+<span class="sd">        is included in roi_list*, a mask of all cortical voxels NOT included in other</span>
+<span class="sd">        requested rois is included in the output.</span>
+<span class="sd">        * works for gm_sampler = &#39;cortical&#39;, &#39;think&#39;, &#39;thick&#39;, or (any scalar value);</span>
+<span class="sd">        does not work for mapper-based gray matter samplers.</span>
+<span class="sd">    gm_sampler : scalar or string</span>
+<span class="sd">        How to sample the cortical gray matter. Options are:</span>
+<span class="sd">        &lt;an integer&gt; - Distance from fiducial surface to define ROI. Reasonable values</span>
+<span class="sd">            for this input range from 1-3.</span>
+<span class="sd">        The following will only work if you have used Freesurfer to define the subject&#39;s</span>
+<span class="sd">        surface, and so have separate pial and white matter surfaces:</span>
+<span class="sd">        &#39;cortical&#39; - selection of all voxels with centers within the cortical ribbon</span>
+<span class="sd">            (directly computed from distance of each voxel from fiducial surface)</span>
+<span class="sd">        &#39;thick&#39; - selection of voxels within &#39;thick&#39; mask (see cortex.get_mask())</span>
+<span class="sd">        &#39;thin&#39; - selection of voxels within &#39;thin&#39; mask (see cortex.get_mask())</span>
+<span class="sd">        &#39;cortical-liberal&#39; - selection of all voxels that have any part within the</span>
+<span class="sd">            cortical ribbon (&#39;line_nearest&#39; mapper)</span>
+<span class="sd">        &#39;cortical-conservative&#39; - selection of only the closest voxel to each surface</span>
+<span class="sd">            vertex (&#39;nearest&#39; mapper)</span>
+<span class="sd">        mapper-based gm_samplers will return floating point values from 0-1 for each</span>
+<span class="sd">        voxel (reflecting the fraction of that voxel inside the ROI) unless a threshold</span>
+<span class="sd">        is provided.</span>
+<span class="sd">    threshold : float [0-1]</span>
+<span class="sd">        value used to convert probablistic ROI values to a boolean mask for the ROI.</span>
+<span class="sd">    split_lr : bool</span>
+<span class="sd">        Whether to separate ROIs in to left and right hemispheres (e.g., &#39;V1&#39; becomes</span>
+<span class="sd">        &#39;V1_L&#39; and &#39;V1_R&#39;)</span>
+<span class="sd">    allow_overlap : bool</span>
+<span class="sd">        Whether to allow ROIs to include voxels in other ROIs (default:False). This</span>
+<span class="sd">        should only be relevant if (a) spline shapes defining ROIs in overlays.svg</span>
+<span class="sd">        overlap at all, or (b) a low threshold is set for a mapper-based gm_sampler</span>
+<span class="sd">    fail_for_missing_rois : bool</span>
+<span class="sd">        Whether to fail if one or more of the rois specified in roi_list are not</span>
+<span class="sd">        defined in the overlays.svg file</span>
+<span class="sd">    exclude_empty_rois : bool</span>
+<span class="sd">        Whether to fail if an ROI that is present in the overlays.svg file contains no</span>
+<span class="sd">        voxels due to the scan not targeting that region of the brain.</span>
+<span class="sd">    return_dict : bool</span>
+<span class="sd">        If True (default), function returns a dictionary of ROI masks; if False, a volume</span>
+<span class="sd">        with integer indices for each ROI (similar to Freesurfer&#39;s aseg masks) and a</span>
+<span class="sd">        dictionary of how the indices map to ROI names are returned.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    roi_masks : dict</span>
+<span class="sd">        Dictionary of arrays; keys are ROI names, values are roi masks.</span>
+<span class="sd">    - OR -</span>
+<span class="sd">    index_volume, index_labels : array, dict</span>
+<span class="sd">        `index_volume` is a 3D array with a separate numerical index value for each ROI. Index values</span>
+<span class="sd">        in the left hemisphere are negative. (For example, if V1 in the right hemisphere is 1, then V1 in</span>
+<span class="sd">        the left hemisphere will be -1). `index_labels` is a dict that maps roi names to index values</span>
+<span class="sd">        (e.g. {&#39;V1&#39;: 1}).</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Some gm_samplers may fail if you have very high-resolution data (i.e., with voxels on the</span>
+<span class="sd">    order of the spacing between vertices in your cortical mesh). In such cases, there may be</span>
+<span class="sd">    voxels in the middle of your ROI that are not assigned to the ROI (because no vertex falls</span>
+<span class="sd">    within that voxel). For such cases, it is recommended to use &#39;cortical&#39;, &#39;thick&#39;, or</span>
+<span class="sd">    &#39;thin&#39; as your `gm_sampler`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Convert mapper names to pycortex sampler types</span>
+    <span class="n">mapper_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;cortical-conservative&#39;</span><span class="p">:</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;cortical-liberal&#39;</span><span class="p">:</span><span class="s1">&#39;line_nearest&#39;</span><span class="p">}</span>
+    <span class="c1"># Method</span>
+    <span class="n">use_mapper</span> <span class="o">=</span> <span class="n">gm_sampler</span> <span class="ow">in</span> <span class="n">mapper_dict</span>
+    <span class="n">use_cortex_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">gm_sampler</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;cortical&#39;</span><span class="p">,</span> <span class="s1">&#39;thick&#39;</span><span class="p">,</span> <span class="s1">&#39;thin&#39;</span><span class="p">))</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gm_sampler</span><span class="p">,</span> <span class="n">string_types</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">use_mapper</span> <span class="ow">or</span> <span class="n">use_cortex_mask</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unknown gray matter sampler (gm_sampler)!&#39;</span><span class="p">)</span>
+    <span class="c1"># Initialize</span>
+    <span class="n">roi_voxels</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">pct_coverage</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># Catch single-ROI input</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi_list</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+        <span class="n">roi_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">roi_list</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">return_dict</span><span class="p">:</span>
+        <span class="n">split_lr</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">use_mapper</span> <span class="ow">and</span> <span class="n">threshold</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;You must set a threshold for gm_mapper=&#39;</span><span class="si">%s</span><span class="s2">&#39; if you want an indexed volume output&quot;</span><span class="o">%</span><span class="n">gm_mapper</span><span class="p">)</span>
+    <span class="c1"># Start with vertices</span>
+    <span class="k">if</span> <span class="n">roi_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">roi_verts</span> <span class="o">=</span> <span class="n">get_roi_verts</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">use_mapper</span><span class="p">)</span>
+        <span class="n">roi_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">roi_verts</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tmp_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">roi_list</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">r</span><span class="o">==</span><span class="s1">&#39;Cortex&#39;</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">roi_verts</span> <span class="o">=</span> <span class="n">get_roi_verts</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="n">tmp_list</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">use_mapper</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">key</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">fail_for_missing_rois</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;Requested ROI </span><span class="si">{}</span><span class="s2"> not found in overlays.svg!&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">roi_verts</span> <span class="o">=</span> <span class="n">get_roi_verts</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">use_mapper</span><span class="p">)</span>
+                <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">roi_list</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">roi_verts</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="o">+</span><span class="p">[</span><span class="s1">&#39;Cortex&#39;</span><span class="p">]]</span>
+                <span class="n">roi_verts</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">roi</span><span class="p">,</span> <span class="n">verts</span><span class="p">)</span> <span class="k">for</span> <span class="n">roi</span><span class="p">,</span> <span class="n">verts</span> <span class="ow">in</span> <span class="n">roi_verts</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">roi</span> <span class="ow">in</span> <span class="n">roi_list</span><span class="p">)</span>
+                <span class="n">roi_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">roi_list</span><span class="p">)</span><span class="o">-</span><span class="nb">set</span><span class="p">(</span><span class="n">missing</span><span class="p">))</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Requested ROI(s) </span><span class="si">{}</span><span class="s1"> not found in overlays.svg!&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">missing</span><span class="p">))</span>
+    <span class="c1"># Get (a) indices for nearest vertex to each voxel</span>
+    <span class="c1"># and (b) distance from each voxel to nearest vertex in fiducial surface</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">use_cortex_mask</span> <span class="ow">or</span> <span class="n">split_lr</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="n">return_dict</span><span class="p">):</span>
+        <span class="n">vox_dst</span><span class="p">,</span> <span class="n">vox_idx</span> <span class="o">=</span> <span class="n">get_vox_dist</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">use_mapper</span><span class="p">:</span>
+        <span class="n">mapper</span> <span class="o">=</span> <span class="n">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">mapper_dict</span><span class="p">[</span><span class="n">gm_sampler</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="n">use_cortex_mask</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gm_sampler</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+            <span class="n">cortex_mask</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">gm_sampler</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cortex_mask</span> <span class="o">=</span> <span class="n">vox_dst</span> <span class="o">&lt;=</span> <span class="n">gm_sampler</span>
+    <span class="c1"># Loop over ROIs to map vertices to volume, using mapper or cortex mask + vertex indices</span>
+    <span class="k">for</span> <span class="n">roi</span> <span class="ow">in</span> <span class="n">roi_list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">roi</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">roi_verts</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">roi</span><span class="o">==</span><span class="s1">&#39;Cortex&#39;</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ROI </span><span class="si">{}</span><span class="s2"> not found...&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">roi</span><span class="p">))</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">use_mapper</span><span class="p">:</span>
+            <span class="n">roi_voxels</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapper</span><span class="o">.</span><span class="n">backwards</span><span class="p">(</span><span class="n">roi_verts</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">))</span>
+            <span class="c1"># Optionally threshold probablistic values returned by mapper</span>
+            <span class="k">if</span> <span class="n">threshold</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">roi_voxels</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span> <span class="o">=</span> <span class="n">roi_voxels</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">threshold</span>
+            <span class="c1"># Check for partial / empty rois:</span>
+            <span class="n">vert_in_scan</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">m</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">mapper</span><span class="o">.</span><span class="n">masks</span><span class="p">])</span>
+            <span class="n">vert_in_scan</span> <span class="o">=</span> <span class="n">vert_in_scan</span><span class="p">[</span><span class="n">roi_verts</span><span class="p">[</span><span class="n">roi</span><span class="p">]]</span>
+        <span class="k">elif</span> <span class="n">use_cortex_mask</span><span class="p">:</span>
+            <span class="n">vox_in_roi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">in1d</span><span class="p">(</span><span class="n">vox_idx</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">roi_verts</span><span class="p">[</span><span class="n">roi</span><span class="p">])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">vox_idx</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">roi_voxels</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span> <span class="o">=</span> <span class="n">vox_in_roi</span> <span class="o">&amp;</span> <span class="n">cortex_mask</span>
+            <span class="c1"># This is not accurate... because vox_idx only contains the indices of the *nearest*</span>
+            <span class="c1"># vertex to each voxel, it excludes many vertices. I can&#39;t think of a way to compute</span>
+            <span class="c1"># this accurately for non-mapper gm_samplers for now... ML 2017.07.14</span>
+            <span class="n">vert_in_scan</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">in1d</span><span class="p">(</span><span class="n">roi_verts</span><span class="p">[</span><span class="n">roi</span><span class="p">],</span> <span class="n">vox_idx</span><span class="p">[</span><span class="n">cortex_mask</span><span class="p">])</span>
+        <span class="c1"># Compute ROI coverage</span>
+        <span class="n">pct_coverage</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span> <span class="o">=</span> <span class="n">vert_in_scan</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="k">if</span> <span class="n">use_mapper</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Found </span><span class="si">%0.2f%%</span><span class="s2"> of </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">pct_coverage</span><span class="p">[</span><span class="n">roi</span><span class="p">],</span> <span class="n">roi</span><span class="p">))</span>
+
+    <span class="c1"># Create cortex mask</span>
+    <span class="n">all_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">roi_voxels</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;Cortex&#39;</span> <span class="ow">in</span> <span class="n">roi_list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">use_mapper</span><span class="p">:</span>
+            <span class="c1"># cortex_mask isn&#39;t defined / exactly definable if you&#39;re using a mapper</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cortex roi not included b/c currently not compatible with your selection for gm_sampler&quot;</span><span class="p">)</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="n">roi_list</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">roi_list</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s1">&#39;Cortex&#39;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">roi_voxels</span><span class="p">[</span><span class="s1">&#39;Cortex&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">all_mask</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">cortex_mask</span>
+    <span class="c1"># Optionally cull voxels assigned to &gt; 1 ROI due to partly overlapping ROI splines</span>
+    <span class="c1"># in inkscape overlays.svg file:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_overlap</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Cutting </span><span class="si">{}</span><span class="s1"> overlapping voxels (should be &lt; ~50)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">all_mask</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="k">for</span> <span class="n">roi</span> <span class="ow">in</span> <span class="n">roi_list</span><span class="p">:</span>
+            <span class="n">roi_voxels</span><span class="p">[</span><span class="n">roi</span><span class="p">][</span><span class="n">all_mask</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="c1"># Split left / right hemispheres if desired</span>
+    <span class="c1"># There ought to be a more succinct way to do this - get_hemi_masks only does the cortical</span>
+    <span class="c1"># ribbon, and is not guaranteed to have all voxels in the cortex_mask specified in this fn</span>
+    <span class="k">if</span> <span class="n">split_lr</span><span class="p">:</span>
+        <span class="n">left_verts</span><span class="p">,</span> <span class="n">right_verts</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">left_mask</span> <span class="o">=</span> <span class="n">vox_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">left_verts</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">right_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">left_mask</span><span class="p">)</span>
+        <span class="n">roi_voxels_lr</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">roi</span> <span class="ow">in</span> <span class="n">roi_list</span><span class="p">:</span>
+            <span class="n">roi_voxels_lr</span><span class="p">[</span><span class="n">roi</span><span class="o">+</span><span class="s1">&#39;_L&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">roi_voxels</span><span class="p">[</span><span class="n">roi</span><span class="p">])</span> <span class="c1"># &amp; left_mask</span>
+            <span class="n">roi_voxels_lr</span><span class="p">[</span><span class="n">roi</span><span class="o">+</span><span class="s1">&#39;_L&#39;</span><span class="p">][</span><span class="n">right_mask</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1"># ?</span>
+            <span class="n">roi_voxels_lr</span><span class="p">[</span><span class="n">roi</span><span class="o">+</span><span class="s1">&#39;_R&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">roi_voxels</span><span class="p">[</span><span class="n">roi</span><span class="p">])</span> <span class="c1"># &amp; right_mask</span>
+            <span class="n">roi_voxels_lr</span><span class="p">[</span><span class="n">roi</span><span class="o">+</span><span class="s1">&#39;_R&#39;</span><span class="p">][</span><span class="n">left_mask</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1"># ?</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">roi_voxels_lr</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">roi_voxels</span>
+
+    <span class="c1"># Check percent coverage / optionally cull emtpy ROIs</span>
+    <span class="k">for</span> <span class="n">roi</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">roi_list</span><span class="p">)</span><span class="o">-</span><span class="nb">set</span><span class="p">([</span><span class="s1">&#39;Cortex&#39;</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">pct_coverage</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+            <span class="c1"># if not np.any(mask) : reject ROI</span>
+            <span class="k">if</span> <span class="n">pct_coverage</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;ROI </span><span class="si">%s</span><span class="s1"> is entirely missing from your scan protocol!&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">roi</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">exclude_empty_rois</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">split_lr</span><span class="p">:</span>
+                        <span class="n">_</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">roi</span><span class="o">+</span><span class="s1">&#39;_L&#39;</span><span class="p">)</span>
+                        <span class="n">_</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">roi</span><span class="o">+</span><span class="s1">&#39;_R&#39;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">_</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># I think this is the only one for which this works correctly...</span>
+                <span class="k">if</span> <span class="n">gm_sampler</span><span class="o">==</span><span class="s1">&#39;cortical-conservative&#39;</span><span class="p">:</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;ROI </span><span class="si">%s</span><span class="s1"> is only </span><span class="si">%0.2f%%</span><span class="s1"> contained in your scan protocol!&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">pct_coverage</span><span class="p">[</span><span class="n">roi</span><span class="p">]))</span>
+
+    <span class="c1"># Support alternative outputs for backward compatibility</span>
+    <span class="k">if</span> <span class="n">return_dict</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">output</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">idx_vol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">vox_idx</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+        <span class="n">idx_labels</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">iroi</span><span class="p">,</span> <span class="n">roi</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">roi_list</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">idx_vol</span><span class="p">[</span><span class="n">roi_voxels</span><span class="p">[</span><span class="n">roi</span><span class="p">]]</span> <span class="o">=</span> <span class="n">iroi</span>
+            <span class="n">idx_labels</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span> <span class="o">=</span> <span class="n">iroi</span>
+        <span class="n">idx_vol</span><span class="p">[</span><span class="n">left_mask</span><span class="p">]</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">return</span> <span class="n">idx_vol</span><span class="p">,</span> <span class="n">idx_labels</span></div>
+
+<div class="viewcode-block" id="get_dropout"><a class="viewcode-back" href="../../generated/cortex.utils.get_dropout.html#cortex.utils.get_dropout">[docs]</a><span class="k">def</span> <span class="nf">get_dropout</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create a dropout Volume showing where EPI signal</span>
+<span class="sd">    is very low.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of subject</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        Name of transform</span>
+<span class="sd">    power :</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    volume : dataview</span>
+<span class="sd">        Pycortex volume of low signal locations</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+    <span class="n">rawdata</span> <span class="o">=</span> <span class="n">xfm</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="c1"># Collapse epi across time if it&#39;s 4D</span>
+    <span class="k">if</span> <span class="n">rawdata</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">rawdata</span> <span class="o">=</span> <span class="n">rawdata</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">rawdata</span><span class="p">[</span><span class="n">rawdata</span><span class="o">==</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">rawdata</span><span class="p">[</span><span class="n">rawdata</span><span class="o">!=</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">normdata</span> <span class="o">=</span> <span class="p">(</span><span class="n">rawdata</span> <span class="o">-</span> <span class="n">rawdata</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">/</span> <span class="p">(</span><span class="n">rawdata</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">rawdata</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+    <span class="n">normdata</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">normdata</span><span class="p">)</span> <span class="o">**</span> <span class="n">power</span>
+
+    <span class="kn">from</span> <span class="nn">.dataset</span> <span class="kn">import</span> <span class="n">Volume</span>
+    <span class="k">return</span> <span class="n">Volume</span><span class="p">(</span><span class="n">normdata</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="make_movie"><a class="viewcode-back" href="../../generated/cortex.utils.make_movie.html#cortex.utils.make_movie">[docs]</a><span class="k">def</span> <span class="nf">make_movie</span><span class="p">(</span><span class="n">stim</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;640x480&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Makes an .ogv movie</span>
+
+<span class="sd">    A simple wrapper for ffmpeg. Calls:</span>
+<span class="sd">    &quot;ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv&quot;</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stim :</span>
+
+<span class="sd">    outfile : str</span>
+
+<span class="sd">    fps : float</span>
+<span class="sd">        refresh rate of the stimulus</span>
+<span class="sd">    size : str</span>
+<span class="sd">        resolution of the movie out</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">shlex</span>
+    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;ffmpeg -r </span><span class="si">{fps}</span><span class="s2"> -i </span><span class="si">{infile}</span><span class="s2"> -b 4800k -g 30 -s </span><span class="si">{size}</span><span class="s2"> -vcodec libtheora </span><span class="si">{outfile}</span><span class="s2">.ogv&quot;</span>
+    <span class="n">fcmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">infile</span><span class="o">=</span><span class="n">stim</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">outfile</span><span class="o">=</span><span class="n">outfile</span><span class="p">)</span>
+    <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">fcmd</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="vertex_to_voxel"><a class="viewcode-back" href="../../generated/cortex.utils.vertex_to_voxel.html#cortex.utils.vertex_to_voxel">[docs]</a><span class="k">def</span> <span class="nf">vertex_to_voxel</span><span class="p">(</span><span class="n">subject</span><span class="p">):</span>  <span class="c1"># Am I deprecated in favor of mappers??? Maybe?</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of subject</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">max_thickness</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surfinfo</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;thickness&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+    <span class="c1"># Get distance from each voxel to each vertex on each surface</span>
+    <span class="n">fid_dist</span><span class="p">,</span> <span class="n">fid_verts</span> <span class="o">=</span> <span class="n">get_vox_dist</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;identity&quot;</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">max_thickness</span><span class="p">)</span>
+    <span class="n">wm_dist</span><span class="p">,</span> <span class="n">wm_verts</span> <span class="o">=</span> <span class="n">get_vox_dist</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;identity&quot;</span><span class="p">,</span> <span class="s2">&quot;wm&quot;</span><span class="p">,</span> <span class="n">max_thickness</span><span class="p">)</span>
+    <span class="n">pia_dist</span><span class="p">,</span> <span class="n">pia_verts</span> <span class="o">=</span> <span class="n">get_vox_dist</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;identity&quot;</span><span class="p">,</span> <span class="s2">&quot;pia&quot;</span><span class="p">,</span> <span class="n">max_thickness</span><span class="p">)</span>
+
+    <span class="c1"># Get nearest vertex on any surface for each voxel</span>
+    <span class="n">all_dist</span><span class="p">,</span> <span class="n">all_verts</span> <span class="o">=</span> <span class="n">fid_dist</span><span class="p">,</span> <span class="n">fid_verts</span>
+
+    <span class="n">wm_closer</span> <span class="o">=</span> <span class="n">wm_dist</span> <span class="o">&lt;</span> <span class="n">all_dist</span>
+    <span class="n">all_dist</span><span class="p">[</span><span class="n">wm_closer</span><span class="p">]</span> <span class="o">=</span> <span class="n">wm_dist</span><span class="p">[</span><span class="n">wm_closer</span><span class="p">]</span>
+    <span class="n">all_verts</span><span class="p">[</span><span class="n">wm_closer</span><span class="p">]</span> <span class="o">=</span> <span class="n">wm_verts</span><span class="p">[</span><span class="n">wm_closer</span><span class="p">]</span>
+
+    <span class="n">pia_closer</span> <span class="o">=</span> <span class="n">pia_dist</span> <span class="o">&lt;</span> <span class="n">all_dist</span>
+    <span class="n">all_dist</span><span class="p">[</span><span class="n">pia_closer</span><span class="p">]</span> <span class="o">=</span> <span class="n">pia_dist</span><span class="p">[</span><span class="n">pia_closer</span><span class="p">]</span>
+    <span class="n">all_verts</span><span class="p">[</span><span class="n">pia_closer</span><span class="p">]</span> <span class="o">=</span> <span class="n">pia_verts</span><span class="p">[</span><span class="n">pia_closer</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">all_verts</span></div>
+
+
+<span class="k">def</span> <span class="nf">_set_edge_distance_graph_attribute</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    adds the attribute &#39;edge distance&#39; to a graph</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+
+    <span class="n">l2_distance</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">pts</span><span class="p">[</span><span class="n">v1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pts</span><span class="p">[</span><span class="n">v2</span><span class="p">])</span>
+    <span class="n">heuristic</span> <span class="o">=</span> <span class="n">l2_distance</span> <span class="c1"># A* heuristic</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">nx</span><span class="o">.</span><span class="n">get_edge_attributes</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="s1">&#39;distance&#39;</span><span class="p">):</span> <span class="c1"># Add edge distances as an attribute to this graph if it isn&#39;t there</span>
+        <span class="n">edge_distances</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span> <span class="ow">in</span> <span class="n">polys</span><span class="p">:</span>
+            <span class="n">edge_distances</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)]</span> <span class="o">=</span> <span class="n">heuristic</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+            <span class="n">edge_distances</span><span class="p">[(</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">)]</span> <span class="o">=</span> <span class="n">heuristic</span><span class="p">(</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">edge_distances</span><span class="p">[(</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]</span> <span class="o">=</span> <span class="n">heuristic</span><span class="p">(</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+            <span class="n">edge_distances</span><span class="p">[(</span><span class="n">z</span><span class="p">,</span><span class="n">y</span><span class="p">)]</span> <span class="o">=</span> <span class="n">heuristic</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+            <span class="n">edge_distances</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">z</span><span class="p">)]</span> <span class="o">=</span> <span class="n">heuristic</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+            <span class="n">edge_distances</span><span class="p">[(</span><span class="n">z</span><span class="p">,</span><span class="n">x</span><span class="p">)]</span> <span class="o">=</span> <span class="n">heuristic</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">nx</span><span class="o">.</span><span class="n">set_edge_attributes</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">edge_distances</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;distance&#39;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_shared_voxels</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_astar</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Return voxels that are shared by multiple vertices, and for each such voxel,</span>
+<span class="sd">       also returns the mutually farthest pair of vertices mapping to the voxel</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of the subject</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        Name of the transform</span>
+<span class="sd">    hemi : str, optional</span>
+<span class="sd">        Which hemisphere to return. For now, only &#39;lh&#39; or &#39;rh&#39;</span>
+<span class="sd">    merge : bool, optinal</span>
+<span class="sd">        Join the hemispheres, if requesting both</span>
+<span class="sd">    use_astar: bool, optional</span>
+<span class="sd">        Toggle to decide whether to use A* seach or geodesic paths for the</span>
+<span class="sd">        shortest paths</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    vox_vert_array: np.array,</span>
+<span class="sd">    array of dimensions # voxels X 3, columns being: (vox_idx, farthest_pair[0],</span>
+<span class="sd">    farthest_pair[1])</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="kn">from</span> <span class="nn">scipy.sparse</span> <span class="kn">import</span> <span class="n">find</span> <span class="k">as</span> <span class="n">sparse_find</span>
+    <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+    <span class="n">Lmask</span><span class="p">,</span> <span class="n">Rmask</span> <span class="o">=</span> <span class="n">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span><span class="o">.</span><span class="n">masks</span>  <span class="c1"># Get masks for left and right hemisphere </span>
+    <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s1">&#39;both&#39;</span><span class="p">:</span>
+        <span class="n">hemispheres</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">hemispheres</span> <span class="o">=</span> <span class="p">[</span><span class="n">hemi</span><span class="p">]</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">hem</span> <span class="ow">in</span> <span class="n">hemispheres</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">hem</span> <span class="o">==</span> <span class="s1">&#39;lh&#39;</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">Lmask</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">Rmask</span>
+
+        <span class="n">all_voxels</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">tolil</span><span class="p">()</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span><span class="o">.</span><span class="n">rows</span>  <span class="c1"># Map from voxels to verts</span>
+        <span class="n">vert_to_vox_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">sparse_find</span><span class="p">(</span><span class="n">mask</span><span class="p">)[:</span><span class="mi">2</span><span class="p">])))</span>  <span class="c1"># From verts to vox</span>
+
+        <span class="n">pts_fid</span><span class="p">,</span> <span class="n">polys_fid</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">,</span> <span class="n">hem</span><span class="p">)</span>  <span class="c1"># Get the fiducial surface</span>
+        <span class="n">surf</span> <span class="o">=</span> <span class="n">Surface</span><span class="p">(</span><span class="n">pts_fid</span><span class="p">,</span> <span class="n">polys_fid</span><span class="p">)</span> <span class="c1">#Get the fiducial surface</span>
+        <span class="n">graph</span> <span class="o">=</span> <span class="n">surf</span><span class="o">.</span><span class="n">graph</span> 
+
+        <span class="n">_set_edge_distance_graph_attribute</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">pts_fid</span><span class="p">,</span> <span class="n">polys_fid</span><span class="p">)</span>
+
+        <span class="n">l2_distance</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">pts_fid</span><span class="p">[</span><span class="n">v1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pts_fid</span><span class="p">[</span><span class="n">v2</span><span class="p">])</span>
+        <span class="n">heuristic</span> <span class="o">=</span> <span class="n">l2_distance</span>  <span class="c1"># A* heuristic</span>
+
+        <span class="k">if</span> <span class="n">use_astar</span><span class="p">:</span>
+            <span class="n">shortest_path</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">astar_path</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">heuristic</span><span class="o">=</span><span class="n">heuristic</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="s1">&#39;distance&#39;</span><span class="p">)</span> <span class="c1"># Find approximate shortest paths using A* search</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">shortest_path</span> <span class="o">=</span> <span class="n">surf</span><span class="o">.</span><span class="n">geodesic_path</span>  <span class="c1"># Find shortest paths using geodesic distances</span>
+
+        <span class="n">vox_vert_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">vox_idx</span><span class="p">,</span> <span class="n">vox</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_voxels</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vox</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># If the voxel maps to multiple vertices</span>
+                <span class="n">vox</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">vox</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">v1</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">vox</span><span class="o">.</span><span class="n">size</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                    <span class="n">vert1</span> <span class="o">=</span> <span class="n">vox</span><span class="p">[</span><span class="n">v1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">vert1</span> <span class="ow">in</span> <span class="n">vert_to_vox_map</span><span class="p">:</span>  <span class="c1"># If the vertex is a valid vertex</span>
+                        <span class="k">for</span> <span class="n">v2</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">v1</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">vox</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+                            <span class="n">vert2</span> <span class="o">=</span> <span class="n">vox</span><span class="p">[</span><span class="n">v2</span><span class="p">]</span>
+                            <span class="k">if</span> <span class="n">vert2</span> <span class="ow">in</span> <span class="n">vert_to_vox_map</span><span class="p">:</span>  <span class="c1"># If the vertex is a valid vertex</span>
+                                <span class="n">path</span> <span class="o">=</span> <span class="n">shortest_path</span><span class="p">(</span><span class="n">vert1</span><span class="p">,</span> <span class="n">vert2</span><span class="p">)</span>
+                                <span class="c1"># Test whether any vertex in path goes out of the voxel</span>
+                                <span class="n">stays_in_voxel</span> <span class="o">=</span> <span class="nb">all</span><span class="p">([(</span><span class="n">v</span> <span class="ow">in</span> <span class="n">vert_to_vox_map</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">vert_to_vox_map</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">==</span> <span class="n">vox_idx</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">path</span><span class="p">])</span> 
+                                <span class="k">if</span> <span class="ow">not</span> <span class="n">stays_in_voxel</span><span class="p">:</span>
+                                    <span class="n">vox_vert_list</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">vox_idx</span><span class="p">,</span> <span class="n">vert1</span><span class="p">,</span> <span class="n">vert2</span><span class="p">])</span>
+
+        <span class="n">tmp</span> <span class="o">=</span>  <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">vox_vert_list</span><span class="p">)</span>
+        <span class="c1"># Add offset for right hem voxels</span>
+        <span class="k">if</span> <span class="n">hem</span><span class="o">==</span><span class="s1">&#39;rh&#39;</span><span class="p">:</span>
+            <span class="n">tmp</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Lmask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">hemi</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">merge</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">load_sparse_array</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">varname</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Load a numpy sparse array from an hdf file</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fname: string</span>
+<span class="sd">        file name containing array to be loaded</span>
+<span class="sd">    varname: string</span>
+<span class="sd">        name of variable to be loaded</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    This function relies on variables being stored with specific naming</span>
+<span class="sd">    conventions, so cannot be used to load arbitrary sparse arrays.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">scipy.sparse</span>
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span> <span class="k">as</span> <span class="n">hf</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">hf</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_data&#39;</span><span class="o">%</span><span class="n">varname</span><span class="p">],</span> <span class="n">hf</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_indices&#39;</span><span class="o">%</span><span class="n">varname</span><span class="p">],</span> <span class="n">hf</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_indptr&#39;</span><span class="o">%</span><span class="n">varname</span><span class="p">])</span>
+        <span class="n">sparsemat</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">hf</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_shape&#39;</span><span class="o">%</span><span class="n">varname</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">sparsemat</span>
+
+
+<span class="k">def</span> <span class="nf">save_sparse_array</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">varname</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Save a numpy sparse array to an hdf file</span>
+<span class="sd">    </span>
+<span class="sd">    Results in relatively smaller file size than numpy.savez</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fname : string</span>
+<span class="sd">        file name to save</span>
+<span class="sd">    data : sparse array</span>
+<span class="sd">        data to save</span>
+<span class="sd">    varname : string</span>
+<span class="sd">        name of variable to save</span>
+<span class="sd">    mode : string</span>
+<span class="sd">        write / append mode set, one of [&#39;w&#39;,&#39;a&#39;] (passed to h5py.File())</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">scipy.sparse</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">):</span>
+        <span class="n">data_</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">data_</span> <span class="o">=</span> <span class="n">data</span>
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span> <span class="k">as</span> <span class="n">hf</span><span class="p">:</span>
+        <span class="c1"># Save indices</span>
+        <span class="n">hf</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">varname</span> <span class="o">+</span> <span class="s1">&#39;_indices&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data_</span><span class="o">.</span><span class="n">indices</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;gzip&#39;</span><span class="p">)</span>
+        <span class="c1"># Save data</span>
+        <span class="n">hf</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">varname</span> <span class="o">+</span> <span class="s1">&#39;_data&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data_</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;gzip&#39;</span><span class="p">)</span>
+        <span class="c1"># Save indptr</span>
+        <span class="n">hf</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">varname</span> <span class="o">+</span> <span class="s1">&#39;_indptr&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data_</span><span class="o">.</span><span class="n">indptr</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;gzip&#39;</span><span class="p">)</span>
+        <span class="c1"># Save shape</span>
+        <span class="n">hf</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">varname</span> <span class="o">+</span> <span class="s1">&#39;_shape&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data_</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;gzip&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_cmap"><a class="viewcode-back" href="../../generated/cortex.utils.get_cmap.html#cortex.utils.get_cmap">[docs]</a><span class="k">def</span> <span class="nf">get_cmap</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Gets a colormaps</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Name of colormap to get</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    cmap : ListedColormap</span>
+<span class="sd">        Matplotlib colormap object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">colors</span>
+    <span class="c1"># unknown colormap, test whether it&#39;s in pycortex colormaps</span>
+    <span class="n">cmapdir</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;webgl&#39;</span><span class="p">,</span> <span class="s1">&#39;colormaps&#39;</span><span class="p">)</span>
+    <span class="n">colormaps</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">cmapdir</span><span class="p">)</span>
+    <span class="n">colormaps</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">colormaps</span> <span class="k">if</span> <span class="s1">&#39;.png&#39;</span> <span class="ow">in</span> <span class="n">c</span><span class="p">])</span>
+    <span class="n">colormaps</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">c</span><span class="p">[:</span><span class="o">-</span><span class="mi">4</span><span class="p">],</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmapdir</span><span class="p">,</span> <span class="n">c</span><span class="p">))</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">colormaps</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">colormaps</span><span class="p">:</span>
+        <span class="n">I</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">colormaps</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+        <span class="n">cmap</span> <span class="o">=</span> <span class="n">colors</span><span class="o">.</span><span class="n">ListedColormap</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">I</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">register_cmap</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">cmap</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Unkown color map!&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cmap</span></div>
+
+<span class="k">def</span> <span class="nf">add_cmap</span><span class="p">(</span><span class="n">cmap</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">cmapdir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add a colormap to pycortex</span>
+
+<span class="sd">    This stores a matplotlib colormap in the pycortex filestore, such that it can</span>
+<span class="sd">    be used in the webgl viewer in pycortex. See [] for more information about how</span>
+<span class="sd">    to generate colormaps in matplotlib</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cmap : matplotlib colormap</span>
+<span class="sd">        Color map to be saved</span>
+<span class="sd">    name :</span>
+<span class="sd">        Name for colormap, e.g. &#39;jet&#39;, &#39;blue_to_yellow&#39;, etc. This will be a file name,</span>
+<span class="sd">        so no weird characters. This name will also be used to specify this colormap in</span>
+<span class="sd">        future calls to cortex.quickflat.make_figure() or cortex.webgl.show()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">colors</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
+    <span class="n">cmap_im</span> <span class="o">=</span> <span class="n">cmap</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="mi">256</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">cmapdir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Probably won&#39;t work due to permissions...</span>
+        <span class="n">cmapdir</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;webgl&#39;</span><span class="p">,</span> <span class="s1">&#39;colormaps&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmapdir</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span> <span class="n">cmap_im</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">download_subject</span><span class="p">(</span><span class="n">subject_id</span><span class="o">=</span><span class="s1">&#39;fsaverage&#39;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pycortex_store</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Download subjects to pycortex store</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject_id : string</span>
+<span class="sd">        subject identifying string in pycortex. This assumes that </span>
+<span class="sd">        the file downloaded from some URL is of the form &lt;subject_id&gt;.tar.gz</span>
+<span class="sd">    url: string or None</span>
+<span class="sd">        URL from which to download. Not necessary to specify for subjects </span>
+<span class="sd">        known to pycortex (None is OK). Known subjects will have a default URL. </span>
+<span class="sd">        Currently,the only known subjects is &#39;fsaverage&#39;, but there are plans </span>
+<span class="sd">        to add more in the future. If provided, URL overrides `subject_id`</span>
+<span class="sd">    pycortex_store : string or None</span>
+<span class="sd">        Directory to which to put the new subject folder. If None, defaults to</span>
+<span class="sd">        the `filestore` variable specified in the pycortex config file. </span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Lazy imports</span>
+    <span class="kn">import</span> <span class="nn">tarfile</span>
+    <span class="kn">import</span> <span class="nn">wget</span>
+    <span class="kn">import</span> <span class="nn">os</span>
+    <span class="c1"># Map codes to URLs; more coming eventually</span>
+    <span class="n">id_to_url</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fsaverage</span><span class="o">=</span><span class="s1">&#39;https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758&#39;</span><span class="p">,</span>
+                     <span class="p">)</span>
+    <span class="k">if</span> <span class="n">url</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">subject_id</span> <span class="ow">in</span> <span class="n">id_to_url</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unknown subject_id!&#39;</span><span class="p">)</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">id_to_url</span><span class="p">[</span><span class="n">subject_id</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Downloading from: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
+    <span class="c1"># Download to temp dir</span>
+    <span class="n">tmp_dir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">gettempdir</span><span class="p">()</span>
+    <span class="n">wget</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="n">url</span> <span class="p">,</span> <span class="n">tmp_dir</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Downloaded subject </span><span class="si">{}</span><span class="s1"> to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">tmp_dir</span><span class="p">))</span>
+    <span class="c1"># Un-tar to pycortex store</span>
+    <span class="k">if</span> <span class="n">pycortex_store</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Default location is config file pycortex store.</span>
+        <span class="n">pycortex_store</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;basic&#39;</span><span class="p">,</span> <span class="s1">&#39;filestore&#39;</span><span class="p">)</span>
+    <span class="n">pycortex_store</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">pycortex_store</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmp_dir</span><span class="p">,</span> <span class="n">subject_id</span> <span class="o">+</span> <span class="s1">&#39;.tar.gz&#39;</span><span class="p">),</span> <span class="s2">&quot;r:gz&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tar</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Extracting subject </span><span class="si">{}</span><span class="s2"> to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">pycortex_store</span><span class="p">))</span>
+        <span class="n">tar</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">pycortex_store</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

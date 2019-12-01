@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.priority
+=================================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: VertexRGB.priority

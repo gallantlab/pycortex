@@ -1,0 +1,33 @@
+cortex.xfm.Transform
+====================
+
+.. currentmodule:: cortex.xfm
+
+.. autoclass:: Transform
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Transform.__init__
+      ~Transform.from_freesurfer
+      ~Transform.from_fsl
+      ~Transform.save
+      ~Transform.to_freesurfer
+      ~Transform.to_fsl
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Transform.inv
+   
+   

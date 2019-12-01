@@ -1,0 +1,6 @@
+cortex.utils.get\_vox\_dist
+===========================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: get_vox_dist

@@ -1,0 +1,6 @@
+cortex.segment.init\_subject
+============================
+
+.. currentmodule:: cortex.segment
+
+.. autofunction:: init_subject

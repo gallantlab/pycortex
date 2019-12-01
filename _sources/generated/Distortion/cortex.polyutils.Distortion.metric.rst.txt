@@ -1,0 +1,6 @@
+cortex.polyutils.Distortion.metric
+==================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Distortion.metric

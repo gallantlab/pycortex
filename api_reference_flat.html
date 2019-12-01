@@ -1,0 +1,634 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Python API Reference &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Create a 3D WebGL Viewer with Multiple Datasets" href="auto_examples/webgl/multiple_datasets.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="python-api-reference">
+<span id="api-reference"></span><h1>Python API Reference<a class="headerlink" href="#python-api-reference" title="Permalink to this headline">¶</a></h1>
+<p>These are the classes and functions in pycortex.</p>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#most-commonly-used-modules" id="id1">Most commonly used modules</a></p>
+<ul>
+<li><p><a class="reference internal" href="#module-cortex.quickflat" id="id2">quickflat</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.webgl" id="id3">webgl</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.dataset" id="id4">dataset</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#all-the-other-modules" id="id5">All the other modules</a></p>
+<ul>
+<li><p><a class="reference internal" href="#module-cortex.align" id="id6">align</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.anat" id="id7">anat</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.database" id="id8">database</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.freesurfer" id="id9">freesurfer</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.mapper" id="id10">mapper</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.mni" id="id11">mni</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.polyutils" id="id12">polyutils</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.segment" id="id13">segment</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.surfinfo" id="id14">surfinfo</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.utils" id="id15">utils</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.volume" id="id16">volume</a></p></li>
+<li><p><a class="reference internal" href="#module-cortex.xfm" id="id17">xfm</a></p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="most-commonly-used-modules">
+<h2><a class="toc-backref" href="#id1">Most commonly used modules</a><a class="headerlink" href="#most-commonly-used-modules" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-cortex.quickflat">
+<span id="quickflat"></span><h3><a class="toc-backref" href="#id2">quickflat</a><a class="headerlink" href="#module-cortex.quickflat" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_curvature</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_data</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_rois</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_sulci</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_hatch</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_colorbar</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_custom</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_cutout</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.quickflat.make_figure.html#cortex.quickflat.make_figure" title="cortex.quickflat.make_figure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_figure</span></code></a>(braindata[, recache, pixelwise, …])</p></td>
+<td><p>Show a Volume or Vertex on a flatmap with matplotlib.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.quickflat.make_png.html#cortex.quickflat.make_png" title="cortex.quickflat.make_png"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_png</span></code></a>(fname, braindata[, recache, …])</p></td>
+<td><p>Create a PNG of the VertexData or VolumeData on a flatmap.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.quickflat.make_svg.html#cortex.quickflat.make_svg" title="cortex.quickflat.make_svg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_svg</span></code></a>(fname, braindata[, with_labels, …])</p></td>
+<td><p>Save an svg file of the desired flatmap.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_flatmask</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_flatcache</span></code></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.webgl">
+<span id="webgl"></span><h3><a class="toc-backref" href="#id3">webgl</a><a class="headerlink" href="#module-cortex.webgl" title="Permalink to this headline">¶</a></h3>
+<p>Makes an interactive viewer for viewing data in a browser</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.webgl.show.html#cortex.webgl.show" title="cortex.webgl.show"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show</span></code></a>(data[, types, recache, cmap, layout, …])</p></td>
+<td><p>Creates a webGL MRI viewer that is dynamically served by a tornado server running inside the current python process.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.webgl.make_static.html#cortex.webgl.make_static" title="cortex.webgl.make_static"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_static</span></code></a>(outpath, data[, types, recache, …])</p></td>
+<td><p>Creates a static webGL MRI viewer in your filesystem so that it can easily be posted publically for sharing or just saved for later viewing.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.dataset">
+<span id="dataset"></span><h3><a class="toc-backref" href="#id4">dataset</a><a class="headerlink" href="#module-cortex.dataset" title="Permalink to this headline">¶</a></h3>
+<p>Contains classes for representing brain data in either volumetric or vertex (surface-based) formats for visualization.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Volume</span></code></a>(data, subject, xfmname[, mask, cmap, …])</p></td>
+<td><p>Encapsulates a 3D volume or 4D volumetric movie.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.dataset.Volume2D.html#cortex.dataset.Volume2D" title="cortex.dataset.Volume2D"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Volume2D</span></code></a>(dim1, dim2[, subject, xfmname, …])</p></td>
+<td><p>Contains two 3D volumes for simultaneous visualization.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.dataset.VolumeRGB.html#cortex.dataset.VolumeRGB" title="cortex.dataset.VolumeRGB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VolumeRGB</span></code></a>(red, green, blue[, subject, …])</p></td>
+<td><p>Contains RGB (or RGBA) colors for each voxel in a volumetric dataset.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.dataset.Vertex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Vertex</span></code></a>(data, subject[, cmap, vmin, vmax, …])</p></td>
+<td><p>Encapsulates a 1D vertex map or 2D vertex movie.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.dataset.Vertex2D.html#cortex.dataset.Vertex2D" title="cortex.dataset.Vertex2D"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Vertex2D</span></code></a>(dim1, dim2[, subject, description, …])</p></td>
+<td><p>Contains two vertex maps for simultaneous visualization.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.dataset.VertexRGB.html#cortex.dataset.VertexRGB" title="cortex.dataset.VertexRGB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VertexRGB</span></code></a>(red, green, blue[, subject, …])</p></td>
+<td><p>Contains RGB (or RGBA) colors for each vertex in a surface dataset.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.dataset.Dataset.html#cortex.dataset.Dataset" title="cortex.dataset.Dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Dataset</span></code></a>(**kwargs)</p></td>
+<td><p>Wrapper for multiple data objects.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="all-the-other-modules">
+<h2><a class="toc-backref" href="#id5">All the other modules</a><a class="headerlink" href="#all-the-other-modules" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-cortex.align">
+<span id="align"></span><h3><a class="toc-backref" href="#id6">align</a><a class="headerlink" href="#module-cortex.align" title="Permalink to this headline">¶</a></h3>
+<p>Contains functions for making alignments between functional data and the surface, or, finding where the brain is.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.align.manual.html#cortex.align.manual" title="cortex.align.manual"><code class="xref py py-obj docutils literal notranslate"><span class="pre">manual</span></code></a>(subject, xfmname[, reference])</p></td>
+<td><p>Open GUI for manually aligning a functional volume to the cortical surface for <cite>subject</cite>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.align.automatic.html#cortex.align.automatic" title="cortex.align.automatic"><code class="xref py py-obj docutils literal notranslate"><span class="pre">automatic</span></code></a>(subject, xfmname, reference[, …])</p></td>
+<td><p>Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.align.autotweak.html#cortex.align.autotweak" title="cortex.align.autotweak"><code class="xref py py-obj docutils literal notranslate"><span class="pre">autotweak</span></code></a>(subject, xfmname)</p></td>
+<td><p>Tweak an alignment using the FLIRT boundary-based alignment (BBR) from FSL.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.anat">
+<span id="anat"></span><h3><a class="toc-backref" href="#id7">anat</a><a class="headerlink" href="#module-cortex.anat" title="Permalink to this headline">¶</a></h3>
+<p>Contains functions for making a whitematter mask</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.anat.brainmask.html#cortex.anat.brainmask" title="cortex.anat.brainmask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">brainmask</span></code></a>(outfile, subject)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.anat.whitematter.html#cortex.anat.whitematter" title="cortex.anat.whitematter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">whitematter</span></code></a>(outfile, subject[, do_voxelize])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.anat.voxelize.html#cortex.anat.voxelize" title="cortex.anat.voxelize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">voxelize</span></code></a>(outfile, subject[, surf, mp])</p></td>
+<td><p>Voxelize the whitematter surface to generate the white matter mask</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.database">
+<span id="database"></span><h3><a class="toc-backref" href="#id8">database</a><a class="headerlink" href="#module-cortex.database" title="Permalink to this headline">¶</a></h3>
+<p>Contains a singleton object <cite>db</cite> of type <cite>Database</cite> which allows easy access to surface files, anatomical images, and transforms that are stored in the pycortex filestore.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.database.Database.html#cortex.database.Database" title="cortex.database.Database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Database</span></code></a>()</p></td>
+<td><p>Surface database</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.freesurfer">
+<span id="freesurfer"></span><h3><a class="toc-backref" href="#id9">freesurfer</a><a class="headerlink" href="#module-cortex.freesurfer" title="Permalink to this headline">¶</a></h3>
+<p>Contains functions for interfacing with freesurfer</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.get_paths.html#cortex.freesurfer.get_paths" title="cortex.freesurfer.get_paths"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_paths</span></code></a>(subject, hemi[, type, …])</p></td>
+<td><p>Retrive paths for all surfaces for a subject processed by freesurfer</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.autorecon.html#cortex.freesurfer.autorecon" title="cortex.freesurfer.autorecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">autorecon</span></code></a>(subject[, type, parallel, n_cores])</p></td>
+<td><p>Run Freesurfer’s autorecon-all command for a given freesurfer subject</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.flatten.html#cortex.freesurfer.flatten" title="cortex.freesurfer.flatten"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flatten</span></code></a>(subject, hemi, patch[, …])</p></td>
+<td><p>Perform flattening of a brain using freesurfer</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.import_subj.html#cortex.freesurfer.import_subj" title="cortex.freesurfer.import_subj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">import_subj</span></code></a>(subject[, sname, …])</p></td>
+<td><p>Imports a subject from freesurfer</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.import_flat.html#cortex.freesurfer.import_flat" title="cortex.freesurfer.import_flat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">import_flat</span></code></a>(subject, patch[, hemis, sname, …])</p></td>
+<td><p>Imports a flat brain from freesurfer</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.show_surf.html#cortex.freesurfer.show_surf" title="cortex.freesurfer.show_surf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_surf</span></code></a>(subject, hemi, type[, patch, …])</p></td>
+<td><p>Show a surface from a Freesurfer subject directory</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.make_fiducial.html#cortex.freesurfer.make_fiducial" title="cortex.freesurfer.make_fiducial"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_fiducial</span></code></a>(subject[, freesurfer_subject_dir])</p></td>
+<td><p>Make fiducial surface (halfway between white matter and pial surfaces)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.parse_surf.html#cortex.freesurfer.parse_surf" title="cortex.freesurfer.parse_surf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_surf</span></code></a>(filename)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.parse_curv.html#cortex.freesurfer.parse_curv" title="cortex.freesurfer.parse_curv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_curv</span></code></a>(filename)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.parse_patch.html#cortex.freesurfer.parse_patch" title="cortex.freesurfer.parse_patch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_patch</span></code></a>(filename)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.get_surf.html#cortex.freesurfer.get_surf" title="cortex.freesurfer.get_surf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_surf</span></code></a>(subject, hemi, type[, patch, …])</p></td>
+<td><p>Read freesurfer surface file</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.get_curv.html#cortex.freesurfer.get_curv" title="cortex.freesurfer.get_curv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_curv</span></code></a>(subject, hemi[, type, …])</p></td>
+<td><p>Load freesurfer curv file</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.write_dot.html#cortex.freesurfer.write_dot" title="cortex.freesurfer.write_dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_dot</span></code></a>(fname, pts, polys[, name])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.read_dot.html#cortex.freesurfer.read_dot" title="cortex.freesurfer.read_dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_dot</span></code></a>(fname, pts)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.write_decimated.html#cortex.freesurfer.write_decimated" title="cortex.freesurfer.write_decimated"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_decimated</span></code></a>(path, pts, polys)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.SpringLayout.html#cortex.freesurfer.SpringLayout" title="cortex.freesurfer.SpringLayout"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SpringLayout</span></code></a>(pts, polys[, dpts, pins, …])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.stretch_mwall.html#cortex.freesurfer.stretch_mwall" title="cortex.freesurfer.stretch_mwall"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stretch_mwall</span></code></a>(pts, polys, mwall)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.mapper">
+<span id="mapper"></span><h3><a class="toc-backref" href="#id10">mapper</a><a class="headerlink" href="#module-cortex.mapper" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.mapper.Mapper.html#cortex.mapper.Mapper" title="cortex.mapper.Mapper"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Mapper</span></code></a>(left, right, shape, subject, xfmname)</p></td>
+<td><p>Maps data from epi volume onto surface using various projections</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.mapper.get_mapper.html#cortex.mapper.get_mapper" title="cortex.mapper.get_mapper"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mapper</span></code></a>(subject, xfmname[, type, recache])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.mni">
+<span id="mni"></span><h3><a class="toc-backref" href="#id11">mni</a><a class="headerlink" href="#module-cortex.mni" title="Permalink to this headline">¶</a></h3>
+<p>Functions for finding MNI transforms for individual subjects and transforming
+functional data and surfaces to and from MNI space.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.mni.compute_mni_transform.html#cortex.mni.compute_mni_transform" title="cortex.mni.compute_mni_transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_mni_transform</span></code></a>(subject, xfm[, template])</p></td>
+<td><p>Compute transform from the space specified by <cite>xfm</cite> to MNI standard space.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.mni.transform_to_mni.html#cortex.mni.transform_to_mni" title="cortex.mni.transform_to_mni"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_to_mni</span></code></a>(volumedata, func_to_mni[, …])</p></td>
+<td><p>Transform data in <cite>volumedata</cite> to MNI space, resample at the resolution of  the atlas image.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.mni.transform_surface_to_mni.html#cortex.mni.transform_surface_to_mni" title="cortex.mni.transform_surface_to_mni"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_surface_to_mni</span></code></a>(subject, surfname)</p></td>
+<td><p>Transform the surface named <cite>surfname</cite> for subject called <cite>subject</cite> into MNI coordinates.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.mni.transform_mni_to_subject.html#cortex.mni.transform_mni_to_subject" title="cortex.mni.transform_mni_to_subject"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_mni_to_subject</span></code></a>(subject, xfm, …)</p></td>
+<td><p>Transform data in <cite>volarray</cite> from MNI space to functional space specified by <cite>xfm</cite>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.polyutils">
+<span id="polyutils"></span><h3><a class="toc-backref" href="#id12">polyutils</a><a class="headerlink" href="#module-cortex.polyutils" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.polyutils.Surface.html#cortex.polyutils.Surface" title="cortex.polyutils.Surface"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Surface</span></code></a>(pts, polys)</p></td>
+<td><p>Represents a single cortical hemisphere surface.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.polyutils.Distortion.html#cortex.polyutils.Distortion" title="cortex.polyutils.Distortion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Distortion</span></code></a>(flat, ref, polys)</p></td>
+<td><p>Used to compute distortion metrics between fiducial and another (e.g.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.segment">
+<span id="segment"></span><h3><a class="toc-backref" href="#id13">segment</a><a class="headerlink" href="#module-cortex.segment" title="Permalink to this headline">¶</a></h3>
+<p>Controls functions for segmentation of white/gray matter and other things in the brain.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.segment.init_subject.html#cortex.segment.init_subject" title="cortex.segment.init_subject"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_subject</span></code></a>(subject, filenames[, run_all])</p></td>
+<td><p>Run the first initial segmentation for a subject’s anatomy.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.segment.fix_wm.html#cortex.segment.fix_wm" title="cortex.segment.fix_wm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fix_wm</span></code></a>(subject)</p></td>
+<td><p>Initializes an interface to make white matter edits to the surface.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.segment.fix_pia.html#cortex.segment.fix_pia" title="cortex.segment.fix_pia"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fix_pia</span></code></a>(subject)</p></td>
+<td><p>Initializes an interface to make pial surface edits.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.segment.cut_surface.html#cortex.segment.cut_surface" title="cortex.segment.cut_surface"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cut_surface</span></code></a>(cx_subject, hemi[, name, …])</p></td>
+<td><p>Initializes an interface to cut the segmented surface for flatmapping.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.surfinfo">
+<span id="surfinfo"></span><h3><a class="toc-backref" href="#id14">surfinfo</a><a class="headerlink" href="#module-cortex.surfinfo" title="Permalink to this headline">¶</a></h3>
+<p>Contains functions for computing various surface properties. Mostly wrappers
+for functions in <cite>polyutils.Surface</cite> and <cite>polyutils.Distortion</cite>.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.surfinfo.curvature.html#cortex.surfinfo.curvature" title="cortex.surfinfo.curvature"><code class="xref py py-obj docutils literal notranslate"><span class="pre">curvature</span></code></a>(outfile, subject[, smooth])</p></td>
+<td><p>Compute smoothed mean curvature of the fiducial surface for the given  subject and save it to <cite>outfile</cite>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.surfinfo.distortion.html#cortex.surfinfo.distortion" title="cortex.surfinfo.distortion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distortion</span></code></a>(outfile, subject[, dist_type, smooth])</p></td>
+<td><p>Compute distortion of flatmap relative to fiducial surface and save it at <cite>outfile</cite>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.surfinfo.thickness.html#cortex.surfinfo.thickness" title="cortex.surfinfo.thickness"><code class="xref py py-obj docutils literal notranslate"><span class="pre">thickness</span></code></a>(outfile, subject)</p></td>
+<td><p>Compute cortical thickness as the distance between corresponding pial and  white matter vertices for the given subject.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.surfinfo.tissots_indicatrix.html#cortex.surfinfo.tissots_indicatrix" title="cortex.surfinfo.tissots_indicatrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tissots_indicatrix</span></code></a>(outfile, sub[, radius, …])</p></td>
+<td><p>Compute a Tissot’s indicatrix for the given subject and save the result to a file.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.surfinfo.flat_border.html#cortex.surfinfo.flat_border" title="cortex.surfinfo.flat_border"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flat_border</span></code></a>(outfile, subject)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.utils">
+<span id="utils"></span><h3><a class="toc-backref" href="#id15">utils</a><a class="headerlink" href="#module-cortex.utils" title="Permalink to this headline">¶</a></h3>
+<p>Contain utility functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.add_roi.html#cortex.utils.add_roi" title="cortex.utils.add_roi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_roi</span></code></a>(data[, name, open_inkscape, …])</p></td>
+<td><p>Add new flatmap image to the ROI file for a subject.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.utils.anat2epispace.html#cortex.utils.anat2epispace" title="cortex.utils.anat2epispace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">anat2epispace</span></code></a>(anatdata, subject, xfmname[, …])</p></td>
+<td><p>Resamples data from anatomical space into epi space</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.get_aseg_mask.html#cortex.utils.get_aseg_mask" title="cortex.utils.get_aseg_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_aseg_mask</span></code></a>(subject, aseg_name[, xfmname, …])</p></td>
+<td><p>Return an epi space mask of the given ID from freesurfer’s automatic segmentation</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.utils.get_cmap.html#cortex.utils.get_cmap" title="cortex.utils.get_cmap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cmap</span></code></a>(name)</p></td>
+<td><p>Gets a colormaps</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.get_cortical_mask.html#cortex.utils.get_cortical_mask" title="cortex.utils.get_cortical_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cortical_mask</span></code></a>(subject, xfmname[, type])</p></td>
+<td><p>Gets the cortical mask for a particular transform</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.utils.get_ctmmap.html#cortex.utils.get_ctmmap" title="cortex.utils.get_ctmmap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ctmmap</span></code></a>(subject, \*\*kwargs)</p></td>
+<td><p><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.get_ctmpack.html#cortex.utils.get_ctmpack" title="cortex.utils.get_ctmpack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ctmpack</span></code></a>(subject[, types, method, level, …])</p></td>
+<td><p>Creates ctm file for the specified input arguments.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.utils.get_dropout.html#cortex.utils.get_dropout" title="cortex.utils.get_dropout"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_dropout</span></code></a>(subject, xfmname[, power])</p></td>
+<td><p>Create a dropout Volume showing where EPI signal is very low.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.get_hemi_masks.html#cortex.utils.get_hemi_masks" title="cortex.utils.get_hemi_masks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_hemi_masks</span></code></a>(subject, xfmname[, type])</p></td>
+<td><p>Returns a binary mask of the left and right hemisphere surface voxels for the given subject.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.utils.get_roi_mask.html#cortex.utils.get_roi_mask" title="cortex.utils.get_roi_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_roi_mask</span></code></a>(subject, xfmname[, roi, projection])</p></td>
+<td><p>Return a mask for the given ROI(s)</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.get_roi_masks.html#cortex.utils.get_roi_masks" title="cortex.utils.get_roi_masks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_roi_masks</span></code></a>(subject, xfmname[, roi_list, …])</p></td>
+<td><p>Return a dictionary of roi masks</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.utils.get_roi_verts.html#cortex.utils.get_roi_verts" title="cortex.utils.get_roi_verts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_roi_verts</span></code></a>(subject[, roi, mask])</p></td>
+<td><p>Return vertices for the given ROIs, or all ROIs if none are given.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.get_vox_dist.html#cortex.utils.get_vox_dist" title="cortex.utils.get_vox_dist"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_vox_dist</span></code></a>(subject, xfmname[, surface, …])</p></td>
+<td><p>Get the distance (in mm) from each functional voxel to the closest point on the surface.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.utils.make_movie.html#cortex.utils.make_movie" title="cortex.utils.make_movie"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_movie</span></code></a>(stim, outfile[, fps, size])</p></td>
+<td><p>Makes an .ogv movie</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.vertex_to_voxel.html#cortex.utils.vertex_to_voxel" title="cortex.utils.vertex_to_voxel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_to_voxel</span></code></a>(subject)</p></td>
+<td><p><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.volume">
+<span id="volume"></span><h3><a class="toc-backref" href="#id16">volume</a><a class="headerlink" href="#module-cortex.volume" title="Permalink to this headline">¶</a></h3>
+<p>Contains functions for working with volume data</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.volume.unmask.html#cortex.volume.unmask" title="cortex.volume.unmask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unmask</span></code></a>(mask, data)</p></td>
+<td><p>Unmask the data, assuming it’s been masked.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.volume.mosaic.html#cortex.volume.mosaic" title="cortex.volume.mosaic"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mosaic</span></code></a>(data[, dim, show])</p></td>
+<td><p>Turns volume data into a mosaic, useful for quickly viewing volumetric data with radiological convention (left side of figure is right side of subject).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.volume.epi2anatspace.html#cortex.volume.epi2anatspace" title="cortex.volume.epi2anatspace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">epi2anatspace</span></code></a>(volumedata[, order])</p></td>
+<td><p>Resample an epi volume data into anatomical space using scipy.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.volume.anat2epispace.html#cortex.volume.anat2epispace" title="cortex.volume.anat2epispace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">anat2epispace</span></code></a>(anatdata, subject, xfmname[, …])</p></td>
+<td><p>Resamples data from anatomical space into epi space</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.volume.epi2anatspace_fsl.html#cortex.volume.epi2anatspace_fsl" title="cortex.volume.epi2anatspace_fsl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">epi2anatspace_fsl</span></code></a>(volumedata)</p></td>
+<td><p>Resamples epi-space [data] into the anatomical space for the given [subject] using the given transformation [xfm].</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.volume.anat2epispace_fsl.html#cortex.volume.anat2epispace_fsl" title="cortex.volume.anat2epispace_fsl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">anat2epispace_fsl</span></code></a>(data, subject, xfmname)</p></td>
+<td><p>Resamples anat-space data into the epi space for the given [subject] and transformation [xfm]</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.volume.show_slice.html#cortex.volume.show_slice" title="cortex.volume.show_slice"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_slice</span></code></a>(dataview, \*\*kwargs)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.volume.show_mip.html#cortex.volume.show_mip" title="cortex.volume.show_mip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_mip</span></code></a>(data, \*\*kwargs)</p></td>
+<td><p>Display a maximum intensity projection for the data, using three subplots</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.volume.show_glass.html#cortex.volume.show_glass" title="cortex.volume.show_glass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_glass</span></code></a>(dataview[, pad])</p></td>
+<td><p>Create a classic “glass brain” view of the data, with the outline</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-cortex.xfm">
+<span id="xfm"></span><h3><a class="toc-backref" href="#id17">xfm</a><a class="headerlink" href="#module-cortex.xfm" title="Permalink to this headline">¶</a></h3>
+<p>Affine transformation class</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.xfm.Transform.html#cortex.xfm.Transform" title="cortex.xfm.Transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Transform</span></code></a>(xfm, reference)</p></td>
+<td><p>A standard affine transform.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Python API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#most-commonly-used-modules">Most commonly used modules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.quickflat">quickflat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.webgl">webgl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.dataset">dataset</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#all-the-other-modules">All the other modules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.align">align</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.anat">anat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.database">database</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.freesurfer">freesurfer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.mapper">mapper</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.mni">mni</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.polyutils">polyutils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.segment">segment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.surfinfo">surfinfo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.utils">utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.volume">volume</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-cortex.xfm">xfm</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="auto_examples/webgl/multiple_datasets.html" title="previous chapter">Create a 3D WebGL Viewer with Multiple Datasets</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/api_reference_flat.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

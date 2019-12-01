@@ -1,0 +1,340 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.surfinfo &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.surfinfo</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Contains functions for computing various surface properties. Mostly wrappers</span>
+<span class="sd">for functions in `polyutils.Surface` and `polyutils.Distortion`.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shlex</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">utils</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">polyutils</span>
+<span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+<span class="kn">from</span> <span class="nn">.xfm</span> <span class="kn">import</span> <span class="n">Transform</span>
+
+<div class="viewcode-block" id="curvature"><a class="viewcode-back" href="../../generated/cortex.surfinfo.curvature.html#cortex.surfinfo.curvature">[docs]</a><span class="k">def</span> <span class="nf">curvature</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">smooth</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute smoothed mean curvature of the fiducial surface for the given </span>
+<span class="sd">    subject and save it to `outfile`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    outfile : str</span>
+<span class="sd">        Path where the curvature map will be saved as an npz file.</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject in the pycortex database for whom curvature will be computed.</span>
+<span class="sd">    smooth : float, optional</span>
+<span class="sd">        Amount of smoothing to apply to the curvature map. Default 20.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">curvs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="ow">in</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">):</span>
+        <span class="n">surf</span> <span class="o">=</span> <span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">)</span>
+        <span class="n">curv</span> <span class="o">=</span> <span class="n">surf</span><span class="o">.</span><span class="n">smooth</span><span class="p">(</span><span class="n">surf</span><span class="o">.</span><span class="n">mean_curvature</span><span class="p">(),</span> <span class="n">smooth</span><span class="p">)</span>
+        <span class="n">curvs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">curv</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="n">curvs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">right</span><span class="o">=</span><span class="n">curvs</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="distortion"><a class="viewcode-back" href="../../generated/cortex.surfinfo.distortion.html#cortex.surfinfo.distortion">[docs]</a><span class="k">def</span> <span class="nf">distortion</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">dist_type</span><span class="o">=</span><span class="s1">&#39;areal&#39;</span><span class="p">,</span> <span class="n">smooth</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute distortion of flatmap relative to fiducial surface and save it</span>
+<span class="sd">    at `outfile`. Several different types of distortion are available:</span>
+<span class="sd">    </span>
+<span class="sd">    &#39;areal&#39;: computes the areal distortion for each triangle in the flatmap, defined as the</span>
+<span class="sd">    log ratio of the area in the fiducial mesh to the area in the flat mesh. Returns</span>
+<span class="sd">    a per-vertex value that is the average of the neighboring triangles.</span>
+<span class="sd">    See: http://brainvis.wustl.edu/wiki/index.php/Caret:Operations/Morphing</span>
+<span class="sd">    </span>
+<span class="sd">    &#39;metric&#39;: computes the linear distortion for each vertex in the flatmap, defined as</span>
+<span class="sd">    the mean squared difference between distances in the fiducial map and distances in</span>
+<span class="sd">    the flatmap, for each pair of neighboring vertices. See Fishl, Sereno, and Dale, 1999.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    outfile : str</span>
+<span class="sd">        Path where the distortion map will be saved as an npz file.</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject in the pycortex database for whom distortion will be computed.</span>
+<span class="sd">    dist_type : [&#39;areal&#39;, &#39;metric&#39;], optional</span>
+<span class="sd">        Type of distortion to compute. Default &#39;areal&#39;.</span>
+<span class="sd">    smooth : float, optional</span>
+<span class="sd">        Amount of smoothing to apply to the distortion map before returning.</span>
+<span class="sd">        Default 20.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">distortions</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">hem</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;lh&quot;</span><span class="p">,</span> <span class="s2">&quot;rh&quot;</span><span class="p">]:</span>
+        <span class="n">fidvert</span><span class="p">,</span> <span class="n">fidtri</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">hem</span><span class="p">)</span>
+        <span class="n">flatvert</span><span class="p">,</span> <span class="n">flattri</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">hem</span><span class="p">)</span>
+        <span class="n">surf</span> <span class="o">=</span> <span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="n">fidvert</span><span class="p">,</span> <span class="n">fidtri</span><span class="p">)</span>
+
+        <span class="n">dist</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">polyutils</span><span class="o">.</span><span class="n">Distortion</span><span class="p">(</span><span class="n">flatvert</span><span class="p">,</span> <span class="n">fidvert</span><span class="p">,</span> <span class="n">flattri</span><span class="p">),</span> <span class="n">dist_type</span><span class="p">)</span>
+        <span class="n">smdist</span> <span class="o">=</span> <span class="n">surf</span><span class="o">.</span><span class="n">smooth</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="n">smooth</span><span class="p">)</span>
+        <span class="n">distortions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">smdist</span><span class="p">)</span>
+
+    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="n">distortions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">right</span><span class="o">=</span><span class="n">distortions</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="thickness"><a class="viewcode-back" href="../../generated/cortex.surfinfo.thickness.html#cortex.surfinfo.thickness">[docs]</a><span class="k">def</span> <span class="nf">thickness</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute cortical thickness as the distance between corresponding pial and </span>
+<span class="sd">    white matter vertices for the given subject. Note that this is slightly</span>
+<span class="sd">    different than the method used by Freesurfer, and will yield ever-so-slightly</span>
+<span class="sd">    different results.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    outfile : str</span>
+<span class="sd">        Path where the thickness map will be saved.</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject in the pycortex database for whom cortical thickness will be </span>
+<span class="sd">        computed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pl</span><span class="p">,</span> <span class="n">pr</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;pia&quot;</span><span class="p">)</span>
+    <span class="n">wl</span><span class="p">,</span> <span class="n">wr</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;wm&quot;</span><span class="p">)</span>
+    <span class="n">left</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="n">pl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">wl</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">right</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="n">pr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">wr</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="n">right</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="tissots_indicatrix"><a class="viewcode-back" href="../../generated/cortex.surfinfo.tissots_indicatrix.html#cortex.surfinfo.tissots_indicatrix">[docs]</a><span class="k">def</span> <span class="nf">tissots_indicatrix</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">sub</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">spacing</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute a Tissot&#39;s indicatrix for the given subject and save the result to</span>
+<span class="sd">    a file. This involves randomly filling in discs of fixed geodesic radius</span>
+<span class="sd">    on the fiducial surface.</span>
+
+<span class="sd">    See https://en.wikipedia.org/wiki/Tissot&#39;s_indicatrix for more info.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    outfile : str</span>
+<span class="sd">        Path where the indicatrix map will be saved.</span>
+<span class="sd">    sub : str</span>
+<span class="sd">        Subject in the pycortex database for whom the indicatrix will be </span>
+<span class="sd">        computed.</span>
+<span class="sd">    radius : float, optional</span>
+<span class="sd">        The geodesic radius of each disc in mm. Default 10.</span>
+<span class="sd">    spacing : float, optional</span>
+<span class="sd">        The minimum distance between disc centers in mm. Default 50.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tissots</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">allcenters</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">hem</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;lh&quot;</span><span class="p">,</span> <span class="s2">&quot;rh&quot;</span><span class="p">]:</span>
+        <span class="n">fidpts</span><span class="p">,</span> <span class="n">fidpolys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">hem</span><span class="p">)</span>
+        <span class="c1">#G = make_surface_graph(fidtri)</span>
+        <span class="n">surf</span> <span class="o">=</span> <span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="n">fidpts</span><span class="p">,</span> <span class="n">fidpolys</span><span class="p">)</span>
+        <span class="n">nvert</span> <span class="o">=</span> <span class="n">fidpts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">tissot_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nvert</span><span class="p">,))</span>
+
+        <span class="n">centers</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">nvert</span><span class="p">)]</span>
+        <span class="n">cdists</span> <span class="o">=</span> <span class="p">[</span><span class="n">surf</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">(</span><span class="n">centers</span><span class="p">)]</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1">## Find possible vertices</span>
+            <span class="n">mcdist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">cdists</span><span class="p">)</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">possverts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">mcdist</span> <span class="o">&gt;</span> <span class="n">spacing</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="c1">#possverts = np.nonzero(surf.geodesic_distance(centers) &gt; spacing)[0]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">possverts</span><span class="p">):</span>
+                <span class="k">break</span>
+            <span class="c1">## Pick random vertex</span>
+            <span class="n">centervert</span> <span class="o">=</span> <span class="n">possverts</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">possverts</span><span class="p">))]</span>
+            <span class="n">centers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">centervert</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Adding vertex </span><span class="si">%d</span><span class="s2">..&quot;</span> <span class="o">%</span> <span class="n">centervert</span><span class="p">)</span>
+            <span class="n">dists</span> <span class="o">=</span> <span class="n">surf</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">([</span><span class="n">centervert</span><span class="p">])</span>
+            <span class="n">cdists</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dists</span><span class="p">)</span>
+
+            <span class="c1">## Find appropriate set of vertices</span>
+            <span class="n">selverts</span> <span class="o">=</span> <span class="n">dists</span> <span class="o">&lt;</span> <span class="n">radius</span>
+            <span class="n">tissot_array</span><span class="p">[</span><span class="n">selverts</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">tissots</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tissot_array</span><span class="p">)</span>
+        <span class="n">allcenters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">centers</span><span class="p">))</span>
+
+    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="n">tissots</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">right</span><span class="o">=</span><span class="n">tissots</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">centers</span><span class="o">=</span><span class="n">allcenters</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="flat_border"><a class="viewcode-back" href="../../generated/cortex.surfinfo.flat_border.html#cortex.surfinfo.flat_border">[docs]</a><span class="k">def</span> <span class="nf">flat_border</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
+    <span class="n">flatpts</span><span class="p">,</span> <span class="n">flatpolys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">flatpolyset</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">flatpolys</span><span class="p">])</span>
+    
+    <span class="n">fidpts</span><span class="p">,</span> <span class="n">fidpolys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">fidpolyset</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">fidpolys</span><span class="p">])</span>
+    <span class="n">fidonlypolys</span> <span class="o">=</span> <span class="n">fidpolyset</span> <span class="o">-</span> <span class="n">flatpolyset</span>
+    <span class="n">fidonlypolyverts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">fidonlypolys</span><span class="p">))</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+    
+    <span class="n">fidonlyverts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">setdiff1d</span><span class="p">(</span><span class="n">fidpolys</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">flatpolys</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+    
+    <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+    <span class="k">def</span> <span class="nf">iter_surfedges</span><span class="p">(</span><span class="n">tris</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span> <span class="ow">in</span> <span class="n">tris</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span>
+            <span class="k">yield</span> <span class="n">b</span><span class="p">,</span><span class="n">c</span>
+            <span class="k">yield</span> <span class="n">a</span><span class="p">,</span><span class="n">c</span>
+
+    <span class="k">def</span> <span class="nf">make_surface_graph</span><span class="p">(</span><span class="n">tris</span><span class="p">):</span>
+        <span class="n">graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        <span class="n">graph</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">iter_surfedges</span><span class="p">(</span><span class="n">tris</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">graph</span>
+
+    <span class="n">bounds</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">polyutils</span><span class="o">.</span><span class="n">trace_poly</span><span class="p">(</span><span class="n">polyutils</span><span class="o">.</span><span class="n">boundary_edges</span><span class="p">(</span><span class="n">flatpolys</span><span class="p">))]</span>
+    <span class="n">allbounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span>
+    
+    <span class="n">g</span> <span class="o">=</span> <span class="n">make_surface_graph</span><span class="p">(</span><span class="n">fidonlypolys</span><span class="p">)</span>
+    <span class="n">fog</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">fidonlyverts</span><span class="p">)</span>
+    <span class="n">badverts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span><span class="p">,</span><span class="n">d</span> <span class="ow">in</span> <span class="n">fog</span><span class="o">.</span><span class="n">degree</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">d</span><span class="o">&lt;</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">g</span><span class="o">.</span><span class="n">remove_nodes_from</span><span class="p">(</span><span class="n">badverts</span><span class="p">)</span>
+    <span class="n">fog</span><span class="o">.</span><span class="n">remove_nodes_from</span><span class="p">(</span><span class="n">badverts</span><span class="p">)</span>
+    <span class="n">mwallset</span> <span class="o">=</span> <span class="nb">set</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">v</span><span class="p">])</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">fog</span><span class="o">.</span><span class="n">nodes</span><span class="p">()))</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">allbounds</span><span class="p">)</span>
+    <span class="c1">#cutset = (set(g.nodes()) - mwallset) &amp; set(allbounds)</span>
+
+    <span class="n">mwallbounds</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">in1d</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">mwallset</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bounds</span><span class="p">]</span>
+    <span class="n">changes</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">))</span><span class="o">!=</span><span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mwallbounds</span><span class="p">]</span>
+    
+    <span class="c1">#splitbounds = [np.split(b, c) for b,c in zip(bounds, changes)]</span>
+    <span class="n">splitbounds</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">b</span><span class="p">,</span><span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">changes</span><span class="p">):</span>
+        <span class="n">sb</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">rb</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">+</span> <span class="n">b</span>
+        <span class="n">rc</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">c</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">b</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">sb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rb</span><span class="p">[</span><span class="n">rc</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span> <span class="p">:</span> <span class="n">rc</span><span class="p">[</span><span class="n">ii</span><span class="o">+</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">splitbounds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sb</span><span class="p">)</span>
+    
+    <span class="n">ismwall</span> <span class="o">=</span> <span class="p">[[</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">&gt;</span><span class="mf">0.5</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">mwb</span><span class="p">,</span> <span class="n">c</span><span class="p">)]</span> <span class="k">for</span> <span class="n">mwb</span><span class="p">,</span><span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">mwallbounds</span><span class="p">,</span> <span class="n">changes</span><span class="p">)]</span>
+    
+    <span class="n">aspect</span> <span class="o">=</span> <span class="p">(</span><span class="n">height</span> <span class="o">/</span> <span class="p">(</span><span class="n">flatpts</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">flatpts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">))[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">lpts</span> <span class="o">=</span> <span class="p">(</span><span class="n">flatpts</span> <span class="o">-</span> <span class="n">flatpts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="n">aspect</span>
+    <span class="n">rpts</span> <span class="o">=</span> <span class="p">(</span><span class="n">flatpts</span> <span class="o">-</span> <span class="n">flatpts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="n">aspect</span>
+    
+    <span class="c1">#im = Image.new(&#39;RGBA&#39;, (int(aspect * (flatpts.max(0) - flatpts.min(0))[0]), height))</span>
+    <span class="c1">#draw = ImageDraw.Draw(im)</span>
+
+    <span class="n">ismwalls</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">bnds</span><span class="p">,</span> <span class="n">mw</span><span class="p">,</span> <span class="n">pts</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">splitbounds</span><span class="p">,</span> <span class="n">ismwall</span><span class="p">,</span> <span class="p">[</span><span class="n">lpts</span><span class="p">,</span> <span class="n">rpts</span><span class="p">]):</span>
+        <span class="k">for</span> <span class="n">pbnd</span><span class="p">,</span> <span class="n">pmw</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bnds</span><span class="p">,</span> <span class="n">mw</span><span class="p">):</span>
+            <span class="c1">#color = {True:(0,0,255,255), False:(255,0,0,255)}[pmw]</span>
+            <span class="c1">#draw.line(pts[pbnd,:2].ravel().tolist(), fill=color, width=2)</span>
+            <span class="n">ismwalls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pmw</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pts</span><span class="p">[</span><span class="n">pbnd</span><span class="p">,:</span><span class="mi">2</span><span class="p">])</span>
+    
+    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">lines</span><span class="o">=</span><span class="n">lines</span><span class="p">,</span> <span class="n">ismwalls</span><span class="o">=</span><span class="n">ismwalls</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

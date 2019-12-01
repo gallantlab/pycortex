@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.dataset.Dataset &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-dataset-dataset">
+<h1>cortex.dataset.Dataset<a class="headerlink" href="#cortex-dataset-dataset" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="cortex.dataset.Dataset">
+<em class="property">class </em><code class="sig-prename descclassname">cortex.dataset.</code><code class="sig-name descname">Dataset</code><span class="sig-paren">(</span><em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/dataset/dataset.html#Dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.dataset.Dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wrapper for multiple data objects. This often does not need to be used 
+explicitly–for example, if a dictionary of data objects is passed to 
+<cite>cortex.webshow</cite>, it will automatically be converted into a <cite>Dataset</cite>.</p>
+<p>All kwargs should be <cite>BrainData</cite> or <cite>Dataset</cite> objects.</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="Dataset/cortex.dataset.Dataset.__init__.html#cortex.dataset.Dataset.__init__" title="cortex.dataset.Dataset.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(self, \*\*kwargs)</p></td>
+<td><p>Initialize self.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Dataset/cortex.dataset.Dataset.append.html#cortex.dataset.Dataset.append" title="cortex.dataset.Dataset.append"><code class="xref py py-obj docutils literal notranslate"><span class="pre">append</span></code></a>(self, \*\*kwargs)</p></td>
+<td><p>Add the <cite>BrainData</cite> or <cite>Dataset</cite> objects in <cite>kwargs</cite> into this  dataset.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Dataset/cortex.dataset.Dataset.from_file.html#cortex.dataset.Dataset.from_file" title="cortex.dataset.Dataset.from_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_file</span></code></a>(filename)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Dataset/cortex.dataset.Dataset.get_mask.html#cortex.dataset.Dataset.get_mask" title="cortex.dataset.Dataset.get_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mask</span></code></a>(self, subject, xfmname, maskname)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Dataset/cortex.dataset.Dataset.get_overlay.html#cortex.dataset.Dataset.get_overlay" title="cortex.dataset.Dataset.get_overlay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_overlay</span></code></a>(self, subject[, type])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Dataset/cortex.dataset.Dataset.get_surf.html#cortex.dataset.Dataset.get_surf" title="cortex.dataset.Dataset.get_surf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_surf</span></code></a>(self, subject, type[, hemi, merge, …])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Dataset/cortex.dataset.Dataset.get_xfm.html#cortex.dataset.Dataset.get_xfm" title="cortex.dataset.Dataset.get_xfm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_xfm</span></code></a>(self, subject, xfmname)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Dataset/cortex.dataset.Dataset.prepend.html#cortex.dataset.Dataset.prepend" title="cortex.dataset.Dataset.prepend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepend</span></code></a>(self, prefix)</p></td>
+<td><p>Adds the given <cite>prefix</cite> to the name of every data object and returns a new Dataset.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Dataset/cortex.dataset.Dataset.save.html#cortex.dataset.Dataset.save" title="cortex.dataset.Dataset.save"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save</span></code></a>(self[, filename, pack])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Dataset/cortex.dataset.Dataset.uniques.html#cortex.dataset.Dataset.uniques" title="cortex.dataset.Dataset.uniques"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uniques</span></code></a>(self[, collapse])</p></td>
+<td><p>Return the set of unique BrainData objects contained by this dataset</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.dataset.Dataset.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

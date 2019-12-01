@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.extract\_chunk
+=======================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.extract_chunk

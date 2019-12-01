@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.polyhedra
+==================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.polyhedra

@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.name
+==========================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: Vertex.name

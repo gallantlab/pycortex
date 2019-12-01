@@ -1,0 +1,304 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Surface Segmentation and Flattening &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Surface Database" href="database.html" />
+    <link rel="prev" title="Installation" href="install.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="surface-segmentation-and-flattening">
+<h1>Surface Segmentation and Flattening<a class="headerlink" href="#surface-segmentation-and-flattening" title="Permalink to this headline">¶</a></h1>
+<p>Welcome! This is a guide for the full process of making flatmaps, which allow us to visualize brain data in a more intuitive way than voxelized 3D images of brain data. There are three main phases of the process:</p>
+<p><strong>1. Segmentation</strong></p>
+<p>Freesurfer will automatically discern where white matter and gray matter are in the brain. The software is good but not perfect, so you will need to look through its results and fine-tune the surfaces it generates so we can generate a 3D model of the brain.</p>
+<p><strong>2. Cutting and flattening</strong></p>
+<p>The brain model is exported to a 3D modeling program called Blender, where you will make the cuts necessary to transform a 3D object into a flattened map with as little warping as possible.</p>
+<p><strong>3. Labeling ROIs</strong></p>
+<p>Here you will project functional data (semantic betas or localizer data, as well as retinotopic) onto the flatmaps, allowing you to label Regions of Interest on the brain - areas responsive to faces, scenes, or whatever else we’re analyzing.</p>
+<p>In this guide, we will go over the first two steps.</p>
+<p><strong>Unpacking Data, Importing data, &amp; Starting Freesurfer Unpacking Data</strong></p>
+<p>If you have raw data, you want to unpack the .tar back to multiple dcm files. To do this, into terminal type:</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">tar</span> <span class="pre">xvf</span> <span class="pre">filename.tar</span></code></p>
+</div></blockquote>
+<p>If possible, you want to proceed with MEMPRAGE RMS data.</p>
+<div class="section" id="starting-setting-up-freesurfer">
+<h2>Starting &amp; Setting up Freesurfer<a class="headerlink" href="#starting-setting-up-freesurfer" title="Permalink to this headline">¶</a></h2>
+<dl class="simple">
+<dt>To open freesurfer:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">source_directory_name_here/SetUpFreeSurfer.sh</span></code></p>
+</dd>
+<dt>For example:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">/auto/myfolder/freesurfer/SetUpFreeSurfer.sh</span></code></p>
+</dd>
+</dl>
+<p>Create a “subjects” directory. If a “subjects” directory doesn’t exist, make one in the FreeSurfer directory. Freesurfer is finicky about directories, so this step is crucial.</p>
+</div>
+<div class="section" id="importing-data-into-freesurfer">
+<h2>Importing Data Into Freesurfer<a class="headerlink" href="#importing-data-into-freesurfer" title="Permalink to this headline">¶</a></h2>
+<p>After you’ve unpacked the raw data, there are 2 ways to choose from to import your data to into freesurfer:</p>
+<dl class="simple">
+<dt><strong>1. Using .dcm files:</strong> To do this, go into the directory of the dicom files you want to use and then type:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">recon-all</span> <span class="pre">-i</span> <span class="pre">./NameofFirstDicomFile.dcm</span> <span class="pre">-s</span> <span class="pre">&lt;subject_name&gt;</span></code></p>
+</dd>
+<dt>For example:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">recon-all</span> <span class="pre">-i</span> <span class="pre">./000000-01-1.dcm</span> <span class="pre">-s</span> <span class="pre">Subject</span></code></p>
+</dd>
+</dl>
+<p>In this case, you just give Freesurfer the name of the very first dicom file in the directory, and it will find the rest of them.</p>
+<dl class="simple">
+<dt><strong>2. Using .nii or .mgz files:</strong> you can type:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">recon-all</span> <span class="pre">-i</span> <span class="pre">/name/name/name/name/name.nii</span> <span class="pre">-s</span> <span class="pre">&lt;subject_name&gt;</span></code></p>
+</dd>
+<dt>For example:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">/auto/myfolder/anatomy/Subject/Subject_t1_nii</span> <span class="pre">-s</span> <span class="pre">Subject</span></code></p>
+</dd>
+</dl>
+<p>The ‘-s Subject’ portion creates a folder, in this case a folder titled “Subject”. The folder should be named for the subject.</p>
+</div>
+<div class="section" id="creating-pial-white-matter-surfaces">
+<h2>Creating Pial &amp; White Matter Surfaces<a class="headerlink" href="#creating-pial-white-matter-surfaces" title="Permalink to this headline">¶</a></h2>
+<p>Now that the anatomical data for your subject has been imported into Freesurfer and a new
+directory has been created, you next want to run a command called autorecon1 to separate
+the brain from the rest of the anatomy (eyes, muscle, etc.), and then manually check for and
+correct potential errors. Next, you will need to determine the surfaces of the brain – both the
+pial surface as well as the white matter. This is done using the command autorecon2.
+Following this, you will manually make edits to these newly created surfaces.</p>
+<div class="section" id="autorecon1-separating-brain-from-other-anatomy">
+<h3>Autorecon1: Separating Brain from Other Anatomy<a class="headerlink" href="#autorecon1-separating-brain-from-other-anatomy" title="Permalink to this headline">¶</a></h3>
+<p>The autorecon1 command motion corrects and conforms, normalizes, computes the Talairach transform, and strips the skull. Keep in mind that this command takes approximately 30-40 minutes, so make sure you’re ready before running it. To use the command type:</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">recon-all</span> <span class="pre">-autorecon1</span> <span class="pre">-s</span> <span class="pre">&lt;subject_name&gt;</span></code></p>
+</div></blockquote>
+<dl class="simple">
+<dt>For example:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">recon-all</span> <span class="pre">-autorecon1</span> <span class="pre">-s</span> <span class="pre">Subject</span></code></p>
+</dd>
+</dl>
+<div class="section" id="manual-edits-to-the-anatomical">
+<h4>Manual Edits to the Anatomical<a class="headerlink" href="#manual-edits-to-the-anatomical" title="Permalink to this headline">¶</a></h4>
+<p>At this stage, you just want to make sure that autorecon1 ran successfully and that large parts
+of non-brain anatomy were not left behind. If big chunks of eye or skull were left behind, it is
+good to manually delete them yourself. If autorecon1 ran successfully, you can probably skip
+manual editing even if some anatomy was left behind since the next step, autorecon2, is quite
+accurate at determining brain surfaces even if non-brain anatomy was left behind. However, it’s good to double check that everything worked out.</p>
+<dl>
+<dt>To pull up the newly stripped brains and make manual edits, type in your terminal:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">ipython</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">cortex</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">cortex.segment.fix_wm(‘Subject’)</span></code></p>
+</dd>
+</dl>
+<p>This should cause three windows to pop up: a mayavi viewer with the 3D brain, one of the brain in 2D, and one of a tool bar. At this point, you want to edit individual voxels. This mostly consists of getting rid of remaining skull and eyes. To do this, click the edit voxels tool on the toolbox bar or press A on your keyboard as a shortcut. After this, to delete voxels, simply right click the areas you wish to delete. If you erase something by accident and want to undo it, press CTRL + Z (this only works for the last thing you erased so be careful).</p>
+<p>In Mayavi:</p>
+<ul class="simple">
+<li><p>Left-click and drag to rotate.</p></li>
+<li><p>Middle-click and drag to pan.</p></li>
+<li><p>Right-click and drag to zoom.</p></li>
+</ul>
+<p>Closing the mayavi window to automatically open the other hemisphere; close that to return to the first one. Left-click a point on the brain to save its location (a mark will be placed on the brain). This location can then be loaded in tkmedit. Look for red spikes and blue pockmarks on the brain - these usually indicate an incorrectly marked area on the white matter mask.</p>
+<p>In tkmedit:</p>
+<p><em>insert images here</em></p>
+<ul class="simple">
+<li><p>Navigate - pan the image</p></li>
+<li><p>Edit Voxels Tool - your main tool when using tkmedit.</p></li>
+<li><p>Left click to center the volume index at a given point. This is used to find the value of a voxel and to keep track of it when you change views.</p></li>
+<li><p>Center click to set a voxel value to 255 (default) or to clone to that voxel from the aux volume.</p></li>
+<li><p>Right click to clear a voxel.</p></li>
+<li><p>Main surface - the yellow curve used to generate the 3D model of the white matter surface.</p></li>
+<li><p>Original surface - the green curve, an unsmoothed version of the Main surface.</p></li>
+<li><p>Pial surface - the red curve marking the outer borders of the brain, the grey matter surface.</p></li>
+<li><p>Show Main Volume - the mask you are working on.</p></li>
+<li><p>Show Aux Volume - The full brain volume.</p></li>
+<li><p>Coronal, Horizontal and Sagittal view - change the perspective you are viewing from.</p></li>
+</ul>
+<p>Reset view settings for zoom and offset.
+Save or load a selected point for use with another program, such as the 3D models in mayavi. (Click this one to get to the point that you selected in the mayavi viewer.)</p>
+<p>Again:
+You can undo with ctrl+z, but it only remembers the last action done.
+If you erase something by accident, or want to restore something:</p>
+<dl class="simple">
+<dt>Tools &gt; Configure volume brush</dt><dd><p>Set Mode to Clone
+Set Clone Source to Aux Volume</p>
+</dd>
+</dl>
+<p>This lets you paint from the aux volume to the mask.
+Set Mode back to New Value if you’re done.</p>
+<p>To change brush size:
+Tools &gt; Configure brush info &gt; Change Radius</p>
+<p>To change the size of the “paintbrush”, in the tool bar, go to: tools &gt; configure brush info and
+change the radius. A shortcut to do the same thing is to press the numbers on the keypad of
+your keyboard (where 1 is 1x1, 4 is 4x4, etc).
+Generally you should just work with a 1-pixel radius, though.
+To save, just go to file &gt; save in the tool bar.</p>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>When you are done:</p>
+<p>File &gt; Save Main Volume
+File &gt; Quit (the program may stumble a bit if you just close the window)
+iPython will give you three options.
+1) Run autorecon-wm?
+2) Run autorecon-pia?
+3) Do nothing?
+If you are finished with the mask, enter 1. Otherwise enter 3.</p>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+</div>
+</div>
+<div class="section" id="autorecon2-creating-surfaces">
+<h3>Autorecon2: Creating Surfaces<a class="headerlink" href="#autorecon2-creating-surfaces" title="Permalink to this headline">¶</a></h3>
+<p>Here, you will be creating both white and gray matter surfaces using the autorecon2
+command. When the command is complete, there will be outlines on the brain indicating that
+the program has determined where the pial and white matter surfaces are located. The pial
+surface will be outlined in red, and the white matter surface will be outlined in both green and
+yellow when it is finished running.</p>
+<dl class="simple">
+<dt>Type in the command:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">recon-all</span> <span class="pre">-autorecon2</span> <span class="pre">-s</span> <span class="pre">&lt;subject_name&gt;</span></code></p>
+</dd>
+</dl>
+<p><em>This will take up to 5 hours!</em></p>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Although at this stage Freesurfer has completed determining where the white matter and pial
+surfaces are, it is not completely accurate, so next edits have to be made to correct these
+mistakes. This is the most time-consuming part of the brain segmentation.</p>
+<p>First fix big mistakes in the white matter surface. These include large swaths of gray matter
+being identified as white matter when it shouldn’t, and when big portions of white matter are
+not labeled as white matter when they should be. The command to make these edits is the same as above:</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">ipython</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">cortex</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">cortex.segment.fix_wm(“subject”)</span></code></p>
+</div></blockquote>
+<p>We’ll look through the results of autorecon2, examining the white matter curve and masks, and then the pial (gray matter) curve. This can be a lengthy process; because it’s an entirely nonverbal task, I recommend listening to podcasts as you go.</p>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>The yellow outline represents the smoothed white matter surfaces while the green outline is
+the surface that most closely resembles the individual voxel edits you’ve made. The yellow
+surface is the one that will be used for flat maps, however it is easier to use the green surface when making edits since it actually reflects the changes you made rather than the smoothed changes.
+You want to make sure to delete voxels that the green and yellow surfaces encompass that
+it shouldn’t (such as gray matter and/or leftover pieces of eye or skull) as well as add voxels
+(middle click) to regions that appear to have white matter but aren’t included in the
+green/yellow surfaces. Make sure to hit “A” to switch to edit mode.</p>
+<p>Autorecon on the white matter surface should take about 2 hours. These manual edits are an iterative process; when it’s done, go back and look over the 3D surface, and make any changes that seem necessary. New spikes can appear in unexpected places, so three or four iterations may be needed, probably more if you are just starting to learn how to do it.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Surface Segmentation and Flattening</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#starting-setting-up-freesurfer">Starting &amp; Setting up Freesurfer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#importing-data-into-freesurfer">Importing Data Into Freesurfer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-pial-white-matter-surfaces">Creating Pial &amp; White Matter Surfaces</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="install.html" title="previous chapter">Installation</a></li>
+      <li>Next: <a href="database.html" title="next chapter">Surface Database</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/segmentation_guide.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

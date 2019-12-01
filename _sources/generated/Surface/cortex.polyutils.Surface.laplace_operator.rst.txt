@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.laplace\_operator
+==========================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.laplace_operator

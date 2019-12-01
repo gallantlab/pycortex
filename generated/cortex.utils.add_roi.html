@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.utils.add_roi &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-utils-add-roi">
+<h1>cortex.utils.add_roi<a class="headerlink" href="#cortex-utils-add-roi" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="cortex.utils.add_roi">
+<code class="sig-prename descclassname">cortex.utils.</code><code class="sig-name descname">add_roi</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">name='new_roi'</em>, <em class="sig-param">open_inkscape=True</em>, <em class="sig-param">add_path=True</em>, <em class="sig-param">overlay_file=None</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/utils.html#add_roi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.utils.add_roi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add new flatmap image to the ROI file for a subject.</p>
+<p>(The subject is specified in creation of the data object)</p>
+<p>Creates a flatmap image from the <cite>data</cite> input, and adds that image as
+a sub-layer to the data layer in the rois.svg file stored for
+the subject  in the pycortex database. Most often, this is data to be
+used for defining a region (or several regions) of interest, such as a
+localizer contrast (e.g. a t map of Faces &gt; Houses).</p>
+<p>Use the <a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs inputs to specify</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>data</strong><span class="classifier">DataView</span></dt><dd><p>The data used to generate the flatmap image.</p>
+</dd>
+<dt><strong>name</strong><span class="classifier">str, optional</span></dt><dd><dl class="simple">
+<dt>Name that will be assigned to the <cite>data</cite> sub-layer in the rois.svg file</dt><dd><p>(e.g. ‘Faces &gt; Houses, t map, p&lt;.005’ or ‘Retinotopy - Rotating Wedge’)</p>
+</dd>
+</dl>
+</dd>
+<dt><strong>open_inkscape</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, Inkscape will automatically open the ROI file.</p>
+</dd>
+<dt><strong>add_path</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, also adds a sub-layer to the <cite>rois</cite> new SVG layer will automatically
+be created in the ROI group with the same <cite>name</cite> as the overlay.</p>
+</dd>
+<dt><strong>overlay_file</strong><span class="classifier">str, optional</span></dt><dd><p>Custom overlays.svg file to use instead of the default one for this
+subject (if not None). Default None.</p>
+</dd>
+<dt><strong>kwargs</strong><span class="classifier">dict</span></dt><dd><p>Passed to cortex.quickflat.make_png</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.utils.add_roi.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

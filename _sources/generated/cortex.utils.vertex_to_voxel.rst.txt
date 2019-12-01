@@ -1,0 +1,6 @@
+cortex.utils.vertex\_to\_voxel
+==============================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: vertex_to_voxel

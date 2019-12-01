@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.\_\_init\_\_
+=====================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VertexRGB.__init__

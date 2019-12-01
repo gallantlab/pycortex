@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.create\_biharmonic\_solver
+===================================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.create_biharmonic_solver

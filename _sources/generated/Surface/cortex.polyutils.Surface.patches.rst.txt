@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.patches
+================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.patches

@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.vertices
+=================================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: VertexRGB.vertices

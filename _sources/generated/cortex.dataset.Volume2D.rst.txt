@@ -1,0 +1,36 @@
+cortex.dataset.Volume2D
+=======================
+
+.. currentmodule:: cortex.dataset
+
+.. autoclass:: Volume2D
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: Volume2D
+   
+     ~Volume2D.__init__
+     ~Volume2D.copy
+     ~Volume2D.from_hdf
+     ~Volume2D.to_json
+     ~Volume2D.uniques
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: Volume2D
+   
+      ~Volume2D.priority
+      ~Volume2D.raw
+      ~Volume2D.subject
+      ~Volume2D.xfmname
+   
+   

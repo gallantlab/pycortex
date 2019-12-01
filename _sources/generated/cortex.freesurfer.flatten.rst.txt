@@ -1,0 +1,6 @@
+cortex.freesurfer.flatten
+=========================
+
+.. currentmodule:: cortex.freesurfer
+
+.. autofunction:: flatten

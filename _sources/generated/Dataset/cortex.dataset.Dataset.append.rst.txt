@@ -1,0 +1,6 @@
+cortex.dataset.Dataset.append
+=============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Dataset.append

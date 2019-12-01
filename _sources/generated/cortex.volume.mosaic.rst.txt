@@ -1,0 +1,6 @@
+cortex.volume.mosaic
+====================
+
+.. currentmodule:: cortex.volume
+
+.. autofunction:: mosaic

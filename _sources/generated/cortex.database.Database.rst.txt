@@ -1,0 +1,46 @@
+cortex.database.Database
+========================
+
+.. currentmodule:: cortex.database
+
+.. autoclass:: Database
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: Database
+   
+     ~Database.__init__
+     ~Database.get_anat
+     ~Database.get_cache
+     ~Database.get_coords
+     ~Database.get_mask
+     ~Database.get_mnixfm
+     ~Database.get_mri_surf2surf_matrix
+     ~Database.get_overlay
+     ~Database.get_paths
+     ~Database.get_shared_voxels
+     ~Database.get_surf
+     ~Database.get_surfinfo
+     ~Database.get_view
+     ~Database.get_xfm
+     ~Database.make_subj
+     ~Database.save_mask
+     ~Database.save_view
+     ~Database.save_xfm
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: Database
+   
+      ~Database.subjects
+   
+   

@@ -1,0 +1,270 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Pycortex Data Structures &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="pycortex-data-structures">
+<h1>Pycortex Data Structures<a class="headerlink" href="#pycortex-data-structures" title="Permalink to this headline">¶</a></h1>
+<p>Pycortex implements a set of helper functions that help normalize and standard data formats. It also wraps h5py to provide a standard way to store your data in HDF format.</p>
+<div class="section" id="quickstart">
+<h2>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="generated/cortex.dataset.Dataset.html#cortex.dataset.Dataset" title="cortex.dataset.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a> objects can be defined implicitly using a tuple syntax:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">webshow</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">31</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="s2">&quot;S1&quot;</span><span class="p">,</span> <span class="s2">&quot;fullhead&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>To create a dataset manually:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ds</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">31</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="s2">&quot;S1&quot;</span><span class="p">,</span> <span class="s2">&quot;fullhead&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>To generate a data view and save it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dv</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">31</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="s2">&quot;S1&quot;</span><span class="p">,</span> <span class="s2">&quot;fullhead&quot;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">3</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">dv</span><span class="p">)</span>
+<span class="n">ds</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;test_data.hdf&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Loading data:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ds</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;test_data.hdf&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you already have a Nifti file aligned to a transform in the database:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dv</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="s2">&quot;path/to/nifti_file.nii.gz&quot;</span><span class="p">,</span> <span class="s2">&quot;S1&quot;</span><span class="p">,</span> <span class="s2">&quot;fullhead&quot;</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">dv</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>Pycortex’s main data structures consists of the <a class="reference internal" href="generated/cortex.dataset.Dataset.html#cortex.dataset.Dataset" title="cortex.dataset.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a>, and the Dataview classes <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.dataset.Vertex"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.VolumeRGB.html#cortex.dataset.VolumeRGB" title="cortex.dataset.VolumeRGB"><code class="xref py py-class docutils literal notranslate"><span class="pre">VolumeRGB</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.VertexRGB.html#cortex.dataset.VertexRGB" title="cortex.dataset.VertexRGB"><code class="xref py py-class docutils literal notranslate"><span class="pre">VertexRGB</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Volume2d</span></code>, <a class="reference internal" href="generated/cortex.dataset.Vertex2D.html#cortex.dataset.Vertex2D" title="cortex.dataset.Vertex2D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex2D</span></code></a>.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><a class="reference internal" href="generated/cortex.dataset.Dataset.html#cortex.dataset.Dataset" title="cortex.dataset.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a> objects store a collection of <code class="xref py py-class docutils literal notranslate"><span class="pre">Dataview</span></code> objects with associated names. It provides additional functionality to store and load the DataViews as HDF files.</p></li>
+<li><p><a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> is a <code class="xref py py-class docutils literal notranslate"><span class="pre">Dataview</span></code> object that holds either a single or a time series of volumetric data (IE the data is in the original volume space).</p></li>
+<li><p><a class="reference internal" href="generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.dataset.Vertex"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex</span></code></a> is a <code class="xref py py-class docutils literal notranslate"><span class="pre">Dataview</span></code> object that holds either a single or a time series of vertex data (IE the data has been projected onto the surface vertices).</p></li>
+<li><p><a class="reference internal" href="generated/cortex.dataset.VolumeRGB.html#cortex.dataset.VolumeRGB" title="cortex.dataset.VolumeRGB"><code class="xref py py-class docutils literal notranslate"><span class="pre">VolumeRGB</span></code></a> is a <code class="xref py py-class docutils literal notranslate"><span class="pre">Dataview</span></code> object that contains 3 or 4 <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> objects corresponding to the red, green, blue, and optionally alpha channels of a raw dataview.</p></li>
+<li><p><a class="reference internal" href="generated/cortex.dataset.Volume2D.html#cortex.dataset.Volume2D" title="cortex.dataset.Volume2D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume2D</span></code></a> is a <code class="xref py py-class docutils literal notranslate"><span class="pre">Dataview</span></code> object that holds a pair of volumetric data, to be displayed using a 2D colormap.</p></li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="dataviews">
+<h2>Dataviews<a class="headerlink" href="#dataviews" title="Permalink to this headline">¶</a></h2>
+<p>Dataview is a parent class that is instantiated in the form of one of the following subclasses: <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.dataset.Vertex"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.VolumeRGB.html#cortex.dataset.VolumeRGB" title="cortex.dataset.VolumeRGB"><code class="xref py py-class docutils literal notranslate"><span class="pre">VolumeRGB</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.VertexRGB.html#cortex.dataset.VertexRGB" title="cortex.dataset.VertexRGB"><code class="xref py py-class docutils literal notranslate"><span class="pre">VertexRGB</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.Volume2D.html#cortex.dataset.Volume2D" title="cortex.dataset.Volume2D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume2D</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.Vertex2D.html#cortex.dataset.Vertex2D" title="cortex.dataset.Vertex2D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex2D</span></code></a>. All dataviews have the following additional kwargs:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>cmap</strong>: colormap name. This should be a colormap name in matplotlib. See <a class="reference external" href="http://wiki.scipy.org/Cookbook/Matplotlib/Show_colormaps">matplotlib colormaps</a>  for acceptable names.</p></li>
+<li><p><strong>vmin</strong> / <strong>vmax</strong>: colormap minimum and maximums, same as in imshow.</p></li>
+<li><p><strong>description</strong>: A text description of the data view. This is shown as a subheading in the webgl view.</p></li>
+<li><p><strong>priority</strong>: Priority of this data view when included with others in a <a class="reference internal" href="generated/cortex.dataset.Dataset.html#cortex.dataset.Dataset" title="cortex.dataset.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a>.</p></li>
+<li><p>Other kwargs: Additional string-based attributes are saved here. For example, additional quickflat options can be specified here, to be automatically applied during the <a href="#id1"><span class="problematic" id="id2">:method:`cortex.quickflat.make_figure`</span></a> command. webgl views currently do not support any other view options.</p></li>
+</ul>
+</div></blockquote>
+<p>In all following examples, <strong>kwargs</strong> contains these options.</p>
+<div class="section" id="volume-and-vertex">
+<h3>Volume and Vertex<a class="headerlink" href="#volume-and-vertex" title="Permalink to this headline">¶</a></h3>
+<p>These are your basic data classes. They have the following call signatures:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vol</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="n">nparray</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="n">vert</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">nparray</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In addition, there are two classmethods that allow you to define standard empty or random data views:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">empty</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="n">rand</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="n">verts</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> and <a class="reference internal" href="generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.dataset.Vertex"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex</span></code></a> objects support standard numpy operations. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vol</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> also supports masked data. Masked data is data in which the following operation has occurred:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">&gt;</span> <span class="o">.</span><span class="mi">5</span>
+</pre></div>
+</div>
+<p>This is good for limiting the number of voxels required to model. Masks are delicate; you have to have the exact mask, otherwise the linear ordering of the voxels required to reconstruct the 3D volume is lost. It is hightly recommended that you store masks in the pycortex database for this reason. See <span class="xref std std-ref">database-masks</span> for more information about storing masks.</p>
+<p>Generally, the <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> class will automatically understand masked data, assuming the mask exists in the database. If you have masked data where the mask does not exist in the database, you must provide it in the mask keyword argument.</p>
+<p>Volume and Vertex objects can also be implicitly defined using a tuple syntax, as highlighted in the quickstart above.</p>
+</div>
+<div class="section" id="rgb-data">
+<h3>RGB data<a class="headerlink" href="#rgb-data" title="Permalink to this headline">¶</a></h3>
+<p>If you have data which does not require colormapping, it is possible to directly plot them using an RGB dataview. The calling signature looks like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgb</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">VolumeRGB</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="n">verts</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">VertexRGB</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can provide either numpy arrays or <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> objects for the red, green, blue, and alpha channels. If you provide <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> objects, the subject and xfmname keywords must remain None. If you provide numpy arrays for red/green/blue, subject must not be None.</p>
+<p>If you provided either numpy arrays or <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> objects without vmin/vmax, the data will be normalized and cast to uint8 in order to display them. This means that the data will automatically be scaled between 0-255 and quantized. If your data is already normalized between 0 and 1, this will not occur.</p>
+</div>
+<div class="section" id="d-dataviews">
+<h3>2D dataviews<a class="headerlink" href="#d-dataviews" title="Permalink to this headline">¶</a></h3>
+<p>In order to specify 2D data views in webgl, this helper class lets you specify a pair of <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> objects to be plotted using a 2D colormap. Currently, quickflat does not yet support 2D colormaps. To declare a 2D dataview:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dim1</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+<span class="n">dim2</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
+<span class="n">twod</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume2D</span><span class="p">(</span><span class="n">dim1</span><span class="p">,</span> <span class="n">dim2</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmin2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="dataset">
+<h2>Dataset<a class="headerlink" href="#dataset" title="Permalink to this headline">¶</a></h2>
+<p>Dataset objects hold a dictionary of DataView objects. Its main function is saving out data into a standardized HDF format. Datasets also allow subject data packing, if you desire to send data to someone without the subject database.</p>
+<p>In addition, Datasets provide data deduplication. This is especially important for the webgl views, in order to reduce the amount of data transfer between server and client. Deduplication is accomplished using a SHA1 hash of the raw numpy data. This is not a foolproof method, but given the constraints of visualizing volumetric data, additional Numpy attributes do not need to be included in the hash.</p>
+<p>To save data:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">rand</span><span class="o">=</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">31</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="s2">&quot;S1&quot;</span><span class="p">,</span> <span class="s2">&quot;fullhead&quot;</span><span class="p">))</span>
+<span class="n">ds</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;/tmp/dataset.hdf&quot;</span><span class="p">,</span> <span class="n">pack</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The saved out HDF5 format has the following structure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">subjects</span><span class="o">/</span>
+    <span class="n">s1</span><span class="o">/</span>
+        <span class="n">rois</span><span class="o">/</span>
+            <span class="n">name</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+            <span class="n">name</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+            <span class="n">name</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+        <span class="n">transforms</span><span class="o">/</span>
+            <span class="n">xfm1</span><span class="o">/</span>
+                <span class="n">xfm</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span>
+                <span class="n">masks</span><span class="o">/</span>
+                    <span class="n">thin</span><span class="p">[</span><span class="n">z</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">]</span>
+                    <span class="n">thick</span><span class="p">[</span><span class="n">z</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">]</span>
+                    <span class="n">__sha1hash</span><span class="p">[</span><span class="n">z</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">]</span>
+            <span class="n">xfm2</span><span class="o">/</span>
+                <span class="n">xfm</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span>
+                <span class="n">masks</span><span class="o">/</span>
+                    <span class="n">thin</span><span class="p">[</span><span class="n">z</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">surfaces</span>
+            <span class="n">fiducial</span>
+                <span class="n">lh</span>
+                    <span class="n">pts</span><span class="p">[</span><span class="n">n</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+                    <span class="n">polys</span><span class="p">[</span><span class="n">m</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+                <span class="n">rh</span>
+                    <span class="n">pts</span><span class="p">[</span><span class="n">n</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+                    <span class="n">polys</span><span class="p">[</span><span class="n">m</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="o">/</span><span class="n">data</span><span class="o">/</span>
+    <span class="nb">hash</span>
+        <span class="o">-&gt;</span> <span class="n">subject</span>
+        <span class="o">-&gt;</span> <span class="n">maskname</span>
+<span class="o">/</span><span class="n">views</span>
+    <span class="n">name1</span><span class="p">[</span><span class="n">dataref</span><span class="p">,</span> <span class="n">desc</span><span class="p">,</span> <span class="n">cmap</span><span class="p">,</span> <span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="p">,</span> <span class="n">state</span><span class="p">]</span>
+    <span class="n">name2</span><span class="p">[</span><span class="n">dataref</span><span class="p">,</span> <span class="n">desc</span><span class="p">,</span> <span class="n">cmap</span><span class="p">,</span> <span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="p">,</span> <span class="n">state</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/dataset.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

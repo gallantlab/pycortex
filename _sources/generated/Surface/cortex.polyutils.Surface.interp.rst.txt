@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.interp
+===============================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: Surface.interp

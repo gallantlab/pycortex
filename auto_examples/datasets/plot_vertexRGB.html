@@ -1,0 +1,222 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Plot RGB Vertex Data &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Import fmriprep output" href="../import_surface/import_fmriprep.html" />
+    <link rel="prev" title="Plot 2D Volume Data" href="plot_volume2D.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p>Click <a class="reference internal" href="#sphx-glr-download-auto-examples-datasets-plot-vertexrgb-py"><span class="std std-ref">here</span></a> to download the full example code</p>
+</div>
+<div class="sphx-glr-example-title section" id="plot-rgb-vertex-data">
+<span id="sphx-glr-auto-examples-datasets-plot-vertexrgb-py"></span><h1>Plot RGB Vertex Data<a class="headerlink" href="#plot-rgb-vertex-data" title="Permalink to this headline">¶</a></h1>
+<p>This plots example RGB vertex data onto an example subject, S1, onto a flatmap
+using quickflat. In order for this to run, you have to have a flatmap for this
+subject in the pycortex filestore.</p>
+<p>The cortex.VertexRGB object is instantiated with three cortex.Vertex objects,
+one for each of the three color channels. Ideally, the data in the Volume
+objects will be scaled to be between 0-255 and be np.uint8 type.</p>
+<p>Here, two datasets are generated to look like gradients across the brain and
+a third dataset makes a series of random stripes across the brain. You can
+use any cortex.Vertex objects in their place though.</p>
+<img alt="../../_images/sphx_glr_plot_vertexRGB_001.png" class="sphx-glr-single-img" src="../../_images/sphx_glr_plot_vertexRGB_001.png" />
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<span class="kn">import</span> <span class="nn">cortex.polyutils</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">subject</span> <span class="o">=</span> <span class="s1">&#39;S1&#39;</span>
+
+<span class="c1"># In order to get the number of vertices in this subject&#39;s cortical surface</span>
+<span class="c1"># we have to load in their surfaces and get the number of points in each</span>
+<span class="n">surfs</span> <span class="o">=</span> <span class="p">[</span><span class="n">cortex</span><span class="o">.</span><span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="o">*</span><span class="n">d</span><span class="p">)</span>
+         <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">)]</span>
+
+<span class="c1"># This is the total number of vertices in the left and right hemispheres</span>
+<span class="n">num_verts</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">surfs</span><span class="p">]</span>
+
+<span class="c1"># Creating one fake dataset that is basically a gradient across each</span>
+<span class="c1"># hemisphere based on vertex number</span>
+<span class="n">test1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_verts</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_verts</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+
+<span class="c1"># Picking a different vertex in each hemisphere to create another fake</span>
+<span class="c1"># gradient away from that vertex</span>
+<span class="n">second_verts</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span> <span class="o">/</span> <span class="mi">4</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">num_verts</span><span class="p">]</span>
+<span class="n">test2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_verts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="n">second_verts</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                   <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_verts</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="n">second_verts</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+
+<span class="c1"># Creating a third dataset that is random stripes</span>
+<span class="n">third_verts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">num_verts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">num_verts</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,))</span>
+<span class="n">test3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_verts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">num_verts</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">third_verts</span><span class="p">:</span>
+    <span class="n">test3</span><span class="p">[</span><span class="n">v</span><span class="o">-</span><span class="mi">1000</span><span class="p">:</span> <span class="n">v</span><span class="o">+</span><span class="mi">1000</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="c1"># Scaling the three datasets to be between 0-255</span>
+<span class="n">test1_scaled</span> <span class="o">=</span> <span class="n">test1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">test1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span>
+<span class="n">test2_scaled</span> <span class="o">=</span> <span class="n">test2</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">test2</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span>
+<span class="n">test3_scaled</span> <span class="o">=</span> <span class="n">test3</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">test3</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span>
+
+<span class="c1"># Creating three cortex.Volume objects with the test data as np.uint8</span>
+<span class="n">red</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">test1_scaled</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+<span class="n">green</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">test2_scaled</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+<span class="n">blue</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">test3_scaled</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+
+<span class="c1"># This creates a 2D Vertex object with both of our test datasets for the</span>
+<span class="c1"># given subject</span>
+<span class="n">vertex_data</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">VertexRGB</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vertex_data</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  2.648 seconds)</p>
+<div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-datasets-plot-vertexrgb-py">
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/d4dbe6d537ab3b8867c534a4e21a5c19/plot_vertexRGB.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_vertexRGB.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/88045a5ca44795160381b3e40115ed85/plot_vertexRGB.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_vertexRGB.ipynb</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="plot_dataset_arithmetic.html">Dataset Arithmetic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_volume_to_vertex.html">Map from Volume to Vertex Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_volume.html">Plot Volume Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_vertex.html">Plot Vertex Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_vertex2D.html">Plot 2D Vertex Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_volumeRGB.html">Plot RGB Volume Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_volume2D.html">Plot 2D Volume Data</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Plot RGB Vertex Data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Example Gallery</a><ul>
+      <li>Previous: <a href="plot_volume2D.html" title="previous chapter">Plot 2D Volume Data</a></li>
+      <li>Next: <a href="../import_surface/import_fmriprep.html" title="next chapter">Import fmriprep output</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/auto_examples/datasets/plot_vertexRGB.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

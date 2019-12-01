@@ -1,0 +1,245 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Pycortex Documentation &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="install.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="pycortex-documentation">
+<h1>Pycortex Documentation<a class="headerlink" href="#pycortex-documentation" title="Permalink to this headline">¶</a></h1>
+<a class="reference internal image-reference" href="_images/3dhead.png"><img alt="_images/3dhead.png" class="align-center" src="_images/3dhead.png" style="width: 85%;" /></a>
+<p>Pycortex is a software package for generating beautiful interactive 3D visualizations of fMRI data projected onto cortical surface models. It can also generate high quality 2D flattened cortical visualizations.</p>
+<p>This documentation is still under development. Please report errors or bugs at <a class="reference external" href="https://github.com/gallantlab/pycortex/issues">https://github.com/gallantlab/pycortex/issues</a>.</p>
+<div class="section" id="quickstart">
+<h2>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="user-guide">
+<h2>User Guide<a class="headerlink" href="#user-guide" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="install.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#demo">Demo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#basic-configuration">Basic Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_guide.html">Surface Segmentation and Flattening</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="segmentation_guide.html#starting-setting-up-freesurfer">Starting &amp; Setting up Freesurfer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segmentation_guide.html#importing-data-into-freesurfer">Importing Data Into Freesurfer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segmentation_guide.html#creating-pial-white-matter-surfaces">Creating Pial &amp; White Matter Surfaces</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="database.html#anatomical-scans">Anatomical scans</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database.html#cache">Cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database.html#surfaces">Surfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database.html#transforms">Transforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database.html#surface-info">Surface info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database.html#views">Views</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database.html#overlays-svg"><code class="docutils literal notranslate"><span class="pre">overlays.svg</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="database.html#rois-svg"><code class="docutils literal notranslate"><span class="pre">rois.svg</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="database.html#example-subject-database-entry">Example subject database entry</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="align.html#automatic-alignment">Automatic Alignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="align.html#automatically-tweaking-alignments">Automatically Tweaking Alignments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="align.html#manual-alignment">Manual Alignment</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="example-gallery">
+<h2>Example Gallery<a class="headerlink" href="#example-gallery" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="auto_examples/index.html#datasets-examples">Datasets Examples</a><ul>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="auto_examples/index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="auto_examples/index.html#quickflat-examples">Quickflat Examples</a><ul>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="auto_examples/index.html#quickstart-examples">Quickstart Examples</a><ul>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="auto_examples/index.html#surface-analysis-examples">Surface Analysis Examples</a><ul>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="auto_examples/index.html#utility-examples">Utility Examples</a><ul>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="auto_examples/index.html#webgl-examples">WebGL Examples</a><ul>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="api-reference">
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference_flat.html">Python API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api_reference_flat.html#most-commonly-used-modules">Most commonly used modules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.quickflat">quickflat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.webgl">webgl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.dataset">dataset</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference_flat.html#all-the-other-modules">All the other modules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.align">align</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.anat">anat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.database">database</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.freesurfer">freesurfer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.mapper">mapper</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.mni">mni</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.polyutils">polyutils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.segment">segment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.surfinfo">surfinfo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.utils">utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.volume">volume</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference_flat.html#module-cortex.xfm">xfm</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="citation">
+<h2>Citation<a class="headerlink" href="#citation" title="Permalink to this headline">¶</a></h2>
+<p>If you use pycortex in published work, please cite the <a class="reference external" href="http://dx.doi.org/10.3389/fninf.2015.00023">pycortex paper</a>:</p>
+<p><em>Gao JS, Huth AG, Lescroart MD and Gallant JL (2015) Pycortex: an interactive surface visualizer for fMRI. Front. Neuroinform. 9:23. doi: 10.3389/fninf.2015.00023</em></p>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="install.html" title="next chapter">Installation</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

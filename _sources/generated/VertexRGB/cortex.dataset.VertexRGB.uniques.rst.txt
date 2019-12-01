@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.uniques
+================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VertexRGB.uniques

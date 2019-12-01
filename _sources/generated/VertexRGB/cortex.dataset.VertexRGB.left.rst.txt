@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.left
+=============================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: VertexRGB.left

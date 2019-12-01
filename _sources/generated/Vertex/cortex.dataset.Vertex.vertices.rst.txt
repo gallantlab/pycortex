@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.vertices
+==============================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: Vertex.vertices

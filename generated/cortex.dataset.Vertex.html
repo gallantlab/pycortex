@@ -1,0 +1,224 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>cortex.dataset.Vertex &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cortex-dataset-vertex">
+<h1>cortex.dataset.Vertex<a class="headerlink" href="#cortex-dataset-vertex" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="cortex.dataset.Vertex">
+<em class="property">class </em><code class="sig-prename descclassname">cortex.dataset.</code><code class="sig-name descname">Vertex</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">subject</em>, <em class="sig-param">cmap=None</em>, <em class="sig-param">vmin=None</em>, <em class="sig-param">vmax=None</em>, <em class="sig-param">description=''</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/dataset/views.html#Vertex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.dataset.Vertex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Encapsulates a 1D vertex map or 2D vertex movie. Includes information on how
+the data should be colormapped for display purposes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>data</strong><span class="classifier">ndarray</span></dt><dd><p>The data. Can be 1D with shape (v,), or 2D with shape (t,v). Here, v can
+be the number of vertices in both hemispheres, or the number of vertices
+in either one of the hemispheres. In that case, the data for the other 
+hemisphere will be filled with zeros.</p>
+</dd>
+<dt><strong>subject</strong><span class="classifier">str</span></dt><dd><p>Subject identifier. Must exist in the pycortex database.</p>
+</dd>
+<dt><strong>cmap</strong><span class="classifier">str or matplotlib colormap, optional</span></dt><dd><p>Colormap (or colormap name) to use. If not given defaults to matplotlib
+default colormap.</p>
+</dd>
+<dt><strong>vmin</strong><span class="classifier">float, optional</span></dt><dd><p>Minimum value in colormap. If not given, defaults to TODO:WHAT</p>
+</dd>
+<dt><strong>vmax</strong><span class="classifier">float, optional</span></dt><dd><p>Maximum value in colormap. If not given defaults to TODO:WHAT</p>
+</dd>
+<dt><strong>description</strong><span class="classifier">str, optional</span></dt><dd><p>String describing this dataset. Displayed in webgl viewer.</p>
+</dd>
+<dt><strong>**kwargs</strong></dt><dd><p>All additional arguments in kwargs are passed to the VolumeData and Dataview</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.__init__.html#cortex.dataset.Vertex.__init__" title="cortex.dataset.Vertex.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(self, data, subject[, cmap, vmin, …])</p></td>
+<td><p>Initialize self.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.copy.html#cortex.dataset.Vertex.copy" title="cortex.dataset.Vertex.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>(self, data)</p></td>
+<td><p>Return a new VertexData object for the same subject but with data replaced by the given <cite>data</cite>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.empty.html#cortex.dataset.Vertex.empty" title="cortex.dataset.Vertex.empty"><code class="xref py py-obj docutils literal notranslate"><span class="pre">empty</span></code></a>(subject[, value])</p></td>
+<td><p>Create a constant-valued VertexData for the given subject.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.exp.html#cortex.dataset.Vertex.exp" title="cortex.dataset.Vertex.exp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">exp</span></code></a>(self)</p></td>
+<td><p>Return copy of this brain data with data exponentiated.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.from_hdf.html#cortex.dataset.Vertex.from_hdf" title="cortex.dataset.Vertex.from_hdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_hdf</span></code></a>(node)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.map.html#cortex.dataset.Vertex.map" title="cortex.dataset.Vertex.map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map</span></code></a>(self, target_subj[, surface_type, hemi, …])</p></td>
+<td><p>Map this data from this surface to another surface</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.random.html#cortex.dataset.Vertex.random" title="cortex.dataset.Vertex.random"><code class="xref py py-obj docutils literal notranslate"><span class="pre">random</span></code></a>(subject, \*\*kwargs)</p></td>
+<td><p>Create a random-valued VertexData for the given subject.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.to_json.html#cortex.dataset.Vertex.to_json" title="cortex.dataset.Vertex.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a>(self[, simple])</p></td>
+<td><p>Creates JSON description of this brain data.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.uniques.html#cortex.dataset.Vertex.uniques" title="cortex.dataset.Vertex.uniques"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uniques</span></code></a>(self[, collapse])</p></td>
+<td><p>TODO: WHAT IS THIS</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.volume.html#cortex.dataset.Vertex.volume" title="cortex.dataset.Vertex.volume"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume</span></code></a>(self, xfmname[, projection])</p></td>
+<td><p>Map this VertexData back to volume space, creating a VolumeData object.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.data.html#cortex.dataset.Vertex.data" title="cortex.dataset.Vertex.data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">data</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.left.html#cortex.dataset.Vertex.left" title="cortex.dataset.Vertex.left"><code class="xref py py-obj docutils literal notranslate"><span class="pre">left</span></code></a></p></td>
+<td><p>Data for only the left hemisphere vertices.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.name.html#cortex.dataset.Vertex.name" title="cortex.dataset.Vertex.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
+<td><p>Name of this BrainData, computed from hash of data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.priority.html#cortex.dataset.Vertex.priority" title="cortex.dataset.Vertex.priority"><code class="xref py py-obj docutils literal notranslate"><span class="pre">priority</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.raw.html#cortex.dataset.Vertex.raw" title="cortex.dataset.Vertex.raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">raw</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.right.html#cortex.dataset.Vertex.right" title="cortex.dataset.Vertex.right"><code class="xref py py-obj docutils literal notranslate"><span class="pre">right</span></code></a></p></td>
+<td><p>Data for only the right hemisphere vertices.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.vertices.html#cortex.dataset.Vertex.vertices" title="cortex.dataset.Vertex.vertices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertices</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/generated/cortex.dataset.Vertex.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

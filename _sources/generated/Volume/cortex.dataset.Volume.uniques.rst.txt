@@ -1,0 +1,6 @@
+cortex.dataset.Volume.uniques
+=============================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Volume.uniques

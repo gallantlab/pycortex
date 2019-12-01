@@ -1,0 +1,6 @@
+cortex.utils.get\_ctmpack
+=========================
+
+.. currentmodule:: cortex.utils
+
+.. autofunction:: get_ctmpack

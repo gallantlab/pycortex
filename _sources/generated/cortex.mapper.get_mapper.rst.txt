@@ -1,0 +1,6 @@
+cortex.mapper.get\_mapper
+=========================
+
+.. currentmodule:: cortex.mapper
+
+.. autofunction:: get_mapper

@@ -1,0 +1,6 @@
+cortex.dataset.Volume2D.subject
+===============================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: Volume2D.subject

@@ -1,0 +1,6 @@
+cortex.database.Database.subjects
+=================================
+
+.. currentmodule:: cortex.database
+
+.. autoproperty:: Database.subjects

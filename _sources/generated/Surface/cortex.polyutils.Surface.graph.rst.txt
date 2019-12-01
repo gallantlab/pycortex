@@ -1,0 +1,6 @@
+cortex.polyutils.Surface.graph
+==============================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: Surface.graph
