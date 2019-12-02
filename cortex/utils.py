@@ -2,10 +2,15 @@
 """
 import io
 import os
+import h5py
 import copy
 import binascii
 import warnings
 import numpy as np
+import tarfile
+import wget
+import tempfile
+
 from six import string_types
 from importlib import import_module
 from .database import db
@@ -862,6 +867,61 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
         else:
             return tuple(out)
 
+
+def load_sparse_array(fname, varname):
+    """Load a numpy sparse array from an hdf file
+
+    Parameters
+    ----------
+    fname: string
+        file name containing array to be loaded
+    varname: string
+        name of variable to be loaded
+
+    Notes
+    -----
+    This function relies on variables being stored with specific naming
+    conventions, so cannot be used to load arbitrary sparse arrays.
+    """
+    import scipy.sparse
+    with h5py.File(fname) as hf:
+        data = (hf['%s_data'%varname], hf['%s_indices'%varname], hf['%s_indptr'%varname])
+        sparsemat = scipy.sparse.csr_matrix(data, shape=hf['%s_shape'%varname])
+    return sparsemat
+
+
+def save_sparse_array(fname, data, varname, mode='a'):
+    """Save a numpy sparse array to an hdf file
+    
+    Results in relatively smaller file size than numpy.savez
+
+    Parameters
+    ----------
+    fname : string
+        file name to save
+    data : sparse array
+        data to save
+    varname : string
+        name of variable to save
+    mode : string
+        write / append mode set, one of ['w','a'] (passed to h5py.File())
+    """
+    import scipy.sparse
+    if not isinstance(data, scipy.sparse.csr.csr_matrix):
+        data_ = scipy.sparse.csr_matrix(data)
+    else:
+        data_ = data
+    with h5py.File(fname, mode=mode) as hf:
+        # Save indices
+        hf.create_dataset(varname + '_indices', data=data_.indices, compression='gzip')
+        # Save data
+        hf.create_dataset(varname + '_data', data=data_.data, compression='gzip')
+        # Save indptr
+        hf.create_dataset(varname + '_indptr', data=data_.indptr, compression='gzip')
+        # Save shape
+        hf.create_dataset(varname + '_shape', data=data_.shape, compression='gzip')
+
+
 def get_cmap(name):
     """Gets a colormaps
 
@@ -917,3 +977,43 @@ def add_cmap(cmap, name, cmapdir=None):
         # Probably won't work due to permissions...
         cmapdir = config.get('webgl', 'colormaps')
     plt.imsave(os.path.join(cmapdir, name), cmap_im)
+
+def download_subject(subject_id='fsaverage', url=None, pycortex_store=None):
+    """Download subjects to pycortex store
+    
+    Parameters
+    ----------
+    subject_id : string
+        subject identifying string in pycortex. This assumes that 
+        the file downloaded from some URL is of the form <subject_id>.tar.gz
+    url: string or None
+        URL from which to download. Not necessary to specify for subjects 
+        known to pycortex (None is OK). Known subjects will have a default URL. 
+        Currently,the only known subjects is 'fsaverage', but there are plans 
+        to add more in the future. If provided, URL overrides `subject_id`
+    pycortex_store : string or None
+        Directory to which to put the new subject folder. If None, defaults to
+        the `filestore` variable specified in the pycortex config file. 
+    
+    """
+    # Lazy imports
+    # Map codes to URLs; more coming eventually
+    id_to_url = dict(fsaverage='https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758',
+                     )
+    if url is None:
+        if not subject_id in id_to_url:
+            raise ValueError('Unknown subject_id!')
+        url = id_to_url[subject_id]
+    print("Downloading from: {}".format(url))
+    # Download to temp dir
+    tmp_dir = tempfile.gettempdir()
+    wget.download(url, tmp_dir)
+    print('Downloaded subject {} to {}'.format(subject_id, tmp_dir))
+    # Un-tar to pycortex store
+    if pycortex_store is None:
+        # Default location is config file pycortex store.
+        pycortex_store = config.get('basic', 'filestore')
+    pycortex_store = os.path.expanduser(pycortex_store)
+    with tarfile.open(os.path.join(tmp_dir, subject_id + '.tar.gz'), "r:gz") as tar:
+        print("Extracting subject {} to {}".format(subject_id, pycortex_store))
+        tar.extractall(path=pycortex_store)

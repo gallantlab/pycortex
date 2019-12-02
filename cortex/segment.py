@@ -143,6 +143,15 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
         fs_subject = cx_subject
     opts = "[hemi=%s,name=%s]"%(hemi, name)
     fname = db.get_paths(cx_subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
+    # Double-check that fiducial and inflated vertex counts match
+    # (these may not match if a subject is initially imported from freesurfer to pycortex, 
+    # and then edited further for a better segmentation and not re-imported)
+    ipt, ipoly, inrm = freesurfer.get_surf(fs_subject, hemi, 'inflated')
+    fpt, fpoly, fnrm = freesurfer.get_surf(fs_subject, hemi, 'fiducial')
+    if ipt.shape[0] != fpt.shape[0]:
+        raise ValueError("Please re-import subject - fiducial and inflated vertex counts don't match!")
+    else:
+        print('Vert check ok!')
     if not os.path.exists(fname):
         blender.fs_cut(fname, fs_subject, hemi, freesurfer_subject_dir)
     # Add localizer data to facilitate cutting

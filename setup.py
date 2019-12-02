@@ -117,7 +117,6 @@ setup(name=DISTNAME,
       install_requires=INSTALL_REQUIRES,
       cmdclass=dict(install=my_install),
       include_package_data=True,
-      test_suite='nose.collector',
       classifiers=[
           'Development Status :: 6 - Mature',
           'Intended Audience :: Science/Research',
