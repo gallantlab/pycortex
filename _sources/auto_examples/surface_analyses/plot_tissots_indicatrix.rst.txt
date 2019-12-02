@@ -220,7 +220,7 @@ introduced by flattening the globe onto a map:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  53.868 seconds)
+   **Total running time of the script:** ( 0 minutes  59.604 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_tissots_indicatrix.py:

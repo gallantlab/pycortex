@@ -117,7 +117,7 @@ This can be helpful if you think there is no reason that the
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  14.858 seconds)
+   **Total running time of the script:** ( 0 minutes  15.787 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_figure.py:

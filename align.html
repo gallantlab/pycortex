@@ -53,8 +53,13 @@ This step creates a new transform folder in your pycortex store, and should be t
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cortex</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">automatic</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;example-transform&#39;</span><span class="p">,</span> <span class="s1">&#39;./ref-image.nii.gz&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>And the alignment should be done! This is done using FSL.
-If you look in the pycortex store in <code class="docutils literal notranslate"><span class="pre">S1/transforms/example-transform</span></code>, you will find the following files:</p>
+<p>And the alignment should be done! This is done using FSL.</p>
+<p>You can also use FreeSurfer’s boundary-based registration by setting the <code class="docutils literal notranslate"><span class="pre">use_fs_bbr</span></code> argument to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cortex</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">automatic</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;example-transform&#39;</span><span class="p">,</span> <span class="s1">&#39;./ref-image.nii.gz&#39;</span><span class="p">,</span>
+                   <span class="n">use_fs_bbr</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you look in the pycortex store in <code class="docutils literal notranslate"><span class="pre">S1/transforms/example-transform</span></code>, you will find the following files:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">matrices.xfm</span></code>, which stores the transformation parameters</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">reference.nii.gz</span></code>, the reference image you used</p></li>
@@ -67,14 +72,20 @@ Setting <code class="docutils literal notranslate"><span class="pre">noclean</sp
 <h2>Automatically Tweaking Alignments<a class="headerlink" href="#automatically-tweaking-alignments" title="Permalink to this headline">¶</a></h2>
 <p>In theory, a pre-existing alignment can be tweaked automatically.
 Like the automatic alignment, this is done via FSL.
-However, in practice, the search range is too big to be pratically useful, and tweaking should be done using manual alignment instead.</p>
+However, in practice, the search range is too big to be practically useful, and tweaking should be done using manual alignment instead.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cortex</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">autotweak</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;example-transform&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="manual-alignment">
 <h2>Manual Alignment<a class="headerlink" href="#manual-alignment" title="Permalink to this headline">¶</a></h2>
-<p><strong>NOTE</strong>: As of right now, the aligner only works on 14.04. Ubuntu 16.04 changed things up and Mayavi doesn’t work.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Currently the manual aligner only works on Ubuntu 14.04. The manual
+aligner uses Mayavi, which doesn’t seem to be working in later versions of
+Ubuntu. As an alternative to <code class="docutils literal notranslate"><span class="pre">cortex.align.manual</span></code>, you can use
+<code class="docutils literal notranslate"><span class="pre">cortex.align.fs_manual</span></code>, which uses FreeSurfer’s Freeview instead of Mayavi.</p>
+</div>
 <p>Unfortunately, the automatic alignment only gets you like 95% of the way to a good alignment.
 To do the final 5%, you need to manually fix it up.
 Pycortex offers a GUI aligner, built using Mayavi.</p>
