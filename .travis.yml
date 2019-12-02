@@ -53,7 +53,7 @@ deploy:
     repo: pycortex/pycortex.github.io
     target_branch: master
 
-  - provider: pipy
+  - provider: pypi
     user: "__token__"
     password: $PIPY_TOKEN
     on:
