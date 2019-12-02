@@ -29,27 +29,27 @@ ROIs in the right hemisphere will have positive values.
 
     /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:461: UserWarning: Requested layer in svg file (V3A) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:321: UserWarning: No vertices found in V3A!
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:325: UserWarning: No vertices found in V3A!
       warnings.warn("No vertices found in {}!".format(name))
     /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:461: UserWarning: Requested layer in svg file (V3B) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:321: UserWarning: No vertices found in V3B!
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:325: UserWarning: No vertices found in V3B!
       warnings.warn("No vertices found in {}!".format(name))
     /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:461: UserWarning: Requested layer in svg file (LO) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:321: UserWarning: No vertices found in LO!
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:325: UserWarning: No vertices found in LO!
       warnings.warn("No vertices found in {}!".format(name))
     /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:461: UserWarning: Requested layer in svg file (V4) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:321: UserWarning: No vertices found in V4!
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:325: UserWarning: No vertices found in V4!
       warnings.warn("No vertices found in {}!".format(name))
     /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:461: UserWarning: Requested layer in svg file (V7) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:321: UserWarning: No vertices found in V7!
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:325: UserWarning: No vertices found in V7!
       warnings.warn("No vertices found in {}!".format(name))
     /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:461: UserWarning: Requested layer in svg file (IFSFP) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:321: UserWarning: No vertices found in IFSFP!
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:325: UserWarning: No vertices found in IFSFP!
       warnings.warn("No vertices found in {}!".format(name))
     Found 100.00% of S1H
     Found 100.00% of S1M
@@ -60,12 +60,12 @@ ROIs in the right hemisphere will have positive values.
     Found 100.00% of Broca
     Found 100.00% of SMFA
     Found 100.00% of M1M
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:607: RuntimeWarning: Mean of empty slice.
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:611: RuntimeWarning: Mean of empty slice.
       pct_coverage[roi] = vert_in_scan.mean() * 100
     /home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/numpy/core/_methods.py:85: RuntimeWarning: invalid value encountered in double_scalars
       ret = ret.dtype.type(ret / rcount)
     Found nan% of V3A
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:607: RuntimeWarning: Mean of empty slice.
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:611: RuntimeWarning: Mean of empty slice.
       pct_coverage[roi] = vert_in_scan.mean() * 100
     /home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/numpy/core/_methods.py:85: RuntimeWarning: invalid value encountered in double_scalars
       ret = ret.dtype.type(ret / rcount)
@@ -74,7 +74,7 @@ ROIs in the right hemisphere will have positive values.
     Found 100.00% of PPA
     Found 100.00% of S2F
     Found 100.00% of SEF
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:607: RuntimeWarning: Mean of empty slice.
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:611: RuntimeWarning: Mean of empty slice.
       pct_coverage[roi] = vert_in_scan.mean() * 100
     /home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/numpy/core/_methods.py:85: RuntimeWarning: invalid value encountered in double_scalars
       ret = ret.dtype.type(ret / rcount)
@@ -82,12 +82,12 @@ ROIs in the right hemisphere will have positive values.
     Found 100.00% of V1
     Found 100.00% of V2
     Found 100.00% of V3
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:607: RuntimeWarning: Mean of empty slice.
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:611: RuntimeWarning: Mean of empty slice.
       pct_coverage[roi] = vert_in_scan.mean() * 100
     /home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/numpy/core/_methods.py:85: RuntimeWarning: invalid value encountered in double_scalars
       ret = ret.dtype.type(ret / rcount)
     Found nan% of V4
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:607: RuntimeWarning: Mean of empty slice.
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:611: RuntimeWarning: Mean of empty slice.
       pct_coverage[roi] = vert_in_scan.mean() * 100
     /home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/numpy/core/_methods.py:85: RuntimeWarning: invalid value encountered in double_scalars
       ret = ret.dtype.type(ret / rcount)
@@ -95,7 +95,7 @@ ROIs in the right hemisphere will have positive values.
     Found 100.00% of FEF
     Found 100.00% of AC
     Found 100.00% of OFA
-    /home/travis/build/gallantlab/pycortex/cortex/utils.py:607: RuntimeWarning: Mean of empty slice.
+    /home/travis/build/gallantlab/pycortex/cortex/utils.py:611: RuntimeWarning: Mean of empty slice.
       pct_coverage[roi] = vert_in_scan.mean() * 100
     /home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages/numpy/core/_methods.py:85: RuntimeWarning: invalid value encountered in double_scalars
       ret = ret.dtype.type(ret / rcount)
@@ -159,7 +159,7 @@ ROIs in the right hemisphere will have positive values.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  12.358 seconds)
+   **Total running time of the script:** ( 0 minutes  11.582 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_roi_voxel_index_volume.py:

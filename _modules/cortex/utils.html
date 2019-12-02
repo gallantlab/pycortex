@@ -42,6 +42,10 @@
 <span class="kn">import</span> <span class="nn">binascii</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tarfile</span>
+<span class="kn">import</span> <span class="nn">wget</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+
 <span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">string_types</span>
 <span class="kn">from</span> <span class="nn">importlib</span> <span class="kn">import</span> <span class="n">import_module</span>
 <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
@@ -1028,9 +1032,6 @@
 <span class="sd">    </span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Lazy imports</span>
-    <span class="kn">import</span> <span class="nn">tarfile</span>
-    <span class="kn">import</span> <span class="nn">wget</span>
-    <span class="kn">import</span> <span class="nn">os</span>
     <span class="c1"># Map codes to URLs; more coming eventually</span>
     <span class="n">id_to_url</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fsaverage</span><span class="o">=</span><span class="s1">&#39;https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758&#39;</span><span class="p">,</span>
                      <span class="p">)</span>
@@ -1041,12 +1042,12 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Downloading from: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
     <span class="c1"># Download to temp dir</span>
     <span class="n">tmp_dir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">gettempdir</span><span class="p">()</span>
-    <span class="n">wget</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="n">url</span> <span class="p">,</span> <span class="n">tmp_dir</span><span class="p">)</span>
+    <span class="n">wget</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">tmp_dir</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Downloaded subject </span><span class="si">{}</span><span class="s1"> to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">tmp_dir</span><span class="p">))</span>
     <span class="c1"># Un-tar to pycortex store</span>
     <span class="k">if</span> <span class="n">pycortex_store</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># Default location is config file pycortex store.</span>
-        <span class="n">pycortex_store</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;basic&#39;</span><span class="p">,</span> <span class="s1">&#39;filestore&#39;</span><span class="p">)</span>
+        <span class="n">pycortex_store</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;basic&#39;</span><span class="p">,</span> <span class="s1">&#39;filestore&#39;</span><span class="p">)</span>
     <span class="n">pycortex_store</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">pycortex_store</span><span class="p">)</span>
     <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmp_dir</span><span class="p">,</span> <span class="n">subject_id</span> <span class="o">+</span> <span class="s1">&#39;.tar.gz&#39;</span><span class="p">),</span> <span class="s2">&quot;r:gz&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tar</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Extracting subject </span><span class="si">{}</span><span class="s2"> to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">pycortex_store</span><span class="p">))</span>
