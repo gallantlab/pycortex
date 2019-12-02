@@ -5,28 +5,28 @@
 
 Computation times
 =================
-**04:29.518** total execution time for **auto_examples_quickflat** files:
+**04:35.567** total execution time for **auto_examples_quickflat** files:
 
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_connected_vertices.py` (``plot_connected_vertices.py``)     | 02:24.222 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_connected_vertices.py` (``plot_connected_vertices.py``)     | 02:27.620 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_zoom_to_roi.py` (``plot_zoom_to_roi.py``)                   | 00:59.275 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_zoom_to_roi.py` (``plot_zoom_to_roi.py``)                   | 01:00.388 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_make_gif.py` (``plot_make_gif.py``)                         | 00:15.150 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_make_gif.py` (``plot_make_gif.py``)                         | 00:15.562 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_make_figure.py` (``plot_make_figure.py``)                   | 00:14.678 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_make_figure.py` (``plot_make_figure.py``)                   | 00:15.109 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_rois.py` (``plot_rois.py``)                                 | 00:06.707 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_rois.py` (``plot_rois.py``)                                 | 00:06.858 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_advanced_compositing.py` (``plot_advanced_compositing.py``) | 00:06.184 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_advanced_compositing.py` (``plot_advanced_compositing.py``) | 00:06.253 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py` (``plot_make_png.py``)                         | 00:05.757 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py` (``plot_make_png.py``)                         | 00:05.827 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py` (``plot_make_svg.py``)                         | 00:05.605 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py` (``plot_make_svg.py``)                         | 00:05.737 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_sulci.py` (``plot_sulci.py``)                               | 00:04.824 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_sulci.py` (``plot_sulci.py``)                               | 00:04.915 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_dropout.py` (``plot_dropout.py``)                           | 00:04.430 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_dropout.py` (``plot_dropout.py``)                           | 00:04.555 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_quickflat_plot_cutouts.py` (``plot_cutouts.py``)                           | 00:02.686 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_quickflat_plot_cutouts.py` (``plot_cutouts.py``)                           | 00:02.742 | 0.0 MB |
 +---------------------------------------------------------------------------------------------------------+-----------+--------+
