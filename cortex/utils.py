@@ -7,6 +7,10 @@ import copy
 import binascii
 import warnings
 import numpy as np
+import tarfile
+import wget
+import tempfile
+
 from six import string_types
 from importlib import import_module
 from .database import db
@@ -993,9 +997,6 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None):
     
     """
     # Lazy imports
-    import tarfile
-    import wget
-    import os
     # Map codes to URLs; more coming eventually
     id_to_url = dict(fsaverage='https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758',
                      )
@@ -1006,12 +1007,12 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None):
     print("Downloading from: {}".format(url))
     # Download to temp dir
     tmp_dir = tempfile.gettempdir()
-    wget.download(url , tmp_dir)
+    wget.download(url, tmp_dir)
     print('Downloaded subject {} to {}'.format(subject_id, tmp_dir))
     # Un-tar to pycortex store
     if pycortex_store is None:
         # Default location is config file pycortex store.
-        pycortex_store = options.config.get('basic', 'filestore')
+        pycortex_store = config.get('basic', 'filestore')
     pycortex_store = os.path.expanduser(pycortex_store)
     with tarfile.open(os.path.join(tmp_dir, subject_id + '.tar.gz'), "r:gz") as tar:
         print("Extracting subject {} to {}".format(subject_id, pycortex_store))
