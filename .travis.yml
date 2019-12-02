@@ -52,3 +52,13 @@ deploy:
     local_dir: docs/_build/html/
     repo: pycortex/pycortex.github.io
     target_branch: master
+
+  - provider: pipy
+    user: "__token__"
+    password: $PIPY_TOKEN
+    on:
+      distributions: sdist
+      tags: true
+      branch: master
+      repo: gallantlab/pycortex
+      python: "3.7"
