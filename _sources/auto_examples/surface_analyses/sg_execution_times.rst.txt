@@ -5,18 +5,18 @@
 
 Computation times
 =================
-**03:41.981** total execution time for **auto_examples_surface_analyses** files:
+**03:31.819** total execution time for **auto_examples_surface_analyses** files:
 
 +------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_surface_analyses_plot_tissots_indicatrix.py` (``plot_tissots_indicatrix.py``) | 01:01.539 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_surface_analyses_plot_tissots_indicatrix.py` (``plot_tissots_indicatrix.py``) | 00:56.551 | 0.0 MB |
 +------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_surface_analyses_plot_flatmap_distortion.py` (``plot_flatmap_distortion.py``) | 00:50.135 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_surface_analyses_plot_flatmap_distortion.py` (``plot_flatmap_distortion.py``) | 00:48.874 | 0.0 MB |
 +------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_surface_analyses_plot_subsurfaces.py` (``plot_subsurfaces.py``)               | 00:36.503 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_surface_analyses_plot_subsurfaces.py` (``plot_subsurfaces.py``)               | 00:35.390 | 0.0 MB |
 +------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_surface_analyses_plot_interpolate_data.py` (``plot_interpolate_data.py``)     | 00:32.191 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_surface_analyses_plot_interpolate_data.py` (``plot_interpolate_data.py``)     | 00:30.470 | 0.0 MB |
 +------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_distance.py` (``plot_geodesic_distance.py``)   | 00:26.457 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_distance.py` (``plot_geodesic_distance.py``)   | 00:25.704 | 0.0 MB |
 +------------------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py` (``plot_geodesic_path.py``)           | 00:15.156 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py` (``plot_geodesic_path.py``)           | 00:14.830 | 0.0 MB |
 +------------------------------------------------------------------------------------------------------------+-----------+--------+

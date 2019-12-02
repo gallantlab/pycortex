@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Changelog &#8212; pycortex 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="changelog">
+<span id="id1"></span><h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id2">
+<h2>1.1<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p><strong>Added</strong></p>
+<ul class="simple">
+<li><p>Added function <code class="docutils literal notranslate"><span class="pre">cortex.utils.download_subject</span></code> to download new subjects for pycortex from web URLs. This function allows users to download FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">fsaverage</span></code> surface, with a flatmap and ROI labels made by Mark Lescroart (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/344">#344</a>)</p></li>
+<li><p>Vertex objects have a new method <code class="docutils literal notranslate"><span class="pre">.map()</span></code> that allows mapping from one surface to another (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/334">#334</a>)</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">cortex.freesurfer.get_mri_surf2surf_matrix</span></code> to create a sparse matrix implementing the <code class="docutils literal notranslate"><span class="pre">mri_surf2surf</span></code> command (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/334">#334</a>)</p></li>
+<li><p>Add function to plot and save 3D views and plot panels (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/337">#337</a>)</p></li>
+<li><p>Axis object can be passed to <code class="docutils literal notranslate"><span class="pre">quickshow</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/325">#325</a>)</p></li>
+<li><p>Help menu for the 3D WebGL viewer can be accessed with a shortcut (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/319">#319</a>, <a class="reference external" href="https://github.com/gallantlab/pycortex/pull/321">#321</a>)</p></li>
+<li><p>New keyboard shortcuts (<a class="reference external" href="https://gallantlab.github.io/userguide/webgl.html#keyboard-shortcuts">list</a>)</p></li>
+<li><p>Convenience function to import data preprocessed with fmriprep (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/301">#301</a>)</p></li>
+<li><p>Added option to use FreeSurfer’s BBR for automatic alignment and function to use Freeview for manual alignment</p></li>
+</ul>
+<p><strong>Fixed</strong></p>
+<ul class="simple">
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">DataView2D</span></code> to allow plotting of 2D datasets with quickflat</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">VertexRGB</span></code> and <code class="docutils literal notranslate"><span class="pre">VolumeRGB</span></code> when alpha is not set</p></li>
+<li><p>Allow arbitrary positioning of the colorbar with quickflat</p></li>
+<li><p>Make <code class="docutils literal notranslate"><span class="pre">quickflat</span></code> more robust to extraneous polygons (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/333">#333</a>)</p></li>
+<li><p>Fix mouse behavior when unfold &gt; 0.5 in WebGL viewer (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/330">#330</a>)</p></li>
+<li><p>Sub surfaces fixes (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/306">#307</a>)</p></li>
+<li><p>Firefox compatibility fixes  (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/306">#306</a>)</p></li>
+<li><p>Miscellaneous python 3 fixes</p></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2012, James Gao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.2.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/changelog.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
