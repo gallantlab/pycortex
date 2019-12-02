@@ -24,6 +24,12 @@ To have pycortex automagically align the brain, simply call
 	cortex.align.automatic('S1', 'example-transform', './ref-image.nii.gz')
 
 And the alignment should be done! This is done using FSL.
+
+You can also use FreeSurfer's boundary-based registration by setting the ``use_fs_bbr`` argument to ``True``.
+::
+	cortex.align.automatic('S1', 'example-transform', './ref-image.nii.gz',
+                           use_fs_bbr=True)
+
 If you look in the pycortex store in ``S1/transforms/example-transform``, you will find the following files:
 
 * ``matrices.xfm``, which stores the transformation parameters
@@ -37,13 +43,18 @@ Automatically Tweaking Alignments
 ---------------------------------
 In theory, a pre-existing alignment can be tweaked automatically.
 Like the automatic alignment, this is done via FSL.
-However, in practice, the search range is too big to be pratically useful, and tweaking should be done using manual alignment instead.
+However, in practice, the search range is too big to be practically useful, and tweaking should be done using manual alignment instead.
 ::
 	cortex.align.autotweak('S1', 'example-transform')
 
 Manual Alignment
 ----------------
-**NOTE**: As of right now, the aligner only works on 14.04. Ubuntu 16.04 changed things up and Mayavi doesn't work.
+
+.. note::
+    Currently the manual aligner only works on Ubuntu 14.04. The manual
+    aligner uses Mayavi, which doesn't seem to be working in later versions of
+    Ubuntu. As an alternative to ``cortex.align.manual``, you can use
+    ``cortex.align.fs_manual``, which uses FreeSurfer's Freeview instead of Mayavi.
 
 Unfortunately, the automatic alignment only gets you like 95% of the way to a good alignment.
 To do the final 5%, you need to manually fix it up.
