@@ -14,7 +14,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
                 with_labels=True, with_colorbar=True, with_borders=False,
                 with_dropout=False, with_curvature=False, extra_disp=None,
-                with_connected_vertices=False,
+                with_connected_vertices=False, overlay_file=None,
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
                 curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
@@ -174,12 +174,13 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if with_rois:
         roi_im = composite.add_rois(ax, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
                                     roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor,
-                                    with_labels=with_labels)
+                                    with_labels=with_labels, overlay_file=overlay_file)
         layers['rois'] = roi_im
     # Add sulci
     if with_sulci:
         sulc_im = composite.add_sulci(ax, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
-                                      shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels)
+                                      shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels,
+                                      overlay_file=overlay_file)
         layers['sulci'] = sulc_im
     # Add custom
     if extra_disp is not None:

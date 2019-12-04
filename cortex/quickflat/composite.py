@@ -171,7 +171,7 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
                     **cmapdict)
     return img, extents
 
-def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_list=None, **kwargs):
+def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_list=None, overlay_file=None, **kwargs):
     """Add ROIs layer to a figure
 
     NOTE: zorder for rois is 3
@@ -202,7 +202,7 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
         extents = _get_extents(fig)
     if height is None:
         height = _get_height(fig)        
-    svgobject = db.get_overlay(dataview.subject)
+    svgobject = db.get_overlay(dataview.subject, overlay_file=overlay_file)
     svg_kws = _convert_svg_kwargs(kwargs)
     layer_kws = _parse_defaults('rois_paths')
     layer_kws.update(svg_kws)
@@ -213,11 +213,11 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
                     interpolation='bicubic',
                     extent=extents,
                     label='rois',
-                    zorder=4)
+                    zorder=1000)
     return img
 
 
-def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, **kwargs):
+def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, overlay_file=None, **kwargs):
     """Add sulci layer to figure
 
     Parameters
@@ -245,7 +245,7 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, **kwar
     img : matplotlib.image.AxesImage
         matplotlib axes image object for plotted data
     """
-    svgobject = db.get_overlay(dataview.subject)
+    svgobject = db.get_overlay(dataview.subject, overlay_file=overlay_file)
     svg_kws = _convert_svg_kwargs(kwargs)
     layer_kws = _parse_defaults('sulci_paths')
     layer_kws.update(svg_kws)
