@@ -1,3 +1,4 @@
 recursive-include filestore *
 recursive-include OpenCTM-1.0.3 *
 recursive-include cortex *
+include requirements.txt

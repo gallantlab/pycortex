@@ -61,14 +61,14 @@ formats = Extension('cortex.formats', ['cortex/formats.pyx'],
                     include_dirs=get_numpy_include_dirs())
 
 DISTNAME = 'pycortex'
-VERSION = '1.1.1.dev0'
+VERSION = '1.2.dev0'
 DESCRIPTION = 'Python Cortical mapping software for fMRI data'
 with open('README.md') as f:
     LONG_DESCRIPTION = f.read()
 AUTHOR = 'James Gao'
 AUTHOR_EMAIL = 'james@jamesgao.com'
 LICENSE = '2-clause BSD license'
-URL = 'http://gallantlab.github.io'
+URL = 'http://gallantlab.github.io/pycortex'
 DOWNLOAD_URL = URL
 with open('requirements.txt') as f:
     INSTALL_REQUIRES = f.read().split()
