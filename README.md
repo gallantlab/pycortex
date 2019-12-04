@@ -9,16 +9,23 @@ Pycortex is a software library that allows you to visualize fMRI or other volume
 Quickstart
 ----------
 ```
-python3 -m venv env  # use `virtualenv env` for python 2
+python3 -m venv env  # use `virtualenv env` for python 3
 source env/bin/activate
 pip install -U setuptools wheel numpy cython
+pip install -U pycortex
+```
+
+This command creates a new [virtualenv](https://docs.python.org/3/library/venv.html) for pycortex to resolve dependencies. Run `source env/bin/activate` whenever you need pycortex.
+
+If you want to install the latest, unreleased version of pycortex from github, instead of the last line you can run
+
+```
 pip install -U git+git://github.com/gallantlab/pycortex.git
 ```
-This command creates a new [virtualenv](https://docs.python.org/3/library/venv.html) for pycortex to resolve dependencies. Run `source env/bin/activate` whenever you need pycortex.
 
 Documentation
 -------------
-NEW: Massively updated documentation for pycortex is available at [https://gallantlab.github.io/pycortex](https://gallantlab.github.io/pycortex). You can find many examples of pycortex features in the [pycortex example gallery](https://gallantlab.github.io/pycortex/auto_examples/index.html).
+Pycortex documentation is available at [https://gallantlab.github.io/pycortex](https://gallantlab.github.io/pycortex). You can find many examples of pycortex features in the [pycortex example gallery](https://gallantlab.github.io/pycortex/auto_examples/index.html).
 
 To build the documentation locally:
 ```bash
