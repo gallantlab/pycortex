@@ -3,12 +3,15 @@
 Changelog
 ==========
 
-Unreleased
-----------
+1.1.1
+-----
 
+**Fixed**
+
+- Installation fix for PyPi
 
 1.1.0
-----
+-----
 
 **Added**
 
