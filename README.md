@@ -8,10 +8,14 @@ Pycortex is a software library that allows you to visualize fMRI or other volume
 
 Quickstart
 ----------
-```
-python3 -m venv env  # use `virtualenv env` for python 3
+```bash
+# create a virtual environment called env with Python 3
+python3 -m venv env  
+# activate the virtual environment
 source env/bin/activate
+# install some prerequisite packages
 pip install -U setuptools wheel numpy cython
+# install the latest release of pycortex from pip
 pip install -U pycortex
 ```
 
@@ -19,7 +23,8 @@ This command creates a new [virtualenv](https://docs.python.org/3/library/venv.h
 
 If you want to install the latest, unreleased version of pycortex from github, instead of the last line you can run
 
-```
+```bash
+# install unreleased version of pycortex from github
 pip install -U git+git://github.com/gallantlab/pycortex.git
 ```
 
@@ -39,12 +44,12 @@ make html
 Demo
 ----
 Pycortex is best used with [IPython](http://www.ipython.org/). Install it in your virtualenv using 
-```
+```bash
 source env/bin/activate
 pip install ipython
 ```
 To run the pycortex demo,
-```
+```ipython
 $ ipython
 In [1]: import cortex
 In [2]: cortex.webshow(cortex.Volume.random("S1", "fullhead"))
