@@ -17,7 +17,7 @@ from .database import db
 from .volume import anat2epispace
 from .options import config
 from .freesurfer import fs_aseg_dict
-from .polyutils import Surface 
+from .polyutils import Surface
 
 class DocLoader(object):
     def __init__(self, func, mod, package):
@@ -59,13 +59,13 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
         labels are computed (determines how labels are displayed
         on 3D viewer) one of ['mg2','raw']
     recache : bool
-        Whether to re-generate .ctm files. Can resolve some errors 
+        Whether to re-generate .ctm files. Can resolve some errors
         but takes more time to re-generate cached files.
     decimate : bool
         whether to decimate the mesh geometry of the hemispheres
         to reduce file size
     external_svg : str or None
-        file string for .svg file containing alternative overlays 
+        file string for .svg file containing alternative overlays
         for brain viewer. If None, the `overlays.svg` file for this
         subject (in the pycortex_store folder for the subejct) is used.
     overlays_available: tuple or None
@@ -278,7 +278,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
         return sp.call([inkscape_cmd, '-f', svg.svgfile])
 
-def get_roi_verts(subject, roi=None, mask=False):
+def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
     """Return vertices for the given ROIs, or all ROIs if none are given.
 
     Parameters
@@ -300,7 +300,7 @@ def get_roi_verts(subject, roi=None, mask=False):
         after left hemisphere vertex numbers.
     """
     # Get overlays
-    svg = db.get_overlay(subject)
+    svg = db.get_overlay(subject, overlay_file=overlay_file)
 
     # Get flat surface so we can figure out which verts are in medial wall
     # or in cuts
@@ -465,7 +465,7 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
 
 def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_lr=False,
                   allow_overlap=False, fail_for_missing_rois=True, exclude_empty_rois=False,
-                  threshold=None, return_dict=True):
+                  threshold=None, return_dict=True, overlay_file=None):
     """Return a dictionary of roi masks
 
     This function returns a single 3D array with a separate numerical index for each ROI,
@@ -560,17 +560,17 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
             raise Exception("You must set a threshold for gm_mapper='%s' if you want an indexed volume output"%gm_mapper)
     # Start with vertices
     if roi_list is None:
-        roi_verts = get_roi_verts(subject, mask=use_mapper)
+        roi_verts = get_roi_verts(subject, mask=use_mapper, overlay_file=overlay_file)
         roi_list = list(roi_verts.keys())
     else:
         tmp_list = [r for r in roi_list if not r=='Cortex']
         try:
-            roi_verts = get_roi_verts(subject, roi=tmp_list, mask=use_mapper)
+            roi_verts = get_roi_verts(subject, roi=tmp_list, mask=use_mapper, overlay_file=overlay_file)
         except KeyError as key:
             if fail_for_missing_rois:
                 raise KeyError("Requested ROI {} not found in overlays.svg!".format(key))
             else:
-                roi_verts = get_roi_verts(subject, roi=None, mask=use_mapper)
+                roi_verts = get_roi_verts(subject, roi=None, mask=use_mapper, overlay_file=overlay_file)
                 missing = [r for r in roi_list if not r in roi_verts.keys()+['Cortex']]
                 roi_verts = dict((roi, verts) for roi, verts in roi_verts.items() if roi in roi_list)
                 roi_list = list(set(roi_list)-set(missing))
@@ -809,7 +809,7 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
 
     from scipy.sparse import find as sparse_find
     import networkx as nx
-    Lmask, Rmask = get_mapper(subject, xfmname).masks  # Get masks for left and right hemisphere 
+    Lmask, Rmask = get_mapper(subject, xfmname).masks  # Get masks for left and right hemisphere
     if hemi == 'both':
         hemispheres = ['lh', 'rh']
     else:
@@ -826,7 +826,7 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
 
         pts_fid, polys_fid = db.get_surf(subject, 'fiducial', hem)  # Get the fiducial surface
         surf = Surface(pts_fid, polys_fid) #Get the fiducial surface
-        graph = surf.graph 
+        graph = surf.graph
 
         _set_edge_distance_graph_attribute(graph, pts_fid, polys_fid)
 
@@ -850,7 +850,7 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
                             if vert2 in vert_to_vox_map:  # If the vertex is a valid vertex
                                 path = shortest_path(vert1, vert2)
                                 # Test whether any vertex in path goes out of the voxel
-                                stays_in_voxel = all([(v in vert_to_vox_map) and (vert_to_vox_map[v] == vox_idx) for v in path]) 
+                                stays_in_voxel = all([(v in vert_to_vox_map) and (vert_to_vox_map[v] == vox_idx) for v in path])
                                 if not stays_in_voxel:
                                     vox_vert_list.append([vox_idx, vert1, vert2])
 
@@ -892,7 +892,7 @@ def load_sparse_array(fname, varname):
 
 def save_sparse_array(fname, data, varname, mode='a'):
     """Save a numpy sparse array to an hdf file
-    
+
     Results in relatively smaller file size than numpy.savez
 
     Parameters
@@ -980,21 +980,21 @@ def add_cmap(cmap, name, cmapdir=None):
 
 def download_subject(subject_id='fsaverage', url=None, pycortex_store=None):
     """Download subjects to pycortex store
-    
+
     Parameters
     ----------
     subject_id : string
-        subject identifying string in pycortex. This assumes that 
+        subject identifying string in pycortex. This assumes that
         the file downloaded from some URL is of the form <subject_id>.tar.gz
     url: string or None
-        URL from which to download. Not necessary to specify for subjects 
-        known to pycortex (None is OK). Known subjects will have a default URL. 
-        Currently,the only known subjects is 'fsaverage', but there are plans 
+        URL from which to download. Not necessary to specify for subjects
+        known to pycortex (None is OK). Known subjects will have a default URL.
+        Currently,the only known subjects is 'fsaverage', but there are plans
         to add more in the future. If provided, URL overrides `subject_id`
     pycortex_store : string or None
         Directory to which to put the new subject folder. If None, defaults to
-        the `filestore` variable specified in the pycortex config file. 
-    
+        the `filestore` variable specified in the pycortex config file.
+
     """
     # Lazy imports
     # Map codes to URLs; more coming eventually
