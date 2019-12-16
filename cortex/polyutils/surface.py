@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from collections import OrderedDict
 
@@ -118,7 +119,7 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
                  (ppts[:,1]-ppts[:,2])).sum(1) / np.sqrt((np.cross(ppts[:,0]-ppts[:,2],
                                                                    ppts[:,1]-ppts[:,2])**2).sum(1))
 
-        # Then we have to sanitize the fuck out of everything..
+        # Then we have to sanitize everything..
         cots = np.vstack([cots1, cots2, cots3])
         cots[np.isinf(cots)] = 0
         cots[np.isnan(cots)] = 0
@@ -453,7 +454,7 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
             
             lfac = spD - t * nLC # backward Euler matrix
 
-            # Exclude rows with zero weight (these break the sparse LU, that finicky fuck)
+            # Exclude rows with zero weight (these break the sparse LU)
             goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
             self._goodrows = goodrows
             self._rlfac_solvers[m] = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
@@ -514,11 +515,14 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
             t = m * self.avg_edge_length ** 2 # time of heat evolution
             lfac = spD - t * nLC # backward Euler matrix
 
-            # Exclude rows with zero weight (these break the sparse LU, that finicky fuck)
+            # Exclude rows with zero weight (these break the sparse LU)
             goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
             self._goodrows = goodrows
             self._rlfac_solvers[m] = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
             self._nLC_solvers[m] = sparse.linalg.dsolve.factorized(nLC[goodrows][:,goodrows])
+
+        # I. "Integrate the heat flow ̇u = ∆u for some fixed time t"
+        # ---------------------------------------------------------
 
         # Solve system to get u, the heat values
         u0 = np.zeros((npt,)) # initial heat values
@@ -526,6 +530,9 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
         goodu = self._rlfac_solvers[m](u0[self._goodrows])
         u = np.zeros((npt,))
         u[self._goodrows] = goodu
+
+        # II. "Evaluate the vector field X = − ∇u / |∇u|"
+        # -----------------------------------------------
 
         # Compute grad u at each face
         gradu = self.surface_gradient(u, at_verts=False)
@@ -535,6 +542,9 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
         graduT = gradu.T
         gusum = ne.evaluate("sum(gradu ** 2, 1)")
         X = np.nan_to_num(ne.evaluate("-graduT / sqrt(gusum)").T)
+
+        # III. "Solve the Poisson equation ∆φ = ∇·X"
+        # ------------------------------------------
 
         # Compute integrated divergence of X at each vertex
         #x1 = x2 = x3 = np.zeros((X.shape[0],))

@@ -26,18 +26,35 @@ There are two ways to create a WebGL viewer. A **dynamic viewer** is temporary v
 Keyboard Shortcuts
 ^^^^^^^^^^^^^^^^^^
 
-There are many keyboard shortcuts that allow for more fluid interaction with the WebGL viewer. A complete list of keyboard shortcuts and also be displayed in the viewer by pressing the **h** key.
+There are many keyboard shortcuts that allow for more fluid interaction with the WebGL viewer. A complete list of keyboard shortcuts can also be displayed in the viewer by pressing the **h** key.
 
-=== ====================================
-Key Action
-=== ====================================
-f   flatten brain
-i 	inflate brain
-r   fold brain into original coordinates
-l   toggle labels
-h   toggle keyboard shortcut overview
-+/-	switch between datasets
-=== ====================================
+=============   ====================================
+Key             Action
+=============   ====================================
+f               flatten brain
+i 	            inflate brain
+k 	            inflate brain to surface cuts
+r               fold brain into original coordinates
+shift + wheel   change inflation level
+p               show pial surface
+u               show fiducial surface
+y               show white matter surface
+l               toggle labels
+h               toggle keyboard shortcut overview
++/-	            switch between datasets
+e               toggle X slice
+d               toggle Y slice
+c               toggle Z slice
+q/w             switch between X slices
+a/s             switch between Y slices
+z/x             switch between Z slices
+o               toggle data opacity
+m               toggle multiple layers
+alt + wheel     change cortical depth
+shift + l       toggle left hemisphere
+shift + r       toggle right hemisphere
+shift + s       save current view as png
+=============   ====================================
 
 
 View Controls

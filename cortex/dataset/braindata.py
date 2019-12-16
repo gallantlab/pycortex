@@ -32,7 +32,7 @@ class BrainData(object):
     @property
     def data(self):
         if isinstance(self._data, h5py.Dataset):
-            return self._data.value
+            return self._data[()]
         return self._data
 
     @data.setter
@@ -42,7 +42,7 @@ class BrainData(object):
     @property
     def name(self):
         """Name of this BrainData, computed from hash of data.
-        TODO:WHAT THE FUCK IS THIS USEFUL FOR
+        TODO:WHAT IS THIS USEFUL FOR
         """
         return "__%s"%_hash(self.data)[:16]
 
@@ -52,7 +52,7 @@ class BrainData(object):
         return self.copy(np.exp(self.data))
 
     def uniques(self, collapse=False):
-        """TODO: WHAT THE FUCK IS THIS
+        """TODO: WHAT IS THIS
         """
         yield self
 
@@ -62,9 +62,9 @@ class BrainData(object):
     def _write_hdf(self, h5, name=None):
         if name is None:
             name = self.name
-
         dgrp = h5.require_group("/data")
-        if name in dgrp and "__%s"%_hash(dgrp[name].value)[:16] == name:
+        
+        if name in dgrp and "__%s" % _hash(dgrp[name][()])[:16] == name:
             #don't need to update anything, since it's the same data
             return h5.get("/data/%s"%name)
 
@@ -256,6 +256,12 @@ class VolumeData(BrainData):
         from cortex import utils
         mapper = utils.get_mapper(self.subject, self.xfmname, projection)
         data = mapper(self)
+        # Note: this is OK, because VolumeRGB and Volume2D objects (which
+        # have different requirements for vmin, vmax, cmap) do not inherit
+        # from VolumeData, and so do not have this method.
+        data.vmin = self.vmin
+        data.vmax = self.vmax
+        data.cmap = self.cmap
         return data
 
     def __repr__(self):

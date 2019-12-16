@@ -81,17 +81,24 @@ var mriview = (function(module) {
             pivot: {action:[this, "setPivot", -180, 180]},
             shift: {action:[this, "setShift", 0, 200]},
             depth: {action:[this.uniforms.thickmix, "value", 0, 1]},
+            "pial surface": {action: this.to_pial_surface.bind(this), key: 'p', help: "Pial surface"},
+            "fiducial surface": {action: this.to_fiducial_surface.bind(this), key: 'u', help: "Fiducial surface"},
+            "WM surface": {action: this.to_white_matter_surface.bind(this), key: 'y', help: "White matter surface"},
             bumpy_flatmap: {action:[this.uniforms.bumpyflat, "value"]},
             allow_tilt: {action:[this.uniforms.allowtilt, "value"]},
             equivolume: {action:[this, "setEquivolume"]},
-            changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true},
+            changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true, help:'Change depth'},
+            changeInflation: {action: this.changeInflation.bind(this), wheel: true, modKeys: ['shiftKey'], hidden: true, help:'Change inflation'},
+            colorbar: {action:[this, "toggleColorbar"]},
             opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
+            toggleOpacity: {action: this.toggleOpacity.bind(this), key: 'o', hidden: true, help:'Toggle data opacity'},
             left: {action:[this, "setLeftVis"]},
-            leftToggle: {action: this.toggleLeftVis.bind(this), key: 'L', modKeys: ['shiftKey'], hidden: true},
+            leftToggle: {action: this.toggleLeftVis.bind(this), key: 'L', modKeys: ['shiftKey'], hidden: true, help:'Toggle left hemisphere'},
             right: {action:[this, "setRightVis"]},
-            rightToggle: {action: this.toggleRightVis.bind(this), key: 'R', modKeys: ['shiftKey'], hidden: true},
+            rightToggle: {action: this.toggleRightVis.bind(this), key: 'R', modKeys: ['shiftKey'], hidden: true, help:'Toggle right hemisphere'},
 	        specularity: {action:[this, "setSpecular", 0, 1]},
             layers: {action:[this, "setLayers", {1:1, 4:4, 8:8, 16:16, 32:32}]},
+            toggleMultipleLayers: {action: this.toggleMultipleLayers.bind(this), key: 'm', hidden: true, help: "Toggle multiple layers"},
             dither: {action:[this, "setDither"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
         });
@@ -500,6 +507,11 @@ var mriview = (function(module) {
         let clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
         this.dispatchEvent({type:'mix', flat:clipped, mix:mix, thickmix:this.uniforms.thickmix.value});
         viewer.schedule()
+
+        var gui = this.ui._gui
+        for (var i in gui.__controllers) {
+            gui.__controllers[i].updateDisplay();
+        }
     };
     module.Surface.prototype.changeDepth = function(direction) {
         let inc;
@@ -512,6 +524,29 @@ var mriview = (function(module) {
         let newVal = this.uniforms.thickmix.value + inc;
         if (-.01 <= newVal && newVal <= 1.01) {
             this.setThickMix(newVal);
+        }
+    }
+    module.Surface.prototype.to_pial_surface = function() {
+        this.setThickMix(0.0)
+    };
+    module.Surface.prototype.to_fiducial_surface = function() {
+        this.setThickMix(0.5)
+    };
+    module.Surface.prototype.to_white_matter_surface = function() {
+        this.setThickMix(1.0)
+    };
+    module.Surface.prototype.changeInflation = function(direction) {
+        let inc;
+        if (direction > 0) {
+            inc = .01
+        } else {
+            inc = -.01
+        }
+
+        let newVal = this.uniforms.surfmix.value + inc;
+        if (0.0 <= newVal && newVal <= 1.0) {
+            this.setMix(newVal);
+            viewer.schedule();
         }
     }
     module.Surface.prototype.setPivot = function(val) {
@@ -554,6 +589,18 @@ var mriview = (function(module) {
         //this.surfs[0].surf.pivots.left.front.visible = val;
         this.pivots.left.front.visible = val;
     };
+    module.Surface.prototype.toggleColorbar = function(val) {
+        if (val === true || val === undefined) {
+            $('#colorlegend').css('display', 'block')
+            return true
+        } else {
+            $('#colorlegend').css('display', 'none')
+            return false
+        }
+
+        // necessary due to datgui library's extremely hacky introspection of functions
+        return true
+    };
     module.Surface.prototype.toggleLeftVis = function() {
         this.setLeftVis(!this._leftvis);
         viewer.schedule();
@@ -569,11 +616,30 @@ var mriview = (function(module) {
         this.setRightVis(!this._rightvis);
         viewer.schedule();
     };
+    module.Surface.prototype.toggleOpacity = function() {
+        let newValue = 1 - Math.round(this.uniforms.dataAlpha.value)
+        surface = Object.keys(viewer.ui._desc.surface).filter((key) => key[0] != '_')[0]
+        viewer.ui.set('surface.' + surface + '.opacity', newValue)
+        viewer.schedule();
+    };
     module.Surface.prototype.setLayers = function(val) {
         if (val === undefined)
             return this._layers;
         this._layers = val;
         this.resetShaders();
+    }
+    module.Surface.prototype.toggleMultipleLayers = function() {
+        if (this._layers == 1) {
+            this._layers = 32;
+        } else {
+            this._layers = 1;
+        }
+        this.resetShaders();
+        viewer.schedule();
+        var gui = this.ui._gui
+        for (var i in gui.__controllers) {
+            gui.__controllers[i].updateDisplay();
+        }
     }
     module.Surface.prototype.setDither = function(val) {
         if (val === undefined)

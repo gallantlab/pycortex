@@ -1,25 +1,64 @@
-# doctr requires python >= 3.5
 language: python
-python:
-  - 3.5
 
-sudo: true
-env:
-  global:
-    - secure: "V8DI664TIMmsSqdlE+9kFTk0srpF3NFdcc5QNUmIXKHGYBx61BpZs86A4JcfKa6BxwsB8kMs88LPWw9JiT9rG86CvWxGMMn0JAzkSBOhk2XBU7kQRPdCGQ0MVL1hFUbmiCKTkWTIf/dbIBwbMCnckk6i3E1sV06+qZSQCtc6n5w="
+python:
+  - "3.5"
+  - "3.6"
+  - "3.7"
+
+cache:
+  - pip
 
 before_install:
-  - sudo apt-get install inkscape
+  - travis_retry sudo apt-get install -y inkscape
+
+install:
+  - travis_retry pip install -q cython numpy
+  - pip install -e .
 
 script:
-  - set -e
-  - pip install lxml numpy scipy numexpr networkx tornado cython matplotlib h5py nibabel Pillow sphinx sphinx_gallery numpydoc
-  - git clone https://github.com/drdoctr/doctr.git
-  - cd doctr
-  - pip install .
-  - cd ..
-  - python setup.py build_ext --inplace
-  - cd docs
-  - make html
-  - cd ..
-  - doctr deploy --deploy-repo gallantlab/gallantlab.github.io --deploy-branch-name master --no-require-master .
+  # install necessary packages to run tests and run tests
+  - travis_retry pip install -q pytest pytest-cov codecov
+  - pytest --cov=./
+  # test installation
+  - python setup.py install
+  # install packages for docs and make docs
+  - travis_retry pip install -q ipython Sphinx sphinx-gallery numpydoc
+  - cd docs && make html && cd ..
+  # Tell GitHub not to use jekyll to compile the docs
+  - touch docs/_build/html/.nojekyll
+
+after_success:
+  - codecov
+
+deploy:
+  - provider: pages
+    skip_cleanup: true
+    github_token: $GITHUB_TOKEN  # Set in travis-ci.org dashboard, marked secure
+    keep-history: true
+    on:
+      branch: master
+      # push only once
+      python: "3.7"
+    local_dir: docs/_build/html/
+
+  - provider: pages
+    skip_cleanup: true
+    github_token: $GITHUB_TOKEN
+    keep-history: true
+    on:
+      branch: master
+      # push only once
+      python: "3.7"
+    local_dir: docs/_build/html/
+    repo: pycortex/pycortex.github.io
+    target_branch: master
+
+  - provider: pypi
+    user: "__token__"
+    password: $PIPY_TOKEN
+    on:
+      distributions: sdist
+      tags: true
+      branch: master
+      repo: gallantlab/pycortex
+      python: "3.7"

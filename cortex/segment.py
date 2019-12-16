@@ -32,7 +32,7 @@ def init_subject(subject, filenames, run_all=False):
     subject : str
         The name of the subject (this subject is created in the Freesurfer
         SUBJECTS_DIR)
-    filenames : str | list
+    filenames : str 
         Freesurfer-compatible filename(s) for the anatomical image(s). This can
         be the first dicom file of a series of dicoms, a nifti file, an mgz
         file, etc.
@@ -42,7 +42,7 @@ def init_subject(subject, filenames, run_all=False):
         least inspecting) the brain mask and white matter segmentations prior
         to importing into pycortex.
     """
-    cmd = "recon-all -i {fname} -s {subj}".format(subj=subject, fname=filename)
+    cmd = "recon-all -i {fname} -s {subj}".format(subj=subject, fname=filenames)
     print("Calling:\n%{}".format(cmd))
     sp.call(shlex.split(cmd))
     if run_all:
@@ -104,10 +104,10 @@ def edit_segmentation(subject,
     cmd = ["freeview", '-v'] + vols + ['-f'] + surfs
     print("Calling: {}".format(' '.join(cmd)))
     sp.call(cmd)
-    disp = ("If you have edited the white matter surface, you should run:",
-            "`cortex.segment.run_freesurfer_recon('%s', 'wm')`\n"%subject,
-            "If you have edited the brainmask (pial surface), you should run:\n",
-            "`cortex.segment.run_freesurfer_recon('%s', 'pia')`"%subject)
+    print("If you have edited the white matter surface, you should run:\n")
+    print("    `cortex.segment.run_freesurfer_recon('%s', 'wm')`\n"%subject)
+    print("If you have edited the brainmask (pial surface), you should run:\n")
+    print("    `cortex.segment.run_freesurfer_recon('%s', 'pia')`"%subject)
 
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
@@ -143,6 +143,15 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
         fs_subject = cx_subject
     opts = "[hemi=%s,name=%s]"%(hemi, name)
     fname = db.get_paths(cx_subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
+    # Double-check that fiducial and inflated vertex counts match
+    # (these may not match if a subject is initially imported from freesurfer to pycortex, 
+    # and then edited further for a better segmentation and not re-imported)
+    ipt, ipoly, inrm = freesurfer.get_surf(fs_subject, hemi, 'inflated')
+    fpt, fpoly, fnrm = freesurfer.get_surf(fs_subject, hemi, 'fiducial')
+    if ipt.shape[0] != fpt.shape[0]:
+        raise ValueError("Please re-import subject - fiducial and inflated vertex counts don't match!")
+    else:
+        print('Vert check ok!')
     if not os.path.exists(fname):
         blender.fs_cut(fname, fs_subject, hemi, freesurfer_subject_dir)
     # Add localizer data to facilitate cutting

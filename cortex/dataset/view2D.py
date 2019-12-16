@@ -75,13 +75,16 @@ class Dataview2D(Dataview):
         dim2 = np.nan_to_num(dim2).astype(np.uint32)
 
         colored = cmap[dim2.ravel(), dim1.ravel()]
+        # map r, g, b, a values between 0 and 255 to avoid problems with
+        # VolumeRGB when plotting flatmaps with quickflat
+        colored = (colored * 255).astype(np.uint8)
         r, g, b, a = colored.T
         r.shape = dim1.shape
         g.shape = dim1.shape
         b.shape = dim1.shape
         a.shape = dim1.shape
         # Preserve nan values as alpha = 0
-        aidx = np.logical_or(np.isnan(data1),np.isnan(data2))
+        aidx = np.logical_or(np.isnan(data1), np.isnan(data2))
         a[aidx] = 0
         # Code from master, to handle alpha input, prob better here but not tested.
         # # Possibly move this above setting nans to alpha = 0;
@@ -133,8 +136,9 @@ class Volume2D(Dataview2D):
 
     """
     _cls = VolumeData
+
     def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", cmap=None,
-        vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
+                 vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
         if isinstance(dim1, self._cls):
             if subject is not None or xfmname is not None:
                 raise TypeError("Subject and xfmname cannot be specified with Volumes")
@@ -220,8 +224,9 @@ class Vertex2D(Dataview2D):
 
     """
     _cls = VertexData
+
     def __init__(self, dim1, dim2, subject=None, description="", cmap=None,
-        vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
+                 vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
         if isinstance(dim1, VertexData):
             if subject is not None:
                 raise TypeError("Subject cannot be specified with Volumes")
@@ -234,10 +239,12 @@ class Vertex2D(Dataview2D):
             vmax = dim1.vmax if vmax is None else vmax
             vmax2 = dim2.vmax if vmax2 is None else vmax2
         else:
-            self.dim1 = Vertex(dim1, subject)
-            self.dim2 = Vertex(dim2, subject)
+            self.dim1 = Vertex(dim1, subject, vmin=vmin, vmax=vmax)
+            self.dim2 = Vertex(dim2, subject, vmin=vmin2, vmax=vmax2)
 
-        super(Vertex2D, self).__init__(description=description, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
+        super(Vertex2D, self).__init__(description=description, cmap=cmap,
+                                       vmin=vmin, vmax=vmax, vmin2=vmin2,
+                                       vmax2=vmax2, **kwargs)
 
     def __repr__(self):
         return "<2D vertex data for (%s)>"%self.dim1.subject

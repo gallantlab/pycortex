@@ -261,7 +261,7 @@ class Transform(object):
         # Read vox2ras transform for the anatomical volume
         try:
             cmd = ('mri_info', '--vox2ras', anat_mgz)
-            L = subprocess.check_output(cmd).splitlines()
+            L = decode(subprocess.check_output(cmd)).splitlines()
             anat_vox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -270,7 +270,7 @@ class Transform(object):
         # Read tkrvox2ras transform for the  anatomical volume
         try:
             cmd = ('mri_info', '--vox2ras-tkr', anat_mgz)
-            L = subprocess.check_output(cmd).splitlines()
+            L = decode(subprocess.check_output(cmd)).splitlines()
             anat_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -279,7 +279,7 @@ class Transform(object):
         # Read tkvox2ras transform for the functional volume
         try:
             cmd = ('mri_info', '--vox2ras-tkr', func_nii)
-            L = subprocess.check_output(cmd).splitlines()
+            L = decode(subprocess.check_output(cmd)).splitlines()
             L = L[1:]
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
@@ -300,7 +300,7 @@ class Transform(object):
         """Converts a pycortex transform to a FreeSurfer transform.
 
         Converts a transform stored in pycortex xfm object to the FreeSurfer format
-        (i.e., register.dat format)
+        (i.e., register.dat format: https://surfer.nmr.mgh.harvard.edu/fswiki/RegisterDat)
 
         Parameters
         ----------
@@ -310,7 +310,7 @@ class Transform(object):
             FreeSurfer subject name from which the pycortex subject was imported
 
         freesurfer_subject_dir : str | None
-            Directory of FreeSurfer subjects. Defaults to the value for
+            Directory of FreeSurfer subjects. If None, defaults to the value for
             the environment variable 'SUBJECTS_DIR' (which should be set
             by freesurfer)
 
@@ -319,33 +319,19 @@ class Transform(object):
         import subprocess
         import nibabel
         import numpy.linalg as npl
+        from .database import db
         inv = npl.inv
 
-        # Set FreeSurfer subject directory
-        if freesurfer_subject_dir is None:
-            freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
-
         # Set path to the anatomical volume for the FreeSurfer subject
-        anat_mgz = os.path.join(freesurfer_subject_dir, subject, 'mri', 'orig.mgz')
-
-        # Write out the functional volume as Nifti file
-        tmp = tempfile.mkstemp(suffix='.nii')
-        func_nii = tmp[1]
-        nibabel.save(self.reference, func_nii)
+        anat = db.get_anat(subject, type='raw')
 
         # Read vox2ras transform for the anatomical volume
-        try:
-            cmd = ('mri_info', '--vox2ras', anat_mgz)
-            L = subprocess.check_output(cmd).splitlines()
-            anat_vox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
-        except OSError:
-            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
-            raise
+        anat_vox2ras = anat.affine
 
         # Read tkrvox2ras transform for the  anatomical volume
         try:
-            cmd = ('mri_info', '--vox2ras-tkr', anat_mgz)
-            L = subprocess.check_output(cmd).splitlines()
+            cmd = ('mri_info', '--vox2ras-tkr', anat.get_filename())
+            L = decode(subprocess.check_output(cmd)).splitlines()
             anat_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -353,25 +339,31 @@ class Transform(object):
 
         # Read tkvox2ras transform for the functional volume
         try:
-            cmd = ('mri_info', '--vox2ras-tkr', func_nii)
-            L = subprocess.check_output(cmd).splitlines()[1:]
+            cmd = ('mri_info', '--vox2ras-tkr', self.reference.get_filename())
+            # This next line is potentially problematic. The [1:] index
+            # skips a first line that is present only if an error occurs
+            # or some info is missing when the transform is created - i.e.
+            # not in all cases, just in the case that the transform is 
+            # created exactly as it is now. Better would be to check the first
+            # line e.g. with a regular expression. 
+            L = decode(subprocess.check_output(cmd)).splitlines()[1:]
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
             raise
+        # Debugging code
+        #print('Shape of func_tkrvox2ras is: [SHOULD BE (4,4) !!]')
+        #print(func_tkrvox2ras.shape)
 
         # Read voxel resolution of the functional volume
-        try:
-            cmd = ('mri_info', '--res', func_nii)
-            ll = subprocess.check_output(cmd).split("\n")[1]
-            func_voxres = np.array([np.float(s) for s in ll.split() if s])
-        except OSError:
-            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
-            raise
+        func_voxres = self.reference.header.get_zooms()
 
         # Calculate FreeSurfer transform
         fs_anat2func = np.dot(func_tkrvox2ras, np.dot(self.xfm, np.dot(anat_vox2ras, inv(anat_tkrvox2ras))))
 
+        # Debugging code
+        #if not fs_anat2func.shape == (4, 4):
+        #    raise Exception("bad assumptions led to bad transformation matrix.")
         # Write out to `fs_register` in register.dat format
         with open(fs_register, 'w') as fid:
             fid.write('{}\n'.format(subject))
@@ -380,8 +372,8 @@ class Transform(object):
             fid.write('0.150000\n')
             for row in fs_anat2func:
                 fid.write(' '.join(['{:.15e}'.format(x) for x in row]) + '\n')
-
-        os.remove(func_nii)
+        print('Wrote:')
+        subprocess.call(('cat', fs_register))
 
         return fs_anat2func
 
@@ -391,6 +383,12 @@ def isstr(obj):
         return isinstance(obj, basestring)
     except NameError:
         return isinstance(obj, str)
+    
+def decode(obj):
+    if isinstance(obj, bytes):
+        obj = obj.decode()
+    return obj
+        
 
 def _x_flipper(N_i):
     #Copied from dipy

@@ -89,8 +89,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         Name of default colormap. Default 'RdBu_r'
         TODO: DOES THIS DO ANYTHING ANYMORE?
     overlay_file : str, optional
-        Totally replace the overlays.svg file for this subject with the given
-        file (if not None). Default None.
+        Custom overlays.svg file to use instead of the default one for this
+        subject (if not None). Default None.
     html_embed : bool, optional
         Whether to embed the webgl resources in the html output.  Default 'True'.
         If 'False', the webgl resources must be served by your web server.
@@ -144,8 +144,6 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         if anonymize:
             newfname = "S%d"%i
             submap[subj] = newfname
-            del ctms[subj]
-            subj = newfname
         else:
             newfname = fname
         ctms[subj] = newfname+".json"
@@ -168,7 +166,9 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                 ofh = open(newfile, "w")
                 ofh.write(jsoncontents.replace(fname, newfname))
                 ofh.close()
-
+    if anonymize:
+        old_subjects = sorted(list(ctms.keys()))
+        ctms = dict(('S%d'%i, ctms[k]) for i, k in enumerate(old_subjects))
     if len(submap) == 0:
         submap = None
 
@@ -234,7 +234,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
 
 
 def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
-         autoclose=True, open_browser=True, port=None, pickerfun=None,
+         autoclose=None, open_browser=None, port=None, pickerfun=None,
          template="mixer.html", overlays_available=None,
          overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
          overlay_file=None, title='Brain', **kwargs):
@@ -287,8 +287,8 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         Name of default colormap. Default 'RdBu_r'
         TODO: DOES THIS DO ANYTHING ANYMORE?
     overlay_file : str or None, optional
-        Totally replace the overlays.svg file for this subject with the given
-        file (if not None). Default None.
+        Custom overlays.svg file to use instead of the default one for this
+        subject (if not None). Default None.
     title : str, optional
         The title that is displayed on the viewer website when it is loaded in
         a browser.
@@ -296,6 +296,12 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         The layout of the viewer subwindows for showing multiple subjects.
         Default None, which selects the layout based on the number of subjects.
     """
+
+    # populate default webshow args
+    if autoclose is None:
+        autoclose = options.config.get('webshow', 'autoclose', fallback='true') == 'true'
+    if open_browser is None:
+        open_browser = options.config.get('webshow', 'open_browser', fallback='true') == 'true'
 
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
@@ -543,10 +549,6 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             -----
             Equivalent to call to cortex.db.save_view(subject, vw, name)
             For a list of the view parameters saved, see viewer._capture_view
-
-            See Also
-            --------
-            viewer methods get_view, _set_view, _capture_view
             """
             db.save_view(self, subject, name, is_overwrite)
 
@@ -567,10 +569,6 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             -----
             Equivalent to call to cortex.db.get_view(subject, vw, name)
             For a list of the view parameters set, see viewer._capture_view
-
-            See Also
-            --------
-            viewer methods save_view, _set_view, _capture_view
             """
             view = db.get_view(self, subject, name)
 

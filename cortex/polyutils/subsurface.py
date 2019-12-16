@@ -223,6 +223,9 @@ class SubsurfaceMixin(object):
             try:
                 euclidean_vertices = self.get_euclidean_patch(vertex, working_radius, old_version=old_version)
                 vertex_mask = euclidean_vertices['vertex_mask']
+                if vertex_mask.sum() <= 1:
+                    working_radius *= 1.1
+                    continue
                 subsurface = self.create_subsurface(vertex_mask=vertex_mask)
                 vertex_map = subsurface.subsurface_vertex_map
 
@@ -244,10 +247,12 @@ class SubsurfaceMixin(object):
         close_enough = subsurface.lift_subsurface_data(close_enough)
         geodesic_distance = subsurface.lift_subsurface_data(geodesic_distance) 
         geodesic_distance[~close_enough] = np.nan
+        
+        vertex_mask = self.get_connected_vertices(vertex=vertex, mask=close_enough, old_version=old_version)
 
         return {
-            'vertex_mask': self.get_connected_vertices(vertex=vertex, mask=close_enough, old_version=old_version),
-            'geodesic_distance': geodesic_distance[close_enough],
+            'vertex_mask': vertex_mask,
+            'geodesic_distance': geodesic_distance[vertex_mask],
         }
 
     def get_geodesic_patches(self, radius, seeds=None, n_random_seeds=None, output='dense'):
@@ -441,7 +446,7 @@ class SubsurfaceMixin(object):
 
         return output
 
-    def get_strip_coordinates(self, v0, v1, geodesic_path, distance_algorithm='softmax'):
+    def get_strip_coordinates(self, v0, v1, geodesic_path=None, distance_algorithm='softmax'):
         """get 2D coordinates of surface from v0 to v1
 
         - first coordinate: distance along geodesic path from v0
@@ -462,6 +467,8 @@ class SubsurfaceMixin(object):
         - distance_algorithm : str
             method to use for computing distance along path, 'softmax' or 'closest'
         """
+        if geodesic_path is None:
+            geodesic_path = self.geodesic_path(v0, v1)
 
         geodesic_distances = np.vstack([self.geodesic_distance([v]) for v in geodesic_path])
         v0_distance = geodesic_distances[0, :]
@@ -520,13 +527,19 @@ class SubsurfaceMixin(object):
             softmax = (exp / exp.sum(0))
             distance_along_line = softmax.T.dot(path_distances)
         elif distance_algorithm == 'closest':
-            closest_path_vertex = geodesic_path[np.argmin(geodesic_distances, axis=0)]
+            closest_path_vertex = np.array(geodesic_path)[np.argmin(geodesic_distances, axis=0)]
             distance_along_line = v0_distance[closest_path_vertex]
         else:
             raise Exception(distance_algorithm)
 
         # compute distance from line
-        distance_from_line = self.geodesic_distance(geodesic_path)
+        # Calling directly self.geodesic_distance(geodesic_path) is somehow
+        # not precise enough on patches, probably because we don't deal
+        # correctly with boundaries in the heat method solver. Here instead,
+        # we call self.geodesic_distance on each point and take the min.
+        distance_from_line = np.min([self.geodesic_distance([ii]) for ii in geodesic_path], axis=0)
+        
+        # compute the sign for each side of the line
         geodesic_mask = np.zeros(self.pts.shape[0], dtype=bool)
         geodesic_mask[geodesic_path] = True
         subsurface = self.create_subsurface(vertex_mask=(~geodesic_mask))
@@ -576,11 +589,10 @@ class SubsurfaceMixin(object):
         if angles is None:
             elev = 10 * np.ones((N_frames,))
             azim = np.linspace(0, 360, N_frames, endpoint=False)
-            angles = zip(elev, azim)
+            angles = list(zip(elev, azim))
 
         fig = plt.figure()
-        ax = fig.gca(projection='3d', aspect='equal')
-        plt.axis('equal')
+        ax = fig.gca(projection='3d')
         plt.axis('off')
 
         def init():

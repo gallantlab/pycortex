@@ -5,9 +5,10 @@ import numpy as np
 from .. import dataset
 from .mapper import Mapper, _savecache
 
+
 def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     from ..database import db
-    from . import point, patch, volume, line
+    from . import point, patch, line
 
     mapcls = dict(
         nearest=point.PointNN,
@@ -32,7 +33,7 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
 
     try:
         if not recache and (xfmname == "identity" or os.stat(cachefile).st_mtime > os.stat(xfmfile).st_mtime):
-           return mapcls[type].from_cache(cachefile)
+            return Map.from_cache(cachefile, subject, xfmname)
         raise Exception
-    except Exception as e:
-        return mapcls[type]._cache(cachefile, subject, xfmname, **kwargs)
+    except Exception:
+        return Map._cache(cachefile, subject, xfmname, **kwargs)

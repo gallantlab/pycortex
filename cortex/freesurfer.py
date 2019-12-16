@@ -1,5 +1,6 @@
 """Contains functions for interfacing with freesurfer
 """
+from __future__ import print_function
 import os
 import copy
 import shutil
@@ -11,6 +12,13 @@ import subprocess as sp
 from builtins import input
 
 import numpy as np
+import nibabel
+from nibabel import gifti
+from tempfile import NamedTemporaryFile
+from scipy.spatial.kdtree import KDTree
+from scipy.linalg import lstsq
+from scipy.sparse import coo_matrix
+
 
 from . import database
 from . import anat
@@ -63,7 +71,7 @@ def autorecon(subject, type="all", parallel=False, n_cores=None):
         '3': "autorecon3",
         'cp': "autorecon2-cp",
         'wm': "autorecon2-wm",
-        'pia': "autorecon2-pial"}
+        'pia': "autorecon-pial"}
 
     times = {
         'all': "12 hours",
@@ -196,7 +204,7 @@ def import_subj(subject, sname=None, freesurfer_subject_dir=None, whitematter_su
 
 def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
                 flat_type='freesurfer',
-                freesurfer_subject_dir=None):
+                freesurfer_subject_dir=None, clean=False):
     """Imports a flat brain from freesurfer
 
     Parameters
@@ -212,6 +220,8 @@ def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
     freesurfer_subject_dir : str
         directory for freesurfer subjects. None defaults to evironment variable
         $SUBJECTS_DIR
+    clean : bool
+        If True, the flat surface is cleaned to remove the disconnected polys.
 
     Returns
     -------
@@ -233,6 +243,11 @@ def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
                                   freesurfer_subject_dir=freesurfer_subject_dir)
             flat_file = flat_file.format(name=patch + ".flat")
             flat, polys = formats.read_obj(flat_file)
+
+        if clean:
+            polys = _remove_disconnected_polys(polys)
+            flat = _move_disconnect_points_to_zero(flat, polys)
+
         fname = surfs.format(hemi=hemi)
         print("saving to %s"%fname)
         formats.write_gii(fname, pts=flat, polys=polys)
@@ -241,11 +256,64 @@ def import_flat(subject, patch, hemis=['lh', 'rh'], sname=None,
     cache = os.path.join(database.default_filestore, sname, "cache")
     shutil.rmtree(cache)
     os.makedirs(cache)
-    # clear config-specified cache
-    from .options import config
-    config_cache = os.path.expanduser(os.path.join(config.get('basic', 'cache'), sname, 'cache'))
-    shutil.rmtree(config_cache)
-    os.makedirs(config_cache)
+    # clear config-specified cache, if different
+    config_cache = database.db.get_cache(sname)
+    if config_cache != cache:
+        shutil.rmtree(config_cache)
+        os.makedirs(config_cache)
+
+
+def _remove_disconnected_polys(polys):
+    """Remove polygons that are not in the main connected component.
+    
+    This function creates a sparse graph based on edges in the input.
+    Then it computes the connected components, and returns only the polygons
+    that are in the largest component.
+    
+    This filtering is useful to remove disconnected vertices resulting from a
+    poor surface cut.
+    """
+    n_points = np.max(polys) + 1
+    import scipy.sparse as sp
+
+    # create the sparse graph
+    row = np.concatenate([
+        polys[:, 0], polys[:, 1], polys[:, 0],
+        polys[:, 2], polys[:, 1], polys[:, 2]
+    ])
+    col = np.concatenate([
+        polys[:, 1], polys[:, 0], polys[:, 2],
+        polys[:, 0], polys[:, 2], polys[:, 1]
+    ])
+    data = np.ones(len(col), dtype=bool)
+    graph = sp.coo_matrix((data, (row, col)), shape=(n_points, n_points),
+                          dtype=bool)
+    
+    # compute connected components
+    n_components, labels = sp.csgraph.connected_components(graph)
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    non_trivial_components = unique_labels[np.where(counts > 1)[0]]
+    main_component = unique_labels[np.argmax(counts)]
+    extra_components = non_trivial_components[non_trivial_components != main_component]
+
+    # filter all components not in the largest component
+    disconnected_pts = np.where(np.isin(labels, extra_components))[0]
+    disconnected_polys_mask = np.isin(polys[:, 0], disconnected_pts)
+    return polys[~disconnected_polys_mask]
+
+
+def _move_disconnect_points_to_zero(pts, polys):
+    """Change coordinates of points not in polygons to zero.
+    
+    This cleaning step is useful after _remove_disconnected_polys, to
+    avoid using this points in boundaries computations (through pts.max(axis=0)
+    here and there).
+    """
+    mask = np.zeros(len(pts), dtype=bool)
+    mask[np.unique(polys)] = True
+    pts[~mask] = 0
+    return pts
+
 
 def make_fiducial(subject, freesurfer_subject_dir=None):
     """Make fiducial surface (halfway between white matter and pial surfaces)
@@ -468,6 +536,206 @@ def get_label(subject, label, fs_subject=None, fs_dir=None, src_subject='fsavera
     verts, values = _parse_labels(label_files, subject)
     idx = verts.astype(np.int)
     return idx, values
+
+
+def _mri_surf2surf_command(src_subj, trg_subj, input_file, output_file, hemi):
+    # mri_surf2surf --srcsubject <source subject name> --srcsurfval
+    # <sourcefile> --trgsubject <target suhject name> --trgsurfval <target
+    # file> --hemi <hemifield>
+
+    cmd = ["mri_surf2surf", "--srcsubject", src_subj,
+                            "--sval", input_file,
+                            "--trgsubject", trg_subj,
+                            "--tval", output_file,
+                            "--hemi", hemi,
+          ]
+    return cmd
+
+
+
+def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
+    """Uses freesurfer mri_surf2surf to transfer vertex data between
+        two freesurfer subjects
+    
+    Parameters
+    ==========
+    data: ndarray, shape=(n_imgs, n_verts)
+        data arrays representing vertex data
+    
+    source_subj: str
+        freesurfer subject name of source subject
+    
+    target_subj: str
+        freesurfer subject name of target subject
+    
+    hemi: str in ("lh", "rh")
+        string indicating hemisphere.
+    
+    Notes
+    =====
+    Requires path to mri_surf2surf or freesurfer environment to be active.
+    """
+    data_arrays = [gifti.GiftiDataArray(d) for d in data]
+    gifti_image = gifti.GiftiImage(darrays=data_arrays)
+
+    tf_in = NamedTemporaryFile(suffix=".gii")
+    nibabel.save(gifti_image, tf_in.name)
+
+    tf_out = NamedTemporaryFile(suffix='.gii')
+    cmd = _mri_surf2surf_command(source_subj, target_subj,
+                                   tf_in.name, tf_out.name, hemi)
+    if subjects_dir is not None:
+        env = os.environ.copy()
+        env['SUBJECTS_DIR'] = subjects_dir
+    else:
+        env = None
+
+    print('Calling:')
+    print(' '.join(cmd))
+    p = sp.Popen(cmd, env=env)
+    exit_code = p.wait()
+    if exit_code != 0:
+        if exit_code == 255:
+            raise Exception(("Missing file (see above). "
+                             "If lh.sphere.reg is missing,\n"
+                             "you likely need to run the 3rd "
+                             "stage of freesurfer autorecon\n"
+                             "(sphere registration) for this subject:\n"
+                             ">>> cortex.freesurfer.autorecon('{fs_subject}', type='3')"
+                             ).format(fs_subject=source_subj))
+        #from subprocess import CalledProcessError # handle with this, maybe?
+        raise Exception(("Exit code {exit_code} means that "
+            "mri_surf2surf failed").format(exit_code=exit_code))
+
+    tf_in.close()
+    output_img = nibabel.load(tf_out.name)
+    output_data = np.array([da.data for da in output_img.darrays])
+    tf_out.close()
+    return output_data
+
+
+def get_mri_surf2surf_matrix(source_subj, hemi, surface_type,
+                            target_subj='fsaverage', subjects_dir=None,
+                            n_neighbors=20, random_state=0,
+                            n_test_images=40, coef_threshold=None,
+                            renormalize=True):
+
+    """Creates a matrix implementing freesurfer mri_surf2surf command.
+    
+    A surface-to-surface transform is a linear transform between vertex spaces.
+    Such a transform must be highly localized in the sense that a vertex in the
+    target surface only draws its values from very few source vertices.
+    This function exploits the localization to create an inverse problem for 
+    each vertex.
+    The source neighborhoods for each target vertex are found by using
+    mri_surf2surf to transform the three coordinate maps from the source 
+    surface to the target surface, yielding three coordinate values for each
+    target vertex, for which we find the nearest neighbors in the source space.
+    A small number of test images is transformed from source surface to
+    target surface.	
+    For each target vertex in the transformed test images, a regression is 
+    performed using only the corresponding source image neighborhood, yielding
+    the entries for a sparse matrix encoding the transform.
+    
+    Parameters
+    ==========
+    
+    source_subj: str
+    	Freesurfer name of source subject
+    
+    hemi: str in ("lh", "rh")
+    	Indicator for hemisphere
+    
+    surface_type: str in ("white", "pial", ...)
+    	Indicator for surface layer
+    
+    target_subj: str, default "fsaverage"
+    	Freesurfer name of target subject
+    
+    subjects_dir: str, default os.environ["SUBJECTS_DIR"]
+    	The freesurfer subjects directory
+    
+    n_neighbors: int, default 20
+    	The size of the neighborhood to take into account when estimating
+    	the source support of a vertex
+    
+    random_state: int, default 0
+    	Random number generator or seed for generating test images
+    
+    n_test_images: int, default 40
+    	Number of test images transformed to compute inverse problem. This 
+    	should be greater than n_neighbors or equal.
+    
+    coef_treshold: float, default 1 / (10 * n_neighbors)
+    	Value under which to set a weight to zero in the inverse problem.
+    
+    renormalize: boolean, default True
+    	Determines whether the rows of the output matrix should add to 1,
+    	implementing what is sensible: a weighted averaging
+    
+    Notes
+    =====
+    It turns out that freesurfer seems to do the following: For each target
+    vertex, find, on the sphere, the nearest source vertices, and average their
+    values. Try to be as one-to-one as possible.
+    """
+
+    source_verts, _, _ = get_surf(source_subj, hemi, surface_type,
+                                  freesurfer_subject_dir=subjects_dir)
+
+    transformed_coords = mri_surf2surf(source_verts.T,
+                                       source_subj, target_subj, hemi,
+                                       subjects_dir=subjects_dir)
+
+    kdt = KDTree(source_verts)
+    print("Getting nearest neighbors")
+    distances, indices = kdt.query(transformed_coords.T, k=n_neighbors)
+    print("Done")
+
+    rng = (np.random.RandomState(random_state) 
+                          if isinstance(random_state, int) else random_state)
+    test_images = rng.randn(n_test_images, len(source_verts))
+    transformed_test_images = mri_surf2surf(test_images, source_subj,
+                                            target_subj, hemi,
+                                            subjects_dir=subjects_dir)
+
+    # Solve linear problems to get coefficients
+    all_coefs = []
+    residuals = []
+    print("Computing coefficients")
+    i = 0
+    for target_activation, source_inds in zip(
+                                        transformed_test_images.T, indices):
+        i += 1
+        print("{i}".format(i=i), end="\r")
+        source_values = test_images[:, source_inds]
+        r = lstsq(source_values, target_activation,
+                 overwrite_a=True, overwrite_b=True)
+        all_coefs.append(r[0])
+        residuals.append(r[1])
+    print("Done")
+
+    all_coefs = np.array(all_coefs)
+
+    if coef_threshold is None:  # we know now that coefs are doing averages
+        coef_threshold = (1 / 10. / n_neighbors )
+    all_coefs[np.abs(all_coefs) < coef_threshold] = 0
+    if renormalize:
+        all_coefs /= np.abs(all_coefs).sum(axis=1)[:, np.newaxis] + 1e-10
+
+    # there seem to be like 7 vertices that don't constitute an average over
+    # 20 vertices or less, but all the others are such an average.
+
+    # Let's make a matrix that does the transform:
+    col_indices = indices.ravel()
+    row_indices = (np.arange(indices.shape[0])[:, np.newaxis] *
+                   np.ones(indices.shape[1], dtype='int')).ravel()
+    data = all_coefs.ravel()
+    shape = (transformed_coords.shape[1], source_verts.shape[0])
+
+    matrix = coo_matrix((data, (row_indices, col_indices)), shape=shape)
+
+    return matrix
 
 
 def get_curv(subject, hemi, type='wm', freesurfer_subject_dir=None):

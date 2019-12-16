@@ -1,4 +1,6 @@
 import os
+import sys
+import warnings
 import glob
 import struct
 import numpy as np
@@ -10,6 +12,9 @@ from libc.string cimport strtok
 from libc.stdlib cimport atoi, atof
 
 np.import_array()
+
+PY3 = sys.version_info[0] > 3
+
 
 def read(globname):
     readers = OrderedDict([('gii', read_gii), ('npz', read_npz), ('vtk', read_vtk), ('off', read_off), ('stl', read_stl)])
@@ -42,10 +47,15 @@ def read_npz(filename):
     return pts, polys
 
 def read_gii(filename):
-    from nibabel import gifti
-    gii = gifti.read(filename)
-    pts = gii.getArraysFromIntent('pointset')[0].data
-    polys = gii.getArraysFromIntent('triangle')[0].data
+    from nibabel import load
+    with warnings.catch_warnings():
+        # Note that cython < 0.28 will fail to compile in python 2 since
+        # ResourceWarning does not exist in python 2.
+        if PY3:  
+            warnings.simplefilter('ignore', ResourceWarning)
+        gii = load(filename)
+    pts = gii.get_arrays_from_intent('pointset')[0].data
+    polys = gii.get_arrays_from_intent('triangle')[0].data
     return pts, polys
 
 @cython.boundscheck(False)
@@ -101,8 +111,6 @@ def read_obj(filename, norm=False, uv=False):
 
 @cython.boundscheck(False)
 def read_vtk(filename):
-    cdef str vtk, line
-    cdef bytes svtk
     cdef char *cstr = NULL, *cvtk = NULL
     cdef np.ndarray[np.float_t, ndim=2] pts = None
     cdef np.ndarray[np.uint32_t, ndim=2] polys = None
@@ -116,7 +124,7 @@ def read_vtk(filename):
 
     cstr = strtok(cvtk, "\n")
     while pts is None or polys is None and cstr is not NULL:
-        line = cstr.encode('UTF-8')
+        line = cstr.decode('UTF-8')
         if line.startswith("POINTS"):
             _, sn, dtype = line.split()
             n = int(sn)

@@ -24,7 +24,6 @@ import tornado.ioloop
 import tornado.httpserver
 from tornado import websocket
 from tornado.web import HTTPError
-from tornado import stack_context
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
@@ -57,33 +56,6 @@ class NPEncode(json.JSONEncoder):
         else:
             return super(NPEncode, self).default(obj)
 
-def asynchronous(method):
-    """Wrap request handler methods with this if they are asynchronous.
-
-    If this decorator is given, the response is not finished when the
-    method returns. It is up to the request handler to call self.finish()
-    to finish the HTTP request. Without this decorator, the request is
-    automatically finished when the get() or post() method returns. ::
-
-       class MyRequestHandler(web.RequestHandler):
-           @web.asynchronous
-           def get(self):
-              http = httpclient.AsyncHTTPClient()
-              http.fetch("http://friendfeed.com/", self._on_download)
-
-           def _on_download(self, response):
-              self.write("Downloaded!")
-              self.finish()
-
-    """
-    @functools.wraps(method)
-    def wrapper(self, *args, **kwargs):
-        self._auto_finish = False
-        with stack_context.ExceptionStackContext(
-            self._stack_context_handle_exception):
-            return method(self, *args, **kwargs)
-    return wrapper
-
 class StaticFileHandler(tornado.web.RequestHandler):
     """A simple handler that can serve static content from a directory.
 
@@ -114,8 +86,9 @@ class StaticFileHandler(tornado.web.RequestHandler):
     def head(self, path):
         self.get(path, include_body=False)
 
-    @asynchronous
     def get(self, path, include_body=True):
+        self._auto_finish = False
+
         #logging.info('static request %s, %s' % (self.request.uri,  self.request.headers))
         if os.path.sep != "/":
             path = path.replace("/", os.path.sep)

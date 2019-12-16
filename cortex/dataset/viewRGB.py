@@ -1,4 +1,3 @@
-import json
 import numpy as np
 
 from .views import Dataview, Volume, Vertex
@@ -48,7 +47,7 @@ class DataviewRGB(Dataview):
 
         data = [self.red.name, self.green.name, self.blue.name, alpha]
         viewnode = Dataview._write_hdf(self, h5, name=name, 
-            data=[data], xfmname=xfmname)
+                                       data=[data], xfmname=xfmname)
 
         return viewnode
 
@@ -101,15 +100,16 @@ class VolumeRGB(DataviewRGB):
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
     state : optional
-        TODO: WHAT THE FUCK IS THIS
+        TODO: describe what this is
     **kwargs
         All additional arguments in kwargs are passed to the VolumeData and 
         Dataview.
 
     """
     _cls = VolumeData
+
     def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description="", 
-        state=None, **kwargs):
+                 state=None, **kwargs):
         if isinstance(red, VolumeData):
             if not isinstance(green, VolumeData) or red.subject != green.subject:
                 raise TypeError("Invalid data for green channel")
@@ -125,9 +125,10 @@ class VolumeRGB(DataviewRGB):
             self.green = Volume(green, subject, xfmname)
             self.blue = Volume(blue, subject, xfmname)
 
-
         if alpha is None:
             alpha = np.ones(self.red.volume.shape)
+            alpha = Volume(alpha, self.red.subject, self.red.xfmname,
+                           vmin=0, vmax=1)
 
         if not isinstance(alpha, Volume):
             alpha = Volume(alpha, self.red.subject, self.red.xfmname)
@@ -140,7 +141,6 @@ class VolumeRGB(DataviewRGB):
             raise ValueError('Cannot handle different transforms per volume')
 
         super(VolumeRGB, self).__init__(subject, alpha, description=description, state=state, **kwargs)
-
 
     def to_json(self, simple=False):
         sdict = super(VolumeRGB, self).to_json(simple=simple)
@@ -221,7 +221,7 @@ class VertexRGB(DataviewRGB):
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
     state : optional
-        TODO: WHAT THE FUCK IS THIS
+        TODO: describe what this is
     **kwargs
         All additional arguments in kwargs are passed to the VertexData and 
         Dataview.
@@ -229,7 +229,7 @@ class VertexRGB(DataviewRGB):
     """
     _cls = VertexData
     def __init__(self, red, green, blue, subject=None, alpha=None, description="", 
-        state=None, **kwargs):
+                 state=None, **kwargs):
 
         if isinstance(red, VertexData):
             if not isinstance(green, VertexData) or red.subject != green.subject:
@@ -247,7 +247,7 @@ class VertexRGB(DataviewRGB):
             self.blue = Vertex(blue, subject)
 
         super(VertexRGB, self).__init__(subject, alpha, description=description, 
-            state=state, **kwargs)
+                                        state=state, **kwargs)
 
     @property
     def vertices(self):
@@ -257,6 +257,8 @@ class VertexRGB(DataviewRGB):
         alpha = self.alpha
         if alpha is None:
             alpha = np.ones_like(self.red.data)
+            alpha = Vertex(alpha, self.subject, vmin=0, vmax=1)
+
         if not isinstance(alpha, Vertex):
             alpha = Vertex(alpha, self.subject)
 

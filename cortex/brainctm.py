@@ -153,7 +153,8 @@ class BrainCTM(object):
                       offsets=offsets)
         if self.flatlims is not None:
             jsdict['flatlims'] = self.flatlims
-        json.dump(jsdict, open(jsname, 'w'))
+        with open(jsname, 'w') as fp:
+            json.dump(jsdict, fp)
 
         # Compute and save the index map
         if method != 'raw':
@@ -295,7 +296,8 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
 
 def read_pack(ctmfile):
     fname = os.path.splitext(ctmfile)[0]
-    jsfile = json.load(open(fname + ".json"))
+    with open(fname + ".json") as fp:
+        jsfile = json.load(fp)
     offset = jsfile['offsets']
 
     meshes = []

@@ -18,7 +18,7 @@ class VolumeMapper(Mapper):
             masks.append(cls._getmask(xfm(ppts), xfm(wpts), polys, xfm.shape, **kwargs))
             
         _savecache(filename, masks[0], masks[1], xfm.shape)
-        return cls(masks[0], masks[1], xfm.shape)
+        return cls(masks[0], masks[1], xfm.shape, subject, xfmname)
 
     @classmethod
     def _getmask(cls, pia, wm, polys, shape, **kwargs):
