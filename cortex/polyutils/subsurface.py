@@ -527,13 +527,19 @@ class SubsurfaceMixin(object):
             softmax = (exp / exp.sum(0))
             distance_along_line = softmax.T.dot(path_distances)
         elif distance_algorithm == 'closest':
-            closest_path_vertex = geodesic_path[np.argmin(geodesic_distances, axis=0)]
+            closest_path_vertex = np.array(geodesic_path)[np.argmin(geodesic_distances, axis=0)]
             distance_along_line = v0_distance[closest_path_vertex]
         else:
             raise Exception(distance_algorithm)
 
         # compute distance from line
-        distance_from_line = self.geodesic_distance(geodesic_path)
+        # Calling directly self.geodesic_distance(geodesic_path) is somehow
+        # not precise enough on patches, probably because we don't deal
+        # correctly with boundaries in the heat method solver. Here instead,
+        # we call self.geodesic_distance on each point and take the min.
+        distance_from_line = np.min([self.geodesic_distance([ii]) for ii in geodesic_path], axis=0)
+        
+        # compute the sign for each side of the line
         geodesic_mask = np.zeros(self.pts.shape[0], dtype=bool)
         geodesic_mask[geodesic_path] = True
         subsurface = self.create_subsurface(vertex_mask=(~geodesic_mask))
