@@ -9,6 +9,7 @@ import numpy as np
 import subprocess as sp
 from matplotlib.path import Path
 from scipy.spatial import cKDTree
+from builtins import zip, str
 
 from lxml import etree
 from lxml.builder import E
@@ -150,10 +151,10 @@ class SVGOverlay(object):
                 with_ims = zip(range(len(with_ims)), with_ims)
 
             datalayer = _make_layer(outsvg.getroot(), "data")
-            for imnum,im in reversed(with_ims):
+            for imnum, im in reversed(list(with_ims)):  # need list() with zip for python 3.5 compatibility
                 imlayer = _make_layer(datalayer, "image_%d" % imnum)
                 img = E.image(
-                    {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%im},
+                    {"{http://www.w3.org/1999/xlink}href":"data:image/png;base64,%s"%str(im,'utf-8')},
                     id="image_%d"%imnum, x="0", y="0",
                     width=str(self.svgshape[0]),
                     height=str(self.svgshape[1]),
