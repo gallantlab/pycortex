@@ -49,6 +49,17 @@
 <li><img alt="../../_images/sphx_glr_plot_mosaic_003.png" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_mosaic_003.png" />
 </li>
 </ul>
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/travis/build/gallantlab/pycortex/examples/utils/plot_mosaic.py:17: DeprecationWarning: get_data() is deprecated in favor of get_fdata(), which has a more predictable return type. To obtain get_data() behavior going forward, use numpy.asanyarray(img.dataobj).
+
+* deprecated from version: 3.0
+* Will raise &lt;class &#39;nibabel.deprecator.ExpiredDeprecationError&#39;&gt; as of version: 5.0
+  volume_arr = cortex.db.get_xfm(&#39;S1&#39;, &#39;fullhead&#39;).reference.get_data().T
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># sphinx_gallery_thumbnail_number = 3</span>
 
 <span class="kn">import</span> <span class="nn">cortex</span>
@@ -78,7 +89,7 @@
 <span class="c1"># mosaic_arr is 607 x 607, with nwide = 6, ntall = 6</span>
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  0.357 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  0.308 seconds)</p>
 <div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-utils-plot-mosaic-py">
 <div class="sphx-glr-download docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/c83c63a97afe485326cd1fdab357fff8/plot_mosaic.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_mosaic.py</span></code></a></p>
