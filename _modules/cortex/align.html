@@ -308,7 +308,7 @@
 
         <span class="k">if</span> <span class="n">use_fs_bbr</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Running freesurfer BBR&#39;</span><span class="p">)</span>
-            <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;bbregister --s </span><span class="si">{sub}</span><span class="s1"> --mov </span><span class="si">{absref}</span><span class="s1"> --init-fsl --reg </span><span class="si">{cache}</span><span class="s1">/register.dat --t1&#39;</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;bbregister --s </span><span class="si">{sub}</span><span class="s1"> --mov </span><span class="si">{absref}</span><span class="s1"> --init-fsl --reg </span><span class="si">{cache}</span><span class="s1">/register.dat --t2&#39;</span>
             <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sub</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">absref</span><span class="o">=</span><span class="n">absreference</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
@@ -476,7 +476,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>
