@@ -273,7 +273,7 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
 
         if use_fs_bbr:
             print('Running freesurfer BBR')
-            cmd = 'bbregister --s {sub} --mov {absref} --init-fsl --reg {cache}/register.dat --t1'
+            cmd = 'bbregister --s {sub} --mov {absref} --init-fsl --reg {cache}/register.dat --t2'
             cmd = cmd.format(sub=subject, absref=absreference, cache=cache)
 
             if sp.call(cmd, shell=True) != 0:
