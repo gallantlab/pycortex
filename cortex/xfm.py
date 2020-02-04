@@ -280,7 +280,12 @@ class Transform(object):
         try:
             cmd = ('mri_info', '--vox2ras-tkr', func_nii)
             L = decode(subprocess.check_output(cmd)).splitlines()
-            L = L[1:]
+            # The [1:] index skips a first line that is present only if an error occurs
+            # or some info is missing when the transform is created - i.e.
+            # not in all cases, just in the case that the transform is 
+            # created exactly as it is now. 
+            if len(L) == 5:
+                L = L[1:]
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
@@ -340,13 +345,13 @@ class Transform(object):
         # Read tkvox2ras transform for the functional volume
         try:
             cmd = ('mri_info', '--vox2ras-tkr', self.reference.get_filename())
-            # This next line is potentially problematic. The [1:] index
-            # skips a first line that is present only if an error occurs
+            L = decode(subprocess.check_output(cmd)).splitlines()
+            # The [1:] index skips a first line that is present only if an error occurs
             # or some info is missing when the transform is created - i.e.
             # not in all cases, just in the case that the transform is 
-            # created exactly as it is now. Better would be to check the first
-            # line e.g. with a regular expression. 
-            L = decode(subprocess.check_output(cmd)).splitlines()[1:]
+            # created exactly as it is now. 
+            if len(L) == 5:
+            	L = L[1:]
             func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
