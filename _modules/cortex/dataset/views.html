@@ -391,6 +391,8 @@
         <span class="c1"># Input check</span>
         <span class="k">if</span> <span class="n">hemi</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">,</span> <span class="s1">&#39;both&#39;</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`hemi` kwarg must be &#39;lh&#39;, &#39;rh&#39;, or &#39;both&#39;&quot;</span><span class="p">)</span>
+        <span class="c1"># lazy load</span>
+        <span class="kn">from</span> <span class="nn">..database</span> <span class="kn">import</span> <span class="n">db</span>
         <span class="n">mats</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_mri_surf2surf_matrix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">surface_type</span><span class="p">,</span> 
                 <span class="n">hemi</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">target_subj</span><span class="o">=</span><span class="n">target_subj</span><span class="p">,</span> <span class="n">fs_subj</span><span class="o">=</span><span class="n">fs_subj</span><span class="p">,</span> 
                 <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
