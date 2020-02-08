@@ -356,6 +356,8 @@ class Vertex(VertexData, Dataview):
         # Input check
         if hemi not in ['lh', 'rh', 'both']:
             raise ValueError("`hemi` kwarg must be 'lh', 'rh', or 'both'")
+        # lazy load
+        from ..database import db
         mats = db.get_mri_surf2surf_matrix(self.subject, surface_type, 
                 hemi='both', target_subj=target_subj, fs_subj=fs_subj, 
                 **kwargs)
