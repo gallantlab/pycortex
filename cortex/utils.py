@@ -4,6 +4,7 @@ import io
 import os
 import h5py
 import copy
+import shutil
 import binascii
 import warnings
 import numpy as np
@@ -18,6 +19,7 @@ from .volume import anat2epispace
 from .options import config
 from .freesurfer import fs_aseg_dict
 from .polyutils import Surface
+from . import formats
 
 class DocLoader(object):
     def __init__(self, func, mod, package):
@@ -1017,3 +1019,55 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None):
     with tarfile.open(os.path.join(tmp_dir, subject_id + '.tar.gz'), "r:gz") as tar:
         print("Extracting subject {} to {}".format(subject_id, pycortex_store))
         tar.extractall(path=pycortex_store)
+
+
+def rotate_flatmap(surf_id, theta, plot=False):
+    """Rotate flatmap to be less V-shaped
+    
+    Parameters
+    ----------
+    surf_id : str
+        pycortex surface identifier
+    theta : scalar
+        angle in degrees to rotate flatmaps (rotation is clockwise 
+        for right hemisphere and counter-clockwise for left)
+    plot : bool
+        Whether to make a coarse plot to visualize the changes
+    """
+    # Lazy load of matplotlib
+    import matplotlib.pyplot as plt
+    paths = db.get_paths(surf_id)['surfs']['flat']
+    theta = np.radians(theta)
+    if plot:
+        fig, axs = plt.subplots(2, 2)
+    for j, hem in enumerate(('lh','rh')):
+        this_file = paths[hem]
+        pts, polys = formats.read_gii(this_file)
+        # Rotate clockwise (- rotation) for RH, counter-clockwise (+ rotation) for LH
+        if hem == 'rh':
+            rtheta = - theta
+        else:
+            rtheta = copy.copy(theta)
+        rotation_mat = np.array([[np.cos(rtheta), -np.sin(rtheta)], [np.sin(rtheta), np.cos(rtheta)]])
+        rotated = rotation_mat.dot(pts[:, :2].T).T
+        pts_new = pts.copy()
+        pts_new[:, :2] = rotated
+        new_file, bkup_num = copy.copy(this_file), 0
+        while os.path.exists(new_file):
+            new_file = this_file.replace('.gii', '_rotbkup%02d.gii'%bkup_num)
+            bkup_num += 1
+        print('Backing up file at %s...' % new_file)
+        shutil.copy(this_file, new_file)
+        formats.write_gii(this_file, pts_new, polys)
+        print('Overwriting %s...' % this_file)
+        if plot:
+            axs[0,j].plot(*pts[::100, :2].T, 'r.')
+            axs[0,j].axis('equal')
+            axs[1,j].plot(*pts_new[::100, :2].T, 'b.')
+            axs[1,j].axis('equal')
+    # Remove and back up overlays file
+    overlay_file = db.get_paths(surf_id)['overlays']
+    shutil.copy(overlay_file, overlay_file.replace('.svg', '_rotbkup%02d.svg'%bkup_num))
+    os.unlink(overlay_file)
+    # Regenerate file
+    svg = db.get_overlay(surf_id)

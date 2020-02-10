@@ -627,6 +627,27 @@ class Database(object):
             os.makedirs(cachedir)
         return cachedir
 
+    def clear_cache(self, subject, clear_all_caches=True):
+        """Clears config-specified and default file caches for a subject.
+        
+        """
+        local_cachedir = self.get_cache(subject)
+        shutil.rmtree(local_cachedir)
+        os.makedirs(local_cachedir)
+        # Check on default cache for subject as well, on the off chance 
+        # that other people have cached files here for this subject
+        default_cachedir = os.path.join(self.filestore, subject, "cache")
+        if clear_all_caches is True:
+            # Just delete them.
+            shutil.rmtree(default_cachedir)
+            os.makedirs(default_cachedir)
+        if (len(os.listdir(default_cachedir)) > 0):
+            # Make sure you didn't want to delete them. You probably should.
+            proceed = input("Files exist in %s too! Delete them? [y]/n: "%default_cachedir)
+            if proceed.lower() in ('', 'y'):
+                shutil.rmtree(default_cachedir)
+                os.makedirs(default_cachedir)
+
     def get_paths(self, subject):
         """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
         """

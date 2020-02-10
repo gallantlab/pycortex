@@ -655,12 +655,16 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
         import binascii
 
         # Curvature
-        curv = db.get_surfinfo(subject, 'curvature')
-        curv.cmap = 'gray'
-        fp = io.BytesIO()
-        quickflat.make_png(fp, curv, height=1024, with_rois=False, with_labels=False)
-        fp.seek(0)
-        svg.rois.add_shape('curvature', binascii.b2a_base64(fp.read()).decode('utf-8'), False)
+        for layer_name, cmap in zip(['curvature', 'sulcaldepth', 'thickness'], ['gray', 'RdBu_r', 'viridis']):
+            curv = db.get_surfinfo(subject, layer_name)
+            curv.cmap = cmap
+            vmax = np.abs(curv.data).max()
+            curv.vmin = -vmax
+            curv.vmax = vmax
+            fp = io.BytesIO()
+            quickflat.make_png(fp, curv, height=1024, with_rois=False, with_labels=False)
+            fp.seek(0)
+            svg.rois.add_shape(layer_name, binascii.b2a_base64(fp.read()).decode('utf-8'), False)
 
     else:
         svg = SVGOverlay(svgfile, 

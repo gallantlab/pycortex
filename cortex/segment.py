@@ -21,32 +21,45 @@ from .freesurfer import import_subj as import_freesurfer_subject
 slim_path = options.config.get('dependency_paths', 'slim')
 
 
-def init_subject(subject, filenames, run_all=False):
-    """Run the first initial segmentation for a subject's anatomy.
+def init_subject(subject, filenames, do_import_subject=False, **kwargs):
+    """Run the first initial segmentation for a subject's anatomy (in Freesurfer).
 
-    This function runs autorecon-all, then (optionally) imports the subject
-    into the pycortex database.
+    This function creates a Freesurfer subject and runs autorecon-all, 
+    then (optionally) imports the subject into the pycortex database.
+
+    NOTE: This function requires a functional Freesurfer install! 
+    Also, still can't handle T2 weighted anatomical volume input. Please use
+    Freesurfer directly (and then import) for advanced recon-all input 
+    options; this is just a convenience function.
 
     Parameters
     ----------
     subject : str
         The name of the subject (this subject is created in the Freesurfer
         SUBJECTS_DIR)
-    filenames : str 
+    filenames : str or list
         Freesurfer-compatible filename(s) for the anatomical image(s). This can
         be the first dicom file of a series of dicoms, a nifti file, an mgz
         file, etc.
-    run_all : bool
-        Whether to run recon-all all the way through to importing the subject
-        into pycortex. False by default, since we recommend editing (or at
-        least inspecting) the brain mask and white matter segmentations prior
-        to importing into pycortex.
+    do_import_subject : bool
+        Whether to import the Freesurfer-processed subject (without further)
+        editing) into pycortex. False by default, since we recommend editing 
+        (or at least inspecting) the brain mask and white matter segmentations 
+        prior to importing into pycortex.
+    kwargs : keyword arguments passed to cortex.freesurfer.autorecon()
+        useful ones: parallel=True, n_cores=4 (or more, if you have them)
     """
-    cmd = "recon-all -i {fname} -s {subj}".format(subj=subject, fname=filenames)
+    if 'run_all' in kwargs:
+        warnings.warn('`run_all` is deprecated - please use do_import_subject keyword arg instead!')
+        do_import_subject = kwargs.pop('run_all')
+    if not isinstance(filenames, (list, tuple)):
+        filenames = [filenames]
+    filenames = ' '.join(['-i %s'%f for f in filenames])
+    cmd = "recon-all {fname} -s {subj}".format(subj=subject, fname=filenames)
     print("Calling:\n%{}".format(cmd))
     sp.call(shlex.split(cmd))
-    if run_all:
-        run_freesurfer_recon(subject, "all")
+    run_freesurfer_recon(subject, "all", **kwargs)
+    if do_import_subject:
         import_freesurfer_subject(subject)
 
 
@@ -111,7 +124,8 @@ def edit_segmentation(subject,
 
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
-                freesurfer_subject_dir=None, flatten_with='freesurfer', **kwargs):
+                freesurfer_subject_dir=None, flatten_with='freesurfer', 
+                do_import_subject=True, **kwargs):
     """Initializes an interface to cut the segmented surface for flatmapping.
     This function creates or opens a blend file in your filestore which allows
     surfaces to be cut along hand-defined seams. Blender will automatically
@@ -120,7 +134,7 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
 
     The surface will be automatically extracted from blender then run through
     the mris_flatten command in freesurfer. The flatmap will be imported once
-    that command finishes.
+    that command finishes if `do_import_subject` is True (default value). 
 
     Parameters
     ----------
@@ -138,6 +152,18 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
     freesurfer_subject_dir : str
         Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR
         environment varible
+    flatten_with : str
+        'freesurfer' or 'SLIM' - 'freesurfer' (default) uses freesurfer's 
+        `mris_flatten` function to flatten the cut surface. 'SLIM' uses
+        the SLIM algorithm, which takes much less time but tends to leave
+        more distortions in the flatmap. SLIM is an optional dependency, and 
+        must be installed to work; clone the code 
+        (https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings) 
+        to your computer and set the slim dependency path in your pycortex config 
+        file to point to </path/to/your/slim/install>/ReweightedARAP
+    do_import_subject : bool
+        set option to automatically import flatmaps when both are completed 
+        (if set to false, you must import later with `cortex.freesurfer.import_flat()`)
     """
     if fs_subject is None:
         fs_subject = cx_subject
@@ -171,15 +197,16 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
             # If flattening is aborted, skip the rest of this function
             # (Do not attempt to import completed flatmaps)
             return
-        # Check to see if both hemispheres have been flattened
-        other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
-                                     freesurfer_subject_dir=freesurfer_subject_dir)
-        other = other.format(name=name+".flat")
-        # If so, go ahead and import subject
-        if os.path.exists(other):
-            freesurfer.import_flat(fs_subject, name, sname=cx_subject,
-                        flat_type='freesurfer',
-                        freesurfer_subject_dir=freesurfer_subject_dir)
+        if do_import_subject:
+            # Check to see if both hemispheres have been flattened
+            other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
+                                         freesurfer_subject_dir=freesurfer_subject_dir)
+            other = other.format(name=name+".flat")
+            # If so, go ahead and import subject
+            if os.path.exists(other):
+                freesurfer.import_flat(fs_subject, name, sname=cx_subject,
+                            flat_type='freesurfer',
+                            freesurfer_subject_dir=freesurfer_subject_dir)
     elif flatten_with == 'SLIM':
         done = flatten_slim(fs_subject, hemi, patch=name,
                             freesurfer_subject_dir=freesurfer_subject_dir,
@@ -188,15 +215,16 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
             # If flattening is aborted, skip the rest of this function
             # (Do not attempt to import completed flatmaps)
             return
-        other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
-                                     type='slim',
-                                     freesurfer_subject_dir=freesurfer_subject_dir)
-        other = other.format(name=name)
-        # If so, go ahead and import subject
-        if os.path.exists(other):
-            freesurfer.import_flat(fs_subject, name, sname=cx_subject,
-                        flat_type='slim',
-                        freesurfer_subject_dir=freesurfer_subject_dir)
+        if do_import_subject:
+            other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
+                                         type='slim',
+                                         freesurfer_subject_dir=freesurfer_subject_dir)
+            other = other.format(name=name)
+            # If so, go ahead and import subject
+            if os.path.exists(other):
+                freesurfer.import_flat(fs_subject, name, sname=cx_subject,
+                            flat_type='slim',
+                            freesurfer_subject_dir=freesurfer_subject_dir)
 
     return
 
