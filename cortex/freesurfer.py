@@ -278,7 +278,7 @@ def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
     # clear the cache, per #81
     database.db.clear_cache(cx_subject)
     # Remove overlays.svg file (FLATMAPS HAVE CHANGED)
-    overlays_file = database.get_paths(cx_subject)['overlays']
+    overlays_file = database.db.get_paths(cx_subject)['overlays']
     os.unlink(overlays_file)
     # Regenerate it? 
 
