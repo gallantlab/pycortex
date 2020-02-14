@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../../_static/jquery.js"></script>
-    <script type="text/javascript" src="../../_static/underscore.js"></script>
-    <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script type="text/javascript" src="../../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
@@ -59,14 +59,14 @@
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">anat</span>
 
 
-<div class="viewcode-block" id="get_paths"><a class="viewcode-back" href="../../generated/cortex.freesurfer.get_paths.html#cortex.freesurfer.get_paths">[docs]</a><span class="k">def</span> <span class="nf">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;patch&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="get_paths"><a class="viewcode-back" href="../../generated/cortex.freesurfer.get_paths.html#cortex.freesurfer.get_paths">[docs]</a><span class="k">def</span> <span class="nf">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;patch&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Retrive paths for all surfaces for a subject processed by freesurfer</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    subject : string</span>
-<span class="sd">        Subject ID</span>
-<span class="sd">    hem : string [&#39;lh&#39;|&#39;rh&#39;]</span>
+<span class="sd">        Subject ID for freesurfer subject</span>
+<span class="sd">    hemi : string [&#39;lh&#39;|&#39;rh&#39;]</span>
 <span class="sd">        Left (&#39;lh&#39;) or right (&#39;rh&#39;) hemisphere</span>
 <span class="sd">    type : string [&#39;patch&#39;|&#39;surf&#39;|&#39;curv&#39;]</span>
 <span class="sd">        Which type of files to return</span>
@@ -77,7 +77,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">freesurfer_subject_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SUBJECTS_DIR&#39;</span><span class="p">]</span>
-    <span class="n">base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">fs_subject</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">type</span> <span class="o">==</span> <span class="s2">&quot;patch&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s2">&quot;surf&quot;</span><span class="p">,</span> <span class="n">hemi</span><span class="o">+</span><span class="s2">&quot;.</span><span class="si">{name}</span><span class="s2">.patch.3d&quot;</span><span class="p">)</span>
     <span class="k">elif</span> <span class="nb">type</span> <span class="o">==</span> <span class="s2">&quot;surf&quot;</span><span class="p">:</span>
@@ -88,12 +88,12 @@
         <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s2">&quot;surf&quot;</span><span class="p">,</span> <span class="n">hemi</span><span class="o">+</span><span class="s2">&quot;.</span><span class="si">{name}</span><span class="s2">_slim.obj&quot;</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="autorecon"><a class="viewcode-back" href="../../generated/cortex.freesurfer.autorecon.html#cortex.freesurfer.autorecon">[docs]</a><span class="k">def</span> <span class="nf">autorecon</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_cores</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="autorecon"><a class="viewcode-back" href="../../generated/cortex.freesurfer.autorecon.html#cortex.freesurfer.autorecon">[docs]</a><span class="k">def</span> <span class="nf">autorecon</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">n_cores</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Run Freesurfer&#39;s autorecon-all command for a given freesurfer subject</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    subject : string</span>
+<span class="sd">    fs_subject : string</span>
 <span class="sd">        Freesurfer subject ID (should be a folder in your freesurfer $SUBJECTS_DIR)</span>
 <span class="sd">    type : string</span>
 <span class="sd">        Which steps of autorecon-all to perform. {&#39;all&#39;, &#39;1&#39;,&#39;2&#39;,&#39;3&#39;,&#39;cp&#39;,&#39;wm&#39;, &#39;pia&#39;}</span>
@@ -119,8 +119,8 @@
         <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;yes&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">):</span>
             <span class="k">return</span>
 
-    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;recon-all -s </span><span class="si">{subj}</span><span class="s2"> -</span><span class="si">{cmd}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">cmd</span><span class="o">=</span><span class="n">types</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">)])</span>
-    <span class="k">if</span> <span class="n">parallel</span> <span class="ow">and</span> <span class="nb">type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;2&#39;</span><span class="p">,</span> <span class="s1">&#39;wm&#39;</span><span class="p">):</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;recon-all -s </span><span class="si">{subj}</span><span class="s2"> -</span><span class="si">{cmd}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">cmd</span><span class="o">=</span><span class="n">types</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">)])</span>
+    <span class="k">if</span> <span class="n">parallel</span> <span class="ow">and</span> <span class="nb">type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;2&#39;</span><span class="p">,</span> <span class="s1">&#39;wm&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">):</span>
         <span class="c1"># Parallelization only works for autorecon2 or autorecon2-wm</span>
         <span class="k">if</span> <span class="n">n_cores</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="kn">import</span> <span class="nn">multiprocessing</span> <span class="k">as</span> <span class="nn">mp</span>
@@ -130,12 +130,12 @@
     <span class="n">sp</span><span class="o">.</span><span class="n">check_call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span></div>
 
 
-<div class="viewcode-block" id="flatten"><a class="viewcode-back" href="../../generated/cortex.freesurfer.flatten.html#cortex.freesurfer.flatten">[docs]</a><span class="k">def</span> <span class="nf">flatten</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">save_every</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="flatten"><a class="viewcode-back" href="../../generated/cortex.freesurfer.flatten.html#cortex.freesurfer.flatten">[docs]</a><span class="k">def</span> <span class="nf">flatten</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">save_every</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Perform flattening of a brain using freesurfer</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    subject : str</span>
+<span class="sd">    fs_subject : str</span>
 <span class="sd">        Freesurfer subject ID</span>
 <span class="sd">    hemi : str [&#39;lh&#39; | &#39;rh&#39;]</span>
 <span class="sd">        hemisphere to flatten</span>
@@ -162,8 +162,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Flattening takes approximately 2 hours! Continue? &#39;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;yes&#39;</span><span class="p">):</span>
-        <span class="n">inpath</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">patch</span><span class="p">)</span>
-        <span class="n">outpath</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">patch</span><span class="o">+</span><span class="s2">&quot;.flat&quot;</span><span class="p">)</span>
+        <span class="n">inpath</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">patch</span><span class="p">)</span>
+        <span class="n">outpath</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">patch</span><span class="o">+</span><span class="s2">&quot;.flat&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">save_every</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">save_every_str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
         <span class="k">else</span><span class="p">:</span>
@@ -178,16 +178,23 @@
         <span class="k">return</span> <span class="kc">False</span></div>
 
 
-<div class="viewcode-block" id="import_subj"><a class="viewcode-back" href="../../generated/cortex.freesurfer.import_subj.html#cortex.freesurfer.import_subj">[docs]</a><span class="k">def</span> <span class="nf">import_subj</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">sname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">whitematter_surf</span><span class="o">=</span><span class="s1">&#39;smoothwm&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="import_subj"><a class="viewcode-back" href="../../generated/cortex.freesurfer.import_subj.html#cortex.freesurfer.import_subj">[docs]</a><span class="k">def</span> <span class="nf">import_subj</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">cx_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">whitematter_surf</span><span class="o">=</span><span class="s1">&#39;smoothwm&#39;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Imports a subject from freesurfer</span>
+
+<span class="sd">    This will overwrite (after giving a warning and an option to continue) the </span>
+<span class="sd">    pre-existing subject, including all blender cuts, masks, transforms, etc., and</span>
+<span class="sd">    re-generate surface info files (curvature, sulcal depth, thickness) stored in </span>
+<span class="sd">    the surfinfo/ folder for the subject. All cached files for the subject will be </span>
+<span class="sd">    deleted. </span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    subject : string</span>
+<span class="sd">    fs_subject : string</span>
 <span class="sd">        Freesurfer subject name</span>
-<span class="sd">    sname : string, optional</span>
+<span class="sd">    cx_subject : string, optional</span>
 <span class="sd">        Pycortex subject name (These variable names should be changed). By default uses</span>
-<span class="sd">        the same name as the freesurfer subject.</span>
+<span class="sd">        the same name as the freesurfer subject. Best to stick to that convention, if </span>
+<span class="sd">        possible (your life will go more smoothly.) This optional kwarg is for edge cases. </span>
 <span class="sd">    freesurfer_subject_dir : string, optional</span>
 <span class="sd">        Freesurfer subject directory to pull data from. By default uses the directory</span>
 <span class="sd">        given by the environment variable $SUBJECTS_DIR.</span>
@@ -195,28 +202,30 @@
 <span class="sd">        Which whitematter surface to import as &#39;wm&#39;. By default uses &#39;smoothwm&#39;, but that</span>
 <span class="sd">        surface is smoothed and may not be appropriate. A good alternative is &#39;white&#39;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">sname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">sname</span> <span class="o">=</span> <span class="n">subject</span>
-    <span class="n">database</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">make_subj</span><span class="p">(</span><span class="n">sname</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cx_subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cx_subject</span> <span class="o">=</span> <span class="n">fs_subject</span>
+    <span class="c1"># Create and/or replace extant subject. Throws a warning that this will happen.</span>
+    <span class="n">database</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">make_subj</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">)</span>
 
     <span class="kn">import</span> <span class="nn">nibabel</span>
-    <span class="n">surfs</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="s2">&quot;surfaces&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{name}</span><span class="s2">_</span><span class="si">{hemi}</span><span class="s2">.gii&quot;</span><span class="p">)</span>
-    <span class="n">anats</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="s2">&quot;anatomicals&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{name}</span><span class="s2">.nii.gz&quot;</span><span class="p">)</span>
-    <span class="n">surfinfo</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="s2">&quot;surface-info&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{name}</span><span class="s2">.npz&quot;</span><span class="p">)</span>
+    <span class="n">surfs</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span><span class="p">,</span> <span class="n">cx_subject</span><span class="p">,</span> <span class="s2">&quot;surfaces&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{name}</span><span class="s2">_</span><span class="si">{hemi}</span><span class="s2">.gii&quot;</span><span class="p">)</span>
+    <span class="n">anats</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span><span class="p">,</span> <span class="n">cx_subject</span><span class="p">,</span> <span class="s2">&quot;anatomicals&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{name}</span><span class="s2">.nii.gz&quot;</span><span class="p">)</span>
+    <span class="n">surfinfo</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span><span class="p">,</span> <span class="n">cx_subject</span><span class="p">,</span> <span class="s2">&quot;surface-info&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{name}</span><span class="s2">.npz&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">freesurfer_subject_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SUBJECTS_DIR&#39;</span><span class="p">]</span>
-    <span class="n">fspath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;mri&#39;</span><span class="p">)</span>
-    <span class="n">curvs</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;surf&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{hemi}</span><span class="s1">.</span><span class="si">{name}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">fspath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">fs_subject</span><span class="p">,</span> <span class="s1">&#39;mri&#39;</span><span class="p">)</span>
+    <span class="n">curvs</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">fs_subject</span><span class="p">,</span> <span class="s1">&#39;surf&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{hemi}</span><span class="s1">.</span><span class="si">{name}</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="c1">#import anatomicals</span>
     <span class="k">for</span> <span class="n">fsname</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">dict</span><span class="p">(</span><span class="n">T1</span><span class="o">=</span><span class="s2">&quot;raw&quot;</span><span class="p">,</span> <span class="n">aseg</span><span class="o">=</span><span class="s2">&quot;aseg&quot;</span><span class="p">,</span> <span class="n">wm</span><span class="o">=</span><span class="s2">&quot;raw_wm&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fspath</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{fsname}</span><span class="s2">.mgz&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fsname</span><span class="o">=</span><span class="n">fsname</span><span class="p">)</span>
-        <span class="n">out</span> <span class="o">=</span> <span class="n">anats</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">sname</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">anats</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
         <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;mri_convert </span><span class="si">{path}</span><span class="s2"> </span><span class="si">{out}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">out</span><span class="p">)</span>
         <span class="n">sp</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span>
 
-    <span class="c1"># Make the fiducial files. Just make them.</span>
-    <span class="n">make_fiducial</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+    <span class="c1"># (Re-)Make the fiducial files</span>
+    <span class="c1"># NOTE: these are IN THE FREESURFER $SUBJECTS_DIR !! which can cause confusion.</span>
+    <span class="n">make_fiducial</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
 
     <span class="c1"># Freesurfer uses FOV/2 for center, let&#39;s set the surfaces to use the</span>
     <span class="c1"># magnet isocenter</span>
@@ -226,31 +235,35 @@
     <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">formats</span>
     <span class="k">for</span> <span class="n">fsname</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">whitematter_surf</span><span class="p">,</span> <span class="s2">&quot;wm&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;pial&#39;</span><span class="p">,</span> <span class="s2">&quot;pia&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;inflated&#39;</span><span class="p">,</span> <span class="s2">&quot;inflated&quot;</span><span class="p">)]:</span>
         <span class="k">for</span> <span class="n">hemi</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;lh&quot;</span><span class="p">,</span> <span class="s2">&quot;rh&quot;</span><span class="p">):</span>
-            <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">fsname</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
-            <span class="n">fname</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">surfs</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">sname</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="n">hemi</span><span class="p">))</span>
+            <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">fsname</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">surfs</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="n">hemi</span><span class="p">))</span>
             <span class="n">formats</span><span class="o">.</span><span class="n">write_gii</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="n">pts</span> <span class="o">+</span> <span class="n">surfmove</span><span class="p">,</span> <span class="n">polys</span><span class="o">=</span><span class="n">polys</span><span class="p">)</span>
 
     <span class="k">for</span> <span class="n">curv</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="nb">dict</span><span class="p">(</span><span class="n">sulc</span><span class="o">=</span><span class="s2">&quot;sulcaldepth&quot;</span><span class="p">,</span> <span class="n">thickness</span><span class="o">=</span><span class="s2">&quot;thickness&quot;</span><span class="p">,</span> <span class="n">curv</span><span class="o">=</span><span class="s2">&quot;curvature&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="n">lh</span><span class="p">,</span> <span class="n">rh</span> <span class="o">=</span> <span class="p">[</span><span class="n">parse_curv</span><span class="p">(</span><span class="n">curvs</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">hemi</span><span class="o">=</span><span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">curv</span><span class="p">))</span> <span class="k">for</span> <span class="n">hemi</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">]]</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">surfinfo</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">sname</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">info</span><span class="p">),</span> <span class="n">left</span><span class="o">=-</span><span class="n">lh</span><span class="p">,</span> <span class="n">right</span><span class="o">=-</span><span class="n">rh</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">surfinfo</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">info</span><span class="p">),</span> <span class="n">left</span><span class="o">=-</span><span class="n">lh</span><span class="p">,</span> <span class="n">right</span><span class="o">=-</span><span class="n">rh</span><span class="p">)</span>
 
     <span class="n">database</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">database</span><span class="o">.</span><span class="n">Database</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="import_flat"><a class="viewcode-back" href="../../generated/cortex.freesurfer.import_flat.html#cortex.freesurfer.import_flat">[docs]</a><span class="k">def</span> <span class="nf">import_flat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">hemis</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">],</span> <span class="n">sname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">flat_type</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span>
-                <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">clean</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="import_flat"><a class="viewcode-back" href="../../generated/cortex.freesurfer.import_flat.html#cortex.freesurfer.import_flat">[docs]</a><span class="k">def</span> <span class="nf">import_flat</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">hemis</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">],</span> <span class="n">cx_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">flat_type</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span> <span class="n">auto_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">clean</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Imports a flat brain from freesurfer</span>
+
+<span class="sd">    NOTE: This will delete the overlays.svg file for this subject, since THE</span>
+<span class="sd">    FLATMAPS WILL CHANGE, as well as all cached information (e.g. old flatmap </span>
+<span class="sd">    boundaries, roi svg intermediate renders, etc). </span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    subject : str</span>
+<span class="sd">    fs_subject : str</span>
 <span class="sd">        Freesurfer subject name</span>
 <span class="sd">    patch : str</span>
 <span class="sd">        Name of flat.patch.3d file; e.g., &quot;flattenv01&quot;</span>
 <span class="sd">    hemis : list</span>
 <span class="sd">        List of hemispheres to import. Defaults to both hemispheres.</span>
-<span class="sd">    sname : str</span>
+<span class="sd">    cx_subject : str</span>
 <span class="sd">        Pycortex subject name</span>
 <span class="sd">    freesurfer_subject_dir : str</span>
 <span class="sd">        directory for freesurfer subjects. None defaults to evironment variable</span>
@@ -261,20 +274,30 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">sname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">sname</span> <span class="o">=</span> <span class="n">subject</span>
-    <span class="n">surfs</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="s2">&quot;surfaces&quot;</span><span class="p">,</span> <span class="s2">&quot;flat_</span><span class="si">{hemi}</span><span class="s2">.gii&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">auto_overwrite</span><span class="p">:</span>
+        <span class="n">proceed</span> <span class="o">=</span> <span class="nb">input</span><span class="p">((</span><span class="s1">&#39;Warning: This is intended to over-write .gii files storing</span><span class="se">\n</span><span class="s1">&#39;</span>
+                         <span class="s1">&#39;flatmap vertex locations for this subject, and will result</span><span class="se">\n</span><span class="s1">&#39;</span>
+                         <span class="s1">&#39;in deletion of the overlays.svg file and all cached info</span><span class="se">\n</span><span class="s1">&#39;</span>
+                         <span class="s1">&#39;for this subject (because flatmaps will fundamentally change).</span><span class="se">\n</span><span class="s1">&#39;</span>
+                         <span class="s1">&#39;Proceed? [y]/n: &#39;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">proceed</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;yes&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&gt;&gt;&gt; Elected to quit rather than delete &amp; overwrite files.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+    <span class="k">if</span> <span class="n">cx_subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cx_subject</span> <span class="o">=</span> <span class="n">fs_subject</span>
+    <span class="n">surfs</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span><span class="p">,</span> <span class="n">cx_subject</span><span class="p">,</span> <span class="s2">&quot;surfaces&quot;</span><span class="p">,</span> <span class="s2">&quot;flat_</span><span class="si">{hemi}</span><span class="s2">.gii&quot;</span><span class="p">)</span>
 
     <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">formats</span>
     <span class="k">for</span> <span class="n">hemi</span> <span class="ow">in</span> <span class="n">hemis</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">flat_type</span> <span class="o">==</span> <span class="s1">&#39;freesurfer&#39;</span><span class="p">:</span>
-            <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;patch&quot;</span><span class="p">,</span> <span class="n">patch</span><span class="o">+</span><span class="s2">&quot;.flat&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+            <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;patch&quot;</span><span class="p">,</span> <span class="n">patch</span><span class="o">+</span><span class="s2">&quot;.flat&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
             <span class="c1"># Reorder axes: X, Y, Z instead of Y, X, Z</span>
             <span class="n">flat</span> <span class="o">=</span> <span class="n">pts</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]</span>
             <span class="c1"># Flip Y axis upside down</span>
             <span class="n">flat</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">flat</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
         <span class="k">elif</span> <span class="n">flat_type</span> <span class="o">==</span> <span class="s1">&#39;slim&#39;</span><span class="p">:</span>
-            <span class="n">flat_file</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;slim&#39;</span><span class="p">,</span>
+            <span class="n">flat_file</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;slim&#39;</span><span class="p">,</span>
                                   <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
             <span class="n">flat_file</span> <span class="o">=</span> <span class="n">flat_file</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">patch</span> <span class="o">+</span> <span class="s2">&quot;.flat&quot;</span><span class="p">)</span>
             <span class="n">flat</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">formats</span><span class="o">.</span><span class="n">read_obj</span><span class="p">(</span><span class="n">flat_file</span><span class="p">)</span>
@@ -288,14 +311,11 @@
         <span class="n">formats</span><span class="o">.</span><span class="n">write_gii</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="n">flat</span><span class="p">,</span> <span class="n">polys</span><span class="o">=</span><span class="n">polys</span><span class="p">)</span>
 
     <span class="c1"># clear the cache, per #81</span>
-    <span class="n">cache</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="s2">&quot;cache&quot;</span><span class="p">)</span>
-    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
-    <span class="c1"># clear config-specified cache, if different</span>
-    <span class="n">config_cache</span> <span class="o">=</span> <span class="n">database</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_cache</span><span class="p">(</span><span class="n">sname</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">config_cache</span> <span class="o">!=</span> <span class="n">cache</span><span class="p">:</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">config_cache</span><span class="p">)</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">config_cache</span><span class="p">)</span></div>
+    <span class="n">database</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">clear_cache</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">)</span>
+    <span class="c1"># Remove overlays.svg file (FLATMAPS HAVE CHANGED)</span>
+    <span class="n">overlays_file</span> <span class="o">=</span> <span class="n">database</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">)[</span><span class="s1">&#39;overlays&#39;</span><span class="p">]</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">overlays_file</span><span class="p">)</span></div>
+    <span class="c1"># Regenerate it? </span>
 
 
 <span class="k">def</span> <span class="nf">_remove_disconnected_polys</span><span class="p">(</span><span class="n">polys</span><span class="p">):</span>
@@ -350,13 +370,13 @@
     <span class="k">return</span> <span class="n">pts</span>
 
 
-<div class="viewcode-block" id="make_fiducial"><a class="viewcode-back" href="../../generated/cortex.freesurfer.make_fiducial.html#cortex.freesurfer.make_fiducial">[docs]</a><span class="k">def</span> <span class="nf">make_fiducial</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="make_fiducial"><a class="viewcode-back" href="../../generated/cortex.freesurfer.make_fiducial.html#cortex.freesurfer.make_fiducial">[docs]</a><span class="k">def</span> <span class="nf">make_fiducial</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Make fiducial surface (halfway between white matter and pial surfaces)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">hemi</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">]:</span>
-        <span class="n">spts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;smoothwm&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
-        <span class="n">ppts</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;pial&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
-        <span class="n">fname</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;surf&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;fiducial&quot;</span><span class="p">)</span>
+        <span class="n">spts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;smoothwm&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+        <span class="n">ppts</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;pial&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;surf&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;fiducial&quot;</span><span class="p">)</span>
         <span class="n">write_surf</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="p">(</span><span class="n">spts</span> <span class="o">+</span> <span class="n">ppts</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">polys</span><span class="p">)</span></div>
 
 
@@ -508,21 +528,21 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Labels transferred&quot;</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">_parse_labels</span><span class="p">(</span><span class="n">label_files</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_parse_labels</span><span class="p">(</span><span class="n">label_files</span><span class="p">,</span> <span class="n">cx_subject</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Extract values from freesurfer label file(s) and map to vertices</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    label_files : str or list</span>
 <span class="sd">        full paths to label file or files to load</span>
-<span class="sd">    subject : str</span>
+<span class="sd">    cx_subject : str</span>
 <span class="sd">        pycortex subject ID</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">label_files</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
         <span class="n">label_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">label_files</span><span class="p">]</span>
     <span class="n">verts</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">lh_surf</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">database</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">,</span> <span class="s1">&#39;left&#39;</span><span class="p">)</span>
+    <span class="n">lh_surf</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">database</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">,</span> <span class="s1">&#39;left&#39;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="n">label_files</span><span class="p">:</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span> <span class="k">as</span> <span class="n">fid</span><span class="p">:</span>
             <span class="n">lines</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
@@ -537,12 +557,12 @@
     <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">verts</span><span class="p">,</span> <span class="n">values</span>
 
-<span class="k">def</span> <span class="nf">get_label</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">fs_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fs_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">src_subject</span><span class="o">=</span><span class="s1">&#39;fsaverage&#39;</span><span class="p">,</span> <span class="n">hemisphere</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">get_label</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">fs_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fs_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">src_subject</span><span class="o">=</span><span class="s1">&#39;fsaverage&#39;</span><span class="p">,</span> <span class="n">hemisphere</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Get data from a label file for fsaverage subject</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    subject : str</span>
+<span class="sd">    cx_subject : str</span>
 <span class="sd">        A pycortex subject ID</span>
 <span class="sd">    label : str</span>
 <span class="sd">        Label name</span>
@@ -560,15 +580,15 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SUBJECTS_DIR&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fs_dir</span>
     <span class="k">if</span> <span class="n">fs_subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">fs_subject</span> <span class="o">=</span> <span class="n">subject</span>
+        <span class="n">fs_subject</span> <span class="o">=</span> <span class="n">cx_subject</span>
     <span class="n">label_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fs_dir</span><span class="p">,</span> <span class="n">fs_subject</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">.label&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">label</span><span class="p">))</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hemisphere</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">subject</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;fsaverage&#39;</span><span class="p">,</span> <span class="s1">&#39;MNI&#39;</span><span class="p">,</span> <span class="s1">&#39;fsaverage_pycortex&#39;</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">cx_subject</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;fsaverage&#39;</span><span class="p">,</span> <span class="s1">&#39;MNI&#39;</span><span class="p">]:</span>
         <span class="c1"># If label file doesn&#39;t exist, try to move it there</span>
         <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;looking for </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">label_files</span><span class="p">))</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">label_files</span><span class="p">]):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transforming label file to subject&#39;s freesurfer directory...&quot;</span><span class="p">)</span>
             <span class="n">_move_labels</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">hemisphere</span><span class="o">=</span><span class="n">hemisphere</span><span class="p">,</span> <span class="n">fs_dir</span><span class="o">=</span><span class="n">fs_dir</span><span class="p">,</span> <span class="n">src_subject</span><span class="o">=</span><span class="n">src_subject</span><span class="p">)</span>
-    <span class="n">verts</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">_parse_labels</span><span class="p">(</span><span class="n">label_files</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+    <span class="n">verts</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">_parse_labels</span><span class="p">(</span><span class="n">label_files</span><span class="p">,</span> <span class="n">cx_subject</span><span class="p">)</span>
     <span class="n">idx</span> <span class="o">=</span> <span class="n">verts</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">idx</span><span class="p">,</span> <span class="n">values</span>
 
@@ -773,13 +793,25 @@
     <span class="k">return</span> <span class="n">matrix</span>
 
 
-<div class="viewcode-block" id="get_curv"><a class="viewcode-back" href="../../generated/cortex.freesurfer.get_curv.html#cortex.freesurfer.get_curv">[docs]</a><span class="k">def</span> <span class="nf">get_curv</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;wm&#39;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Load freesurfer curv file</span>
+<div class="viewcode-block" id="get_curv"><a class="viewcode-back" href="../../generated/cortex.freesurfer.get_curv.html#cortex.freesurfer.get_curv">[docs]</a><span class="k">def</span> <span class="nf">get_curv</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;wm&#39;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Load freesurfer curv file for a freesurfer subject</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fs_subject : str</span>
+<span class="sd">        freesurfer subject identifier</span>
+<span class="sd">    hemi : str</span>
+<span class="sd">        &#39;lh&#39; or &#39;rh&#39; for left or right hemisphere, respectively</span>
+<span class="sd">    type : str</span>
+<span class="sd">        &#39;wm&#39; or other type of surface (e.g. &#39;fiducial&#39; or &#39;pial&#39;)</span>
+<span class="sd">    freesurfer_subject_dir : str</span>
+<span class="sd">        directory for Freesurfer subjects (defaults to value for the </span>
+<span class="sd">        environment variable $SUBJECTS_DIR if None)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">type</span> <span class="o">==</span> <span class="s2">&quot;wm&quot;</span><span class="p">:</span>
-        <span class="n">curv_file</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s1">&#39;curv&#39;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">curv_file</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s1">&#39;curv&#39;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">curv_file</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s1">&#39;curv&#39;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="o">+</span><span class="nb">type</span><span class="p">)</span>
+        <span class="n">curv_file</span> <span class="o">=</span> <span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s1">&#39;curv&#39;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="o">+</span><span class="nb">type</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">parse_curv</span><span class="p">(</span><span class="n">curv_file</span><span class="p">)</span></div>
 
@@ -801,6 +833,9 @@
 
 <span class="sd">    freesurfer_subject_dir :</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">((</span><span class="s1">&#39;Deprecated and probably broken! Try `cortex.segment.show_surf()`</span><span class="se">\n</span><span class="s1">&#39;</span>
+                  <span class="s1">&#39;which uses a third-party program (meshlab, available for linux &amp; mac</span><span class="se">\n</span><span class="s1">&#39;</span>
+                  <span class="s1">&#39;instead of buggy mayavi code!&#39;</span><span class="p">))</span>
     <span class="kn">from</span> <span class="nn">mayavi</span> <span class="kn">import</span> <span class="n">mlab</span>
     <span class="kn">from</span> <span class="nn">tvtk.api</span> <span class="kn">import</span> <span class="n">tvtk</span>
 
@@ -1264,7 +1299,7 @@
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -1281,7 +1316,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

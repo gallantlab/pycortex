@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
@@ -55,55 +55,58 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.__init__.html#cortex.database.Database.__init__" title="cortex.database.Database.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(self[, filestore])</p></td>
 <td><p>Initialize self.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_anat.html#cortex.database.Database.get_anat" title="cortex.database.Database.get_anat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_anat</span></code></a>(self, subject[, type, xfmname, …])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.clear_cache.html#cortex.database.Database.clear_cache" title="cortex.database.Database.clear_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_cache</span></code></a>(self, subject[, clear_all_caches])</p></td>
+<td><p>Clears config-specified and default file caches for a subject.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_anat.html#cortex.database.Database.get_anat" title="cortex.database.Database.get_anat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_anat</span></code></a>(self, subject[, type, xfmname, …])</p></td>
 <td><p>Return anatomical information from the filestore.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_cache.html#cortex.database.Database.get_cache" title="cortex.database.Database.get_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cache</span></code></a>(self, subject)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_cache.html#cortex.database.Database.get_cache" title="cortex.database.Database.get_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cache</span></code></a>(self, subject)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_coords.html#cortex.database.Database.get_coords" title="cortex.database.Database.get_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_coords</span></code></a>(self, subject, xfmname[, …])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_coords.html#cortex.database.Database.get_coords" title="cortex.database.Database.get_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_coords</span></code></a>(self, subject, xfmname[, …])</p></td>
 <td><p>Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_mask.html#cortex.database.Database.get_mask" title="cortex.database.Database.get_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mask</span></code></a>(self, subject, xfmname[, type])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_mask.html#cortex.database.Database.get_mask" title="cortex.database.Database.get_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mask</span></code></a>(self, subject, xfmname[, type])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_mnixfm.html#cortex.database.Database.get_mnixfm" title="cortex.database.Database.get_mnixfm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mnixfm</span></code></a>(self, subject, xfm[, template])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_mnixfm.html#cortex.database.Database.get_mnixfm" title="cortex.database.Database.get_mnixfm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mnixfm</span></code></a>(self, subject, xfm[, template])</p></td>
 <td><p>Get transform from the space specified by <cite>xfm</cite> to MNI space.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_mri_surf2surf_matrix.html#cortex.database.Database.get_mri_surf2surf_matrix" title="cortex.database.Database.get_mri_surf2surf_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mri_surf2surf_matrix</span></code></a>(self, subject, …)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_mri_surf2surf_matrix.html#cortex.database.Database.get_mri_surf2surf_matrix" title="cortex.database.Database.get_mri_surf2surf_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mri_surf2surf_matrix</span></code></a>(self, subject, …)</p></td>
 <td><p>Get matrix generated by surf2surf to map one subject’s surface to another’s</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_overlay.html#cortex.database.Database.get_overlay" title="cortex.database.Database.get_overlay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_overlay</span></code></a>(self, subject[, overlay_file])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_overlay.html#cortex.database.Database.get_overlay" title="cortex.database.Database.get_overlay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_overlay</span></code></a>(self, subject[, overlay_file])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_paths.html#cortex.database.Database.get_paths" title="cortex.database.Database.get_paths"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_paths</span></code></a>(self, subject)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_paths.html#cortex.database.Database.get_paths" title="cortex.database.Database.get_paths"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_paths</span></code></a>(self, subject)</p></td>
 <td><p>Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_shared_voxels.html#cortex.database.Database.get_shared_voxels" title="cortex.database.Database.get_shared_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_shared_voxels</span></code></a>(self, subject, xfmname[, …])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_shared_voxels.html#cortex.database.Database.get_shared_voxels" title="cortex.database.Database.get_shared_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_shared_voxels</span></code></a>(self, subject, xfmname[, …])</p></td>
 <td><p>Get an array indicating which vertices are inappropriately mapped to the same voxel.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_surf.html#cortex.database.Database.get_surf" title="cortex.database.Database.get_surf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_surf</span></code></a>(self, subject, type[, hemisphere, …])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_surf.html#cortex.database.Database.get_surf" title="cortex.database.Database.get_surf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_surf</span></code></a>(self, subject, type[, hemisphere, …])</p></td>
 <td><p>Return the surface pair for the given subject, surface type, and hemisphere.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_surfinfo.html#cortex.database.Database.get_surfinfo" title="cortex.database.Database.get_surfinfo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_surfinfo</span></code></a>(self, subject[, type, recache])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_surfinfo.html#cortex.database.Database.get_surfinfo" title="cortex.database.Database.get_surfinfo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_surfinfo</span></code></a>(self, subject[, type, recache])</p></td>
 <td><p>Return auxillary surface information from the filestore.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_view.html#cortex.database.Database.get_view" title="cortex.database.Database.get_view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_view</span></code></a>(self, vw, subject, name)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_view.html#cortex.database.Database.get_view" title="cortex.database.Database.get_view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_view</span></code></a>(self, vw, subject, name)</p></td>
 <td><p>Set the view for an open webshow instance from a saved view</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_xfm.html#cortex.database.Database.get_xfm" title="cortex.database.Database.get_xfm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_xfm</span></code></a>(self, subject, name[, xfmtype])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.get_xfm.html#cortex.database.Database.get_xfm" title="cortex.database.Database.get_xfm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_xfm</span></code></a>(self, subject, name[, xfmtype])</p></td>
 <td><p>Retrieves a transform from the filestore</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.make_subj.html#cortex.database.Database.make_subj" title="cortex.database.Database.make_subj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_subj</span></code></a>(self, subject)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.make_subj.html#cortex.database.Database.make_subj" title="cortex.database.Database.make_subj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_subj</span></code></a>(self, subject)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.save_mask.html#cortex.database.Database.save_mask" title="cortex.database.Database.save_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_mask</span></code></a>(self, subject, xfmname, type, mask)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.save_mask.html#cortex.database.Database.save_mask" title="cortex.database.Database.save_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_mask</span></code></a>(self, subject, xfmname, type, mask)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.save_view.html#cortex.database.Database.save_view" title="cortex.database.Database.save_view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_view</span></code></a>(self, vw, subject, name[, …])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.save_view.html#cortex.database.Database.save_view" title="cortex.database.Database.save_view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_view</span></code></a>(self, vw, subject, name[, …])</p></td>
 <td><p>Set the view for an open webshow instance from a saved view</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Database/cortex.database.Database.save_xfm.html#cortex.database.Database.save_xfm" title="cortex.database.Database.save_xfm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_xfm</span></code></a>(self, subject, name, xfm[, …])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Database/cortex.database.Database.save_xfm.html#cortex.database.Database.save_xfm" title="cortex.database.Database.save_xfm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_xfm</span></code></a>(self, subject, name, xfm[, …])</p></td>
 <td><p>Load a transform into the surface database.</p></td>
 </tr>
 </tbody>
@@ -180,7 +183,7 @@
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -197,7 +200,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

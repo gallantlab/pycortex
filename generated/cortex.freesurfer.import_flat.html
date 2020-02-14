@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
@@ -36,18 +36,21 @@
 <h1>cortex.freesurfer.import_flat<a class="headerlink" href="#cortex-freesurfer-import-flat" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="cortex.freesurfer.import_flat">
-<code class="sig-prename descclassname">cortex.freesurfer.</code><code class="sig-name descname">import_flat</code><span class="sig-paren">(</span><em class="sig-param">subject, patch, hemis=['lh', 'rh'], sname=None, flat_type='freesurfer', freesurfer_subject_dir=None, clean=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#import_flat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.freesurfer.import_flat" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">cortex.freesurfer.</code><code class="sig-name descname">import_flat</code><span class="sig-paren">(</span><em class="sig-param">fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None, flat_type='freesurfer', auto_overwrite=False, freesurfer_subject_dir=None, clean=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#import_flat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.freesurfer.import_flat" title="Permalink to this definition">¶</a></dt>
 <dd><p>Imports a flat brain from freesurfer</p>
+<p>NOTE: This will delete the overlays.svg file for this subject, since THE
+FLATMAPS WILL CHANGE, as well as all cached information (e.g. old flatmap 
+boundaries, roi svg intermediate renders, etc).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>subject</strong><span class="classifier">str</span></dt><dd><p>Freesurfer subject name</p>
+<dt><strong>fs_subject</strong><span class="classifier">str</span></dt><dd><p>Freesurfer subject name</p>
 </dd>
 <dt><strong>patch</strong><span class="classifier">str</span></dt><dd><p>Name of flat.patch.3d file; e.g., “flattenv01”</p>
 </dd>
 <dt><strong>hemis</strong><span class="classifier">list</span></dt><dd><p>List of hemispheres to import. Defaults to both hemispheres.</p>
 </dd>
-<dt><strong>sname</strong><span class="classifier">str</span></dt><dd><p>Pycortex subject name</p>
+<dt><strong>cx_subject</strong><span class="classifier">str</span></dt><dd><p>Pycortex subject name</p>
 </dd>
 <dt><strong>freesurfer_subject_dir</strong><span class="classifier">str</span></dt><dd><p>directory for freesurfer subjects. None defaults to evironment variable
 $SUBJECTS_DIR</p>
@@ -117,7 +120,7 @@ $SUBJECTS_DIR</p>
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -134,7 +137,7 @@ $SUBJECTS_DIR</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

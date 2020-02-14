@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../../_static/jquery.js"></script>
-    <script type="text/javascript" src="../../_static/underscore.js"></script>
-    <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script type="text/javascript" src="../../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
@@ -39,6 +39,7 @@
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">h5py</span>
 <span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">binascii</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -53,6 +54,7 @@
 <span class="kn">from</span> <span class="nn">.options</span> <span class="kn">import</span> <span class="n">config</span>
 <span class="kn">from</span> <span class="nn">.freesurfer</span> <span class="kn">import</span> <span class="n">fs_aseg_dict</span>
 <span class="kn">from</span> <span class="nn">.polyutils</span> <span class="kn">import</span> <span class="n">Surface</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">formats</span>
 
 <span class="k">class</span> <span class="nc">DocLoader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">package</span><span class="p">):</span>
@@ -1052,6 +1054,58 @@
     <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmp_dir</span><span class="p">,</span> <span class="n">subject_id</span> <span class="o">+</span> <span class="s1">&#39;.tar.gz&#39;</span><span class="p">),</span> <span class="s2">&quot;r:gz&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tar</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Extracting subject </span><span class="si">{}</span><span class="s2"> to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">pycortex_store</span><span class="p">))</span>
         <span class="n">tar</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">pycortex_store</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">rotate_flatmap</span><span class="p">(</span><span class="n">surf_id</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Rotate flatmap to be less V-shaped</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    surf_id : str</span>
+<span class="sd">        pycortex surface identifier</span>
+<span class="sd">    theta : scalar</span>
+<span class="sd">        angle in degrees to rotate flatmaps (rotation is clockwise </span>
+<span class="sd">        for right hemisphere and counter-clockwise for left)</span>
+<span class="sd">    plot : bool</span>
+<span class="sd">        Whether to make a coarse plot to visualize the changes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Lazy load of matplotlib</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+    <span class="n">paths</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">surf_id</span><span class="p">)[</span><span class="s1">&#39;surfs&#39;</span><span class="p">][</span><span class="s1">&#39;flat&#39;</span><span class="p">]</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">hem</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">((</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span><span class="s1">&#39;rh&#39;</span><span class="p">)):</span>
+        <span class="n">this_file</span> <span class="o">=</span> <span class="n">paths</span><span class="p">[</span><span class="n">hem</span><span class="p">]</span>
+        <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">formats</span><span class="o">.</span><span class="n">read_gii</span><span class="p">(</span><span class="n">this_file</span><span class="p">)</span>
+        <span class="c1"># Rotate clockwise (- rotation) for RH, counter-clockwise (+ rotation) for LH</span>
+        <span class="k">if</span> <span class="n">hem</span> <span class="o">==</span> <span class="s1">&#39;rh&#39;</span><span class="p">:</span>
+            <span class="n">rtheta</span> <span class="o">=</span> <span class="o">-</span> <span class="n">theta</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rtheta</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+        <span class="n">rotation_mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">rtheta</span><span class="p">),</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">rtheta</span><span class="p">)],</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">rtheta</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">rtheta</span><span class="p">)]])</span>
+        <span class="n">rotated</span> <span class="o">=</span> <span class="n">rotation_mat</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">pts</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">pts_new</span> <span class="o">=</span> <span class="n">pts</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">pts_new</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">rotated</span>
+        <span class="n">new_file</span><span class="p">,</span> <span class="n">bkup_num</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">this_file</span><span class="p">),</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">new_file</span><span class="p">):</span>
+            <span class="n">new_file</span> <span class="o">=</span> <span class="n">this_file</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.gii&#39;</span><span class="p">,</span> <span class="s1">&#39;_rotbkup</span><span class="si">%02d</span><span class="s1">.gii&#39;</span><span class="o">%</span><span class="n">bkup_num</span><span class="p">)</span>
+            <span class="n">bkup_num</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Backing up file at </span><span class="si">%s</span><span class="s1">...&#39;</span> <span class="o">%</span> <span class="n">new_file</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">this_file</span><span class="p">,</span> <span class="n">new_file</span><span class="p">)</span>
+        <span class="n">formats</span><span class="o">.</span><span class="n">write_gii</span><span class="p">(</span><span class="n">this_file</span><span class="p">,</span> <span class="n">pts_new</span><span class="p">,</span> <span class="n">polys</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Overwriting </span><span class="si">%s</span><span class="s1">...&#39;</span> <span class="o">%</span> <span class="n">this_file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
+            <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">pts</span><span class="p">[::</span><span class="mi">100</span><span class="p">,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="s1">&#39;r.&#39;</span><span class="p">)</span>
+            <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+            <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">pts_new</span><span class="p">[::</span><span class="mi">100</span><span class="p">,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="s1">&#39;b.&#39;</span><span class="p">)</span>
+            <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+    <span class="c1"># Remove and back up overlays file</span>
+    <span class="n">overlay_file</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">surf_id</span><span class="p">)[</span><span class="s1">&#39;overlays&#39;</span><span class="p">]</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">overlay_file</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.svg&#39;</span><span class="p">,</span> <span class="s1">&#39;_rotbkup</span><span class="si">%02d</span><span class="s1">.svg&#39;</span><span class="o">%</span><span class="n">bkup_num</span><span class="p">))</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">overlay_file</span><span class="p">)</span>
+    <span class="c1"># Regenerate file</span>
+    <span class="n">svg</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_overlay</span><span class="p">(</span><span class="n">surf_id</span><span class="p">)</span>
 </pre></div>
 
           </div>
@@ -1111,7 +1165,7 @@
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -1128,7 +1182,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

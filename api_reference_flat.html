@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="prev" title="Create a 3D WebGL Viewer with Multiple Datasets" href="auto_examples/webgl/multiple_datasets.html" />
@@ -235,25 +235,25 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.get_paths.html#cortex.freesurfer.get_paths" title="cortex.freesurfer.get_paths"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_paths</span></code></a>(subject, hemi[, type, …])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.get_paths.html#cortex.freesurfer.get_paths" title="cortex.freesurfer.get_paths"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_paths</span></code></a>(fs_subject, hemi[, type, …])</p></td>
 <td><p>Retrive paths for all surfaces for a subject processed by freesurfer</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.autorecon.html#cortex.freesurfer.autorecon" title="cortex.freesurfer.autorecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">autorecon</span></code></a>(subject[, type, parallel, n_cores])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.autorecon.html#cortex.freesurfer.autorecon" title="cortex.freesurfer.autorecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">autorecon</span></code></a>(fs_subject[, type, parallel, n_cores])</p></td>
 <td><p>Run Freesurfer’s autorecon-all command for a given freesurfer subject</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.flatten.html#cortex.freesurfer.flatten" title="cortex.freesurfer.flatten"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flatten</span></code></a>(subject, hemi, patch[, …])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.flatten.html#cortex.freesurfer.flatten" title="cortex.freesurfer.flatten"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flatten</span></code></a>(fs_subject, hemi, patch[, …])</p></td>
 <td><p>Perform flattening of a brain using freesurfer</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.import_subj.html#cortex.freesurfer.import_subj" title="cortex.freesurfer.import_subj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">import_subj</span></code></a>(subject[, sname, …])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.import_subj.html#cortex.freesurfer.import_subj" title="cortex.freesurfer.import_subj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">import_subj</span></code></a>(fs_subject[, cx_subject, …])</p></td>
 <td><p>Imports a subject from freesurfer</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.import_flat.html#cortex.freesurfer.import_flat" title="cortex.freesurfer.import_flat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">import_flat</span></code></a>(subject, patch[, hemis, sname, …])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.import_flat.html#cortex.freesurfer.import_flat" title="cortex.freesurfer.import_flat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">import_flat</span></code></a>(fs_subject, patch[, hemis, …])</p></td>
 <td><p>Imports a flat brain from freesurfer</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.show_surf.html#cortex.freesurfer.show_surf" title="cortex.freesurfer.show_surf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_surf</span></code></a>(subject, hemi, type[, patch, …])</p></td>
 <td><p>Show a surface from a Freesurfer subject directory</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.make_fiducial.html#cortex.freesurfer.make_fiducial" title="cortex.freesurfer.make_fiducial"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_fiducial</span></code></a>(subject[, freesurfer_subject_dir])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.make_fiducial.html#cortex.freesurfer.make_fiducial" title="cortex.freesurfer.make_fiducial"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_fiducial</span></code></a>(fs_subject[, …])</p></td>
 <td><p>Make fiducial surface (halfway between white matter and pial surfaces)</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.parse_surf.html#cortex.freesurfer.parse_surf" title="cortex.freesurfer.parse_surf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_surf</span></code></a>(filename)</p></td>
@@ -268,8 +268,8 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.get_surf.html#cortex.freesurfer.get_surf" title="cortex.freesurfer.get_surf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_surf</span></code></a>(subject, hemi, type[, patch, …])</p></td>
 <td><p>Read freesurfer surface file</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.get_curv.html#cortex.freesurfer.get_curv" title="cortex.freesurfer.get_curv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_curv</span></code></a>(subject, hemi[, type, …])</p></td>
-<td><p>Load freesurfer curv file</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.freesurfer.get_curv.html#cortex.freesurfer.get_curv" title="cortex.freesurfer.get_curv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_curv</span></code></a>(fs_subject, hemi[, type, …])</p></td>
+<td><p>Load freesurfer curv file for a freesurfer subject</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.freesurfer.write_dot.html#cortex.freesurfer.write_dot" title="cortex.freesurfer.write_dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_dot</span></code></a>(fname, pts, polys[, name])</p></td>
 <td><p></p></td>
@@ -357,8 +357,8 @@ functional data and surfaces to and from MNI space.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.segment.init_subject.html#cortex.segment.init_subject" title="cortex.segment.init_subject"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_subject</span></code></a>(subject, filenames[, run_all])</p></td>
-<td><p>Run the first initial segmentation for a subject’s anatomy.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.segment.init_subject.html#cortex.segment.init_subject" title="cortex.segment.init_subject"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_subject</span></code></a>(subject, filenames[, …])</p></td>
+<td><p>Run the first initial segmentation for a subject’s anatomy (in Freesurfer).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.segment.fix_wm.html#cortex.segment.fix_wm" title="cortex.segment.fix_wm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fix_wm</span></code></a>(subject)</p></td>
 <td><p>Initializes an interface to make white matter edits to the surface.</p></td>
@@ -602,7 +602,7 @@ for functions in <cite>polyutils.Surface</cite> and <cite>polyutils.Distortion</
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -619,7 +619,7 @@ for functions in <cite>polyutils.Surface</cite> and <cite>polyutils.Distortion</
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

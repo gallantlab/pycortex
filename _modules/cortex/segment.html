@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../../_static/jquery.js"></script>
-    <script type="text/javascript" src="../../_static/underscore.js"></script>
-    <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script type="text/javascript" src="../../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
@@ -56,32 +56,45 @@
 <span class="n">slim_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;slim&#39;</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="init_subject"><a class="viewcode-back" href="../../generated/cortex.segment.init_subject.html#cortex.segment.init_subject">[docs]</a><span class="k">def</span> <span class="nf">init_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">filenames</span><span class="p">,</span> <span class="n">run_all</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Run the first initial segmentation for a subject&#39;s anatomy.</span>
+<div class="viewcode-block" id="init_subject"><a class="viewcode-back" href="../../generated/cortex.segment.init_subject.html#cortex.segment.init_subject">[docs]</a><span class="k">def</span> <span class="nf">init_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">filenames</span><span class="p">,</span> <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Run the first initial segmentation for a subject&#39;s anatomy (in Freesurfer).</span>
 
-<span class="sd">    This function runs autorecon-all, then (optionally) imports the subject</span>
-<span class="sd">    into the pycortex database.</span>
+<span class="sd">    This function creates a Freesurfer subject and runs autorecon-all, </span>
+<span class="sd">    then (optionally) imports the subject into the pycortex database.</span>
+
+<span class="sd">    NOTE: This function requires a functional Freesurfer install! </span>
+<span class="sd">    Also, still can&#39;t handle T2 weighted anatomical volume input. Please use</span>
+<span class="sd">    Freesurfer directly (and then import) for advanced recon-all input </span>
+<span class="sd">    options; this is just a convenience function.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    subject : str</span>
 <span class="sd">        The name of the subject (this subject is created in the Freesurfer</span>
 <span class="sd">        SUBJECTS_DIR)</span>
-<span class="sd">    filenames : str </span>
+<span class="sd">    filenames : str or list</span>
 <span class="sd">        Freesurfer-compatible filename(s) for the anatomical image(s). This can</span>
 <span class="sd">        be the first dicom file of a series of dicoms, a nifti file, an mgz</span>
 <span class="sd">        file, etc.</span>
-<span class="sd">    run_all : bool</span>
-<span class="sd">        Whether to run recon-all all the way through to importing the subject</span>
-<span class="sd">        into pycortex. False by default, since we recommend editing (or at</span>
-<span class="sd">        least inspecting) the brain mask and white matter segmentations prior</span>
-<span class="sd">        to importing into pycortex.</span>
+<span class="sd">    do_import_subject : bool</span>
+<span class="sd">        Whether to import the Freesurfer-processed subject (without further)</span>
+<span class="sd">        editing) into pycortex. False by default, since we recommend editing </span>
+<span class="sd">        (or at least inspecting) the brain mask and white matter segmentations </span>
+<span class="sd">        prior to importing into pycortex.</span>
+<span class="sd">    kwargs : keyword arguments passed to cortex.freesurfer.autorecon()</span>
+<span class="sd">        useful ones: parallel=True, n_cores=4 (or more, if you have them)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;recon-all -i </span><span class="si">{fname}</span><span class="s2"> -s </span><span class="si">{subj}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="n">filenames</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;run_all&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;`run_all` is deprecated - please use do_import_subject keyword arg instead!&#39;</span><span class="p">)</span>
+        <span class="n">do_import_subject</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;run_all&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filenames</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="n">filenames</span> <span class="o">=</span> <span class="p">[</span><span class="n">filenames</span><span class="p">]</span>
+    <span class="n">filenames</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;-i </span><span class="si">%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">])</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;recon-all </span><span class="si">{fname}</span><span class="s2"> -s </span><span class="si">{subj}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="n">filenames</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calling:</span><span class="se">\n</span><span class="s2">%</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span>
     <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span>
-    <span class="k">if</span> <span class="n">run_all</span><span class="p">:</span>
-        <span class="n">run_freesurfer_recon</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;all&quot;</span><span class="p">)</span>
+    <span class="n">run_freesurfer_recon</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">do_import_subject</span><span class="p">:</span>
         <span class="n">import_freesurfer_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span></div>
 
 
@@ -146,7 +159,8 @@
 
 
 <div class="viewcode-block" id="cut_surface"><a class="viewcode-back" href="../../generated/cortex.segment.cut_surface.html#cortex.segment.cut_surface">[docs]</a><span class="k">def</span> <span class="nf">cut_surface</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;flatten&#39;</span><span class="p">,</span> <span class="n">fs_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">flatten_with</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">flatten_with</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span> 
+                <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Initializes an interface to cut the segmented surface for flatmapping.</span>
 <span class="sd">    This function creates or opens a blend file in your filestore which allows</span>
 <span class="sd">    surfaces to be cut along hand-defined seams. Blender will automatically</span>
@@ -155,7 +169,7 @@
 
 <span class="sd">    The surface will be automatically extracted from blender then run through</span>
 <span class="sd">    the mris_flatten command in freesurfer. The flatmap will be imported once</span>
-<span class="sd">    that command finishes.</span>
+<span class="sd">    that command finishes if `do_import_subject` is True (default value). </span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -173,6 +187,18 @@
 <span class="sd">    freesurfer_subject_dir : str</span>
 <span class="sd">        Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR</span>
 <span class="sd">        environment varible</span>
+<span class="sd">    flatten_with : str</span>
+<span class="sd">        &#39;freesurfer&#39; or &#39;SLIM&#39; - &#39;freesurfer&#39; (default) uses freesurfer&#39;s </span>
+<span class="sd">        `mris_flatten` function to flatten the cut surface. &#39;SLIM&#39; uses</span>
+<span class="sd">        the SLIM algorithm, which takes much less time but tends to leave</span>
+<span class="sd">        more distortions in the flatmap. SLIM is an optional dependency, and </span>
+<span class="sd">        must be installed to work; clone the code </span>
+<span class="sd">        (https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings) </span>
+<span class="sd">        to your computer and set the slim dependency path in your pycortex config </span>
+<span class="sd">        file to point to &lt;/path/to/your/slim/install&gt;/ReweightedARAP</span>
+<span class="sd">    do_import_subject : bool</span>
+<span class="sd">        set option to automatically import flatmaps when both are completed </span>
+<span class="sd">        (if set to false, you must import later with `cortex.freesurfer.import_flat()`)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">fs_subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">fs_subject</span> <span class="o">=</span> <span class="n">cx_subject</span>
@@ -206,15 +232,16 @@
             <span class="c1"># If flattening is aborted, skip the rest of this function</span>
             <span class="c1"># (Do not attempt to import completed flatmaps)</span>
             <span class="k">return</span>
-        <span class="c1"># Check to see if both hemispheres have been flattened</span>
-        <span class="n">other</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="s2">&quot;lh&quot;</span> <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span> <span class="k">else</span> <span class="s2">&quot;rh&quot;</span><span class="p">,</span>
-                                     <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
-        <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;.flat&quot;</span><span class="p">)</span>
-        <span class="c1"># If so, go ahead and import subject</span>
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
-            <span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">sname</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span>
-                        <span class="n">flat_type</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span>
-                        <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">do_import_subject</span><span class="p">:</span>
+            <span class="c1"># Check to see if both hemispheres have been flattened</span>
+            <span class="n">other</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="s2">&quot;lh&quot;</span> <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span> <span class="k">else</span> <span class="s2">&quot;rh&quot;</span><span class="p">,</span>
+                                         <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+            <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;.flat&quot;</span><span class="p">)</span>
+            <span class="c1"># If so, go ahead and import subject</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+                <span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">sname</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span>
+                            <span class="n">flat_type</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span>
+                            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;SLIM&#39;</span><span class="p">:</span>
         <span class="n">done</span> <span class="o">=</span> <span class="n">flatten_slim</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
                             <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
@@ -223,15 +250,16 @@
             <span class="c1"># If flattening is aborted, skip the rest of this function</span>
             <span class="c1"># (Do not attempt to import completed flatmaps)</span>
             <span class="k">return</span>
-        <span class="n">other</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="s2">&quot;lh&quot;</span> <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span> <span class="k">else</span> <span class="s2">&quot;rh&quot;</span><span class="p">,</span>
-                                     <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;slim&#39;</span><span class="p">,</span>
-                                     <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
-        <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-        <span class="c1"># If so, go ahead and import subject</span>
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
-            <span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">sname</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span>
-                        <span class="n">flat_type</span><span class="o">=</span><span class="s1">&#39;slim&#39;</span><span class="p">,</span>
-                        <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">do_import_subject</span><span class="p">:</span>
+            <span class="n">other</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="s2">&quot;lh&quot;</span> <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span> <span class="k">else</span> <span class="s2">&quot;rh&quot;</span><span class="p">,</span>
+                                         <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;slim&#39;</span><span class="p">,</span>
+                                         <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+            <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+            <span class="c1"># If so, go ahead and import subject</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+                <span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">sname</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span>
+                            <span class="n">flat_type</span><span class="o">=</span><span class="s1">&#39;slim&#39;</span><span class="p">,</span>
+                            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
 
     <span class="k">return</span></div>
 
@@ -536,7 +564,7 @@
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -553,7 +581,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
@@ -36,12 +36,12 @@
 <h1>cortex.freesurfer.flatten<a class="headerlink" href="#cortex-freesurfer-flatten" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="cortex.freesurfer.flatten">
-<code class="sig-prename descclassname">cortex.freesurfer.</code><code class="sig-name descname">flatten</code><span class="sig-paren">(</span><em class="sig-param">subject</em>, <em class="sig-param">hemi</em>, <em class="sig-param">patch</em>, <em class="sig-param">freesurfer_subject_dir=None</em>, <em class="sig-param">save_every=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#flatten"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.freesurfer.flatten" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">cortex.freesurfer.</code><code class="sig-name descname">flatten</code><span class="sig-paren">(</span><em class="sig-param">fs_subject</em>, <em class="sig-param">hemi</em>, <em class="sig-param">patch</em>, <em class="sig-param">freesurfer_subject_dir=None</em>, <em class="sig-param">save_every=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#flatten"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.freesurfer.flatten" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform flattening of a brain using freesurfer</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>subject</strong><span class="classifier">str</span></dt><dd><p>Freesurfer subject ID</p>
+<dt><strong>fs_subject</strong><span class="classifier">str</span></dt><dd><p>Freesurfer subject ID</p>
 </dd>
 <dt><strong>hemi</strong><span class="classifier">str [‘lh’ | ‘rh’]</span></dt><dd><p>hemisphere to flatten</p>
 </dd>
@@ -123,7 +123,7 @@ shows that a flattening iteration has completed)
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -140,7 +140,7 @@ shows that a flattening iteration has completed)
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

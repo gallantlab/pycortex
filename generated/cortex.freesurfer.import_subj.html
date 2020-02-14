@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
@@ -36,15 +36,21 @@
 <h1>cortex.freesurfer.import_subj<a class="headerlink" href="#cortex-freesurfer-import-subj" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="cortex.freesurfer.import_subj">
-<code class="sig-prename descclassname">cortex.freesurfer.</code><code class="sig-name descname">import_subj</code><span class="sig-paren">(</span><em class="sig-param">subject</em>, <em class="sig-param">sname=None</em>, <em class="sig-param">freesurfer_subject_dir=None</em>, <em class="sig-param">whitematter_surf='smoothwm'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#import_subj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.freesurfer.import_subj" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">cortex.freesurfer.</code><code class="sig-name descname">import_subj</code><span class="sig-paren">(</span><em class="sig-param">fs_subject</em>, <em class="sig-param">cx_subject=None</em>, <em class="sig-param">freesurfer_subject_dir=None</em>, <em class="sig-param">whitematter_surf='smoothwm'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#import_subj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.freesurfer.import_subj" title="Permalink to this definition">¶</a></dt>
 <dd><p>Imports a subject from freesurfer</p>
+<p>This will overwrite (after giving a warning and an option to continue) the 
+pre-existing subject, including all blender cuts, masks, transforms, etc., and
+re-generate surface info files (curvature, sulcal depth, thickness) stored in 
+the surfinfo/ folder for the subject. All cached files for the subject will be 
+deleted.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>subject</strong><span class="classifier">string</span></dt><dd><p>Freesurfer subject name</p>
+<dt><strong>fs_subject</strong><span class="classifier">string</span></dt><dd><p>Freesurfer subject name</p>
 </dd>
-<dt><strong>sname</strong><span class="classifier">string, optional</span></dt><dd><p>Pycortex subject name (These variable names should be changed). By default uses
-the same name as the freesurfer subject.</p>
+<dt><strong>cx_subject</strong><span class="classifier">string, optional</span></dt><dd><p>Pycortex subject name (These variable names should be changed). By default uses
+the same name as the freesurfer subject. Best to stick to that convention, if 
+possible (your life will go more smoothly.) This optional kwarg is for edge cases.</p>
 </dd>
 <dt><strong>freesurfer_subject_dir</strong><span class="classifier">string, optional</span></dt><dd><p>Freesurfer subject directory to pull data from. By default uses the directory
 given by the environment variable $SUBJECTS_DIR.</p>
@@ -115,7 +121,7 @@ surface is smoothed and may not be appropriate. A good alternative is ‘white�
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -132,7 +138,7 @@ surface is smoothed and may not be appropriate. A good alternative is ‘white�
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

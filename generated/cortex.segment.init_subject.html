@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
@@ -36,24 +36,30 @@
 <h1>cortex.segment.init_subject<a class="headerlink" href="#cortex-segment-init-subject" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="cortex.segment.init_subject">
-<code class="sig-prename descclassname">cortex.segment.</code><code class="sig-name descname">init_subject</code><span class="sig-paren">(</span><em class="sig-param">subject</em>, <em class="sig-param">filenames</em>, <em class="sig-param">run_all=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/segment.html#init_subject"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.segment.init_subject" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run the first initial segmentation for a subject’s anatomy.</p>
-<p>This function runs autorecon-all, then (optionally) imports the subject
-into the pycortex database.</p>
+<code class="sig-prename descclassname">cortex.segment.</code><code class="sig-name descname">init_subject</code><span class="sig-paren">(</span><em class="sig-param">subject</em>, <em class="sig-param">filenames</em>, <em class="sig-param">do_import_subject=False</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/segment.html#init_subject"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.segment.init_subject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the first initial segmentation for a subject’s anatomy (in Freesurfer).</p>
+<p>This function creates a Freesurfer subject and runs autorecon-all, 
+then (optionally) imports the subject into the pycortex database.</p>
+<p>NOTE: This function requires a functional Freesurfer install! 
+Also, still can’t handle T2 weighted anatomical volume input. Please use
+Freesurfer directly (and then import) for advanced recon-all input 
+options; this is just a convenience function.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>subject</strong><span class="classifier">str</span></dt><dd><p>The name of the subject (this subject is created in the Freesurfer
 SUBJECTS_DIR)</p>
 </dd>
-<dt><strong>filenames</strong><span class="classifier">str</span></dt><dd><p>Freesurfer-compatible filename(s) for the anatomical image(s). This can
+<dt><strong>filenames</strong><span class="classifier">str or list</span></dt><dd><p>Freesurfer-compatible filename(s) for the anatomical image(s). This can
 be the first dicom file of a series of dicoms, a nifti file, an mgz
 file, etc.</p>
 </dd>
-<dt><strong>run_all</strong><span class="classifier">bool</span></dt><dd><p>Whether to run recon-all all the way through to importing the subject
-into pycortex. False by default, since we recommend editing (or at
-least inspecting) the brain mask and white matter segmentations prior
-to importing into pycortex.</p>
+<dt><strong>do_import_subject</strong><span class="classifier">bool</span></dt><dd><p>Whether to import the Freesurfer-processed subject (without further)
+editing) into pycortex. False by default, since we recommend editing 
+(or at least inspecting) the brain mask and white matter segmentations 
+prior to importing into pycortex.</p>
+</dd>
+<dt><strong>kwargs</strong><span class="classifier">keyword arguments passed to cortex.freesurfer.autorecon()</span></dt><dd><p>useful ones: parallel=True, n_cores=4 (or more, if you have them)</p>
 </dd>
 </dl>
 </dd>
@@ -118,7 +124,7 @@ to importing into pycortex.</p>
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -135,7 +141,7 @@ to importing into pycortex.</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

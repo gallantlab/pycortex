@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
@@ -36,14 +36,14 @@
 <h1>cortex.freesurfer.get_paths<a class="headerlink" href="#cortex-freesurfer-get-paths" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="cortex.freesurfer.get_paths">
-<code class="sig-prename descclassname">cortex.freesurfer.</code><code class="sig-name descname">get_paths</code><span class="sig-paren">(</span><em class="sig-param">subject</em>, <em class="sig-param">hemi</em>, <em class="sig-param">type='patch'</em>, <em class="sig-param">freesurfer_subject_dir=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#get_paths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.freesurfer.get_paths" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">cortex.freesurfer.</code><code class="sig-name descname">get_paths</code><span class="sig-paren">(</span><em class="sig-param">fs_subject</em>, <em class="sig-param">hemi</em>, <em class="sig-param">type='patch'</em>, <em class="sig-param">freesurfer_subject_dir=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#get_paths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.freesurfer.get_paths" title="Permalink to this definition">¶</a></dt>
 <dd><p>Retrive paths for all surfaces for a subject processed by freesurfer</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>subject</strong><span class="classifier">string</span></dt><dd><p>Subject ID</p>
+<dt><strong>subject</strong><span class="classifier">string</span></dt><dd><p>Subject ID for freesurfer subject</p>
 </dd>
-<dt><strong>hem</strong><span class="classifier">string [‘lh’|’rh’]</span></dt><dd><p>Left (‘lh’) or right (‘rh’) hemisphere</p>
+<dt><strong>hemi</strong><span class="classifier">string [‘lh’|’rh’]</span></dt><dd><p>Left (‘lh’) or right (‘rh’) hemisphere</p>
 </dd>
 <dt><strong>type</strong><span class="classifier">string [‘patch’|’surf’|’curv’]</span></dt><dd><p>Which type of files to return</p>
 </dd>
@@ -114,7 +114,7 @@ by freesurfer)</p>
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -131,7 +131,7 @@ by freesurfer)</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

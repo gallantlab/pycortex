@@ -1,0 +1,6 @@
+cortex.database.Database.clear\_cache
+=====================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.clear_cache

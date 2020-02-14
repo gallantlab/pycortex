@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
@@ -36,7 +36,7 @@
 <h1>cortex.segment.cut_surface<a class="headerlink" href="#cortex-segment-cut-surface" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="cortex.segment.cut_surface">
-<code class="sig-prename descclassname">cortex.segment.</code><code class="sig-name descname">cut_surface</code><span class="sig-paren">(</span><em class="sig-param">cx_subject</em>, <em class="sig-param">hemi</em>, <em class="sig-param">name='flatten'</em>, <em class="sig-param">fs_subject=None</em>, <em class="sig-param">data=None</em>, <em class="sig-param">freesurfer_subject_dir=None</em>, <em class="sig-param">flatten_with='freesurfer'</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/segment.html#cut_surface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.segment.cut_surface" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">cortex.segment.</code><code class="sig-name descname">cut_surface</code><span class="sig-paren">(</span><em class="sig-param">cx_subject</em>, <em class="sig-param">hemi</em>, <em class="sig-param">name='flatten'</em>, <em class="sig-param">fs_subject=None</em>, <em class="sig-param">data=None</em>, <em class="sig-param">freesurfer_subject_dir=None</em>, <em class="sig-param">flatten_with='freesurfer'</em>, <em class="sig-param">do_import_subject=True</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/segment.html#cut_surface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.segment.cut_surface" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initializes an interface to cut the segmented surface for flatmapping.
 This function creates or opens a blend file in your filestore which allows
 surfaces to be cut along hand-defined seams. Blender will automatically
@@ -44,7 +44,7 @@ open the file. After edits are made, remember to save the file, then exit
 Blender.</p>
 <p>The surface will be automatically extracted from blender then run through
 the mris_flatten command in freesurfer. The flatmap will be imported once
-that command finishes.</p>
+that command finishes if <cite>do_import_subject</cite> is True (default value).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
@@ -61,6 +61,18 @@ None defaults to <cite>cx_subject</cite></p>
 </dd>
 <dt><strong>freesurfer_subject_dir</strong><span class="classifier">str</span></dt><dd><p>Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR
 environment varible</p>
+</dd>
+<dt><strong>flatten_with</strong><span class="classifier">str</span></dt><dd><p>‘freesurfer’ or ‘SLIM’ - ‘freesurfer’ (default) uses freesurfer’s 
+<cite>mris_flatten</cite> function to flatten the cut surface. ‘SLIM’ uses
+the SLIM algorithm, which takes much less time but tends to leave
+more distortions in the flatmap. SLIM is an optional dependency, and 
+must be installed to work; clone the code 
+(<a class="reference external" href="https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings">https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings</a>) 
+to your computer and set the slim dependency path in your pycortex config 
+file to point to &lt;/path/to/your/slim/install&gt;/ReweightedARAP</p>
+</dd>
+<dt><strong>do_import_subject</strong><span class="classifier">bool</span></dt><dd><p>set option to automatically import flatmaps when both are completed 
+(if set to false, you must import later with <cite>cortex.freesurfer.import_flat()</cite>)</p>
 </dd>
 </dl>
 </dd>
@@ -125,7 +137,7 @@ environment varible</p>
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -142,7 +154,7 @@ environment varible</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

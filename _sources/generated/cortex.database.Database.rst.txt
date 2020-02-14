@@ -14,6 +14,7 @@ cortex.database.Database
       :toctree: Database
    
      ~Database.__init__
+     ~Database.clear_cache
      ~Database.get_anat
      ~Database.get_cache
      ~Database.get_coords
