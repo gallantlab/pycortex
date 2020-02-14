@@ -656,7 +656,11 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
 
         # Curvature
         for layer_name, cmap in zip(['curvature', 'sulcaldepth', 'thickness'], ['gray', 'RdBu_r', 'viridis']):
-            curv = db.get_surfinfo(subject, layer_name)
+            try:
+                curv = db.get_surfinfo(subject, layer_name)
+            except:
+                print("Failed to import svg layer for %s, continuing"%layer_name)
+                continue
             curv.cmap = cmap
             vmax = np.abs(curv.data).max()
             curv.vmin = -vmax
