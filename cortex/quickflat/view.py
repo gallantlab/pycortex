@@ -18,7 +18,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
                 curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
-                colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), **kwargs):
+                colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), roi_list=None,
+                **kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
     Note that **kwargs are ONLY present now for backward compatibility / warnings. No kwargs
@@ -174,7 +175,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if with_rois:
         roi_im = composite.add_rois(ax, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
                                     roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor,
-                                    with_labels=with_labels, overlay_file=overlay_file)
+                                    with_labels=with_labels, overlay_file=overlay_file,
+                                    roi_list=roi_list)
         layers['rois'] = roi_im
     # Add sulci
     if with_sulci:
