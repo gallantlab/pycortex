@@ -53,7 +53,8 @@
                 <span class="n">linewidth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">linecolor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">roifill</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">labelsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">labelcolor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cutout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">curvature_brightness</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">curvature_contrast</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">curvature_threshold</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fig</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">extra_hatch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">colorbar_ticks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="p">(</span><span class="o">.</span><span class="mi">4</span><span class="p">,</span> <span class="o">.</span><span class="mi">07</span><span class="p">,</span> <span class="o">.</span><span class="mi">2</span><span class="p">,</span> <span class="o">.</span><span class="mi">04</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="n">colorbar_ticks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="p">(</span><span class="o">.</span><span class="mi">4</span><span class="p">,</span> <span class="o">.</span><span class="mi">07</span><span class="p">,</span> <span class="o">.</span><span class="mi">2</span><span class="p">,</span> <span class="o">.</span><span class="mi">04</span><span class="p">),</span> <span class="n">roi_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Show a Volume or Vertex on a flatmap with matplotlib.</span>
 
 <span class="sd">    Note that **kwargs are ONLY present now for backward compatibility / warnings. No kwargs</span>
@@ -209,7 +210,8 @@
     <span class="k">if</span> <span class="n">with_rois</span><span class="p">:</span>
         <span class="n">roi_im</span> <span class="o">=</span> <span class="n">composite</span><span class="o">.</span><span class="n">add_rois</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">dataview</span><span class="p">,</span> <span class="n">extents</span><span class="o">=</span><span class="n">extents</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="n">linewidth</span><span class="p">,</span> <span class="n">linecolor</span><span class="o">=</span><span class="n">linecolor</span><span class="p">,</span>
                                     <span class="n">roifill</span><span class="o">=</span><span class="n">roifill</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="n">shadow</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="n">labelsize</span><span class="p">,</span> <span class="n">labelcolor</span><span class="o">=</span><span class="n">labelcolor</span><span class="p">,</span>
-                                    <span class="n">with_labels</span><span class="o">=</span><span class="n">with_labels</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="n">overlay_file</span><span class="p">)</span>
+                                    <span class="n">with_labels</span><span class="o">=</span><span class="n">with_labels</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="n">overlay_file</span><span class="p">,</span>
+                                    <span class="n">roi_list</span><span class="o">=</span><span class="n">roi_list</span><span class="p">)</span>
         <span class="n">layers</span><span class="p">[</span><span class="s1">&#39;rois&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roi_im</span>
     <span class="c1"># Add sulci</span>
     <span class="k">if</span> <span class="n">with_sulci</span><span class="p">:</span>
@@ -548,7 +550,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>
