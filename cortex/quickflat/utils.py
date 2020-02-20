@@ -28,6 +28,8 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
     recache : boolean
         Whether or not to recache intermediate files. Takes longer to plot this way, potentially
         resolves some errors. Useful if you've made changes to the alignment.
+    nanmean : bool, optional (default = False)
+        If True, NaNs in the data will be ignored when averaging across layers.
     kwargs : idk
         idk
 
@@ -85,7 +87,7 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
             mimg[badmask] = nanmean_data[badmask].astype(mimg.dtype)
         else:
             mimg[badmask] = (pixmap*data.ravel())[badmask].astype(mimg.dtype)
-        
+
         img[mask] = mimg
 
         return img.T[::-1], extents

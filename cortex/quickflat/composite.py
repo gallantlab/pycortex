@@ -143,6 +143,8 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     sampler : str
         Name of sampling function used to sample underlying volume data. Options include
         'trilinear','nearest','lanczos'; see functions in cortex.mapper.samplers.py for all options
+    nanmean : bool, optional (default = False)
+        If True, NaNs in the data will be ignored when averaging across layers.
 
     Returns
     -------

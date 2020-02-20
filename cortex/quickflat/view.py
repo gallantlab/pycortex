@@ -98,6 +98,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         vmin, vmax specified in the Volume2D object.
     fig : figure or ax
         figure into which to plot flatmap
+    nanmean : bool, optional (default = False)
+        If True, NaNs in the data will be ignored when averaging across layers.
     """
     from matplotlib import pyplot as plt
 
