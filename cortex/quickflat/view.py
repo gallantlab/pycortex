@@ -19,7 +19,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
                 curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
                 colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), roi_list=None,
-                **kwargs):
+                nanmean=False, **kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
     Note that **kwargs are ONLY present now for backward compatibility / warnings. No kwargs
@@ -119,7 +119,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     # Add data
     data_im, extents = composite.add_data(ax, dataview, pixelwise=pixelwise, thick=thick, sampler=sampler,
-                                          height=height, depth=depth, recache=recache)
+                                          height=height, depth=depth, recache=recache, nanmean=nanmean)
 
     layers = dict(data=data_im)
     # Add curvature
