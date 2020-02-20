@@ -13,7 +13,7 @@ from ..database import db
 from ..options import config
 
 
-def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
+def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **kwargs):
     """Generate flatmap image from volumetric brain data
 
     This 
@@ -76,7 +76,16 @@ def make_flatmap_image(braindata, height=1024, recache=False, **kwargs):
         badmask = np.array(pixmap.sum(1) > 0).ravel()
         img = (np.nan*np.ones(mask.shape)).astype(data.dtype)
         mimg = (np.nan*np.ones(badmask.shape)).astype(data.dtype)
-        mimg[badmask] = (pixmap*data.ravel())[badmask].astype(mimg.dtype)
+
+        if nanmean:
+            # create nanmean of pixmap*data
+            nan_to_num_mean = pixmap * np.nan_to_num(data.ravel())
+            non_nan_mean = pixmap * (~np.isnan(data.ravel())).astype(data.dtype)
+            nanmean_data = nan_to_num_mean / non_nan_mean
+            mimg[badmask] = nanmean_data[badmask].astype(mimg.dtype)
+        else:
+            mimg[badmask] = (pixmap*data.ravel())[badmask].astype(mimg.dtype)
+        
         img[mask] = mimg
 
         return img.T[::-1], extents
