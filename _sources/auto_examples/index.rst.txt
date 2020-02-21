@@ -403,6 +403,26 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip="By default, pycortex quickshow averages across the thickness of the cortex for each pixel in th...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_thickness_nanmean_thumb.png
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_thickness_nanmean.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_thickness_nanmean
+
+.. raw:: html
+
     <div class="sphx-glr-thumbcontainer" tooltip="Sometimes it is useful to create a flatmap that is zoomed in one just a single ROI. The locatio...">
 
 .. only:: html
