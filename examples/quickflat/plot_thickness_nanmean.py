@@ -18,7 +18,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # create dataset with volume of all 1's
-vol = cortex.Volume.empty('S1', 'fullhead') + 1
+vol = cortex.Volume.empty('S1', 'fullhead', vmin=0, vmax=2) + 1
 
 # set 20% of the values in the dataset to NaN
 vol.data[np.random.rand(*vol.data.shape) > 0.8] = np.nan
@@ -29,14 +29,15 @@ vol.data[np.random.rand(*vol.data.shape) > 0.8] = np.nan
 # in the final image
 # so this image should have many, many holes that show curvature
 # and all the non-hole points should have value of 1
-_ = cortex.quickshow(vol, nanmean=False, vmin=0, vmax=2, with_curvature=True)
+_ = cortex.quickshow(vol, nanmean=False, with_curvature=True)
 
+plt.show()
 
 # plot the volume with nanmean=True
 # here there should only be a nan in the final image if EVERY layer of the
 # thickness mapping has a nan for the given pixel
 # so this image should have many fewer holes that show curvature
 # and, again, all the non-hole points should have value of 1
-_ = cortex.quickshow(vol, nanmean=True, vmin=0, vmax=2, with_curvature=True)
+_ = cortex.quickshow(vol, nanmean=True, with_curvature=True)
 
 plt.show()
