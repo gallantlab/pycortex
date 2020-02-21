@@ -121,7 +121,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     return cvimg
 
 def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
-             sampler='nearest', recache=False):
+             sampler='nearest', recache=False, nanmean=False):
     """Add data to quickflat plot
 
     Parameters
@@ -143,6 +143,8 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     sampler : str
         Name of sampling function used to sample underlying volume data. Options include
         'trilinear','nearest','lanczos'; see functions in cortex.mapper.samplers.py for all options
+    nanmean : bool, optional (default = False)
+        If True, NaNs in the data will be ignored when averaging across layers.
 
     Returns
     -------
@@ -158,7 +160,7 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
         raise TypeError('Please provide a Dataview, not a Dataset')
     # Generate image (2D array, maybe 3D array)
     im, extents = make_flatmap_image(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
-                                     height=height, thick=thick, depth=depth)
+                                     height=height, thick=thick, depth=depth, nanmean=nanmean)
     # Check whether dataview has a cmap instance
     cmapdict = _has_cmap(dataview)
     # Plot
