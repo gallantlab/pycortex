@@ -79,14 +79,19 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
         img = (np.nan*np.ones(mask.shape)).astype(data.dtype)
         mimg = (np.nan*np.ones(badmask.shape)).astype(data.dtype)
 
-        if nanmean:
-            # create nanmean of pixmap*data
-            nan_to_num_mean = pixmap * np.nan_to_num(data.ravel())
-            non_nan_mean = pixmap * (~np.isnan(data.ravel())).astype(data.dtype)
-            nanmean_data = nan_to_num_mean / non_nan_mean
-            mimg[badmask] = nanmean_data[badmask].astype(mimg.dtype)
+        # pixmap is a (pixels x voxels) sparse non-negative weight matrix
+        # where each row sums to 1
+
+        if not nanmean:
+            # pixmap.dot(vec) gives mean of vec across cortical thickness
+            mimg[badmask] = pixmap.dot(data.ravel())[badmask].astype(mimg.dtype)
         else:
-            mimg[badmask] = (pixmap*data.ravel())[badmask].astype(mimg.dtype)
+            # to ignore nans in the weighted mean, nanmean =
+            # sum(weights * non-nan values) / sum(weights on non-nan values)
+            nonnan_sum = pixmap.dot(np.nan_to_num(data.ravel()))
+            weights_on_nonnan = pixmap.dot((~np.isnan(data.ravel())).astype(data.dtype))
+            nanmean_data = nonnan_sum / weights_on_nonnan
+            mimg[badmask] = nanmean_data[badmask].astype(mimg.dtype)
 
         img[mask] = mimg
 

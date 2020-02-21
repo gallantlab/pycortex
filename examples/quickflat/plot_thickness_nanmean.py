@@ -39,3 +39,4 @@ _ = cortex.quickshow(vol, nanmean=False, vmin=0, vmax=2, with_curvature=True)
 # and, again, all the non-hole points should have value of 1
 _ = cortex.quickshow(vol, nanmean=True, vmin=0, vmax=2, with_curvature=True)
 
+plt.show()
