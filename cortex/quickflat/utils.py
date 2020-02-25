@@ -205,8 +205,8 @@ def _convert_svg_kwargs(kwargs):
         lw='stroke-width',
         linecolor='stroke',
         lc='stroke',
-        #labelcolor='', # FIX ME
-        #labelsize='', # FIX ME
+        labelcolor='label-fill',  # we start label kwargs with "label-"
+        labelsize='label-font-size',
         linealpha='stroke-opacity',
         roifill='fill',
         fillcolor='fill',
