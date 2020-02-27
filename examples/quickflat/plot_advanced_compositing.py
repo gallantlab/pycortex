@@ -12,7 +12,6 @@ quickflat.composite sub-module.
 
 import cortex
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Create a random volume
 volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
@@ -39,6 +38,8 @@ _ = cortex.quickflat.composite.add_rois(fig, volume,
                                         with_labels=True,
                                         linewidth=5,
                                         linecolor=(0.9, 0.5, 0.5),
+                                        labelcolor=(0.9, 0.5, 0.5),
+                                        labelsize=20,
                                         roifill=(0.9, 0.5, 0.5),
                                         fillalpha=0.35,
                                         dashes=(5, 3)                    # Dash length & gap btw dashes
