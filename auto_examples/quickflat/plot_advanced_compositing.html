@@ -48,7 +48,6 @@ quickflat.composite sub-module.</p>
 <img alt="../../_images/sphx_glr_plot_advanced_compositing_001.png" class="sphx-glr-single-img" src="../../_images/sphx_glr_plot_advanced_compositing_001.png" />
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 <span class="c1"># Create a random volume</span>
 <span class="n">volume</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="s1">&#39;fullhead&#39;</span><span class="p">)</span>
@@ -75,6 +74,8 @@ quickflat.composite sub-module.</p>
                                         <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                                         <span class="n">linewidth</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
                                         <span class="n">linecolor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
+                                        <span class="n">labelcolor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
+                                        <span class="n">labelsize</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
                                         <span class="n">roifill</span><span class="o">=</span><span class="p">(</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
                                         <span class="n">fillalpha</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>
                                         <span class="n">dashes</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>                    <span class="c1"># Dash length &amp; gap btw dashes</span>
@@ -82,7 +83,7 @@ quickflat.composite sub-module.</p>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  6.243 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  6.411 seconds)</p>
 <div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-quickflat-plot-advanced-compositing-py">
 <div class="sphx-glr-download docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/701ae012d88c539ecc33405291ee7710/plot_advanced_compositing.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_advanced_compositing.py</span></code></a></p>
@@ -194,7 +195,7 @@ quickflat.composite sub-module.</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

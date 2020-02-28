@@ -32,7 +32,6 @@ quickflat.composite sub-module.
 
     import cortex
     import matplotlib.pyplot as plt
-    import numpy as np
 
     # Create a random volume
     volume = cortex.Volume.random(subject='S1', xfmname='fullhead')
@@ -59,6 +58,8 @@ quickflat.composite sub-module.
                                             with_labels=True,
                                             linewidth=5,
                                             linecolor=(0.9, 0.5, 0.5),
+                                            labelcolor=(0.9, 0.5, 0.5),
+                                            labelsize=20,
                                             roifill=(0.9, 0.5, 0.5),
                                             fillalpha=0.35,
                                             dashes=(5, 3)                    # Dash length & gap btw dashes
@@ -68,7 +69,7 @@ quickflat.composite sub-module.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  6.243 seconds)
+   **Total running time of the script:** ( 0 minutes  6.411 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_advanced_compositing.py:

@@ -56,6 +56,7 @@
 </ul>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span>
 
 <span class="c1"># Create a random pycortex Volume</span>
@@ -64,16 +65,18 @@
 <span class="c1"># Plot a flatmap with the data projected onto the surface</span>
 <span class="c1"># By default the ROIs and their labels will be displayed</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_figure</span><span class="p">(</span><span class="n">volume</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
 <span class="c1"># Turn off the ROI labels</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_figure</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span>
-                                 <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_figure</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
 <span class="c1"># Turn off the ROIs</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_figure</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span>
-                                 <span class="n">with_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_figure</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  6.443 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  6.491 seconds)</p>
 <div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-quickflat-plot-rois-py">
 <div class="sphx-glr-download docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/5d14f4f9c6e0bbb965ff76d1a765dce7/plot_rois.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_rois.py</span></code></a></p>
@@ -185,7 +188,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
