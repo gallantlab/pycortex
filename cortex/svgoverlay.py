@@ -233,6 +233,10 @@ class SVGOverlay(object):
         if height is None:
             height = self.svgshape[1]
         #label_defaults = _parse_defaults(layer+'_labels')
+        
+        # separate kwargs starting with "label-"
+        label_kwargs = {k[6:]:v for k, v in kwargs.items() if k[:6] == "label-"}
+        kwargs = {k:v for k, v in kwargs.items() if k[:6] != "label-"}
 
         for layer in self:
             if layer.name==layer_name:
@@ -246,6 +250,7 @@ class SVGOverlay(object):
                         # do not have individually settable visibility / style params
                         tmp_style = copy.deepcopy(layer.labels.text_style)
                         tmp_style['fill-opacity'] = '1' if shape_.visible else '0'
+                        tmp_style.update(label_kwargs)
                         tmp_style_str = ';'.join(['%s:%s'%(k,v) for k, v in tmp_style.items() if v != 'None'])
                         for i in range(len(layer.labels.elements[name_])):
                             layer.labels.elements[name_][i].set('style', tmp_style_str)
