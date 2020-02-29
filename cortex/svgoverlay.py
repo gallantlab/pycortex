@@ -265,7 +265,7 @@ class SVGOverlay(object):
             pngfile = png.name
 
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
-        cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
+        cmd = "{inkscape_cmd} -z -h {height} --export-file {outfile} /dev/stdin"
         cmd = cmd.format(inkscape_cmd=inkscape_cmd, height=height, outfile=pngfile)
         proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
         stdout, stderr = proc.communicate(etree.tostring(self.svg))
