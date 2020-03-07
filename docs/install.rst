@@ -1,39 +1,49 @@
 Installation
 ============
-The best way to install pycortex currently is by getting the latest source code from github::
 
-    git clone https://github.com/gallantlab/pycortex.git
-    cd pycortex
+To install the stable release version of pycortex, do the following::
 
-    python setup.py develop
+    # First, install some required dependencies
+    pip install -U setuptools wheel numpy cython
+    # Install the latest release of pycortex from pip
+    pip install -U pycortex
 
 
-Dependencies
-------------
-The easiest way to get most of the dependencies is using Anaconda_. To use pycortex with Anaconda_, first install anaconda as instructed, then::
+If you wish to install the development version of pycortex, you can install it directly from Github.
 
-    pip install numpy Cython scipy h5py nibabel matplotlib Pillow numexpr tornado lxml networkx
+To do so, replace the second install line above with the following::
 
-You will also need to install Inkscape_ using whatever method is appropriate for your system. On Mac OS X you will also need to enable access to Inkscape on the command line, see these instructions_.
+    # Install development version of pycortex from github
+    pip install -U git+git://github.com/gallantlab/pycortex.git
 
-If you are running Ubuntu without Anaconda, use the following commands::
+Optional Dependencies
+---------------------
+For some functionality, you will also need to install Inkscape_, using whatever method is appropriate for your system.
 
-    sudo apt-get install python-dev python-numpy python-scipy python-matplotlib python-h5py python-nibabel python-lxml python-shapely python-html5lib inkscape
+On Mac OS X you will also need to enable access to Inkscape on the command line, see these instructions_.
 
-.. _Anaconda: https://store.continuum.io/cshop/anaconda/
 .. _Inkscape: https://inkscape.org/en/
 .. _instructions: http://wiki.inkscape.org/wiki/index.php/Mac_OS_X#Inkscape_command_line
 
 Demo
 ----
-To test if your install went well, first download the `example dataset <http://gallantlab.org/pycortex/S1_retinotopy.hdf>`_. Then run the following commands at a terminal::
-    
+To test if your install went well, you can run the pycortex demo.
+
+Pycortex is best used with IPython_
+
+If you do not already have IPython, you can install it by running::
+
+    pip install ipython
+
+To run the pycortex demo, using IPython, run::
+
     $ ipython
     In [1]: import cortex
-    In [2]: ds = cortex.load("S1_retinotopy.hdf")
-    In [3]: cortex.webshow(ds)
+    In [2]: cortex.webshow(cortex.Volume.random("S1", "fullhead"))
 
-If everything went well, this should pop up a web browser window with the same view as http://gallantlab.org/pycortex/retinotopy_demo/.
+If everything went well, this should pop up a web browser window with a demo subject.
+
+.. _IPython: http://www.ipython.org/
 
 Basic Configuration
 -------------------
@@ -53,4 +63,3 @@ If you want to move the filestore, you need to update the config file::
 
    [basic]
    filestore=/abs/path/to/filestore
-

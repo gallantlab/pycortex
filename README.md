@@ -6,49 +6,54 @@ pycortex
 
 Pycortex is a software library that allows you to visualize fMRI or other volumetric neuroimaging data on cortical surfaces.
 
-Quickstart
-----------
+Installation
+------------
+To install the stable release version of pycortex, do the following:
+
 ```bash
-# create a virtual environment called env with Python 3
-python3 -m venv env  
-# activate the virtual environment
-source env/bin/activate
-# install some prerequisite packages
+# First, install some required dependencies (if not already installed)
 pip install -U setuptools wheel numpy cython
-# install the latest release of pycortex from pip
+# Install the latest release of pycortex from pip
 pip install -U pycortex
 ```
 
-This command creates a new [virtualenv](https://docs.python.org/3/library/venv.html) for pycortex to resolve dependencies. Run `source env/bin/activate` whenever you need pycortex.
+If you wish to install the development version of pycortex, you can install it directly from Github.
 
-If you want to install the latest, unreleased version of pycortex from github, instead of the last line you can run
+To do so, replace the second install line above with the following:
 
 ```bash
-# install unreleased version of pycortex from github
+# Install development version of pycortex from github
 pip install -U git+git://github.com/gallantlab/pycortex.git
 ```
 
 Documentation
 -------------
-Pycortex documentation is available at [https://gallantlab.github.io/pycortex](https://gallantlab.github.io/pycortex). You can find many examples of pycortex features in the [pycortex example gallery](https://gallantlab.github.io/pycortex/auto_examples/index.html).
+Pycortex documentation is available at [https://gallantlab.github.io/pycortex](https://gallantlab.github.io/pycortex).
+
+You can find many examples of pycortex features in the [pycortex example gallery](https://gallantlab.github.io/pycortex/auto_examples/index.html).
 
 To build the documentation locally:
 ```bash
-pip install sphinx_gallery
-pip install numpydoc
+# Install required dependencies for the documentation
+pip install sphinx_gallery numpydoc
+# Move into the docs folder (assuming already in pycortex directory)
 cd docs
+# Build a local version of the documentation site
 make html
-# open `docs/_build/html/index.html` in web browser
 ```
+
+After you run the above, you can open `docs/_build/html/index.html` in a web browser to view the locally built documentation.
 
 Demo
 ----
-Pycortex is best used with [IPython](http://www.ipython.org/). Install it in your virtualenv using 
+Pycortex is best used with [IPython]().
+
+If you do not already have IPython, you can install it by running:
 ```bash
-source env/bin/activate
 pip install ipython
 ```
-To run the pycortex demo,
+
+To run the pycortex demo, using IPython, run:
 ```ipython
 $ ipython
 In [1]: import cortex
@@ -62,6 +67,6 @@ If you use pycortex in published work, please cite the [pycortex paper](http://d
 _Gao JS, Huth AG, Lescroart MD and Gallant JL (2015) Pycortex: an interactive surface visualizer for fMRI. Front. Neuroinform. 9:23. doi: 10.3389/fninf.2015.00023_
 
 Getting help
------------
-Please post on [NeuroStars](https://neurostars.org/) with the tag `pycortex` to 
+------------
+Please post on [NeuroStars](https://neurostars.org/) with the tag `pycortex` to
 ask questions about how to use Pycortex.
