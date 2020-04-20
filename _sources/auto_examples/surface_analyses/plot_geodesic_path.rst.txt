@@ -1,10 +1,12 @@
-.. note::
-    :class: sphx-glr-download-link-note
+.. only:: html
 
-    Click :ref:`here <sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_path.py>` to download the full example code
-.. rst-class:: sphx-glr-example-title
+    .. note::
+        :class: sphx-glr-download-link-note
 
-.. _sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py:
+        Click :ref:`here <sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_path.py>`     to download the full example code
+    .. rst-class:: sphx-glr-example-title
+
+    .. _sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py:
 
 
 =======================
@@ -79,7 +81,7 @@ show all of the vertices listed in the path.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  13.455 seconds)
+   **Total running time of the script:** ( 0 minutes  12.861 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_path.py:
@@ -92,13 +94,13 @@ show all of the vertices listed in the path.
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-python
 
      :download:`Download Python source code: plot_geodesic_path.py <plot_geodesic_path.py>`
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-jupyter
 
      :download:`Download Jupyter notebook: plot_geodesic_path.ipynb <plot_geodesic_path.ipynb>`
 

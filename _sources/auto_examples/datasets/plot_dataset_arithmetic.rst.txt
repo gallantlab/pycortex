@@ -1,10 +1,12 @@
-.. note::
-    :class: sphx-glr-download-link-note
+.. only:: html
 
-    Click :ref:`here <sphx_glr_download_auto_examples_datasets_plot_dataset_arithmetic.py>` to download the full example code
-.. rst-class:: sphx-glr-example-title
+    .. note::
+        :class: sphx-glr-download-link-note
 
-.. _sphx_glr_auto_examples_datasets_plot_dataset_arithmetic.py:
+        Click :ref:`here <sphx_glr_download_auto_examples_datasets_plot_dataset_arithmetic.py>`     to download the full example code
+    .. rst-class:: sphx-glr-example-title
+
+    .. _sphx_glr_auto_examples_datasets_plot_dataset_arithmetic.py:
 
 
 ==================
@@ -77,7 +79,7 @@ normal arithmetic operators like +, -, *, /, and **
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  8.324 seconds)
+   **Total running time of the script:** ( 0 minutes  8.315 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_dataset_arithmetic.py:
@@ -90,13 +92,13 @@ normal arithmetic operators like +, -, *, /, and **
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-python
 
      :download:`Download Python source code: plot_dataset_arithmetic.py <plot_dataset_arithmetic.py>`
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-jupyter
 
      :download:`Download Jupyter notebook: plot_dataset_arithmetic.ipynb <plot_dataset_arithmetic.ipynb>`
 

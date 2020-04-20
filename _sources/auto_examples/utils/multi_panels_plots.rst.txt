@@ -1,10 +1,12 @@
-.. note::
-    :class: sphx-glr-download-link-note
+.. only:: html
 
-    Click :ref:`here <sphx_glr_download_auto_examples_utils_multi_panels_plots.py>` to download the full example code
-.. rst-class:: sphx-glr-example-title
+    .. note::
+        :class: sphx-glr-download-link-note
 
-.. _sphx_glr_auto_examples_utils_multi_panels_plots.py:
+        Click :ref:`here <sphx_glr_download_auto_examples_utils_multi_panels_plots.py>`     to download the full example code
+    .. rst-class:: sphx-glr-example-title
+
+    .. _sphx_glr_auto_examples_utils_multi_panels_plots.py:
 
 
 ====================
@@ -121,13 +123,13 @@ List all predefined surfaces
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-python
 
      :download:`Download Python source code: multi_panels_plots.py <multi_panels_plots.py>`
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-jupyter
 
      :download:`Download Jupyter notebook: multi_panels_plots.ipynb <multi_panels_plots.ipynb>`
 

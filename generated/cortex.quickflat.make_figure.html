@@ -1,13 +1,15 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
     <meta charset="utf-8" />
     <title>cortex.quickflat.make_figure &#8212; pycortex 0.1 documentation</title>
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery-binder.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/gallery-dataframe.css" />
     <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
@@ -34,9 +36,9 @@
             
   <div class="section" id="cortex-quickflat-make-figure">
 <h1>cortex.quickflat.make_figure<a class="headerlink" href="#cortex-quickflat-make-figure" title="Permalink to this headline">¶</a></h1>
-<dl class="function">
+<dl class="py function">
 <dt id="cortex.quickflat.make_figure">
-<code class="sig-prename descclassname">cortex.quickflat.</code><code class="sig-name descname">make_figure</code><span class="sig-paren">(</span><em class="sig-param">braindata</em>, <em class="sig-param">recache=False</em>, <em class="sig-param">pixelwise=True</em>, <em class="sig-param">thick=32</em>, <em class="sig-param">sampler='nearest'</em>, <em class="sig-param">height=1024</em>, <em class="sig-param">dpi=100</em>, <em class="sig-param">depth=0.5</em>, <em class="sig-param">with_rois=True</em>, <em class="sig-param">with_sulci=False</em>, <em class="sig-param">with_labels=True</em>, <em class="sig-param">with_colorbar=True</em>, <em class="sig-param">with_borders=False</em>, <em class="sig-param">with_dropout=False</em>, <em class="sig-param">with_curvature=False</em>, <em class="sig-param">extra_disp=None</em>, <em class="sig-param">with_connected_vertices=False</em>, <em class="sig-param">overlay_file=None</em>, <em class="sig-param">linewidth=None</em>, <em class="sig-param">linecolor=None</em>, <em class="sig-param">roifill=None</em>, <em class="sig-param">shadow=None</em>, <em class="sig-param">labelsize=None</em>, <em class="sig-param">labelcolor=None</em>, <em class="sig-param">cutout=None</em>, <em class="sig-param">curvature_brightness=None</em>, <em class="sig-param">curvature_contrast=None</em>, <em class="sig-param">curvature_threshold=None</em>, <em class="sig-param">fig=None</em>, <em class="sig-param">extra_hatch=None</em>, <em class="sig-param">colorbar_ticks=None</em>, <em class="sig-param">colorbar_location=(0.4</em>, <em class="sig-param">0.07</em>, <em class="sig-param">0.2</em>, <em class="sig-param">0.04)</em>, <em class="sig-param">roi_list=None</em>, <em class="sig-param">nanmean=False</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/quickflat/view.html#make_figure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.quickflat.make_figure" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">cortex.quickflat.</code><code class="sig-name descname">make_figure</code><span class="sig-paren">(</span><em class="sig-param">braindata</em>, <em class="sig-param">recache=False</em>, <em class="sig-param">pixelwise=True</em>, <em class="sig-param">thick=32</em>, <em class="sig-param">sampler='nearest'</em>, <em class="sig-param">height=1024</em>, <em class="sig-param">dpi=100</em>, <em class="sig-param">depth=0.5</em>, <em class="sig-param">with_rois=True</em>, <em class="sig-param">with_sulci=False</em>, <em class="sig-param">with_labels=True</em>, <em class="sig-param">with_colorbar=True</em>, <em class="sig-param">with_borders=False</em>, <em class="sig-param">with_dropout=False</em>, <em class="sig-param">with_curvature=False</em>, <em class="sig-param">extra_disp=None</em>, <em class="sig-param">with_connected_vertices=False</em>, <em class="sig-param">overlay_file=None</em>, <em class="sig-param">linewidth=None</em>, <em class="sig-param">linecolor=None</em>, <em class="sig-param">roifill=None</em>, <em class="sig-param">shadow=None</em>, <em class="sig-param">labelsize=None</em>, <em class="sig-param">labelcolor=None</em>, <em class="sig-param">cutout=None</em>, <em class="sig-param">curvature_brightness=None</em>, <em class="sig-param">curvature_contrast=None</em>, <em class="sig-param">curvature_threshold=None</em>, <em class="sig-param">fig=None</em>, <em class="sig-param">extra_hatch=None</em>, <em class="sig-param">colorbar_ticks=None</em>, <em class="sig-param">colorbar_location=(0.4</em>, <em class="sig-param">0.07</em>, <em class="sig-param">0.2</em>, <em class="sig-param">0.04)</em>, <em class="sig-param">roi_list=None</em>, <em class="sig-param">nanmean=False</em>, <em class="sig-param">\*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/quickflat/view.html#make_figure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.quickflat.make_figure" title="Permalink to this definition">¶</a></dt>
 <dd><p>Show a Volume or Vertex on a flatmap with matplotlib.</p>
 <p>Note that <a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs are ONLY present now for backward compatibility / warnings. No kwargs
 should be used.</p>
@@ -197,7 +199,7 @@ vmin, vmax specified in the Volume2D object.</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

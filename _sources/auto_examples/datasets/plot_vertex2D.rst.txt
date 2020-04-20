@@ -1,10 +1,12 @@
-.. note::
-    :class: sphx-glr-download-link-note
+.. only:: html
 
-    Click :ref:`here <sphx_glr_download_auto_examples_datasets_plot_vertex2D.py>` to download the full example code
-.. rst-class:: sphx-glr-example-title
+    .. note::
+        :class: sphx-glr-download-link-note
 
-.. _sphx_glr_auto_examples_datasets_plot_vertex2D.py:
+        Click :ref:`here <sphx_glr_download_auto_examples_datasets_plot_vertex2D.py>`     to download the full example code
+    .. rst-class:: sphx-glr-example-title
+
+    .. _sphx_glr_auto_examples_datasets_plot_vertex2D.py:
 
 
 ===================
@@ -69,7 +71,7 @@ the length of the all the vertices in the subject.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  2.569 seconds)
+   **Total running time of the script:** ( 0 minutes  2.743 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_vertex2D.py:
@@ -82,13 +84,13 @@ the length of the all the vertices in the subject.
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-python
 
      :download:`Download Python source code: plot_vertex2D.py <plot_vertex2D.py>`
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-jupyter
 
      :download:`Download Jupyter notebook: plot_vertex2D.ipynb <plot_vertex2D.ipynb>`
 

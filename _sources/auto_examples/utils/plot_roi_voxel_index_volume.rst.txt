@@ -1,10 +1,12 @@
-.. note::
-    :class: sphx-glr-download-link-note
+.. only:: html
 
-    Click :ref:`here <sphx_glr_download_auto_examples_utils_plot_roi_voxel_index_volume.py>` to download the full example code
-.. rst-class:: sphx-glr-example-title
+    .. note::
+        :class: sphx-glr-download-link-note
 
-.. _sphx_glr_auto_examples_utils_plot_roi_voxel_index_volume.py:
+        Click :ref:`here <sphx_glr_download_auto_examples_utils_plot_roi_voxel_index_volume.py>`     to download the full example code
+    .. rst-class:: sphx-glr-example-title
+
+    .. _sphx_glr_auto_examples_utils_plot_roi_voxel_index_volume.py:
 
 
 ====================
@@ -159,7 +161,7 @@ ROIs in the right hemisphere will have positive values.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  11.030 seconds)
+   **Total running time of the script:** ( 0 minutes  10.832 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_roi_voxel_index_volume.py:
@@ -172,13 +174,13 @@ ROIs in the right hemisphere will have positive values.
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-python
 
      :download:`Download Python source code: plot_roi_voxel_index_volume.py <plot_roi_voxel_index_volume.py>`
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-jupyter
 
      :download:`Download Jupyter notebook: plot_roi_voxel_index_volume.ipynb <plot_roi_voxel_index_volume.ipynb>`
 

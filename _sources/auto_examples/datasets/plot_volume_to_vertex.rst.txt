@@ -1,10 +1,12 @@
-.. note::
-    :class: sphx-glr-download-link-note
+.. only:: html
 
-    Click :ref:`here <sphx_glr_download_auto_examples_datasets_plot_volume_to_vertex.py>` to download the full example code
-.. rst-class:: sphx-glr-example-title
+    .. note::
+        :class: sphx-glr-download-link-note
 
-.. _sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py:
+        Click :ref:`here <sphx_glr_download_auto_examples_datasets_plot_volume_to_vertex.py>`     to download the full example code
+    .. rst-class:: sphx-glr-example-title
+
+    .. _sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py:
 
 
 ==============================
@@ -68,7 +70,7 @@ vertex mapping of that data. You can plot both of these as you normally would.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  7.798 seconds)
+   **Total running time of the script:** ( 0 minutes  7.757 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volume_to_vertex.py:
@@ -81,13 +83,13 @@ vertex mapping of that data. You can plot both of these as you normally would.
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-python
 
      :download:`Download Python source code: plot_volume_to_vertex.py <plot_volume_to_vertex.py>`
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-jupyter
 
      :download:`Download Jupyter notebook: plot_volume_to_vertex.ipynb <plot_volume_to_vertex.ipynb>`
 

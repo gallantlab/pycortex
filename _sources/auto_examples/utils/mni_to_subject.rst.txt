@@ -1,10 +1,12 @@
-.. note::
-    :class: sphx-glr-download-link-note
+.. only:: html
 
-    Click :ref:`here <sphx_glr_download_auto_examples_utils_mni_to_subject.py>` to download the full example code
-.. rst-class:: sphx-glr-example-title
+    .. note::
+        :class: sphx-glr-download-link-note
 
-.. _sphx_glr_auto_examples_utils_mni_to_subject.py:
+        Click :ref:`here <sphx_glr_download_auto_examples_utils_mni_to_subject.py>`     to download the full example code
+    .. rst-class:: sphx-glr-example-title
+
+    .. _sphx_glr_auto_examples_utils_mni_to_subject.py:
 
 
 ===================================
@@ -69,13 +71,13 @@ into subject space from MNI space.
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-python
 
      :download:`Download Python source code: mni_to_subject.py <mni_to_subject.py>`
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-jupyter
 
      :download:`Download Jupyter notebook: mni_to_subject.ipynb <mni_to_subject.ipynb>`
 

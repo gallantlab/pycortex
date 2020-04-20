@@ -1,10 +1,12 @@
-.. note::
-    :class: sphx-glr-download-link-note
+.. only:: html
 
-    Click :ref:`here <sphx_glr_download_auto_examples_import_surface_import_fmriprep.py>` to download the full example code
-.. rst-class:: sphx-glr-example-title
+    .. note::
+        :class: sphx-glr-download-link-note
 
-.. _sphx_glr_auto_examples_import_surface_import_fmriprep.py:
+        Click :ref:`here <sphx_glr_download_auto_examples_import_surface_import_fmriprep.py>`     to download the full example code
+    .. rst-class:: sphx-glr-example-title
+
+    .. _sphx_glr_auto_examples_import_surface_import_fmriprep.py:
 
 
 ==================
@@ -61,13 +63,13 @@ NB: `cortex.fmriprep` is a work-in-progress and cannot currently handle multiple
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-python
 
      :download:`Download Python source code: import_fmriprep.py <import_fmriprep.py>`
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-jupyter
 
      :download:`Download Jupyter notebook: import_fmriprep.ipynb <import_fmriprep.ipynb>`
 

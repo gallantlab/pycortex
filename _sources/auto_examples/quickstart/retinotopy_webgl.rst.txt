@@ -1,10 +1,12 @@
-.. note::
-    :class: sphx-glr-download-link-note
+.. only:: html
 
-    Click :ref:`here <sphx_glr_download_auto_examples_quickstart_retinotopy_webgl.py>` to download the full example code
-.. rst-class:: sphx-glr-example-title
+    .. note::
+        :class: sphx-glr-download-link-note
 
-.. _sphx_glr_auto_examples_quickstart_retinotopy_webgl.py:
+        Click :ref:`here <sphx_glr_download_auto_examples_quickstart_retinotopy_webgl.py>`     to download the full example code
+    .. rst-class:: sphx-glr-example-title
+
+    .. _sphx_glr_auto_examples_quickstart_retinotopy_webgl.py:
 
 
 =====================================
@@ -61,13 +63,13 @@ yourself you will get a viewer showing something like the following.
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-python
 
      :download:`Download Python source code: retinotopy_webgl.py <retinotopy_webgl.py>`
 
 
 
-  .. container:: sphx-glr-download
+  .. container:: sphx-glr-download sphx-glr-download-jupyter
 
      :download:`Download Jupyter notebook: retinotopy_webgl.ipynb <retinotopy_webgl.ipynb>`
 
