@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 from .save_views import save_3d_views
 
 
-def plot_panels(volume, panels, figsize=(16, 9), save_name=None):
+def plot_panels(volume, panels, figsize=(16, 9), windowsize=(1600*4, 900*4), 
+                save_name=None, sleep=10):
     """Plot on the same figure a number of views, as defined by a list of panel
 
     Parameters
@@ -33,9 +34,18 @@ def plot_panels(volume, panels, figsize=(16, 9), save_name=None):
     figsize : tuple of float
         Size of the figure.
 
+    windowsize : tuple of float
+        Size of the browser window. Larger values provide higher resolution,
+        but they might fail if the screen size is not large enough (this is
+        only a working hypothesis). If this function fails, try reducing the 
+        windowsize.
+
     save_name : str or None
         Name of the file where the figure is saved. None to not save.
         Can end with different extensions, such as '.png' of '.pdf'.
+
+    sleep: float > 0
+        Time in seconds, to let the viewer open.
 
     Returns
     -------
@@ -60,7 +70,7 @@ def plot_panels(volume, panels, figsize=(16, 9), save_name=None):
     base_name = os.path.join(temp_dir, 'fig')
     filenames = save_3d_views(volume, base_name, list_angles=list_angles,
                               list_surfaces=list_surfaces, trim=True,
-                              size=(1600 * 4, 900 * 4))
+                              size=windowsize, sleep=sleep)
 
     fig = plt.figure(figsize=figsize)
     for panel in panels:

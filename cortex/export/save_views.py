@@ -106,7 +106,7 @@ def save_3d_views(volume, base_name='fig', list_angles=['lateral_pivot'],
         # Wait for browser to dump file, before applying new view parameters
         while not os.path.exists(file_name):
             pass
-        time.sleep(0.1)
+        time.sleep(1)
 
         # Trim white edges
         if trim:
