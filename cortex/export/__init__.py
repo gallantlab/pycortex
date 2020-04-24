@@ -9,6 +9,5 @@ __all__ = [
     'plot_panels',
     'params_flatmap_lateral_medial',
     'params_occipital_triple_view',
-    'params_occipital_triple_view',
     'params_inflated_lateral_medial_ventral'
 ]
