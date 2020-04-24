@@ -194,6 +194,9 @@ unfold_view_params = {
     'fiducial': {
         'surface.{subject}.unfold': 0,
     },
+    'inflated_less': {
+        'surface.{subject}.unfold': 0.25,
+    },
     'inflated': {
         'surface.{subject}.unfold': 0.5,
     },

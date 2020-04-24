@@ -211,3 +211,51 @@ params_occipital_triple_view = {
         }
     }]
 }
+
+params_inflated_lateral_medial_ventral = {
+    'figsize': [10, 9],
+    'panels': [
+        {
+            'extent': [0.0, 0.0, 0.5, 1/3.],
+            'view': {
+                'hemisphere': 'left',
+                'angle': 'bottom_pivot',
+                'surface': 'inflated_less'
+            }
+        }, {
+            'extent': [0.000, 1/3., 0.5, 1/3.],
+            'view': {
+                'hemisphere': 'left',
+                'angle': 'medial_pivot',
+                'surface': 'inflated_less'
+            }
+        }, {
+            'extent': [0.000, 2/3., 0.5, 1/3.],
+            'view': {
+                'hemisphere': 'left',
+                'angle': 'lateral_pivot',
+                'surface': 'inflated_less'
+            }
+        }, {
+            'extent': [0.5, 0.0, 0.5, 1/3.],
+            'view': {
+                'hemisphere': 'right',
+                'angle': 'bottom_pivot',
+                'surface': 'inflated_less'
+            }
+        }, {
+            'extent': [0.5, 1/3., 0.5, 1/3.],
+            'view': {
+                'hemisphere': 'right',
+                'angle': 'medial_pivot',
+                'surface': 'inflated_less'
+            }
+        }, {
+            'extent': [0.5, 2/3., 0.5, 1/3.],
+            'view': {
+                'hemisphere': 'right',
+                'angle': 'lateral_pivot',
+                'surface': 'inflated_less'
+            }
+    }]
+}
