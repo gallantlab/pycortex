@@ -28,7 +28,7 @@ The utility function `get_vox_dist` returns the distance from each voxel in some
  .. code-block:: none
 
 
-    <matplotlib.colorbar.Colorbar object at 0x7f781d0e5f98>
+    <matplotlib.colorbar.Colorbar object at 0x7f3bd7f92198>
 
 
 
@@ -61,7 +61,7 @@ The utility function `get_vox_dist` returns the distance from each voxel in some
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  4.416 seconds)
+   **Total running time of the script:** ( 0 minutes  4.401 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_voxel_distance_from_surface.py:
