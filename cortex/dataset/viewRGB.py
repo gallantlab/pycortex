@@ -190,6 +190,11 @@ class VolumeRGB(DataviewRGB):
     def _write_hdf(self, h5, name="data"):
         return super(VolumeRGB, self)._write_hdf(h5, name=name, xfmname=[self.xfmname])
 
+    @property
+    def raw(self):
+        return self
+
+
 class VertexRGB(DataviewRGB):
     """
     Contains RGB (or RGBA) colors for each vertex in a surface dataset. 
@@ -308,3 +313,7 @@ class VertexRGB(DataviewRGB):
     @property
     def name(self):
         return "__%s"%_hash(self.vertices)[:16]
+
+    @property
+    def raw(self):
+        return self
