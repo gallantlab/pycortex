@@ -18,11 +18,13 @@ default_colorbar_locations = {
 
 
 def _check_colorbar_location(colorbar_location):
+    if isinstance(colorbar_location, (tuple, list)):
+        return colorbar_location
+
     if colorbar_location not in default_colorbar_locations:
         raise ValueError("colorbar_location must be one of {}".format(
             list(default_colorbar_locations.keys())))
-    if isinstance(colorbar_location, (tuple, list)):
-        return colorbar_location
+
     return default_colorbar_locations[colorbar_location]
 
 
