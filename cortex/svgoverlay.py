@@ -15,6 +15,7 @@ from lxml import etree
 from lxml.builder import E
 
 from .options import config
+from .testing_utils import INKSCAPE_VERSION
 
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
@@ -265,7 +266,11 @@ class SVGOverlay(object):
             pngfile = png.name
 
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
-        cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
+        if INKSCAPE_VERSION < '1.0':
+            cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
+        else:
+            cmd = "{inkscape_cmd} -h {height} --export-filename {outfile} " \
+                  "/dev/stdin"
         cmd = cmd.format(inkscape_cmd=inkscape_cmd, height=height, outfile=pngfile)
         proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
         stdout, stderr = proc.communicate(etree.tostring(self.svg))

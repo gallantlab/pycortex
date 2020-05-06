@@ -20,6 +20,8 @@ from .options import config
 from .freesurfer import fs_aseg_dict
 from .polyutils import Surface
 from . import formats
+from .testing_utils import INKSCAPE_VERSION
+
 
 class DocLoader(object):
     def __init__(self, func, mod, package):
@@ -278,7 +280,11 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
 
     if open_inkscape:
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
-        return sp.call([inkscape_cmd, '-f', svg.svgfile])
+        if INKSCAPE_VERSION < '1.0':
+            cmd = [inkscape_cmd, '-f', svg.svgfile]
+        else:
+            cmd = [inkscape_cmd, svg.svgfile]
+        return sp.call(cmd)
 
 def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
     """Return vertices for the given ROIs, or all ROIs if none are given.
