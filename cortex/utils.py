@@ -12,6 +12,8 @@ import tarfile
 import wget
 import tempfile
 
+from distutils.version import LooseVersion
+
 from six import string_types
 from importlib import import_module
 from .database import db
@@ -280,7 +282,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
 
     if open_inkscape:
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
-        if INKSCAPE_VERSION < '1.0':
+        if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
             cmd = [inkscape_cmd, '-f', svg.svgfile]
         else:
             cmd = [inkscape_cmd, svg.svgfile]

@@ -11,6 +11,8 @@ from matplotlib.path import Path
 from scipy.spatial import cKDTree
 from builtins import zip, str
 
+from distutils.version import LooseVersion
+
 from lxml import etree
 from lxml.builder import E
 
@@ -266,7 +268,7 @@ class SVGOverlay(object):
             pngfile = png.name
 
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
-        if INKSCAPE_VERSION < '1.0':
+        if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
             cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
         else:
             cmd = "{inkscape_cmd} -h {height} --export-filename {outfile} " \
