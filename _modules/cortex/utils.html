@@ -49,6 +49,8 @@
 <span class="kn">import</span> <span class="nn">wget</span>
 <span class="kn">import</span> <span class="nn">tempfile</span>
 
+<span class="kn">from</span> <span class="nn">distutils.version</span> <span class="kn">import</span> <span class="n">LooseVersion</span>
+
 <span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">string_types</span>
 <span class="kn">from</span> <span class="nn">importlib</span> <span class="kn">import</span> <span class="n">import_module</span>
 <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
@@ -57,6 +59,8 @@
 <span class="kn">from</span> <span class="nn">.freesurfer</span> <span class="kn">import</span> <span class="n">fs_aseg_dict</span>
 <span class="kn">from</span> <span class="nn">.polyutils</span> <span class="kn">import</span> <span class="n">Surface</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">formats</span>
+<span class="kn">from</span> <span class="nn">.testing_utils</span> <span class="kn">import</span> <span class="n">INKSCAPE_VERSION</span>
+
 
 <span class="k">class</span> <span class="nc">DocLoader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">package</span><span class="p">):</span>
@@ -315,7 +319,11 @@
 
     <span class="k">if</span> <span class="n">open_inkscape</span><span class="p">:</span>
         <span class="n">inkscape_cmd</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;inkscape&#39;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="n">inkscape_cmd</span><span class="p">,</span> <span class="s1">&#39;-f&#39;</span><span class="p">,</span> <span class="n">svg</span><span class="o">.</span><span class="n">svgfile</span><span class="p">])</span></div>
+        <span class="k">if</span> <span class="n">LooseVersion</span><span class="p">(</span><span class="n">INKSCAPE_VERSION</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">LooseVersion</span><span class="p">(</span><span class="s1">&#39;1.0&#39;</span><span class="p">):</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="n">inkscape_cmd</span><span class="p">,</span> <span class="s1">&#39;-f&#39;</span><span class="p">,</span> <span class="n">svg</span><span class="o">.</span><span class="n">svgfile</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="n">inkscape_cmd</span><span class="p">,</span> <span class="n">svg</span><span class="o">.</span><span class="n">svgfile</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="get_roi_verts"><a class="viewcode-back" href="../../generated/cortex.utils.get_roi_verts.html#cortex.utils.get_roi_verts">[docs]</a><span class="k">def</span> <span class="nf">get_roi_verts</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Return vertices for the given ROIs, or all ROIs if none are given.</span>
