@@ -10,6 +10,24 @@ from .utils import make_flatmap_image
 from . import composite
 
 
+default_colorbar_locations = {
+    'left': (.0, .07, .2, .04),
+    'center': (.4, .07, .2, .04),
+    'right': (.7, .07, .2, .04)
+}
+
+
+def _check_colorbar_location(colorbar_location):
+    if isinstance(colorbar_location, (tuple, list)):
+        return colorbar_location
+
+    if colorbar_location not in default_colorbar_locations:
+        raise ValueError("colorbar_location must be one of {}".format(
+            list(default_colorbar_locations.keys())))
+
+    return default_colorbar_locations[colorbar_location]
+
+
 def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
                 height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
                 with_labels=True, with_colorbar=True, with_borders=False,
@@ -18,7 +36,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
                 curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
-                colorbar_ticks=None, colorbar_location=(.4, .07, .2, .04), roi_list=None,
+                colorbar_ticks=None, colorbar_location='center', roi_list=None,
                 nanmean=False, **kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
@@ -87,10 +105,11 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         layers to it.) Default value is None.
     extra_hatch : tuple, optional
         Optional extra crosshatch-textured layer, given as (DataView, [r, g, b]) tuple.
-    colorbar_location : tuple, optional
-        Location of the colorbar. The dimensions are
-        [left, bottom, width, height]. All quantities are in fractions of
-        figure width and height.
+    colorbar_location : str or tuple, optional
+        Location of the colorbar. Default locations are one of
+        'left', 'center', 'right' (default 'center').
+        Alternatively, a tuple with four floats between 0 and 1 can be passed
+        indicating (left, bottom, width, height).
     colorbar_ticks : array-like, optional
         For 1D colormaps indicates the ticks of the colorbar. If None,
         it defaults to equally spaced values between vmin and vmax.
@@ -210,6 +229,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         extents = composite.add_cutout(ax, cutout, dataview, layers)
 
     if with_colorbar:
+        colorbar_location = _check_colorbar_location(colorbar_location)
         # Allow 2D colorbars:
         if isinstance(dataview, dataset.view2D.Dataview2D):
             colorbar_ticks = np.round([
