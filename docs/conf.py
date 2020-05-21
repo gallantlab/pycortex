@@ -120,6 +120,7 @@ html_theme_options = {
     # 'logo': 'logo.png',
     'github_user': 'gallantlab',
     'github_repo': 'pycortex',
+    'github_type': 'star',
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
