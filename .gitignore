@@ -52,3 +52,9 @@ nosetests.xml
 .vscode
 
 *.nfs*
+
+# docs build
+docs/_build
+docs/auto_examples
+docs/generated
+docs/colormaps.rst
