@@ -36,12 +36,14 @@ filled in with zeros.
     *
 
       .. image:: /auto_examples/datasets/images/sphx_glr_plot_vertex_001.png
-            :class: sphx-glr-multi-img
+          :alt: plot vertex
+          :class: sphx-glr-multi-img
 
     *
 
       .. image:: /auto_examples/datasets/images/sphx_glr_plot_vertex_002.png
-            :class: sphx-glr-multi-img
+          :alt: plot vertex
+          :class: sphx-glr-multi-img
 
 
 
@@ -88,7 +90,7 @@ filled in with zeros.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  5.514 seconds)
+   **Total running time of the script:** ( 0 minutes  5.470 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_vertex.py:

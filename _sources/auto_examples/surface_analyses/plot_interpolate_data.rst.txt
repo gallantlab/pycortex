@@ -23,6 +23,7 @@ the selected points. This is similar to thin plate splines.
 
 
 .. image:: /auto_examples/surface_analyses/images/sphx_glr_plot_interpolate_data_001.png
+    :alt: plot interpolate data
     :class: sphx-glr-single-img
 
 
@@ -97,7 +98,7 @@ the selected points. This is similar to thin plate splines.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  26.755 seconds)
+   **Total running time of the script:** ( 0 minutes  26.826 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_interpolate_data.py:

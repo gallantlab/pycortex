@@ -35,17 +35,20 @@ on the brain.
     *
 
       .. image:: /auto_examples/datasets/images/sphx_glr_plot_volume_001.png
-            :class: sphx-glr-multi-img
+          :alt: plot volume
+          :class: sphx-glr-multi-img
 
     *
 
       .. image:: /auto_examples/datasets/images/sphx_glr_plot_volume_002.png
-            :class: sphx-glr-multi-img
+          :alt: plot volume
+          :class: sphx-glr-multi-img
 
     *
 
       .. image:: /auto_examples/datasets/images/sphx_glr_plot_volume_003.png
-            :class: sphx-glr-multi-img
+          :alt: plot volume
+          :class: sphx-glr-multi-img
 
 
 
@@ -87,7 +90,7 @@ on the brain.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  8.187 seconds)
+   **Total running time of the script:** ( 0 minutes  8.163 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volume.py:

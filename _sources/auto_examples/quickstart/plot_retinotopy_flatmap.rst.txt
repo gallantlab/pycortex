@@ -33,12 +33,14 @@ and you will also need a flatmap for them.
     *
 
       .. image:: /auto_examples/quickstart/images/sphx_glr_plot_retinotopy_flatmap_001.png
-            :class: sphx-glr-multi-img
+          :alt: plot retinotopy flatmap
+          :class: sphx-glr-multi-img
 
     *
 
       .. image:: /auto_examples/quickstart/images/sphx_glr_plot_retinotopy_flatmap_002.png
-            :class: sphx-glr-multi-img
+          :alt: plot retinotopy flatmap
+          :class: sphx-glr-multi-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -91,7 +93,7 @@ and you will also need a flatmap for them.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  8.178 seconds)
+   **Total running time of the script:** ( 0 minutes  8.171 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickstart_plot_retinotopy_flatmap.py:

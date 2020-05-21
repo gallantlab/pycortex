@@ -23,6 +23,7 @@ overlays.svg file in the pycortex filestore for this subject.
 
 
 .. image:: /auto_examples/utils/images/sphx_glr_plot_roi_voxel_mask_001.png
+    :alt: plot roi voxel mask
     :class: sphx-glr-single-img
 
 

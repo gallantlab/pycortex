@@ -37,12 +37,14 @@ the original.
     *
 
       .. image:: /auto_examples/surface_analyses/images/sphx_glr_plot_flatmap_distortion_001.png
-            :class: sphx-glr-multi-img
+          :alt: plot flatmap distortion
+          :class: sphx-glr-multi-img
 
     *
 
       .. image:: /auto_examples/surface_analyses/images/sphx_glr_plot_flatmap_distortion_002.png
-            :class: sphx-glr-multi-img
+          :alt: plot flatmap distortion
+          :class: sphx-glr-multi-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -126,7 +128,7 @@ the original.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  40.208 seconds)
+   **Total running time of the script:** ( 0 minutes  40.907 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_flatmap_distortion.py:

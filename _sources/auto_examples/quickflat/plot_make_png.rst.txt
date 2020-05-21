@@ -31,6 +31,7 @@ that use the parameter `bgcolor`.
 
 
 .. image:: /auto_examples/quickflat/images/sphx_glr_plot_make_png_001.png
+    :alt: plot make png
     :class: sphx-glr-single-img
 
 
@@ -59,7 +60,7 @@ that use the parameter `bgcolor`.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  5.583 seconds)
+   **Total running time of the script:** ( 0 minutes  5.552 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_png.py:

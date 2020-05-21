@@ -27,6 +27,7 @@ a third dataset makes a series of stripes across the brain.
 
 
 .. image:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_001.png
+    :alt: plot volumeRGB
     :class: sphx-glr-single-img
 
 
@@ -74,7 +75,7 @@ a third dataset makes a series of stripes across the brain.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  2.759 seconds)
+   **Total running time of the script:** ( 0 minutes  2.767 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volumeRGB.py:
