@@ -1,6 +1,6 @@
 # emacs: -*- coding: utf-8; mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set fileencoding=utf-8 ft=python sts=4 ts=4 sw=4 et:
-from cortex.dataset import Dataset, Volume, Vertex, VolumeRGB, VertexRGB, Volume2D, Vertex2D
+from cortex.dataset import Dataset, Volume, Vertex, VolumeRGB, VertexRGB, Volume2D, Vertex2D, Colors
 from cortex import align, volume, quickflat, webgl, segment, options
 from cortex.database import db
 from cortex.utils import *
