@@ -32,7 +32,7 @@ def RGB2HSV(color):
     Returns
     -------
     tuple<int, float, float>
-        HSV values. Hue in degres, saturation and value on [0, 1]
+        HSV values. Hue in degrees, saturation and value on [0, 1]
 
     """
     hue, saturation, value = colorsys.rgb_to_hsv(color[0] / 255.0, color[1] / 255.0, color[2] / 255.0)
@@ -47,7 +47,7 @@ def HSV2RGB(color):
     Parameters
     ----------
     color : tuple<int, float, float>
-        HSV values. Hue in degres, saturation and value on [0, 1]
+        HSV values. Hue in degrees, saturation and value on [0, 1]
 
     Returns
     -------
@@ -179,9 +179,9 @@ class VolumeRGB(DataviewRGB):
     _cls = VolumeData
 
     def __init__(self, channel1, channel2, channel3, subject=None, xfmname=None, alpha=None, description="",
-                 state=None, channel1color = Colors.Red, channel2color = Colors.Green, channel3color = Colors.Blue,
-                 max_color_value = None, max_color_saturation = 1.0, shared_range = False, shared_vmin = None,
-                 shared_vmax = None, **kwargs):
+                 state=None, channel1color=Colors.Red, channel2color=Colors.Green, channel3color=Colors.Blue,
+                 max_color_value=None, max_color_saturation=1.0, shared_range=False, shared_vmin=None,
+                 shared_vmax=None, **kwargs):
         if isinstance(channel1, VolumeData):
             if not isinstance(channel2, VolumeData) or channel1.subject != channel2.subject:
                 raise TypeError("Invalid data for channel2 channel")
