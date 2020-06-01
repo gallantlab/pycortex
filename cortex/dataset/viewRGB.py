@@ -306,7 +306,7 @@ class VolumeRGB(DataviewRGB):
             Use the same vmin and vmax for all three color channels?
         common_min : float, optional
             Predetermined shared vmin. Does nothing if shared_range == False. If not given,
-            will be the 1st percentil of all values across all three channels.
+            will be the 1st percentile of all values across all three channels.
         common_max : float, optional
             Predetermined shared vmax. Does nothing if shared_range == False. If not given,
             will be the 99th percentile of all values across all three channels
