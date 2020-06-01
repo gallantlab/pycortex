@@ -156,7 +156,7 @@ class VolumeRGB(DataviewRGB):
         RGB color to use for the first data channel
     channel2color : tuple<uint8, uint8, uint8>
         RGB color to use for the second data channel
-    channel3vcolor : tuple<uint8, uint8, uint8>
+    channel3color : tuple<uint8, uint8, uint8>
         RGB color to use for the third data channel
     max_color_value : float [0, 1], optional
         Maximum HSV value for voxel colors. If not given, will be the value of
