@@ -278,9 +278,9 @@ class VolumeRGB(DataviewRGB):
         return self
 
     @staticmethod
-    def color_voxels(channel1, channel2, channel3, channel1color = Colors.RoseRed, channel2color = Colors.LimeGreen,
-                     channel3Color = Colors.DodgerBlue, value_max = None, saturation_max = 1.0, common_range = False,
-                     common_min = None, common_max = None):
+    def color_voxels(channel1, channel2, channel3, channel1color, channel2color,
+                     channel3Color, value_max, saturation_max, common_range,
+                     common_min, common_max):
         """
         Colors voxels in 3 color dimensions but not necessarily canonical red, green, and blue
         Parameters
