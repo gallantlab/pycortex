@@ -122,7 +122,11 @@ class VolumeRGB(DataviewRGB):
     Contains RGB (or RGBA) colors for each voxel in a volumetric dataset.
     Includes information about the subject and transform for the data.
 
-    Each color channel is represented as a separate Volume object (these can
+    Three data channels are mapped into a 3D color set. By default the data
+    channels are mapped on to red, green, and blue. They can also be mapped to
+    be different colors as specified, and then linearly combined.
+
+    Each data channel is represented as a separate Volume object (these can
     either be supplied explicitly as Volume objects or implicitly as numpy
     arrays). The vmin for each Volume will be mapped to the minimum value for
     that color channel, and the vmax will be mapped to the maximum value.
@@ -130,13 +134,13 @@ class VolumeRGB(DataviewRGB):
     Parameters
     ----------
     channel1 : ndarray or Volume
-        Array or Volume that represents the red component of the color for each
+        Array or Volume for the first data channel for each
         voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.
     channel2 : ndarray or Volume
-        Array or Volume that represents the green component of the color for each
+        Array or Volume for the second data channel for each
         voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.
     channel3 : ndarray or Volume
-        Array or Volume that represents the blue component of the color for each
+        Array or Volume for the third data channel for or each
         voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.
     subject : str, optional
         Subject identifier. Must exist in the pycortex database. If not given,
@@ -189,12 +193,24 @@ class VolumeRGB(DataviewRGB):
 
         if isinstance(channel1, VolumeData):
             if not isinstance(channel2, VolumeData) or channel1.subject != channel2.subject:
-                raise TypeError("Invalid data for data channel 2")
+                raise TypeError("Data channel 2 is not a VolumeData object or is from a different subject")
             if not isinstance(channel3, VolumeData) or channel1.subject != channel3.subject:
-                raise TypeError("Invalid data for data channel 3")
-            self.red = channel1
-            self.green = channel2
-            self.blue = channel3
+                raise TypeError("Data channel 2 is not a VolumeData object or is from a different subject")
+            if channel1.subject != subject:
+                raise ValueError('Subject in VolumeData objects is different than specified subject')
+            if (channel1color == Colors.Red) and (channel2color == Colors.Green) and (channel3color == Colors.Blue) \
+                    and shared_range is False:
+                # R/G/B basis can be directly passed through
+                self.red = channel1
+                self.green = channel2
+                self.blue = channel3
+            else:  # need to remap colors
+                remapped_colors = VolumeRGB.color_voxels(channel1, channel2, channel3, channel1color, channel2color,
+                                                         channel3color, max_color_value, max_color_saturation,
+                                                         shared_range, shared_vmin, shared_vmax)
+                self.red = Volume(remapped_colors[:, 0], channel1.subject, channel1.xfmname)
+                self.green = Volume(remapped_colors[:, 1], channel1.subject, channel1.xfmname)
+                self.blue = Volume(remapped_colors[:, 2], channel1.subject, channel1.xfmname)
         else:
             if subject is None or xfmname is None:
                 raise TypeError("Subject and xfmname are required")
