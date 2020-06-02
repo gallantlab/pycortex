@@ -199,7 +199,7 @@ class VolumeRGB(DataviewRGB):
                 raise TypeError("Data channel 2 is not a VolumeData object or is from a different subject")
             if not isinstance(channel3, VolumeData) or channel1.subject != channel3.subject:
                 raise TypeError("Data channel 2 is not a VolumeData object or is from a different subject")
-            if channel1.subject != subject:
+            if (subject is not None) and (channel1.subject != subject):
                 raise ValueError('Subject in VolumeData objects is different than specified subject')
             if (channel1color == Colors.Red) and (channel2color == Colors.Green) and (channel3color == Colors.Blue) \
                     and shared_range is False:
@@ -208,12 +208,12 @@ class VolumeRGB(DataviewRGB):
                 self.green = channel2
                 self.blue = channel3
             else:  # need to remap colors
-                remapped_colors = VolumeRGB.color_voxels(channel1, channel2, channel3, channel1color, channel2color,
-                                                         channel3color, max_color_value, max_color_saturation,
-                                                         shared_range, shared_vmin, shared_vmax)
-                self.red = Volume(remapped_colors[:, 0], channel1.subject, channel1.xfmname)
-                self.green = Volume(remapped_colors[:, 1], channel1.subject, channel1.xfmname)
-                self.blue = Volume(remapped_colors[:, 2], channel1.subject, channel1.xfmname)
+                red, green, blue = VolumeRGB.color_voxels(channel1, channel2, channel3, channel1color, channel2color,
+                                                          channel3color, max_color_value, max_color_saturation,
+                                                          shared_range, shared_vmin, shared_vmax)
+                self.red = Volume(red, channel1.subject, channel1.xfmname)
+                self.green = Volume(green, channel1.subject, channel1.xfmname)
+                self.blue = Volume(blue, channel1.subject, channel1.xfmname)
         else:
             if subject is None or xfmname is None:
                 raise TypeError("Subject and xfmname are required")
@@ -224,12 +224,12 @@ class VolumeRGB(DataviewRGB):
                 self.green = Volume(channel2, subject, xfmname)
                 self.blue = Volume(channel3, subject, xfmname)
             else:	# need to remap colors
-                remapped_colors = VolumeRGB.color_voxels(channel1, channel2, channel3, channel1color, channel2color,
-                                                         channel3color, max_color_value, max_color_saturation,
-                                                         shared_range, shared_vmin, shared_vmax)
-                self.red = Volume(remapped_colors[:, 0], subject, xfmname)
-                self.green = Volume(remapped_colors[:, 1], subject, xfmname)
-                self.blue = Volume(remapped_colors[:, 2], subject, xfmname)
+                red, green, blue = VolumeRGB.color_voxels(channel1, channel2, channel3, channel1color, channel2color,
+                                                          channel3color, max_color_value, max_color_saturation,
+                                                          shared_range, shared_vmin, shared_vmax)
+                self.red = Volume(red, subject, xfmname)
+                self.green = Volume(green, subject, xfmname)
+                self.blue = Volume(blue, subject, xfmname)
 
 
         if alpha is None:
@@ -309,11 +309,11 @@ class VolumeRGB(DataviewRGB):
         Colors voxels in 3 color dimensions but not necessarily canonical red, green, and blue
         Parameters
         ----------
-        channel1 : 1d array or Volume
+        channel1 : ndarray or Volume
             voxel values for first channel
-        channel2 : 1d array or Volume
+        channel2 : ndarray or Volume
             voxel values for second channel
-        channel3 : 1d array or Volume
+        channel3 : ndarray or Volume
             voxel values for third channel
         channel1color : tuple<uint8, uint8, uint8>
             color in RGB for first channel
@@ -337,44 +337,52 @@ class VolumeRGB(DataviewRGB):
 
         Returns
         -------
-        [voxels x 3] uint8 array of RGB colors for each voxel
+        red : ndarray of channel1.shape
+            uint8 array of red values
+        green : ndarray of data2.shape
+            uint8 array of green values
+        blue : ndarray of data3.shape
+            uint8 array of blue values
 
         """
         # normalize each channel to [0, 1]
-        channel1 = np.nan_to_num(channel1.data if isinstance(channel1, VolumeData) else channel1)
-        channel2 = np.nan_to_num(channel2.data if isinstance(channel2, VolumeData) else channel2)
-        channel3 = np.nan_to_num(channel3.data if isinstance(channel3, VolumeData) else channel3)
+        data1 = np.nan_to_num(channel1.data if isinstance(channel1, VolumeData) else channel1)
+        data2 = np.nan_to_num(channel2.data if isinstance(channel2, VolumeData) else channel2)
+        data3 = np.nan_to_num(channel3.data if isinstance(channel3, VolumeData) else channel3)
+
+        if (data1.shape != data2.shape) or (data2.shape != data3.shape):
+            raise ValueError('Volumes are of different shapes')
 
         if common_range:
             if common_min is None:
                 if common_max is None:
-                    common_min = np.percentile(np.hstack((channel1, channel2, channel3)), 1)
+                    common_min = np.percentile(np.hstack((data1, data2, data3)), 1)
                 else:
                     common_min = 0
             if common_max is None:
-                common_max = np.percentile(np.hstack((channel1, channel2, channel3)), 99)
-            channel1 -= common_min
-            channel2 -= common_min
-            channel3 -= common_min
-            channel1 /= (common_max - common_min)
-            channel2 /= (common_max - common_min)
-            channel3 /= (common_max - common_min)
+                common_max = np.percentile(np.hstack((data1, data2, data3)), 99)
+            data1 -= common_min
+            data2 -= common_min
+            data3 -= common_min
+            data1 /= (common_max - common_min)
+            data2 /= (common_max - common_min)
+            data3 /= (common_max - common_min)
         else:
-            channelMin = np.percentile(channel1, 1)
-            channelMax = np.percentile(channel1, 99)
-            channel1 -= channelMin
-            channel1 /= (channelMax - channelMin)
-            channelMin = np.percentile(channel2, 1)
-            channelMax = np.percentile(channel2, 99)
-            channel2 -= channelMin
-            channel2 /= (channelMax - channelMin)
-            channelMin = np.percentile(channel3, 1)
-            channelMax = np.percentile(channel3, 99)
-            channel3 -= channelMin
-            channel3 /= (channelMax - channelMin)
-        channel1 = np.clip(channel1, 0, 1)
-        channel2 = np.clip(channel2, 0, 1)
-        channel3 = np.clip(channel3, 0, 1)
+            channelMin = np.percentile(data1, 1)
+            channelMax = np.percentile(data1, 99)
+            data1 -= channelMin
+            data1 /= (channelMax - channelMin)
+            channelMin = np.percentile(data2, 1)
+            channelMax = np.percentile(data2, 99)
+            data2 -= channelMin
+            data2 /= (channelMax - channelMin)
+            channelMin = np.percentile(data3, 1)
+            channelMax = np.percentile(data3, 99)
+            data3 -= channelMin
+            data3 /= (channelMax - channelMin)
+        data1 = np.clip(data1, 0, 1)
+        data2 = np.clip(data2, 0, 1)
+        data3 = np.clip(data3, 0, 1)
 
         channel1color = np.array(channel1color)
         channel2color = np.array(channel2color)
@@ -386,24 +394,26 @@ class VolumeRGB(DataviewRGB):
             _, _, value = RGB2HSV(averageColor)
             value_max = value
 
-        colors = np.zeros([channel1.shape[0], 3])
-        for i in range(channel1.shape[0]):
-            colors[i, :] += channel1[i] * channel1color
-            colors[i, :] += channel2[i] * channel2color
-            colors[i, :] += channel3[i] * channel3Color
-            colors[i, :] /= 3.0
+        red = np.zeros_like(data1, np.uint8)
+        green = np.zeros_like(data1, np.uint8)
+        blue = np.zeros_like(data1, np.uint8)
+        for i in range(data1.size):
+            this_color = data1.flat[i] * channel1color + data2.flat[i] * channel2color + data3.flat[i] * channel3Color
+            this_color /= 3.0
             if (value_max != 1.0) or (saturation_max != 1.0):
-                hue, saturation, value = RGB2HSV(colors[i, :])
+                hue, saturation, value = RGB2HSV(this_color)
                 saturation /= saturation_max
                 value /= value_max
                 if saturation > 1:
                     saturation = 1.0
                 if value > 1:
                     value = 1.0
-                colors[i, :] = HSV2RGB([hue, saturation, value])
+                this_color = HSV2RGB([hue, saturation, value])
+            red.flat[i] = this_color[0]
+            green.flat[i] = this_color[1]
+            blue.flat[i] = this_color[2]
 
-        return colors.astype(np.uint8)
-
+        return red, green, blue
 
 
 class VertexRGB(DataviewRGB):
