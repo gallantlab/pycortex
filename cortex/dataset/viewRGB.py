@@ -130,7 +130,9 @@ class VolumeRGB(DataviewRGB):
     Each data channel is represented as a separate Volume object (these can
     either be supplied explicitly as Volume objects or implicitly as numpy
     arrays). The vmin for each Volume will be mapped to the minimum value for
-    that color channel, and the vmax will be mapped to the maximum value.
+    that data channel, and the vmax will be mapped to the maximum value.
+    If `shared_range` is True, the vim and vmax will instead computed by
+    combining all three data channels.
 
     Parameters
     ----------
