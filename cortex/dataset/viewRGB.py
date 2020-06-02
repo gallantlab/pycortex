@@ -346,9 +346,9 @@ class VolumeRGB(DataviewRGB):
 
         """
         # normalize each channel to [0, 1]
-        data1 = np.nan_to_num(channel1.data if isinstance(channel1, VolumeData) else channel1)
-        data2 = np.nan_to_num(channel2.data if isinstance(channel2, VolumeData) else channel2)
-        data3 = np.nan_to_num(channel3.data if isinstance(channel3, VolumeData) else channel3)
+        data1 = np.nan_to_num(channel1.data if isinstance(channel1, VolumeData) else channel1).astype(np.float)
+        data2 = np.nan_to_num(channel2.data if isinstance(channel2, VolumeData) else channel2).astype(np.float)
+        data3 = np.nan_to_num(channel3.data if isinstance(channel3, VolumeData) else channel3).astype(np.float)
 
         if (data1.shape != data2.shape) or (data2.shape != data3.shape):
             raise ValueError('Volumes are of different shapes')
