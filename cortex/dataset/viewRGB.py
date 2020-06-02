@@ -15,7 +15,8 @@ class Colors(object):
     """
     RoseRed = (237, 35, 96)
     LimeGreen = (141, 198, 63)
-    DodgerBlue = (0, 176, 218)
+    SkyBlue = (0, 176, 218)
+    DodgerBlue = (30, 144, 255)
     Red = (255, 000, 000)
     Green = (000, 255, 000)
     Blue = (000, 000, 255)
