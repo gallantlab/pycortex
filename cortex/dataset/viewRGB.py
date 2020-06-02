@@ -13,12 +13,12 @@ class Colors(object):
     """
     Set of known colors
     """
-    RoseRed =		(237,  35,  96)
-    LimeGreen =		(141, 198,  63)
-    DodgerBlue =	(  0, 176, 218)
-    Red =			(255, 000, 000)
-    Green = 		(000, 255, 000)
-    Blue = 			(000, 000, 255)
+	RoseRed = (237, 35, 96)
+	LimeGreen = (141, 198, 63)
+	DodgerBlue = (0, 176, 218)
+	Red = (255, 000, 000)
+	Green = (000, 255, 000)
+	Blue = (000, 000, 255)
 
 
 def RGB2HSV(color):
@@ -182,11 +182,16 @@ class VolumeRGB(DataviewRGB):
                  state=None, channel1color=Colors.Red, channel2color=Colors.Green, channel3color=Colors.Blue,
                  max_color_value=None, max_color_saturation=1.0, shared_range=False, shared_vmin=None,
                  shared_vmax=None, **kwargs):
+
+		channel1color = tuple(channel1color)
+		channel2color = tuple(channel2color)
+		channel3color = tuple(channel3color)
+
         if isinstance(channel1, VolumeData):
             if not isinstance(channel2, VolumeData) or channel1.subject != channel2.subject:
-                raise TypeError("Invalid data for channel2 channel")
+                raise TypeError("Invalid data for data channel 2")
             if not isinstance(channel3, VolumeData) or channel1.subject != channel3.subject:
-                raise TypeError("Invalid data for channel3 channel")
+                raise TypeError("Invalid data for data channel 3")
             self.red = channel1
             self.green = channel2
             self.blue = channel3
