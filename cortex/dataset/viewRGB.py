@@ -359,10 +359,6 @@ class VolumeRGB(DataviewRGB):
             channel1 /= (common_max - common_min)
             channel2 /= (common_max - common_min)
             channel3 /= (common_max - common_min)
-            # needed for if desired max/min is above/below the data's range
-            channel1 = np.clip(channel1, 0, 1)
-            channel2 = np.clip(channel2, 0, 1)
-            channel3 = np.clip(channel3, 0, 1)
         else:
             channelMin = np.percentile(channel1, 1)
             channelMax = np.percentile(channel1, 99)
@@ -376,6 +372,9 @@ class VolumeRGB(DataviewRGB):
             channelMax = np.percentile(channel3, 99)
             channel3 -= channelMin
             channel3 /= (channelMax - channelMin)
+        channel1 = np.clip(channel1, 0, 1)
+        channel2 = np.clip(channel2, 0, 1)
+        channel3 = np.clip(channel3, 0, 1)
 
         channel1color = np.array(channel1color)
         channel2color = np.array(channel2color)
