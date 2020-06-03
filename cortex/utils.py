@@ -1069,9 +1069,9 @@ def rotate_flatmap(surf_id, theta, plot=False):
         formats.write_gii(this_file, pts_new, polys)
         print('Overwriting %s...' % this_file)
         if plot:
-            axs[0,j].plot(*pts[::100, :2].T, marker='.', color='r')
+            axs[0,j].plot(*pts[::100, :2].T, marker='r.')
             axs[0,j].axis('equal')
-            axs[1,j].plot(*pts_new[::100, :2].T, marker='.', color='b')
+            axs[1,j].plot(*pts_new[::100, :2].T, marker='b.')
             axs[1,j].axis('equal')
     # Remove and back up overlays file
     overlay_file = db.get_paths(surf_id)['overlays']

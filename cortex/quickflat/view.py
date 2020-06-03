@@ -319,7 +319,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     plt.close(fig)
 
 def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['rois'],
-             height=1024, **kwargs):
+             height=1024, overlay_file=None, **kwargs):
     """Save an svg file of the desired flatmap.
 
     This function creates an SVG file with vector graphic ROIs overlaid on a single png image.
@@ -340,6 +340,8 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
         List of layer names to show
     height : int
         Height of PNG in pixels
+    overlay_file : str
+    	Custom ROI overlays file to use
 
     """
     fp = io.BytesIO()
@@ -371,7 +373,7 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
         image_data = [binascii.b2a_base64(fpc.read()), pngdata]
 
     ## Create and save SVG file
-    roipack = utils.get_roipack(braindata.subject)
+    roipack = utils.db.get_overlay(braindata.subject, overlay_file)
     roipack.get_svg(fname, layers=layers, labels=with_labels, with_ims=image_data)
 
 

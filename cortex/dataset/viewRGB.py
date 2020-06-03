@@ -1,4 +1,5 @@
 import numpy as np
+import colorsys
 
 from .views import Dataview, Volume, Vertex
 from .braindata import VolumeData, VertexData, _hash
@@ -6,6 +7,57 @@ from ..database import db
 
 from .. import options
 default_cmap = options.config.get("basic", "default_cmap")
+
+
+class Colors(object):
+    """
+    Set of known colors
+    """
+    RoseRed = (237, 35, 96)
+    LimeGreen = (141, 198, 63)
+    SkyBlue = (0, 176, 218)
+    DodgerBlue = (30, 144, 255)
+    Red = (255, 000, 000)
+    Green = (000, 255, 000)
+    Blue = (000, 000, 255)
+
+
+def RGB2HSV(color):
+    """
+    Converts RGB to HS
+    Parameters
+    ----------
+    color : tuple<uint8, uint8, uint8>
+        RGB color value
+
+    Returns
+    -------
+    tuple<int, float, float>
+        HSV values. Hue in degrees, saturation and value on [0, 1]
+
+    """
+    hue, saturation, value = colorsys.rgb_to_hsv(color[0] / 255.0, color[1] / 255.0, color[2] / 255.0)
+    hue *= 360
+    return (int(hue), saturation, value)
+
+
+def HSV2RGB(color):
+    """
+    Converts HSV to RGB
+
+    Parameters
+    ----------
+    color : tuple<int, float, float>
+        HSV values. Hue in degrees, saturation and value on [0, 1]
+
+    Returns
+    -------
+    tuple<uint8, uint8, uint8>
+        RGB color value
+    """
+    r, g, b = colorsys.hsv_to_rgb(color[0] / 360.0, color[1], color[2])
+    return (int(r * 255), int(g * 255), int(b * 255))
+
 
 class DataviewRGB(Dataview):
     """Abstract base class for RGB data views.
@@ -46,7 +98,7 @@ class DataviewRGB(Dataview):
             alpha = self.alpha.name
 
         data = [self.red.name, self.green.name, self.blue.name, alpha]
-        viewnode = Dataview._write_hdf(self, h5, name=name, 
+        viewnode = Dataview._write_hdf(self, h5, name=name,
                                        data=[data], xfmname=xfmname)
 
         return viewnode
@@ -68,24 +120,30 @@ class DataviewRGB(Dataview):
 
 class VolumeRGB(DataviewRGB):
     """
-    Contains RGB (or RGBA) colors for each voxel in a volumetric dataset. 
+    Contains RGB (or RGBA) colors for each voxel in a volumetric dataset.
     Includes information about the subject and transform for the data.
 
-    Each color channel is represented as a separate Volume object (these can 
-    either be supplied explicitly as Volume objects or implicitly as numpy 
+    Three data channels are mapped into a 3D color set. By default the data
+    channels are mapped on to red, green, and blue. They can also be mapped to
+    be different colors as specified, and then linearly combined.
+
+    Each data channel is represented as a separate Volume object (these can
+    either be supplied explicitly as Volume objects or implicitly as numpy
     arrays). The vmin for each Volume will be mapped to the minimum value for
-    that color channel, and the vmax will be mapped to the maximum value.
+    that data channel, and the vmax will be mapped to the maximum value.
+    If `shared_range` is True, the vim and vmax will instead computed by
+    combining all three data channels.
 
     Parameters
     ----------
-    red : ndarray or Volume
-        Array or Volume that represents the red component of the color for each 
+    channel1 : ndarray or Volume
+        Array or Volume for the first data channel for each
         voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.
-    green : ndarray or Volume
-        Array or Volume that represents the green component of the color for each 
+    channel2 : ndarray or Volume
+        Array or Volume for the second data channel for each
         voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.
-    blue : ndarray or Volume
-        Array or Volume that represents the blue component of the color for each 
+    channel3 : ndarray or Volume
+        Array or Volume for the third data channel for or each
         voxel. Can be a 1D or 3D array (see Volume for details), or a Volume.
     subject : str, optional
         Subject identifier. Must exist in the pycortex database. If not given,
@@ -94,36 +152,85 @@ class VolumeRGB(DataviewRGB):
         Transform name. Must exist in the pycortex database. If not given,
         red must be a Volume from which the subject can be extracted.
     alpha : ndarray or Volume, optional
-        Array or Volume that represents the alpha component of the color for each 
+        Array or Volume that represents the alpha component of the color for each
         voxel. Can be a 1D or 3D array (see Volume for details), or a Volume. If
         None, all voxels will be assumed to have alpha=1.0.
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
     state : optional
         TODO: describe what this is
+    channel1color : tuple<uint8, uint8, uint8>
+        RGB color to use for the first data channel
+    channel2color : tuple<uint8, uint8, uint8>
+        RGB color to use for the second data channel
+    channel3color : tuple<uint8, uint8, uint8>
+        RGB color to use for the third data channel
+    max_color_value : float [0, 1], optional
+        Maximum HSV value for voxel colors. If not given, will be the value of
+        the average of the three channel colors.
+    max_color_saturation: float [0, 1]
+        Maximum HSV saturation for voxel colors.
+    shared_range : bool
+        Use the same vmin and vmax for all three color channels?
+    shared_vmin : float, optional
+        Predetermined shared vmin. Does nothing if shared_range == False. If not given,
+        will be the 1st percentil of all values across all three channels.
+    shared_vmax : float, optional
+        Predetermined shared vmax. Does nothing if shared_range == False. If not given,
+        will be the 99th percentile of all values across all three channels
     **kwargs
-        All additional arguments in kwargs are passed to the VolumeData and 
+        All additional arguments in kwargs are passed to the VolumeData and
         Dataview.
 
     """
     _cls = VolumeData
 
-    def __init__(self, red, green, blue, subject=None, xfmname=None, alpha=None, description="", 
-                 state=None, **kwargs):
-        if isinstance(red, VolumeData):
-            if not isinstance(green, VolumeData) or red.subject != green.subject:
-                raise TypeError("Invalid data for green channel")
-            if not isinstance(blue, VolumeData) or red.subject != blue.subject:
-                raise TypeError("Invalid data for blue channel")
-            self.red = red
-            self.green = green
-            self.blue = blue
+    def __init__(self, channel1, channel2, channel3, subject=None, xfmname=None, alpha=None, description="",
+                 state=None, channel1color=Colors.Red, channel2color=Colors.Green, channel3color=Colors.Blue,
+                 max_color_value=None, max_color_saturation=1.0, shared_range=False, shared_vmin=None,
+                 shared_vmax=None, **kwargs):
+
+        channel1color = tuple(channel1color)
+        channel2color = tuple(channel2color)
+        channel3color = tuple(channel3color)
+
+        if isinstance(channel1, VolumeData):
+            if not isinstance(channel2, VolumeData) or channel1.subject != channel2.subject:
+                raise TypeError("Data channel 2 is not a VolumeData object or is from a different subject")
+            if not isinstance(channel3, VolumeData) or channel1.subject != channel3.subject:
+                raise TypeError("Data channel 2 is not a VolumeData object or is from a different subject")
+            if (subject is not None) and (channel1.subject != subject):
+                raise ValueError('Subject in VolumeData objects is different than specified subject')
+            if (channel1color == Colors.Red) and (channel2color == Colors.Green) and (channel3color == Colors.Blue) \
+                    and shared_range is False:
+                # R/G/B basis can be directly passed through
+                self.red = channel1
+                self.green = channel2
+                self.blue = channel3
+            else:  # need to remap colors
+                red, green, blue = VolumeRGB.color_voxels(channel1, channel2, channel3, channel1color, channel2color,
+                                                          channel3color, max_color_value, max_color_saturation,
+                                                          shared_range, shared_vmin, shared_vmax)
+                self.red = Volume(red, channel1.subject, channel1.xfmname)
+                self.green = Volume(green, channel1.subject, channel1.xfmname)
+                self.blue = Volume(blue, channel1.subject, channel1.xfmname)
         else:
             if subject is None or xfmname is None:
                 raise TypeError("Subject and xfmname are required")
-            self.red = Volume(red, subject, xfmname)
-            self.green = Volume(green, subject, xfmname)
-            self.blue = Volume(blue, subject, xfmname)
+            if (channel1color == Colors.Red) and (channel2color == Colors.Green) and (channel3color == Colors.Blue)\
+                    and shared_range is False:
+                # R/G/B basis can be directly passed through
+                self.red = Volume(channel1, subject, xfmname)
+                self.green = Volume(channel2, subject, xfmname)
+                self.blue = Volume(channel3, subject, xfmname)
+            else:	# need to remap colors
+                red, green, blue = VolumeRGB.color_voxels(channel1, channel2, channel3, channel1color, channel2color,
+                                                          channel3color, max_color_value, max_color_saturation,
+                                                          shared_range, shared_vmin, shared_vmax)
+                self.red = Volume(red, subject, xfmname)
+                self.green = Volume(green, subject, xfmname)
+                self.blue = Volume(blue, subject, xfmname)
+
 
         if alpha is None:
             alpha = np.ones(self.red.volume.shape)
@@ -194,33 +301,147 @@ class VolumeRGB(DataviewRGB):
     def raw(self):
         return self
 
+    @staticmethod
+    def color_voxels(channel1, channel2, channel3, channel1color, channel2color,
+                     channel3Color, value_max, saturation_max, common_range,
+                     common_min, common_max):
+        """
+        Colors voxels in 3 color dimensions but not necessarily canonical red, green, and blue
+        Parameters
+        ----------
+        channel1 : ndarray or Volume
+            voxel values for first channel
+        channel2 : ndarray or Volume
+            voxel values for second channel
+        channel3 : ndarray or Volume
+            voxel values for third channel
+        channel1color : tuple<uint8, uint8, uint8>
+            color in RGB for first channel
+        channel2color : tuple<uint8, uint8, uint8>
+            color in RGB for second channel
+        channel3Color : tuple<uint8, uint8, uint8>
+            color in RGB for third channel
+        value_max : float, optional
+            Maximum HSV value for voxel colors. If not given, will be the value of
+            the average of the three channel colors.
+        saturation_max : float [0, 1]
+            Maximum HSV saturation for voxel colors.
+        common_range : bool
+            Use the same vmin and vmax for all three color channels?
+        common_min : float, optional
+            Predetermined shared vmin. Does nothing if shared_range == False. If not given,
+            will be the 1st percentile of all values across all three channels.
+        common_max : float, optional
+            Predetermined shared vmax. Does nothing if shared_range == False. If not given,
+            will be the 99th percentile of all values across all three channels
+
+        Returns
+        -------
+        red : ndarray of channel1.shape
+            uint8 array of red values
+        green : ndarray of data2.shape
+            uint8 array of green values
+        blue : ndarray of data3.shape
+            uint8 array of blue values
+
+        """
+        # normalize each channel to [0, 1]
+        data1 = np.nan_to_num(channel1.data if isinstance(channel1, VolumeData) else channel1).astype(np.float)
+        data2 = np.nan_to_num(channel2.data if isinstance(channel2, VolumeData) else channel2).astype(np.float)
+        data3 = np.nan_to_num(channel3.data if isinstance(channel3, VolumeData) else channel3).astype(np.float)
+
+        if (data1.shape != data2.shape) or (data2.shape != data3.shape):
+            raise ValueError('Volumes are of different shapes')
+
+        if common_range:
+            if common_min is None:
+                if common_max is None:
+                    common_min = np.percentile(np.hstack((data1, data2, data3)), 1)
+                else:
+                    common_min = 0
+            if common_max is None:
+                common_max = np.percentile(np.hstack((data1, data2, data3)), 99)
+            data1 -= common_min
+            data2 -= common_min
+            data3 -= common_min
+            data1 /= (common_max - common_min)
+            data2 /= (common_max - common_min)
+            data3 /= (common_max - common_min)
+        else:
+            channelMin = np.percentile(data1, 1)
+            channelMax = np.percentile(data1, 99)
+            data1 -= channelMin
+            data1 /= (channelMax - channelMin)
+            channelMin = np.percentile(data2, 1)
+            channelMax = np.percentile(data2, 99)
+            data2 -= channelMin
+            data2 /= (channelMax - channelMin)
+            channelMin = np.percentile(data3, 1)
+            channelMax = np.percentile(data3, 99)
+            data3 -= channelMin
+            data3 /= (channelMax - channelMin)
+        data1 = np.clip(data1, 0, 1)
+        data2 = np.clip(data2, 0, 1)
+        data3 = np.clip(data3, 0, 1)
+
+        channel1color = np.array(channel1color)
+        channel2color = np.array(channel2color)
+        channel3Color = np.array(channel3Color)
+
+        averageColor = (channel1color + channel2color + channel3Color) / 3
+
+        if value_max is None:
+            _, _, value = RGB2HSV(averageColor)
+            value_max = value
+
+        red = np.zeros_like(data1, np.uint8)
+        green = np.zeros_like(data1, np.uint8)
+        blue = np.zeros_like(data1, np.uint8)
+        for i in range(data1.size):
+            this_color = data1.flat[i] * channel1color + data2.flat[i] * channel2color + data3.flat[i] * channel3Color
+            this_color /= 3.0
+            if (value_max != 1.0) or (saturation_max != 1.0):
+                hue, saturation, value = RGB2HSV(this_color)
+                saturation /= saturation_max
+                value /= value_max
+                if saturation > 1:
+                    saturation = 1.0
+                if value > 1:
+                    value = 1.0
+                this_color = HSV2RGB([hue, saturation, value])
+            red.flat[i] = this_color[0]
+            green.flat[i] = this_color[1]
+            blue.flat[i] = this_color[2]
+
+        return red, green, blue
+
 
 class VertexRGB(DataviewRGB):
     """
-    Contains RGB (or RGBA) colors for each vertex in a surface dataset. 
+    Contains RGB (or RGBA) colors for each vertex in a surface dataset.
     Includes information about the subject.
 
-    Each color channel is represented as a separate Vertex object (these can 
-    either be supplied explicitly as Vertex objects or implicitly as numpy 
+    Each color channel is represented as a separate Vertex object (these can
+    either be supplied explicitly as Vertex objects or implicitly as np
     arrays). The vmin for each Vertex will be mapped to the minimum value for
     that color channel, and the vmax will be mapped to the maximum value.
 
     Parameters
     ----------
     red : ndarray or Vertex
-        Array or Vertex that represents the red component of the color for each 
+        Array or Vertex that represents the red component of the color for each
         voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.
     green : ndarray or Vertex
-        Array or Vertex that represents the green component of the color for each 
+        Array or Vertex that represents the green component of the color for each
         voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.
     blue : ndarray or Vertex
-        Array or Vertex that represents the blue component of the color for each 
+        Array or Vertex that represents the blue component of the color for each
         voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.
     subject : str, optional
         Subject identifier. Must exist in the pycortex database. If not given,
         red must be a Vertex from which the subject can be extracted.
     alpha : ndarray or Vertex, optional
-        Array or Vertex that represents the alpha component of the color for each 
+        Array or Vertex that represents the alpha component of the color for each
         voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex. If
         None, all vertices will be assumed to have alpha=1.0.
     description : str, optional
@@ -228,12 +449,12 @@ class VertexRGB(DataviewRGB):
     state : optional
         TODO: describe what this is
     **kwargs
-        All additional arguments in kwargs are passed to the VertexData and 
+        All additional arguments in kwargs are passed to the VertexData and
         Dataview.
 
     """
     _cls = VertexData
-    def __init__(self, red, green, blue, subject=None, alpha=None, description="", 
+    def __init__(self, red, green, blue, subject=None, alpha=None, description="",
                  state=None, **kwargs):
 
         if isinstance(red, VertexData):
@@ -251,7 +472,7 @@ class VertexRGB(DataviewRGB):
             self.green = Vertex(green, subject)
             self.blue = Vertex(blue, subject)
 
-        super(VertexRGB, self).__init__(subject, alpha, description=description, 
+        super(VertexRGB, self).__init__(subject, alpha, description=description,
                                         state=state, **kwargs)
 
     @property
@@ -290,7 +511,7 @@ class VertexRGB(DataviewRGB):
 
     def to_json(self, simple=False):
         sdict = super(VertexRGB, self).to_json(simple=simple)
-        
+
         if simple:
             sdict.update(dict(split=self.red.llen, frames=self.vertices.shape[0]))
 

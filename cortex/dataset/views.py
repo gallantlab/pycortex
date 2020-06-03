@@ -379,5 +379,5 @@ def u(s, encoding='utf8'):
         return s
 
 
-from .viewRGB import VolumeRGB, VertexRGB
+from .viewRGB import VolumeRGB, VertexRGB, Colors
 from .view2D import Volume2D, Vertex2D
