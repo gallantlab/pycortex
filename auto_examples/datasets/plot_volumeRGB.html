@@ -18,8 +18,8 @@
     <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Plot 2D Volume Data" href="plot_volume2D.html" />
-    <link rel="prev" title="Plot 2D Vertex Data" href="plot_vertex2D.html" />
+    <link rel="next" title="Import fmriprep output" href="../import_surface/import_fmriprep.html" />
+    <link rel="prev" title="Plot RGB Vertex Data" href="plot_vertexRGB.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
@@ -47,10 +47,31 @@ using quickflat. In order for this to run, you have to a have a flatmap for
 this subject in the pycortex filestore.</p>
 <p>The cortex.VolumeRGB object is instantiated with three cortex.Volume objects,
 one for each of the three color channels. Ideally, the data in the Volume
-objects will be scaled to be between 0-255 and be np.uint8 type.</p>
+objects will be scaled to be between 0-255 and be np.uint8 type. The objects
+can also be 1D numpy arrays of equal sizes, in which case the subject and
+transform will need to be given as arguments.</p>
 <p>Here, two datasets are generated to look like gradients across the brain and
 a third dataset makes a series of stripes across the brain.</p>
-<img alt="plot volumeRGB" class="sphx-glr-single-img" src="../../_images/sphx_glr_plot_volumeRGB_001.png" />
+<p>By default, VolumeRGB maps each data channels on to the red, green, and blue
+channels in RGB color space. You can also specify custom colors for each data
+channel, and the colors will be linearly combined. Custom colors can be specified
+by the <cite>channel1color</cite>, <cite>channel2color</cite>, and <cite>channel2color</cite> arguments, using
+3-ples of uint8 to specify RGB colors for each data channel. <cite>cortex.Colors</cite> provides
+a set of named colors that can be used.</p>
+<p>Also by default, each data channel is normalized separately on to its respective
+color. Doing so is not necessarily good for quantitative comparisons in cases in
+which the range of values in each data channel differs. The argument <cite>shared_range</cite>,
+if set to <cite>True</cite>, will force all three data channels to be on the same scale for
+equitable comparisons. When <cite>shared_range</cite> is true, the arguments <cite>shared_vmin</cite> and
+shared_vmax` will allow you to specify minimum and maximum values manually.</p>
+<ul class="sphx-glr-horizontal">
+<li><img alt="plot volumeRGB" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_volumeRGB_001.png" />
+</li>
+<li><img alt="plot volumeRGB" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_volumeRGB_002.png" />
+</li>
+<li><img alt="plot volumeRGB" class="sphx-glr-multi-img" src="../../_images/sphx_glr_plot_volumeRGB_003.png" />
+</li>
+</ul>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
@@ -78,15 +99,38 @@ a third dataset makes a series of stripes across the brain.</p>
 <span class="n">blue</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="n">test3_scaled</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">),</span> <span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;fullhead&#39;</span><span class="p">)</span>
 
 <span class="c1"># This creates an RGB Volume from the three different color channels for</span>
-<span class="c1"># this subject</span>
+<span class="c1"># this subject using the default RGB mappings</span>
 <span class="c1"># Note that you do not need to specify the transform when creating this as it</span>
 <span class="c1"># is already specified in the red, green, and blue channels</span>
 <span class="n">vol_data</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">VolumeRGB</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
 <span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vol_data</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># This creates an RGB Volume from the three different color channels for</span>
+<span class="c1"># this subject using custom colors.</span>
+<span class="c1"># Note that you do not need to specify the transform when creating this as it</span>
+<span class="c1"># is already specified in the red, green, and blue channels</span>
+<span class="n">vol_data</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">VolumeRGB</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span>
+                                                    <span class="n">channel1color</span><span class="o">=</span><span class="n">cortex</span><span class="o">.</span><span class="n">Colors</span><span class="o">.</span><span class="n">RoseRed</span><span class="p">,</span>
+                                                    <span class="n">channel2color</span><span class="o">=</span><span class="n">cortex</span><span class="o">.</span><span class="n">Colors</span><span class="o">.</span><span class="n">LimeGreen</span><span class="p">,</span>
+                                                    <span class="n">channel3color</span><span class="o">=</span><span class="n">cortex</span><span class="o">.</span><span class="n">Colors</span><span class="o">.</span><span class="n">DodgerBlue</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vol_data</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># This creates an RGB Volume from the three different color channels for</span>
+<span class="c1"># this subject using custom colors, and shared value ranges.</span>
+<span class="c1"># Note that you do not need to specify the transform when creating this as it</span>
+<span class="c1"># is already specified in the red, green, and blue channels</span>
+<span class="n">vol_data</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">VolumeRGB</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span>
+                                                    <span class="n">channel1color</span><span class="o">=</span><span class="n">cortex</span><span class="o">.</span><span class="n">Colors</span><span class="o">.</span><span class="n">RoseRed</span><span class="p">,</span>
+                                                    <span class="n">channel2color</span><span class="o">=</span><span class="n">cortex</span><span class="o">.</span><span class="n">Colors</span><span class="o">.</span><span class="n">LimeGreen</span><span class="p">,</span>
+                                                    <span class="n">channel3color</span><span class="o">=</span><span class="n">cortex</span><span class="o">.</span><span class="n">Colors</span><span class="o">.</span><span class="n">DodgerBlue</span><span class="p">,</span>
+                                                    <span class="n">shared_range</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shared_vmin</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">shared_vmax</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vol_data</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  2.767 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  20.477 seconds)</p>
 <div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-datasets-plot-volumergb-py">
 <div class="sphx-glr-download sphx-glr-download-python docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/143d83c2f8fe0044f498e638bde3f0a0/plot_volumeRGB.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_volumeRGB.py</span></code></a></p>
@@ -139,9 +183,9 @@ a third dataset makes a series of stripes across the brain.</p>
 <li class="toctree-l3"><a class="reference internal" href="plot_volume.html">Plot Volume Data</a></li>
 <li class="toctree-l3"><a class="reference internal" href="plot_vertex.html">Plot Vertex Data</a></li>
 <li class="toctree-l3"><a class="reference internal" href="plot_vertex2D.html">Plot 2D Vertex Data</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">Plot RGB Volume Data</a></li>
 <li class="toctree-l3"><a class="reference internal" href="plot_volume2D.html">Plot 2D Volume Data</a></li>
 <li class="toctree-l3"><a class="reference internal" href="plot_vertexRGB.html">Plot RGB Vertex Data</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Plot RGB Volume Data</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
@@ -162,8 +206,8 @@ a third dataset makes a series of stripes across the brain.</p>
 <ul>
   <li><a href="../../index.html">Documentation overview</a><ul>
   <li><a href="../index.html">Example Gallery</a><ul>
-      <li>Previous: <a href="plot_vertex2D.html" title="previous chapter">Plot 2D Vertex Data</a></li>
-      <li>Next: <a href="plot_volume2D.html" title="next chapter">Plot 2D Volume Data</a></li>
+      <li>Previous: <a href="plot_vertexRGB.html" title="previous chapter">Plot RGB Vertex Data</a></li>
+      <li>Next: <a href="../import_surface/import_fmriprep.html" title="next chapter">Import fmriprep output</a></li>
   </ul></li>
   </ul></li>
 </ul>
@@ -194,7 +238,7 @@ a third dataset makes a series of stripes across the brain.</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -19,16 +19,49 @@ this subject in the pycortex filestore.
 
 The cortex.VolumeRGB object is instantiated with three cortex.Volume objects,
 one for each of the three color channels. Ideally, the data in the Volume
-objects will be scaled to be between 0-255 and be np.uint8 type.
+objects will be scaled to be between 0-255 and be np.uint8 type. The objects
+can also be 1D numpy arrays of equal sizes, in which case the subject and
+transform will need to be given as arguments.
 
 Here, two datasets are generated to look like gradients across the brain and
 a third dataset makes a series of stripes across the brain.
 
+By default, VolumeRGB maps each data channels on to the red, green, and blue
+channels in RGB color space. You can also specify custom colors for each data
+channel, and the colors will be linearly combined. Custom colors can be specified
+by the `channel1color`, `channel2color`, and `channel2color` arguments, using
+3-ples of uint8 to specify RGB colors for each data channel. `cortex.Colors` provides
+a set of named colors that can be used.
+
+Also by default, each data channel is normalized separately on to its respective
+color. Doing so is not necessarily good for quantitative comparisons in cases in
+which the range of values in each data channel differs. The argument `shared_range`,
+if set to `True`, will force all three data channels to be on the same scale for
+equitable comparisons. When `shared_range` is true, the arguments `shared_vmin` and
+shared_vmax` will allow you to specify minimum and maximum values manually.
 
 
-.. image:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_001.png
-    :alt: plot volumeRGB
-    :class: sphx-glr-single-img
+
+.. rst-class:: sphx-glr-horizontal
+
+
+    *
+
+      .. image:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_001.png
+          :alt: plot volumeRGB
+          :class: sphx-glr-multi-img
+
+    *
+
+      .. image:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_002.png
+          :alt: plot volumeRGB
+          :class: sphx-glr-multi-img
+
+    *
+
+      .. image:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_003.png
+          :alt: plot volumeRGB
+          :class: sphx-glr-multi-img
 
 
 
@@ -65,17 +98,40 @@ a third dataset makes a series of stripes across the brain.
     blue = cortex.Volume(test3_scaled.astype(np.uint8), 'S1', 'fullhead')
 
     # This creates an RGB Volume from the three different color channels for
-    # this subject
+    # this subject using the default RGB mappings
     # Note that you do not need to specify the transform when creating this as it
     # is already specified in the red, green, and blue channels
     vol_data = cortex.VolumeRGB(red, green, blue, subject)
     cortex.quickshow(vol_data, with_colorbar=False)
     plt.show()
 
+    # This creates an RGB Volume from the three different color channels for
+    # this subject using custom colors.
+    # Note that you do not need to specify the transform when creating this as it
+    # is already specified in the red, green, and blue channels
+    vol_data = cortex.VolumeRGB(red, green, blue, subject,
+    							channel1color=cortex.Colors.RoseRed,
+    							channel2color=cortex.Colors.LimeGreen,
+    							channel3color=cortex.Colors.DodgerBlue)
+    cortex.quickshow(vol_data, with_colorbar=False)
+    plt.show()
+
+    # This creates an RGB Volume from the three different color channels for
+    # this subject using custom colors, and shared value ranges.
+    # Note that you do not need to specify the transform when creating this as it
+    # is already specified in the red, green, and blue channels
+    vol_data = cortex.VolumeRGB(red, green, blue, subject,
+    							channel1color=cortex.Colors.RoseRed,
+    							channel2color=cortex.Colors.LimeGreen,
+    							channel3color=cortex.Colors.DodgerBlue,
+    							shared_range=True, shared_vmin=10, shared_vmax=100)
+    cortex.quickshow(vol_data, with_colorbar=False)
+    plt.show()
+
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  2.767 seconds)
+   **Total running time of the script:** ( 0 minutes  20.477 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volumeRGB.py:

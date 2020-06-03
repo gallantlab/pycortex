@@ -150,7 +150,7 @@
 <tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.dataset.Volume2D.html#cortex.dataset.Volume2D" title="cortex.dataset.Volume2D"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Volume2D</span></code></a>(dim1, dim2[, subject, xfmname, …])</p></td>
 <td><p>Contains two 3D volumes for simultaneous visualization.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.dataset.VolumeRGB.html#cortex.dataset.VolumeRGB" title="cortex.dataset.VolumeRGB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VolumeRGB</span></code></a>(red, green, blue[, subject, …])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.dataset.VolumeRGB.html#cortex.dataset.VolumeRGB" title="cortex.dataset.VolumeRGB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VolumeRGB</span></code></a>(channel1, channel2, channel3[, …])</p></td>
 <td><p>Contains RGB (or RGBA) colors for each voxel in a volumetric dataset.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.dataset.Vertex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Vertex</span></code></a>(data, subject[, cmap, vmin, vmax, …])</p></td>
@@ -426,7 +426,7 @@ for functions in <cite>polyutils.Surface</cite> and <cite>polyutils.Distortion</
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.get_cortical_mask.html#cortex.utils.get_cortical_mask" title="cortex.utils.get_cortical_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cortical_mask</span></code></a>(subject, xfmname[, type])</p></td>
 <td><p>Gets the cortical mask for a particular transform</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.utils.get_ctmmap.html#cortex.utils.get_ctmmap" title="cortex.utils.get_ctmmap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ctmmap</span></code></a>(subject, \*\*kwargs)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.utils.get_ctmmap.html#cortex.utils.get_ctmmap" title="cortex.utils.get_ctmmap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ctmmap</span></code></a>(subject, **kwargs)</p></td>
 <td><p><dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p></p></dd>
@@ -494,10 +494,10 @@ for functions in <cite>polyutils.Surface</cite> and <cite>polyutils.Distortion</
 <tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.volume.anat2epispace_fsl.html#cortex.volume.anat2epispace_fsl" title="cortex.volume.anat2epispace_fsl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">anat2epispace_fsl</span></code></a>(data, subject, xfmname)</p></td>
 <td><p>Resamples anat-space data into the epi space for the given [subject] and transformation [xfm]</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.volume.show_slice.html#cortex.volume.show_slice" title="cortex.volume.show_slice"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_slice</span></code></a>(dataview, \*\*kwargs)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.volume.show_slice.html#cortex.volume.show_slice" title="cortex.volume.show_slice"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_slice</span></code></a>(dataview, **kwargs)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.volume.show_mip.html#cortex.volume.show_mip" title="cortex.volume.show_mip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_mip</span></code></a>(data, \*\*kwargs)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.volume.show_mip.html#cortex.volume.show_mip" title="cortex.volume.show_mip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_mip</span></code></a>(data, **kwargs)</p></td>
 <td><p>Display a maximum intensity projection for the data, using three subplots</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.volume.show_glass.html#cortex.volume.show_glass" title="cortex.volume.show_glass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_glass</span></code></a>(dataview[, pad])</p></td>
@@ -621,7 +621,7 @@ for functions in <cite>polyutils.Surface</cite> and <cite>polyutils.Distortion</
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -14,6 +14,7 @@ cortex.dataset.VolumeRGB
       :toctree: VolumeRGB
    
      ~VolumeRGB.__init__
+     ~VolumeRGB.color_voxels
      ~VolumeRGB.copy
      ~VolumeRGB.from_hdf
      ~VolumeRGB.to_json

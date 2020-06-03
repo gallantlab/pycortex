@@ -137,27 +137,6 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots an example RGB dataset onto an example subject, S1, onto a flatmap using quickflat. ...">
-
-.. only:: html
-
- .. figure:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volumeRGB_thumb.png
-     :alt: Plot RGB Volume Data
-
-     :ref:`sphx_glr_auto_examples_datasets_plot_volumeRGB.py`
-
-.. raw:: html
-
-    </div>
-
-
-.. toctree::
-   :hidden:
-
-   /auto_examples/datasets/plot_volumeRGB
-
-.. raw:: html
-
     <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
 
 .. only:: html
@@ -197,6 +176,27 @@ Examples demonstrating how to create, manipulate, plot datasets.
    :hidden:
 
    /auto_examples/datasets/plot_vertexRGB
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots an example RGB dataset onto an example subject, S1, onto a flatmap using quickflat. ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volumeRGB_thumb.png
+     :alt: Plot RGB Volume Data
+
+     :ref:`sphx_glr_auto_examples_datasets_plot_volumeRGB.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/datasets/plot_volumeRGB
 .. raw:: html
 
     <div class="sphx-glr-clear"></div>

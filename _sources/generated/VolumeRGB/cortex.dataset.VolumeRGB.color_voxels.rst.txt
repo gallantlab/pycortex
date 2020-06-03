@@ -1,0 +1,6 @@
+cortex.dataset.VolumeRGB.color\_voxels
+======================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VolumeRGB.color_voxels

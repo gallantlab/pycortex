@@ -356,7 +356,7 @@
     <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="make_svg"><a class="viewcode-back" href="../../../generated/cortex.quickflat.make_svg.html#cortex.quickflat.make_svg">[docs]</a><span class="k">def</span> <span class="nf">make_svg</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">braindata</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rois&#39;</span><span class="p">],</span>
-             <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+             <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Save an svg file of the desired flatmap.</span>
 
 <span class="sd">    This function creates an SVG file with vector graphic ROIs overlaid on a single png image.</span>
@@ -377,6 +377,8 @@
 <span class="sd">        List of layer names to show</span>
 <span class="sd">    height : int</span>
 <span class="sd">        Height of PNG in pixels</span>
+<span class="sd">    overlay_file : str</span>
+<span class="sd">    	Custom ROI overlays file to use</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">fp</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
@@ -408,7 +410,7 @@
         <span class="n">image_data</span> <span class="o">=</span> <span class="p">[</span><span class="n">binascii</span><span class="o">.</span><span class="n">b2a_base64</span><span class="p">(</span><span class="n">fpc</span><span class="o">.</span><span class="n">read</span><span class="p">()),</span> <span class="n">pngdata</span><span class="p">]</span>
 
     <span class="c1">## Create and save SVG file</span>
-    <span class="n">roipack</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">get_roipack</span><span class="p">(</span><span class="n">braindata</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
+    <span class="n">roipack</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_overlay</span><span class="p">(</span><span class="n">braindata</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">overlay_file</span><span class="p">)</span>
     <span class="n">roipack</span><span class="o">.</span><span class="n">get_svg</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="n">layers</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">with_labels</span><span class="p">,</span> <span class="n">with_ims</span><span class="o">=</span><span class="n">image_data</span><span class="p">)</span></div>
 
 
@@ -574,7 +576,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

@@ -38,7 +38,7 @@
 <h1>cortex.quickflat.make_svg<a class="headerlink" href="#cortex-quickflat-make-svg" title="Permalink to this headline">¶</a></h1>
 <dl class="py function">
 <dt id="cortex.quickflat.make_svg">
-<code class="sig-prename descclassname">cortex.quickflat.</code><code class="sig-name descname">make_svg</code><span class="sig-paren">(</span><em class="sig-param">fname, braindata, with_labels=False, with_curvature=True, layers=['rois'], height=1024, \*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/quickflat/view.html#make_svg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.quickflat.make_svg" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">cortex.quickflat.</code><code class="sig-name descname">make_svg</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fname</span></em>, <em class="sig-param"><span class="n">braindata</span></em>, <em class="sig-param"><span class="n">with_labels</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">with_curvature</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">layers</span><span class="o">=</span><span class="default_value">['rois']</span></em>, <em class="sig-param"><span class="n">height</span><span class="o">=</span><span class="default_value">1024</span></em>, <em class="sig-param"><span class="n">overlay_file</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/quickflat/view.html#make_svg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.quickflat.make_svg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save an svg file of the desired flatmap.</p>
 <p>This function creates an SVG file with vector graphic ROIs overlaid on a single png image.
 Ideally, this function would layer different images (curvature, data, dropout, etc), but
@@ -57,6 +57,8 @@ that has been left to implement at a future date if anyone really wants it.</p>
 <dt><strong>layers</strong><span class="classifier">list</span></dt><dd><p>List of layer names to show</p>
 </dd>
 <dt><strong>height</strong><span class="classifier">int</span></dt><dd><p>Height of PNG in pixels</p>
+</dd>
+<dt><strong>overlay_file</strong><span class="classifier">str</span></dt><dd><p>Custom ROI overlays file to use</p>
 </dd>
 </dl>
 </dd>
@@ -138,7 +140,7 @@ that has been left to implement at a future date if anyone really wants it.</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
