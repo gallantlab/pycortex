@@ -1026,7 +1026,9 @@
         <span class="n">cmapdir</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;webgl&#39;</span><span class="p">,</span> <span class="s1">&#39;colormaps&#39;</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmapdir</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span> <span class="n">cmap_im</span><span class="p">)</span>
 
-<span class="k">def</span> <span class="nf">download_subject</span><span class="p">(</span><span class="n">subject_id</span><span class="o">=</span><span class="s1">&#39;fsaverage&#39;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pycortex_store</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+<span class="k">def</span> <span class="nf">download_subject</span><span class="p">(</span><span class="n">subject_id</span><span class="o">=</span><span class="s1">&#39;fsaverage&#39;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pycortex_store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">download_again</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Download subjects to pycortex store</span>
 
 <span class="sd">    Parameters</span>
@@ -1042,9 +1044,15 @@
 <span class="sd">    pycortex_store : string or None</span>
 <span class="sd">        Directory to which to put the new subject folder. If None, defaults to</span>
 <span class="sd">        the `filestore` variable specified in the pycortex config file.</span>
-
+<span class="sd">    download_again : bool</span>
+<span class="sd">        Download the data again even if the subject id is already present in</span>
+<span class="sd">        the pycortex&#39;s database.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Lazy imports</span>
+    <span class="k">if</span> <span class="n">subject_id</span> <span class="ow">in</span> <span class="n">db</span><span class="o">.</span><span class="n">subjects</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">download_again</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">subject_id</span><span class="si">}</span><span class="s2"> is already present in the database. &quot;</span>
+                      <span class="sa">f</span><span class="s2">&quot;Set download_again to True if you wish to download &quot;</span>
+                      <span class="sa">f</span><span class="s2">&quot;the subject again.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
     <span class="c1"># Map codes to URLs; more coming eventually</span>
     <span class="n">id_to_url</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fsaverage</span><span class="o">=</span><span class="s1">&#39;https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758&#39;</span><span class="p">,</span>
                      <span class="p">)</span>
