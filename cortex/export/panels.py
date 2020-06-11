@@ -10,7 +10,9 @@ from .save_views import save_3d_views
 
 
 def plot_panels(volume, panels, figsize=(16, 9), windowsize=(1600*4, 900*4), 
-                save_name=None, sleep=10):
+                save_name=None, sleep=10,
+                viewer_params=dict(labels_visible=[],
+                                   overlays_visible=['rois'])):
     """Plot on the same figure a number of views, as defined by a list of panel
 
     Parameters
@@ -47,6 +49,9 @@ def plot_panels(volume, panels, figsize=(16, 9), windowsize=(1600*4, 900*4),
     sleep: float > 0
         Time in seconds, to let the viewer open.
 
+    viewer_params: dict
+        Parameters passed to the viewer.
+
     Returns
     -------
     fig : matplotlib.Figure
@@ -70,7 +75,8 @@ def plot_panels(volume, panels, figsize=(16, 9), windowsize=(1600*4, 900*4),
     base_name = os.path.join(temp_dir, 'fig')
     filenames = save_3d_views(volume, base_name, list_angles=list_angles,
                               list_surfaces=list_surfaces, trim=True,
-                              size=windowsize, sleep=sleep)
+                              size=windowsize, sleep=sleep,
+                              viewer_params=viewer_params)
 
     fig = plt.figure(figsize=figsize)
     for panel in panels:
