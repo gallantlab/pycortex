@@ -988,7 +988,9 @@ def add_cmap(cmap, name, cmapdir=None):
         cmapdir = config.get('webgl', 'colormaps')
     plt.imsave(os.path.join(cmapdir, name), cmap_im)
 
-def download_subject(subject_id='fsaverage', url=None, pycortex_store=None):
+
+def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
+                     download_again=False):
     """Download subjects to pycortex store
 
     Parameters
@@ -1004,9 +1006,15 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None):
     pycortex_store : string or None
         Directory to which to put the new subject folder. If None, defaults to
         the `filestore` variable specified in the pycortex config file.
-
+    download_again : bool
+        Download the data again even if the subject id is already present in
+        the pycortex's database.
     """
-    # Lazy imports
+    if subject_id in db.subjects and not download_again:
+        warnings.warn(f"{subject_id} is already present in the database. "
+                      f"Set download_again to True if you wish to download "
+                      f"the subject again.")
+        return
     # Map codes to URLs; more coming eventually
     id_to_url = dict(fsaverage='https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758',
                      )
