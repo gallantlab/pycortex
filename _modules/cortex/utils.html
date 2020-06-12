@@ -1049,9 +1049,10 @@
 <span class="sd">        the pycortex&#39;s database.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">subject_id</span> <span class="ow">in</span> <span class="n">db</span><span class="o">.</span><span class="n">subjects</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">download_again</span><span class="p">:</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">subject_id</span><span class="si">}</span><span class="s2"> is already present in the database. &quot;</span>
-                      <span class="sa">f</span><span class="s2">&quot;Set download_again to True if you wish to download &quot;</span>
-                      <span class="sa">f</span><span class="s2">&quot;the subject again.&quot;</span><span class="p">)</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> is already present in the database. &quot;</span>
+            <span class="s2">&quot;Set download_again to True if you wish to download &quot;</span>
+            <span class="s2">&quot;the subject again.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject_id</span><span class="p">))</span>
         <span class="k">return</span>
     <span class="c1"># Map codes to URLs; more coming eventually</span>
     <span class="n">id_to_url</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fsaverage</span><span class="o">=</span><span class="s1">&#39;https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758&#39;</span><span class="p">,</span>
