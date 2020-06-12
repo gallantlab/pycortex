@@ -1011,9 +1011,10 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
         the pycortex's database.
     """
     if subject_id in db.subjects and not download_again:
-        warnings.warn(f"{subject_id} is already present in the database. "
-                      f"Set download_again to True if you wish to download "
-                      f"the subject again.")
+        warnings.warn(
+            "{} is already present in the database. "
+            "Set download_again to True if you wish to download "
+            "the subject again.".format(subject_id))
         return
     # Map codes to URLs; more coming eventually
     id_to_url = dict(fsaverage='https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758',
