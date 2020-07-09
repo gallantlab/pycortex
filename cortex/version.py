@@ -11,6 +11,12 @@ from os.path import lexists, dirname, join as opj, curdir
 # Hard coded version, to be done by release process,
 # it is also "parsed" (not imported) by setup.py, that is why assigned as
 # __hardcoded_version__ later and not vise versa
+#
+# NOTE this should have the format of
+# NEW_RELEASE.dev0
+# since the __version__ will be later automatically parsed by adding the git
+# commit hash
+# so valid versions will be 1.2.1.dev0, 1.4.dev0, etc
 __version__ = '1.2.dev0'
 __hardcoded_version__ = __version__
 __full_version__ = __version__
@@ -37,7 +43,21 @@ if lexists(opj(projdir, '.git')):
         # Just take describe and replace initial '-' with .dev to be more "pythonish"
         # Encoding simply because distutils' LooseVersion compares only StringType
         # and thus misses in __cmp__ necessary wrapping for unicode strings
-        __full_version__ = line.strip().decode('ascii').replace('-', '.dev', 1)
+        #
+        # remove the version from describe and stick the current version
+        # hardcoded in __version__
+        dev_suffix = line.strip().decode('ascii').split('-')
+        # in case we are at release, we shouldn't have any dev
+        if len(dev_suffix) > 1:
+            dev_suffix = dev_suffix[1:]
+            dev_suffix = ".dev{}".format('-'.join(dev_suffix))
+        else:
+            dev_suffix = ""
+        # remove dev suffix from hardcoded version
+        if 'dev' in __version__:
+            __version__ = '.'.join(__version__.split('.')[:-1])
+        # stick the automatically generated dev version
+        __full_version__ = __version__ + dev_suffix
         # To follow PEP440 we can't have all the git fanciness
         __version__ = __full_version__.split('-')[0]
     except (SyntaxError, AttributeError, IndexError):
