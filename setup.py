@@ -36,6 +36,23 @@ class my_install(install):
             for fname in files:
                 os.chmod(os.path.join(root, fname), 438)
 
+
+# Modified from DataLad codebase to load version from pycortex/version.py
+def get_version():
+    """Load version from version.py without entailing any imports
+    Parameters
+    ----------
+    name: str
+      Name of the folder (package) where from to read version.py
+    """
+    # This might entail lots of imports which might not yet be available
+    # so let's do ad-hoc parsing of the version.py
+    with open(os.path.abspath('cortex/version.py')) as f:
+        version_lines = list(filter(lambda x: x.startswith('__version__'), f))
+    assert (len(version_lines) == 1)
+    return version_lines[0].split('=')[1].strip(" '\"\t\n")
+
+
 ctm = Extension('cortex.openctm', [
             'cortex/openctm.pyx',
             'OpenCTM-1.0.3/lib/openctm.c',
@@ -61,7 +78,7 @@ formats = Extension('cortex.formats', ['cortex/formats.pyx'],
                     include_dirs=get_numpy_include_dirs())
 
 DISTNAME = 'pycortex'
-VERSION = '1.2.dev0'
+VERSION = get_version()
 DESCRIPTION = 'Python Cortical mapping software for fMRI data'
 with open('README.md') as f:
     LONG_DESCRIPTION = f.read()
