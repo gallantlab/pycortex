@@ -18,7 +18,7 @@ install:
 
 script:
   # install necessary packages to run tests and run tests
-  - travis_retry pip install -q pytest pytest-cov codecov
+  - travis_retry pip install -q -U pytest pytest-cov codecov
   - pytest --cov=./
   # test installation
   - python setup.py install
