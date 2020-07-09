@@ -73,34 +73,34 @@ default colormap.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.__init__.html#cortex.dataset.Vertex.__init__" title="cortex.dataset.Vertex.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(self, data, subject[, cmap, vmin, …])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.__init__.html#cortex.dataset.Vertex.__init__" title="cortex.dataset.Vertex.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(data, subject[, cmap, vmin, vmax, …])</p></td>
 <td><p>Initialize self.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.copy.html#cortex.dataset.Vertex.copy" title="cortex.dataset.Vertex.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>(self, data)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.copy.html#cortex.dataset.Vertex.copy" title="cortex.dataset.Vertex.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>(data)</p></td>
 <td><p>Return a new VertexData object for the same subject but with data replaced by the given <cite>data</cite>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.empty.html#cortex.dataset.Vertex.empty" title="cortex.dataset.Vertex.empty"><code class="xref py py-obj docutils literal notranslate"><span class="pre">empty</span></code></a>(subject[, value])</p></td>
 <td><p>Create a constant-valued VertexData for the given subject.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.exp.html#cortex.dataset.Vertex.exp" title="cortex.dataset.Vertex.exp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">exp</span></code></a>(self)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.exp.html#cortex.dataset.Vertex.exp" title="cortex.dataset.Vertex.exp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">exp</span></code></a>()</p></td>
 <td><p>Return copy of this brain data with data exponentiated.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.from_hdf.html#cortex.dataset.Vertex.from_hdf" title="cortex.dataset.Vertex.from_hdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_hdf</span></code></a>(node)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.map.html#cortex.dataset.Vertex.map" title="cortex.dataset.Vertex.map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map</span></code></a>(self, target_subj[, surface_type, hemi, …])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.map.html#cortex.dataset.Vertex.map" title="cortex.dataset.Vertex.map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map</span></code></a>(target_subj[, surface_type, hemi, fs_subj])</p></td>
 <td><p>Map this data from this surface to another surface</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.random.html#cortex.dataset.Vertex.random" title="cortex.dataset.Vertex.random"><code class="xref py py-obj docutils literal notranslate"><span class="pre">random</span></code></a>(subject, **kwargs)</p></td>
 <td><p>Create a random-valued VertexData for the given subject.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.to_json.html#cortex.dataset.Vertex.to_json" title="cortex.dataset.Vertex.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a>(self[, simple])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.to_json.html#cortex.dataset.Vertex.to_json" title="cortex.dataset.Vertex.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a>([simple])</p></td>
 <td><p>Creates JSON description of this brain data.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.uniques.html#cortex.dataset.Vertex.uniques" title="cortex.dataset.Vertex.uniques"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uniques</span></code></a>(self[, collapse])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.uniques.html#cortex.dataset.Vertex.uniques" title="cortex.dataset.Vertex.uniques"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uniques</span></code></a>([collapse])</p></td>
 <td><p>TODO: WHAT IS THIS</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.volume.html#cortex.dataset.Vertex.volume" title="cortex.dataset.Vertex.volume"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume</span></code></a>(self, xfmname[, projection])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.volume.html#cortex.dataset.Vertex.volume" title="cortex.dataset.Vertex.volume"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume</span></code></a>(xfmname[, projection])</p></td>
 <td><p>Map this VertexData back to volume space, creating a VolumeData object.</p></td>
 </tr>
 </tbody>
@@ -212,7 +212,7 @@ default colormap.</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

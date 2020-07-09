@@ -5,22 +5,22 @@
 
 Computation times
 =================
-**01:03.411** total execution time for **auto_examples_datasets** files:
+**01:05.497** total execution time for **auto_examples_datasets** files:
 
 +----------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_datasets_plot_volumeRGB.py` (``plot_volumeRGB.py``)                   | 00:20.752 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_datasets_plot_volumeRGB.py` (``plot_volumeRGB.py``)                   | 00:20.956 | 0.0 MB |
 +----------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_datasets_plot_dataset_arithmetic.py` (``plot_dataset_arithmetic.py``) | 00:08.165 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_datasets_plot_volume2D.py` (``plot_volume2D.py``)                     | 00:08.530 | 0.0 MB |
 +----------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_datasets_plot_volume2D.py` (``plot_volume2D.py``)                     | 00:08.135 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_datasets_plot_dataset_arithmetic.py` (``plot_dataset_arithmetic.py``) | 00:08.449 | 0.0 MB |
 +----------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_datasets_plot_volume.py` (``plot_volume.py``)                         | 00:08.031 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_datasets_plot_volume.py` (``plot_volume.py``)                         | 00:08.359 | 0.0 MB |
 +----------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py` (``plot_volume_to_vertex.py``)     | 00:07.595 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py` (``plot_volume_to_vertex.py``)     | 00:08.003 | 0.0 MB |
 +----------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_datasets_plot_vertex.py` (``plot_vertex.py``)                         | 00:05.418 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_datasets_plot_vertex.py` (``plot_vertex.py``)                         | 00:05.660 | 0.0 MB |
 +----------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_datasets_plot_vertex2D.py` (``plot_vertex2D.py``)                     | 00:02.686 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_datasets_plot_vertex2D.py` (``plot_vertex2D.py``)                     | 00:02.787 | 0.0 MB |
 +----------------------------------------------------------------------------------------------------+-----------+--------+
-| :ref:`sphx_glr_auto_examples_datasets_plot_vertexRGB.py` (``plot_vertexRGB.py``)                   | 00:02.628 | 0.0 MB |
+| :ref:`sphx_glr_auto_examples_datasets_plot_vertexRGB.py` (``plot_vertexRGB.py``)                   | 00:02.752 | 0.0 MB |
 +----------------------------------------------------------------------------------------------------+-----------+--------+
