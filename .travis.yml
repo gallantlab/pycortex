@@ -38,6 +38,7 @@ deploy:
     keep-history: true
     on:
       branch: master
+      tags: true
       # push only once
       python: "3.7"
     local_dir: docs/_build/html/
