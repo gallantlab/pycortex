@@ -14,6 +14,7 @@ before_install:
 install:
   - travis_retry pip install -q cython numpy
   - pip install -e .
+  - python -c 'import cortex; print(cortex.__full_version__)'
 
 script:
   # install necessary packages to run tests and run tests
