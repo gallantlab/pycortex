@@ -78,6 +78,7 @@ formats = Extension('cortex.formats', ['cortex/formats.pyx'],
                     include_dirs=get_numpy_include_dirs())
 
 DISTNAME = 'pycortex'
+# VERSION needs to be modified under cortex/version.py
 VERSION = get_version()
 DESCRIPTION = 'Python Cortical mapping software for fMRI data'
 with open('README.md') as f:
