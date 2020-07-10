@@ -3,6 +3,30 @@
 Changelog
 ==========
 
+1.2.0
+-----
+
+**Added**
+
+- More functionality to import fMRIprep-processed data (`#315 <https://github.com/gallantlab/pycortex/pull/315>`_)
+- Function to rotate flatmaps (`f88a <https://github.com/gallantlab/pycortex/commit/f88a195382c9611c492eda2c525e9ab5595bcc37>`_)
+- Option to ignore NaNs when averaging across the thickness of cortex (`#355 <https://github.com/gallantlab/pycortex/pull/355>`_)
+- New views for `cortex.export.plot_panels` and passing of additional kwargs (`#361 <https://github.com/gallantlab/pycortex/pull/361>`_, `#362 <https://github.com/gallantlab/pycortex/pull/362>`_)
+- Specify colorbar location with default positionings for quickflat (`#364 <https://github.com/gallantlab/pycortex/pull/364>`_)
+- Pass custom colors for ``VolumeRGB`` (`#366 <https://github.com/gallantlab/pycortex/pull/366>`_)
+
+
+**Fixed**
+
+- Bug with automatic creation of SVGs with ROIs (`#340 <https://github.com/gallantlab/pycortex/pull/340>`_)
+- Python 2/3 compatibilities for svgoverlay (`#352 <https://github.com/gallantlab/pycortex/pull/352>`_)
+- ``from_freesurfer``/``to_freesurfer`` handling of NIFTI images (`#354 <https://github.com/gallantlab/pycortex/pull/354>`_)
+- ROI label display parameters (`#356 <https://github.com/gallantlab/pycortex/pull/356>`_)
+- Improve documentation for install and demo (`#359 <https://github.com/gallantlab/pycortex/pull/359>`_)
+- Inkscape compatibility with newer versions (`#365 <https://github.com/gallantlab/pycortex/pull/365>`_)
+- Use correct contrast for automatic alignment with FreeSurfer's ``bbregister`` (`39d8 <https://github.com/gallantlab/pycortex/commit/39d8fe6766f4ecacd0251a5798ea354528ec8eae>`_)
+
+
 1.1.1
 -----
 

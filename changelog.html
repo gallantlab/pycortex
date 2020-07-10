@@ -38,14 +38,36 @@
   <div class="section" id="changelog">
 <span id="id1"></span><h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="id2">
-<h2>1.1.1<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<h2>1.2.0<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p><strong>Added</strong></p>
+<ul class="simple">
+<li><p>More functionality to import fMRIprep-processed data (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/315">#315</a>)</p></li>
+<li><p>Function to rotate flatmaps (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/f88a195382c9611c492eda2c525e9ab5595bcc37">f88a</a>)</p></li>
+<li><p>Option to ignore NaNs when averaging across the thickness of cortex (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/355">#355</a>)</p></li>
+<li><p>New views for <cite>cortex.export.plot_panels</cite> and passing of additional kwargs (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/361">#361</a>, <a class="reference external" href="https://github.com/gallantlab/pycortex/pull/362">#362</a>)</p></li>
+<li><p>Specify colorbar location with default positionings for quickflat (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/364">#364</a>)</p></li>
+<li><p>Pass custom colors for <code class="docutils literal notranslate"><span class="pre">VolumeRGB</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/366">#366</a>)</p></li>
+</ul>
+<p><strong>Fixed</strong></p>
+<ul class="simple">
+<li><p>Bug with automatic creation of SVGs with ROIs (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/340">#340</a>)</p></li>
+<li><p>Python 2/3 compatibilities for svgoverlay (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/352">#352</a>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">from_freesurfer</span></code>/<code class="docutils literal notranslate"><span class="pre">to_freesurfer</span></code> handling of NIFTI images (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/354">#354</a>)</p></li>
+<li><p>ROI label display parameters (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/356">#356</a>)</p></li>
+<li><p>Improve documentation for install and demo (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/359">#359</a>)</p></li>
+<li><p>Inkscape compatibility with newer versions (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/365">#365</a>)</p></li>
+<li><p>Use correct contrast for automatic alignment with FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">bbregister</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/39d8fe6766f4ecacd0251a5798ea354528ec8eae">39d8</a>)</p></li>
+</ul>
+</div>
+<div class="section" id="id15">
+<h2>1.1.1<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
 <p><strong>Fixed</strong></p>
 <ul class="simple">
 <li><p>Installation fix for PyPi</p></li>
 </ul>
 </div>
-<div class="section" id="id3">
-<h2>1.1.0<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id16">
+<h2>1.1.0<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h2>
 <p><strong>Added</strong></p>
 <ul class="simple">
 <li><p>Added function <code class="docutils literal notranslate"><span class="pre">cortex.utils.download_subject</span></code> to download new subjects for pycortex from web URLs. This function allows users to download FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">fsaverage</span></code> surface, with a flatmap and ROI labels made by Mark Lescroart (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/344">#344</a>)</p></li>
