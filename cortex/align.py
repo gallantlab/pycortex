@@ -215,7 +215,7 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="yellow",
     return retval
 
 
-def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args='', use_fs_bbr=False):
+def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args='', use_fs_bbr=False, epi_mask=False):
     """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.
 
     If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting
@@ -246,9 +246,10 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
         Additional arguments that are passed to the FLIRT pre-alignment step (not BBR).
     use_fs_bbr : bool, optional
         If True will use freesurfer bbregister instead of FSL BBR.
-    save_dat : bool, optional
-        If True, will save the register.dat file from freesurfer bbregister into
-        freesurfer's $SUBJECTS_DIR/subject/tmp.
+    epi_mask : bool, optional
+        If True, and use_fs_bbr is True, then the flag --epi-mask is passed to bbregister
+        to mask out areas with spatial distortions. This setting is to be used whenever
+        the reference was not distortion corrected.
 
     Returns
     -------
@@ -274,6 +275,8 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed", pre_
         if use_fs_bbr:
             print('Running freesurfer BBR')
             cmd = 'bbregister --s {sub} --mov {absref} --init-fsl --reg {cache}/register.dat --t2'
+            if epi_mask:
+                cmd += ' --epi-mask'
             cmd = cmd.format(sub=subject, absref=absreference, cache=cache)
 
             if sp.call(cmd, shell=True) != 0:
