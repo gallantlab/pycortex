@@ -3,6 +3,7 @@ import os
 import glob
 import copy
 import json
+import time
 if six.PY2:  # python 2
     from Queue import Queue
     from ConfigParser import NoOptionError
@@ -451,14 +452,21 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 svgfile.write(data)
 
     class JSMixer(serve.JSProxy):
-        # Enumerated list of properties settable for views. There may be a way to get this
-        # from the javascript object, but I (ML) don't know how.
-        # Old properites (some of which still need re-implementing in javascript)
-        # view_props = ['altitude', 'azimuth', 'target', 'mix', 'radius', 'pivot',
-        #     'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection',
-        #     'volume_vis', 'frame', 'slices']
         @property
         def view_props(self):
+            """An enumerated list of settable properties for views. 
+            There may be a way to get this from the javascript object, 
+            but I (ML) don't know how.
+
+            There may be additional properties we want to set in views
+            and animations; those must be added here.
+
+            Old property list that used to be settable before webgl refactor:
+            view_props = ['altitude', 'azimuth', 'target', 'mix', 'radius', 'pivot',
+                'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection',
+                'volume_vis', 'frame', 'slices']
+            """
+
             _camera_props = ['camera.%s'%k for k in self.ui.camera._controls.attrs.keys()]
             _subject = list(self.ui.surface._folders.attrs.keys())[0]
             _surface = getattr(self.ui.surface, _subject)
@@ -466,14 +474,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             _curvature_props = ['surface.{subject}.curvature.brightness',
                                 'surface.{subject}.curvature.contrast',
                                 'surface.{subject}.curvature.smoothness']
-            #view_props = _camera_props + _surface_props
             return _camera_props + _surface_props + _curvature_props
-            #['camera.altitude', 'camera.azimuth', 'camera.target', 'camera.radius',
-            #'surface.{subject}.unfold', 'surface.{subject}.pivot', 'surface.{subject}.depth',
-            #'surface.{subject}.shift', 'surface.{subject}.left', 'surface.{subject}.right']
-            #'surface.{subject}.specularity', 'frame', 'bg_alpha'
-            #'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection',
-            #'volume_vis', 'frame', 'slices']
 
         def _set_view(self, **kwargs):
             """Low-level command: sets view parameters in the current viewer
@@ -481,33 +482,26 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             Sets each the state of each keyword argument provided. View parameters
             that can be set include all parameters in the data.gui in the html view.
 
-            # OLD delete me :
-            #altitude, azimuth, target, mix, radius, visL, visR, pivot,
-            #(L/R hemisphere visibility), alpha (background alpha),
-            #rotationL, rotationR (L/R hemisphere rotation, [x, y, z])
-
-            Notes
-            -----
-            [the following is no longer true, I think - but check on this before deleting]
-            Args must be lists instead of scalars, e.g. `azimuth`=[90]
-            This could be changed, but this is a hidden function, called by
-            higher-level functions that load .json files, which have the
-            parameters in lists by default. So it's annoying either way.
             """
             # Set unfolding level first, as it interacts with other arguments
             subject_list = self.ui.surface._folders.attrs.keys()
+            # Better to only self.view_props once; it interacts with javascript, 
+            # don't want to do that too often, it leads to glitches.
+            vw_props = copy.copy(self.view_props)
             for subject in subject_list:
                 if 'surface.{subject}.unfold' in kwargs:
                     unfold = kwargs.pop('surface.{subject}.unfold')
                     self.ui.set('surface.{subject}.unfold'.format(subject=subject), unfold)
                 for k, v in kwargs.items():
-                    if not k in self.view_props:
+                    if not k in vw_props:
                         print('Unknown parameter %s!'%k)
                         continue
                     else:
                         self.ui.set(k.format(subject=subject) if '{subject}' in k else k, v)
+                        # Wait for webgl. Wait for it. .... WAAAAAIIIT.
+                        time.sleep(0.03)
 
-        def _capture_view(self, time=None):
+        def _capture_view(self, frame_time=None):
             """Low-level command: returns a dict of current view parameters
 
             Retrieves the following view parameters from current viewer:
@@ -515,8 +509,13 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             altitude, azimuth, target, mix, radius, visL, visR, alpha,
             rotationR, rotationL, projection, pivot
 
-            `time` appends a 'time' key into the view (for use in animations)
-
+            Parameters
+            ----------
+            frame_time : scalar
+                time (in seconds) to specify for this frame.
+            
+            Notes
+            -----
             If multiple subjects are present, only retrieves view for first subject.
             """
             view = {}
@@ -524,13 +523,15 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             for p in self.view_props:
                 try:
                     view[p] = self.ui.get(p.format(subject=subject) if '{subject}' in p else p)[0]
+                    # Wait for webgl.
+                    time.sleep(0.03)
                 except Exception as err:
                     # TO DO: Fix this hack with an error class in serve.py & catch it here
                     print(err) #msg = "Cannot read property 'undefined'"
                     #if err.message[:len(msg)] != msg:
                     #    raise err
-            if not time is None:
-                view['time'] = time
+            if not frame_time is None:
+                view['time'] = frame_time
             return view
 
         def save_view(self, subject, name, is_overwrite=False):
@@ -689,7 +690,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             fr = 0
             a = np.array
             func = mixes[interpolation]
-            skip_props = ['surface.{subject}.right', 'surface.{subject}.left', ] #'projection',
+            #skip_props = ['surface.{subject}.right', 'surface.{subject}.left', ] #'projection',
             # Get keyframes
             keyframes = sorted(keyframes, key=lambda x:x['time'])
             # Normalize all time to frame rate
@@ -715,7 +716,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                     for prop in start.keys():
                         if prop=='time':
                             continue
-                        if (prop in skip_props) or (start[prop] is None):
+                        if (start[prop] is None) or (start[prop] == end[prop]) or isinstance(start[prop], (bool,) + six.string_types):
                             frame[prop] = start[prop]
                             continue
                         val = func(a(start[prop]), a(end[prop]), t)
@@ -726,8 +727,9 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                     allframes.append(frame)
             return allframes
 
-        def make_movie_views(self, animation, filename="brainmovie%07d.png", offset=0,
-                      fps=30, size=(1920, 1080), alpha=1, interpolation="linear"):
+        def make_movie_views(self, animation, filename="brainmovie%07d.png", 
+            offset=0, fps=30, size=(1920, 1080), alpha=1, frame_sleep=0.05,
+            frame_start=0, interpolation="linear"):
             """Renders movie frames for animation of mesh movement
 
             Makes an animation (for example, a transition between inflated and
@@ -780,15 +782,12 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             # Animate! (use default settings)
             js_handle.make_movie(animation)
             """
-            import time
             allframes = self._get_anim_seq(animation, fps, interpolation)
-            for fr, frame in enumerate(allframes):
+            for fr, frame in enumerate(allframes[frame_start:], frame_start):
                 self._set_view(**frame)
-                # Set background alpha, color??
-                #self.renderer.setClearColor([0,0,0], alpha)
-                #self.saveIMG(filename%(fr+offset+1), size=size)
+                time.sleep(frame_sleep)
                 self.getImage(filename%(fr+offset+1), size=size)
-                time.sleep(0.01)
+                time.sleep(frame_sleep)
 
     class PickerHandler(web.RequestHandler):
         def get(self):
