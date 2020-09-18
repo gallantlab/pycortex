@@ -241,7 +241,7 @@ params_inflated_lateral_medial_ventral = {
         }, {
             'extent': [0.000, 1/3., 0.5, 1/3.],
             'view': {
-                'hemisphere': 'left',
+                'hemisphere': 'right',
                 'angle': 'medial_pivot',
                 'surface': 'inflated_less'
             }
@@ -262,7 +262,7 @@ params_inflated_lateral_medial_ventral = {
         }, {
             'extent': [0.5, 1/3., 0.5, 1/3.],
             'view': {
-                'hemisphere': 'right',
+                'hemisphere': 'left',
                 'angle': 'medial_pivot',
                 'surface': 'inflated_less'
             }
