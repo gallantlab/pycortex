@@ -204,7 +204,7 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
             other = other.format(name=name+".flat")
             # If so, go ahead and import subject
             if os.path.exists(other):
-                freesurfer.import_flat(fs_subject, name, sname=cx_subject,
+                freesurfer.import_flat(fs_subject, name, cx_subject=cx_subject,
                             flat_type='freesurfer',
                             freesurfer_subject_dir=freesurfer_subject_dir)
     elif flatten_with == 'SLIM':
@@ -222,7 +222,7 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
             other = other.format(name=name)
             # If so, go ahead and import subject
             if os.path.exists(other):
-                freesurfer.import_flat(fs_subject, name, sname=cx_subject,
+                freesurfer.import_flat(fs_subject, name, cx_subject=cx_subject,
                             flat_type='slim',
                             freesurfer_subject_dir=freesurfer_subject_dir)
 
