@@ -89,6 +89,11 @@ def plot_panels(volume, panels, figsize=(16, 9), windowsize=(1600*4, 900*4),
         # chose hemisphere
         if 'hemisphere' in panel['view']:
             left, right = np.split(image, [image.shape[1] // 2], axis=1)
+
+            if panel['view']['angle'] == 'medial_pivot':
+                # inverted view, we need to swap left and right
+                left, right = right, left
+
             if panel['view']['hemisphere'] == 'left':
                 image = left
             else:
@@ -241,7 +246,7 @@ params_inflated_lateral_medial_ventral = {
         }, {
             'extent': [0.000, 1/3., 0.5, 1/3.],
             'view': {
-                'hemisphere': 'right',
+                'hemisphere': 'left',
                 'angle': 'medial_pivot',
                 'surface': 'inflated_less'
             }
@@ -262,7 +267,7 @@ params_inflated_lateral_medial_ventral = {
         }, {
             'extent': [0.5, 1/3., 0.5, 1/3.],
             'view': {
-                'hemisphere': 'left',
+                'hemisphere': 'right',
                 'angle': 'medial_pivot',
                 'surface': 'inflated_less'
             }
