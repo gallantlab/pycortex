@@ -1,6 +1,8 @@
 pycortex
 ========
 [![Build Status](https://travis-ci.org/gallantlab/pycortex.svg?branch=master)](https://travis-ci.org/gallantlab/pycortex)
+[![Python version](https://img.shields.io/badge/python-3.6%2B-blue)](https://www.python.org/downloads/release/python)
+[![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
 [![quickflat demo](https://raw.github.com/jamesgao/pycortex/master/docs/wn_med.png)](https://gallantlab.github.io/pycortex)
 
