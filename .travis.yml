@@ -4,6 +4,7 @@ python:
   - "3.5"
   - "3.6"
   - "3.7"
+  - "3.8"
 
 cache:
   - pip
@@ -12,7 +13,6 @@ before_install:
   - travis_retry sudo apt-get install -y inkscape
 
 install:
-  - travis_retry pip install -q cython numpy
   - pip install -e .
   - python -c 'import cortex; print(cortex.__full_version__)'
 
@@ -40,7 +40,7 @@ deploy:
       branch: master
       tags: true
       # push only once
-      python: "3.7"
+      python: "3.8"
     local_dir: docs/_build/html/
 
   - provider: pages
@@ -50,7 +50,7 @@ deploy:
     on:
       branch: master
       # push only once
-      python: "3.7"
+      python: "3.8"
     local_dir: docs/_build/html/
     repo: pycortex/pycortex.github.io
     target_branch: master
@@ -63,4 +63,4 @@ deploy:
       tags: true
       branch: master
       repo: gallantlab/pycortex
-      python: "3.7"
+      python: "3.8"
