@@ -1,5 +1,5 @@
 future
-numpy
+numpy>=1.16
 scipy
 tornado>=4.3
 shapely
