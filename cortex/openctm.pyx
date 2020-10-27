@@ -48,7 +48,7 @@ cdef class CTMfile:
 
         if mode == 'r':
             self.ctx = openctm.ctmNewContext(openctm.CTM_IMPORT)
-            openctm.ctmLoad(self.ctx, self.filename)
+            openctm.ctmLoad(self.ctx, self.filename.encode('utf-8'))
             err = ctmGetError(self.ctx)
             if err != openctm.CTM_NONE:
                 raise IOError(openctm.ctmErrorString(err))
