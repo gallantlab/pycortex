@@ -530,7 +530,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                     print(err) #msg = "Cannot read property 'undefined'"
                     #if err.message[:len(msg)] != msg:
                     #    raise err
-            if not frame_time is None:
+            if frame_time is not None:
                 view['time'] = frame_time
             return view
 
