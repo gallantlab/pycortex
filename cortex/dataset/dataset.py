@@ -147,7 +147,7 @@ class Dataset(object):
                 return (wpts + ppts) / 2, polys
 
             group = self.h5['subjects'][subject]['surfaces'][type][hemi]
-            pts, polys = group['pts'].value.copy(), group['polys'].value.copy()
+            pts, polys = group['pts'][:].copy(), group['polys'][:].copy()
             if nudge:
                 if hemi == 'lh':
                     pts[:,0] -= pts[:,0].max()
@@ -160,7 +160,7 @@ class Dataset(object):
     def get_xfm(self, subject, xfmname):
         try:
             group = self.h5['subjects'][subject]['transforms'][xfmname]
-            return Transform(group['xfm'].value, tuple(group['xfm'].attrs['shape']))
+            return Transform(group['xfm'][:], tuple(group['xfm'].attrs['shape']))
         except (KeyError, TypeError):
             raise IOError('Transform not found in package')
 

@@ -180,7 +180,7 @@ class Dataview(object):
             view[4] = json.dumps([self.vmax])
         except AttributeError:
             #For VolumeRGB/Vertex, there is no cmap/vmin/vmax
-            view[2] = None
+            view[2] = "null"
             view[3:5] = "null"
         view[5] = json.dumps(self.state)
         view[6] = json.dumps(self.attrs)
