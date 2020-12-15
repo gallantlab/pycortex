@@ -103,7 +103,7 @@ class Dataset(object):
 
     def save(self, filename=None, pack=False):
         if filename is not None:
-            self.h5 = h5py.File(filename)
+            self.h5 = h5py.File(filename, 'a')
         elif self.h5 is None:
             raise ValueError("Must provide filename for new datasets")
 
