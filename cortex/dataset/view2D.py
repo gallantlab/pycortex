@@ -146,13 +146,14 @@ class Volume2D(Dataview2D):
                 raise TypeError("Invalid data for second dimension")
             self.dim1 = dim1
             self.dim2 = dim2
-            vmin = dim1.vmin if vmin is None else vmin
-            vmin2 = dim2.vmin if vmin2 is None else vmin2
-            vmax = dim1.vmax if vmax is None else vmax
-            vmax2 = dim2.vmax if vmax2 is None else vmax2
         else:
             self.dim1 = Volume(dim1, subject, xfmname, vmin=vmin, vmax=vmax)
             self.dim2 = Volume(dim2, subject, xfmname, vmin=vmin2, vmax=vmax2)
+
+        vmin = self.dim1.vmin if vmin is None else vmin
+        vmin2 = self.dim2.vmin if vmin2 is None else vmin2
+        vmax = self.dim1.vmax if vmax is None else vmax
+        vmax2 = self.dim2.vmax if vmax2 is None else vmax2
 
         super(Volume2D, self).__init__(description=description, cmap=cmap, vmin=vmin,
                                        vmax=vmax, vmin2=vmin2, vmax2=vmax2, **kwargs)
@@ -234,13 +235,14 @@ class Vertex2D(Dataview2D):
                 raise TypeError("Invalid data for second dimension")
             self.dim1 = dim1
             self.dim2 = dim2
-            vmin = dim1.vmin if vmin is None else vmin
-            vmin2 = dim2.vmin if vmin2 is None else vmin2
-            vmax = dim1.vmax if vmax is None else vmax
-            vmax2 = dim2.vmax if vmax2 is None else vmax2
         else:
             self.dim1 = Vertex(dim1, subject, vmin=vmin, vmax=vmax)
             self.dim2 = Vertex(dim2, subject, vmin=vmin2, vmax=vmax2)
+
+        vmin = self.dim1.vmin if vmin is None else vmin
+        vmin2 = self.dim2.vmin if vmin2 is None else vmin2
+        vmax = self.dim1.vmax if vmax is None else vmax
+        vmax2 = self.dim2.vmax if vmax2 is None else vmax2
 
         super(Vertex2D, self).__init__(description=description, cmap=cmap,
                                        vmin=vmin, vmax=vmax, vmin2=vmin2,

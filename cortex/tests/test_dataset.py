@@ -178,3 +178,13 @@ def test_volumedata_copy_with_custom_mask():
     v = cortex.Volume(data, subj, xfmname, mask=mask)
     vc = v.copy(v.data)
     assert np.allclose(v.data, vc.data)
+
+
+def test_vmin_none_in_dataview2d():
+    data = np.arange(np.product(volshape)).reshape(volshape, order='C')
+    view = cortex.Volume2D(data, data + 1, subject=subj, xfmname=xfmname)
+    cortex.quickshow(view)
+
+    data = np.arange(nverts)
+    view = cortex.Vertex2D(data, data + 1, subject=subj)
+    cortex.quickshow(view)

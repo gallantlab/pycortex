@@ -321,6 +321,11 @@ class Vertex(VertexData, Dataview):
     def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
         super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
                                      description=description, **kwargs)
+        # set vmin and vmax
+        self.vmin = self.vmin if self.vmin is not None else \
+            np.percentile(np.nan_to_num(self.data), 1)
+        self.vmax = self.vmax if self.vmax is not None else \
+            np.percentile(np.nan_to_num(self.data), 99)
 
     def _write_hdf(self, h5, name="data"):
         datanode = VertexData._write_hdf(self, h5)
