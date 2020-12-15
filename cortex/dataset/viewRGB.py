@@ -265,8 +265,8 @@ class VolumeRGB(DataviewRGB):
         """
         volume = []
         for dv in (self.red, self.green, self.blue, self.alpha):
-            vol = dv.volume.copy()
-            if vol.dtype != np.uint8:
+            if dv.volume.dtype != np.uint8:
+                vol = dv.volume.astype("float32", copy=True)
                 if dv.vmin is None:
                     if vol.min() < 0:
                         vol -= vol.min()
@@ -280,6 +280,8 @@ class VolumeRGB(DataviewRGB):
                     vol /= dv.vmax - dv.vmin
 
                 vol = (np.clip(vol, 0, 1) * 255).astype(np.uint8)
+            else:
+                vol = dv.volume.copy()
             volume.append(vol)
 
         return np.array(volume).transpose([1, 2, 3, 4, 0])
@@ -472,6 +474,13 @@ class VertexRGB(DataviewRGB):
             self.green = Vertex(green, subject)
             self.blue = Vertex(blue, subject)
 
+        if alpha is None:
+            alpha = np.ones(self.red.vertices.shape)
+            alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
+        if not isinstance(alpha, Vertex):
+            alpha = Vertex(alpha, self.red.subject)
+        self.alpha = alpha
+
         super(VertexRGB, self).__init__(subject, alpha, description=description,
                                         state=state, **kwargs)
 
@@ -480,18 +489,10 @@ class VertexRGB(DataviewRGB):
         """3-dimensional volume (t, v, rgba) with data that has been mapped
         into 8-bit unsigned integers that correspond to colors.
         """
-        alpha = self.alpha
-        if alpha is None:
-            alpha = np.ones_like(self.red.data)
-            alpha = Vertex(alpha, self.subject, vmin=0, vmax=1)
-
-        if not isinstance(alpha, Vertex):
-            alpha = Vertex(alpha, self.subject)
-
         verts = []
-        for dv in (self.red, self.green, self.blue, alpha):
-            vert = dv.vertices.copy()
-            if vert.dtype != np.uint8:
+        for dv in (self.red, self.green, self.blue, self.alpha):
+            if dv.vertices.dtype != np.uint8:
+                vert = dv.vertices.astype("float32", copy=True)
                 if dv.vmin is None:
                     if vert.min() < 0:
                         vert -= vert.min()
@@ -505,8 +506,9 @@ class VertexRGB(DataviewRGB):
                     vert /= dv.vmax - dv.vmin
 
                 vert = (np.clip(vert, 0, 1) * 255).astype(np.uint8)
+            else:
+                vert = dv.vertices.copy()
             verts.append(vert)
-
         return np.array(verts).transpose([1, 2, 0])
 
     def to_json(self, simple=False):

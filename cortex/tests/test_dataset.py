@@ -180,6 +180,17 @@ def test_volumedata_copy_with_custom_mask():
     assert np.allclose(v.data, vc.data)
 
 
+def test_int64_in_dataviewrgb():
+    data = np.arange(np.product(volshape)).reshape(volshape, order='C')
+    view = cortex.VolumeRGB(data, data + 1, data + 2, subject=subj,
+                            xfmname=xfmname)
+    cortex.quickshow(view)
+
+    data = np.arange(nverts)
+    view = cortex.VertexRGB(data, data + 1, data + 2, subject=subj)
+    cortex.quickshow(view)
+
+
 def test_vmin_none_in_dataview2d():
     data = np.arange(np.product(volshape)).reshape(volshape, order='C')
     view = cortex.Volume2D(data, data + 1, subject=subj, xfmname=xfmname)
