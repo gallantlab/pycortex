@@ -36,7 +36,7 @@ deploy:
     github_token: $GITHUB_TOKEN  # Set in travis-ci.org dashboard, marked secure
     keep-history: true
     on:
-      branch: master
+      branch: main
       tags: true
       # push only once
       python: "3.8"
@@ -47,12 +47,12 @@ deploy:
     github_token: $GITHUB_TOKEN
     keep-history: true
     on:
-      branch: master
+      branch: main
       # push only once
       python: "3.8"
     local_dir: docs/_build/html/
     repo: pycortex/pycortex.github.io
-    target_branch: master
+    target_branch: main
 
   - provider: pypi
     user: "__token__"
@@ -60,6 +60,6 @@ deploy:
     on:
       distributions: sdist
       tags: true
-      branch: master
+      branch: main
       repo: gallantlab/pycortex
       python: "3.8"
