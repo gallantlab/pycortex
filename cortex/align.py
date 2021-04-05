@@ -3,6 +3,7 @@
 import os
 import numpy as np
 from builtins import input
+import warnings
 
 def manual(subject, xfmname, reference=None, **kwargs):
     """Open GUI for manually aligning a functional volume to the cortical surface for `subject`. This
@@ -256,6 +257,9 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed",
     -------
     Nothing unless `noclean` is True.
     """
+    warnings.warn("Defaults changed in pycortex 1.3. Now automatic alignment "
+                  "uses Freesurfer's bbregister and mri_coreg for "
+                  "initialization.")
     import shlex
     import shutil
     import tempfile
