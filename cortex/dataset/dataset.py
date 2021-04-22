@@ -208,7 +208,7 @@ def normalize(data):
 
 def _pack_subjs(h5, subjects):
     for subject in subjects:
-        rois = db.get_overlay(subject, allow_change=False)
+        rois = db.get_overlay(subject, modify_svg_file=False)
         rnode = h5.require_dataset("/subjects/%s/rois"%subject, (1,),
                                    dtype=h5py.special_dtype(vlen=str))
         rnode[0] = rois.toxml(pretty=False)

@@ -645,9 +645,43 @@ def make_svg(pts, polys):
     return svg
 
 def get_overlay(subject, svgfile, pts, polys, remove_medial=False, 
-                overlays_available=None, allow_change=True, **kwargs):
-    """Return a python represent of the overlays present in `svgfile`
+                overlays_available=None, modify_svg_file=True, **kwargs):
+    """Return a python represent of the overlays present in `svgfile`.
 
+    Parameters
+    ----------
+    subject: str
+        Name of the subject.
+    svgfile: str
+        File name with the overlays (.svg).
+    pts: array of shape (n_vertices, 3)
+        Coordinates of all vertices, as returned by for example by
+        cortex.db.get_surf.
+    polys: arrays of shape (n_polys, 3)
+        Indices of the vertices of all polygons, as returned for example by
+        cortex.db.get_surf.
+    remove_medial: bool
+        Whether to remove duplicate vertices. If True, the function also
+        returns an array with the unique vertices.
+    overlays_available: tuple or None
+        Overlays to keep in the result. If None, then all overlay layers of
+        the SVG file will be available in the result. If None, also add 3 empty
+        layers named 'sulci', 'cutouts', and 'display' (if not already
+        present).
+    modify_svg_file: bool
+        Whether to modify the SVG file when overlays_available=None, which can
+        add layers 'sulci', 'cutouts', and 'display' (if not already present).
+        If False, the SVG file will not be modified.
+    **kwargs
+        Other keyword parameters are given to the SVGOverlay constructor.
+    
+    Returns
+    -------
+    svg : SVGOverlay instance.
+        Object with the overlays.
+    valid : array of shape (n_vertices, )
+        Indices of all vertices (without duplicates).
+        Only returned if remove_medial is True.
     """
     cullpts = pts[:,:2]
     if remove_medial:
@@ -688,7 +722,7 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
             svg.rois.add_shape(layer_name, binascii.b2a_base64(fp.read()).decode('utf-8'), False)
 
     else:
-        if not allow_change:
+        if not modify_svg_file:
             # To avoid modifying the svg file, we copy it in a temporary file
             import shutil
             svg_tmp = tempfile.NamedTemporaryFile(suffix=".svg")
