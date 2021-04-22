@@ -12,11 +12,12 @@ before_install:
   - travis_retry sudo apt-get install -y inkscape
 
 install:
-  - pip install -e .
+  - pip install numpy cython
+  - pip install -e . --no-build-isolation
   - python -c 'import cortex; print(cortex.__full_version__)'
 
 script:
-  # install necessary packages to run tests and run tests
+  # install necessary packages to run tests and get coverage
   - travis_retry pip install -q -U pytest pytest-cov codecov
   - pytest --cov=./
   # test installation
