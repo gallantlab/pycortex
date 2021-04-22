@@ -4,6 +4,7 @@ python:
   - "3.6"
   - "3.7"
   - "3.8"
+  - "3.9"
 
 cache:
   - pip
@@ -40,7 +41,7 @@ deploy:
       branch: main
       tags: true
       # push only once
-      python: "3.8"
+      python: "3.9"
     local_dir: docs/_build/html/
 
   - provider: pages
@@ -50,7 +51,7 @@ deploy:
     on:
       branch: main
       # push only once
-      python: "3.8"
+      python: "3.9"
     local_dir: docs/_build/html/
     repo: pycortex/pycortex.github.io
     target_branch: main
@@ -63,4 +64,4 @@ deploy:
       tags: true
       branch: main
       repo: gallantlab/pycortex
-      python: "3.8"
+      python: "3.9"
