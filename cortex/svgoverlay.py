@@ -645,7 +645,7 @@ def make_svg(pts, polys):
     return svg
 
 def get_overlay(subject, svgfile, pts, polys, remove_medial=False, 
-                overlays_available=None, **kwargs):
+                overlays_available=None, allow_change=True, **kwargs):
     """Return a python represent of the overlays present in `svgfile`
 
     """
@@ -688,17 +688,24 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
             svg.rois.add_shape(layer_name, binascii.b2a_base64(fp.read()).decode('utf-8'), False)
 
     else:
+        if not allow_change:
+            # To avoid modifying the svg file, we copy it in a temporary file
+            import shutil
+            svg_tmp = tempfile.NamedTemporaryFile(suffix=".svg")
+            svgfile_tmp = svg_tmp.name
+            shutil.copy2(svgfile, svgfile_tmp)
+            svgfile = svgfile_tmp
+
         svg = SVGOverlay(svgfile, 
                          coords=cullpts, 
                          overlays_available=overlays_available,
                          **kwargs)
     
-    
     if overlays_available is None:
         # Assure all layers are present
         # (only if some set of overlays is not specified)
-        # NOTE: this actually modifies the svg file. Do we
-        # want this in all cases? (e.g. w/ external svgs?)
+        # NOTE: this actually modifies the svg file.
+        # Use allow_change=False to avoid modifying the svg file.
         for layer in ['sulci', 'cutouts', 'display']:
             if layer not in svg.layers:
                 svg.add_layer(layer)
