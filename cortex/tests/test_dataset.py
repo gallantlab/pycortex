@@ -128,9 +128,14 @@ def test_pack():
     dpts, dpolys = ds.get_surf(subj, "fiducial", "lh")
     assert np.allclose(pts, dpts)
 
-    rois = cortex.db.get_overlay(subj, "rois")
-    # Dataset.get_overlay returns a file handle, not an ROIpack ?
-    #assert rois.rois.keys() == ds.get_overlay(subj, "rois").rois.keys()
+    overlay_db = cortex.db.get_overlay(subj, None, modify_svg_file=False)
+    rois_db = overlay_db.rois.labels.elements.keys()
+    # keep the temporary file object in memory to avoid the file being deleted
+    temp_file = ds.get_overlay(subj, "rois")
+    overlay_ds = cortex.db.get_overlay(subj, temp_file.name,
+                                       modify_svg_file=False)
+    rois_ds = overlay_ds.rois.labels.elements.keys()
+    assert rois_db == rois_ds
 
     xfm = cortex.db.get_xfm(subj, xfmname)
     assert np.allclose(xfm.xfm, ds.get_xfm(subj, xfmname).xfm)

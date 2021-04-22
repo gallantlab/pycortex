@@ -380,7 +380,11 @@ class Labels(object):
 
         # match up existing labels with their respective paths
         def close(pt, x, y):
-            return np.sqrt((pt[0] - x)**2 + (pt[1]-y)**2) < 250
+            try:
+                xx, yy = pt[0], pt[1]
+            except IndexError:  # when loading overlay from a dataset pack
+                xx, yy = float(pt.get('x')), float(pt.get('y'))
+            return np.sqrt((xx - x)**2 + (yy-y)**2) < 250
         for text in self.layer.findall(".//{%s}text"%svgns):
             x = float(text.get('x'))
             y = float(text.get('y'))
@@ -641,9 +645,43 @@ def make_svg(pts, polys):
     return svg
 
 def get_overlay(subject, svgfile, pts, polys, remove_medial=False, 
-                overlays_available=None, **kwargs):
-    """Return a python represent of the overlays present in `svgfile`
+                overlays_available=None, modify_svg_file=True, **kwargs):
+    """Return a python represent of the overlays present in `svgfile`.
 
+    Parameters
+    ----------
+    subject: str
+        Name of the subject.
+    svgfile: str
+        File name with the overlays (.svg).
+    pts: array of shape (n_vertices, 3)
+        Coordinates of all vertices, as returned by for example by
+        cortex.db.get_surf.
+    polys: arrays of shape (n_polys, 3)
+        Indices of the vertices of all polygons, as returned for example by
+        cortex.db.get_surf.
+    remove_medial: bool
+        Whether to remove duplicate vertices. If True, the function also
+        returns an array with the unique vertices.
+    overlays_available: tuple or None
+        Overlays to keep in the result. If None, then all overlay layers of
+        the SVG file will be available in the result. If None, also add 3 empty
+        layers named 'sulci', 'cutouts', and 'display' (if not already
+        present).
+    modify_svg_file: bool
+        Whether to modify the SVG file when overlays_available=None, which can
+        add layers 'sulci', 'cutouts', and 'display' (if not already present).
+        If False, the SVG file will not be modified.
+    **kwargs
+        Other keyword parameters are given to the SVGOverlay constructor.
+    
+    Returns
+    -------
+    svg : SVGOverlay instance.
+        Object with the overlays.
+    valid : array of shape (n_vertices, )
+        Indices of all vertices (without duplicates).
+        Only returned if remove_medial is True.
     """
     cullpts = pts[:,:2]
     if remove_medial:
@@ -655,6 +693,7 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
         # I think this should be an entirely separate function, and it should
         # be made clear when this file is created - opening a git issue on 
         # this soon...ML
+        print("Create new file: %s" % (svgfile, ))
         with open(svgfile, "wb") as fp:
             fp.write(make_svg(pts.copy(), polys).encode())
 
@@ -683,17 +722,24 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
             svg.rois.add_shape(layer_name, binascii.b2a_base64(fp.read()).decode('utf-8'), False)
 
     else:
+        if not modify_svg_file:
+            # To avoid modifying the svg file, we copy it in a temporary file
+            import shutil
+            svg_tmp = tempfile.NamedTemporaryFile(suffix=".svg")
+            svgfile_tmp = svg_tmp.name
+            shutil.copy2(svgfile, svgfile_tmp)
+            svgfile = svgfile_tmp
+
         svg = SVGOverlay(svgfile, 
                          coords=cullpts, 
                          overlays_available=overlays_available,
                          **kwargs)
     
-    
     if overlays_available is None:
         # Assure all layers are present
         # (only if some set of overlays is not specified)
-        # NOTE: this actually modifies the svg file. Do we
-        # want this in all cases? (e.g. w/ external svgs?)
+        # NOTE: this actually modifies the svg file.
+        # Use allow_change=False to avoid modifying the svg file.
         for layer in ['sulci', 'cutouts', 'display']:
             if layer not in svg.layers:
                 svg.add_layer(layer)
