@@ -380,7 +380,11 @@ class Labels(object):
 
         # match up existing labels with their respective paths
         def close(pt, x, y):
-            return np.sqrt((pt[0] - x)**2 + (pt[1]-y)**2) < 250
+            try:
+                xx, yy = pt[0], pt[1]
+            except IndexError:  # when loading overlay from a dataset pack
+                xx, yy = float(pt.get('x')), float(pt.get('y'))
+            return np.sqrt((xx - x)**2 + (yy-y)**2) < 250
         for text in self.layer.findall(".//{%s}text"%svgns):
             x = float(text.get('x'))
             y = float(text.get('y'))
@@ -655,6 +659,7 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
         # I think this should be an entirely separate function, and it should
         # be made clear when this file is created - opening a git issue on 
         # this soon...ML
+        print("Create new file: %s" % (svgfile, ))
         with open(svgfile, "wb") as fp:
             fp.write(make_svg(pts.copy(), polys).encode())
 
