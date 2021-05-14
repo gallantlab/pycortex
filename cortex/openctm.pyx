@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 
 cimport cython
@@ -48,7 +49,7 @@ cdef class CTMfile:
 
         if mode == 'r':
             self.ctx = openctm.ctmNewContext(openctm.CTM_IMPORT)
-            openctm.ctmLoad(self.ctx, self.filename.encode('utf-8'))
+            openctm.ctmLoad(self.ctx, to_bytes(self.filename))
             err = ctmGetError(self.ctx)
             if err != openctm.CTM_NONE:
                 raise IOError(openctm.ctmErrorString(err))
@@ -189,7 +190,7 @@ cdef class CTMfile:
             raise Exception(openctm.ctmErrorString(err))
 
         for name, attrib in self.attribs.items():
-            name = name.encode('utf8')
+            name = to_bytes(name)
             pts = attrib
             err = openctm.ctmAddAttribMap(self.ctx, <float*> pts.data, <char*>name)
             if err == openctm.CTM_NONE:
@@ -199,7 +200,7 @@ cdef class CTMfile:
         for name, (fname, uv) in self.uvs.items():
             if fname is not None:
                 cname = fname
-            name = name.encode('utf8')
+            name = to_bytes(name)
             pts = uv
             err = openctm.ctmAddUVMap(self.ctx, <float*>pts.data, <char*>name, cname)
             if err == openctm.CTM_NONE:
@@ -210,3 +211,12 @@ cdef class CTMfile:
         err = openctm.ctmGetError(self.ctx)
         if err != openctm.CTM_NONE:
             raise Exception(openctm.ctmErrorString(err))
+
+
+def to_bytes(s):
+    if type(s) is bytes:
+        return s
+    elif type(s) is str or (sys.version_info[0] < 3 and type(s) is unicode):
+        return s.encode('utf-8')
+    else:
+        TypeError("Expected bytes or string, but got %s." % type(s))
