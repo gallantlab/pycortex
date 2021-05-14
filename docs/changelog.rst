@@ -20,6 +20,7 @@ Changelog
 - Fix left/right location of hemispheres for medial-pivot view (`c3b029e <https://github.com/gallantlab/pycortex/commit/c3b029e96c7ffa67c8c35c7af47c045e0161abc3>`_)
 - Animation functions in ``webgl.view`` (`#372 <https://github.com/gallantlab/pycortex/pull/372>`_)
 - Various fixes to 2D volumes
+- Installation with numpy < 1.2 (`#385 <https://github.com/gallantlab/pycortex/pull/385>`_)
 - String encoding in ``openctm.pyx`` (`6dc80db <https://github.com/gallantlab/pycortex/commit/6dc80db6305f0ad97e7b857e083958636fab2233>`_)
 
 
