@@ -3,6 +3,26 @@
 Changelog
 ==========
 
+
+1.2.1
+-----
+
+**Added**
+
+- Allow option to perform automatic alignment with Freesurfer's BBR for volumes without distortion correction (`5d7d6ca <https://github.com/gallantlab/pycortex/commit/5d7d6ca73845986fcc182899289218132be99604>`_)
+- Add ``line_lanczos`` to available mappers (`7721253 <https://github.com/gallantlab/pycortex/commit/77212535da1ad17930697b8cf2f497ae09d2898b>`_)
+- Use Freesurfer's BBR by default for automatic alignment (`#384 <https://github.com/gallantlab/pycortex/pull/384>`_)
+
+
+**Fixed**
+
+- Parameter names for ``freesurfer.import_flat`` (`4371b26 <https://github.com/gallantlab/pycortex/commit/4371b2633a0b7180e3893484af61a941ba5029b9>`_)
+- Fix left/right location of hemispheres for medial-pivot view (`c3b029e <https://github.com/gallantlab/pycortex/commit/c3b029e96c7ffa67c8c35c7af47c045e0161abc3>`_)
+- Animation functions in ``webgl.view`` (`90c1431 <https://github.com/gallantlab/pycortex/commit/90c1431e20c8cc76bb593f7fcd5416ca476508a7>`_)
+- Various fixes to 2D volumes
+- String encoding in ``openctm.pyx`` (`6dc80db <https://github.com/gallantlab/pycortex/commit/6dc80db6305f0ad97e7b857e083958636fab2233>`_)
+
+
 1.2.0
 -----
 
@@ -11,7 +31,7 @@ Changelog
 - More functionality to import fMRIprep-processed data (`#315 <https://github.com/gallantlab/pycortex/pull/315>`_)
 - Function to rotate flatmaps (`f88a <https://github.com/gallantlab/pycortex/commit/f88a195382c9611c492eda2c525e9ab5595bcc37>`_)
 - Option to ignore NaNs when averaging across the thickness of cortex (`#355 <https://github.com/gallantlab/pycortex/pull/355>`_)
-- New views for `cortex.export.plot_panels` and passing of additional kwargs (`#361 <https://github.com/gallantlab/pycortex/pull/361>`_, `#362 <https://github.com/gallantlab/pycortex/pull/362>`_)
+- New views for ``cortex.export.plot_panels`` and passing of additional kwargs (`#361 <https://github.com/gallantlab/pycortex/pull/361>`_, `#362 <https://github.com/gallantlab/pycortex/pull/362>`_)
 - Specify colorbar location with default positionings for quickflat (`#364 <https://github.com/gallantlab/pycortex/pull/364>`_)
 - Pass custom colors for ``VolumeRGB`` (`#366 <https://github.com/gallantlab/pycortex/pull/366>`_)
 
