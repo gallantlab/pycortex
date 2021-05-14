@@ -18,7 +18,7 @@ Changelog
 
 - Parameter names for ``freesurfer.import_flat`` (`4371b26 <https://github.com/gallantlab/pycortex/commit/4371b2633a0b7180e3893484af61a941ba5029b9>`_)
 - Fix left/right location of hemispheres for medial-pivot view (`c3b029e <https://github.com/gallantlab/pycortex/commit/c3b029e96c7ffa67c8c35c7af47c045e0161abc3>`_)
-- Animation functions in ``webgl.view`` (`90c1431 <https://github.com/gallantlab/pycortex/commit/90c1431e20c8cc76bb593f7fcd5416ca476508a7>`_)
+- Animation functions in ``webgl.view`` (`#372 <https://github.com/gallantlab/pycortex/pull/372>`_)
 - Various fixes to 2D volumes
 - String encoding in ``openctm.pyx`` (`6dc80db <https://github.com/gallantlab/pycortex/commit/6dc80db6305f0ad97e7b857e083958636fab2233>`_)
 
