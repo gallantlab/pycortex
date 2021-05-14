@@ -25,6 +25,7 @@ lib64
 # NOTE: the filestore really should never be in the git repo... Needs work.
 filestore/db/*/cache
 filestore/db/*/surface-info
+filestore
 
 # Installer logs
 pip-log.txt
