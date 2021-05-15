@@ -4,19 +4,19 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>cortex.utils.get_roi_masks &#8212; pycortex 0.1 documentation</title>
-    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>cortex.utils.get_roi_masks &#8212; pycortex 1.2.1.dev31 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery-binder.css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery-dataframe.css" />
-    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="../_static/gallery-rendered-html.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script src="../_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
@@ -35,11 +35,11 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="cortex-utils-get-roi-masks">
+  <section id="cortex-utils-get-roi-masks">
 <h1>cortex.utils.get_roi_masks<a class="headerlink" href="#cortex-utils-get-roi-masks" title="Permalink to this headline">¶</a></h1>
 <dl class="py function">
-<dt id="cortex.utils.get_roi_masks">
-<code class="sig-prename descclassname">cortex.utils.</code><code class="sig-name descname">get_roi_masks</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">subject</span></em>, <em class="sig-param"><span class="n">xfmname</span></em>, <em class="sig-param"><span class="n">roi_list</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">gm_sampler</span><span class="o">=</span><span class="default_value">'cortical'</span></em>, <em class="sig-param"><span class="n">split_lr</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">allow_overlap</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">fail_for_missing_rois</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">exclude_empty_rois</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">threshold</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">return_dict</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">overlay_file</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/utils.html#get_roi_masks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cortex.utils.get_roi_masks" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cortex.utils.get_roi_masks">
+<span class="sig-prename descclassname"><span class="pre">cortex.utils.</span></span><span class="sig-name descname"><span class="pre">get_roi_masks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subject</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xfmname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gm_sampler</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cortical'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split_lr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_overlap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fail_for_missing_rois</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_empty_rois</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlay_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/utils.html#get_roi_masks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.utils.get_roi_masks" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a dictionary of roi masks</p>
 <p>This function returns a single 3D array with a separate numerical index for each ROI,</p>
 <dl class="field-list">
@@ -131,7 +131,7 @@ within that voxel). For such cases, it is recommended to use ‘cortical’, ‘
 ‘thin’ as your <cite>gm_sampler</cite>.</p>
 </dd></dl>
 
-</div>
+</section>
 
 
           </div>
@@ -206,7 +206,7 @@ within that voxel). For such cases, it is recommended to use ‘cortical’, ‘
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

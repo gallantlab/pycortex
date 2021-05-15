@@ -1,4 +1,4 @@
-cortex.polyutils.Surface
+﻿cortex.polyutils.Surface
 ========================
 
 .. currentmodule:: cortex.polyutils

@@ -1,4 +1,4 @@
-cortex.surfinfo.distortion
+﻿cortex.surfinfo.distortion
 ==========================
 
 .. currentmodule:: cortex.surfinfo

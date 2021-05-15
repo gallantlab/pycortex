@@ -1,4 +1,4 @@
-cortex.dataset.Dataset
+﻿cortex.dataset.Dataset
 ======================
 
 .. currentmodule:: cortex.dataset

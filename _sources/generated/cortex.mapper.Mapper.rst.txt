@@ -1,4 +1,4 @@
-cortex.mapper.Mapper
+﻿cortex.mapper.Mapper
 ====================
 
 .. currentmodule:: cortex.mapper

@@ -4,19 +4,19 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebGL Viewer Overview &#8212; pycortex 0.1 documentation</title>
-    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>WebGL Viewer Overview &#8212; pycortex 1.2.1.dev31 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery-binder.css" />
     <link rel="stylesheet" type="text/css" href="../_static/gallery-dataframe.css" />
-    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="../_static/gallery-rendered-html.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script src="../_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
@@ -35,7 +35,7 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="webgl-viewer-overview">
+  <section id="webgl-viewer-overview">
 <h1>WebGL Viewer Overview<a class="headerlink" href="#webgl-viewer-overview" title="Permalink to this headline">¶</a></h1>
 <p>WebGL viewers enable interactive 3D displays of brain data in the web browser using a simple set of commands (see demo examples). The use of a web browser as the front end for pycortex also allows an unprecedented level of interactivity. For example, the anatomical surface can be flattened interactively simply by dragging a slider. This interactive design helps the user to develop a clear sense of the correspondence between flattened and folded surfaces.</p>
 <ul class="simple">
@@ -49,10 +49,10 @@
 </ul>
 <p>Pycortex can also display temporally varying time-series data on the cortical surface in real time. This allows simultaneous visualization of the experimental paradigm and the functional data in real time</p>
 <p>It is simple to post pycortex visualizations to a web page for public viewing. These static visualizations are generated using a simple command that generates a single web page with most resources embedded directly. The surface structure, data, and the webpage can then be posted to any public facing web site. For example, the online Neurovault data repository (<a class="reference external" href="http://neurovault.org">http://neurovault.org</a>) now makes use of pycortex, and any fMRI data uploaded to Neurovault can be visualized automatically in pycortex. These visualizations are visible at a static web address that can be referenced in papers and shared with anyone with a web browser.</p>
-<div class="section" id="using-the-webgl-viewer">
+<section id="using-the-webgl-viewer">
 <h2>Using the WebGL Viewer<a class="headerlink" href="#using-the-webgl-viewer" title="Permalink to this headline">¶</a></h2>
 <p>There are two ways to create a WebGL viewer. A <strong>dynamic viewer</strong> is temporary viewer that is hosted by the pyhton process that generated it. A <strong>static viewer</strong> is a viewer that is saved permanently to disk and will persist beyond the lifetime of the python process. Using a static viewer requires hosting the created directory with a webserver such as nginx.</p>
-<div class="section" id="keyboard-shortcuts">
+<section id="keyboard-shortcuts">
 <h3>Keyboard Shortcuts<a class="headerlink" href="#keyboard-shortcuts" title="Permalink to this headline">¶</a></h3>
 <p>There are many keyboard shortcuts that allow for more fluid interaction with the WebGL viewer. A complete list of keyboard shortcuts can also be displayed in the viewer by pressing the <strong>h</strong> key.</p>
 <table class="docutils align-default">
@@ -137,11 +137,11 @@
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="view-controls">
+</section>
+<section id="view-controls">
 <h3>View Controls<a class="headerlink" href="#view-controls" title="Permalink to this headline">¶</a></h3>
 <p>The <strong>Open Controls</strong> button in the upper right corner opens a control panel for many different display options.</p>
-<div class="section" id="camera-controls">
+<section id="camera-controls">
 <h4>Camera Controls<a class="headerlink" href="#camera-controls" title="Permalink to this headline">¶</a></h4>
 <table class="docutils align-default">
 <colgroup>
@@ -174,8 +174,8 @@
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="surface-controls">
+</section>
+<section id="surface-controls">
 <h4>Surface Controls<a class="headerlink" href="#surface-controls" title="Permalink to this headline">¶</a></h4>
 <table class="docutils align-default">
 <colgroup>
@@ -211,8 +211,8 @@
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="overlay-controls">
+</section>
+<section id="overlay-controls">
 <h4>Overlay Controls<a class="headerlink" href="#overlay-controls" title="Permalink to this headline">¶</a></h4>
 <table class="docutils align-default">
 <colgroup>
@@ -233,10 +233,10 @@
 </tr>
 </tbody>
 </table>
-</div>
-</div>
-</div>
-<div class="section" id="webgl-viewer-technical-details">
+</section>
+</section>
+</section>
+<section id="webgl-viewer-technical-details">
 <h2>WebGL Viewer Technical Details<a class="headerlink" href="#webgl-viewer-technical-details" title="Permalink to this headline">¶</a></h2>
 <p>Pycortex uses custom shaders that implement pixel-based mapping. During 3D graphics rendering, the color of each pixel is determined by some predefined code at the fragment shading step. Under a traditional fixed-function pipeline, fragment shading is performed by a rasterizer that implements vertex-based mapping (Woo et al., 1999). In contrast, the fragment shader in pycortex projects each pixel into the functional space in 3D, and then samples the underlying volume data by reading from a texture. Nearest-neighbor or trilinear sampling is automatically performed by OpenGL when the data is read from the texture. This generates a fully interactive and accurate real-time visualization.</p>
 <p>The webgl module contains code that parses and generates the HTML and javascript code required to display surface data in a web browser. It provides two possible use cases: a dynamic view that can be controlled by a back end python web server, and a static view that generates static HTML files for upload into an existing web server. The OpenCTM library (Geelnard, 2009) is used to compress the surface mesh into a form that can be utilized by the web browser. If a dynamic view is requested, the webgl module sets up a local web server with all the required surface and data files accessible to the web browser. If a static view is requested, all HTML and javascript code is embedded into a single HTML document and saved to a set of files. Data (in the form of compressed mosaic images) and surface structures are stored separately. These standalone visualizations can then be copied to a web server to be shared with colleagues, included as links in published articles, or shared online with a broad audience.</p>
@@ -244,8 +244,8 @@
 <p>Pycortex also includes a javascript plugin architecture that allows new interactive visualizations to be developed easily. For example, the static viewer released with Huth et al. (2012) <a class="reference external" href="http://gallantlab.org/brainviewer/huthetal2012/">http://gallantlab.org/brainviewer/huthetal2012/</a> contains a plugin that allows the user to visualize how 1765 distinct semantic features are mapped across the cortical surface (Figure 7). Clicking a point on the brain picks the closest voxel and the viewer displays the semantic category tuning for the associated voxel.</p>
 <p>Finally, pycortex provides a bi-directional communication framework between python and javascript, so that actions in javascript can be scripted and manipulated in python. This powerful interaction dynamic allows exploratory data analysis in a way never before possible for fMRI.</p>
 <p>For further details see <em>Gao JS, Huth AG, Lescroart MD and Gallant JL (2015) Pycortex: an interactive surface visualizer for fMRI. Front. Neuroinform. 9:23. doi: 10.3389/fninf.2015.00023</em></p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -320,7 +320,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

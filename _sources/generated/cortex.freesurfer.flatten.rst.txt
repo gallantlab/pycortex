@@ -1,4 +1,4 @@
-cortex.freesurfer.flatten
+﻿cortex.freesurfer.flatten
 =========================
 
 .. currentmodule:: cortex.freesurfer

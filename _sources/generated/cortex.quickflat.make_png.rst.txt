@@ -1,4 +1,4 @@
-cortex.quickflat.make\_png
+﻿cortex.quickflat.make\_png
 ==========================
 
 .. currentmodule:: cortex.quickflat

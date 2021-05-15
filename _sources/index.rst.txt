@@ -12,10 +12,6 @@ This documentation is still under development. Please report errors or bugs at h
 For a list of recent changes, please see the :ref:`changelog`.
 
 
-Quickstart
------------
-
-
 User Guide
 ----------
 .. toctree::
@@ -50,7 +46,7 @@ If you use pycortex in published work, please cite the `pycortex paper <http://d
 
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`

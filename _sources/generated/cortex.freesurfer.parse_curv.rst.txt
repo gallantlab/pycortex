@@ -1,4 +1,4 @@
-cortex.freesurfer.parse\_curv
+﻿cortex.freesurfer.parse\_curv
 =============================
 
 .. currentmodule:: cortex.freesurfer

@@ -1,4 +1,4 @@
-cortex.anat.brainmask
+﻿cortex.anat.brainmask
 =====================
 
 .. currentmodule:: cortex.anat

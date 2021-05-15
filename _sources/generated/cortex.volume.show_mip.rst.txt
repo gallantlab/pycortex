@@ -1,4 +1,4 @@
-cortex.volume.show\_mip
+﻿cortex.volume.show\_mip
 =======================
 
 .. currentmodule:: cortex.volume

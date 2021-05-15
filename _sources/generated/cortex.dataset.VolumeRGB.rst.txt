@@ -1,4 +1,4 @@
-cortex.dataset.VolumeRGB
+﻿cortex.dataset.VolumeRGB
 ========================
 
 .. currentmodule:: cortex.dataset

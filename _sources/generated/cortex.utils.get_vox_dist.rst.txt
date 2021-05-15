@@ -1,4 +1,4 @@
-cortex.utils.get\_vox\_dist
+﻿cortex.utils.get\_vox\_dist
 ===========================
 
 .. currentmodule:: cortex.utils

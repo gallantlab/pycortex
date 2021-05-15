@@ -1,4 +1,4 @@
-cortex.align.autotweak
+﻿cortex.align.autotweak
 ======================
 
 .. currentmodule:: cortex.align

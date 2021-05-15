@@ -1,4 +1,4 @@
-cortex.freesurfer.SpringLayout
+﻿cortex.freesurfer.SpringLayout
 ==============================
 
 .. currentmodule:: cortex.freesurfer

@@ -1,4 +1,4 @@
-cortex.dataset.Vertex2D
+﻿cortex.dataset.Vertex2D
 =======================
 
 .. currentmodule:: cortex.dataset

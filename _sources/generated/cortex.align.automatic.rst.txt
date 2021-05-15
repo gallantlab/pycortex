@@ -1,4 +1,4 @@
-cortex.align.automatic
+﻿cortex.align.automatic
 ======================
 
 .. currentmodule:: cortex.align

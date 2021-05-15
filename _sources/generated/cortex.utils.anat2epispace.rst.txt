@@ -1,4 +1,4 @@
-cortex.utils.anat2epispace
+﻿cortex.utils.anat2epispace
 ==========================
 
 .. currentmodule:: cortex.utils

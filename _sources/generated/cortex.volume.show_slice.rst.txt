@@ -1,4 +1,4 @@
-cortex.volume.show\_slice
+﻿cortex.volume.show\_slice
 =========================
 
 .. currentmodule:: cortex.volume

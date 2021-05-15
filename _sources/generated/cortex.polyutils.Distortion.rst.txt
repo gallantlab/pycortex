@@ -1,4 +1,4 @@
-cortex.polyutils.Distortion
+﻿cortex.polyutils.Distortion
 ===========================
 
 .. currentmodule:: cortex.polyutils

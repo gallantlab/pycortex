@@ -1,4 +1,4 @@
-cortex.volume.mosaic
+﻿cortex.volume.mosaic
 ====================
 
 .. currentmodule:: cortex.volume

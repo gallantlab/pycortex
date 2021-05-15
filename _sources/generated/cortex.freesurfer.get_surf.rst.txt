@@ -1,4 +1,4 @@
-cortex.freesurfer.get\_surf
+﻿cortex.freesurfer.get\_surf
 ===========================
 
 .. currentmodule:: cortex.freesurfer

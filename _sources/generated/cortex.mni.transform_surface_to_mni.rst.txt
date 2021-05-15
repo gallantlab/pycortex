@@ -1,4 +1,4 @@
-cortex.mni.transform\_surface\_to\_mni
+﻿cortex.mni.transform\_surface\_to\_mni
 ======================================
 
 .. currentmodule:: cortex.mni

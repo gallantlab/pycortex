@@ -1,4 +1,4 @@
-cortex.utils.get\_ctmpack
+﻿cortex.utils.get\_ctmpack
 =========================
 
 .. currentmodule:: cortex.utils

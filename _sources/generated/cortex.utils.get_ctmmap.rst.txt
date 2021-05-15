@@ -1,4 +1,4 @@
-cortex.utils.get\_ctmmap
+﻿cortex.utils.get\_ctmmap
 ========================
 
 .. currentmodule:: cortex.utils

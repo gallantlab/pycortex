@@ -1,4 +1,4 @@
-cortex.freesurfer.make\_fiducial
+﻿cortex.freesurfer.make\_fiducial
 ================================
 
 .. currentmodule:: cortex.freesurfer

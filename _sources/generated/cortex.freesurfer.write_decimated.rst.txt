@@ -1,4 +1,4 @@
-cortex.freesurfer.write\_decimated
+﻿cortex.freesurfer.write\_decimated
 ==================================
 
 .. currentmodule:: cortex.freesurfer

@@ -1,4 +1,4 @@
-cortex.utils.get\_aseg\_mask
+﻿cortex.utils.get\_aseg\_mask
 ============================
 
 .. currentmodule:: cortex.utils

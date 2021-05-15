@@ -1,4 +1,4 @@
-cortex.surfinfo.thickness
+﻿cortex.surfinfo.thickness
 =========================
 
 .. currentmodule:: cortex.surfinfo

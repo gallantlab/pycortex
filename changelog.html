@@ -4,19 +4,19 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Changelog &#8212; pycortex 0.1 documentation</title>
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Changelog &#8212; pycortex 1.2.1.dev31 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
     <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
     <link rel="stylesheet" type="text/css" href="_static/gallery-binder.css" />
     <link rel="stylesheet" type="text/css" href="_static/gallery-dataframe.css" />
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="_static/gallery-rendered-html.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
    
@@ -35,16 +35,34 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="changelog">
+  <section id="changelog">
 <span id="id1"></span><h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="id2">
-<h2>1.2.0<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<section id="id2">
+<h2>1.2.1<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p><strong>Added</strong></p>
+<ul class="simple">
+<li><p>Allow option to perform automatic alignment with Freesurfer’s BBR for volumes without distortion correction (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/5d7d6ca73845986fcc182899289218132be99604">5d7d6ca</a>)</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">line_lanczos</span></code> to available mappers (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/77212535da1ad17930697b8cf2f497ae09d2898b">7721253</a>)</p></li>
+<li><p>Use Freesurfer’s BBR by default for automatic alignment (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/384">#384</a>)</p></li>
+</ul>
+<p><strong>Fixed</strong></p>
+<ul class="simple">
+<li><p>Parameter names for <code class="docutils literal notranslate"><span class="pre">freesurfer.import_flat</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/4371b2633a0b7180e3893484af61a941ba5029b9">4371b26</a>)</p></li>
+<li><p>Fix left/right location of hemispheres for medial-pivot view (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/c3b029e96c7ffa67c8c35c7af47c045e0161abc3">c3b029e</a>)</p></li>
+<li><p>Animation functions in <code class="docutils literal notranslate"><span class="pre">webgl.view</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/372">#372</a>)</p></li>
+<li><p>Various fixes to 2D volumes</p></li>
+<li><p>Installation with numpy &lt; 1.2 (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/385">#385</a>)</p></li>
+<li><p>String encoding in <code class="docutils literal notranslate"><span class="pre">openctm.pyx</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/6dc80db6305f0ad97e7b857e083958636fab2233">6dc80db</a>)</p></li>
+</ul>
+</section>
+<section id="id7">
+<h2>1.2.0<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
 <p><strong>Added</strong></p>
 <ul class="simple">
 <li><p>More functionality to import fMRIprep-processed data (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/315">#315</a>)</p></li>
 <li><p>Function to rotate flatmaps (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/f88a195382c9611c492eda2c525e9ab5595bcc37">f88a</a>)</p></li>
 <li><p>Option to ignore NaNs when averaging across the thickness of cortex (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/355">#355</a>)</p></li>
-<li><p>New views for <cite>cortex.export.plot_panels</cite> and passing of additional kwargs (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/361">#361</a>, <a class="reference external" href="https://github.com/gallantlab/pycortex/pull/362">#362</a>)</p></li>
+<li><p>New views for <code class="docutils literal notranslate"><span class="pre">cortex.export.plot_panels</span></code> and passing of additional kwargs (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/361">#361</a>, <a class="reference external" href="https://github.com/gallantlab/pycortex/pull/362">#362</a>)</p></li>
 <li><p>Specify colorbar location with default positionings for quickflat (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/364">#364</a>)</p></li>
 <li><p>Pass custom colors for <code class="docutils literal notranslate"><span class="pre">VolumeRGB</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/366">#366</a>)</p></li>
 </ul>
@@ -58,16 +76,16 @@
 <li><p>Inkscape compatibility with newer versions (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/365">#365</a>)</p></li>
 <li><p>Use correct contrast for automatic alignment with FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">bbregister</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/39d8fe6766f4ecacd0251a5798ea354528ec8eae">39d8</a>)</p></li>
 </ul>
-</div>
-<div class="section" id="id15">
-<h2>1.1.1<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="id20">
+<h2>1.1.1<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h2>
 <p><strong>Fixed</strong></p>
 <ul class="simple">
 <li><p>Installation fix for PyPi</p></li>
 </ul>
-</div>
-<div class="section" id="id16">
-<h2>1.1.0<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="id21">
+<h2>1.1.0<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h2>
 <p><strong>Added</strong></p>
 <ul class="simple">
 <li><p>Added function <code class="docutils literal notranslate"><span class="pre">cortex.utils.download_subject</span></code> to download new subjects for pycortex from web URLs. This function allows users to download FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">fsaverage</span></code> surface, with a flatmap and ROI labels made by Mark Lescroart (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/344">#344</a>)</p></li>
@@ -91,8 +109,8 @@
 <li><p>Firefox compatibility fixes  (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/306">#306</a>)</p></li>
 <li><p>Miscellaneous python 3 fixes</p></li>
 </ul>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -167,7 +185,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

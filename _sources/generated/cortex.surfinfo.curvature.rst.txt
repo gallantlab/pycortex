@@ -1,4 +1,4 @@
-cortex.surfinfo.curvature
+﻿cortex.surfinfo.curvature
 =========================
 
 .. currentmodule:: cortex.surfinfo

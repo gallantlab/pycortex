@@ -1,4 +1,4 @@
-cortex.database.Database
+﻿cortex.database.Database
 ========================
 
 .. currentmodule:: cortex.database

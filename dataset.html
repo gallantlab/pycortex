@@ -4,19 +4,19 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pycortex Data Structures &#8212; pycortex 0.1 documentation</title>
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Pycortex Data Structures &#8212; pycortex 1.2.1.dev31 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
     <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
     <link rel="stylesheet" type="text/css" href="_static/gallery-binder.css" />
     <link rel="stylesheet" type="text/css" href="_static/gallery-dataframe.css" />
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="_static/gallery-rendered-html.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
    
@@ -35,10 +35,10 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="pycortex-data-structures">
+  <section id="pycortex-data-structures">
 <h1>Pycortex Data Structures<a class="headerlink" href="#pycortex-data-structures" title="Permalink to this headline">¶</a></h1>
 <p>Pycortex implements a set of helper functions that help normalize and standard data formats. It also wraps h5py to provide a standard way to store your data in HDF format.</p>
-<div class="section" id="quickstart">
+<section id="quickstart">
 <h2>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this headline">¶</a></h2>
 <p><a class="reference internal" href="generated/cortex.dataset.Dataset.html#cortex.dataset.Dataset" title="cortex.dataset.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a> objects can be defined implicitly using a tuple syntax:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
@@ -64,8 +64,8 @@
 <span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">dv</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="overview">
+</section>
+<section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
 <p>Pycortex’s main data structures consists of the <a class="reference internal" href="generated/cortex.dataset.Dataset.html#cortex.dataset.Dataset" title="cortex.dataset.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a>, and the Dataview classes <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.dataset.Vertex"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.VolumeRGB.html#cortex.dataset.VolumeRGB" title="cortex.dataset.VolumeRGB"><code class="xref py py-class docutils literal notranslate"><span class="pre">VolumeRGB</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.VertexRGB.html#cortex.dataset.VertexRGB" title="cortex.dataset.VertexRGB"><code class="xref py py-class docutils literal notranslate"><span class="pre">VertexRGB</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Volume2d</span></code>, <a class="reference internal" href="generated/cortex.dataset.Vertex2D.html#cortex.dataset.Vertex2D" title="cortex.dataset.Vertex2D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex2D</span></code></a>.</p>
 <blockquote>
@@ -77,8 +77,8 @@
 <li><p><a class="reference internal" href="generated/cortex.dataset.Volume2D.html#cortex.dataset.Volume2D" title="cortex.dataset.Volume2D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume2D</span></code></a> is a <code class="xref py py-class docutils literal notranslate"><span class="pre">Dataview</span></code> object that holds a pair of volumetric data, to be displayed using a 2D colormap.</p></li>
 </ul>
 </div></blockquote>
-</div>
-<div class="section" id="dataviews">
+</section>
+<section id="dataviews">
 <h2>Dataviews<a class="headerlink" href="#dataviews" title="Permalink to this headline">¶</a></h2>
 <p>Dataview is a parent class that is instantiated in the form of one of the following subclasses: <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.dataset.Vertex"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.VolumeRGB.html#cortex.dataset.VolumeRGB" title="cortex.dataset.VolumeRGB"><code class="xref py py-class docutils literal notranslate"><span class="pre">VolumeRGB</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.VertexRGB.html#cortex.dataset.VertexRGB" title="cortex.dataset.VertexRGB"><code class="xref py py-class docutils literal notranslate"><span class="pre">VertexRGB</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.Volume2D.html#cortex.dataset.Volume2D" title="cortex.dataset.Volume2D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume2D</span></code></a>, <a class="reference internal" href="generated/cortex.dataset.Vertex2D.html#cortex.dataset.Vertex2D" title="cortex.dataset.Vertex2D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex2D</span></code></a>. All dataviews have the following additional kwargs:</p>
 <blockquote>
@@ -91,7 +91,7 @@
 </ul>
 </div></blockquote>
 <p>In all following examples, <strong>kwargs</strong> contains these options.</p>
-<div class="section" id="volume-and-vertex">
+<section id="volume-and-vertex">
 <h3>Volume and Vertex<a class="headerlink" href="#volume-and-vertex" title="Permalink to this headline">¶</a></h3>
 <p>These are your basic data classes. They have the following call signatures:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vol</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="n">nparray</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -110,14 +110,14 @@
 </div>
 <p><a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> also supports masked data. Masked data is data in which the following operation has occurred:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-<span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">&gt;</span> <span class="o">.</span><span class="mi">5</span>
+<span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">.5</span>
 </pre></div>
 </div>
 <p>This is good for limiting the number of voxels required to model. Masks are delicate; you have to have the exact mask, otherwise the linear ordering of the voxels required to reconstruct the 3D volume is lost. It is hightly recommended that you store masks in the pycortex database for this reason. See <span class="xref std std-ref">database-masks</span> for more information about storing masks.</p>
 <p>Generally, the <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> class will automatically understand masked data, assuming the mask exists in the database. If you have masked data where the mask does not exist in the database, you must provide it in the mask keyword argument.</p>
 <p>Volume and Vertex objects can also be implicitly defined using a tuple syntax, as highlighted in the quickstart above.</p>
-</div>
-<div class="section" id="rgb-data">
+</section>
+<section id="rgb-data">
 <h3>RGB data<a class="headerlink" href="#rgb-data" title="Permalink to this headline">¶</a></h3>
 <p>If you have data which does not require colormapping, it is possible to directly plot them using an RGB dataview. The calling signature looks like this:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgb</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">VolumeRGB</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -126,8 +126,8 @@
 </div>
 <p>You can provide either numpy arrays or <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> objects for the red, green, blue, and alpha channels. If you provide <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> objects, the subject and xfmname keywords must remain None. If you provide numpy arrays for red/green/blue, subject must not be None.</p>
 <p>If you provided either numpy arrays or <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> objects without vmin/vmax, the data will be normalized and cast to uint8 in order to display them. This means that the data will automatically be scaled between 0-255 and quantized. If your data is already normalized between 0 and 1, this will not occur.</p>
-</div>
-<div class="section" id="d-dataviews">
+</section>
+<section id="d-dataviews">
 <h3>2D dataviews<a class="headerlink" href="#d-dataviews" title="Permalink to this headline">¶</a></h3>
 <p>In order to specify 2D data views in webgl, this helper class lets you specify a pair of <a class="reference internal" href="generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.dataset.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> objects to be plotted using a 2D colormap. Currently, quickflat does not yet support 2D colormaps. To declare a 2D dataview:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dim1</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
@@ -135,9 +135,9 @@
 <span class="n">twod</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume2D</span><span class="p">(</span><span class="n">dim1</span><span class="p">,</span> <span class="n">dim2</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmin2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-</div>
-<div class="section" id="dataset">
+</section>
+</section>
+<section id="dataset">
 <h2>Dataset<a class="headerlink" href="#dataset" title="Permalink to this headline">¶</a></h2>
 <p>Dataset objects hold a dictionary of DataView objects. Its main function is saving out data into a standardized HDF format. Datasets also allow subject data packing, if you desire to send data to someone without the subject database.</p>
 <p>In addition, Datasets provide data deduplication. This is especially important for the webgl views, in order to reduce the amount of data transfer between server and client. Deduplication is accomplished using a SHA1 hash of the raw numpy data. This is not a foolproof method, but given the constraints of visualizing volumetric data, additional Numpy attributes do not need to be included in the hash.</p>
@@ -182,8 +182,8 @@
     <span class="n">name2</span><span class="p">[</span><span class="n">dataref</span><span class="p">,</span> <span class="n">desc</span><span class="p">,</span> <span class="n">cmap</span><span class="p">,</span> <span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="p">,</span> <span class="n">state</span><span class="p">]</span>
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -258,7 +258,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

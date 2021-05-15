@@ -1,4 +1,4 @@
-cortex.utils.get\_roi\_mask
+﻿cortex.utils.get\_roi\_mask
 ===========================
 
 .. currentmodule:: cortex.utils

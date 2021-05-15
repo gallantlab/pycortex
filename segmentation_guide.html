@@ -4,19 +4,19 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Surface Segmentation and Flattening &#8212; pycortex 0.1 documentation</title>
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Surface Segmentation and Flattening &#8212; pycortex 1.2.1.dev31 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
     <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
     <link rel="stylesheet" type="text/css" href="_static/gallery-binder.css" />
     <link rel="stylesheet" type="text/css" href="_static/gallery-dataframe.css" />
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="_static/gallery-rendered-html.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Surface Database" href="database.html" />
@@ -37,7 +37,7 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="surface-segmentation-and-flattening">
+  <section id="surface-segmentation-and-flattening">
 <h1>Surface Segmentation and Flattening<a class="headerlink" href="#surface-segmentation-and-flattening" title="Permalink to this headline">¶</a></h1>
 <p>Welcome! This is a guide for the full process of making flatmaps, which allow us to visualize brain data in a more intuitive way than voxelized 3D images of brain data. There are three main phases of the process:</p>
 <p><strong>1. Segmentation</strong></p>
@@ -53,7 +53,7 @@
 <div><p><code class="docutils literal notranslate"><span class="pre">tar</span> <span class="pre">xvf</span> <span class="pre">filename.tar</span></code></p>
 </div></blockquote>
 <p>If possible, you want to proceed with MEMPRAGE RMS data.</p>
-<div class="section" id="starting-setting-up-freesurfer">
+<section id="starting-setting-up-freesurfer">
 <h2>Starting &amp; Setting up Freesurfer<a class="headerlink" href="#starting-setting-up-freesurfer" title="Permalink to this headline">¶</a></h2>
 <dl class="simple">
 <dt>To open freesurfer:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">source_directory_name_here/SetUpFreeSurfer.sh</span></code></p>
@@ -62,8 +62,8 @@
 </dd>
 </dl>
 <p>Create a “subjects” directory. If a “subjects” directory doesn’t exist, make one in the FreeSurfer directory. Freesurfer is finicky about directories, so this step is crucial.</p>
-</div>
-<div class="section" id="importing-data-into-freesurfer">
+</section>
+<section id="importing-data-into-freesurfer">
 <h2>Importing Data Into Freesurfer<a class="headerlink" href="#importing-data-into-freesurfer" title="Permalink to this headline">¶</a></h2>
 <p>After you’ve unpacked the raw data, there are 2 ways to choose from to import your data to into freesurfer:</p>
 <dl class="simple">
@@ -80,8 +80,8 @@
 </dd>
 </dl>
 <p>The ‘-s Subject’ portion creates a folder, in this case a folder titled “Subject”. The folder should be named for the subject.</p>
-</div>
-<div class="section" id="creating-pial-white-matter-surfaces">
+</section>
+<section id="creating-pial-white-matter-surfaces">
 <h2>Creating Pial &amp; White Matter Surfaces<a class="headerlink" href="#creating-pial-white-matter-surfaces" title="Permalink to this headline">¶</a></h2>
 <p>Now that the anatomical data for your subject has been imported into Freesurfer and a new
 directory has been created, you next want to run a command called autorecon1 to separate
@@ -89,7 +89,7 @@ the brain from the rest of the anatomy (eyes, muscle, etc.), and then manually c
 correct potential errors. Next, you will need to determine the surfaces of the brain – both the
 pial surface as well as the white matter. This is done using the command autorecon2.
 Following this, you will manually make edits to these newly created surfaces.</p>
-<div class="section" id="autorecon1-separating-brain-from-other-anatomy">
+<section id="autorecon1-separating-brain-from-other-anatomy">
 <h3>Autorecon1: Separating Brain from Other Anatomy<a class="headerlink" href="#autorecon1-separating-brain-from-other-anatomy" title="Permalink to this headline">¶</a></h3>
 <p>The autorecon1 command motion corrects and conforms, normalizes, computes the Talairach transform, and strips the skull. Keep in mind that this command takes approximately 30-40 minutes, so make sure you’re ready before running it. To use the command type:</p>
 <blockquote>
@@ -99,7 +99,7 @@ Following this, you will manually make edits to these newly created surfaces.</p
 <dt>For example:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">recon-all</span> <span class="pre">-autorecon1</span> <span class="pre">-s</span> <span class="pre">Subject</span></code></p>
 </dd>
 </dl>
-<div class="section" id="manual-edits-to-the-anatomical">
+<section id="manual-edits-to-the-anatomical">
 <h4>Manual Edits to the Anatomical<a class="headerlink" href="#manual-edits-to-the-anatomical" title="Permalink to this headline">¶</a></h4>
 <p>At this stage, you just want to make sure that autorecon1 ran successfully and that large parts
 of non-brain anatomy were not left behind. If big chunks of eye or skull were left behind, it is
@@ -168,9 +168,9 @@ If you are finished with the mask, enter 1. Otherwise enter 3.</p>
 <div class="line-block">
 <div class="line"><br /></div>
 </div>
-</div>
-</div>
-<div class="section" id="autorecon2-creating-surfaces">
+</section>
+</section>
+<section id="autorecon2-creating-surfaces">
 <h3>Autorecon2: Creating Surfaces<a class="headerlink" href="#autorecon2-creating-surfaces" title="Permalink to this headline">¶</a></h3>
 <p>Here, you will be creating both white and gray matter surfaces using the autorecon2
 command. When the command is complete, there will be outlines on the brain indicating that
@@ -208,9 +208,9 @@ it shouldn’t (such as gray matter and/or leftover pieces of eye or skull) as w
 (middle click) to regions that appear to have white matter but aren’t included in the
 green/yellow surfaces. Make sure to hit “A” to switch to edit mode.</p>
 <p>Autorecon on the white matter surface should take about 2 hours. These manual edits are an iterative process; when it’s done, go back and look over the 3D surface, and make any changes that seem necessary. New spikes can appear in unexpected places, so three or four iterations may be needed, probably more if you are just starting to learn how to do it.</p>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
           </div>
@@ -292,7 +292,7 @@ green/yellow surfaces. Make sure to hit “A” to switch to edit mode.</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

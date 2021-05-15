@@ -1,4 +1,4 @@
-cortex.freesurfer.import\_subj
+﻿cortex.freesurfer.import\_subj
 ==============================
 
 .. currentmodule:: cortex.freesurfer

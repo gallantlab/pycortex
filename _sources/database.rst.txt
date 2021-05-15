@@ -50,13 +50,13 @@ Command access
 For the direct command access, there are two call signatures::
 
     import cortex
-    pts, polys = cortex.db.get_surf('AH', 'fiducial', merge=True)
+    pts, polys = cortex.db.get_surf('S1', 'fiducial', merge=True)
 
 This returns the points and polygons of the given subject and surface type. Hemisphere defaults to "both", and since ``merge`` is true, they are vertically stacked **left, then right**. The polygon indices are shifted up for the right hemisphere to make a single unified geometry.
 
 With ``merge=False``, the return looks different::
 
-    left, right = cortex.db.get_surf('AH', 'fiducial', merge=False)
+    left, right = cortex.db.get_surf('S1', 'fiducial', merge=False)
     lpts, lpolys = left
     rpts, rpolys = right
 
@@ -82,7 +82,7 @@ Selecting the subject **S1** and pressing <<TAB>> gives you additional choices::
      cortex.db.S1.filestore  cortex.db.S1.surfaces
      cortex.db.S1.subject    cortex.db.S1.transforms
 
-    In [5]: cortex.db.AH.surfaces.
+    In [5]: cortex.db.S1.surfaces.
      cortex.db.S1.surfaces.flat     cortex.db.S1.surfaces.pia
      cortex.db.S1.surfaces.inflated cortex.db.S1.surfaces.wm
 
@@ -90,8 +90,8 @@ Selecting "surfaces" gives you a list of all surface types associated with that 
 
 Finally, selecting one surface type will give you two new functions: get, and show::
     
-    In [6]: left, right = cortex.db.AH.surfaces.inflated.get()
-    In [7]: cortex.db.AH.surfaces.fiducial.show()
+    In [6]: left, right = cortex.db.S1.surfaces.inflated.get()
+    In [7]: cortex.db.S1.surfaces.fiducial.show()
 
 
 Adding new surfaces
@@ -124,7 +124,7 @@ Similar to the surfaces, transforms can be access through two methods: direct co
 Command access looks like this::
 
     import cortex
-    xfm = cortex.db.get_xfm('AH', 'AH_huth', xfmtype='coord')
+    xfm = cortex.db.get_xfm('S1', 'fullhead', xfmtype='coord')
 
 Tab complete looks like this::
 

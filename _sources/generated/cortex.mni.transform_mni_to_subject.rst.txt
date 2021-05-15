@@ -1,4 +1,4 @@
-cortex.mni.transform\_mni\_to\_subject
+﻿cortex.mni.transform\_mni\_to\_subject
 ======================================
 
 .. currentmodule:: cortex.mni

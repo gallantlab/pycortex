@@ -1,4 +1,4 @@
-cortex.surfinfo.tissots\_indicatrix
+﻿cortex.surfinfo.tissots\_indicatrix
 ===================================
 
 .. currentmodule:: cortex.surfinfo

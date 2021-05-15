@@ -1,4 +1,4 @@
-cortex.utils.get\_hemi\_masks
+﻿cortex.utils.get\_hemi\_masks
 =============================
 
 .. currentmodule:: cortex.utils

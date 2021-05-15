@@ -1,4 +1,4 @@
-cortex.segment.init\_subject
+﻿cortex.segment.init\_subject
 ============================
 
 .. currentmodule:: cortex.segment

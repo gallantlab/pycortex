@@ -1,4 +1,4 @@
-cortex.freesurfer.import\_flat
+﻿cortex.freesurfer.import\_flat
 ==============================
 
 .. currentmodule:: cortex.freesurfer

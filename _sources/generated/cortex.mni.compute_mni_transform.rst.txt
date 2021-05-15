@@ -1,4 +1,4 @@
-cortex.mni.compute\_mni\_transform
+﻿cortex.mni.compute\_mni\_transform
 ==================================
 
 .. currentmodule:: cortex.mni

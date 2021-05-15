@@ -1,4 +1,4 @@
-cortex.utils.vertex\_to\_voxel
+﻿cortex.utils.vertex\_to\_voxel
 ==============================
 
 .. currentmodule:: cortex.utils

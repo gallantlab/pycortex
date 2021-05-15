@@ -1,4 +1,4 @@
-cortex.surfinfo.flat\_border
+﻿cortex.surfinfo.flat\_border
 ============================
 
 .. currentmodule:: cortex.surfinfo
