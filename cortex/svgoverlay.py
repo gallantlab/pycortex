@@ -223,6 +223,15 @@ class SVGOverlay(object):
         missing bits=32 keyword input argument, did not seeme necessary to specify
         png bits.
         """
+        # Give a more informative error in case we don't have inkscape
+        # installed
+        if INKSCAPE_VERSION is None:
+            raise RuntimeError(
+                "Inkscape doesn't seem to be installed on this system."
+                "SVGOverlay.get_texture requires inkscape."
+                "Please make sure that inkscape is installed and that is "
+                "accessible from the terminal.")
+
         import matplotlib.pyplot as plt
         # Set the size of the texture
         if background is not None:
