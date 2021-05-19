@@ -309,9 +309,11 @@ class Vertex(VertexData, Dataview):
         Colormap (or colormap name) to use. If not given defaults to matplotlib
         default colormap.
     vmin : float, optional
-        Minimum value in colormap. If not given, defaults to TODO:WHAT
+        Minimum value in colormap. If not given, defaults to the 1st percentile
+        of the data.
     vmax : float, optional
-        Maximum value in colormap. If not given defaults to TODO:WHAT
+        Maximum value in colormap. If not given defaults to the 99th percentile
+        of the data.
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
     **kwargs
