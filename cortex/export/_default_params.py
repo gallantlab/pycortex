@@ -102,7 +102,7 @@ params_occipital_triple_view = {
     ],
 }
 
-params_inflated_lateral_medial_ventral = {
+params_inflatedless_lateral_medial_ventral = {
     "figsize": [10, 9],
     "panels": [
         {
