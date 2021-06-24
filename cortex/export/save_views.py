@@ -188,6 +188,13 @@ angle_view_params = {
         'surface.{subject}.pivot': 180,
         'surface.{subject}.shift': 10,
     },
+    'top_pivot': {
+        'camera.azimuth': 180,
+        'camera.altitude': 0,
+        'camera.target': [0, -100, 0],
+        'surface.{subject}.pivot': 180,
+        'surface.{subject}.shift': 10,
+    },
 }
 
 unfold_view_params = {
