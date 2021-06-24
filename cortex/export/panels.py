@@ -8,9 +8,10 @@ import matplotlib.pyplot as plt
 
 from .save_views import save_3d_views
 from ._default_params import (
-    params_inflated_lateral_medial_ventral,
+    params_inflatedless_lateral_medial_ventral,
     params_occipital_triple_view,
-    params_flatmap_lateral_medial
+    params_flatmap_lateral_medial,
+    params_inflated_dorsal_lateral_medial_ventral
 )
 
 
