@@ -144,3 +144,74 @@ params_inflated_lateral_medial_ventral = {
             }
         }]
 }
+
+
+params_inflated_dorsal_lateral_medial_ventral = {
+    "figsize": [10, 10],
+    "panels": [
+        {
+            "extent": [0.0, 0.0, 0.5, .20],
+            "view": {
+                "hemisphere": "left",
+                "angle": "bottom_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.000, .20, 0.5, .3],
+            "view": {
+                "hemisphere": "left",
+                "angle": "medial_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.000, .50, 0.5, .3],
+            "view": {
+                "hemisphere": "left",
+                "angle": "lateral_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.000, .80, 0.5, .20],
+            "view": {
+                "hemisphere": "left",
+                "angle": "top_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.5, 0.0, 0.5, .20],
+            "view": {
+                "hemisphere": "right",
+                "angle": "bottom_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.5, .20, 0.5, .30],
+            "view": {
+                "hemisphere": "right",
+                "angle": "medial_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.5, .50, 0.5, .30],
+            "view": {
+                "hemisphere": "right",
+                "angle": "lateral_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.5, .80, 0.5, .20],
+            "view": {
+                "hemisphere": "right",
+                "angle": "top_pivot",
+                "surface": "inflated",
+            },
+        },
+    ],
+}
