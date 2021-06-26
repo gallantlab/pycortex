@@ -12,6 +12,8 @@ def save_3d_views(
     list_angles=["lateral_pivot"],
     list_surfaces=["inflated"],
     viewer_params=dict(labels_visible=[], overlays_visible=["rois"]),
+    interpolation="nearest",
+    layers=1,
     size=(1024 * 4, 768 * 4),
     trim=True,
     sleep=10,
@@ -46,6 +48,14 @@ def save_3d_views(
     viewer_params: dict
         Parameters passed to the viewer.
 
+    interpolation: str
+        Interpolation use to visualize the data. Possible choices are "nearest",
+        "trilinear". (Default: "nearest").
+
+    layers: int
+        Number of layers between the white and pial surfaces to average prior to
+        plotting the data. (Default: 1).
+
     size: tuple of int
         Size of produced image (before trimming).
 
@@ -68,6 +78,12 @@ def save_3d_views(
     # Wait for the viewer to be loaded
     time.sleep(sleep)
 
+    # Add interpolation and layers params
+    interpolation_params = {
+        "surface.{subject}.sampler": interpolation,
+        "surface.{subject}.layers": layers
+    }
+
     file_names = []
     for view, surface in zip(list_angles, list_surfaces):
         if isinstance(view, str):
@@ -84,6 +100,7 @@ def save_3d_views(
 
         # Combine view parameters
         this_view_params = default_view_params.copy()
+        this_view_params.update(interpolation_params)
         this_view_params.update(view_params)
         this_view_params.update(surface_params)
         print(this_view_params)
