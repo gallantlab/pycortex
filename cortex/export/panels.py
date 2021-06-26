@@ -11,14 +11,19 @@ from ._default_params import (
     params_inflatedless_lateral_medial_ventral,
     params_occipital_triple_view,
     params_flatmap_lateral_medial,
-    params_inflated_dorsal_lateral_medial_ventral
+    params_inflated_dorsal_lateral_medial_ventral,
 )
 
 
-def plot_panels(volume, panels, figsize=(16, 9), windowsize=(1600*4, 900*4), 
-                save_name=None, sleep=10,
-                viewer_params=dict(labels_visible=[],
-                                   overlays_visible=['rois'])):
+def plot_panels(
+    volume,
+    panels,
+    figsize=(16, 9),
+    windowsize=(1600 * 4, 900 * 4),
+    save_name=None,
+    sleep=10,
+    viewer_params=dict(labels_visible=[], overlays_visible=["rois"]),
+):
     """Plot on the same figure a number of views, as defined by a list of panel
 
     Parameters
@@ -70,37 +75,44 @@ def plot_panels(volume, panels, figsize=(16, 9), windowsize=(1600*4, 900*4),
 
     """
     # list of couple of angles and surfaces
-    angles_and_surfaces = [(panel['view']['angle'], panel['view']['surface'])
-                           for panel in panels]
+    angles_and_surfaces = [
+        (panel["view"]["angle"], panel["view"]["surface"]) for panel in panels
+    ]
     # remove redundant couples, e.g. left and right
     angles_and_surfaces = list(set(angles_and_surfaces))
     list_angles, list_surfaces = list(zip(*angles_and_surfaces))
 
     # create all images
     temp_dir = tempfile.mkdtemp()
-    base_name = os.path.join(temp_dir, 'fig')
-    filenames = save_3d_views(volume, base_name, list_angles=list_angles,
-                              list_surfaces=list_surfaces, trim=True,
-                              size=windowsize, sleep=sleep,
-                              viewer_params=viewer_params)
+    base_name = os.path.join(temp_dir, "fig")
+    filenames = save_3d_views(
+        volume,
+        base_name,
+        list_angles=list_angles,
+        list_surfaces=list_surfaces,
+        trim=True,
+        size=windowsize,
+        sleep=sleep,
+        viewer_params=viewer_params,
+    )
 
     fig = plt.figure(figsize=figsize)
     for panel in panels:
-        
+
         # load image
-        angle_and_surface = (panel['view']['angle'], panel['view']['surface'])
+        angle_and_surface = (panel["view"]["angle"], panel["view"]["surface"])
         index = angles_and_surfaces.index(angle_and_surface)
         image = plt.imread(filenames[index])
 
         # chose hemisphere
-        if 'hemisphere' in panel['view']:
+        if "hemisphere" in panel["view"]:
             left, right = np.split(image, [image.shape[1] // 2], axis=1)
 
-            if panel['view']['angle'] == 'medial_pivot':
+            if panel["view"]["angle"] == "medial_pivot":
                 # inverted view, we need to swap left and right
                 left, right = right, left
 
-            if panel['view']['hemisphere'] == 'left':
+            if panel["view"]["hemisphere"] == "left":
                 image = left
             else:
                 image = right
@@ -110,25 +122,25 @@ def plot_panels(volume, panels, figsize=(16, 9), windowsize=(1600*4, 900*4),
         image = image[:, image.sum(axis=0).sum(axis=1) > 0]
 
         # zoom
-        if 'zoom' in panel['view']:
-            left, bottom, width, height = panel['view']['zoom']
+        if "zoom" in panel["view"]:
+            left, bottom, width, height = panel["view"]["zoom"]
             left = int(left * image.shape[1])
             width = int(width * image.shape[1])
             bottom = int(bottom * image.shape[0])
             height = int(height * image.shape[0])
-            image = image[bottom:bottom + height]
-            image = image[:, left:left + width]
+            image = image[bottom : bottom + height]
+            image = image[:, left : left + width]
 
         # add ax and image
-        ax = plt.axes(panel['extent'])
-        ax.axis('off')
+        ax = plt.axes(panel["extent"])
+        ax.axis("off")
         ax.imshow(image)
 
     # note that you might get a slightly different layout with `plt.show()`
     # since it might use a different backend
     if save_name is not None:
-        fig.savefig(save_name, bbox_inches='tight', dpi=100)
-        
+        fig.savefig(save_name, bbox_inches="tight", dpi=100)
+
     # delete temporary directory
     try:
         shutil.rmtree(temp_dir)
