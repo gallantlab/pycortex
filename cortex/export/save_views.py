@@ -49,7 +49,7 @@ def save_3d_views(
         Parameters passed to the viewer.
 
     interpolation: str
-        Interpolation use to visualize the data. Possible choices are "nearest",
+        Interpolation used to visualize the data. Possible choices are "nearest",
         "trilinear". (Default: "nearest").
 
     layers: int

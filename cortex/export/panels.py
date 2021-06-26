@@ -23,6 +23,8 @@ def plot_panels(
     save_name=None,
     sleep=10,
     viewer_params=dict(labels_visible=[], overlays_visible=["rois"]),
+    interpolation="nearest",
+    layers=1,
 ):
     """Plot on the same figure a number of views, as defined by a list of panel
 
@@ -63,6 +65,14 @@ def plot_panels(
     viewer_params: dict
         Parameters passed to the viewer.
 
+    interpolation: str
+        Interpolation used to visualize the data. Possible choices are "nearest",
+        "trilinear". (Default: "nearest").
+
+    layers: int
+        Number of layers between the white and pial surfaces to average prior to
+        plotting the data. (Default: 1).
+
     Returns
     -------
     fig : matplotlib.Figure
@@ -94,6 +104,8 @@ def plot_panels(
         size=windowsize,
         sleep=sleep,
         viewer_params=viewer_params,
+        interpolation=interpolation,
+        layers=layers,
     )
 
     fig = plt.figure(figsize=figsize)
