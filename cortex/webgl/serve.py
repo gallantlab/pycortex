@@ -3,7 +3,6 @@ import re
 import time
 import json
 import stat
-import sys
 import email
 try:  # python 2
     from Queue import Queue
