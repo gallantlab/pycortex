@@ -32,10 +32,7 @@ hostname = socket.gethostname()
 def make_base64(imgfile):
     with open(imgfile, 'rb') as img:
         mtype = mimetypes.guess_type(imgfile)[0]
-        if sys.version_info[0] < 3:
-            imbytes = base64.encodestring(img.read())
-        else:
-            imbytes = base64.encodebytes(img.read())
+        imbytes = base64.encodebytes(img.read())
         data = imbytes.decode('utf-8').strip()
         return u"data:{mtype};base64,{data}".format(mtype=mtype, data=data)
 
