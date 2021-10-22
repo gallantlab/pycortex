@@ -170,6 +170,7 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
                     extent=extents,
                     label='data',
                     zorder=1,
+                    interpolation="nearest",
                     **cmapdict)
     return img, extents
 
