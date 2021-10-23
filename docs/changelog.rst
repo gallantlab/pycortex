@@ -4,6 +4,17 @@ Changelog
 ==========
 
 
+1.2.2
+------
+
+**Added**
+
+- Add Blue/Purple/Red/Orange/Green colormap (`#395 <https://github.com/gallantlab/pycortex/pull/395>`_)
+
+**Fixed**
+
+- Add more informative error in get_texture if inkscape is not installed (`#391 <https://github.com/gallantlab/pycortex/pull/391>`_)
+
 1.2.1
 -----
 
