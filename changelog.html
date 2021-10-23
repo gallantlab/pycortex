@@ -6,13 +6,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>Changelog &#8212; pycortex 1.2.1.dev31 documentation</title>
+    <title>Changelog &#8212; pycortex 1.2.2.devdirty documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="_static/gallery.css" />
-    <link rel="stylesheet" type="text/css" href="_static/gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="_static/gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="_static/gallery-rendered-html.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css" />
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
@@ -38,7 +38,22 @@
   <section id="changelog">
 <span id="id1"></span><h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h1>
 <section id="id2">
-<h2>1.2.1<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<h2>1.2.2<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p><strong>Added</strong></p>
+<ul class="simple">
+<li><p>Enhancements to <code class="docutils literal notranslate"><span class="pre">cortex.export</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/394">#394</a>)</p></li>
+<li><p>Add Blue/Purple/Red/Orange/Green colormap (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/395">#395</a>)</p></li>
+</ul>
+<p><strong>Fixed</strong></p>
+<ul class="simple">
+<li><p>Add more informative error in get_texture if inkscape is not installed (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/391">#391</a>)</p></li>
+<li><p>Handle byte encoding with newer Python versions (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/397">#397</a>)</p></li>
+<li><p>Allow vertex data to be passed to <code class="docutils literal notranslate"><span class="pre">cortex.segment.cut_surface</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/399">#399</a>)</p></li>
+<li><p>Set default imshow interpolation to nearest for <code class="docutils literal notranslate"><span class="pre">composite.add_data</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/402">#402</a>)</p></li>
+</ul>
+</section>
+<section id="id9">
+<h2>1.2.1<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
 <p><strong>Added</strong></p>
 <ul class="simple">
 <li><p>Allow option to perform automatic alignment with Freesurfer’s BBR for volumes without distortion correction (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/5d7d6ca73845986fcc182899289218132be99604">5d7d6ca</a>)</p></li>
@@ -55,8 +70,8 @@
 <li><p>String encoding in <code class="docutils literal notranslate"><span class="pre">openctm.pyx</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/6dc80db6305f0ad97e7b857e083958636fab2233">6dc80db</a>)</p></li>
 </ul>
 </section>
-<section id="id7">
-<h2>1.2.0<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<section id="id14">
+<h2>1.2.0<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h2>
 <p><strong>Added</strong></p>
 <ul class="simple">
 <li><p>More functionality to import fMRIprep-processed data (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/315">#315</a>)</p></li>
@@ -77,15 +92,15 @@
 <li><p>Use correct contrast for automatic alignment with FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">bbregister</span></code> (<a class="reference external" href="https://github.com/gallantlab/pycortex/commit/39d8fe6766f4ecacd0251a5798ea354528ec8eae">39d8</a>)</p></li>
 </ul>
 </section>
-<section id="id20">
-<h2>1.1.1<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h2>
+<section id="id27">
+<h2>1.1.1<a class="headerlink" href="#id27" title="Permalink to this headline">¶</a></h2>
 <p><strong>Fixed</strong></p>
 <ul class="simple">
 <li><p>Installation fix for PyPi</p></li>
 </ul>
 </section>
-<section id="id21">
-<h2>1.1.0<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h2>
+<section id="id28">
+<h2>1.1.0<a class="headerlink" href="#id28" title="Permalink to this headline">¶</a></h2>
 <p><strong>Added</strong></p>
 <ul class="simple">
 <li><p>Added function <code class="docutils literal notranslate"><span class="pre">cortex.utils.download_subject</span></code> to download new subjects for pycortex from web URLs. This function allows users to download FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">fsaverage</span></code> surface, with a flatmap and ROI labels made by Mark Lescroart (<a class="reference external" href="https://github.com/gallantlab/pycortex/pull/344">#344</a>)</p></li>
@@ -163,7 +178,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -185,7 +200,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

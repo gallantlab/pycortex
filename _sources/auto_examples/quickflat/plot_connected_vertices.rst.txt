@@ -32,9 +32,10 @@ connecting lines.
 
 
 
-.. image:: /auto_examples/quickflat/images/sphx_glr_plot_connected_vertices_001.png
-    :alt: plot connected vertices
-    :class: sphx-glr-single-img
+.. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_connected_vertices_001.png
+   :alt: plot connected vertices
+   :srcset: /auto_examples/quickflat/images/sphx_glr_plot_connected_vertices_001.png
+   :class: sphx-glr-single-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -76,7 +77,7 @@ connecting lines.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 2 minutes  13.962 seconds)
+   **Total running time of the script:** ( 2 minutes  15.814 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_connected_vertices.py:

@@ -29,9 +29,10 @@ defined in the SVG ROI file (see :doc:`/rois.rst`).
 
 
 
-.. image:: /auto_examples/utils/images/sphx_glr_plot_get_roi_vertices_001.png
-    :alt: plot get roi vertices
-    :class: sphx-glr-single-img
+.. image-sg:: /auto_examples/utils/images/sphx_glr_plot_get_roi_vertices_001.png
+   :alt: plot get roi vertices
+   :srcset: /auto_examples/utils/images/sphx_glr_plot_get_roi_vertices_001.png
+   :class: sphx-glr-single-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -70,7 +71,7 @@ defined in the SVG ROI file (see :doc:`/rois.rst`).
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  2.226 seconds)
+   **Total running time of the script:** ( 0 minutes  2.330 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_get_roi_vertices.py:

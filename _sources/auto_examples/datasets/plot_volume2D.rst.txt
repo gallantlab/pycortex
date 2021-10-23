@@ -52,21 +52,24 @@ used in the last flatmap is
 
     *
 
-      .. image:: /auto_examples/datasets/images/sphx_glr_plot_volume2D_001.png
-          :alt: plot volume2D
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/datasets/images/sphx_glr_plot_volume2D_001.png
+         :alt: plot volume2D
+         :srcset: /auto_examples/datasets/images/sphx_glr_plot_volume2D_001.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/datasets/images/sphx_glr_plot_volume2D_002.png
-          :alt: plot volume2D
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/datasets/images/sphx_glr_plot_volume2D_002.png
+         :alt: plot volume2D
+         :srcset: /auto_examples/datasets/images/sphx_glr_plot_volume2D_002.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/datasets/images/sphx_glr_plot_volume2D_003.png
-          :alt: plot volume2D
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/datasets/images/sphx_glr_plot_volume2D_003.png
+         :alt: plot volume2D
+         :srcset: /auto_examples/datasets/images/sphx_glr_plot_volume2D_003.png
+         :class: sphx-glr-multi-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -127,7 +130,7 @@ used in the last flatmap is
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  6.380 seconds)
+   **Total running time of the script:** ( 0 minutes  6.747 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volume2D.py:

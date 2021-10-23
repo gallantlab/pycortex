@@ -6,13 +6,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>cortex.webgl.show &#8212; pycortex 1.2.1.dev31 documentation</title>
+    <title>cortex.webgl.show &#8212; pycortex 1.2.2.devdirty documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/gallery-rendered-html.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css" />
     <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
@@ -37,6 +37,71 @@
             
   <section id="cortex-webgl-show">
 <h1>cortex.webgl.show<a class="headerlink" href="#cortex-webgl-show" title="Permalink to this headline">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="cortex.webgl.show">
+<span class="sig-prename descclassname"><span class="pre">cortex.webgl.</span></span><span class="sig-name descname"><span class="pre">show</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('inflated',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RdBu_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autoclose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">open_browser</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pickerfun</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">template</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mixer.html'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlays_available</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlays_visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('rois',</span> <span class="pre">'sulci')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels_visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('rois',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlay_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Brain'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/webgl/view.html#show"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.webgl.show" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a webGL MRI viewer that is dynamically served by a tornado server
+running inside the current python process.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>data</strong><span class="classifier">Dataset object or implicit Dataset</span></dt><dd><p>Dataset object containing all the data you wish to plot. Can be any type
+of implicit dataset, such as a single Volume, Vertex, etc. object or a
+dictionary of Volume, Vertex. etc. objects.</p>
+</dd>
+<dt><strong>autoclose</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, the tornado server will automatically be destroyed when the last
+web client has disconnected. If False, the server will stay open,
+allowing more connections. Default True</p>
+</dd>
+<dt><strong>open_browser</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, uses the webbrowser library to open the viewer in the default
+local browser. Default True</p>
+</dd>
+<dt><strong>port</strong><span class="classifier">int or None, optional</span></dt><dd><p>The port that will be used by the server. If None, a random port will be
+selected from the range 1024-65536. Default None</p>
+</dd>
+<dt><strong>pickerfun</strong><span class="classifier">funcion or None, optional</span></dt><dd><p>Should be a function that takes two arguments, a voxel index and a vertex
+index. Is called whenever a location on the surface is clicked in the
+viewer. This can be used to print information about individual voxels or
+vertices, plot receptive fields, or many other uses. Default None</p>
+</dd>
+<dt><strong>recache</strong><span class="classifier">bool, optional</span></dt><dd><p>Force recreation of CTM and SVG files for surfaces. Default False</p>
+</dd>
+<dt><strong>template</strong><span class="classifier">string, optional</span></dt><dd><p>Name of template HTML file. Default ‘mixer.html’</p>
+</dd>
+<dt><strong>overlays_visible</strong><span class="classifier">tuple, optional</span></dt><dd><p>The listed overlay layers will be set visible by default. Layers not listed
+here will be hidden by default (but can be enabled in the viewer GUI).
+Default (‘rois’, ‘sulci’)</p>
+</dd>
+<dt><strong>labels_visible</strong><span class="classifier">tuple, optional</span></dt><dd><p>Labels for the listed layers will be set visible by default. Labels for
+layers not listed here will be hidden by default (but can be enabled in
+the viewer GUI). Default (‘rois’, )</p>
+</dd>
+<dt><strong>**kwargs</strong></dt><dd><p>All additional keyword arguments are passed to the template renderer.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Other Parameters</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>types</strong><span class="classifier">tuple, optional</span></dt><dd><p>Types of surfaces to include in addition to the original (fiducial, pial,
+and white matter) and flat surfaces. Default (‘inflated’, )</p>
+</dd>
+<dt><strong>cmap</strong><span class="classifier">string, optional</span></dt><dd><p>Name of default colormap. Default ‘RdBu_r’
+TODO: DOES THIS DO ANYTHING ANYMORE?</p>
+</dd>
+<dt><strong>overlay_file</strong><span class="classifier">str or None, optional</span></dt><dd><p>Custom overlays.svg file to use instead of the default one for this
+subject (if not None). Default None.</p>
+</dd>
+<dt><strong>title</strong><span class="classifier">str, optional</span></dt><dd><p>The title that is displayed on the viewer website when it is loaded in
+a browser.</p>
+</dd>
+<dt><strong>layout</strong><span class="classifier">(int, int), optional</span></dt><dd><p>The layout of the viewer subwindows for showing multiple subjects.
+Default None, which selects the layout based on the number of subjects.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 
@@ -90,7 +155,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -112,7 +177,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -40,15 +40,17 @@ has the value NaN.
 
     *
 
-      .. image:: /auto_examples/quickflat/images/sphx_glr_plot_thickness_nanmean_001.png
-          :alt: plot thickness nanmean
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_thickness_nanmean_001.png
+         :alt: plot thickness nanmean
+         :srcset: /auto_examples/quickflat/images/sphx_glr_plot_thickness_nanmean_001.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/quickflat/images/sphx_glr_plot_thickness_nanmean_002.png
-          :alt: plot thickness nanmean
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_thickness_nanmean_002.png
+         :alt: plot thickness nanmean
+         :srcset: /auto_examples/quickflat/images/sphx_glr_plot_thickness_nanmean_002.png
+         :class: sphx-glr-multi-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -101,7 +103,7 @@ has the value NaN.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  4.517 seconds)
+   **Total running time of the script:** ( 0 minutes  4.820 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_thickness_nanmean.py:

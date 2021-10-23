@@ -4,6 +4,21 @@ Changelog
 ==========
 
 
+1.2.2
+------
+
+**Added**
+
+- Enhancements to ``cortex.export`` (`#394 <https://github.com/gallantlab/pycortex/pull/394>`_)
+- Add Blue/Purple/Red/Orange/Green colormap (`#395 <https://github.com/gallantlab/pycortex/pull/395>`_)
+
+**Fixed**
+
+- Add more informative error in get_texture if inkscape is not installed (`#391 <https://github.com/gallantlab/pycortex/pull/391>`_)
+- Handle byte encoding with newer Python versions (`#397 <https://github.com/gallantlab/pycortex/pull/397>`_)
+- Allow vertex data to be passed to ``cortex.segment.cut_surface`` (`#399 <https://github.com/gallantlab/pycortex/pull/399>`_)
+- Set default imshow interpolation to nearest for ``composite.add_data`` (`#402 <https://github.com/gallantlab/pycortex/pull/402>`_)
+
 1.2.1
 -----
 

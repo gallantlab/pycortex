@@ -58,21 +58,24 @@ shared_vmax` will allow you to specify minimum and maximum values manually.
 
     *
 
-      .. image:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_001.png
-          :alt: plot volumeRGB
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_001.png
+         :alt: plot volumeRGB
+         :srcset: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_001.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_002.png
-          :alt: plot volumeRGB
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_002.png
+         :alt: plot volumeRGB
+         :srcset: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_002.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_003.png
-          :alt: plot volumeRGB
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_003.png
+         :alt: plot volumeRGB
+         :srcset: /auto_examples/datasets/images/sphx_glr_plot_volumeRGB_003.png
+         :class: sphx-glr-multi-img
 
 
 
@@ -141,7 +144,7 @@ shared_vmax` will allow you to specify minimum and maximum values manually.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  18.454 seconds)
+   **Total running time of the script:** ( 0 minutes  18.537 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volumeRGB.py:

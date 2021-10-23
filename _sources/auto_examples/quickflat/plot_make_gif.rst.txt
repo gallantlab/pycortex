@@ -85,15 +85,17 @@ Plot flat maps individually
 
     *
 
-      .. image:: /auto_examples/quickflat/images/sphx_glr_plot_make_gif_001.png
-          :alt: plot make gif
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_make_gif_001.png
+         :alt: plot make gif
+         :srcset: /auto_examples/quickflat/images/sphx_glr_plot_make_gif_001.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/quickflat/images/sphx_glr_plot_make_gif_002.png
-          :alt: plot make gif
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_make_gif_002.png
+         :alt: plot make gif
+         :srcset: /auto_examples/quickflat/images/sphx_glr_plot_make_gif_002.png
+         :class: sphx-glr-multi-img
 
 
 
@@ -160,7 +162,7 @@ Display gif inline in an IPython notebook
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  11.944 seconds)
+   **Total running time of the script:** ( 0 minutes  13.071 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_gif.py:

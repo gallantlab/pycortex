@@ -18,6 +18,13 @@ Accent_r
    :width: 200px
 
 
+BPROG
+
+.. image:: ../filestore/colormaps/BPROG.png
+   :height: 25px
+   :width: 200px
+
+
 BROYG
 
 .. image:: ../filestore/colormaps/BROYG.png

@@ -6,13 +6,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>cortex.dataset.Vertex &#8212; pycortex 1.2.1.dev31 documentation</title>
+    <title>cortex.dataset.Vertex &#8212; pycortex 1.2.2.devdirty documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/gallery-rendered-html.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css" />
     <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
@@ -55,9 +55,11 @@ hemisphere will be filled with zeros.</p>
 <dt><strong>cmap</strong><span class="classifier">str or matplotlib colormap, optional</span></dt><dd><p>Colormap (or colormap name) to use. If not given defaults to matplotlib
 default colormap.</p>
 </dd>
-<dt><strong>vmin</strong><span class="classifier">float, optional</span></dt><dd><p>Minimum value in colormap. If not given, defaults to TODO:WHAT</p>
+<dt><strong>vmin</strong><span class="classifier">float, optional</span></dt><dd><p>Minimum value in colormap. If not given, defaults to the 1st percentile
+of the data.</p>
 </dd>
-<dt><strong>vmax</strong><span class="classifier">float, optional</span></dt><dd><p>Maximum value in colormap. If not given defaults to TODO:WHAT</p>
+<dt><strong>vmax</strong><span class="classifier">float, optional</span></dt><dd><p>Maximum value in colormap. If not given defaults to the 99th percentile
+of the data.</p>
 </dd>
 <dt><strong>description</strong><span class="classifier">str, optional</span></dt><dd><p>String describing this dataset. Displayed in webgl viewer.</p>
 </dd>
@@ -73,8 +75,8 @@ default colormap.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.__init__.html#cortex.dataset.Vertex.__init__" title="cortex.dataset.Vertex.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(data, subject[, cmap, vmin, vmax, …])</p></td>
-<td><p>Initialize self.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.__init__.html#cortex.dataset.Vertex.__init__" title="cortex.dataset.Vertex.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(data, subject[, cmap, vmin, vmax, ...])</p></td>
+<td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="Vertex/cortex.dataset.Vertex.copy.html#cortex.dataset.Vertex.copy" title="cortex.dataset.Vertex.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>(data)</p></td>
 <td><p>Return a new VertexData object for the same subject but with data replaced by the given <cite>data</cite>.</p></td>
@@ -190,7 +192,7 @@ default colormap.</p>
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -212,7 +214,7 @@ default colormap.</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

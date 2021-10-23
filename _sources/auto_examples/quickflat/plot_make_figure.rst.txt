@@ -49,39 +49,45 @@ This can be helpful if you think there is no reason that the
 
     *
 
-      .. image:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_001.png
-          :alt: plot make figure
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_001.png
+         :alt: plot make figure
+         :srcset: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_001.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_002.png
-          :alt: plot make figure
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_002.png
+         :alt: plot make figure
+         :srcset: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_002.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_003.png
-          :alt: plot make figure
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_003.png
+         :alt: plot make figure
+         :srcset: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_003.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_004.png
-          :alt: plot make figure
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_004.png
+         :alt: plot make figure
+         :srcset: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_004.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_005.png
-          :alt: plot make figure
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_005.png
+         :alt: plot make figure
+         :srcset: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_005.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_006.png
-          :alt: plot make figure
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_006.png
+         :alt: plot make figure
+         :srcset: /auto_examples/quickflat/images/sphx_glr_plot_make_figure_006.png
+         :class: sphx-glr-multi-img
 
 
 
@@ -135,7 +141,7 @@ This can be helpful if you think there is no reason that the
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  11.586 seconds)
+   **Total running time of the script:** ( 0 minutes  12.591 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_figure.py:

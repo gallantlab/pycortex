@@ -33,9 +33,10 @@ overlays.svg file in the pycortex filestore for this subject.
 
 
 
-.. image:: /auto_examples/utils/images/sphx_glr_plot_roi_voxel_mask_001.png
-    :alt: plot roi voxel mask
-    :class: sphx-glr-single-img
+.. image-sg:: /auto_examples/utils/images/sphx_glr_plot_roi_voxel_mask_001.png
+   :alt: plot roi voxel mask
+   :srcset: /auto_examples/utils/images/sphx_glr_plot_roi_voxel_mask_001.png
+   :class: sphx-glr-single-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -92,7 +93,7 @@ overlays.svg file in the pycortex filestore for this subject.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  9.618 seconds)
+   **Total running time of the script:** ( 0 minutes  10.105 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_roi_voxel_mask.py:

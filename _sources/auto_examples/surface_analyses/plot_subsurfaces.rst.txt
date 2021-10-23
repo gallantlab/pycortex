@@ -99,9 +99,10 @@ plot data on subsurface
 
 
 
-.. image:: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_001.png
-    :alt: example subsurface data
-    :class: sphx-glr-single-img
+.. image-sg:: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_001.png
+   :alt: example subsurface data
+   :srcset: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_001.png
+   :class: sphx-glr-single-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -172,9 +173,10 @@ create many patches
 
 
 
-.. image:: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_002.png
-    :alt: patches
-    :class: sphx-glr-single-img
+.. image-sg:: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_002.png
+   :alt: patches
+   :srcset: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_002.png
+   :class: sphx-glr-single-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -222,21 +224,24 @@ create geodesic strip patch
 
     *
 
-      .. image:: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_003.png
-          :alt: strip patch
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_003.png
+         :alt: strip patch
+         :srcset: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_003.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_004.png
-          :alt: first coordinate, distance along central geodesic axis
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_004.png
+         :alt: first coordinate, distance along central geodesic axis
+         :srcset: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_004.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_005.png
-          :alt: second coordinate, distance from central geodesic axis
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_005.png
+         :alt: second coordinate, distance from central geodesic axis
+         :srcset: /auto_examples/surface_analyses/images/sphx_glr_plot_subsurfaces_005.png
+         :class: sphx-glr-multi-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -254,7 +259,7 @@ create geodesic strip patch
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  36.999 seconds)
+   **Total running time of the script:** ( 0 minutes  38.890 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_subsurfaces.py:

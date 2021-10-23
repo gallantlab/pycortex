@@ -3,4 +3,4 @@
 
 .. currentmodule:: cortex.webgl
 
-.. autodata:: make_static
+.. autofunction:: make_static

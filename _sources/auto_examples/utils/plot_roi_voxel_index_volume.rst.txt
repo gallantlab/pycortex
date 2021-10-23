@@ -30,9 +30,10 @@ ROIs in the right hemisphere will have positive values.
 
 
 
-.. image:: /auto_examples/utils/images/sphx_glr_plot_roi_voxel_index_volume_001.png
-    :alt: plot roi voxel index volume
-    :class: sphx-glr-single-img
+.. image-sg:: /auto_examples/utils/images/sphx_glr_plot_roi_voxel_index_volume_001.png
+   :alt: plot roi voxel index volume
+   :srcset: /auto_examples/utils/images/sphx_glr_plot_roi_voxel_index_volume_001.png
+   :class: sphx-glr-single-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -41,27 +42,27 @@ ROIs in the right hemisphere will have positive values.
 
  .. code-block:: none
 
-    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:478: UserWarning: Requested layer in svg file (V3A) contains no splines
+    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:487: UserWarning: Requested layer in svg file (V3A) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
     /home/travis/build/gallantlab/pycortex/cortex/utils.py:335: UserWarning: No vertices found in V3A!
       warnings.warn("No vertices found in {}!".format(name))
-    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:478: UserWarning: Requested layer in svg file (V3B) contains no splines
+    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:487: UserWarning: Requested layer in svg file (V3B) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
     /home/travis/build/gallantlab/pycortex/cortex/utils.py:335: UserWarning: No vertices found in V3B!
       warnings.warn("No vertices found in {}!".format(name))
-    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:478: UserWarning: Requested layer in svg file (LO) contains no splines
+    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:487: UserWarning: Requested layer in svg file (LO) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
     /home/travis/build/gallantlab/pycortex/cortex/utils.py:335: UserWarning: No vertices found in LO!
       warnings.warn("No vertices found in {}!".format(name))
-    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:478: UserWarning: Requested layer in svg file (V4) contains no splines
+    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:487: UserWarning: Requested layer in svg file (V4) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
     /home/travis/build/gallantlab/pycortex/cortex/utils.py:335: UserWarning: No vertices found in V4!
       warnings.warn("No vertices found in {}!".format(name))
-    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:478: UserWarning: Requested layer in svg file (V7) contains no splines
+    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:487: UserWarning: Requested layer in svg file (V7) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
     /home/travis/build/gallantlab/pycortex/cortex/utils.py:335: UserWarning: No vertices found in V7!
       warnings.warn("No vertices found in {}!".format(name))
-    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:478: UserWarning: Requested layer in svg file (IFSFP) contains no splines
+    /home/travis/build/gallantlab/pycortex/cortex/svgoverlay.py:487: UserWarning: Requested layer in svg file (IFSFP) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
     /home/travis/build/gallantlab/pycortex/cortex/utils.py:335: UserWarning: No vertices found in IFSFP!
       warnings.warn("No vertices found in {}!".format(name))
@@ -152,7 +153,7 @@ ROIs in the right hemisphere will have positive values.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  9.600 seconds)
+   **Total running time of the script:** ( 0 minutes  9.711 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_roi_voxel_index_volume.py:

@@ -43,15 +43,17 @@ The two hemispheres must be run separately.
 
     *
 
-      .. image:: /auto_examples/surface_analyses/images/sphx_glr_plot_geodesic_distance_001.png
-          :alt: plot geodesic distance
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/surface_analyses/images/sphx_glr_plot_geodesic_distance_001.png
+         :alt: plot geodesic distance
+         :srcset: /auto_examples/surface_analyses/images/sphx_glr_plot_geodesic_distance_001.png
+         :class: sphx-glr-multi-img
 
     *
 
-      .. image:: /auto_examples/surface_analyses/images/sphx_glr_plot_geodesic_distance_002.png
-          :alt: plot geodesic distance
-          :class: sphx-glr-multi-img
+      .. image-sg:: /auto_examples/surface_analyses/images/sphx_glr_plot_geodesic_distance_002.png
+         :alt: plot geodesic distance
+         :srcset: /auto_examples/surface_analyses/images/sphx_glr_plot_geodesic_distance_002.png
+         :class: sphx-glr-multi-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -114,7 +116,7 @@ The two hemispheres must be run separately.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  26.294 seconds)
+   **Total running time of the script:** ( 0 minutes  28.775 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_distance.py:
