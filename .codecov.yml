@@ -8,12 +8,15 @@
 # ----------------------
 coverage:
   status:
+    project:
+      default:
+        threshold: 1%  # complain if change in codecoverage is greater than 1%
     patch: false
-
   range: 70..90     # First number represents red, and second represents green
-                    # (default is 70..100)
+  # (default is 70..100)
   round: down       # up, down, or nearest
   precision: 2      # Number of decimal places, between 0 and 5
+
 
 # Ignoring Paths
 # --------------
