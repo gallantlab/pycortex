@@ -50,6 +50,7 @@ deploy:
     keep-history: true
     on:
       branch: main
+      tags: true
       # push only once
       python: "3.9"
     local_dir: docs/_build/html/
