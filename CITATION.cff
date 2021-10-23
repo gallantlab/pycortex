@@ -7,12 +7,27 @@ authors:
     given-names: Mark D.
   - family-names: Gallant
     given-names: Jack L.
+title: 'Pycortex: an interactive surface visualizer for fMRI'
+type: software
 cff-version: 1.2.0
-identifiers:
-  - type: doi
-    value: 10.3389/fninf.2015.00023
 message: 'If you use this software, please cite it using the paper from this file.'
 repository: 'https://github.com/gallantlab/pycortex'
-title: 'Pycortex: an interactive surface visualizer for fMRI. '
-type: software
 url: 'https://gallantlab.github.io/pycortex'
+
+preferred-citation:
+  authors:
+    - family-names: Gao
+      given-names: James S.
+    - family-names: Huth
+      given-names: Alexander G.
+    - family-names: Lescroart
+      given-names: Mark D.
+    - family-names: Gallant
+      given-names: Jack L.
+  title: 'Pycortex: an interactive surface visualizer for fMRI'
+  doi: 10.3389/fninf.2015.00023
+  type: article
+  journal: Frontiers in Neuroinformatics
+  volume: 9
+  pages: 23
+  year: 2015
