@@ -1,6 +1,6 @@
 import cortex
-import tempfile
 import numpy as np
+import tempfile
 
 from cortex import db, dataset
 
@@ -204,3 +204,17 @@ def test_vmin_none_in_dataview2d():
     data = np.arange(nverts)
     view = cortex.Vertex2D(data, data + 1, subject=subj)
     cortex.quickshow(view)
+
+def test_dataset_operators():
+    vol = cortex.Volume.random(subj, xfmname)
+    array = np.random.randn(*volshape)
+
+    assert np.allclose(vol.data + array, (vol + array).data)
+    assert np.allclose(vol.data - array, (vol - array).data)
+    assert np.allclose(vol.data * array, (vol * array).data)
+    assert np.allclose(vol.data // array, (vol // array).data) # floordiv
+    assert np.allclose(vol.data / array, (vol / array).data) # truediv
+    # numpy doesn't like fractional powers of negative numbers
+    assert np.allclose(vol.data ** array, (vol ** array).data, equal_nan=True)
+    assert np.allclose(-vol.data, (-vol).data)
+    assert np.allclose(abs(vol.data), abs(vol).data)

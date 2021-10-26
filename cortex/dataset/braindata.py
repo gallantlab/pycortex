@@ -92,14 +92,14 @@ class BrainData(object):
         v ** 2 # Returns new VolumeData with data squared
         """
         # Binary operations
-        npops = ["__add__", "__sub__", "__mul__", "__div__", "__pow__",
-                 "__neg__", "__abs__"]
+        npops = ["__add__", "__sub__", "__mul__", "__floordiv__", "__truediv__",
+                 "__div__", "__pow__", "__neg__", "__abs__"]
 
         def make_opfun(op): # function nesting creates closure containing op
             def opfun(self, *args):
                 return self.copy(getattr(self.data, op)(*args))
             return opfun
-        
+
         for op in npops:
             opfun = make_opfun(op)
             opfun.__name__ = op
