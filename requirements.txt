@@ -14,3 +14,4 @@ nibabel
 networkx>=2.1
 imageio
 wget
+six
