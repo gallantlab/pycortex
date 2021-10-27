@@ -6,6 +6,7 @@ import os
 import glob
 import numpy as np
 import string
+import warnings
 
 from .. import utils
 from .. import dataset
@@ -90,12 +91,9 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
             # sum(weights * non-nan values) / sum(weights on non-nan values)
             nonnan_sum = pixmap.dot(np.nan_to_num(data.ravel()))
             weights_on_nonnan = pixmap.dot((~np.isnan(data.ravel())).astype(data.dtype))
-            # deal with zero values to avoid division by 0
-            mask_zero = weights_on_nonnan == 0
-            weights_on_nonnan[mask_zero] = 1
-            nanmean_data = nonnan_sum / weights_on_nonnan
-            # then the 0s should be nans
-            nanmean_data[mask_zero] = np.nan
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                nanmean_data = nonnan_sum / weights_on_nonnan
             mimg[badmask] = nanmean_data[badmask].astype(mimg.dtype)
 
         img[mask] = mimg
