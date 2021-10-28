@@ -17,14 +17,23 @@ def _repack(linear, n=3):
     return list(zip(*[iter(linear)] * n))
 
 def clear_all():
+    """Remove all objects from the active scene in blender"""
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete()
 
 def init_subject(wpts, ipts, polys, curv):
+    """Initialize a suject """
     print('Started init_subject in blender!')
     obj, mesh = make_object(_repack(wpts), _repack(polys), name='hemi')
     obj.scale = .1, .1, .1
-    C.scene.objects.active = obj
+    if bpy.app.version < (2, 80, 0):
+        # Backward compatibility
+        obj.select = True
+        C.scene.objects.active = obj
+    else:
+        obj.select_set(True)
+        C.view_layer.objects.active = obj
+
     bpy.ops.object.shape_key_add()
     add_vcolor(curv, mesh, name='curvature')
     add_shapekey(_repack(ipts), name='inflated')
@@ -34,7 +43,10 @@ def make_object(pts, polys, name="mesh"):
     mesh = D.meshes.new(name)
     mesh.from_pydata(pts, [], polys)
     obj = D.objects.new(name, mesh)
-    C.scene.objects.link(obj)
+    if bpy.app.version > (2, 80, 0):
+        C.scene.collection.objects.link(obj)
+    else:
+        C.scene.objects.link(obj)
     return obj, mesh
 
 def get_ptpoly(name):
@@ -48,7 +60,10 @@ def get_ptpoly(name):
 
 def add_vcolor(hemis, mesh=None, name='color'):
     if mesh is None:
-        mesh = C.scene.objects.active.data
+        if bpy.app.version < (2, 80, 0):
+            mesh = C.scene.objects.active.data
+        else:
+            mesh = C.view_layer.objects.active.data
     elif isinstance(mesh, str):
         mesh = D.meshes[mesh]
 
