@@ -22,7 +22,7 @@ def clear_all():
     bpy.ops.object.delete()
 
 def init_subject(wpts, ipts, polys, curv):
-    """Initialize a suject """
+    """Initialize a subject """
     print('Started init_subject in blender!')
     obj, mesh = make_object(_repack(wpts), _repack(polys), name='hemi')
     obj.scale = .1, .1, .1
