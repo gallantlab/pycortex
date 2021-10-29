@@ -125,7 +125,7 @@ def edit_segmentation(subject,
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
                 freesurfer_subject_dir=None, flatten_with='freesurfer', 
-                do_import_subject=True, **kwargs):
+                do_import_subject=True, blender_cmd=None, **kwargs):
     """Initializes an interface to cut the segmented surface for flatmapping.
     This function creates or opens a blend file in your filestore which allows
     surfaces to be cut along hand-defined seams. Blender will automatically
@@ -183,12 +183,15 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
     # Add localizer data to facilitate cutting
     if data is not None:
         blender.add_cutdata(fname, data, name=data.description)
-    blender_cmd = options.config.get('dependency_paths', 'blender')
+    if blender_cmd is None:
+        blender_cmd = options.config.get('dependency_paths', 'blender')
+    # May be redundant after blender.fs_cut above...
+    blender._legacy_blender_backup(fname, blender_path=blender_cmd)
     sp.call([blender_cmd, fname])
     patchpath = freesurfer.get_paths(fs_subject, hemi,
                                      freesurfer_subject_dir=freesurfer_subject_dir)
     patchpath = patchpath.format(name=name)
-    blender.write_patch(fname, patchpath)
+    blender.write_patch(fname, patchpath, blender_path=blender_cmd)
     if flatten_with == 'freesurfer':
         done = freesurfer.flatten(fs_subject, hemi, patch=name,
                            freesurfer_subject_dir=freesurfer_subject_dir,
