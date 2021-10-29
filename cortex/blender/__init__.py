@@ -44,7 +44,7 @@ def _call_blender(filename, code, blender_path=default_blender):
         sp.check_call([w.encode() for w in shlex.split(cmd)],)
 
 
-def _get_blender_version(blender_path=default_blender):
+def _check_executable_blender_version(blender_path=default_blender):
     """Get blender version number"""
     blender_version = sp.check_output([blender_path, '--version']).decode()
     blender_version = blender_version.split('\n')[0]
@@ -56,31 +56,46 @@ def _get_blender_version(blender_path=default_blender):
     return blender_major_version_number
 
 
+def _check_file_blender_version(fpath):
+    """Check which version of blender saved a particular file"""
+    import struct
+    with open(fpath, mode='rb') as fid:
+        fid.seek(7)
+        bitness, endianess, major, minor = struct.unpack("sss2s", fid.read(5))
+    return (int(major), int(minor))
+
+
 def _legacy_blender_backup(fname, blender_path=default_blender):
     """Create a copy of a .blend file, because if a blender 2.7x file is 
     opened with blender 2.8+, it usually can't be opened with 2.7x again.
     
     Yes this seems quite bad."""
-    if _get_blender_version(blender_path=blender_path) >= (2, 80):
+    executable_28 = _check_executable_blender_version(blender_path=blender_path) >= (2, 80)
+    file_27 = _check_file_blender_version(fname) < (2,80)
+    if executable_28 and file_27:
         fname_bkup, _ = os.path.splitext(fname)
-        fname_bkup += '_b2.7bkup.blend'
+        fname_bkup += '_b27bkup.blend'
         if os.path.exists(fname_bkup):
             # backup already created
             print("Found extant blender 2.7x backup file, leaving it alone...")
         else:
+
             msg = ["==============================================",
                    "",
-                   "NOTE! If a file is saved with blender 2.8+,",
-                   "it cannot be opened with blender 2.7. Thus, we",
-                   "are saving a backup file for you just in case:",
+                   "WARNING! If a file is saved with blender 2.8+,",
+                   "it cannot be opened with blender 2.7. pycortex is ",
+                   "about to open a file created with blender 2.7 in",
+                   "a newer version of blender (> 2.8). Would you like",
+                   "to create a backup file of the 2.7 version just in",
+                   "case? It will be saved as:",
                    f"{fname_bkup}",
-                   "If you plan to keep using blender 2.8+, you can",
-                   "ignore this message (and the backup file), and",
-                   "sorry for cluttering up your file system.",
-                   "==============================================",
+                   "",
+                   "Y/N:   ",
                    ]
-            print('\n'.join(msg))
-            shutil.copy(fname, fname_bkup)
+            yn = input('\n'.join(msg))
+            if yn.lower()[0] == 'y':
+                print("Backing up file...")
+                shutil.copy(fname, fname_bkup)
 
 
 def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh="hemi", blender_path=default_blender):
