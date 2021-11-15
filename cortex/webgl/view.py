@@ -36,6 +36,7 @@ except NoOptionError:
     if not os.path.exists(cmapdir):
         raise Exception("Colormap directory was not defined in the config file and the default (%s) does not exits"%cmapdir)
 
+domain_name = options.config.get("webgl", "domain_name")
 
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
@@ -817,7 +818,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
 
     server.start()
     print("Started server on port %d"%server.port)
-    url = "http://%s:%d/mixer.html"%(serve.hostname, server.port)
+    url = "http://%s%s:%d/mixer.html"%(serve.hostname, domain_name, server.port)
     if open_browser:
         webbrowser.open(url)
         client = server.get_client()
