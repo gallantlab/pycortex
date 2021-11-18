@@ -186,7 +186,8 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
     if blender_cmd is None:
         blender_cmd = options.config.get('dependency_paths', 'blender')
     # May be redundant after blender.fs_cut above...
-    blender._legacy_blender_backup(fname, blender_path=blender_cmd)
+    if os.path.exists(fname):
+        blender._legacy_blender_backup(fname, blender_path=blender_cmd)
     sp.call([blender_cmd, fname])
     patchpath = freesurfer.get_paths(fs_subject, hemi,
                                      freesurfer_subject_dir=freesurfer_subject_dir)

@@ -36,6 +36,7 @@ def init_subject(wpts, ipts, polys, curv):
 
     bpy.ops.object.shape_key_add()
     add_vcolor(curv, mesh, name='curvature')
+    show_vertex_colors()
     add_shapekey(_repack(ipts), name='inflated')
     obj.use_shape_key_edit_mode = True
 
@@ -58,6 +59,18 @@ def get_ptpoly(name):
     faces.foreach_get('vertices', polys.ravel())
     return pts, polys
 
+
+def show_vertex_colors():
+    """Vertex colors are fussy to find and display via the interface. So display them automatically"""
+    if bpy.app.version > (2, 80, 0):
+        for area in bpy.context.screen.areas:
+            if area.type == 'VIEW_3D':
+                for space in area.spaces:
+                    if space.type == 'VIEW_3D':
+                        space.shading.type = 'SOLID'
+                        space.shading.color_type = 'VERTEX'
+
+
 def add_vcolor(hemis, mesh=None, name='color'):
     if mesh is None:
         if bpy.app.version < (2, 80, 0):
@@ -75,14 +88,14 @@ def add_vcolor(hemis, mesh=None, name='color'):
         if len(mesh.vertices) == len(hemis[1]):
             color = hemis[1]
 
-    vcolor = mesh.vertex_colors.new(name)
+    vcolor = mesh.vertex_colors.new(name=name)
     if hasattr(mesh, "loops"):
         loopidx = [0]*len(mesh.loops)
         mesh.loops.foreach_get('vertex_index', loopidx)
 
         if not isinstance(color[0], (list, tuple)):
             for i, j in enumerate(loopidx):
-                vcolor.data[i].color = [color[j]]*3
+                vcolor.data[i].color = [color[j]]*3 + [1]
         else:
             for i, j in enumerate(loopidx):
                 vcolor.data[i].color = color[j]
