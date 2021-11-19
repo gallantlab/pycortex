@@ -26,7 +26,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install numpy cython
+        pip install wheel numpy cython
         pip install -e . --no-build-isolation
         python -c 'import cortex; print(cortex.__full_version__)'
 
