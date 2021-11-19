@@ -37,6 +37,7 @@ jobs:
 
     - name: Build documents
       run: |
+        pip install -q ipython Sphinx sphinx-gallery numpydoc
         cd docs && make html && cd ..
 
     - name: Run codecov
