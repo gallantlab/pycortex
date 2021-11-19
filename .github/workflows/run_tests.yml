@@ -1,0 +1,44 @@
+name: Tests
+
+on: [push]
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
+      max-parallel: 5
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        pip install numpy cython
+        pip install -e . --no-build-isolation
+        python -c 'import cortex; print(cortex.__full_version__)'
+
+    - name: Test with pytest
+      run: |
+        pip install -q pytest pytest-cov codecov
+        pytest --cov=./
+
+    - name: Build documents
+      run: |
+        cd docs && make html && cd ..
+
+    - name: Run codecov
+      run: |
+        codecov
