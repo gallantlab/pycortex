@@ -3,7 +3,6 @@ name: Build docs
 on:
   workflow_run:
     workflows: ["Tests"]
-    branches: [main]
     types:
       - completed
 
