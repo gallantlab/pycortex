@@ -26,6 +26,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        sudo apt-get install -y inkscape
         pip install wheel numpy cython
         pip install -e . --no-build-isolation
         python -c 'import cortex; print(cortex.__full_version__)'
