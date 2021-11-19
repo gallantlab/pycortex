@@ -32,6 +32,7 @@ jobs:
         pip install -q ipython Sphinx sphinx-gallery numpydoc
         pip install -e . --no-build-isolation
         python -c 'import cortex; print(cortex.__full_version__)'
+        imageio_download_bin
 
     - name: Build documents
       run: |
