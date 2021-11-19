@@ -4,6 +4,7 @@ import tempfile
 import pytest
 
 from cortex import db, dataset
+from cortex.testing_utils import has_installed
 
 subj, xfmname, nverts, volshape = "S1", "fullhead", 304380, (31,100,100)
 
