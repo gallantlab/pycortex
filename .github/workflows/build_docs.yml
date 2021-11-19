@@ -1,0 +1,43 @@
+name: Build docs
+
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    branches: [main]
+    types:
+      - completed
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+      max-parallel: 5
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get install -y inkscape
+        pip install --upgrade pip
+        pip install wheel numpy cython
+        pip install -q ipython Sphinx sphinx-gallery numpydoc
+        pip install -e . --no-build-isolation
+        python -c 'import cortex; print(cortex.__full_version__)'
+
+    - name: Build documents
+      run: |
+        cd docs && make html && cd ..
