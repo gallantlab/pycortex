@@ -28,11 +28,10 @@ jobs:
       run: |
         sudo apt-get install -y inkscape
         pip install --upgrade pip
-        pip install wheel numpy cython
+        pip install wheel numpy cython pillow
         pip install -q ipython Sphinx sphinx-gallery numpydoc
         pip install -e . --no-build-isolation
         python -c 'import cortex; print(cortex.__full_version__)'
-        imageio_download_bin
 
     - name: Build documents
       run: |
