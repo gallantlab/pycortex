@@ -37,11 +37,6 @@ jobs:
         pip install -q pytest pytest-cov codecov
         pytest --cov=./
 
-    - name: Build documents
-      run: |
-        pip install -q ipython Sphinx sphinx-gallery numpydoc
-        cd docs && make html && cd ..
-
     - name: Run codecov
       run: |
         codecov
