@@ -412,7 +412,7 @@ def make_gif(output_destination, volumes, frame_duration=1, **figure_kwargs):
 
     tmpdir.cleanup()
 
-    imageio.mimsave(output_destination, images, format='GIF-PIL', duration=frame_duration)
+    imageio.mimsave(output_destination, images, format='gif', duration=frame_duration)
 
     if hasattr(output_destination, 'seek'):
         output_destination.seek(0)
