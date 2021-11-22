@@ -377,7 +377,7 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
     roipack.get_svg(fname, layers=layers, labels=with_labels, with_ims=image_data)
 
 
-def make_gif(output_destination, volumes, frame_duration=1):
+def make_gif(output_destination, volumes, frame_duration=1, **figure_kwargs):
     """Make an animated gif from several pycortex volumes
 
     Parameters
@@ -388,6 +388,8 @@ def make_gif(output_destination, volumes, frame_duration=1):
     volumes : dict of pycortex Volumes
     duration : float
         The duration of each frame in seconds
+    **figure_kwargs
+        Passed to `cortex.quickflat.make_figure`
 
     Returns
     -------
@@ -401,7 +403,7 @@ def make_gif(output_destination, volumes, frame_duration=1):
     images = []
     for i, name in enumerate(volumes):
         fig = plt.figure(figsize=(12, 6), dpi=100)
-        _ = make_figure(volumes[name], fig=fig)
+        _ = make_figure(volumes[name], fig=fig, **figure_kwargs)
         _ = fig.suptitle(name)
         path = os.path.join(tmpdir.name, str(i) + '.png')
         fig.savefig(path)
