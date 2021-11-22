@@ -5,17 +5,13 @@ on: [push]
 jobs:
   build-docs:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.9]
-      max-parallel: 5
     steps:
     - uses: actions/checkout@v2
 
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: 3.9
 
     - uses: actions/cache@v2
       with:
