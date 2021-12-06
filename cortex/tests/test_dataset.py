@@ -1,10 +1,14 @@
 import cortex
 import numpy as np
 import tempfile
+import pytest
 
 from cortex import db, dataset
+from cortex.testing_utils import has_installed
 
 subj, xfmname, nverts, volshape = "S1", "fullhead", 304380, (31,100,100)
+
+no_inkscape = not has_installed('inkscape')
 
 def test_braindata():
     vol = np.random.randn(*volshape)
@@ -185,6 +189,7 @@ def test_volumedata_copy_with_custom_mask():
     assert np.allclose(v.data, vc.data)
 
 
+@pytest.mark.skipif(no_inkscape, reason='Inkscape required')
 def test_int64_in_dataviewrgb():
     data = np.arange(np.product(volshape)).reshape(volshape, order='C')
     view = cortex.VolumeRGB(data, data + 1, data + 2, subject=subj,
@@ -196,6 +201,7 @@ def test_int64_in_dataviewrgb():
     cortex.quickshow(view)
 
 
+@pytest.mark.skipif(no_inkscape, reason='Inkscape required')
 def test_vmin_none_in_dataview2d():
     data = np.arange(np.product(volshape)).reshape(volshape, order='C')
     view = cortex.Volume2D(data, data + 1, subject=subj, xfmname=xfmname)

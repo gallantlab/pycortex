@@ -17,15 +17,15 @@ np.random.seed(1234)
 # Create several pycortex Volumes
 # 
 
-volumes = {'first': cortex.Volume.random(subject='S1', xfmname='fullhead', vmin=-2, vmax=2),
-           'second': cortex.Volume.random(subject='S1', xfmname='fullhead', vmin=-2, vmax=2)}
+volumes = {'first': cortex.Volume.random(subject='S1', xfmname='fullhead', vmin=-2, vmax=2, cmap="RdBu_r"),
+           'second': cortex.Volume.random(subject='S1', xfmname='fullhead', vmin=-2, vmax=2, cmap="RdBu_r")}
 
 ################################################################################
 # Plot flat maps individually
 #
 
-_ = cortex.quickflat.make_figure(volumes['first'])
-_ = cortex.quickflat.make_figure(volumes['second'])
+_ = cortex.quickflat.make_figure(volumes['first'], colorbar_location="right")
+_ = cortex.quickflat.make_figure(volumes['second'], colorbar_location="right")
 _ = plt.show()
 
 
@@ -34,7 +34,7 @@ _ = plt.show()
 #
 
 filename = "./flatmap_comparison.gif"
-cortex.quickflat.make_gif(filename, volumes, frame_duration=1.5)
+cortex.quickflat.make_gif(filename, volumes, frame_duration=1.5, colorbar_location="right")
 
 ################################################################################
 # Display gif inline in an IPython notebook
@@ -44,7 +44,7 @@ import io
 from IPython.display import Image
 
 stream = io.BytesIO()
-cortex.quickflat.make_gif(stream, volumes, frame_duration=1.5)
+cortex.quickflat.make_gif(stream, volumes, frame_duration=1.5, colorbar_location="right")
 
 Image(stream.read())
 
