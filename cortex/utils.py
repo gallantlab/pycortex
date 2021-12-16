@@ -1005,7 +1005,7 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
         to add more in the future. If provided, URL overrides `subject_id`
     pycortex_store : string or None
         Directory to which to put the new subject folder. If None, defaults to
-        the `filestore` variable specified in the pycortex config file.
+        current filestore in use (`cortex.db.filestore`).
     download_again : bool
         Download the data again even if the subject id is already present in
         the pycortex's database.
@@ -1030,12 +1030,15 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
     print('Downloaded subject {} to {}'.format(subject_id, tmp_dir))
     # Un-tar to pycortex store
     if pycortex_store is None:
-        # Default location is config file pycortex store.
-        pycortex_store = config.get('basic', 'filestore')
+        # Default location is current filestore in cortex.db
+        pycortex_store = db.filestore
     pycortex_store = os.path.expanduser(pycortex_store)
     with tarfile.open(os.path.join(tmp_dir, subject_id + '.tar.gz'), "r:gz") as tar:
         print("Extracting subject {} to {}".format(subject_id, pycortex_store))
         tar.extractall(path=pycortex_store)
+
+    # force filestore reload
+    db._subjects = None  
 
 
 def rotate_flatmap(surf_id, theta, plot=False):
