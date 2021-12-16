@@ -180,6 +180,11 @@ class Database(object):
         self._subjects = dict([(sname, SubjectDB(sname, filestore=self.filestore)) for sname in subjs])
         return self._subjects
 
+    def reload_subjects(self):
+        """Force the reload of the subject dictionary."""
+        self._subjects = None
+        self.subjects
+
     def get_anat(self, subject, type='raw', xfmname=None, recache=False, order=1, **kwargs):
         """Return anatomical information from the filestore. Anatomical information is defined as
         any volume-space anatomical information pertaining to the subject, such as T1 image,

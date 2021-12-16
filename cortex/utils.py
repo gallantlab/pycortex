@@ -1037,8 +1037,8 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
         print("Extracting subject {} to {}".format(subject_id, pycortex_store))
         tar.extractall(path=pycortex_store)
 
-    # force filestore reload
-    db._subjects = None  
+    # reload all subjects from the filestore
+    db.reload_subjects()
 
 
 def rotate_flatmap(surf_id, theta, plot=False):
