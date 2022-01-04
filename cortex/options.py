@@ -19,7 +19,7 @@ files_successfully_read = config.read(usercfg)
 # If user config doesn't exist, create it
 if len(files_successfully_read) == 0:
     if not os.path.exists(userdir):
-        os.mkdir(userdir)
+        os.makedirs(userdir)
     with open(usercfg, 'w') as fp:
         config.write(fp)
         
