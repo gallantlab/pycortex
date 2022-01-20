@@ -324,6 +324,8 @@ var mriview = (function(module) {
     module.Surface.prototype.init = function(dataview) {
 
         this._active = dataview;
+        // Keep current sampler (nearest/trilinear) when the dataview changes.
+        this._active.setFilter(this._sampler);
 
         this.loaded.done(function() {
             var shaders = [];
