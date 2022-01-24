@@ -207,6 +207,10 @@ var dataset = (function(module) {
         if (this.loaded.state() == "pending")
             $("#dataload").show();
 
+        if ('sampler' in opts){
+            this.setFilter(opts.sampler);
+        }
+
         //This only kind of supports multiviews
         //TODO: hash the multiview as a separate object
         var shaders = [];
