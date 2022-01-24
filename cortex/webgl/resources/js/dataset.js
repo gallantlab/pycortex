@@ -428,6 +428,9 @@ var dataset = (function(module) {
     module.VertexData.prototype.init = function(uniforms, dim) {
         //nothing to set...
     }
+    module.VertexData.prototype.setFilter = function(interp) {
+        //nothing to do...
+    }
     module.VertexData.prototype.set = function(uniforms, dim, fframe, dispatch) {
         var name = dim == 0 ? "data0":"data2";
         dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
