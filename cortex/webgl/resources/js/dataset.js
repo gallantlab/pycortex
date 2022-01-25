@@ -207,6 +207,10 @@ var dataset = (function(module) {
         if (this.loaded.state() == "pending")
             $("#dataload").show();
 
+        if ('sampler' in opts){
+            this.setFilter(opts.sampler);
+        }
+
         //This only kind of supports multiviews
         //TODO: hash the multiview as a separate object
         var shaders = [];
@@ -423,6 +427,9 @@ var dataset = (function(module) {
     }
     module.VertexData.prototype.init = function(uniforms, dim) {
         //nothing to set...
+    }
+    module.VertexData.prototype.setFilter = function(interp) {
+        //nothing to do...
     }
     module.VertexData.prototype.set = function(uniforms, dim, fframe, dispatch) {
         var name = dim == 0 ? "data0":"data2";

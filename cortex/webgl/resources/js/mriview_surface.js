@@ -372,7 +372,7 @@ var mriview = (function(module) {
                 halo: false,
                 dither: this._dither,
                 equivolume: this._equivolume,
-                // sampler: this._sampler,
+                sampler: this._sampler,
             });
             this.shaders[dataview.uuid] = shaders[0];
         }.bind(this));
