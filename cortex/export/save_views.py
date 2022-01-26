@@ -26,7 +26,7 @@ def save_3d_views(
 
     Parameters
     ----------
-    volume: pycortex.Volume
+    volume: pycortex.Volume or pycortex.Vertex object
         Data to be displayed.
 
     base_name: str
@@ -78,11 +78,14 @@ def save_3d_views(
     # Wait for the viewer to be loaded
     time.sleep(sleep)
 
-    # Add interpolation and layers params
-    interpolation_params = {
-        "surface.{subject}.sampler": interpolation,
-        "surface.{subject}.layers": layers
-    }
+    # Add interpolation and layers params only if we have a volume
+    if isinstance(volume, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)):
+        interpolation_params = {
+            "surface.{subject}.sampler": interpolation,
+            "surface.{subject}.layers": layers
+        }
+    else:
+        interpolation_params = dict()
 
     file_names = []
     for view, surface in zip(list_angles, list_surfaces):
@@ -163,6 +166,8 @@ default_view_params = {
 angle_view_params = {
     "left": {"camera.azimuth": 90, "camera.altitude": 90,},
     "right": {"camera.azimuth": 270, "camera.altitude": 90,},
+    "left_atl": {"camera.azimuth": 65, "camera.altitude": 100,},
+    "right_atl": {"camera.azimuth": 300, "camera.altitude": 100,},
     "front": {"camera.azimuth": 0, "camera.altitude": 90,},
     "back": {"camera.azimuth": 180, "camera.altitude": 90,},
     "top": {"camera.azimuth": 180, "camera.altitude": 0,},
