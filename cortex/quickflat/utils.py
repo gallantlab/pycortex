@@ -74,7 +74,11 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
     if data.dtype == np.uint8:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
         img[mask] = pixmap * data.reshape(-1, 4)
-        return img.transpose(1,0,2)[::-1], extents
+        img = img.transpose(1,0,2)[::-1]
+        # Make img a c-contiguous array or pil will complain when saving it
+        if not img.flags["C_CONTIGUOUS"]:
+            img = img.copy(order="C")
+        return img, extents
     else:
         badmask = np.array(pixmap.sum(1) > 0).ravel()
         img = (np.nan*np.ones(mask.shape)).astype(data.dtype)
@@ -97,8 +101,12 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
             mimg[badmask] = nanmean_data[badmask].astype(mimg.dtype)
 
         img[mask] = mimg
+        img = img.T[::-1]
+        # Make img a c-contiguous array or pil will complain when saving it
+        if not img.flags["C_CONTIGUOUS"]:
+            img = img.copy(order="C")
 
-        return img.T[::-1], extents
+        return img, extents
 
 def get_flatmask(subject, height=1024, recache=False):
     """
