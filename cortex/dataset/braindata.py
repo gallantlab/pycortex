@@ -1,4 +1,5 @@
 import hashlib
+from copy import deepcopy
 import numpy as np
 import h5py
 
@@ -579,7 +580,7 @@ class VertexData(BrainData):
         alpha = np.clip(alpha.astype("float"), 0, 1)
 
         # blend original map with curvature map
-        blended = self.raw
+        blended = deepcopy(self.raw)  # copy because VertexRGB.raw returns self
         blended.red.data = blended.red.data * alpha + (1 - alpha) * curvature_raw.red.data
         blended.green.data = blended.green.data * alpha + (1 - alpha) * curvature_raw.green.data
         blended.blue.data = blended.blue.data * alpha + (1 - alpha) * curvature_raw.blue.data
@@ -588,7 +589,7 @@ class VertexData(BrainData):
         blended.blue.data = blended.blue.data.astype("uint8")
 
         return blended
-        
+
 
 def _find_mask(nvox, subject, xfmname):
     import os

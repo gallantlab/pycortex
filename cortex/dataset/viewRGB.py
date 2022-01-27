@@ -456,6 +456,8 @@ class VertexRGB(DataviewRGB):
 
     """
     _cls = VertexData
+    blend_curvature = _cls.blend_curvature  # hacky inheritance
+
     def __init__(self, red, green, blue, subject=None, alpha=None, description="",
                  state=None, **kwargs):
 
