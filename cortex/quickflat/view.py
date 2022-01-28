@@ -319,7 +319,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     plt.close(fig)
 
 def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['rois'],
-             height=1024, overlay_file=None, **kwargs):
+             height=1024, overlay_file=None, with_dropout=False, **kwargs):
     """Save an svg file of the desired flatmap.
 
     This function creates an SVG file with vector graphic ROIs overlaid on a single png image.
@@ -341,14 +341,21 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
     height : int
         Height of PNG in pixels
     overlay_file : str
-    	Custom ROI overlays file to use
-
+        Custom ROI overlays file to use
+    with_dropout : bool or Dataview
+        If True or a cortex.Dataview object, hatches will be overlaid on top of the
+        flatmap to indicate areas with dropout. If set to True, the dropout areas will
+        be estimated from the intensity of the reference image. If set to a
+        cortex.Dataview object, values equal to 1 will be considered dropout areas.
     """
     fp = io.BytesIO()
-    from matplotlib.pylab import imsave
+    from matplotlib.pyplot import imsave
 
     ## Render PNG file & retrieve image data
     arr, extents = make_flatmap_image(braindata, height=height, **kwargs)
+    # Set nans to alpha = 0. to enable transparency when saving as PNG
+    mask_nans = np.isnan(arr[..., 3])
+    arr[mask_nans, 3] = 0.
 
     if hasattr(braindata, 'cmap'):
         imsave(fp, arr, cmap=braindata.cmap, vmin=braindata.vmin, vmax=braindata.vmax)
@@ -371,6 +378,30 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
         imsave(fpc, curv_arr, cmap='Greys_r', vmin=0, vmax=1)
         fpc.seek(0)
         image_data = [binascii.b2a_base64(fpc.read()), pngdata]
+
+    # Add dropout -- modified from quickflat.view.make_figure
+    if with_dropout:
+        dataview = dataset.normalize(braindata)
+        # Support old api:
+        if isinstance(with_dropout, dataset.Dataview):
+            hatch_data = with_dropout
+        else:
+            hatch_data = utils.get_dropout(dataview.subject, dataview.xfmname)
+        sampler = kwargs.get("sampler", "nearest")
+        recache = kwargs.get("recache", False)
+        hatch_space = 4
+        hatch_color = (0, 0, 0)
+        hatchim = composite._make_hatch_image(
+            hatch_data, height, sampler, recache=recache, hatch_space=hatch_space
+        )
+        hatchim[:, :, 0] = hatch_color[0]
+        hatchim[:, :, 1] = hatch_color[1]
+        hatchim[:, :, 2] = hatch_color[2]
+        fpc = io.BytesIO()
+        imsave(fpc, hatchim)
+        fpc.seek(0)
+        # Add dropout above data layer
+        image_data += [binascii.b2a_base64(fpc.read())]
 
     ## Create and save SVG file
     roipack = utils.db.get_overlay(braindata.subject, overlay_file)
