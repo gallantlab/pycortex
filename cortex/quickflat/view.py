@@ -346,7 +346,9 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
         If True or a cortex.Dataview object, hatches will be overlaid on top of the
         flatmap to indicate areas with dropout. If set to True, the dropout areas will
         be estimated from the intensity of the reference image. If set to a
-        cortex.Dataview object, values equal to 1 will be considered dropout areas.
+        cortex.Dataview object, values in the dataset will be considered dropout areas.
+        The transparency of the hatches is proportional to the intensity of the values
+        in the dropout dataset.
     """
     fp = io.BytesIO()
     from matplotlib.pyplot import imsave
