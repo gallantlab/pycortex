@@ -1,4 +1,5 @@
 import hashlib
+from copy import deepcopy
 import numpy as np
 import h5py
 
@@ -538,6 +539,57 @@ class VertexData(BrainData):
             return self.data[:,self.llen:]
         else:
             return self.data[self.llen:]
+
+    def blend_curvature(self, alpha, threshold=0, brightness=0.5,
+                        contrast=0.25, smooth=20):
+        """Blend the data with a curvature map depending on a transparency map.
+        
+        Vertex objects cannot use transparency as Volume objects. This method
+        is a hack to mimic the transparency of Volume objects, blending the
+        Vertex data with a curvature map. This method returns a VertexRGB
+        object, and the colormap parameters (vmin, vmax, cmap, ...) of the
+        original Vertex object cannot be changed later on.
+
+        Parameters
+        ----------
+        alpha : array of shape (n_vertices, )
+            Transparency map.
+        threshold : float
+            Threshold for the curvature map.
+        brightness : float
+            Brightness of the curvature map.
+        contrast : float
+            Contrast of the curvature map.
+        smooth : float
+            Smoothness of the curvature map.
+        
+        Returns
+        -------
+        blended : VertexRGB object
+            The original map blended with a curvature map.
+        """
+        from .views import Vertex
+        # prepare curvature map
+        curvature = db.get_surfinfo(self.subject, smooth=smooth).data
+        curvature = (curvature > threshold).astype("float")
+        curvature = curvature * contrast + brightness
+        curvature_raw = Vertex(curvature, self.subject, vmin=0, vmax=1,
+                               cmap="gray").raw
+
+        # prepare alpha map
+        alpha = np.clip(alpha.astype("float"), 0, 1)
+
+        # blend original map with curvature map
+        blended = deepcopy(self.raw)  # copy because VertexRGB.raw returns self
+        blended.red.data = blended.red.data * alpha + (1 - alpha) * curvature_raw.red.data
+        blended.green.data = blended.green.data * alpha + (1 - alpha) * curvature_raw.green.data
+        blended.blue.data = blended.blue.data * alpha + (1 - alpha) * curvature_raw.blue.data
+        blended.red.data = blended.red.data.astype("uint8")
+        blended.green.data = blended.green.data.astype("uint8")
+        blended.blue.data = blended.blue.data.astype("uint8")
+
+        return blended
+
 
 def _find_mask(nvox, subject, xfmname):
     import os

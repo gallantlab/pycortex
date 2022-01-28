@@ -225,6 +225,7 @@ class Vertex2D(Dataview2D):
 
     """
     _cls = VertexData
+    blend_curvature = _cls.blend_curvature  # hacky inheritance
 
     def __init__(self, dim1, dim2, subject=None, description="", cmap=None,
                  vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
