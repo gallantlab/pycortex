@@ -320,9 +320,15 @@ def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, reca
         space between hatch lines (in pixels)
     recache : boolean
 
-
+    Returns
+    -------
+    hatchim : RGBA array
+        flatmap image with hatches over hatch_data
     """
-    dmap, _ = make_flatmap_image(hatch_data, height=height, sampler=sampler, recache=recache)
+    dmap, _ = make_flatmap_image(
+        hatch_data, height=height, sampler=sampler, recache=recache, nanmean=True
+    )
+    mask_nans = np.isnan(dmap)
     hx, hy = np.meshgrid(range(dmap.shape[1]), range(dmap.shape[0]))
 
     hatchpat = (hx+hy)%(2*hatch_space) < 2
@@ -332,7 +338,9 @@ def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, reca
 
     hatchpat = np.logical_or(hatchpat, hatchpat[:,::-1]).astype(float)
     hatchim = np.dstack([1-hatchpat]*3 + [hatchpat])
-    hatchim[:, : ,3] *= np.clip(dmap, 0, 1).astype(float)
+    hatchim[:, :, 3] *= np.clip(dmap, 0, 1).astype(float)
+    # Set nans to alpha = 0. for transparency
+    hatchim[mask_nans, 3] = 0.
 
     return hatchim
 
