@@ -47,8 +47,23 @@ of this using the following formula:
    :class: sphx-glr-single-img
 
 
+.. rst-class:: sphx-glr-script-out
+
+ Out:
+
+ .. code-block:: none
+
+    Failed to get connection
+    ** (inkscape:5087): CRITICAL **: 20:42:55.935: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5087): CRITICAL **: 20:42:55.935: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5087): CRITICAL **: 20:42:55.935: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
+
+
+
+
+|
 
 .. code-block:: default
 
@@ -69,7 +84,7 @@ of this using the following formula:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  3.698 seconds)
+   **Total running time of the script:** ( 0 minutes  3.681 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_dropout.py:

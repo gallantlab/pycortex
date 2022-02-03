@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.blend\_curvature
+======================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.blend_curvature

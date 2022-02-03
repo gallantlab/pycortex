@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.utils &#8212; pycortex 1.2.2.devdirty documentation</title>
+    <title>cortex.utils &#8212; pycortex 1.2.3 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css" />
@@ -1042,7 +1042,7 @@
 <span class="sd">        to add more in the future. If provided, URL overrides `subject_id`</span>
 <span class="sd">    pycortex_store : string or None</span>
 <span class="sd">        Directory to which to put the new subject folder. If None, defaults to</span>
-<span class="sd">        the `filestore` variable specified in the pycortex config file.</span>
+<span class="sd">        current filestore in use (`cortex.db.filestore`).</span>
 <span class="sd">    download_again : bool</span>
 <span class="sd">        Download the data again even if the subject id is already present in</span>
 <span class="sd">        the pycortex&#39;s database.</span>
@@ -1067,12 +1067,15 @@
     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Downloaded subject </span><span class="si">{}</span><span class="s1"> to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">tmp_dir</span><span class="p">))</span>
     <span class="c1"># Un-tar to pycortex store</span>
     <span class="k">if</span> <span class="n">pycortex_store</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># Default location is config file pycortex store.</span>
-        <span class="n">pycortex_store</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;basic&#39;</span><span class="p">,</span> <span class="s1">&#39;filestore&#39;</span><span class="p">)</span>
+        <span class="c1"># Default location is current filestore in cortex.db</span>
+        <span class="n">pycortex_store</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">filestore</span>
     <span class="n">pycortex_store</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">pycortex_store</span><span class="p">)</span>
     <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmp_dir</span><span class="p">,</span> <span class="n">subject_id</span> <span class="o">+</span> <span class="s1">&#39;.tar.gz&#39;</span><span class="p">),</span> <span class="s2">&quot;r:gz&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tar</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Extracting subject </span><span class="si">{}</span><span class="s2"> to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">pycortex_store</span><span class="p">))</span>
         <span class="n">tar</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">pycortex_store</span><span class="p">)</span>
+
+    <span class="c1"># reload all subjects from the filestore</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">reload_subjects</span><span class="p">()</span>
 
 
 <span class="k">def</span> <span class="nf">rotate_flatmap</span><span class="p">(</span><span class="n">surf_id</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
@@ -1201,7 +1204,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

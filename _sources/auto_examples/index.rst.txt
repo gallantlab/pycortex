@@ -294,27 +294,6 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as SVG file.">
-
-.. only:: html
-
- .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_svg_thumb.png
-     :alt: Save a 2D static flatmap as SVG
-
-     :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py`
-
-.. raw:: html
-
-    </div>
-
-
-.. toctree::
-   :hidden:
-
-   /auto_examples/quickflat/plot_make_svg
-
-.. raw:: html
-
     <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as PNG file.">
 
 .. only:: html
@@ -333,6 +312,27 @@ Examples demonstrating how to create flatmaps.
    :hidden:
 
    /auto_examples/quickflat/plot_make_png
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as SVG file.">
+
+.. only:: html
+
+ .. figure:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_svg_thumb.png
+     :alt: Save a 2D static flatmap as SVG
+
+     :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_make_svg
 
 .. raw:: html
 

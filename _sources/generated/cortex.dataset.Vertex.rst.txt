@@ -14,6 +14,7 @@
       :toctree: Vertex
    
      ~Vertex.__init__
+     ~Vertex.blend_curvature
      ~Vertex.copy
      ~Vertex.empty
      ~Vertex.exp

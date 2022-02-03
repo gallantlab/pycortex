@@ -14,6 +14,7 @@
       :toctree: VertexRGB
    
      ~VertexRGB.__init__
+     ~VertexRGB.blend_curvature
      ~VertexRGB.copy
      ~VertexRGB.from_hdf
      ~VertexRGB.to_json

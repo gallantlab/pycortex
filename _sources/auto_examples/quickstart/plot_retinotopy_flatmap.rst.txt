@@ -63,6 +63,14 @@ and you will also need a flatmap for them.
  .. code-block:: none
 
     Mask not found, generating...
+    Failed to get connection
+    ** (inkscape:5301): CRITICAL **: 20:46:45.302: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5301): CRITICAL **: 20:46:45.302: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5301): CRITICAL **: 20:46:45.302: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Failed to get connection
+    ** (inkscape:5305): CRITICAL **: 20:46:46.500: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5305): CRITICAL **: 20:46:46.500: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5305): CRITICAL **: 20:46:46.500: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -105,7 +113,7 @@ and you will also need a flatmap for them.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  8.582 seconds)
+   **Total running time of the script:** ( 0 minutes  8.422 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickstart_plot_retinotopy_flatmap.py:

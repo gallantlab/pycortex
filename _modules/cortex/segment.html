@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.segment &#8212; pycortex 1.2.2.devdirty documentation</title>
+    <title>cortex.segment &#8212; pycortex 1.2.3 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css" />
@@ -162,7 +162,7 @@
 
 <div class="viewcode-block" id="cut_surface"><a class="viewcode-back" href="../../generated/cortex.segment.cut_surface.html#cortex.segment.cut_surface">[docs]</a><span class="k">def</span> <span class="nf">cut_surface</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;flatten&#39;</span><span class="p">,</span> <span class="n">fs_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">flatten_with</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span> 
-                <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blender_cmd</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Initializes an interface to cut the segmented surface for flatmapping.</span>
 <span class="sd">    This function creates or opens a blend file in your filestore which allows</span>
 <span class="sd">    surfaces to be cut along hand-defined seams. Blender will automatically</span>
@@ -220,12 +220,16 @@
     <span class="c1"># Add localizer data to facilitate cutting</span>
     <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">blender</span><span class="o">.</span><span class="n">add_cutdata</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
-    <span class="n">blender_cmd</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;blender&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">blender_cmd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">blender_cmd</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;blender&#39;</span><span class="p">)</span>
+    <span class="c1"># May be redundant after blender.fs_cut above...</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
+        <span class="n">blender</span><span class="o">.</span><span class="n">_legacy_blender_backup</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_cmd</span><span class="p">)</span>
     <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="n">blender_cmd</span><span class="p">,</span> <span class="n">fname</span><span class="p">])</span>
     <span class="n">patchpath</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span>
                                      <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
     <span class="n">patchpath</span> <span class="o">=</span> <span class="n">patchpath</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-    <span class="n">blender</span><span class="o">.</span><span class="n">write_patch</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">patchpath</span><span class="p">)</span>
+    <span class="n">blender</span><span class="o">.</span><span class="n">write_patch</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">patchpath</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_cmd</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;freesurfer&#39;</span><span class="p">:</span>
         <span class="n">done</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
                            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
@@ -583,7 +587,7 @@
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

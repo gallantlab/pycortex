@@ -62,8 +62,16 @@ The two hemispheres must be run separately.
 
  .. code-block:: none
 
-    /home/travis/virtualenv/python3.9.1/lib/python3.9/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:318: SparseEfficiencyWarning: splu requires CSC matrix format
+    /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:318: SparseEfficiencyWarning: splu requires CSC matrix format
       warn('splu requires CSC matrix format', SparseEfficiencyWarning)
+    Failed to get connection
+    ** (inkscape:5346): CRITICAL **: 20:47:45.592: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5346): CRITICAL **: 20:47:45.592: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5346): CRITICAL **: 20:47:45.592: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Failed to get connection
+    ** (inkscape:5350): CRITICAL **: 20:47:47.431: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5350): CRITICAL **: 20:47:47.431: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5350): CRITICAL **: 20:47:47.431: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -116,7 +124,7 @@ The two hemispheres must be run separately.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  28.775 seconds)
+   **Total running time of the script:** ( 0 minutes  15.433 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_distance.py:

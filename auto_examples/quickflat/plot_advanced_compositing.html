@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>Plot with advanced compositing &#8212; pycortex 1.2.2.devdirty documentation</title>
+    <title>Plot with advanced compositing &#8212; pycortex 1.2.3 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css" />
@@ -49,7 +49,25 @@ layers (data, ROIs, sulci, etc) and overlay each on top of the other.
 Usually, quickflat.make_figure() handles all this for you, but each
 layer can be manipulated independently for fancier effects with the
 quickflat.composite sub-module.</p>
-<img src="../../_images/sphx_glr_plot_advanced_compositing_001.png" srcset="../../_images/sphx_glr_plot_advanced_compositing_001.png" alt="plot advanced compositing" class = "sphx-glr-single-img"/><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<img src="../../_images/sphx_glr_plot_advanced_compositing_001.png" srcset="../../_images/sphx_glr_plot_advanced_compositing_001.png" alt="plot advanced compositing" class = "sphx-glr-single-img"/><p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Failed to get connection
+** (inkscape:5290): CRITICAL **: 20:46:36.507: dbus_g_proxy_new_for_name: assertion &#39;connection != NULL&#39; failed
+** (inkscape:5290): CRITICAL **: 20:46:36.507: dbus_g_proxy_call: assertion &#39;DBUS_IS_G_PROXY (proxy)&#39; failed
+** (inkscape:5290): CRITICAL **: 20:46:36.507: dbus_g_connection_register_g_object: assertion &#39;connection != NULL&#39; failed
+Failed to get connection
+** (inkscape:5293): CRITICAL **: 20:46:37.305: dbus_g_proxy_new_for_name: assertion &#39;connection != NULL&#39; failed
+** (inkscape:5293): CRITICAL **: 20:46:37.305: dbus_g_proxy_call: assertion &#39;DBUS_IS_G_PROXY (proxy)&#39; failed
+** (inkscape:5293): CRITICAL **: 20:46:37.305: dbus_g_connection_register_g_object: assertion &#39;connection != NULL&#39; failed
+Failed to get connection
+** (inkscape:5296): CRITICAL **: 20:46:38.176: dbus_g_proxy_new_for_name: assertion &#39;connection != NULL&#39; failed
+** (inkscape:5296): CRITICAL **: 20:46:38.176: dbus_g_proxy_call: assertion &#39;DBUS_IS_G_PROXY (proxy)&#39; failed
+** (inkscape:5296): CRITICAL **: 20:46:38.176: dbus_g_connection_register_g_object: assertion &#39;connection != NULL&#39; failed
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 
 <span class="c1"># Create a random volume</span>
@@ -86,7 +104,7 @@ quickflat.composite sub-module.</p>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  5.206 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  5.097 seconds)</p>
 <div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-quickflat-plot-advanced-compositing-py">
 <div class="sphx-glr-download sphx-glr-download-python docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/701ae012d88c539ecc33405291ee7710/plot_advanced_compositing.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_advanced_compositing.py</span></code></a></p>
@@ -138,8 +156,8 @@ quickflat.composite sub-module.</p>
 <li class="toctree-l2 current"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="plot_sulci.html">Plot sulci on the flatmap</a></li>
 <li class="toctree-l3"><a class="reference internal" href="plot_dropout.html">Plot dropout regions on the flatmap</a></li>
-<li class="toctree-l3"><a class="reference internal" href="plot_make_svg.html">Save a 2D static flatmap as SVG</a></li>
 <li class="toctree-l3"><a class="reference internal" href="plot_make_png.html">Save a 2D static flatmap as PNG</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_make_svg.html">Save a 2D static flatmap as SVG</a></li>
 <li class="toctree-l3"><a class="reference internal" href="plot_cutouts.html">Plot cutouts on the flatmap</a></li>
 <li class="toctree-l3"><a class="reference internal" href="plot_rois.html">Plot ROIs on the flatmap</a></li>
 <li class="toctree-l3"><a class="reference internal" href="plot_connected_vertices.html">Plot which vertices are inside the same voxels</a></li>
@@ -198,7 +216,7 @@ quickflat.composite sub-module.</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

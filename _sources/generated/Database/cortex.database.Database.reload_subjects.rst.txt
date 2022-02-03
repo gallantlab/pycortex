@@ -1,0 +1,6 @@
+cortex.database.Database.reload\_subjects
+=========================================
+
+.. currentmodule:: cortex.database
+
+.. automethod:: Database.reload_subjects

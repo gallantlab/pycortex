@@ -59,8 +59,14 @@ has the value NaN.
 
  .. code-block:: none
 
-    /home/travis/build/gallantlab/pycortex/cortex/quickflat/utils.py:93: RuntimeWarning: invalid value encountered in true_divide
-      nanmean_data = nonnan_sum / weights_on_nonnan
+    Failed to get connection
+    ** (inkscape:5226): CRITICAL **: 20:45:33.970: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5226): CRITICAL **: 20:45:33.971: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5226): CRITICAL **: 20:45:33.971: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Failed to get connection
+    ** (inkscape:5230): CRITICAL **: 20:45:35.127: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5230): CRITICAL **: 20:45:35.127: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5230): CRITICAL **: 20:45:35.127: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -103,7 +109,7 @@ has the value NaN.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  4.820 seconds)
+   **Total running time of the script:** ( 0 minutes  4.768 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_thickness_nanmean.py:

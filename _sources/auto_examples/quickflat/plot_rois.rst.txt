@@ -60,8 +60,27 @@ By default, ROIs and ROI labels are displayed when a flatmap is plotted using
          :class: sphx-glr-multi-img
 
 
+.. rst-class:: sphx-glr-script-out
+
+ Out:
+
+ .. code-block:: none
+
+    Failed to get connection
+    ** (inkscape:5117): CRITICAL **: 20:43:12.523: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5117): CRITICAL **: 20:43:12.523: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5117): CRITICAL **: 20:43:12.523: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Failed to get connection
+    ** (inkscape:5121): CRITICAL **: 20:43:13.612: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5121): CRITICAL **: 20:43:13.612: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5121): CRITICAL **: 20:43:13.612: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
+
+
+
+
+|
 
 .. code-block:: default
 
@@ -89,7 +108,7 @@ By default, ROIs and ROI labels are displayed when a flatmap is plotted using
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  5.930 seconds)
+   **Total running time of the script:** ( 0 minutes  6.187 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_rois.py:

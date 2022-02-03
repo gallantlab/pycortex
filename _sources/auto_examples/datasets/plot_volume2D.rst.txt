@@ -78,10 +78,22 @@ used in the last flatmap is
 
  .. code-block:: none
 
-    /home/travis/build/gallantlab/pycortex/cortex/quickflat/utils.py:467: UserWarning: Trying to register the cmap 'RdBu_covar' which already exists.
+    /home/runner/work/pycortex/pycortex/cortex/quickflat/utils.py:486: UserWarning: Trying to register the cmap 'RdBu_covar' which already exists.
       cm.register_cmap(dataview.cmap, cmap)
-    /home/travis/build/gallantlab/pycortex/cortex/quickflat/utils.py:467: UserWarning: Trying to register the cmap 'RdBu_covar' which already exists.
+    Failed to get connection
+    ** (inkscape:5033): CRITICAL **: 20:42:17.402: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5033): CRITICAL **: 20:42:17.402: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5033): CRITICAL **: 20:42:17.402: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    /home/runner/work/pycortex/pycortex/cortex/quickflat/utils.py:486: UserWarning: Trying to register the cmap 'RdBu_covar' which already exists.
       cm.register_cmap(dataview.cmap, cmap)
+    Failed to get connection
+    ** (inkscape:5036): CRITICAL **: 20:42:18.576: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5036): CRITICAL **: 20:42:18.576: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5036): CRITICAL **: 20:42:18.576: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Failed to get connection
+    ** (inkscape:5040): CRITICAL **: 20:42:19.780: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5040): CRITICAL **: 20:42:19.781: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5040): CRITICAL **: 20:42:19.781: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -130,7 +142,7 @@ used in the last flatmap is
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  6.747 seconds)
+   **Total running time of the script:** ( 0 minutes  7.260 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volume2D.py:

@@ -47,8 +47,27 @@ that use the parameter `bgcolor`.
    :class: sphx-glr-single-img
 
 
+.. rst-class:: sphx-glr-script-out
+
+ Out:
+
+ .. code-block:: none
+
+    Failed to get connection
+    ** (inkscape:5100): CRITICAL **: 20:43:04.810: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5100): CRITICAL **: 20:43:04.810: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5100): CRITICAL **: 20:43:04.810: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Failed to get connection
+    ** (inkscape:5103): CRITICAL **: 20:43:05.907: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5103): CRITICAL **: 20:43:05.907: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5103): CRITICAL **: 20:43:05.907: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
+
+
+
+
+|
 
 .. code-block:: default
 
@@ -71,7 +90,7 @@ that use the parameter `bgcolor`.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  4.932 seconds)
+   **Total running time of the script:** ( 0 minutes  5.162 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_svg.py:

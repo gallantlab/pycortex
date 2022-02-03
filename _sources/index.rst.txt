@@ -9,7 +9,7 @@ Pycortex is a software package for generating beautiful interactive 3D visualiza
 
 This documentation is still under development. Please report errors or bugs at https://github.com/gallantlab/pycortex/issues.
 
-For a list of recent changes, please see the :ref:`changelog`.
+For a list of recent changes, please see the `releases on GitHub <https://github.com/gallantlab/pycortex/releases/>`_.
 
 
 User Guide

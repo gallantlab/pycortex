@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>cortex.quickflat.make_svg &#8212; pycortex 1.2.2.devdirty documentation</title>
+    <title>cortex.quickflat.make_svg &#8212; pycortex 1.2.3 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css" />
@@ -39,7 +39,7 @@
 <h1>cortex.quickflat.make_svg<a class="headerlink" href="#cortex-quickflat-make-svg" title="Permalink to this headline">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="cortex.quickflat.make_svg">
-<span class="sig-prename descclassname"><span class="pre">cortex.quickflat.</span></span><span class="sig-name descname"><span class="pre">make_svg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">braindata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_curvature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['rois']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlay_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/quickflat/view.html#make_svg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.quickflat.make_svg" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">cortex.quickflat.</span></span><span class="sig-name descname"><span class="pre">make_svg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">braindata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_curvature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['rois']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlay_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_dropout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/quickflat/view.html#make_svg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.quickflat.make_svg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save an svg file of the desired flatmap.</p>
 <p>This function creates an SVG file with vector graphic ROIs overlaid on a single png image.
 Ideally, this function would layer different images (curvature, data, dropout, etc), but
@@ -60,6 +60,13 @@ that has been left to implement at a future date if anyone really wants it.</p>
 <dt><strong>height</strong><span class="classifier">int</span></dt><dd><p>Height of PNG in pixels</p>
 </dd>
 <dt><strong>overlay_file</strong><span class="classifier">str</span></dt><dd><p>Custom ROI overlays file to use</p>
+</dd>
+<dt><strong>with_dropout</strong><span class="classifier">bool or Dataview</span></dt><dd><p>If True or a cortex.Dataview object, hatches will be overlaid on top of the
+flatmap to indicate areas with dropout. If set to True, the dropout areas will
+be estimated from the intensity of the reference image. If set to a
+cortex.Dataview object, values in the dataset will be considered dropout areas.
+The transparency of the hatches is proportional to the intensity of the values
+in the dropout dataset.</p>
 </dd>
 </dl>
 </dd>
@@ -141,7 +148,7 @@ that has been left to implement at a future date if anyone really wants it.</p>
       &copy;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

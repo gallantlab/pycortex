@@ -29,6 +29,7 @@
      ~Database.get_view
      ~Database.get_xfm
      ~Database.make_subj
+     ~Database.reload_subjects
      ~Database.save_mask
      ~Database.save_view
      ~Database.save_xfm
