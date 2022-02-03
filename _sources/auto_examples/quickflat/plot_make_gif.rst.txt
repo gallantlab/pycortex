@@ -105,13 +105,13 @@ Plot flat maps individually
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5200): CRITICAL **: 20:45:19.607: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5200): CRITICAL **: 20:45:19.608: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5200): CRITICAL **: 20:45:19.608: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5202): CRITICAL **: 21:04:53.516: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5202): CRITICAL **: 21:04:53.516: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5202): CRITICAL **: 21:04:53.516: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5204): CRITICAL **: 20:45:20.720: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5204): CRITICAL **: 20:45:20.720: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5204): CRITICAL **: 20:45:20.720: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5206): CRITICAL **: 21:04:54.583: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5206): CRITICAL **: 21:04:54.583: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5206): CRITICAL **: 21:04:54.583: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -140,13 +140,13 @@ Generate an animated gif that switches between frames every 1.5 seconds
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5208): CRITICAL **: 20:45:24.711: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5208): CRITICAL **: 20:45:24.711: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5208): CRITICAL **: 20:45:24.711: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5210): CRITICAL **: 21:04:58.842: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5210): CRITICAL **: 21:04:58.842: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5210): CRITICAL **: 21:04:58.842: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5213): CRITICAL **: 20:45:26.612: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5213): CRITICAL **: 20:45:26.612: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5213): CRITICAL **: 20:45:26.612: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5215): CRITICAL **: 21:05:00.824: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5215): CRITICAL **: 21:05:00.824: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5215): CRITICAL **: 21:05:00.824: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -181,13 +181,13 @@ Display gif inline in an IPython notebook
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5217): CRITICAL **: 20:45:29.424: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5217): CRITICAL **: 20:45:29.424: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5217): CRITICAL **: 20:45:29.424: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5222): CRITICAL **: 21:05:03.707: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5222): CRITICAL **: 21:05:03.707: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5222): CRITICAL **: 21:05:03.707: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5222): CRITICAL **: 20:45:31.343: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5222): CRITICAL **: 20:45:31.343: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5222): CRITICAL **: 20:45:31.343: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5227): CRITICAL **: 21:05:05.703: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5227): CRITICAL **: 21:05:05.703: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5227): CRITICAL **: 21:05:05.703: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
     <IPython.core.display.Image object>
 
@@ -200,7 +200,7 @@ Display gif inline in an IPython notebook
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  13.960 seconds)
+   **Total running time of the script:** ( 0 minutes  14.490 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_gif.py:

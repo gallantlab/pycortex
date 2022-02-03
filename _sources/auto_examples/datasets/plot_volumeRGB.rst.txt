@@ -85,17 +85,17 @@ shared_vmax` will allow you to specify minimum and maximum values manually.
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5048): CRITICAL **: 20:42:27.359: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5048): CRITICAL **: 20:42:27.359: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5048): CRITICAL **: 20:42:27.359: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5056): CRITICAL **: 21:01:58.240: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5056): CRITICAL **: 21:01:58.240: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5056): CRITICAL **: 21:01:58.240: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5052): CRITICAL **: 20:42:33.960: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5052): CRITICAL **: 20:42:33.960: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5052): CRITICAL **: 20:42:33.961: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5060): CRITICAL **: 21:02:04.739: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5060): CRITICAL **: 21:02:04.739: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5060): CRITICAL **: 21:02:04.739: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5062): CRITICAL **: 20:42:40.467: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5062): CRITICAL **: 20:42:40.467: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5062): CRITICAL **: 20:42:40.467: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5069): CRITICAL **: 21:02:11.284: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5069): CRITICAL **: 21:02:11.284: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5069): CRITICAL **: 21:02:11.284: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -167,7 +167,7 @@ shared_vmax` will allow you to specify minimum and maximum values manually.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  17.912 seconds)
+   **Total running time of the script:** ( 0 minutes  18.246 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volumeRGB.py:

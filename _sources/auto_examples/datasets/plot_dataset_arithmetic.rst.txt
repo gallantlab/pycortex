@@ -66,17 +66,17 @@ normal arithmetic operators like +, -, *, /, and **
 
     Generating a flatmap cache
     Failed to get connection
-    ** (inkscape:4982): CRITICAL **: 20:41:45.974: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:4982): CRITICAL **: 20:41:45.974: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:4982): CRITICAL **: 20:41:45.974: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:4987): CRITICAL **: 21:01:15.132: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:4987): CRITICAL **: 21:01:15.132: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:4987): CRITICAL **: 21:01:15.132: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:4986): CRITICAL **: 20:41:47.201: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:4986): CRITICAL **: 20:41:47.201: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:4986): CRITICAL **: 20:41:47.201: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:4990): CRITICAL **: 21:01:16.307: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:4990): CRITICAL **: 21:01:16.307: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:4990): CRITICAL **: 21:01:16.307: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:4989): CRITICAL **: 20:41:48.316: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:4989): CRITICAL **: 20:41:48.316: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:4989): CRITICAL **: 20:41:48.316: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:4994): CRITICAL **: 21:01:17.382: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:4994): CRITICAL **: 21:01:17.382: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:4994): CRITICAL **: 21:01:17.382: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -119,7 +119,7 @@ normal arithmetic operators like +, -, *, /, and **
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  21.104 seconds)
+   **Total running time of the script:** ( 0 minutes  20.591 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_dataset_arithmetic.py:

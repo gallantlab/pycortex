@@ -104,9 +104,9 @@ ROIs in the right hemisphere will have positive values.
     Found 100.00% of FFA
     Cutting 0 overlapping voxels (should be < ~50)
     Failed to get connection
-    ** (inkscape:5424): CRITICAL **: 20:49:25.164: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5424): CRITICAL **: 20:49:25.164: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5424): CRITICAL **: 20:49:25.164: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5419): CRITICAL **: 21:08:56.537: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5419): CRITICAL **: 21:08:56.537: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5419): CRITICAL **: 21:08:56.537: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Index keys for which ROI is which in `index_volume`:
     {'S1H': 1, 'S1M': 2, 'sPMv': 3, 'PMvh': 4, 'M1F': 5, 'M1H': 6, 'Broca': 7, 'SMFA': 8, 'M1M': 9, 'V3A': 10, 'V3B': 11, 'FO': 12, 'PPA': 13, 'S2F': 14, 'SEF': 15, 'LO': 16, 'V1': 17, 'V2': 18, 'V3': 19, 'V4': 20, 'V7': 21, 'FEF': 22, 'AC': 23, 'OFA': 24, 'IFSFP': 25, 'S1F': 26, 'OPA': 27, 'EBA': 28, 'RSC': 29, 'IPS': 30, 'SMHA': 31, 'FFA': 32}
 
@@ -157,7 +157,7 @@ ROIs in the right hemisphere will have positive values.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  10.063 seconds)
+   **Total running time of the script:** ( 0 minutes  10.143 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_roi_voxel_index_volume.py:

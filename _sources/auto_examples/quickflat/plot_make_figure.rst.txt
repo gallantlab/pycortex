@@ -97,25 +97,25 @@ This can be helpful if you think there is no reason that the
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5264): CRITICAL **: 20:46:24.218: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5264): CRITICAL **: 20:46:24.218: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5264): CRITICAL **: 20:46:24.218: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5267): CRITICAL **: 21:05:54.801: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5267): CRITICAL **: 21:05:54.801: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5267): CRITICAL **: 21:05:54.801: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5267): CRITICAL **: 20:46:25.273: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5267): CRITICAL **: 20:46:25.273: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5267): CRITICAL **: 20:46:25.273: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5271): CRITICAL **: 21:05:55.826: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5271): CRITICAL **: 21:05:55.826: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5271): CRITICAL **: 21:05:55.826: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5271): CRITICAL **: 20:46:26.467: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5271): CRITICAL **: 20:46:26.467: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5271): CRITICAL **: 20:46:26.467: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5274): CRITICAL **: 21:05:56.967: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5274): CRITICAL **: 21:05:56.967: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5274): CRITICAL **: 21:05:56.967: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5274): CRITICAL **: 20:46:27.651: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5274): CRITICAL **: 20:46:27.651: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5274): CRITICAL **: 20:46:27.651: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5277): CRITICAL **: 21:05:58.111: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5277): CRITICAL **: 21:05:58.112: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5277): CRITICAL **: 21:05:58.112: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5279): CRITICAL **: 20:46:29.037: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5279): CRITICAL **: 20:46:29.037: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5279): CRITICAL **: 20:46:29.037: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5280): CRITICAL **: 21:05:59.438: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5280): CRITICAL **: 21:05:59.438: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5280): CRITICAL **: 21:05:59.438: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -172,7 +172,7 @@ This can be helpful if you think there is no reason that the
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  11.879 seconds)
+   **Total running time of the script:** ( 0 minutes  12.942 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_figure.py:

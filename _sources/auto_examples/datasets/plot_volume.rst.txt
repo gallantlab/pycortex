@@ -72,17 +72,17 @@ on the brain.
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5008): CRITICAL **: 20:42:01.887: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5008): CRITICAL **: 20:42:01.887: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5008): CRITICAL **: 20:42:01.887: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5012): CRITICAL **: 21:01:31.654: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5012): CRITICAL **: 21:01:31.654: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5012): CRITICAL **: 21:01:31.654: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5011): CRITICAL **: 20:42:03.010: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5011): CRITICAL **: 20:42:03.010: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5011): CRITICAL **: 20:42:03.010: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5016): CRITICAL **: 21:01:32.737: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5016): CRITICAL **: 21:01:32.737: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5016): CRITICAL **: 21:01:32.737: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5014): CRITICAL **: 20:42:04.108: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5014): CRITICAL **: 20:42:04.108: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5014): CRITICAL **: 20:42:04.108: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5019): CRITICAL **: 21:01:33.823: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5019): CRITICAL **: 21:01:33.823: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5019): CRITICAL **: 21:01:33.823: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -126,7 +126,7 @@ on the brain.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  7.430 seconds)
+   **Total running time of the script:** ( 0 minutes  7.777 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volume.py:
