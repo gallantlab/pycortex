@@ -329,7 +329,11 @@ class Overlay(object):
 
     @property
     def visible(self):
-        return 'none' not in self.layer.attrib['style']
+        # assume visible if "style" property is not set
+        if 'style' not in self.layer.attrib:
+            return True
+        else:
+            return 'none' not in self.layer.attrib['style']
 
     @visible.setter
     def visible(self, value):
@@ -499,7 +503,11 @@ class Shape(object):
 
     @property
     def visible(self):
-        return 'none' not in self.layer.attrib['style']
+        # assume visible if "style" property is not set
+        if "style" not in self.layer.attrib:
+            return True
+        else:
+            return 'none' not in self.layer.attrib['style']
 
     @visible.setter
     def visible(self, value):
