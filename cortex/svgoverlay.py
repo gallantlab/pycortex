@@ -249,23 +249,23 @@ class SVGOverlay(object):
         # separate kwargs starting with "label-"
         label_kwargs = {k[6:]:v for k, v in kwargs.items() if k[:6] == "label-"}
         kwargs = {k:v for k, v in kwargs.items() if k[:6] != "label-"}
-
         for layer in self:
-            if layer.name==layer_name:
+            if layer.name == layer_name:
                 layer.visible = True
                 layer.labels.visible = labels
-                if shape_list is not None:
-                    for name_, shape_ in layer.shapes.items():
+                for name_, shape_ in layer.shapes.items():
+                    # honor visibility set in the svg
+                    if shape_list is not None:
                         shape_.visible = name_ in shape_list
-                        # Set visibility of labels (by setting text alpha to 0)
-                        # This could be less baroque, but text elements currently
-                        # do not have individually settable visibility / style params
-                        tmp_style = copy.deepcopy(layer.labels.text_style)
-                        tmp_style['fill-opacity'] = '1' if shape_.visible else '0'
-                        tmp_style.update(label_kwargs)
-                        tmp_style_str = ';'.join(['%s:%s'%(k,v) for k, v in tmp_style.items() if v != 'None'])
-                        for i in range(len(layer.labels.elements[name_])):
-                            layer.labels.elements[name_][i].set('style', tmp_style_str)
+                    # Set visibility of labels (by setting text alpha to 0)
+                    # This could be less baroque, but text elements currently
+                    # do not have individually settable visibility / style params
+                    tmp_style = copy.deepcopy(layer.labels.text_style)
+                    tmp_style['fill-opacity'] = '1' if shape_.visible else '0'
+                    tmp_style.update(label_kwargs)
+                    tmp_style_str = ';'.join(['%s:%s'%(k,v) for k, v in tmp_style.items() if v != 'None'])
+                    for i in range(len(layer.labels.elements[name_])):
+                        layer.labels.elements[name_][i].set('style', tmp_style_str)
                 layer.set(**kwargs)
             else:
                 layer.visible = False
@@ -329,7 +329,11 @@ class Overlay(object):
 
     @property
     def visible(self):
-        return 'none' not in self.layer.attrib['style']
+        # assume visible if "style" property is not set
+        if 'style' not in self.layer.attrib:
+            return True
+        else:
+            return 'none' not in self.layer.attrib['style']
 
     @visible.setter
     def visible(self, value):
@@ -499,7 +503,11 @@ class Shape(object):
 
     @property
     def visible(self):
-        return 'none' not in self.layer.attrib['style']
+        # assume visible if "style" property is not set
+        if "style" not in self.layer.attrib:
+            return True
+        else:
+            return 'none' not in self.layer.attrib['style']
 
     @visible.setter
     def visible(self, value):
