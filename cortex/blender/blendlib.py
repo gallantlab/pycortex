@@ -87,18 +87,22 @@ def add_vcolor(hemis, mesh=None, name='color'):
         color = hemis[0]
         if len(mesh.vertices) == len(hemis[1]):
             color = hemis[1]
-
     vcolor = mesh.vertex_colors.new(name=name)
     if hasattr(mesh, "loops"):
         loopidx = [0]*len(mesh.loops)
         mesh.loops.foreach_get('vertex_index', loopidx)
-
         if not isinstance(color[0], (list, tuple)):
             for i, j in enumerate(loopidx):
-                vcolor.data[i].color = [color[j]]*3 + [1]
+                if bpy.app.version < (2, 80, 0):
+                    vcolor.data[i].color = [color[j]]*3
+                else:
+                    vcolor.data[i].color = [color[j]]*3 + [1]
         else:
             for i, j in enumerate(loopidx):
-                vcolor.data[i].color = color[j]
+                if bpy.app.version < (2, 80, 0): 
+                    vcolor.data[i].color = color[j]
+                else:
+                    vcolor.data[i].color = list(color[j]) + [1]
     else:
         # older blender version, need to iterate faces instead
         print("older blender found...")
@@ -114,7 +118,6 @@ def add_vcolor(hemis, mesh=None, name='color'):
                 vcolor.data[i].color1 = color[v[0]]
                 vcolor.data[i].color2 = color[v[1]]
                 vcolor.data[i].color3 = color[v[2]]
-
     print("Successfully added vcolor '%s'"%name)
     return vcolor
 
