@@ -27,7 +27,7 @@ class my_install(install):
     def run(self):
         install.run(self)
         optfile = [f for f in self.get_outputs() if 'defaults.cfg' in f]
-        prefix = os.path.join(self.install_data, "share", "pycortex")
+        prefix = os.path.join(self.install_base, "share", "pycortex")
         set_default_filestore(prefix, optfile[0])
         self.copy_tree('filestore', prefix)
         for root, folders, files in os.walk(prefix):
