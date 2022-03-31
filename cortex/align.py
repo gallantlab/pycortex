@@ -41,7 +41,7 @@ def mayavi_manual(subject, xfmname, reference=None, **kwargs):
                   "deprecated. Please use the new cortex.align.manual() "
                   "(previously cortex.align.fs_manual()), which uses "
                   "the `freeview` program in the freesurfer suite, to "
-                  "perform manual alignment."
+                  "perform manual alignment.", DeprecationWarning
                   )
     from .database import db
     from .mayavi_aligner import get_aligner
@@ -95,7 +95,7 @@ def fs_manual(subject, xfmname, **kwargs):
     """Legacy name for cortex.align.manual. Please use that function, and see the help there."""
     warnings.warn(("Deprecated name - function has been renamed cortex.align.manual"
                    "This function name will be removed in a future release."
-        ))
+        ), DeprecationWarning)
     return manual(subject, xfmname, **kwargs)
 
 
