@@ -5,7 +5,7 @@ import numpy as np
 from builtins import input
 import warnings
 
-def manual(subject, xfmname, reference=None, **kwargs):
+def mayavi_manual(subject, xfmname, reference=None, **kwargs):
     """Open GUI for manually aligning a functional volume to the cortical surface for `subject`. This
     creates a new transform called `xfm`. The name of a nibabel-readable file (e.g. nii) should be
     supplied as `reference`. This image will be copied into the database.
@@ -36,6 +36,13 @@ def manual(subject, xfmname, reference=None, **kwargs):
     m : 2D ndarray, shape (4, 4)
         Transformation matrix.
     """
+
+    warnings.warn("This is the old cortex.align.manual(), and has been "
+                  "deprecated. Please use the new cortex.align.manual() "
+                  "(previously cortex.align.fs_manual()), which uses "
+                  "the `freeview` program in the freesurfer suite, to "
+                  "perform manual alignment."
+                  )
     from .database import db
     from .mayavi_aligner import get_aligner
     def save_callback(aligner):
@@ -83,7 +90,16 @@ def manual(subject, xfmname, reference=None, **kwargs):
 
     return m
 
-def fs_manual(subject, xfmname, output_name="register.lta", wm_color="yellow", 
+
+def fs_manual(subject, xfmname, **kwargs):
+    """Legacy name for cortex.align.manual. Please use that function, and see the help there."""
+    warnings.warn(("Deprecated name - function has been renamed cortex.align.manual"
+                   "This function name will be removed in a future release."
+        ))
+    return manual(subject, xfmname, **kwargs)
+
+
+def manual(subject, xfmname, output_name="register.lta", wm_color="yellow", 
     pial_color="blue", wm_surface='white', noclean=False, reference=None, inspect_only=False):
     """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
     volume to the cortical surface for `subject`. This creates a new transform
@@ -101,6 +117,9 @@ def fs_manual(subject, xfmname, output_name="register.lta", wm_color="yellow",
 
     ALSO: all the freesurfer environment stuff shouldn't be necessary, except that
     I don't know what vox2ras-tkr is doing.
+
+    Renamed from fs_manual() to manual(), since old manual() function was no longer 
+    supported (or functional) for a while due to changes in mayavi.
 
 
     Parameters
