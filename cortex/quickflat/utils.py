@@ -84,25 +84,33 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
         img = (np.nan*np.ones(mask.shape)).astype(data.dtype)
         mimg = (np.nan*np.ones(badmask.shape)).astype(data.dtype)
 
-        # Pixmap is a (pixels x voxels) sparse non-negative weight matrix
-        # where each row sums to 1.
-        # So pixmap.dot(vec) gives mean of vec across cortical thickness.
-        # Yet, to ignore nans (or masked data) in the weighted mean, nanmean =
-        # sum(weights * non-nan values) / sum(weights on non-nan values)
+        # Pixmap is a (pixels x voxels) sparse non-negative weight matrix where
+        # each row sums to 1, so pixmap.dot(vec) gives the mean of vec across
+        # cortical thickness.
 
-        if not nanmean:
+        # To ignore NaNs (or masked data) in the weighted mean, we normalize by
+        # the sum of the non-ignored weights: sum(weights * non-ignored values)
+        # / sum(weights on non-ignored values)
+        ignored = None
+
+        if not nanmean:  # NaN are not ignored: mean([1., 2., NaN]) = NaN
             averaged_data = pixmap.dot(data.ravel())
-            ignored = data.ravel().mask
-        else:
+            if isinstance(data, np.ma.MaskedArray):  
+                ignored = data.ravel().mask  # masked voxels are ignored
+    
+        else:  # NaN are ignored: mean([1., 2., NaN]) = 1.5
             averaged_data = pixmap.dot(np.nan_to_num(data.ravel()))
-            ignored = np.isnan(data.ravel()).filled()
+            ignored = np.isnan(data.ravel())
+            if isinstance(data, np.ma.MaskedArray):
+                ignored = ignored.filled()  # masked voxels are also ignored
 
-        weights_not_ignored = pixmap.dot((~ignored).astype(data.dtype))
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            nanmean_data = averaged_data / weights_not_ignored
-        mimg[badmask] = nanmean_data[badmask].astype(mimg.dtype)
+        if ignored is not None:
+            weights_not_ignored = pixmap.dot((~ignored).astype(data.dtype))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                averaged_data = averaged_data / weights_not_ignored
 
+        mimg[badmask] = averaged_data[badmask].astype(mimg.dtype)
         img[mask] = mimg
         img = img.T[::-1]
         # Make img a c-contiguous array or pil will complain when saving it
