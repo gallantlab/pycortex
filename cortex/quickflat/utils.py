@@ -94,7 +94,8 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
             # to ignore nans in the weighted mean, nanmean =
             # sum(weights * non-nan values) / sum(weights on non-nan values)
             nonnan_sum = pixmap.dot(np.nan_to_num(data.ravel()))
-            weights_on_nonnan = pixmap.dot((~np.isnan(data.ravel())).astype(data.dtype))
+            isnan = np.isnan(data.ravel()).filled()
+            weights_on_nonnan = pixmap.dot((~isnan).astype(data.dtype))
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", RuntimeWarning)
                 nanmean_data = nonnan_sum / weights_on_nonnan
