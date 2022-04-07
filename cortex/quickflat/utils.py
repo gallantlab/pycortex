@@ -84,22 +84,33 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
         img = (np.nan*np.ones(mask.shape)).astype(data.dtype)
         mimg = (np.nan*np.ones(badmask.shape)).astype(data.dtype)
 
-        # pixmap is a (pixels x voxels) sparse non-negative weight matrix
-        # where each row sums to 1
+        # Pixmap is a (pixels x voxels) sparse non-negative weight matrix where
+        # each row sums to 1, so pixmap.dot(vec) gives the mean of vec across
+        # cortical thickness.
 
-        if not nanmean:
-            # pixmap.dot(vec) gives mean of vec across cortical thickness
-            mimg[badmask] = pixmap.dot(data.ravel())[badmask].astype(mimg.dtype)
-        else:
-            # to ignore nans in the weighted mean, nanmean =
-            # sum(weights * non-nan values) / sum(weights on non-nan values)
-            nonnan_sum = pixmap.dot(np.nan_to_num(data.ravel()))
-            weights_on_nonnan = pixmap.dot((~np.isnan(data.ravel())).astype(data.dtype))
+        # To ignore NaNs (or masked data) in the weighted mean, we normalize by
+        # the sum of the non-ignored weights: sum(weights * non-ignored values)
+        # / sum(weights on non-ignored values)
+        ignored = None
+
+        if not nanmean:  # NaN are not ignored: mean([1., 2., NaN]) = NaN
+            averaged_data = pixmap.dot(data.ravel())
+            if isinstance(data, np.ma.MaskedArray):  
+                ignored = data.ravel().mask  # masked voxels are ignored
+    
+        else:  # NaN are ignored: mean([1., 2., NaN]) = 1.5
+            averaged_data = pixmap.dot(np.nan_to_num(data.ravel()))
+            ignored = np.isnan(data.ravel())
+            if isinstance(data, np.ma.MaskedArray):
+                ignored = ignored.filled()  # masked voxels are also ignored
+
+        if ignored is not None:
+            weights_not_ignored = pixmap.dot((~ignored).astype(data.dtype))
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", RuntimeWarning)
-                nanmean_data = nonnan_sum / weights_on_nonnan
-            mimg[badmask] = nanmean_data[badmask].astype(mimg.dtype)
+                averaged_data = averaged_data / weights_not_ignored
 
+        mimg[badmask] = averaged_data[badmask].astype(mimg.dtype)
         img[mask] = mimg
         img = img.T[::-1]
         # Make img a c-contiguous array or pil will complain when saving it
