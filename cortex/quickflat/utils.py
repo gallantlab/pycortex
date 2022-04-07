@@ -84,22 +84,24 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
         img = (np.nan*np.ones(mask.shape)).astype(data.dtype)
         mimg = (np.nan*np.ones(badmask.shape)).astype(data.dtype)
 
-        # pixmap is a (pixels x voxels) sparse non-negative weight matrix
-        # where each row sums to 1
+        # Pixmap is a (pixels x voxels) sparse non-negative weight matrix
+        # where each row sums to 1.
+        # So pixmap.dot(vec) gives mean of vec across cortical thickness.
+        # Yet, to ignore nans (or masked data) in the weighted mean, nanmean =
+        # sum(weights * non-nan values) / sum(weights on non-nan values)
 
         if not nanmean:
-            # pixmap.dot(vec) gives mean of vec across cortical thickness
-            mimg[badmask] = pixmap.dot(data.ravel())[badmask].astype(mimg.dtype)
+            averaged_data = pixmap.dot(data.ravel())
+            ignored = data.ravel().mask
         else:
-            # to ignore nans in the weighted mean, nanmean =
-            # sum(weights * non-nan values) / sum(weights on non-nan values)
-            nonnan_sum = pixmap.dot(np.nan_to_num(data.ravel()))
-            isnan = np.isnan(data.ravel()).filled()
-            weights_on_nonnan = pixmap.dot((~isnan).astype(data.dtype))
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", RuntimeWarning)
-                nanmean_data = nonnan_sum / weights_on_nonnan
-            mimg[badmask] = nanmean_data[badmask].astype(mimg.dtype)
+            averaged_data = pixmap.dot(np.nan_to_num(data.ravel()))
+            ignored = np.isnan(data.ravel()).filled()
+
+        weights_not_ignored = pixmap.dot((~ignored).astype(data.dtype))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            nanmean_data = averaged_data / weights_not_ignored
+        mimg[badmask] = nanmean_data[badmask].astype(mimg.dtype)
 
         img[mask] = mimg
         img = img.T[::-1]
