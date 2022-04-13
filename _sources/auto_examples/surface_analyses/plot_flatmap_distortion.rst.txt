@@ -71,11 +71,11 @@ the original.
     Generating distortion surface info...
     /home/runner/work/pycortex/pycortex/cortex/polyutils/distortion.py:57: RuntimeWarning: invalid value encountered in true_divide
       vertratios /= np.bincount(self.polys.ravel(), minlength=len(self.ref))
-    /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:318: SparseEfficiencyWarning: splu requires CSC matrix format
+    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
       warn('splu requires CSC matrix format', SparseEfficiencyWarning)
     /home/runner/work/pycortex/pycortex/cortex/polyutils/distortion.py:57: RuntimeWarning: invalid value encountered in true_divide
       vertratios /= np.bincount(self.polys.ravel(), minlength=len(self.ref))
-    /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:318: SparseEfficiencyWarning: splu requires CSC matrix format
+    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
       warn('splu requires CSC matrix format', SparseEfficiencyWarning)
     Generating distortion surface info...
 
@@ -136,7 +136,7 @@ the original.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  31.399 seconds)
+   **Total running time of the script:** ( 0 minutes  30.161 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_flatmap_distortion.py:

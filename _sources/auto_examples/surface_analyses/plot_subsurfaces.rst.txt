@@ -75,7 +75,7 @@ create subsurface
 
  .. code-block:: none
 
-    /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:318: SparseEfficiencyWarning: splu requires CSC matrix format
+    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
       warn('splu requires CSC matrix format', SparseEfficiencyWarning)
 
 
@@ -111,12 +111,12 @@ plot data on subsurface
 
  .. code-block:: none
 
-    /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:318: SparseEfficiencyWarning: splu requires CSC matrix format
+    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
       warn('splu requires CSC matrix format', SparseEfficiencyWarning)
     Failed to get connection
-    ** (inkscape:5362): CRITICAL **: 21:07:52.659: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5362): CRITICAL **: 21:07:52.659: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5362): CRITICAL **: 21:07:52.659: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5499): CRITICAL **: 01:33:03.252: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5499): CRITICAL **: 01:33:03.252: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5499): CRITICAL **: 01:33:03.252: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -189,12 +189,12 @@ create many patches
 
  .. code-block:: none
 
-    /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:318: SparseEfficiencyWarning: splu requires CSC matrix format
+    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
       warn('splu requires CSC matrix format', SparseEfficiencyWarning)
     Failed to get connection
-    ** (inkscape:5368): CRITICAL **: 21:07:59.079: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5368): CRITICAL **: 21:07:59.079: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5368): CRITICAL **: 21:07:59.079: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5506): CRITICAL **: 01:33:09.549: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5506): CRITICAL **: 01:33:09.549: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5506): CRITICAL **: 01:33:09.549: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -258,20 +258,20 @@ create geodesic strip patch
 
  .. code-block:: none
 
-    /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:318: SparseEfficiencyWarning: splu requires CSC matrix format
+    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
       warn('splu requires CSC matrix format', SparseEfficiencyWarning)
     Failed to get connection
-    ** (inkscape:5379): CRITICAL **: 21:08:10.358: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5379): CRITICAL **: 21:08:10.358: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5379): CRITICAL **: 21:08:10.358: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5514): CRITICAL **: 01:33:20.494: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5514): CRITICAL **: 01:33:20.494: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5514): CRITICAL **: 01:33:20.494: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5382): CRITICAL **: 21:08:11.387: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5382): CRITICAL **: 21:08:11.387: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5382): CRITICAL **: 21:08:11.387: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5517): CRITICAL **: 01:33:21.485: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5517): CRITICAL **: 01:33:21.485: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5517): CRITICAL **: 01:33:21.486: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5385): CRITICAL **: 21:08:12.407: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5385): CRITICAL **: 21:08:12.407: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5385): CRITICAL **: 21:08:12.407: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5520): CRITICAL **: 01:33:22.471: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5520): CRITICAL **: 01:33:22.471: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5520): CRITICAL **: 01:33:22.471: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -279,7 +279,7 @@ create geodesic strip patch
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  23.834 seconds)
+   **Total running time of the script:** ( 0 minutes  22.744 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_subsurfaces.py:

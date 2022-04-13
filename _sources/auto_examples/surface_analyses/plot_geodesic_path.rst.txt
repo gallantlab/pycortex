@@ -48,12 +48,12 @@ show all of the vertices listed in the path.
 
  .. code-block:: none
 
-    /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:318: SparseEfficiencyWarning: splu requires CSC matrix format
+    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
       warn('splu requires CSC matrix format', SparseEfficiencyWarning)
     Failed to get connection
-    ** (inkscape:5332): CRITICAL **: 21:07:02.715: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5332): CRITICAL **: 21:07:02.715: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5332): CRITICAL **: 21:07:02.715: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5462): CRITICAL **: 01:32:15.597: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5462): CRITICAL **: 01:32:15.597: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5462): CRITICAL **: 01:32:15.597: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -97,7 +97,7 @@ show all of the vertices listed in the path.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  9.131 seconds)
+   **Total running time of the script:** ( 0 minutes  8.814 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_path.py:

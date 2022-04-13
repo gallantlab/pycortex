@@ -42,9 +42,9 @@ defined in the SVG ROI file (see :doc:`/rois.rst`).
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5395): CRITICAL **: 21:08:33.300: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5395): CRITICAL **: 21:08:33.300: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5395): CRITICAL **: 21:08:33.300: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5534): CRITICAL **: 01:33:42.301: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5534): CRITICAL **: 01:33:42.301: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5534): CRITICAL **: 01:33:42.301: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
     <Figure size 1960x1024 with 2 Axes>
 
@@ -75,7 +75,7 @@ defined in the SVG ROI file (see :doc:`/rois.rst`).
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  2.482 seconds)
+   **Total running time of the script:** ( 0 minutes  2.277 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_get_roi_vertices.py:

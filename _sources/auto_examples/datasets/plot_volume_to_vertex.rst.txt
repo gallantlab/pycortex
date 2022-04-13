@@ -57,14 +57,14 @@ vertex mapping of that data. You can plot both of these as you normally would.
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5002): CRITICAL **: 21:01:24.992: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5002): CRITICAL **: 21:01:24.992: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5002): CRITICAL **: 21:01:24.992: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5131): CRITICAL **: 01:26:57.515: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5131): CRITICAL **: 01:26:57.515: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5131): CRITICAL **: 01:26:57.515: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Generating a flatmap cache
     Failed to get connection
-    ** (inkscape:5007): CRITICAL **: 21:01:27.144: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5007): CRITICAL **: 21:01:27.144: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5007): CRITICAL **: 21:01:27.144: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5134): CRITICAL **: 01:26:59.615: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5134): CRITICAL **: 01:26:59.615: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5134): CRITICAL **: 01:26:59.615: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -104,7 +104,7 @@ vertex mapping of that data. You can plot both of these as you normally would.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  8.172 seconds)
+   **Total running time of the script:** ( 0 minutes  7.047 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volume_to_vertex.py:

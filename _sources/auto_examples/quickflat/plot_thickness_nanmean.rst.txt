@@ -60,13 +60,13 @@ has the value NaN.
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5233): CRITICAL **: 21:05:08.391: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5233): CRITICAL **: 21:05:08.391: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5233): CRITICAL **: 21:05:08.391: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5358): CRITICAL **: 01:30:27.787: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5358): CRITICAL **: 01:30:27.787: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5358): CRITICAL **: 01:30:27.787: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5237): CRITICAL **: 21:05:09.610: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5237): CRITICAL **: 21:05:09.610: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5237): CRITICAL **: 21:05:09.610: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5361): CRITICAL **: 01:30:28.963: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5361): CRITICAL **: 01:30:28.963: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5361): CRITICAL **: 01:30:28.963: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -109,7 +109,7 @@ has the value NaN.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  4.873 seconds)
+   **Total running time of the script:** ( 0 minutes  4.428 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_thickness_nanmean.py:

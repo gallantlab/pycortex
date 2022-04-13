@@ -46,7 +46,7 @@ NB: `cortex.fmriprep` is a work-in-progress and cannot currently handle multiple
     # import subject into pycortex database
     fmriprep.import_subj(subject_id, source_directory)
 
-    # We can use visualize the imported subject's T1-weighted image
+    # We can visualize the imported subject's T1-weighted image
     anat_nifti = 'fmriprep/sub-001/anat/sub-001_T1w_preproc.nii.gz'
     t1_image_path = op.join(source_directory, anat_nifti)
 

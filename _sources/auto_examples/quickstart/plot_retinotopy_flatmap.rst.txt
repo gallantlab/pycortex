@@ -64,13 +64,13 @@ and you will also need a flatmap for them.
 
     Mask not found, generating...
     Failed to get connection
-    ** (inkscape:5302): CRITICAL **: 21:06:15.981: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5302): CRITICAL **: 21:06:15.981: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5302): CRITICAL **: 21:06:15.981: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5434): CRITICAL **: 01:31:30.199: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5434): CRITICAL **: 01:31:30.199: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5434): CRITICAL **: 01:31:30.200: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5305): CRITICAL **: 21:06:17.138: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5305): CRITICAL **: 21:06:17.138: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5305): CRITICAL **: 21:06:17.138: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5438): CRITICAL **: 01:31:31.326: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5438): CRITICAL **: 01:31:31.326: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5438): CRITICAL **: 01:31:31.326: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -113,7 +113,7 @@ and you will also need a flatmap for them.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  7.138 seconds)
+   **Total running time of the script:** ( 0 minutes  6.018 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickstart_plot_retinotopy_flatmap.py:

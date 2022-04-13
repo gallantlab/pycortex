@@ -54,9 +54,9 @@ of this using the following formula:
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5089): CRITICAL **: 21:02:27.326: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5089): CRITICAL **: 21:02:27.326: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5089): CRITICAL **: 21:02:27.326: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5219): CRITICAL **: 01:27:52.316: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5219): CRITICAL **: 01:27:52.317: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5219): CRITICAL **: 01:27:52.317: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -84,7 +84,7 @@ of this using the following formula:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  3.716 seconds)
+   **Total running time of the script:** ( 0 minutes  3.200 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_dropout.py:

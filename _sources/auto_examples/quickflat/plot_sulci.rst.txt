@@ -45,16 +45,16 @@ displaying the sulci on the surface.
  .. code-block:: none
 
     Generating curvature surface info...
-    /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:318: SparseEfficiencyWarning: splu requires CSC matrix format
+    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
       warn('splu requires CSC matrix format', SparseEfficiencyWarning)
     Failed to get connection
-    ** (inkscape:5080): CRITICAL **: 21:02:22.382: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5080): CRITICAL **: 21:02:22.382: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5080): CRITICAL **: 21:02:22.382: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5209): CRITICAL **: 01:27:48.014: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5209): CRITICAL **: 01:27:48.014: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5209): CRITICAL **: 01:27:48.014: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5085): CRITICAL **: 21:02:23.300: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5085): CRITICAL **: 21:02:23.300: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5085): CRITICAL **: 21:02:23.300: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5213): CRITICAL **: 01:27:48.884: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5213): CRITICAL **: 01:27:48.884: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5213): CRITICAL **: 01:27:48.884: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -81,7 +81,7 @@ displaying the sulci on the surface.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  9.918 seconds)
+   **Total running time of the script:** ( 0 minutes  9.313 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_sulci.py:

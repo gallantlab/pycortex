@@ -67,13 +67,13 @@ By default, ROIs and ROI labels are displayed when a flatmap is plotted using
  .. code-block:: none
 
     Failed to get connection
-    ** (inkscape:5122): CRITICAL **: 21:02:44.433: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5122): CRITICAL **: 21:02:44.433: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5122): CRITICAL **: 21:02:44.433: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5256): CRITICAL **: 01:28:06.354: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5256): CRITICAL **: 01:28:06.354: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5256): CRITICAL **: 01:28:06.354: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
     Failed to get connection
-    ** (inkscape:5126): CRITICAL **: 21:02:45.497: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5126): CRITICAL **: 21:02:45.497: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5126): CRITICAL **: 21:02:45.498: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    ** (inkscape:5260): CRITICAL **: 01:28:07.392: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
+    ** (inkscape:5260): CRITICAL **: 01:28:07.392: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
+    ** (inkscape:5260): CRITICAL **: 01:28:07.392: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
 
 
 
@@ -108,7 +108,7 @@ By default, ROIs and ROI labels are displayed when a flatmap is plotted using
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  6.585 seconds)
+   **Total running time of the script:** ( 0 minutes  5.128 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_rois.py:
