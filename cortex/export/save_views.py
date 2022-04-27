@@ -37,7 +37,8 @@ def save_3d_views(
         `list_surfaces`. Choices are:
             'left', 'right', 'front', 'back', 'top', 'bottom', 'flatmap',
             'medial_pivot', 'lateral_pivot', 'bottom_pivot',
-            or a custom dictionary of parameters.
+            or tuple of (view_name, custom dictionary of parameters).
+            See `angle_view_params` in this file for parameter dict examples.
 
     list_surfaces: list of (str or dict)
         Surfaces to be used. Should be of length one, or of the same length as
@@ -94,8 +95,9 @@ def save_3d_views(
                 # force flatmap correspondence
                 view = surface = "flatmap"
             view_params = angle_view_params[view]
+            view_name = view
         else:
-            view_params = view
+            view_name, view_params = view
         if isinstance(surface, str):
             surface_params = unfold_view_params[surface]
         else:
@@ -123,7 +125,7 @@ def save_3d_views(
         time.sleep(0.1)
 
         # Save image, store file_name
-        file_name = file_pattern.format(base=base_name, view=view, surface=surface)
+        file_name = file_pattern.format(base=base_name, view=view_name, surface=surface)
         file_names.append(file_name)
         handle.getImage(file_name, size)
 
