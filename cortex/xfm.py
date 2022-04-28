@@ -379,7 +379,7 @@ def _vox2ras_tkr(image):
         L = L[-4:]
         tkrvox2ras = np.array(
             [[np.float(s) for s in ll.split() if s] for ll in L])
-    except OSError:
+    except OSError as e:
         print("Error occured while executing:\n{}".format(' '.join(cmd)))
-        raise
+        raise e
     return tkrvox2ras
