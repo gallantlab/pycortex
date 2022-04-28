@@ -2,6 +2,8 @@
 """
 import os
 import numpy as np
+import subprocess
+
 from six import string_types
 
 class Transform(object):
@@ -358,6 +360,7 @@ def _x_flipper(N_i):
     flipr = np.diag([-1, 1, 1, 1])
     flipr[0,3] = N_i - 1
     return flipr
+
 
 def _vox2ras_tkr(image):
     """Run `mri_info --vox2ras-tkr` on `image` and return a numpy array with the
