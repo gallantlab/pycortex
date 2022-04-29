@@ -2,6 +2,8 @@
 """
 import os
 import numpy as np
+import subprocess
+
 from six import string_types
 
 class Transform(object):
@@ -246,7 +248,6 @@ class Transform(object):
         if isinstance(fs_register, string_types):
             with open(fs_register, 'r') as fid:
                 L = fid.readlines()
-
             anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[4:8]])
         else:
             anat2func = fs_register
@@ -267,29 +268,11 @@ class Transform(object):
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
             raise
 
-        # Read tkrvox2ras transform for the  anatomical volume
-        try:
-            cmd = ('mri_info', '--vox2ras-tkr', anat_mgz)
-            L = decode(subprocess.check_output(cmd)).splitlines()
-            anat_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
-        except OSError:
-            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
-            raise
+        # Read tkrvox2ras transform for the anatomical volume
+        anat_tkrvox2ras = _vox2ras_tkr(anat_mgz)
 
         # Read tkvox2ras transform for the functional volume
-        try:
-            cmd = ('mri_info', '--vox2ras-tkr', func_nii)
-            L = decode(subprocess.check_output(cmd)).splitlines()
-            # The [1:] index skips a first line that is present only if an error occurs
-            # or some info is missing when the transform is created - i.e.
-            # not in all cases, just in the case that the transform is 
-            # created exactly as it is now. 
-            if len(L) == 5:
-                L = L[1:]
-            func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
-        except OSError:
-            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
-            raise
+        func_tkrvox2ras = _vox2ras_tkr(func_nii)
 
         # Calculate pycorex transform (i.e. scanner to functional transform)
         coord = np.dot(inv(func_tkrvox2ras), np.dot(anat2func, np.dot(anat_tkrvox2ras, inv(anat_vox2ras))))
@@ -300,6 +283,7 @@ class Transform(object):
             refIm = func_nii
 
         return cls(coord, refIm)
+
 
     def to_freesurfer(self, fs_register, subject, freesurfer_subject_dir=None):
         """Converts a pycortex transform to a FreeSurfer transform.
@@ -334,31 +318,10 @@ class Transform(object):
         anat_vox2ras = anat.affine
 
         # Read tkrvox2ras transform for the  anatomical volume
-        try:
-            cmd = ('mri_info', '--vox2ras-tkr', anat.get_filename())
-            L = decode(subprocess.check_output(cmd)).splitlines()
-            anat_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
-        except OSError:
-            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
-            raise
+        anat_tkrvox2ras = _vox2ras_tkr(anat.get_filename())
 
         # Read tkvox2ras transform for the functional volume
-        try:
-            cmd = ('mri_info', '--vox2ras-tkr', self.reference.get_filename())
-            L = decode(subprocess.check_output(cmd)).splitlines()
-            # The [1:] index skips a first line that is present only if an error occurs
-            # or some info is missing when the transform is created - i.e.
-            # not in all cases, just in the case that the transform is 
-            # created exactly as it is now. 
-            if len(L) == 5:
-            	L = L[1:]
-            func_tkrvox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
-        except OSError:
-            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
-            raise
-        # Debugging code
-        #print('Shape of func_tkrvox2ras is: [SHOULD BE (4,4) !!]')
-        #print(func_tkrvox2ras.shape)
+        func_tkrvox2ras = _vox2ras_tkr(self.reference.get_filename())
 
         # Read voxel resolution of the functional volume
         func_voxres = self.reference.header.get_zooms()
@@ -366,9 +329,6 @@ class Transform(object):
         # Calculate FreeSurfer transform
         fs_anat2func = np.dot(func_tkrvox2ras, np.dot(self.xfm, np.dot(anat_vox2ras, inv(anat_tkrvox2ras))))
 
-        # Debugging code
-        #if not fs_anat2func.shape == (4, 4):
-        #    raise Exception("bad assumptions led to bad transformation matrix.")
         # Write out to `fs_register` in register.dat format
         with open(fs_register, 'w') as fid:
             fid.write('{}\n'.format(subject))
@@ -400,3 +360,29 @@ def _x_flipper(N_i):
     flipr = np.diag([-1, 1, 1, 1])
     flipr[0,3] = N_i - 1
     return flipr
+
+
+def _vox2ras_tkr(image):
+    """Run `mri_info --vox2ras-tkr` on `image` and return a numpy array with the
+    output affine"""
+    try:
+        cmd = ('mri_info', '--vox2ras-tkr', image)
+        L = decode(subprocess.check_output(cmd)).splitlines()
+        # Skip headers/additional information. Example output of
+        # mri_info --vox2ras-tkr
+        #
+        # niiRead(): NIFTI_UNITS_UNKNOWN, assuming mm
+        #   -2.61900    0.00000    0.00000   81.18900
+        #    0.00000    0.00000    2.60000  -63.70000
+        #    0.00000   -2.61900    0.00000   87.73650
+        #    0.00000    0.00000    0.00000    1.00000
+        #
+        # Just take the last 4 lines because the length of the extra info is
+        # unpredictable.
+        L = L[-4:]
+        tkrvox2ras = np.array(
+            [[np.float(s) for s in ll.split() if s] for ll in L])
+    except OSError as e:
+        print("Error occured while executing:\n{}".format(' '.join(cmd)))
+        raise e
+    return tkrvox2ras
