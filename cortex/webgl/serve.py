@@ -279,6 +279,7 @@ class WebApp(threading.Thread):
         ioloop = tornado.ioloop.IOLoop()
         ioloop.clear_current()
         ioloop.make_current()
+        self.ioloop = ioloop
         application = tornado.web.Application(self.handlers, gzip=True)
         # If tornado version is 5.0 or greater, io_loop arg does not exist
         if tornado.version_info[0] < 5:
@@ -297,8 +298,11 @@ class WebApp(threading.Thread):
         if not isinstance(msg, str):
             msg = json.dumps(msg, cls=NPEncode, ensure_ascii=False)
 
-        for sock in self.sockets:
-            sock.write_message(msg)
+        async def _send(sockets, msg):
+            for sock in sockets:
+                await sock.write_message(msg)
+
+        self.ioloop.add_callback(_send, self.sockets, msg)
 
         try:
             return [json.loads(self.response.get(timeout=2)) for _ in range(self.n_clients)]
