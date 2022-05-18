@@ -226,3 +226,61 @@ params_inflated_dorsal_lateral_medial_ventral = {
         },
     ],
 }
+
+params_flatmap_inflated_lateral_medial_ventral = {
+    "figsize": [16, 9],
+    "panels": [
+        {
+            "extent": [0.0, 0.2, 1.0, 0.8],
+            "view": {"angle": "flatmap", "surface": "flatmap"},
+        },
+        {
+            "extent": [0.1, 0.05, 0.2, 0.2],
+            "view": {
+                "hemisphere": "left",
+                "angle": "medial_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.7, 0.05, 0.2, 0.2],
+            "view": {
+                "hemisphere": "right",
+                "angle": "medial_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.0, 0.25, 0.2, 0.2],
+            "view": {
+                "hemisphere": "left",
+                "angle": "lateral_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.8, 0.25, 0.2, 0.2],
+            "view": {
+                "hemisphere": "right",
+                "angle": "lateral_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.3, 0.05, 0.15, 0.15],
+            "view": {
+                "hemisphere": "left",
+                "angle": "bottom_pivot",
+                "surface": "inflated",
+            },
+        },
+        {
+            "extent": [0.55, 0.05, 0.15, 0.15],
+            "view": {
+                "hemisphere": "right",
+                "angle": "bottom_pivot",
+                "surface": "inflated",
+            },
+        },
+    ],
+}
