@@ -298,6 +298,8 @@ var jsplot = (function (module) {
         var img = mriview.getTexture(this.renderer.context, renderbuf)
         if (post !== undefined)
             $.post(post, {png:img.toDataURL()});
+        // Draw again -- for some reason the scene disappears after getting the texture
+        this.draw()
         return img;
     };
 
