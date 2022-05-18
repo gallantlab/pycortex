@@ -12,6 +12,7 @@ from ._default_params import (
     params_occipital_triple_view,
     params_flatmap_lateral_medial,
     params_inflated_dorsal_lateral_medial_ventral,
+    params_flatmap_inflated_lateral_medial_ventral
 )
 
 
