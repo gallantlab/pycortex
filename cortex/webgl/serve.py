@@ -325,7 +325,9 @@ class JSProxy(object):
         if attr == 'attrs':
             return self.send(method='query', params=[self.name])[0]
 
-        assert attr in self.attrs
+        if attr not in self.attrs:
+            raise KeyError(f"Attribute '{attr}' not found in {self}")
+
         if self.attrs[attr][0] in ["object", "function"]:
             return JSProxy(self.send, "%s.%s"%(self.name, attr))
         else:
