@@ -70,7 +70,7 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
 
     if data.dtype != np.uint8:
         # Convert data to float to avoid image artifacts
-        data = data.astype(np.float)
+        data = data.astype(float)
     if data.dtype == np.uint8:
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
         img[mask] = pixmap * data.reshape(-1, 4)

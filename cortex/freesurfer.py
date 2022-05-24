@@ -15,7 +15,7 @@ import numpy as np
 import nibabel
 from nibabel import gifti
 from tempfile import NamedTemporaryFile
-from scipy.spatial.kdtree import KDTree
+from scipy.spatial import KDTree
 from scipy.linalg import lstsq
 from scipy.sparse import coo_matrix
 
