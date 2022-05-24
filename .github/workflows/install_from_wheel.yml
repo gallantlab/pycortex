@@ -3,7 +3,7 @@ name: Install from wheel
 on: [push, pull_request]
 
 jobs:
-  run-tests:
+  install-from-wheel:
     runs-on: ubuntu-latest
     strategy:
       matrix:
