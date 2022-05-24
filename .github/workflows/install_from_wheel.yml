@@ -30,8 +30,13 @@ jobs:
         sudo apt-get install -y inkscape
         pip install --upgrade pip
         pip install wheel numpy cython build
-        # create wheel and install from the wheel
-        python -m build --wheel --outdir dist/
-        pip install dist/$(ls dist) --no-build-isolation
-        # Test that the filestore is available
-        python -c 'import cortex; print(cortex.db)'
+
+    - name: Install from wheel
+      run: |
+        python setup.py bdist_wheel
+        pip install $(ls dist/*.whl) --no-build-isolation
+
+    - name: Test installation of the filestore
+      run: |
+        python -c 'import cortex; print(cortex.db.filestore)'
+        python -c 'from cortex.webgl.view import cmapdir; print(cmapdir)'
