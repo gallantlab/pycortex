@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+from glob import glob
 from numpy.distutils.misc_util import get_numpy_include_dirs
 
 try:
@@ -35,6 +36,19 @@ class my_install(install):
                 os.chmod(os.path.join(root, folder), 511)
             for fname in files:
                 os.chmod(os.path.join(root, fname), 438)
+
+
+# Files listed in MANIFEST.in are not copied in wheels, use data_files instead.
+# data_files = [
+#     ('share/pycortex/colormaps', 'filestore/colormaps/RdBu.png'),
+#     ...
+# ]
+data_files = [
+    # [10:] to remove "filestore/"
+    ('share/pycortex/' + os.path.dirname(file)[10:], [file])
+    for file in glob('filestore/**/*', recursive=True)
+    if os.path.isfile(file)
+]
 
 
 # Modified from DataLad codebase to load version from pycortex/version.py
@@ -77,7 +91,7 @@ ctm = Extension('cortex.openctm', [
 formats = Extension('cortex.formats', ['cortex/formats.pyx'],
                     include_dirs=get_numpy_include_dirs())
 
-DISTNAME = 'pycortex'
+DISTNAME = 'pycortex-test'
 # VERSION needs to be modified under cortex/version.py
 VERSION = get_version()
 DESCRIPTION = 'Python Cortical mapping software for fMRI data'
@@ -113,6 +127,7 @@ setup(name=DISTNAME,
           'cortex.polyutils',
           'cortex.export'
       ],
+      data_files=data_files,
       ext_modules=cythonize([ctm, formats]),
       package_data={
             'cortex': [
