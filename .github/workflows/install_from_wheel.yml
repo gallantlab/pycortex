@@ -1,0 +1,46 @@
+name: Install from wheel
+
+on: [push, pull_request]
+
+jobs:
+  install-from-wheel:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+      max-parallel: 5
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y inkscape
+        pip install --upgrade pip
+        pip install wheel numpy cython
+
+    - name: Create the wheel
+      run: python setup.py bdist_wheel
+
+    - name: Install from the wheel
+      run: |
+        pip install $(ls dist/*.whl) --no-build-isolation
+
+    - name: Test installation of the filestore
+      run: |
+        # change directory to avoid conflict with cortex directory
+        cd ..
+        python -c 'import cortex; print(cortex.db.filestore)'
+        python -c 'from cortex.webgl.view import cmapdir; print(cmapdir)'
