@@ -28,13 +28,16 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y inkscape
-        pip install --upgrade pip
-        pip install wheel numpy cython build
+        python -m pip install --upgrade pip
+        python -m pip install wheel numpy cython
 
-    - name: Install from wheel
+    - name: Create the wheel
+      run: python setup.py bdist_wheel
+
+    - name: Install from the wheel
       run: |
-        python setup.py bdist_wheel
-        pip install $(ls dist/*.whl) --no-build-isolation
+        python -m pip install $(ls dist/*.whl) --no-build-isolation
+        python -m pip list
 
     - name: Test installation of the filestore
       run: |
