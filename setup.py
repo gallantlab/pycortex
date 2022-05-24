@@ -91,7 +91,7 @@ ctm = Extension('cortex.openctm', [
 formats = Extension('cortex.formats', ['cortex/formats.pyx'],
                     include_dirs=get_numpy_include_dirs())
 
-DISTNAME = 'pycortex-test'
+DISTNAME = 'pycortex'
 # VERSION needs to be modified under cortex/version.py
 VERSION = get_version()
 DESCRIPTION = 'Python Cortical mapping software for fMRI data'
