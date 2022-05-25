@@ -530,6 +530,9 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         If True (default), function returns a dictionary of ROI masks; if False, a volume
         with integer indices for each ROI (similar to Freesurfer's aseg masks) and a
         dictionary of how the indices map to ROI names are returned.
+    overlay_file : str or None
+        If None, use the default `overlays.svg` file. Otherwise, use the passed
+        overlay file to look for the ROIs.
 
     Returns
     -------
@@ -567,7 +570,10 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
     if not return_dict:
         split_lr = True
         if use_mapper and threshold is None:
-            raise Exception("You must set a threshold for gm_mapper='%s' if you want an indexed volume output"%gm_mapper)
+            raise ValueError(
+                f"You must set a threshold for gm_sampler={gm_sampler} if you want an "
+                "indexed volume output"
+            )
     # Start with vertices
     if roi_list is None:
         roi_verts = get_roi_verts(subject, mask=use_mapper, overlay_file=overlay_file)
