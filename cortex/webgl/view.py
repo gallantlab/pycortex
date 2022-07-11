@@ -506,7 +506,8 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
 
             """
             # Set unfolding level first, as it interacts with other arguments
-            surface = self._get_ui_attr("surface")
+            # surface = self._get_ui_attr("surface")
+            surface = getattr(self.ui, "surface")
             subject_list = surface._folders.attrs.keys()
             # Better to only self.view_props once; it interacts with javascript, 
             # don't want to do that too often, it leads to glitches.
