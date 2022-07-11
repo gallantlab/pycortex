@@ -320,11 +320,15 @@ class JSProxy(object):
         super(JSProxy, self).__setattr__('name', name)
         
         self.attrs = self.send(method='query', params=[self.name])[0]
+        self.max_time_retry = 5.  # in seconds
     
     def __getattr__(self, attr):
         if attr == 'attrs':
             return self.send(method='query', params=[self.name])[0]
 
+        tstart = time.time()
+        while attr not in self.attrs and time.time() - tstart < self.max_time_retry:
+            time.sleep(0.1)
         if attr not in self.attrs:
             raise KeyError(f"Attribute '{attr}' not found in {self}")
 
