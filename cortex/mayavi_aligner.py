@@ -711,8 +711,8 @@ class Align(HasTraits):
         epi = nii.get_data().astype(float).squeeze()
         if epi.ndim>3:
             epi = epi[:,:,:,0]
-        self.affine = nii.get_affine()
-        base = nii.get_header().get_base_affine()
+        self.affine = nii.affine
+        base = nii.header.get_base_affine()
         self.base = base
         self.origin = base[:3, -1]
         self.spacing = np.diag(base)[:3]

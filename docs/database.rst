@@ -109,7 +109,7 @@ Transformations in pycortex are stored as **affine** matrices encoded in magnet 
 
 Each transform is stored in its own subdirectory containing two files: ``matrices.xfm``, and ``reference.nii.gz``. Masks are also stored in the transforms directory.
 
-Transforms are saved as JSON-encoded text files. They have the format ``{subject}_{transform}.xfm``. There are four fields in this JSON structure: ``subject``, ``epifile``, ``coord``, ``magnet``. ``epifile`` gives the filename of the functional volume (EPI) that served as the reference for this transform. ``coord`` stores the transform from fiducial to coordinate space (for fast index lookups). ``magnet`` stores the transform from the fiducial to the magnet space, as defined in the return of ``nibabel.get_affine()``.
+Transforms are saved as JSON-encoded text files. They have the format ``{subject}_{transform}.xfm``. There are four fields in this JSON structure: ``subject``, ``epifile``, ``coord``, ``magnet``. ``epifile`` gives the filename of the functional volume (EPI) that served as the reference for this transform. ``coord`` stores the transform from fiducial to coordinate space (for fast index lookups). ``magnet`` stores the transform from the fiducial to the magnet space, as defined in the return of ``nibabel.affine``.
 
 Reference volumes are typically in Nifti_ format (*.nii), but can be any format that nibabel_ understands. These are stored to ensure that we know what the reference for any transform was. This makes it possible to visually verify and tweak alignments as well as keep a static store of images for future coregistrations.
 
