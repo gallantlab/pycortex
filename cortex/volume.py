@@ -230,8 +230,8 @@ def epi2anatspace(volumedata, order=1):
     anat = db.get_anat(volumedata.subject, "raw")
     xfm = db.get_xfm(volumedata.subject, volumedata.xfmname, "coord")
 
-    #allxfm =  Transform(anat.get_affine(), anat.shape).inv * xfm.inv
-    allxfm = xfm * Transform(anat.get_affine(), anat.shape)
+    #allxfm =  Transform(anat.affine, anat.shape).inv * xfm.inv
+    allxfm = xfm * Transform(anat.affine, anat.shape)
 
     rotpart = allxfm.xfm[:3, :3]
     transpart = allxfm.xfm[:3,-1]
@@ -262,8 +262,8 @@ def anat2epispace(anatdata, subject, xfmname, order=1):
     anatref = db.get_anat(subject)
     target = db.get_xfm(subject, xfmname, "coord")
 
-    allxfm =  Transform(anatref.get_affine(), anatref.shape).inv * target.inv
-    #allxfm = xfm * Transform(anat.get_affine(), anat.shape)
+    allxfm =  Transform(anatref.affine, anatref.shape).inv * target.inv
+    #allxfm = xfm * Transform(anat.affine, anat.shape)
 
     rotpart = allxfm.xfm[:3, :3]
     transpart = allxfm.xfm[:3,-1]
@@ -299,7 +299,7 @@ def epi2anatspace_fsl(volumedata):
             xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
 
     ## Save out data into nifti file
-    datafile = nibabel.Nifti1Image(data.T, xfm.reference.get_affine(), xfm.reference.get_header())
+    datafile = nibabel.Nifti1Image(data.T, xfm.reference.affine, xfm.reference.header)
     datafilename = tempfile.mktemp(".nii")
     nibabel.save(datafile, datafilename)
 
@@ -342,7 +342,7 @@ def anat2epispace_fsl(data,subject,xfmname):
             xfmh.write(" ".join(["%0.5f"%f for f in ll])+"\n")
 
     ## Save out data into nifti file
-    datafile = nibabel.Nifti1Image(data.T, anatNII.get_affine(), anatNII.get_header())
+    datafile = nibabel.Nifti1Image(data.T, anatNII.affine, anatNII.header)
     datafilename = tempfile.mktemp(".nii")
     nibabel.save(datafile, datafilename)
 

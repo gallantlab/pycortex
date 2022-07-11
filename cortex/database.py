@@ -408,7 +408,7 @@ class Database(object):
                 import warnings
                 warnings.warn('You are importing a 4D dataset, automatically selecting the first volume as reference')
                 data = data[...,0]
-            out = nibabel.Nifti1Image(data, nib.get_affine(), header=nib.get_header())
+            out = nibabel.Nifti1Image(data, nib.affine, header=nib.header)
             nibabel.save(out, fpath)
 
             jsdict = dict()
@@ -416,10 +416,10 @@ class Database(object):
         nib = nibabel.load(os.path.join(path, "reference.nii.gz"))
         if xfmtype == "magnet":
             jsdict['magnet'] = np.array(xfm).tolist()
-            jsdict['coord'] = np.dot(np.linalg.inv(nib.get_affine()), xfm).tolist()
+            jsdict['coord'] = np.dot(np.linalg.inv(nib.affine), xfm).tolist()
         elif xfmtype == "coord":
             jsdict['coord'] = np.array(xfm).tolist()
-            jsdict['magnet'] = np.dot(nib.get_affine(), xfm).tolist()
+            jsdict['magnet'] = np.dot(nib.affine, xfm).tolist()
         
         files = self.get_paths(subject)
         if len(glob.glob(files['masks'].format(xfmname=name, type="*"))) > 0:
@@ -449,7 +449,7 @@ class Database(object):
 
         if name == "identity":
             nib = self.get_anat(subject, 'raw')
-            return Transform(np.linalg.inv(nib.get_affine()), nib)
+            return Transform(np.linalg.inv(nib.affine), nib)
 
         fname = os.path.join(self.filestore, subject, "transforms", name, "matrices.xfm")
         reference = os.path.join(self.filestore, subject, "transforms", name, "reference.nii.gz")
@@ -530,7 +530,7 @@ class Database(object):
         xfm = self.get_xfm(subject, xfmname)
         if xfm.shape != mask.shape:
             raise ValueError("Invalid mask shape: must match shape of reference image")
-        affine = xfm.reference.get_affine()
+        affine = xfm.reference.affine
         nib = nibabel.Nifti1Image(mask.astype(np.uint8).T, affine)
         nib.to_filename(fname)
 

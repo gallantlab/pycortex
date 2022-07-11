@@ -131,7 +131,7 @@ def transform_surface_to_mni(subject, surfname):
         MNI-transformed surface in same format returned by db.get_surf.
     """
     # Get MNI affine transform
-    mni_affine = nibabel.load(default_template).get_affine()
+    mni_affine = nibabel.load(default_template).affine
 
     # Get subject anatomical-to-MNI transform
     mni_xfm = np.dot(mni_affine, db.get_mnixfm(subject, "identity"))
@@ -183,7 +183,7 @@ def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
     funcspace_nii = tempfile.mktemp(".nii.gz")
 
     # Save out relevant things
-    affine = nibabel.load(template).get_affine()
+    affine = nibabel.load(template).affine
     nibabel.save(nibabel.Nifti1Image(volarray, affine), mnispace_func_nii)
     _save_fsl_xfm(mni_to_func_xfm, np.linalg.inv(func_to_mni))
 

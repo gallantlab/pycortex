@@ -333,7 +333,7 @@ class VolumeData(BrainData):
         copied from the reference image for this VolumeData's transform.
         """
         xfm = db.get_xfm(self.subject, self.xfmname)
-        affine = xfm.reference.get_affine()
+        affine = xfm.reference.affine
         import nibabel
         new_nii = nibabel.Nifti1Image(self.volume.T, affine)
         nibabel.save(new_nii, filename)
