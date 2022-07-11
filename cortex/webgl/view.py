@@ -457,10 +457,12 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             """Load an attr from self.ui by retrying up to a max time of
             `max_time_retry` (in seconds)."""
             tstart = time.time()
-            attr_object = getattr(self.ui, attr, None)
+            attr_object = None
             while time.time() - tstart < max_time_retry and attr_object is None:
-                attr_object = getattr(self.ui, attr, None)
-                time.sleep(0.1)
+                try:
+                    attr_object = getattr(self.ui, attr)
+                except KeyError:
+                    time.sleep(0.1)
             if attr_object is None:
                 raise AttributeError(f"Couldn't get attribute {attr} from {self}.")
             return attr_object
