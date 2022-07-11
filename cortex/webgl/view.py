@@ -474,7 +474,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 try:
                     camera = self.ui.camera
                 except KeyError:
-                    print("Waiting for camera to appear in the JS viewer...")
+                    print("Waiting for `camera` to appear in the JS viewer...")
                     time.sleep(0.1)
             _camera_props = ['camera.%s' % k for k in camera._controls.attrs.keys()]
 
@@ -484,7 +484,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 try:
                     surface = self.ui.surface
                 except KeyError:
-                    print("Waiting for camera to appear in the JS viewer...")
+                    print("Waiting for `surface` to appear in the JS viewer...")
                     time.sleep(0.1)
             _subject = list(surface._folders.attrs.keys())[0]
             _surface = getattr(self.ui.surface, _subject)
