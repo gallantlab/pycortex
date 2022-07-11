@@ -453,20 +453,6 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 svgfile.write(data)
 
     class JSMixer(serve.JSProxy):
-        def _get_ui_attr(self, attr, max_time_retry=5.):
-            """Load an attr from self.ui by retrying up to a max time of
-            `max_time_retry` (in seconds)."""
-            tstart = time.time()
-            attr_object = None
-            while time.time() - tstart < max_time_retry and attr_object is None:
-                try:
-                    attr_object = getattr(self.ui, attr)
-                except KeyError:
-                    time.sleep(0.1)
-            if attr_object is None:
-                raise AttributeError(f"Couldn't get attribute {attr} from {self}.")
-            return attr_object
-
         @property
         def view_props(self):
             """An enumerated list of settable properties for views. 
@@ -481,14 +467,8 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection',
                 'volume_vis', 'frame', 'slices']
             """
-            # max_wait = 5
-            # Wait for the camera object to appear in UI
-            # camera = self._get_ui_attr("camera")
             camera = getattr(self.ui, "camera")
             _camera_props = ['camera.%s' % k for k in camera._controls.attrs.keys()]
-
-            # Wait for the surface object to appear in UI
-            # surface = self._get_ui_attr("surface")
             surface = getattr(self.ui, "surface")
             _subject = list(surface._folders.attrs.keys())[0]
             _surface = getattr(surface, _subject)
@@ -506,7 +486,6 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
 
             """
             # Set unfolding level first, as it interacts with other arguments
-            # surface = self._get_ui_attr("surface")
             surface = getattr(self.ui, "surface")
             subject_list = surface._folders.attrs.keys()
             # Better to only self.view_props once; it interacts with javascript, 
