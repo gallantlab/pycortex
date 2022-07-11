@@ -481,13 +481,15 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection',
                 'volume_vis', 'frame', 'slices']
             """
-            max_wait = 5
+            # max_wait = 5
             # Wait for the camera object to appear in UI
-            camera = self._get_ui_attr("camera")
+            # camera = self._get_ui_attr("camera")
+            camera = getattr(self.ui, "camera")
             _camera_props = ['camera.%s' % k for k in camera._controls.attrs.keys()]
 
             # Wait for the surface object to appear in UI
-            surface = self._get_ui_attr("surface")
+            # surface = self._get_ui_attr("surface")
+            surface = getattr(self.ui, "surface")
             _subject = list(surface._folders.attrs.keys())[0]
             _surface = getattr(surface, _subject)
             _surface_props = ['surface.{subject}.%s'%k for k in _surface._controls.attrs.keys()]
