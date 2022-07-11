@@ -467,9 +467,26 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection',
                 'volume_vis', 'frame', 'slices']
             """
+            max_wait = 5
+            # Wait for the camera object to appear in UI
+            tstart = time.time()
+            while time.time() - tstart < max_wait:
+                try:
+                    camera = self.ui.camera
+                except KeyError:
+                    print("Waiting for camera to appear in the JS viewer...")
+                    time.sleep(0.1)
+            _camera_props = ['camera.%s' % k for k in camera._controls.attrs.keys()]
 
-            _camera_props = ['camera.%s'%k for k in self.ui.camera._controls.attrs.keys()]
-            _subject = list(self.ui.surface._folders.attrs.keys())[0]
+            # Wait for the surface object to appear in UI
+            tstart = time.time()
+            while time.time() - tstart < max_wait:
+                try:
+                    surface = self.ui.surface
+                except KeyError:
+                    print("Waiting for camera to appear in the JS viewer...")
+                    time.sleep(0.1)
+            _subject = list(surface._folders.attrs.keys())[0]
             _surface = getattr(self.ui.surface, _subject)
             _surface_props = ['surface.{subject}.%s'%k for k in _surface._controls.attrs.keys()]
             _curvature_props = ['surface.{subject}.curvature.brightness',
