@@ -320,7 +320,7 @@ class JSProxy(object):
         super(JSProxy, self).__setattr__('name', name)
         
         self.attrs = self.send(method='query', params=[self.name])[0]
-        self.max_time_retry = 5.  # in seconds
+        self.max_time_retry = 10.  # in seconds
     
     def __getattr__(self, attr):
         if attr == 'attrs':
