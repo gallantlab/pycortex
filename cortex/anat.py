@@ -76,10 +76,10 @@ def voxelize(outfile, subject, surf='wm', mp=True):
     shape = nib.get_shape()
     vox = np.zeros(shape, dtype=bool)
     for pts, polys in db.get_surf(subject, surf, nudge=False):
-        xfm = Transform(np.linalg.inv(nib.get_affine()), nib)
+        xfm = Transform(np.linalg.inv(nib.affine), nib)
         vox += polyutils.voxelize(xfm(pts), polys, shape=shape, center=(0,0,0), mp=mp).astype('bool')
         
-    nib = nibabel.Nifti1Image(vox, nib.get_affine(), header=nib.get_header())
+    nib = nibabel.Nifti1Image(vox, nib.affine, header=nib.header)
     nib.to_filename(outfile)
 
     return vox.T

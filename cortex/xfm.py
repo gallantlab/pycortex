@@ -125,8 +125,8 @@ class Transform(object):
             inIm = infile
 
         refIm = nibabel.load(reffile)
-        in_hdr = inIm.get_header()
-        ref_hdr = refIm.get_header()
+        in_hdr = inIm.header
+        ref_hdr = refIm.header
         # get_zooms gets the positive voxel sizes as returned in the header
         inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
@@ -138,7 +138,7 @@ class Transform(object):
         if npl.det(ref_hdr.get_best_affine())>=0:
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
-        inAffine = inIm.get_affine()
+        inAffine = inIm.affine
 
         coord = np.dot(inv(refspace),np.dot(xfm,np.dot(inspace,inv(inAffine))))
         return cls(coord, refIm)
@@ -178,8 +178,8 @@ class Transform(object):
             inIm = nibabel.load(infile)
         except AttributeError:
             inIm = infile
-        in_hdr = inIm.get_header()
-        ref_hdr = self.reference.get_header()
+        in_hdr = inIm.header
+        ref_hdr = self.reference.header
         # get_zooms gets the positive voxel sizes as returned in the header
         inspace = np.diag(in_hdr.get_zooms()[:3] + (1,))
         refspace = np.diag(ref_hdr.get_zooms()[:3] + (1,))
@@ -193,7 +193,7 @@ class Transform(object):
             print("Determinant is > 0: FLIPPING!")
             refspace = np.dot(refspace, _x_flipper(ref_hdr.get_data_shape()[0]))
 
-        inAffine = inIm.get_affine()
+        inAffine = inIm.affine
 
         fslx = np.dot(refspace,np.dot(self.xfm,np.dot(inAffine,inv(inspace))))
         if direction=='func>anat':

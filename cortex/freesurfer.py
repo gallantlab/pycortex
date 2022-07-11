@@ -194,7 +194,7 @@ def import_subj(fs_subject, cx_subject=None, freesurfer_subject_dir=None, whitem
 
     # Freesurfer uses FOV/2 for center, let's set the surfaces to use the
     # magnet isocenter
-    trans = nibabel.load(out).get_affine()[:3, -1]
+    trans = nibabel.load(out).affine[:3, -1]
     surfmove = trans - np.sign(trans) * [128, 128, 128]
 
     from . import formats
