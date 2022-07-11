@@ -327,15 +327,18 @@ class JSProxy(object):
             return self.send(method='query', params=[self.name])[0]
 
         tstart = time.time()
-        while attr not in self.attrs and time.time() - tstart < self.max_time_retry:
+        # To avoid querying too many times, assign self.attrs to attrs
+        attrs = self.attrs
+        while attr not in attrs and time.time() - tstart < self.max_time_retry:
             time.sleep(0.1)
-        if attr not in self.attrs:
+            attrs = self.attrs
+        if attr not in attrs:
             raise KeyError(f"Attribute '{attr}' not found in {self}")
 
-        if self.attrs[attr][0] in ["object", "function"]:
+        if attrs[attr][0] in ["object", "function"]:
             return JSProxy(self.send, "%s.%s"%(self.name, attr))
         else:
-            return self.attrs[attr][1]
+            return attrs[attr][1]
 
     def __setattr__(self, attr, value):
         if hasattr(self, "attrs") and self.attrs is None:
