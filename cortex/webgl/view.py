@@ -489,7 +489,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             # Wait for the surface object to appear in UI
             surface = self._get_ui_attr("surface")
             _subject = list(surface._folders.attrs.keys())[0]
-            _surface = getattr(self.ui.surface, _subject)
+            _surface = getattr(surface, _subject)
             _surface_props = ['surface.{subject}.%s'%k for k in _surface._controls.attrs.keys()]
             _curvature_props = ['surface.{subject}.curvature.brightness',
                                 'surface.{subject}.curvature.contrast',
