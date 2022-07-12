@@ -467,10 +467,11 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 'visL', 'visR', 'alpha', 'rotationR', 'rotationL', 'projection',
                 'volume_vis', 'frame', 'slices']
             """
-
-            _camera_props = ['camera.%s'%k for k in self.ui.camera._controls.attrs.keys()]
-            _subject = list(self.ui.surface._folders.attrs.keys())[0]
-            _surface = getattr(self.ui.surface, _subject)
+            camera = getattr(self.ui, "camera")
+            _camera_props = ['camera.%s' % k for k in camera._controls.attrs.keys()]
+            surface = getattr(self.ui, "surface")
+            _subject = list(surface._folders.attrs.keys())[0]
+            _surface = getattr(surface, _subject)
             _surface_props = ['surface.{subject}.%s'%k for k in _surface._controls.attrs.keys()]
             _curvature_props = ['surface.{subject}.curvature.brightness',
                                 'surface.{subject}.curvature.contrast',
@@ -485,7 +486,8 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
 
             """
             # Set unfolding level first, as it interacts with other arguments
-            subject_list = self.ui.surface._folders.attrs.keys()
+            surface = getattr(self.ui, "surface")
+            subject_list = surface._folders.attrs.keys()
             # Better to only self.view_props once; it interacts with javascript, 
             # don't want to do that too often, it leads to glitches.
             vw_props = copy.copy(self.view_props)

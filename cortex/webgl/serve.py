@@ -319,19 +319,36 @@ class JSProxy(object):
         super(JSProxy, self).__setattr__('send', sendfunc)
         super(JSProxy, self).__setattr__('name', name)
         
-        self.attrs = self.send(method='query', params=[self.name])[0]
-    
-    def __getattr__(self, attr):
-        if attr == 'attrs':
-            return self.send(method='query', params=[self.name])[0]
+        # self.attrs = self.send(method='query', params=[self.name])[0]
+        self.max_time_retry = 10.  # in seconds
 
-        if attr not in self.attrs:
+    @property
+    def attrs(self):
+        return_value = self.send(method='query', params=[self.name])[0]
+        # Sometimes the return value can be None or an int (I assume an error value).
+        # This can be caused by the delay in updating the JS viewer.
+        # Waiting for 0.1 s should be enough.
+        if return_value is None or not isinstance(return_value, dict):
+            time.sleep(0.1)
+            return_value = self.send(method='query', params=[self.name])[0]
+        return return_value
+
+    def __getattr__(self, attr):
+        # if attr == 'attrs':
+        #    return self.send(method='query', params=[self.name])[0]
+        tstart = time.time()
+        # To avoid querying too many times, assign self.attrs to attrs
+        attrs = self.attrs
+        while attr not in attrs and time.time() - tstart < self.max_time_retry:
+            time.sleep(0.1)
+            attrs = self.attrs
+        if attr not in attrs:
             raise KeyError(f"Attribute '{attr}' not found in {self}")
 
-        if self.attrs[attr][0] in ["object", "function"]:
+        if attrs[attr][0] in ["object", "function"]:
             return JSProxy(self.send, "%s.%s"%(self.name, attr))
         else:
-            return self.attrs[attr][1]
+            return attrs[attr][1]
 
     def __setattr__(self, attr, value):
         if hasattr(self, "attrs") and self.attrs is None:
