@@ -319,13 +319,23 @@ class JSProxy(object):
         super(JSProxy, self).__setattr__('send', sendfunc)
         super(JSProxy, self).__setattr__('name', name)
         
-        self.attrs = self.send(method='query', params=[self.name])[0]
+        # self.attrs = self.send(method='query', params=[self.name])[0]
         self.max_time_retry = 10.  # in seconds
-    
-    def __getattr__(self, attr):
-        if attr == 'attrs':
-            return self.send(method='query', params=[self.name])[0]
 
+    @property
+    def attrs(self):
+        return_value = self.send(method='query', params=[self.name])[0]
+        # Sometimes the return value can be None or an int (I assume an error value).
+        # This can be caused by the delay in updating the JS viewer.
+        # Waiting for 0.1 s should be enough.
+        if return_value is None or not isinstance(return_value, dict):
+            time.sleep(0.1)
+            return_value = self.send(method='query', params=[self.name])[0]
+        return return_value
+
+    def __getattr__(self, attr):
+        # if attr == 'attrs':
+        #    return self.send(method='query', params=[self.name])[0]
         tstart = time.time()
         # To avoid querying too many times, assign self.attrs to attrs
         attrs = self.attrs
