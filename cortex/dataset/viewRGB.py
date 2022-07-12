@@ -479,7 +479,7 @@ class VertexRGB(DataviewRGB):
         if alpha is None:
             # If we have a NaN in one of the channels, set the alpha to 0
             rgb = np.array([red, green, blue])
-            alpha = 1. - (~np.isnan(rgb).any(axis=0)).astype(float)
+            alpha = 1. - np.isnan(rgb).any(axis=0).astype(float)
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
         if not isinstance(alpha, Vertex):
             alpha = Vertex(alpha, self.red.subject)
