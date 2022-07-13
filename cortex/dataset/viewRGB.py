@@ -231,15 +231,6 @@ class VolumeRGB(DataviewRGB):
                 self.green = Volume(green, subject, xfmname)
                 self.blue = Volume(blue, subject, xfmname)
 
-
-        if alpha is None:
-            alpha = np.ones(self.red.volume.shape)
-            alpha = Volume(alpha, self.red.subject, self.red.xfmname,
-                           vmin=0, vmax=1)
-
-        if not isinstance(alpha, Volume):
-            alpha = Volume(alpha, self.red.subject, self.red.xfmname)
-
         self.alpha = alpha
 
         if self.red.xfmname == self.green.xfmname == self.blue.xfmname == self.alpha.xfmname:
@@ -248,6 +239,25 @@ class VolumeRGB(DataviewRGB):
             raise ValueError('Cannot handle different transforms per volume')
 
         super(VolumeRGB, self).__init__(subject, alpha, description=description, state=state, **kwargs)
+
+    @property
+    def alpha(self):
+        """Compute alpha transparency"""
+        alpha = self._alpha
+        if alpha is None:
+            alpha = np.ones(self.red.volume.shape)
+            alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
+        if not isinstance(alpha, Volume):
+            alpha = Volume(alpha, self.red.subject, self.red.xfmname)
+
+        rgb = np.array([self.red.volume, self.green.volume, self.blue.volume])
+        mask = np.isnan(rgb).any(axis=0)
+        alpha.volume[mask] = alpha.vmin
+        return alpha
+
+    @alpha.setter
+    def alpha(self, alpha):
+        self._alpha = alpha
 
     def to_json(self, simple=False):
         sdict = super(VolumeRGB, self).to_json(simple=simple)
