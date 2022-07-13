@@ -493,7 +493,7 @@ class VertexRGB(DataviewRGB):
 
         rgb = np.array([self.red.data, self.green.data, self.blue.data])
         mask = np.isnan(rgb).any(axis=0)
-        alpha._data[..., mask] = alpha.vmin
+        alpha.data[..., mask] = alpha.vmin
         return alpha
 
     @alpha.setter
