@@ -207,13 +207,18 @@ class VolumeRGB(DataviewRGB):
                 self.red = channel1
                 self.green = channel2
                 self.blue = channel3
+                self.alpha = alpha
             else:  # need to remap colors
-                red, green, blue = VolumeRGB.color_voxels(channel1, channel2, channel3, channel1color, channel2color,
-                                                          channel3color, max_color_value, max_color_saturation,
-                                                          shared_range, shared_vmin, shared_vmax)
+                red, green, blue, alpha = VolumeRGB.color_voxels(
+                    channel1, channel2, channel3,
+                    channel1color, channel2color, channel3color,
+                    max_color_value, max_color_saturation,
+                    shared_range, shared_vmin, shared_vmax
+                )
                 self.red = Volume(red, channel1.subject, channel1.xfmname)
                 self.green = Volume(green, channel1.subject, channel1.xfmname)
                 self.blue = Volume(blue, channel1.subject, channel1.xfmname)
+                self.alpha = Volume(alpha, channel1.subject, channel1.xfmname)
         else:
             if subject is None or xfmname is None:
                 raise TypeError("Subject and xfmname are required")
@@ -223,15 +228,18 @@ class VolumeRGB(DataviewRGB):
                 self.red = Volume(channel1, subject, xfmname)
                 self.green = Volume(channel2, subject, xfmname)
                 self.blue = Volume(channel3, subject, xfmname)
-            else:	# need to remap colors
-                red, green, blue = VolumeRGB.color_voxels(channel1, channel2, channel3, channel1color, channel2color,
-                                                          channel3color, max_color_value, max_color_saturation,
-                                                          shared_range, shared_vmin, shared_vmax)
+                self.alpha = alpha
+            else:  # need to remap colors
+                red, green, blue, alpha = VolumeRGB.color_voxels(
+                    channel1, channel2, channel3,
+                    channel1color, channel2color, channel3color,
+                    max_color_value, max_color_saturation,
+                    shared_range, shared_vmin, shared_vmax
+                )
                 self.red = Volume(red, subject, xfmname)
                 self.green = Volume(green, subject, xfmname)
                 self.blue = Volume(blue, subject, xfmname)
-
-        self.alpha = alpha
+                self.alpha = Volume(alpha, subject, xfmname)
 
         if self.red.xfmname == self.green.xfmname == self.blue.xfmname == self.alpha.xfmname:
             self.xfmname = self.red.xfmname
@@ -351,19 +359,31 @@ class VolumeRGB(DataviewRGB):
         -------
         red : ndarray of channel1.shape
             uint8 array of red values
-        green : ndarray of data2.shape
+        green : ndarray of channel1.shape
             uint8 array of green values
-        blue : ndarray of data3.shape
+        blue : ndarray of channel1.shape
             uint8 array of blue values
-
+        alpha : ndarray
+            uint8 array of alpha values. NaNs will have an alpha value of 0
         """
         # normalize each channel to [0, 1]
-        data1 = np.nan_to_num(channel1.data if isinstance(channel1, VolumeData) else channel1).astype(np.float)
-        data2 = np.nan_to_num(channel2.data if isinstance(channel2, VolumeData) else channel2).astype(np.float)
-        data3 = np.nan_to_num(channel3.data if isinstance(channel3, VolumeData) else channel3).astype(np.float)
+        data1 = channel1.data if isinstance(channel1, VolumeData) else channel1
+        data1 = data1.astype(float)
+        data2 = channel2.data if isinstance(channel2, VolumeData) else channel2
+        data2 = data2.astype(float)
+        data3 = channel3.data if isinstance(channel3, VolumeData) else channel3
+        data3 = data3.astype(float)
 
         if (data1.shape != data2.shape) or (data2.shape != data3.shape):
             raise ValueError('Volumes are of different shapes')
+
+        # Create an alpha mask now, before casting nans to 0
+        # Voxels with at least one channel equal to NaN will be masked out.
+        mask = np.isnan(np.array([data1, data2, data3])).any(axis=0)
+        # Now convert to NaNs to num for all channels
+        data1 = np.nan_to_num(data1)
+        data2 = np.nan_to_num(data2)
+        data3 = np.nan_to_num(data3)
 
         if common_range:
             if common_min is None:
@@ -425,7 +445,11 @@ class VolumeRGB(DataviewRGB):
             green.flat[i] = this_color[1]
             blue.flat[i] = this_color[2]
 
-        return red, green, blue
+        # Now make an alpha volume
+        alpha = np.ones_like(red, np.uint8) * 255
+        alpha[mask] = 0
+
+        return red, green, blue, alpha
 
 
 class VertexRGB(DataviewRGB):
