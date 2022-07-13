@@ -486,14 +486,14 @@ class VertexRGB(DataviewRGB):
         """Compute alpha transparency"""
         alpha = self._alpha
         if alpha is None:
-            alpha = np.ones(self.red.vertices.shape)
+            alpha = np.ones(self.red.vertices.shape[1])
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
         if not isinstance(alpha, Vertex):
             alpha = Vertex(alpha, self.red.subject)
 
         rgb = np.array([self.red.data, self.green.data, self.blue.data])
         mask = np.isnan(rgb).any(axis=0)
-        alpha.data[..., mask] = alpha.vmin
+        alpha.data[mask] = alpha.vmin
         return alpha
 
     @alpha.setter
