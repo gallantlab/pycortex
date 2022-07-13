@@ -476,17 +476,29 @@ class VertexRGB(DataviewRGB):
             self.green = Vertex(green, subject)
             self.blue = Vertex(blue, subject)
 
-        if alpha is None:
-            # If we have a NaN in one of the channels, set the alpha to 0
-            rgb = np.array([red, green, blue])
-            alpha = 1. - np.isnan(rgb).any(axis=0).astype(float)
-            alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
-        if not isinstance(alpha, Vertex):
-            alpha = Vertex(alpha, self.red.subject)
         self.alpha = alpha
 
         super(VertexRGB, self).__init__(subject, alpha, description=description,
                                         state=state, **kwargs)
+
+    @property
+    def alpha(self):
+        """Compute alpha transparency"""
+        alpha = self._alpha
+        if alpha is None:
+            alpha = np.ones(self.red.vertices.shape)
+            alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
+        if not isinstance(alpha, Vertex):
+            alpha = Vertex(alpha, self.red.subject)
+
+        rgb = np.array([self.red.data, self.green.data, self.blue.data])
+        mask = np.isnan(rgb).any(axis=0)
+        alpha._data[..., mask] = alpha.vmin
+        return alpha
+
+    @alpha.setter
+    def alpha(self, alpha):
+        self._alpha = alpha
 
     @property
     def vertices(self):
