@@ -30,11 +30,11 @@ from .data import Package
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
     if not os.path.exists(cmapdir):
-        raise Exception("Colormap directory (%s) does not exits"%cmapdir)
+        raise Exception("Colormap directory (%s) does not exist"%cmapdir)
 except NoOptionError:
     cmapdir = os.path.join(options.config.get("basic", "filestore"), "colormaps")
     if not os.path.exists(cmapdir):
-        raise Exception("Colormap directory was not defined in the config file and the default (%s) does not exits"%cmapdir)
+        raise Exception("Colormap directory was not defined in the config file and the default (%s) does not exist"%cmapdir)
 
 domain_name = options.config.get("webgl", "domain_name")
 
