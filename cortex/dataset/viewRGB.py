@@ -213,12 +213,11 @@ class VolumeRGB(DataviewRGB):
                     channel1, channel2, channel3,
                     channel1color, channel2color, channel3color,
                     max_color_value, max_color_saturation,
-                    shared_range, shared_vmin, shared_vmax
+                    shared_range, shared_vmin, shared_vmax, alpha=alpha
                 )
                 self.red = Volume(red, channel1.subject, channel1.xfmname)
                 self.green = Volume(green, channel1.subject, channel1.xfmname)
                 self.blue = Volume(blue, channel1.subject, channel1.xfmname)
-                # self.alpha = Volume(alpha, channel1.subject, channel1.xfmname)
                 self.alpha = alpha
         else:
             if subject is None or xfmname is None:
@@ -235,12 +234,11 @@ class VolumeRGB(DataviewRGB):
                     channel1, channel2, channel3,
                     channel1color, channel2color, channel3color,
                     max_color_value, max_color_saturation,
-                    shared_range, shared_vmin, shared_vmax, alpha
+                    shared_range, shared_vmin, shared_vmax, alpha=alpha
                 )
                 self.red = Volume(red, subject, xfmname)
                 self.green = Volume(green, subject, xfmname)
                 self.blue = Volume(blue, subject, xfmname)
-                # self.alpha = Volume(alpha, subject, xfmname)
                 self.alpha = alpha
 
         if self.red.xfmname == self.green.xfmname == self.blue.xfmname == self.alpha.xfmname:
@@ -326,7 +324,7 @@ class VolumeRGB(DataviewRGB):
     @staticmethod
     def color_voxels(channel1, channel2, channel3, channel1color, channel2color,
                      channel3Color, value_max, saturation_max, common_range,
-                     common_min, common_max, alpha):
+                     common_min, common_max, alpha=None):
         """
         Colors voxels in 3 color dimensions but not necessarily canonical red, green, and blue
         Parameters
@@ -356,6 +354,8 @@ class VolumeRGB(DataviewRGB):
         common_max : float, optional
             Predetermined shared vmax. Does nothing if shared_range == False. If not given,
             will be the 99th percentile of all values across all three channels
+        alpha : ndarray or Volume, optional
+            Alpha values for each voxel. If None, alpha is set to 1 for all voxels. 
 
         Returns
         -------
@@ -366,7 +366,9 @@ class VolumeRGB(DataviewRGB):
         blue : ndarray of channel1.shape
             uint8 array of blue values
         alpha : ndarray
-            uint8 array of alpha values. NaNs will have an alpha value of 0
+            If alpha=None, uint8 array of alpha values with alpha=1 for every voxel. 
+            Otherwise, the same alpha values that were passed in. Additionally, 
+            voxels with NaNs will have an alpha value of 0.
         """
         # normalize each channel to [0, 1]
         data1 = channel1.data if isinstance(channel1, VolumeData) else channel1
@@ -450,7 +452,7 @@ class VolumeRGB(DataviewRGB):
         # Now make an alpha volume
         if alpha is None:
             alpha = np.ones_like(red, np.uint8) * 255
-            alpha[mask] = 0
+        alpha[mask] = 0
 
         return red, green, blue, alpha
 
