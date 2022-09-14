@@ -256,7 +256,7 @@ class VolumeRGB(DataviewRGB):
             alpha = np.ones(self.red.volume.shape)
             alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
         if not isinstance(alpha, Volume):
-            alpha = Volume(alpha, self.red.subject, self.red.xfmname)
+            alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
 
         rgb = np.array([self.red.volume, self.green.volume, self.blue.volume])
         mask = np.isnan(rgb).any(axis=0)
@@ -523,7 +523,7 @@ class VertexRGB(DataviewRGB):
             alpha = np.ones(self.red.vertices.shape[1])
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
         if not isinstance(alpha, Vertex):
-            alpha = Vertex(alpha, self.red.subject)
+            alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
 
         rgb = np.array([self.red.data, self.green.data, self.blue.data])
         mask = np.isnan(rgb).any(axis=0)
