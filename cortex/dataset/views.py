@@ -195,7 +195,7 @@ class Dataview(object):
         from matplotlib import colors, pyplot as plt
 
         try:
-            # cm.get_cmap accepts:
+            # plt.get_cmap accepts:
             # - matplotlib colormap names
             # - pycortex colormap names previously registered in matplotlib
             # - matplotlib.colors.Colormap instances
