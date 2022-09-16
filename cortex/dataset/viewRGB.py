@@ -119,6 +119,10 @@ class DataviewRGB(Dataview):
             sdict['vmax'] = [255]
         return sdict
 
+    def get_cmap(self):
+        return dict()
+
+
 class VolumeRGB(DataviewRGB):
     """
     Contains RGB (or RGBA) colors for each voxel in a volumetric dataset.
