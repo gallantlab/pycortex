@@ -119,7 +119,7 @@ class DataviewRGB(Dataview):
             sdict['vmax'] = [255]
         return sdict
 
-    def get_cmap(self):
+    def get_cmapdict(self):
         return dict()
 
 
