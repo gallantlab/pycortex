@@ -1,3 +1,5 @@
+import os
+import glob
 import json
 import h5py
 import numpy as np
@@ -187,28 +189,36 @@ class Dataview(object):
         view[7] = json.dumps(xfmname)
         return view
 
+    def get_cmapdict(self):
+        """Returns a dictionary with cmap information."""
+
+        from matplotlib import colors, pyplot as plt
+
+        try:
+            # plt.get_cmap accepts:
+            # - matplotlib colormap names
+            # - pycortex colormap names previously registered in matplotlib
+            # - matplotlib.colors.Colormap instances
+            cmap = plt.get_cmap(self.cmap)
+        except ValueError:
+            # unknown colormap, test whether it's in pycortex colormaps
+            cmapdir = options.config.get('webgl', 'colormaps')
+            colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
+            colormaps = dict(((os.path.split(c)[1][:-4], c) for c in colormaps))
+            if not self.cmap in colormaps:
+                raise ValueError('Unkown color map %s' % self.cmap)
+            I = plt.imread(colormaps[self.cmap])
+            cmap = colors.ListedColormap(np.squeeze(I))
+            # Register colormap to matplotlib to avoid loading it again
+            plt.register_cmap(self.cmap, cmap)
+
+        return dict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
+
     @property
     def raw(self):
-        from matplotlib import colors, cm, pyplot as plt
-        import glob, os
-        # Get colormap from matplotlib or pycortex colormaps
-        ## -- redundant code, here and in cortex/quicklflat.py -- ##
-        if isinstance(self.cmap, string_types):
-            if not self.cmap in cm.__dict__:
-                # unknown colormap, test whether it's in pycortex colormaps
-                cmapdir = options.config.get('webgl', 'colormaps')
-                colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-                colormaps = dict(((os.path.split(c)[1][:-4],c) for c in colormaps))
-                if not self.cmap in colormaps:
-                    raise Exception('Unkown color map!')
-                I = plt.imread(colormaps[self.cmap])
-                cmap = colors.ListedColormap(np.squeeze(I))
-                # Register colormap while we're at it
-                cm.register_cmap(self.cmap,cmap)
-            else:
-                cmap = cm.get_cmap(self.cmap)
-        elif isinstance(self.cmap, colors.Colormap):
-            cmap = self.cmap
+        from matplotlib import colors, cm
+
+        cmap = self.get_cmapdict()['cmap']
         # Normalize colors according to vmin, vmax
         norm = colors.Normalize(self.vmin, self.vmax) 
         cmapper = cm.ScalarMappable(norm=norm, cmap=cmap)
@@ -216,6 +226,7 @@ class Dataview(object):
         # rollaxis puts the last color dimension first, to allow output of separate channels: r,g,b,a = dataset.raw
         color_data = (np.clip(color_data, 0, 1) * 255).astype(np.uint8)
         return np.rollaxis(color_data, -1)
+
 
 class Multiview(Dataview):
     def __init__(self, views, description=""):

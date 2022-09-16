@@ -3,7 +3,7 @@ import numpy as np
 from .. import dataset
 from ..database import db
 from ..options import config
-from .utils import _get_height, _get_extents, _convert_svg_kwargs, _has_cmap, _get_images, _parse_defaults
+from .utils import _get_height, _get_extents, _convert_svg_kwargs, _get_images, _parse_defaults
 from .utils import make_flatmap_image, _make_hatch_image, _get_fig_and_ax, get_flatmask, get_flatcache
 
 
@@ -162,7 +162,7 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     im, extents = make_flatmap_image(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
                                      height=height, thick=thick, depth=depth, nanmean=nanmean)
     # Check whether dataview has a cmap instance
-    cmapdict = _has_cmap(dataview)
+    cmapdict = dataview.get_cmapdict()
     # Plot
     _, ax = _get_fig_and_ax(fig)
     img = ax.imshow(im,

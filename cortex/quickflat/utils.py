@@ -1,9 +1,7 @@
 """Makes flattened views of volumetric data on the cortical surface.
 """
-from six import string_types
 from functools import reduce
 import os
-import glob
 import numpy as np
 import string
 import warnings
@@ -470,41 +468,3 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
         i, j, data = sampclass(fidcoords[valid], xfm.shape)
         csrshape = mask.sum(), np.prod(xfm.shape)
         return sparse.csr_matrix((data, (vidx[i], j)), shape=csrshape)
-
-
-def _has_cmap(dataview):
-    """Checks whether a given dataview has colormap (cmap) information as an
-    instance or is an RGB volume and does not have a cmap.
-    Returns a dictionary with cmap information for non RGB volumes"""
-
-    from matplotlib import colors, cm, pyplot as plt
-
-    cmapdict = dict()
-    if not isinstance(dataview, (dataset.VolumeRGB, dataset.VertexRGB)):
-        # Get colormap from matplotlib or pycortex colormaps
-        ## -- redundant code, here and in cortex/dataset/views.py -- ##
-        if isinstance(dataview.cmap, string_types):
-            if not dataview.cmap in cm.__dict__:
-                # unknown colormap, test whether it's in pycortex colormaps
-                cmapdir = config.get('webgl', 'colormaps')
-                colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-                colormaps = dict(((os.path.split(c)[1][:-4], c) for c in colormaps))
-                if not dataview.cmap in colormaps:
-                    raise Exception('Unkown color map!')
-                I = plt.imread(colormaps[dataview.cmap])
-                cmap = colors.ListedColormap(np.squeeze(I))
-                # Register colormap while we're at it
-                cm.register_cmap(dataview.cmap, cmap)
-            else:
-                cmap = dataview.cmap
-        elif isinstance(dataview.cmap, colors.Colormap):
-            # Allow input of matplotlib colormap class
-            cmap = dataview.cmap
-        else:
-            raise TypeError('{} type not handled'.format(type(dataview.cmap)))
-
-        cmapdict.update(cmap=cmap, 
-                        vmin=dataview.vmin, 
-                        vmax=dataview.vmax)
-
-    return cmapdict
