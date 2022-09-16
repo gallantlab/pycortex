@@ -194,27 +194,23 @@ class Dataview(object):
 
         from matplotlib import colors, cm, pyplot as plt
 
-        if isinstance(self.cmap, string_types):
-            # Get colormap from matplotlib or pycortex colormaps
-            if not self.cmap in cm.__dict__:
-                # unknown colormap, test whether it's in pycortex colormaps
-                cmapdir = options.config.get('webgl', 'colormaps')
-                colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-                colormaps = dict(((os.path.split(c)[1][:-4], c) for c in colormaps))
-                if not self.cmap in colormaps:
-                    raise Exception('Unkown color map!')
-                I = plt.imread(colormaps[self.cmap])
-                cmap = colors.ListedColormap(np.squeeze(I))
-                # Register colormap while we're at it
-                cm.register_cmap(self.cmap, cmap)
-            else:
-                cmap = cm.get_cmap(self.cmap)
-
-        elif isinstance(self.cmap, colors.Colormap):
-            # Allow input of matplotlib colormap class
-            cmap = self.cmap
-        else:
-            raise TypeError('{} type not handled'.format(type(self.cmap)))
+        try:
+            # cm.get_cmap accepts:
+            # - matplotlib colormap names
+            # - pycortex colormap names previously registered in matplotlib
+            # - matplotlib.colors.Colormap instances
+            cmap = cm.get_cmap(self.cmap)
+        except ValueError:
+            # unknown colormap, test whether it's in pycortex colormaps
+            cmapdir = options.config.get('webgl', 'colormaps')
+            colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
+            colormaps = dict(((os.path.split(c)[1][:-4], c) for c in colormaps))
+            if not self.cmap in colormaps:
+                raise ValueError('Unkown color map %s' % self.cmap)
+            I = plt.imread(colormaps[self.cmap])
+            cmap = colors.ListedColormap(np.squeeze(I))
+            # Register colormap to matplotlib to avoid loading it again
+            cm.register_cmap(self.cmap, cmap)
 
         return dict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
 
