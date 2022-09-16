@@ -247,3 +247,11 @@ def test_blend_curvature():
     # test that it returns a VertexRGB with same values when alpha is ones
     view_rgb_new = view_rgb.blend_curvature(np.ones_like(alpha))
     assert np.allclose(view_rgb.red.data, view_rgb_new.red.data)
+
+def test_get_cmapdict():
+    data0, data1 = [np.random.randn(*volshape) for _ in range(2)]
+    view = cortex.Volume2D(data0, data1, subject=subj, xfmname=xfmname)
+    cmapdict = view.get_cmapdict()
+    assert "cmap" in cmapdict and "vmin" in cmapdict and "vmax" in cmapdict
+    # test that it does not register the cmap twice to matplotlib
+    view.get_cmapdict()

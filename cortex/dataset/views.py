@@ -192,14 +192,14 @@ class Dataview(object):
     def get_cmapdict(self):
         """Returns a dictionary with cmap information."""
 
-        from matplotlib import colors, cm, pyplot as plt
+        from matplotlib import colors, pyplot as plt
 
         try:
             # cm.get_cmap accepts:
             # - matplotlib colormap names
             # - pycortex colormap names previously registered in matplotlib
             # - matplotlib.colors.Colormap instances
-            cmap = cm.get_cmap(self.cmap)
+            cmap = plt.get_cmap(self.cmap)
         except ValueError:
             # unknown colormap, test whether it's in pycortex colormaps
             cmapdir = options.config.get('webgl', 'colormaps')
@@ -210,7 +210,7 @@ class Dataview(object):
             I = plt.imread(colormaps[self.cmap])
             cmap = colors.ListedColormap(np.squeeze(I))
             # Register colormap to matplotlib to avoid loading it again
-            cm.register_cmap(self.cmap, cmap)
+            plt.register_cmap(self.cmap, cmap)
 
         return dict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
 
