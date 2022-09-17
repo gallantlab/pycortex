@@ -66,6 +66,23 @@ class Dataset(object):
 
     @classmethod
     def from_file(cls, filename, subject=None):
+        """Load a pycortex Dataset (cortex.Dataset class) from a file
+
+        Parameters
+        ----------
+        filename : str
+            .hdf file from which to load
+        subject : str, optional
+            string ID for pycortex subject, if subject name has changed
+            since the Dataset was created. `None` input assumes subject 
+            name in saved file is a subject in your current pycortex
+            filestore. By default None
+
+        Returns
+        -------
+        Dataset
+            pycortex Dataset
+        """        
         ds = cls()
         ds.h5 = h5py.File(filename, 'r')
 
