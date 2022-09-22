@@ -261,7 +261,7 @@ class VolumeRGB(DataviewRGB):
             alpha = np.ones(self.red.volume.shape)
             alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
         if not isinstance(alpha, Volume):
-            if alpha.min() < 0 or alpha.max() > 1:
+            if alpha.dtype != np.uint8 and (alpha.min() < 0 or alpha.max() > 1):
                 warnings.warn(
                     "Some alpha values are outside the range of [0, 1]. "
                     "Consider passing a Volume object as alpha with explicit vmin, vmax "
@@ -540,7 +540,7 @@ class VertexRGB(DataviewRGB):
             alpha = np.ones(self.red.vertices.shape[1])
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
         if not isinstance(alpha, Vertex):
-            if alpha.min() < 0 or alpha.max() > 1:
+            if alpha.dtype != np.uint8 and (alpha.min() < 0 or alpha.max() > 1):
                 warnings.warn(
                     "Some alpha values are outside the range of [0, 1]. "
                     "Consider passing a Vertex object as alpha with explicit vmin, vmax "
