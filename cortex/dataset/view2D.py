@@ -274,7 +274,6 @@ class Vertex2D(Dataview2D):
 def _warn_non_perceptually_uniform_colormap(cmap):
     mapping = {
         "BuOr_2D": "PU_BuOr_covar",
-        "BuWtRd_alpha": "RdBu_r_alpha",
         "RdBu_covar": "PU_RdBu_covar",
         "RdBu_covar2": "PU_BuOr_covar",
         "RdBu_covar_alpha": "PU_RdBu_covar_alpha",
