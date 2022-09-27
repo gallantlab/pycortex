@@ -263,3 +263,10 @@ def test_get_cmapdict():
     view = cortex.VolumeRGB(red, green, blue, subject=subj, xfmname=xfmname)
     cmapdict = view.get_cmapdict()
     assert "cmap" not in cmapdict
+
+def test_warn_non_perceptually_uniform_2D_cmap():
+    data0, data1 = [np.random.randn(*volshape) for _ in range(2)]
+    view = cortex.Volume2D(data0, data1, subject=subj, xfmname=xfmname,
+                           cmap="RdBu_covar")
+    with pytest.warns(UserWarning):
+        cortex.quickshow(view)

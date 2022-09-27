@@ -1,5 +1,7 @@
 import os
 import json
+import warnings
+
 import numpy as np
 
 from .. import options
@@ -62,6 +64,7 @@ class Dataview2D(Dataview):
         from matplotlib.colors import Normalize
         cmapdir = options.config.get("webgl", "colormaps")
         cmap = plt.imread(os.path.join(cmapdir, "%s.png"%self.cmap))
+        _warn_non_perceptually_uniform_colormap(self.cmap)
 
         norm1 = Normalize(self.vmin, self.vmax)
         norm2 = Normalize(self.vmin2, self.vmax2)
@@ -266,3 +269,18 @@ class Vertex2D(Dataview2D):
     @property
     def vertices(self):
         return self.raw.vertices
+
+
+def _warn_non_perceptually_uniform_colormap(cmap):
+    mapping = {
+        "BuOr_2D": "PU_BuOr_covar",
+        "BuWtRd_alpha": "RdBu_r_alpha",
+        "RdBu_covar": "PU_RdBu_covar",
+        "RdBu_covar2": "PU_BuOr_covar",
+        "RdBu_covar_alpha": "PU_RdBu_covar_alpha",
+        "RdGn_covar": "PU_RdGn_covar",
+        "hot_alpha": "fire_alpha",
+    }
+    if cmap in mapping:
+        warnings.warn("Colormap %r is not perceptually uniform. Consider using"
+                      " %r instead." % (cmap, mapping[cmap]), UserWarning)
