@@ -301,6 +301,8 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
     mask : bool
         if True, return a logical mask across vertices for the roi
         if False, return a list of indices for the ROI
+    overlay_file : None or str
+        Pass another overlays file instead of the default overlays.svg
 
     Returns
     -------
@@ -339,7 +341,7 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
     return roidict
 
 
-def get_roi_surf(subject, surf_type, roi):
+def get_roi_surf(subject, surf_type, roi, overlay_file=None):
     """Similar to get_roi_verts, but gets both the points and the polys for an roi.
 
     Parameters
@@ -351,27 +353,29 @@ def get_roi_surf(subject, surf_type, roi):
         superinflated, flat)
     roi : str
         Name of ROI to get the surface geometry for.
+    overlay_file : None or str
+        Pass another overlays file instead of the default overlays.svg
 
     Returns
     -------
     pts, polys : (array, array)
         The points, specified in 3D space, as well as indices into pts specifying the polys.
     """
-    roi_verts_mask = get_roi_verts(subject, roi, mask=True)
+    roi_verts_mask = get_roi_verts(subject, roi, mask=True, overlay_file=overlay_file)
     pts, polys = db.get_surf(subject, surf_type, merge=True, nudge=True)
     vert_idx = np.where(roi_verts_mask[roi])[0]
     vert_set = set(vert_idx)
     roi_polys = []
-    for i in xrange(np.shape(polys)[0]):
-        if np.array(map(lambda x: x in vert_set, polys[i, :])).all():
+    for i in range(np.shape(polys)[0]):
+        if np.array(list(map(lambda x: x in vert_set, polys[i, :]))).all():
             roi_polys.append(polys[i, :])
     reindexed_polys = []
     vert_rev_hash_idx = {}
     for i, v in enumerate(vert_idx):
         vert_rev_hash_idx[v] = i
     for poly in roi_polys:
-        reindexed_polys.append(map(vert_rev_hash_idx.get, poly))
-    return (pts[vert_idx], np.array(reindexed_polys))
+        reindexed_polys.append(list(map(vert_rev_hash_idx.get, poly)))
+    return pts[vert_idx], np.array(reindexed_polys)
 
 
 def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
