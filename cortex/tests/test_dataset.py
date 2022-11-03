@@ -34,14 +34,12 @@ def test_dataset():
     ds = dataset.Dataset.from_file(tf.name)
     assert len(ds['thickstack'].data) == mask.sum()
     assert np.allclose(ds['stack'].data[mask], ds['thickstack'].data)
-    return ds
 
 def test_findmask():
     vol = np.random.rand(10, *volshape)
     mask = db.get_mask(subj, xfmname, "thin")
     ds = dataset.Volume(vol[:, mask], subj, xfmname)
     assert np.allclose(ds.volume[:, mask], vol[:, mask])
-    return ds
 
 def test_rgb():
     red, green, blue, alpha = [np.random.randn(*volshape) for _ in range(4)]
@@ -78,7 +76,6 @@ def test_2D():
     twod = cortex.Volume2D(d1, d2)
     cortex.Volume2D(d1.data, d2.data, subject=subj, xfmname=xfmname, vmin=0, vmax=2, vmin2=1)
     twod.to_json()
-    return twod
 
 def test_braindata_hash():
     d = cortex.Volume.random(subj, xfmname)
