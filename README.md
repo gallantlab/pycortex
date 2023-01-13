@@ -26,7 +26,7 @@ To do so, replace the second install line above with the following:
 
 ```bash
 # Install development version of pycortex from github
-pip install -U git+git://github.com/gallantlab/pycortex.git  --no-build-isolation
+pip install -U git+https://github.com/gallantlab/pycortex.git  --no-build-isolation
 ```
 
 Documentation
