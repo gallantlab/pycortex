@@ -14,7 +14,7 @@ If you wish to install the development version of pycortex, you can install it d
 To do so, replace the second install line above with the following::
 
     # Install development version of pycortex from github
-    pip install -U git+git://github.com/gallantlab/pycortex.git
+    pip install -U git+https://github.com/gallantlab/pycortex.git
 
 Optional Dependencies
 ---------------------
