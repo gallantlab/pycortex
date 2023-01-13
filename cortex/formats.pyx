@@ -189,11 +189,12 @@ def write_stl(filename, object pts, object polys):
 
 
 def write_gii(filename, object pts, object polys):
+    import nibabel
     from nibabel import gifti
-    pts_darray = gifti.GiftiDataArray.from_array(pts.astype(np.float32), "pointset")
-    polys_darray = gifti.GiftiDataArray.from_array(polys, "triangle")
+    pts_darray = gifti.GiftiDataArray(pts.astype(np.float32), "pointset")
+    polys_darray = gifti.GiftiDataArray(polys, "triangle")
     gii = gifti.GiftiImage(darrays=[pts_darray, polys_darray])
-    gifti.write(gii, filename)
+    nibabel.save(gii, filename)
 
 
 def write_obj(filename, object pts, object polys, object colors=None):

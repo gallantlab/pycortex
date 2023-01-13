@@ -15,4 +15,4 @@ def test_surfpatch():
     surf = polyutils.Surface(wm, polys)
     subwm, subpia, subpolys = surf.extract_chunk(auxpts=pia)
     subsurf = polyutils.Surface(subwm, subpolys)
-    return [patch for patch in subsurf.patches(n=0.5)]
+    _ = [patch for patch in subsurf.patches(n=0.5)]

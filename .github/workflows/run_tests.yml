@@ -34,6 +34,8 @@ jobs:
         sudo apt-get install -y inkscape
         pip install --upgrade pip
         pip install wheel numpy cython
+        # force using latest nibabel
+        pip install -U nibabel
         pip install -e . --no-build-isolation
         python -c 'import cortex; print(cortex.__full_version__)'
 
