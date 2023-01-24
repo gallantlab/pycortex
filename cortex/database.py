@@ -222,7 +222,7 @@ class Database(object):
             return anatnib
 
         from . import volume
-        return volume.anat2epispace(anatnib.get_data().T.astype(np.float), subject, xfmname, order=order)
+        return volume.anat2epispace(anatnib.get_data().T.astype(float), subject, xfmname, order=order)
 
     def get_surfinfo(self, subject, type="curvature", recache=False, **kwargs):
         """Return auxillary surface information from the filestore. Surface info is defined as 

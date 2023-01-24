@@ -407,7 +407,7 @@ def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
         # This is broken; unclear when/if backward mappers ever worked this way.
         #left, right = mapper.backwards(vert_mask)
         #output[name] = left + right
-        output[name] = mapper.backwards(verts.astype(np.float))
+        output[name] = mapper.backwards(verts.astype(float))
         # Threshold?
     return output
 
@@ -613,7 +613,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
                 print("ROI {} not found...".format(roi))
             continue
         if use_mapper:
-            roi_voxels[roi] = mapper.backwards(roi_verts[roi].astype(np.float))
+            roi_voxels[roi] = mapper.backwards(roi_verts[roi].astype(float))
             # Optionally threshold probablistic values returned by mapper
             if threshold is not None:
                 roi_voxels[roi] = roi_voxels[roi] > threshold

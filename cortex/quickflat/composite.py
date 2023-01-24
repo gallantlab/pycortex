@@ -66,7 +66,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     if default_smoothing.lower()=='none':
         default_smoothing = None
     else:
-        default_smoothing = np.float(default_smoothing)
+        default_smoothing = np.float_(default_smoothing)
     if smooth is None:
         # (Might still be None!)
         smooth = default_smoothing
@@ -98,7 +98,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     if not legacy_mode:
         if use_threshold_curvature:
             # Assumes symmetrical curvature_lims
-            curv_im = (np.nan_to_num(curv_im) > 0.5).astype(np.float)
+            curv_im = (np.nan_to_num(curv_im) > 0.5).astype(float)
             curv_im[np.isnan(curv)] = np.nan
         # Get defaults for brightness, contrast
         if brightness is None:

@@ -66,7 +66,7 @@ class SubsurfaceMixin(object):
 
         # build map from old index to new index
         # vertices not in the subsurface are represented with large numbers
-        vertex_map = np.ones(self.pts.shape[0], dtype=np.int) * np.iinfo(np.int32).max
+        vertex_map = np.ones(self.pts.shape[0], dtype=int) * np.iinfo(np.int32).max
         vertex_map[vertex_mask] = range(vertex_mask.sum())
 
         # reindex vertices and polygons

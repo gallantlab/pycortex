@@ -555,7 +555,7 @@ def get_label(cx_subject, label, fs_subject=None, fs_dir=None, src_subject='fsav
             print("Transforming label file to subject's freesurfer directory...")
             _move_labels(fs_subject, label, hemisphere=hemisphere, fs_dir=fs_dir, src_subject=src_subject)
     verts, values = _parse_labels(label_files, cx_subject)
-    idx = verts.astype(np.int)
+    idx = verts.astype(int)
     return idx, values
 
 
