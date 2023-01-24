@@ -277,6 +277,9 @@ class SVGOverlay(object):
             pngfile = png.name
 
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
+        warnings.warn(inkscape_cmd)
+        warnings.warn(INKSCAPE_VERSION)
+        warnings.warn(height)
         if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
             cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
         else:
@@ -291,7 +294,7 @@ class SVGOverlay(object):
             stderr = stderr.decode()
         for line in stderr.split('\n'):
             if line != '' and 'Format autodetect failed.' not in line:
-                print(line)
+                warnings.warn(line)
 
         if background is not None:
             self.svg.getroot().remove(img)
