@@ -92,7 +92,7 @@ class SubsurfaceMixin(object):
         - helper method for other methods
 
         Parameters
-        -----------
+        ----------
         - vertex : one of [scalar int index | list of int indices | numpy array of int indices]
             vertex or set of vertices to use as seed
         - mask : boolean array

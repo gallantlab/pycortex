@@ -147,7 +147,9 @@ def tissots_indicatrix(outfile, sub, radius=10, spacing=50):
 
         tissots.append(tissot_array)
         allcenters.append(np.array(centers))
-
+    
+    # make an array of objects to allow different lengths for each hemisphere
+    allcenters = np.array(allcenters, dtype="object")
     np.savez(outfile, left=tissots[0], right=tissots[1], centers=allcenters)
 
 def flat_border(outfile, subject):
