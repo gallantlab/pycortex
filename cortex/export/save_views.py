@@ -212,6 +212,8 @@ unfold_view_params = {
     "fiducial": {"surface.{subject}.unfold": 0,},
     "inflated_less": {"surface.{subject}.unfold": 0.25,},
     "inflated": {"surface.{subject}.unfold": 0.5,},
+    # to have an inflated view when a flatmap is not available
+    "inflated_no_flatmap": {"surface.{subject}.unfold": 1,},
     "inflated_cut": {"surface.{subject}.unfold": 0.501,},
     "flatmap": {"surface.{subject}.unfold": 1,},
 }
