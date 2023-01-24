@@ -280,7 +280,7 @@ class SVGOverlay(object):
         import warnings
         warnings.warn(inkscape_cmd)
         warnings.warn(INKSCAPE_VERSION)
-        warnings.warn(height)
+        warnings.warn(str(height))
         if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
             cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
         else:
