@@ -277,6 +277,7 @@ class SVGOverlay(object):
             pngfile = png.name
 
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
+        import warnings
         warnings.warn(inkscape_cmd)
         warnings.warn(INKSCAPE_VERSION)
         warnings.warn(height)
