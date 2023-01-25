@@ -277,10 +277,6 @@ class SVGOverlay(object):
             pngfile = png.name
 
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
-        import warnings
-        warnings.warn(inkscape_cmd)
-        warnings.warn(INKSCAPE_VERSION)
-        warnings.warn(str(height))
         if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
             cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
         else:
@@ -295,15 +291,23 @@ class SVGOverlay(object):
             stderr = stderr.decode()
         for line in stderr.split('\n'):
             if line != '' and 'Format autodetect failed.' not in line:
-                warnings.warn(line)
+                print(line)
 
         if background is not None:
             self.svg.getroot().remove(img)
 
         if name is None:
             png.seek(0)
-            im = plt.imread(png)
-            return im
+            try:
+                im = plt.imread(png)
+                return im
+            except SyntaxError as e:
+                raise RuntimeError(f"Error reading image from {pngfile}: {e}"
+                                   f" (inkscape version: {INKSCAPE_VERSION})"
+                                   f" (inkscape command: {inkscape_cmd})"
+                                   f" (stdout: {stdout})"
+                                   f" (stderr: {stderr})")
+                                        
 
 class Overlay(object):
     """Class to represent a single layer of an SVG file
