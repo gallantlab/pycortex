@@ -244,6 +244,7 @@ class SVGOverlay(object):
             self.svg.getroot().insert(0, img)
         if height is None:
             height = self.svgshape[1]
+        height = int(height)
         #label_defaults = _parse_defaults(layer+'_labels')
         
         # separate kwargs starting with "label-"
@@ -300,14 +301,13 @@ class SVGOverlay(object):
             png.seek(0)
             try:
                 im = plt.imread(png)
-                return im
             except SyntaxError as e:
                 raise RuntimeError(f"Error reading image from {pngfile}: {e}"
                                    f" (inkscape version: {INKSCAPE_VERSION})"
                                    f" (inkscape command: {inkscape_cmd})"
                                    f" (stdout: {stdout})"
                                    f" (stderr: {stderr})")
-                                        
+            return im
 
 class Overlay(object):
     """Class to represent a single layer of an SVG file
