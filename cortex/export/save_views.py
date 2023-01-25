@@ -106,7 +106,7 @@ def save_3d_views(
             # With a flatmap, the inflated surf corresponds to an unfold value of 0.5
             if not has_flatmap:
                 surface_params["surface.{subject}.unfold"] = min(
-                    surface_params["surface.{subject}.unfold"] + 0.5, 1
+                    surface_params["surface.{subject}.unfold"] * 2, 1
                 )
         else:
             surface_params = surface
