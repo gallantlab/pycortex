@@ -102,8 +102,8 @@ def save_3d_views(
         if isinstance(surface, str):
             surface_params = unfold_view_params[surface].copy()
             # Fix unfold parameters if this subject doesn't have a flatmap
-            # Without a flatmap, the inflated view corresponds to an unfold value of 1
-            # With a flatmap, the inflated view corresponds to an unfold value of 0.5
+            # Without a flatmap, the inflated surf corresponds to an unfold value of 1
+            # With a flatmap, the inflated surf corresponds to an unfold value of 0.5
             if not has_flatmap:
                 surface_params["surface.{subject}.unfold"] = min(
                     surface_params["surface.{subject}.unfold"] + 0.5, 1
