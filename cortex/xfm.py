@@ -109,7 +109,7 @@ class Transform(object):
         if isinstance(xfm, string_types):
             with open(xfm, 'r') as fid:
                 L = fid.readlines()
-            xfm  = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
+            xfm  = np.array([[np.float_(s) for s in ll.split() if s] for ll in L])
 
         # Internally, pycortex computes the OPPOSITE transform: from anatomical volume to functional volume.
         # Thus, assign anat to "infile" (starting point for transform)
@@ -248,7 +248,7 @@ class Transform(object):
         if isinstance(fs_register, string_types):
             with open(fs_register, 'r') as fid:
                 L = fid.readlines()
-            anat2func = np.array([[np.float(s) for s in ll.split() if s] for ll in L[4:8]])
+            anat2func = np.array([[np.float_(s) for s in ll.split() if s] for ll in L[4:8]])
         else:
             anat2func = fs_register
 
@@ -263,7 +263,7 @@ class Transform(object):
         try:
             cmd = ('mri_info', '--vox2ras', anat_mgz)
             L = decode(subprocess.check_output(cmd)).splitlines()
-            anat_vox2ras = np.array([[np.float(s) for s in ll.split() if s] for ll in L])
+            anat_vox2ras = np.array([[np.float_(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occured while executing:\n{}".format(' '.join(cmd)))
             raise
@@ -381,7 +381,7 @@ def _vox2ras_tkr(image):
         # unpredictable.
         L = L[-4:]
         tkrvox2ras = np.array(
-            [[np.float(s) for s in ll.split() if s] for ll in L])
+            [[np.float_(s) for s in ll.split() if s] for ll in L])
     except OSError as e:
         print("Error occured while executing:\n{}".format(' '.join(cmd)))
         raise e

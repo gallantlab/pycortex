@@ -38,9 +38,9 @@ def make_base64(imgfile):
 class NPEncode(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
-            if obj.dtype == np.float:
+            if obj.dtype == float:
                 obj = obj.astype(np.float32)
-            elif obj.dtype == np.int:
+            elif obj.dtype == int:
                 obj = obj.astype(np.int32)
 
             return dict(

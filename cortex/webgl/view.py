@@ -709,7 +709,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                 tdif = float(t1-t0)
                 # Check whether to continue frame sequence to endpoint
                 use_endpoint = keyframes[-1]==end
-                nvalues = np.round(tdif/fs).astype(np.int)
+                nvalues = np.round(tdif/fs).astype(int)
                 if use_endpoint:
                     nvalues += 1
                 fr_time = np.linspace(0, 1, nvalues, endpoint=use_endpoint)
