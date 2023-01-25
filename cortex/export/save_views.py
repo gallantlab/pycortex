@@ -88,6 +88,7 @@ def save_3d_views(
     else:
         interpolation_params = dict()
 
+    has_flatmap = hasattr(getattr(cortex.db, volume.subject).surfaces, "flat")
     file_names = []
     for view, surface in zip(list_angles, list_surfaces):
         if isinstance(view, str):
@@ -100,6 +101,13 @@ def save_3d_views(
             view_name, view_params = view
         if isinstance(surface, str):
             surface_params = unfold_view_params[surface]
+            # Fix unfold parameters if this subject doesn't have a flatmap
+            # Without a flatmap, the inflated view corresponds to an unfold value of 1
+            # With a flatmap, the inflated view corresponds to an unfold value of 0.5
+            if not has_flatmap:
+                surface_params["surface.{subject}.unfold"] = min(
+                    surface_params["surface.{subject}.unfold"] + 0.5, 1
+                )
         else:
             surface_params = surface
 
@@ -212,8 +220,6 @@ unfold_view_params = {
     "fiducial": {"surface.{subject}.unfold": 0,},
     "inflated_less": {"surface.{subject}.unfold": 0.25,},
     "inflated": {"surface.{subject}.unfold": 0.5,},
-    # to have an inflated view when a flatmap is not available
-    "inflated_no_flatmap": {"surface.{subject}.unfold": 1,},
     "inflated_cut": {"surface.{subject}.unfold": 0.501,},
     "flatmap": {"surface.{subject}.unfold": 1,},
 }
