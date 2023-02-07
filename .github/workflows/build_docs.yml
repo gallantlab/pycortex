@@ -2,8 +2,6 @@ name: Build docs
 
 on:
   push:
-    branches:
-      - main
   pull_request:
 
 jobs:
