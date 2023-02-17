@@ -35,7 +35,7 @@ def whitematter(outfile, subject, do_voxelize=False):
             print ("Attempting to segment the brain with freesurfer...")
             bet2 = db.get_anat(subject, type='raw_wm').get_filename()
             vol = nibabel.load('{bet2}'.format(bet2=bet2))
-            vol_data = vol.get_data()
+            vol_data = vol.get_fdata()
             print(vol_data.shape)
             new_data = vol_data.copy()
             new_data[new_data==250] = 0
@@ -50,7 +50,7 @@ def whitematter(outfile, subject, do_voxelize=False):
             assert sp.call(cmd, shell=True) == 0, "Error calling fsl-fast"
 
             wmfl = 'fast_pve_2'
-            arr = np.asarray(nibabel.load('{cache}/{wmseg}.nii.gz'.format(cache=cache,wmseg=wmfl)).get_data())
+            arr = np.asarray(nibabel.load('{cache}/{wmseg}.nii.gz'.format(cache=cache,wmseg=wmfl)).get_fdata())
             if arr.sum() == 0:
                 from warnings import warn
                 warn('"fsl-fast" with default settings failed. Trying no pve, no bias correction...')
@@ -62,7 +62,7 @@ def whitematter(outfile, subject, do_voxelize=False):
             assert sp.call(cmd, shell=True) == 0, 'Error calling fsl-maths'
 
             # check generated mask succeeded
-            arr = np.asarray(nibabel.load('{outfl}'.format(outfl=outfile)).get_data())
+            arr = np.asarray(nibabel.load('{outfl}'.format(outfl=outfile)).get_fdata())
             assert arr.sum() >= 0, 'Error with generated whitematter mask.'
 
         finally:

@@ -134,7 +134,7 @@ class MaskSet(object):
 
     def __getitem__(self, item):
         import nibabel
-        return nibabel.load(self._masks[item]).get_data().T
+        return nibabel.load(self._masks[item]).get_fdata().T
 
     def __repr__(self):
         return "Masks: [{types}]".format(types=', '.join(self._masks.keys()))
@@ -222,7 +222,7 @@ class Database(object):
             return anatnib
 
         from . import volume
-        return volume.anat2epispace(anatnib.get_data().T.astype(float), subject, xfmname, order=order)
+        return volume.anat2epispace(anatnib.get_fdata().T.astype(float), subject, xfmname, order=order)
 
     def get_surfinfo(self, subject, type="curvature", recache=False, **kwargs):
         """Return auxillary surface information from the filestore. Surface info is defined as 
@@ -403,7 +403,7 @@ class Database(object):
                 raise ValueError("Please specify a reference")
             fpath = os.path.join(path, "reference.nii.gz")
             nib = nibabel.load(reference)
-            data = nib.get_data()
+            data = nib.get_fdata()
             if len(data.shape) > 3:
                 import warnings
                 warnings.warn('You are importing a 4D dataset, automatically selecting the first volume as reference')
@@ -547,7 +547,7 @@ class Database(object):
         try:
             import nibabel
             nib = nibabel.load(fname)
-            return nib.get_data().T != 0
+            return nib.get_fdata().T != 0
         except IOError:
             print('Mask not found, generating...')
             from .utils import get_cortical_mask

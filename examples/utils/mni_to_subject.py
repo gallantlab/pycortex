@@ -37,7 +37,7 @@ subject_data = mni.transform_mni_to_subject('S1', 'fullhead',
                                             data.data, s1_to_mni)
 # subject_data is a nibabel Nifti1Image
 
-subject_data_vol = mni_data.get_data() # the actual array, shape=(100,100,31)
+subject_data_vol = mni_data.get_fdata() # the actual array, shape=(100,100,31)
 
 # That was the manual method. pycortex can also cache these transforms for you
 # if you get them using the pycortex database

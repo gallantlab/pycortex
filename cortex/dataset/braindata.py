@@ -21,7 +21,7 @@ class BrainData(object):
         if isinstance(data, str):
             import nibabel
             nib = nibabel.load(data)
-            data = nib.get_data().T
+            data = nib.get_fdata().T
         self._data = data
         try:
             basestring
@@ -599,7 +599,7 @@ def _find_mask(nvox, subject, xfmname):
     files = db.get_paths(subject)['masks'].format(xfmname=xfmname, type="*")
     for fname in glob.glob(files):
         nib = nibabel.load(fname)
-        mask = nib.get_data().T != 0
+        mask = nib.get_fdata().T != 0
         if nvox == np.sum(mask):
             fname = os.path.split(fname)[1]
             name = re.compile(r'mask_([\w]+).nii.gz').search(fname)

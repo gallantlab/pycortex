@@ -454,7 +454,7 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
 
     """
     from .freesurfer import fs_aseg_dict
-    aseg = db.get_anat(subject, type="aseg").get_data().T
+    aseg = db.get_anat(subject, type="aseg").get_fdata().T
 
     if not isinstance(aseg_name, (list, tuple)):
         aseg_name = [aseg_name]
@@ -711,7 +711,7 @@ def get_dropout(subject, xfmname, power=20):
         Pycortex volume of low signal locations
     """
     xfm = db.get_xfm(subject, xfmname)
-    rawdata = xfm.reference.get_data().T.astype(np.float32)
+    rawdata = xfm.reference.get_fdata().T.astype(np.float32)
 
     # Collapse epi across time if it's 4D
     if rawdata.ndim > 3:

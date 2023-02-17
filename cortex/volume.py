@@ -149,7 +149,7 @@ def show_slice(dataview, **kwargs):
     imshow_kw = dict(vmin=dataview.vmin, vmax=dataview.vmax, cmap=dataview.cmap)
     imshow_kw.update(kwargs)
 
-    anat = db.get_anat(subject, 'raw').get_data().T
+    anat = db.get_anat(subject, 'raw').get_fdata().T
     data = epi2anatspace(dataview)
 
     data[data < dataview.vmin] = np.nan
@@ -196,7 +196,7 @@ def show_glass(dataview, pad=10):
     '''Create a classic "glass brain" view of the data, with the outline'''
     import nibabel
     nib = db.get_anat(subject, 'fiducial')
-    mask = nib.get_data()
+    mask = nib.get_fdata()
 
     left, right = np.nonzero(np.diff(mask.max(0).max(0)))[0][[0,-1]]
     front, back = np.nonzero(np.diff(mask.max(0).max(1)))[0][[0,-1]]
@@ -315,7 +315,7 @@ def epi2anatspace_fsl(volumedata):
                      "-out", outfilename])
 
     ## Load resliced image
-    outdata = nibabel.load(outfilename+".gz").get_data().T
+    outdata = nibabel.load(outfilename+".gz").get_fdata().T
     ## Clean up
     os.remove(outfilename+".gz")
     os.remove(datafilename)
@@ -358,7 +358,7 @@ def anat2epispace_fsl(data,subject,xfmname):
                      "-applyxfm"])
 
     ## Load resliced image
-    outdata = nibabel.load(outfilename+".gz").get_data().T
+    outdata = nibabel.load(outfilename+".gz").get_fdata().T
     ## Clean up
     os.remove(outfilename+".gz")
     os.remove(datafilename)

@@ -14,7 +14,7 @@ import cortex
 import matplotlib.pyplot as plt
 
 # load reference functional image for test purposes
-volume_arr = cortex.db.get_xfm('S1', 'fullhead').reference.get_data().T
+volume_arr = cortex.db.get_xfm('S1', 'fullhead').reference.get_fdata().T
 # volume_arr is a (31,100,100) ndarray
 
 
