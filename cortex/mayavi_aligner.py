@@ -708,7 +708,7 @@ class Align(HasTraits):
         """
         nii = nibabel.load(epifilename)
         self.epi_file = nii
-        epi = nii.get_data().astype(float).squeeze()
+        epi = nii.get_fdata().astype(float).squeeze()
         if epi.ndim>3:
             epi = epi[:,:,:,0]
         self.affine = nii.affine
