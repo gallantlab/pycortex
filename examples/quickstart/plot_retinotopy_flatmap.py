@@ -15,13 +15,9 @@ S1 is the example subject that comes with pycortex, but if you want to plot
 data onto a different subject, you will need to have them in your filestore,
 and you will also need a flatmap for them.
 """
-import six
 import cortex
 import matplotlib.pyplot as plt
-if six.PY2:
-    from urllib import urlretrieve
-elif six.PY3:
-    from urllib.request import urlretrieve
+from urllib.request import urlretrieve
 
 
 # Download the dataset and load it

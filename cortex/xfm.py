@@ -4,8 +4,6 @@ import os
 import numpy as np
 import subprocess
 
-from six import string_types
-
 class Transform(object):
     '''
     A standard affine transform. Typically holds a transform from anatomical
@@ -106,7 +104,7 @@ class Transform(object):
         inv = npl.inv
 
         # Load transform from text file, if string is provided
-        if isinstance(xfm, string_types):
+        if isinstance(xfm, str):
             with open(xfm, 'r') as fid:
                 L = fid.readlines()
             xfm  = np.array([[np.float_(s) for s in ll.split() if s] for ll in L])
@@ -245,7 +243,7 @@ class Transform(object):
         inv = npl.inv
 
         # Load anatomical to functional transform from register.dat file, if string is provided
-        if isinstance(fs_register, string_types):
+        if isinstance(fs_register, str):
             with open(fs_register, 'r') as fid:
                 L = fid.readlines()
             anat2func = np.array([[np.float_(s) for s in ll.split() if s] for ll in L[4:8]])

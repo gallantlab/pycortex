@@ -17,7 +17,6 @@ import os
 import sys
 import json
 import tempfile
-import six
 import numpy as np
 from scipy.spatial import cKDTree
 
@@ -200,8 +199,7 @@ class BrainCTM(object):
 class Hemi(object):
     def __init__(self, pts, polys, norms=None):
         self.tf = tempfile.NamedTemporaryFile()
-        if six.PY3:
-            self.tf.name = bytes(self.tf.name, 'ascii')
+        self.tf.name = bytes(self.tf.name, 'ascii')
         self.ctm = CTMfile(self.tf.name, "w")
 
         self.ctm.setMesh(pts.astype(np.float32),
