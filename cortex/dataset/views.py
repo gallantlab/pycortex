@@ -3,7 +3,6 @@ import glob
 import json
 import h5py
 import numpy as np
-from six import string_types
 
 from .. import options
 from .braindata import BrainData, VolumeData, VertexData
@@ -68,7 +67,7 @@ def _from_hdf_data(h5, name, xfmname=None, subject=None, **kwargs):
 
 def _from_hdf_view(h5, data, xfmname=None, vmin=None, vmax=None,  subject=None, **kwargs):
 
-    if isinstance(data, string_types):
+    if isinstance(data, str):
         return _from_hdf_data(h5, data, xfmname=xfmname, vmin=vmin, vmax=vmax, subject=subject, **kwargs)
         
     if len(data) == 2:

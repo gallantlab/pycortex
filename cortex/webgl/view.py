@@ -1,15 +1,11 @@
-import six
 import os
 import glob
 import copy
 import json
 import time
-if six.PY2:  # python 2
-    from Queue import Queue
-    from ConfigParser import NoOptionError
-else:  # python 3
-    from queue import Queue
-    from configparser import NoOptionError
+# Now assumes python 3
+from queue import Queue
+from configparser import NoOptionError
 import shutil
 import random
 import functools
@@ -719,7 +715,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
                     for prop in start.keys():
                         if prop=='time':
                             continue
-                        if (start[prop] is None) or (start[prop] == end[prop]) or isinstance(start[prop], (bool,) + six.string_types):
+                        if (start[prop] is None) or (start[prop] == end[prop]) or isinstance(start[prop], (bool, str)):
                             frame[prop] = start[prop]
                             continue
                         val = func(a(start[prop]), a(end[prop]), t)

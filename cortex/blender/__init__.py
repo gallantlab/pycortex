@@ -1,6 +1,5 @@
 import os
 import re
-import six
 import shlex
 import shutil
 import xdrlib
@@ -137,9 +136,8 @@ def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh=
     rcolor = cmap((right - vmin) / (vmax - vmin))[:,:3]
 
     p = xdrlib.Packer()
-    if six.PY3:
-        mesh = mesh.encode()
-        name = name.encode()
+    mesh = mesh.encode()
+    name = name.encode()
 
     p.pack_string(mesh)
     p.pack_string(name)

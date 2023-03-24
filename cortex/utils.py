@@ -14,7 +14,6 @@ import tempfile
 
 from distutils.version import LooseVersion
 
-from six import string_types
 from importlib import import_module
 from .database import db
 from .volume import anat2epispace
@@ -324,7 +323,7 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
         roi = svg.rois.shapes.keys()
 
     roidict = dict()
-    if isinstance(roi, string_types):
+    if isinstance(roi, str):
         roi = [roi]
 
     for name in roi:
@@ -562,14 +561,14 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
                    'cortical-liberal':'line_nearest'}
     # Method
     use_mapper = gm_sampler in mapper_dict
-    use_cortex_mask = (gm_sampler in ('cortical', 'thick', 'thin')) or not isinstance(gm_sampler, string_types)
+    use_cortex_mask = (gm_sampler in ('cortical', 'thick', 'thin')) or not isinstance(gm_sampler, str)
     if not (use_mapper or use_cortex_mask):
         raise ValueError('Unknown gray matter sampler (gm_sampler)!')
     # Initialize
     roi_voxels = {}
     pct_coverage = {}
     # Catch single-ROI input
-    if isinstance(roi_list, string_types):
+    if isinstance(roi_list, str):
         roi_list = [roi_list]
     if not return_dict:
         split_lr = True
@@ -602,7 +601,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
     if use_mapper:
         mapper = get_mapper(subject, xfmname, type=mapper_dict[gm_sampler])
     elif use_cortex_mask:
-        if isinstance(gm_sampler, string_types):
+        if isinstance(gm_sampler, str):
             cortex_mask = db.get_mask(subject, xfmname, type=gm_sampler)
         else:
             cortex_mask = vox_dst <= gm_sampler

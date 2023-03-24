@@ -8,7 +8,6 @@ from traitsui.api import View, Item, HGroup, Group, ImageEnumEditor, ColorEditor
 from tvtk.api import tvtk
 from tvtk.pyface.scene import Scene
 
-from six import string_types
 from matplotlib.colors import ColorConverter
 cc = ColorConverter()
 
@@ -506,7 +505,7 @@ class Axis(HasTraits):
 
     def _outline_color_changed(self):
         try:
-            if isinstance(self.outline_color, string_types):
+            if isinstance(self.outline_color, str):
                 color = cc.to_rgb(self.outline_color)
             else:
                 color = tuple([c/255. for c in tuple(self.outline_color)])
