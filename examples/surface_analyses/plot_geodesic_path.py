@@ -24,6 +24,8 @@ subject = "S1"
 surfs = [cortex.polyutils.Surface(*d)
          for d in cortex.db.get_surf(subject, "fiducial")]
 numl = surfs[0].pts.shape[0]
+numr = surfs[0].pts.shape[0]
+num_vertices = numl + numr
 
 # Now we need to pick the start and end points of the line we will draw
 pt_a = 100
@@ -33,12 +35,13 @@ pt_b = 50000
 path = surfs[0].geodesic_path(pt_a, pt_b)
 
 # In order to plot this on the cortical surface, we need an array that is the
-# same size as the number of vertices in the left hemisphere
-path_data = np.zeros(numl)
+# same size as the number of vertices
+path_data = np.zeros(num_vertices) * np.nan
 for v in path:
     path_data[v] = 1
 
 # And now plot these distances onto the cortical surface
-path_verts = cortex.Vertex(path_data, subject, cmap="Blues_r")
-cortex.quickshow(path_verts, with_colorbar=False)
+path_verts = cortex.Vertex(path_data, subject, cmap="Reds", vmin=0, vmax=1)
+# Specify depth = 0.5 and thick = 1 to not average across the depth of the cortex (which would obscure the single-vertex path we've drawn)
+cortex.quickshow(path_verts, with_colorbar=False, with_curvature=True, depth=0.5, thick=1)
 plt.show()
