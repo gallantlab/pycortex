@@ -24,7 +24,7 @@ subject = "S1"
 surfs = [cortex.polyutils.Surface(*d)
          for d in cortex.db.get_surf(subject, "fiducial")]
 numl = surfs[0].pts.shape[0]
-numr = surfs[0].pts.shape[0]
+numr = surfs[1].pts.shape[0]
 num_vertices = numl + numr
 
 # Now we need to pick the start and end points of the line we will draw
@@ -42,6 +42,5 @@ for v in path:
 
 # And now plot these distances onto the cortical surface
 path_verts = cortex.Vertex(path_data, subject, cmap="Reds", vmin=0, vmax=1)
-# Specify depth = 0.5 and thick = 1 to not average across the depth of the cortex (which would obscure the single-vertex path we've drawn)
-cortex.quickshow(path_verts, with_colorbar=False, with_curvature=True, depth=0.5, thick=1)
+cortex.quickshow(path_verts, with_colorbar=False, with_curvature=True)
 plt.show()
