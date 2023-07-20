@@ -1,13 +1,13 @@
 """Makes flattened views of volumetric data on the cortical surface.
 """
-from functools import reduce
 import os
-import numpy as np
 import string
 import warnings
+from functools import reduce
 
-from .. import utils
-from .. import dataset
+import numpy as np
+
+from .. import dataset, utils
 from ..database import db
 from ..options import config
 
@@ -354,8 +354,9 @@ def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, reca
     return hatchim
 
 def _make_flatmask(subject, height=1024):
-    from .. import polyutils
     from PIL import Image, ImageDraw
+
+    from .. import polyutils
     pts, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
     left, right = polyutils.trace_poly(polyutils.boundary_edges(polys))
 
@@ -423,8 +424,8 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
     try:
         pia, polys = db.get_surf(subject, "pia", merge=True, nudge=False)
         wm, polys = db.get_surf(subject, "wm", merge=True, nudge=False)
-        piacoords = xfm((pia[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
-        wmcoords = xfm((wm[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
+        piacoords = xfm((pia[valid][dl.simplices][simps] * ll[np.newaxis].T).sum(1))
+        wmcoords = xfm((wm[valid][dl.simplices][simps] * ll[np.newaxis].T).sum(1))
 
         valid_p = np.array([np.all((0 <= piacoords), axis=1),
                             piacoords[:,0] < xfm.shape[2],
@@ -455,7 +456,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
 
     except IOError:
         fid, polys = db.get_surf(subject, "fiducial", merge=True)
-        fidcoords = xfm((fid[valid][dl.vertices][simps] * ll[np.newaxis].T).sum(1))
+        fidcoords = xfm((fid[valid][dl.simplices][simps] * ll[np.newaxis].T).sum(1))
 
         valid = reduce(np.logical_and,
                        [reduce(np.logical_and, (0 <= fidcoords).T),

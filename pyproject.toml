@@ -1,4 +1,4 @@
 [build-system]
 # Minimum requirements for the build system to execute, according to PEP518
 # specification.
-requires = ["numpy", "cython", "setuptools", "wheel"]
+requires = ["numpy", "cython<3.0", "setuptools", "wheel"]

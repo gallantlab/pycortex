@@ -7,7 +7,7 @@ lxml
 html5lib
 h5py
 numexpr
-cython
+cython<3.0
 matplotlib
 pillow
 nibabel>=2.1
