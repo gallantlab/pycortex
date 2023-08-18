@@ -16,6 +16,10 @@ from .dataset.views import Vertex
 from scipy.spatial import ConvexHull # pylint: disable-msg=E0611
 from .utils import get_cmap
 
+import time # Temp
+
+CACHE_DIR = options.config.get('basic', 'cache')
+
 # Utils
 
 
@@ -64,6 +68,19 @@ def outline_to_polar(outline, centroid, theta_direction='ccw'):
     return np.stack([phi, rho], axis=0)
 
 def interpolate_angles(angles, angle_sub_bins, period=2*np.pi):
+    """interpolate between anchor angles
+
+    CONSIDER UPDATING. 
+
+    Parameters
+    ----------
+    angles : list
+        list of angles over which to interpolate. Should be ordered, in radians,...
+    angle_sub_bins : _type_
+        _description_
+    period : _type_, optional
+        _description_, by default 2*np.pi
+    """    
     def single_interpolate(angles):
         angles = list(angles)
         if angles[-1] % period != angles[0] % period:
@@ -252,7 +269,25 @@ def colormap_2d(
     else:
         return func(data)
 
-def distances_from_vertex(overlay, start_idx, target_idxs=None, surf_type='fiducial'):
+def _distances_from_vertex(overlay, start_idx, target_idxs=None, surf_type='fiducial'):
+    """Compute distance from vertex to XX
+
+    Parameters
+    ----------
+    overlay : SVGOverlay object
+        svg overlay object for a subject
+    start_idx : int
+        start index
+    target_idxs : list, optional
+        other indices idk, by default None
+    surf_type : str, optional
+        type of surface on which to compute distance, by default 'fiducial'
+
+    Returns
+    -------
+    _type_
+        _description_
+    """    """"""
     n_vertices_left, n_vertices_right = get_num_hemi_vertices(overlay)
     subject_id = overlay.svgfile.split('/')[-2]
     surfs = [polyutils.Surface(*d) for d in db.get_surf(subject_id, surf_type)]
@@ -268,12 +303,32 @@ def distances_from_vertex(overlay, start_idx, target_idxs=None, surf_type='fiduc
             distances = distances[hemi_target_idxs]
     return distances
 
-def angles_from_vertex(overlay, start_idx, target_idxs=None, period=2*np.pi, theta_direction='ccw'):
+def _angles_from_vertex(overlay, start_idx, target_idxs=None, period=2*np.pi, theta_direction='ccw'):
+    """compute angle between two points
+
+    Parameters
+    ----------
+    overlay : SVGOverlay object
+        svg overlay object for a subject
+    start_idx : int
+        idk
+    target_idxs : list, optional
+        idk, by default None
+    period : scalar, optional
+        max angle, by default 2*np.pi
+    theta_direction : str, optional
+        direction for positive angles, by default 'ccw'
+
+    Returns
+    -------
+    _type_
+        _description_
+    """    
     diff = overlay.coords - overlay.coords[start_idx]
     angles = np.arctan2(diff[:,1], diff[:,0]) + period/4
     if theta_direction not in (-1, 0, 'counter-clockwise', 'ccw'):
         angles = (-angles)%period
-    if not isinstance(target_idxs, type(None)):
+    if target_idxs is not None:
         angles = angles[target_idxs]
     return (angles + period*3/4) % period
 
@@ -299,7 +354,24 @@ def get_roi_paths(overlay, roi, cleaned=True, filter_zeros=True, vertical_flip=T
         hemi_paths[hemi].append(path)
     return hemi_paths
 
-def get_roi_centroids(overlay, roi, return_indices=True):
+def get_roi_centroids(overlay, roi, return_indices=True, cache_dir=None):
+    """get centroids of a given ROI in both hemispheres
+
+    Parameters
+    ----------
+    overlay : SVGOverlay object
+        svg for a given subject
+    roi : str
+        name for region or sulcus to choose
+    return_indices : bool, optional
+        whether to return indices (True) or coordinates (False),
+        by default True
+
+    Returns
+    -------
+    centroids : list
+        coordinate or index for centroids
+    """    
     centroids = []
     for hemi_paths in get_roi_paths(overlay, roi):
         centroid = center_of_mass(np.concatenate([path.vertices for path in hemi_paths]))
@@ -308,7 +380,8 @@ def get_roi_centroids(overlay, roi, return_indices=True):
         centroids.append(centroid)
     return centroids
 
-def get_roi_outlines(overlay, roi, distance_metric='euclidean', return_indices=False):
+
+def get_roi_outlines(overlay, roi, distance_metric='euclidean', return_indices=False, cache_dir=None):
     paths = get_roi_paths(overlay, roi)
     outlines=[[],[]]
     for hemi in range(2):
@@ -319,9 +392,9 @@ def get_roi_outlines(overlay, roi, distance_metric='euclidean', return_indices=F
             outlines[hemi].append(path_vertices)
     return outlines
 
-def get_closest_vertices(overlay, coords, hemi='both', distance_metric='euclidean'):
-    """
-    Get vertex idxs closest to the points in a set of coords (e.g. from overlay.sulci or overlay.rois)
+
+def get_closest_vertices(overlay, coords, hemi='both', distance_metric='euclidean', cache_dir=None):
+    """Get vertex idxs nearest to the points in a set of coords (e.g. from overlay.sulci or overlay.rois)
 
     Parameters
     ----------
@@ -330,13 +403,13 @@ def get_closest_vertices(overlay, coords, hemi='both', distance_metric='euclidea
     coords : matplotlib.path.Path or np.ndarray
         Set of coords on flatmap
     metric : str, optional
-        Distance metric to pass to sklearn for choosing closest vertices. 
+        Distance metric to pass to sklearn for choosing nearest vertices. 
         Defaults to 'euclidean'.
 
     Returns
     -------
     np.ndarray
-        Array of idxs for the vertex closest to each point in coords.
+        Array of idxs for the vertex nearest to each point in coords.
     """  
     if isinstance(coords, matplotlib.path.Path):
         coords = coords.vertices
@@ -359,10 +432,10 @@ def get_closest_vertices(overlay, coords, hemi='both', distance_metric='euclidea
     return min_idxs
 
 
-def get_closest_vertex_to_roi(overlay, roi, comparison_roi, roi_full=False, comparison_roi_full=False, distance_metric='euclidean', return_indices=True):
+def _get_closest_vertex_to_roi(overlay, roi, comparison_roi, roi_full=False, comparison_roi_full=False, distance_metric='euclidean', return_indices=True, cache_dir=None):
     all_coords = overlay.coords
-    roi_verts = get_roi_verts(overlay, roi, full=roi_full)
-    comparison_roi_verts = get_roi_verts(
+    roi_verts = _get_roi_verts(overlay, roi, full=roi_full)
+    comparison_roi_verts = _get_roi_verts(
         overlay, comparison_roi, full=comparison_roi_full)
     nearest_vertices = []
     for hemi in range(2):
@@ -378,7 +451,7 @@ def get_closest_vertex_to_roi(overlay, roi, comparison_roi, roi_full=False, comp
     return nearest_vertices
 
 
-def get_roi_verts(overlay, roi, full=True, distance_metric='euclidean', overlay_file=None):
+def _get_roi_verts(overlay, roi, full=True, distance_metric='euclidean', overlay_file=None):
     """Like the one in cx.utils, but works for sulci and gyri too.
 
     Parameters
@@ -447,8 +520,8 @@ def compute_eccentricity_angle_masks(overlay, centroids, eccentricities, angles)
         Shape will be (2, len(eccentricities), len(angles), len(vertices)).
     """
     n_vertices_left, n_vertices_right = get_num_hemi_vertices(overlay)
-    vertex_distances = [distances_from_vertex(overlay, centroids[hemi]) for hemi in range(2)]
-    vertex_angles = [angles_from_vertex(overlay, centroids[hemi], theta_direction=hemi) for hemi in range(2)]
+    vertex_distances = [_distances_from_vertex(overlay, centroids[hemi]) for hemi in range(2)]
+    vertex_angles = [_angles_from_vertex(overlay, centroids[hemi], theta_direction=hemi) for hemi in range(2)]
     masks = np.zeros((2, np.array(eccentricities).shape[-1]-1,
                       np.array(angles).shape[-1]-1, n_vertices_left+n_vertices_right), dtype=bool)
     for ecc_i in range(np.array(eccentricities).shape[-1]-1):
@@ -644,9 +717,9 @@ def get_interpolated_outlines(overlay, outline_roi, center_roi, anchor_angles, g
         # Change rhos to geodesic distances
         if geodesic_distances:
             outline_centroid_idxs = get_closest_vertices(overlay, raw_outline_centroid)
-            centroid_rho = distances_from_vertex(overlay, center_idxs[hemi], outline_centroid_idxs)
+            centroid_rho = _distances_from_vertex(overlay, center_idxs[hemi], outline_centroid_idxs)
             raw_outline_idxs = get_closest_vertices(overlay, raw_outline)
-            rhos = distances_from_vertex(overlay, center_idxs[hemi], raw_outline_idxs)
+            rhos = _distances_from_vertex(overlay, center_idxs[hemi], raw_outline_idxs)
         # Warp angles based on anchor centroids
         warped_phis = warp_phis(phis, anchor_angles[hemi])
         warped_centroid_phi = warp_phis(centroid_phi, anchor_angles[hemi])
@@ -671,22 +744,33 @@ def get_interpolated_outlines(overlay, outline_roi, center_roi, anchor_angles, g
 def show_outlines_on_dartboard(
     outlines, axis=None, colors=None, polar=True, hemi=0, rmax=None, as_overlay=False, 
     **plot_kwargs):
-    """_summary_
+    """
+    Plot outlines of regions of interest on dartboard plots.
 
-    Args:
-        outlines (_type_): _description_
-        axis (matplotlib.axes._subplots.AxesSubplot, optional): Matplotlb axis on which to plot.
-        colors (_type_, optional): List of colors to iterate through when plotting outlines. 
-            If None, will iterate through default pyplot color cycle. Defaults to None.
-        polar (bool, optional): Whether outlines are in polar coordinates. Defaults to True.
-        hemi (int, optional): Hemisphere of the brain from which outlines are drawn. 
-        0 = left, 1 = right.  Defaults to 0.
-        rmax (int, float, optional): polar maximum radius. Defaults to None.
-        as_overlay (bool, optional): Whether to create new axis on top of existing axis, to avoid
-            interfering with previously-plotted data. Defaults to False.
+    Parameters
+    ----------
+    outlines : _type_
+        _description_
+    axis : matplotlib.axes._subplots.AxesSubplot, optional
+        Matplotlib axis on which to plot.
+    colors : _type_, optional
+        List of colors to iterate through when plotting outlines. If None, will iterate through
+        the default pyplot color cycle. Defaults to None.
+    polar : bool, optional
+        Whether outlines are in polar coordinates. Defaults to True.
+    hemi : int, optional
+        Hemisphere of the brain from which outlines are drawn.
+        0 = left, 1 = right. Defaults to 0.
+    rmax : int or float, optional
+        Polar maximum radius. Defaults to None.
+    as_overlay : bool, optional
+        Whether to create a new axis on top of the existing axis, to avoid interfering with
+        previously-plotted data. Defaults to False.
 
-    Returns:
-        matplotlib.axes._subplots.AxesSubplot: Matplotlib axis in which data is plotted.
+    Returns
+    -------
+    matplotlib.axes._subplots.AxesSubplot
+        Matplotlib axis in which data is plotted.
     """
     if axis is None:
         fig, axis = plt.subplots(
@@ -714,112 +798,22 @@ def show_outlines_on_dartboard(
             axis.set_rmax(rmax)
     return axis
 
-def dartboards_table(
-    dataframe, dataframe_2=None, outlines_dataframe=None, show_titles=True, show_lines=True, 
-    **dartboard_kwargs):
-    """Given dataframe(s) of dartboard values, plots them in dartboard figures arranged similarly
-    to the dataframe.
+def dartboard_pair(dartboard_data, 
+    axes=None,
+    show_grid=True,
+    grid_linecolor='gray',
+    grid_linewidth=0.5,
+    rois=None,
+    
+    **dartboard_kwargs,
 
-    Args:
-        dataframe (pandas.core.frame.DataFrame): Dataframe of masked dartboard values.
-            Should be arranged as subjects X experiments or experiments X subjects.
-            Elements should be of shape (# eccentricities, # angles) for single-/cross-hemi data, and 
-            (#hemis, # eccentricities, # angles) for two-hemi data.
-            NaN values will not be plotted.
-        dataframe_2 (pandas.core.frame.DataFrame, optional): 
-            Dataframe of second data dimension.  Elements should be of shape 
-            (# eccentricities, # angles) for single-/cross-hemi data, and 
-            (#hemis, # eccentricities, # angles) for two-hemi data. Defaults to None.
-        outlines_dataframe (pandas.core.frame.DataFrame, optional): Dataframe of ROI outlines in
-            polar coordinates, to plot over dartboards. Should be one of following shapes:
-            (2, # points) for single-/cross-hemisphere data
-            (# hemispheres, 2, # points) for separate hemispheres
-            Defaults to None.
-        show_titles (bool, optional): Whether to show column and index/row titles. Defaults to True.
-        show_lines (bool, optional): Whether to draw lines separating last column and row from rest
-            of data, assuming these are for cross-experiment/-subject plots. Defaults to True.
+    ):
+    # parse dartboard_data (array or vertex object)
 
-    Returns:
-        matplotlib.figure.Figure: Matplotlib figure in which data is plotted.
-    """
-    cols_list = list(dataframe.columns.values)
-    rows_list = list(dataframe.index.values)
+    # loop over hemispheres
 
-    fig, axes = plt.subplots(
-        len(rows_list), len(cols_list), figsize=[3*(len(cols_list)), 3*(len(rows_list))])
-    for col_i, row_name in enumerate(rows_list):
-        for row_i, col_name in enumerate(cols_list):
-            axis = axes[col_i][row_i]
-            dartboard_values = dataframe[col_name][row_name]
-            if isinstance(dartboard_values, type(np.nan)):
-                axis.set_axis_off()
-            else:
-                if dataframe_2 is not None:
-                    dartboard_values_2 = dataframe_2[col_name][row_name]
-                else:
-                    dartboard_values_2 = None
-                if dartboard_values.ndim == 2:
-                    show_dartboard(dartboard_values, dartboard_values_2, axis=axis,
-                                   **dartboard_kwargs)
-                    if not isinstance(outlines_dataframe, type(None)):
-                        show_outlines_on_dartboard(
-                            outlines_dataframe[col_name][row_name][:,0],
-                            axis, hemi=0, rmax=50, as_overlay=True, linewidth=1, colors='white')
-                elif dartboard_values.ndim == 3:
-                    axis_left, axis_right = split_axis(axis, fig)
-                    if dartboard_values_2 is None:
-                        dartboard_values_2 = [None, None]
-                    show_dartboard(
-                        dartboard_values[0], dartboard_values_2[0], axis=axis_left,
-                        theta_direction=-1, **dartboard_kwargs)
-                    show_dartboard(
-                        dartboard_values[1], dartboard_values_2[1], axis=axis_right,
-                        theta_direction=1, **dartboard_kwargs)
-                    if outlines_dataframe is not None:
-                        if isinstance(outlines_dataframe[col_name][row_name], (list, tuple, np.ndarray)):
-                            show_outlines_on_dartboard(
-                                outlines_dataframe[col_name][row_name][:,0],
-                                axis_left, hemi=0, rmax=50, as_overlay=True, linewidth=1, colors='white')
-                            show_outlines_on_dartboard(
-                                outlines_dataframe[col_name][row_name][:,1],
-                                axis_right, hemi=1, rmax=50, as_overlay=True, linewidth=1, colors='white')
-    if show_titles:
-        for col_name, axis in zip(cols_list, axes[0, :]):
-            axis.set_title(col_name, fontdict={'size': 18, 'y': 1.05})
-
-        # if show_column_titles:
-        for row_name, axis in zip(rows_list, axes[:, 0]):
-            axis.annotate(row_name, xy=(-.1, .5), xytext=(0, 5),
-                          xycoords='axes fraction', textcoords='offset points',
-                          size=18, ha='center', va='center', rotation=90)
-    if show_lines:
-        renderer = fig.canvas.get_renderer()
-
-        def get_bbox(axis):
-            return axis.get_tightbbox(renderer).transformed(fig.transFigure.inverted())
-        bboxes = np.array(list(map(get_bbox, axes.flat)),
-                          mtrans.Bbox).reshape(axes.shape)
-
-        xmax = np.array(list(map(lambda b: b.x1, bboxes.flat))
-                        ).reshape(axes.shape).max(axis=0)
-        xmin = np.array(list(map(lambda b: b.x0, bboxes.flat))
-                        ).reshape(axes.shape).min(axis=0)
-        line_xs = np.c_[xmax[1:], xmin[:-1]].mean(axis=1)
-
-        ymax = np.array(list(map(lambda b: b.y1, bboxes.flat))
-                        ).reshape(axes.shape).max(axis=1)
-        ymin = np.array(list(map(lambda b: b.y0, bboxes.flat))
-                        ).reshape(axes.shape).min(axis=1)
-        line_ys = np.c_[ymax[1:], ymin[:-1]].mean(axis=1)
-
-        col_line = plt.Line2D(
-            [line_xs[-1], line_xs[-1]], [.125, .875], transform=fig.transFigure, color="black")
-        fig.add_artist(col_line)
-
-        row_line = plt.Line2D([.1, .9], [line_ys[-1], line_ys[-1]],
-                              transform=fig.transFigure, color="black")
-        fig.add_artist(row_line)
-    return fig
+    # optionally plot ROIs
+    pass
 
 
 def draw_mask_outlines(
@@ -1001,3 +995,126 @@ def overlay_dartboards(
             data[1], data_2[1] if not isinstance(data_2, type(None)) else None, axis=axis_right,
             theta_direction=1, **dartboard_kwargs)
         return axis_left, axis_right
+
+
+def _get_anchor_string(anchors):
+    strs = []
+    for a in anchors:
+        if isinstance(a, tuple):
+            anchor_name, anchor_type = a
+        else:
+            anchor_name, anchor_type = a, 'centroid'
+        strs.append('{}_{}'.format(anchor_name, anchor_type[0]))
+    anchor_str = 'a' + '-'.join(strs)
+    return anchor_str
+
+def get_dartboard_data(vertex_obj,
+    centroid,
+    anchors,
+    mean_func = np.nanmean,
+    eccentricities=np.linspace(0, 50, 8+1),
+    recache=False,
+    verbose=True,
+    ):
+    """retrieve dartboard data for a given vertex object and dartboard parameters
+
+    Parameters
+    ----------
+    vertex_obj : _type_
+        _description_
+    centroid : _type_
+        _description_
+    anchors : _type_
+        _description_
+    mean_func : function, optional
+        The function used to average all vertices in a given bin, by default np.nanmean
+        Consider what is being averaged to make an appropriate choice here (e.g.
+        correlations should be Fischer z transformed before averaging, which may 
+        require a custom function)
+    eccentricities : _type_, optional
+        _description_, by default np.linspace(0, 50, 8+1)
+    
+    Returns
+    -------
+    masks : array
+        Masks for each bin of dartboard histogram
+    data : array
+        One value for each bin of dartboard histogram. Array is
+        (hemispheres, eccentricities, angles) starting from 0 degrees
+        for first value (VERIFY ME FIX)
+    """    
+    # Subject
+    subject = vertex_obj.subject
+    # SVG overlay object
+    svg = db.get_overlay(subject)
+    # Check for cached files:
+    anchor_str = _get_anchor_string(anchors)
+    max_radii = (50, 50) # FIX ME
+    n_angles = 0 # FIX ME
+    n_eccentricities = 0 # FIX ME
+    surf_type = 'flat' # FIX ME
+    rad_str = 'mx%d_%d' % tuple(max_radii)
+    fname = f'{subject}_dartboard_mask_c{centroid}_{anchor_str}_{n_angles}ang_{n_eccentricities}ecc_{rad_str}_{surf_type}.npy'
+    fpath = os.path.expanduser(os.path.join(CACHE_DIR, subject, 'cache', fname))
+    save_result = True
+    if os.path.exists(fpath) and not recache:
+        if verbose:
+            print(f'Loading masks from {fpath}')
+        masks = np.load(fpath)
+    else:
+        # Compute dartboard masks
+        if verbose:
+            print("Computing dartboard masks...")
+        # Compute centroids of each ROI
+        t0 = time.time()
+        # Compute & cache centroids
+        centroids = {}
+        for j, anchor in enumerate([centroid] + anchors):
+            if isinstance(anchor, tuple):
+                anchor_name, anchor_type = anchor
+            else:
+                anchor_name, anchor_type = anchor, 'centroid'
+            if j == 0:
+                center_name, center_type = anchor_name, anchor_type
+            if anchor_type == 'nearest':
+                centroids[anchor_name] = _get_closest_vertex_to_roi(svg, anchor_name, center_name, cache_dir=cache_dir)
+            elif anchor_type == 'centroid':
+                centroids[anchor_name] = get_roi_centroids(svg, anchor_name, cache_dir=cache_dir)
+            else:
+                raise ValueError("unknown anchor type specified: %s\n(Must be 'nearest' or 'centroid')"%(anchor_type))
+        t1 = time.time()
+        print('Time to get centroids:', t1 - t0)
+
+        # Angles from center ROI to each of the anchors
+        anchor_angles_dict = {}
+        for anchor in anchors:
+            if isinstance(anchor, tuple):
+                anchor_name, anchor_type = anchor
+            else:
+                anchor_name, anchor_type = anchor, 'centroid'
+            anchor_angles_dict[anchor_name] = [_angles_from_vertex(svg, centroids[center_name][hemi], centroids[anchor_name][hemi], theta_direction=hemi) for hemi in range(2)]
+        t2 = time.time()
+        print('Time to compute angles:', t2 - t1)
+
+        # Compute the masks, based on specified eccentricity bins, angle bins, and the previously-computed variables
+        masks = compute_eccentricity_angle_masks(
+            svg, centroids[center_name],
+            eccentricities=[
+                eccentricities,
+                eccentricities,
+            ],
+            angles=[
+                interpolate_angles(np.array([v for v in anchor_angles_dict.values()])[
+                                :, 0], angle_sub_bins=4),
+                interpolate_angles(np.array([v for v in anchor_angles_dict.values()])[
+                                :, 1], angle_sub_bins=4)
+            ],
+        )
+        t3 = time.time()
+        print('Time to compute masks:', t3-t2)
+        if verbose:
+            print(f'Saving dartboard masks to {fpath}')
+        np.save(fpath, masks)
+    output = apply_masks(vertex_obj.data, masks, mean_func)
+
+    return masks, output
