@@ -226,7 +226,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     # Add (apply) cutout of flatmap
     if cutout is not None:
-        extents = composite.add_cutout(ax, cutout, dataview, layers)
+        extents = composite.add_cutout(ax, cutout, dataview, layers, overlay_file=overlay_file)
 
     if with_colorbar:
         colorbar_location = _check_colorbar_location(colorbar_location)
