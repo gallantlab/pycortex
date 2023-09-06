@@ -539,7 +539,7 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     lc_object = ax.add_collection(lc)
     return lc_object
 
-def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
+def add_cutout(fig, name, dataview, layers=None, height=None, extents=None, overlay_file=None):
     """Apply a cutout mask to extant layers in flatmap figure
 
     Parameters
@@ -567,7 +567,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None):
         height = _get_height(fig)
     if extents is None:
         extents = _get_extents(fig)
-    svgobject = db.get_overlay(dataview.subject)
+    svgobject = db.get_overlay(dataview.subject, overlay_file=overlay_file)
     # Set other cutouts to be invisible
     for co_name, co_shape in svgobject.cutouts.shapes.items():
         co_shape.visible = co_name == name
