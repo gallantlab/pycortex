@@ -1,27 +1,29 @@
-import os
-import glob
-import copy
-import json
-import time
-# Now assumes python 3
-from queue import Queue
-from configparser import NoOptionError
-import shutil
-import random
-import functools
 import binascii
+import copy
+import functools
+import glob
+import json
 import mimetypes
+import os
+import random
+import shutil
 import threading
+import time
 import warnings
 import webbrowser
+from configparser import NoOptionError
+
+# Now assumes python 3
+from queue import Queue
+
 import numpy as np
 from tornado import web
 
-from .FallbackLoader import FallbackLoader
-from .. import utils, options, volume, dataset
+from .. import dataset, options, utils, volume
 from ..database import db
 from . import serve
 from .data import Package
+from .FallbackLoader import FallbackLoader
 
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
@@ -235,7 +237,11 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
          autoclose=None, open_browser=None, port=None, pickerfun=None,
          template="mixer.html", overlays_available=None,
          overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
-         overlay_file=None, title='Brain', **kwargs):
+         overlay_file=None,
+         curvature_brightness=None,
+         curvature_smoothness=None,
+         curvature_contrast=None,
+         title='Brain', **kwargs):
     """
     Creates a webGL MRI viewer that is dynamically served by a tornado server
     running inside the current python process.
@@ -287,6 +293,15 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     overlay_file : str or None, optional
         Custom overlays.svg file to use instead of the default one for this
         subject (if not None). Default None.
+    curvature_brightness : float or None, optional
+        Brightness of curvature overlay. Default None, which uses the value
+        specified in the config file.
+    curvature_smoothness : float or None, optional
+        Smoothness of curvature overlay. Default None, which uses the value
+        specified in the config file.
+    curvature_contrast : float or None, optional
+        Contrast of curvature overlay. Default None, which uses the value
+        specified in the config file.
     title : str, optional
         The title that is displayed on the viewer website when it is loaded in
         a browser.
@@ -345,9 +360,12 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     my_viewopts = dict(options.config.items('webgl_viewopts'))
     my_viewopts['overlays_visible'] = overlays_visible
     my_viewopts['labels_visible'] = labels_visible
-    my_viewopts['brightness'] = options.config.get('curvature', 'brightness')
-    my_viewopts['smoothness'] = options.config.get('curvature', 'webgl_smooth')
-    my_viewopts['contrast'] = options.config.get('curvature', 'contrast')
+    if curvature_brightness is None:
+        my_viewopts['brightness'] = options.config.get('curvature', 'brightness')
+    if curvature_smoothness is None:
+        my_viewopts['smoothness'] = options.config.get('curvature', 'webgl_smooth')
+    if curvature_contrast is None:
+        my_viewopts['contrast'] = options.config.get('curvature', 'contrast')
 
     for sec in options.config.sections():
         if 'paths' in sec or 'labels' in sec:
@@ -824,7 +842,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         return client
     else:
         try:
-            from IPython.display import display, HTML
+            from IPython.display import HTML, display
             display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
         except:
             pass
