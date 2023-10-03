@@ -9,7 +9,7 @@ dataset_, but that can also be done automatically through the `urllib`
 command that is included.
 
 
-.. _dataset: http://gallantlab.org/pycortex/S1_retinotopy.hdf
+.. _dataset: https://s3.us-west-1.wasabisys.com/glab-public-datasets/S1_retinotopy.hdf
 
 S1 is the example subject that comes with pycortex, but if you want to plot
 data onto a different subject, you will need to have them in your filestore,
@@ -21,8 +21,10 @@ from urllib.request import urlretrieve
 
 
 # Download the dataset and load it
-_ = urlretrieve("http://gallantlab.org/pycortex/S1_retinotopy.hdf",
-                "S1_retinotopy.hdf")
+_ = urlretrieve(
+    "https://s3.us-west-1.wasabisys.com/glab-public-datasets/S1_retinotopy.hdf", 
+    "S1_retinotopy.hdf"
+)
 ret_data = cortex.load("S1_retinotopy.hdf")
 
 # The retinotopy data has to be divided into left and right hemispheres
