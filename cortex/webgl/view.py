@@ -360,12 +360,12 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     my_viewopts = dict(options.config.items('webgl_viewopts'))
     my_viewopts['overlays_visible'] = overlays_visible
     my_viewopts['labels_visible'] = labels_visible
-    if curvature_brightness is None:
-        my_viewopts['brightness'] = options.config.get('curvature', 'brightness')
-    if curvature_smoothness is None:
-        my_viewopts['smoothness'] = options.config.get('curvature', 'webgl_smooth')
-    if curvature_contrast is None:
-        my_viewopts['contrast'] = options.config.get('curvature', 'contrast')
+    my_viewopts['brightness'] = options.config.get('curvature', 'brightness') \
+        if curvature_brightness is None else curvature_brightness
+    my_viewopts['smoothness'] = options.config.get('curvature', 'webgl_smooth') \
+        if curvature_smoothness is None else curvature_smoothness
+    my_viewopts['contrast'] = options.config.get('curvature', 'contrast') \
+        if curvature_contrast is None else curvature_contrast
 
     for sec in options.config.sections():
         if 'paths' in sec or 'labels' in sec:
