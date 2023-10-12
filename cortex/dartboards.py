@@ -7,6 +7,7 @@ from sklearn.metrics import pairwise_distances
 import matplotlib
 import numpy as np
 import os
+
 from . import db
 from . import options
 from . import polyutils
@@ -967,32 +968,63 @@ def show_outlines_on_dartboard(
 # Need all inputs to spec dartboard. Make dartboard_spec a thing? a dict?
 def show_dartboard_pair(dartboard_data, 
                         dartboard_data2=None,
+                        subject=None,
                         axes=None,
+                        rois=None,
+                        # plot parameters
                         cmap=plt.cm.viridis,
+                        vmin=None,
+                        vmax=None,
+                        vmin2=None,
+                        vmax2=None,
+                        image_resolution=500,
+                        figsize=(8, 4),
+                        # grid line parameters
                         show_grid=True,
                         grid_linecolor='gray',
                         grid_linewidth=0.5,
-                        image_resolution=500,
-                        rois=None,
-                        figsize=(8,4),
+                        # roi path line parameters
+                        geodesic_distances=True,
+                        path_resolution=100,
+                        every_n=5,
+                        even_sampling_over='path length',
+                        roi_linewidth=1,
+                        roi_color='r',
+                        recache=False,
+                        verbose=False,
                         **dartboard_spec,
     ):
-    if dartboard_data2 is None:
-        data_to_plot = (dartboard_data, (None, None))
+    if subject is None:
+        if not isinstance(dartboard_data, Vertex):
+            raise ValueError("Must provide either `subject` argument or a Vertex object as `dartboard_data`")
+        subject = dartboard_data.subject
+    # WORKING HERE. need to re-figure-out what data_to_plot is.
+    if isinstance(dartboard_data, Vertex):
+        _, data0 = get_dartboard_data(dartboard_data, **dartboard_spec)
     else:
-        data_to_plot = (dartboard_data, dartboard_data2)
+        data0 = dartboard_data.copy()
+    if dartboard_data2 is None:
+        # None for left hem, None for right hem
+        data1 = (None, None)
+    elif isinstance(dartboard_data2, Vertex):
+        _, data1 = get_dartboard_data(dartboard_data2, **dartboard_spec)
+    else:
+        data1 = dartboard_data2.copy()
+    
+    data_to_plot = (dartboard_data, dartboard_data2)
+    
     if axes is None:
         fig, axes = plt.subplots(1, 2, figsize=figsize)
     # Loop over hemispheres
     # Hemisphere index goes (0, 1) = (left, right)
     directions = [-1, 1]
-    for hemi_index, data in enumerate(zip(*data_to_plot)):
+    for hemi_index, data in enumerate(zip(data0, data1)):
         axis = axes[hemi_index]
         d0, d1 = data
-        if not isinstance(d0, np.ndarray):
-            d0 = get_dartboard_data(d0, **dartboard_spec)
-            if d1 is not None:
-                d1 = get_dartboard_data(d1, **dartboard_spec)
+        # if not isinstance(d0, np.ndarray):
+        #     d0 = get_dartboard_data(d0, **dartboard_spec)
+        #     if d1 is not None:
+        #         d1 = get_dartboard_data(d1, **dartboard_spec)
         _ = show_dartboard(d0, data2=d1,
             axis=axis,
             theta_direction=directions[hemi_index],
@@ -1001,12 +1033,42 @@ def show_dartboard_pair(dartboard_data,
             show_grid=show_grid,
             grid_linewidth=grid_linewidth,
             grid_linecolor=grid_linecolor,
-            **dartboard_spec,
+            vmin=vmin,
+            vmax=vmax,
+            vmin2=vmin2,
+            vmax2=vmax2,
             )
-        # optionally plot ROIs
-        if rois is not None:
-            dartboard_str = _get_dartboard_str(dartboard_spec)
-            # _get_interpolated_outlines()
+    # optionally plot ROIs
+    if rois is not None:
+        overlay = db.get_overlay(subject)
+        outlines = {}
+        if not isinstance(roi_color, (list, tuple)):
+            roi_color = [roi_color] * len(rois)
+        for roi in rois:
+            outlines[roi] = _get_interpolated_outlines(overlay,
+                                                        roi,
+                                                        geodesic_distances=geodesic_distances,
+                                                        resolution=path_resolution,
+                                                        even_sampling_over=even_sampling_over,
+                                                        every_n=every_n,
+                                                        recache=recache,
+                                                        verbose=verbose,
+                                                        **dartboard_spec)
+        for hemi_index in range(2):
+            hemi_axis = axes[hemi_index]
+            outlines_to_plot = np.array([v for v in outlines.values()])[:, hemi_index]
+            if isinstance(dartboard_spec['max_radii'], tuple):
+                rmax = dartboard_spec['max_radii'][hemi_index]
+            else:
+                rmax = dartboard_spec['max_radii']
+            show_outlines_on_dartboard(
+                outlines_to_plot,
+                hemi_axis,
+                hemi=hemi_index,
+                rmax=rmax,
+                as_overlay=True,  # As overlay
+                linewidth=roi_linewidth,
+                colors=roi_color)
     return axes
 
 
