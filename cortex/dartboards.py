@@ -1,11 +1,10 @@
-# pylint: disable=missing-module-docstring
-import cmath
 from matplotlib import pyplot as plt
 from matplotlib import transforms as mtrans
 from matplotlib.colors import Normalize
 from sklearn.metrics import pairwise_distances
 import matplotlib
 import numpy as np
+import time
 import os
 
 from . import db
@@ -15,16 +14,15 @@ from . import quickflat
 
 from .dataset.views import Vertex
 from scipy import interpolate
-from scipy.spatial import ConvexHull # pylint: disable-msg=E0611
+from scipy.spatial import ConvexHull
 from .utils import get_cmap
 
-import time # Temp
+try:
+    CACHE_DIR = options.config.get('basic', 'cache')
+except:
+    CACHE_DIR = options.config.get('basic','filestore')
 
-CACHE_DIR = options.config.get('basic', 'cache')
-
-# Utils
-
-
+## Utils
 def flatten_list_of_lists(list_of_lists):
     flat_list = [item for sublist in list_of_lists for item in sublist]
     return flat_list
@@ -54,6 +52,7 @@ def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)
     return phi, rho
 
+
 def pol2cart(phi, rho):
     x = rho * np.cos(phi)
     y = rho * np.sin(phi)
@@ -63,11 +62,13 @@ def pol2cart(phi, rho):
 def nonzero_coords(coords):
     return coords[np.any(coords != 0, axis=1)]
 
+
 def outline_to_polar(outline, centroid, theta_direction='ccw'):
     phi, rho = cart2pol(*(outline.T-centroid[:, np.newaxis]))
     if theta_direction not in (-1, 0, 'counter-clockwise', 'ccw'):
         phi = np.pi - phi
     return np.stack([phi, rho], axis=0)
+
 
 def interpolate_angles(angles, angle_sub_bins, period=2*np.pi):
     """interpolate between anchor angles
@@ -100,6 +101,7 @@ def interpolate_angles(angles, angle_sub_bins, period=2*np.pi):
         return np.array([single_interpolate(hemi_angles) for hemi_angles in angles])
     else:
         return single_interpolate(angles)
+
 
 def warp_phis(phis, current_anchors, new_anchors=None, period=2*np.pi):
     if isinstance(new_anchors, type(None)):
@@ -204,6 +206,7 @@ def overlay_axis(ax, fig=None, polar=False):
     overlay_ax = fig.add_axes(rect, polar=polar, frameon=False)
     return overlay_ax
 
+
 def get_num_hemi_vertices(overlay, surface_type='flat'):
     """Returns the number of vertices in the left and right hemispheres.
     
@@ -220,6 +223,7 @@ def get_num_hemi_vertices(overlay, surface_type='flat'):
     surfs_flat = [polyutils.Surface(*d)
                   for d in db.get_surf(subject_id, surface_type)]
     return [len(s.pts) for s in surfs_flat]
+
 
 def colormap_2d(
     cmap,
@@ -508,8 +512,7 @@ def _get_roi_verts(overlay, roi, full=True, distance_metric='euclidean', overlay
     ]
     return hemi_roi_verts
 
-# Core functions
-
+## Core functions
 def compute_eccentricity_angle_masks(overlay, centroids, eccentricities, angles):
     """
     Compute dartboard-style masks for both hemispheres.
@@ -549,23 +552,25 @@ def compute_eccentricity_angle_masks(overlay, centroids, eccentricities, angles)
             masks[1, ecc_i, angle_i, n_vertices_left:] =  angle_mask & eccentricity_mask
     return masks.astype(bool)
 
+
 def apply_masks(data, masks, mean_func=np.nanmean, cutoff=None):
     """Given vertex data and eccentricity-angle masks, extracts and averages data for each mask.
 
-    Args:
-        data (np.ndarray): Array of vertex data.  Can have any number of dimensions, as long as
-        the last dimension matches that of the masks.
-        masks np.ndarray: Vertex masks for each bin and hemisphere, such as the output of
-            get_eccentricity_angle_masks. Shape should be (2, eccentricities, angles, vertices).
-        mean_func (function, optional): Function to average values of vertices within a bin. 
-            Defaults to np.nanmean.
-        cutoff (int, float, optional): Cutoff value for minimum number of vertices for a bin. 
-            If int, the threshold will be based on absolute number of vertices. If float, threshold
-            will be based on percentage of vertices included per bin. 
-            Bins with fewer vertices than the cutoff will return np.nan.  Defaults to None.
+    Parameters
+    ----------
+    data : np.ndarray
+        Array of vertex data. Can have any number of dimensions, as long as the last dimension matches that of the masks.
+    masks : np.ndarray
+        Vertex masks for each bin and hemisphere, such as the output of get_eccentricity_angle_masks. Shape should be (2, eccentricities, angles, vertices).
+    mean_func : function, optional
+        Function to average values of vertices within a bin. Defaults to np.nanmean.
+    cutoff : int or float, optional
+        Cutoff value for the minimum number of vertices for a bin. If an int, the threshold will be based on the absolute number of vertices. If a float, the threshold will be based on the percentage of vertices included per bin. Bins with fewer vertices than the cutoff will return np.nan. Defaults to None.
 
-    Returns:
-        np.ndarray: Average vertex values per bin.  Will be shape (data.shape[:-1], # vertices).
+    Returns
+    -------
+    np.ndarray
+        Average vertex values per bin. Will be of shape (data.shape[:-1], # vertices).
     """
     values = np.zeros((*data.shape[:-1], *masks.shape[:-1]))
     for hemi in range(masks.shape[0]):
@@ -714,10 +719,12 @@ def show_dartboard(data,
     axis.axis("off")
     return axis
 
+
 def interpolate_outlines(phi, rho, resolution=50):
     new_phi = np.linspace(0,2*np.pi,resolution)
     new_rho = np.interp(new_phi, phi, rho, period=2*np.pi)
     return new_phi, new_rho
+
 
 def resample_roi_outline(
         angles,
@@ -911,8 +918,7 @@ def _get_interpolated_outlines(overlay,
 def show_outlines_on_dartboard(
     outlines, axis=None, colors=None, polar=True, hemi=0, rmax=None, as_overlay=False, 
     **plot_kwargs):
-    """
-    Plot outlines of regions of interest on dartboard plots.
+    """Plot outlines of regions of interest on dartboard plots.
 
     Parameters
     ----------
@@ -994,6 +1000,78 @@ def show_dartboard_pair(dartboard_data,
                         verbose=False,
                         **dartboard_spec,
     ):
+    """Make two dartboard plots (one for each hemisphere) of dartboard data
+
+    Parameters
+    ----------
+    dartboard_data : array or pycortex Vertex object
+        if array, should be (); if vertex object, vertex data will be masked
+        according to `dartboard_spec` kwargs
+    dartboard_data2 : array or pycortex Vertex object, optional
+        optional second dimension of data for 2D colormap plots; 
+        see `dartboard_data` for format, by default None
+    subject : str, optional
+        string identifier for pycortex subject; not necessary if a vertex object
+        is provided for dartboard_data, by default None
+    axes : matplotlib axis, optional
+        axis into which to plot; if None, a new plot is created, by default None
+    rois : list, optional
+        list of string names for ROIs to plot on dartboard space, by default None
+    cmap : str or cmap, optional
+        colormap or name of colormap to use to colormap data. string names for 
+        pycortex colormaps, including 2D colormaps, are allowable, by default plt.cm.viridis
+    vmin : scalar, optional
+        vmin for first dimension of data to be plotted on dartboard, by default None
+    vmax : scalar, optional
+        vmax for first dimension of data to be plotted on dartboard, by default None
+    vmin2 : scalar, optional
+        vmin for second dimension of data to be plotted on dartboard, by default None
+    vmax2 : scalar, optional
+        vmax for second dimension of data to be plotted on dartboard, by default None
+    image_resolution : int, optional
+        resolution of dartboard images, by default 500
+    figsize : tuple, optional
+        size in inches of resulting plot; should be twice as wide as it is tall, by default (8, 4)
+    show_grid : bool, optional
+        whether to show lines between dartboard bins, by default True
+    grid_linecolor : str, optional
+        colorspec for grid lines, by default 'gray'
+    grid_linewidth : float, optional
+        width of grid lines, by default 0.5
+    geodesic_distances : bool, optional
+        whether to compute distances along folded cortical surface (True), or to
+        simply compute distances in flattened space (False). True is slower, by default True
+    path_resolution : int, optional
+        resolution of ROI paths plotted on dartboard in points, by default 100
+    every_n : int, optional
+        sampling along ROI path for smoothing; ROI paths are warped into dartboard
+        space, a little smoothing usually helps aesthetically. 1 is no smoothing
+        , by default 5
+    even_sampling_over : str, optional
+        How to resample ROI paths, by angle or along path length. 'angle' is perhaps slightly
+        more principled for convex ROIs, but 'path_length' gives better results for non-convex
+        ROIs, by default 'path length'
+    roi_linewidth : int, optional
+        width of lines for drawn ROIs, by default 1
+    roi_color : list or str, optional
+        color of lines for drawn ROIs; if list is provided, ROIs are each colored
+        in order of the colors, by default 'r'
+    recache : bool, optional
+        recache mask and ROI outline data (data is cached in the pycortex cache
+        to speed up processing), by default False
+    verbose : bool, optional
+        verbose output, by default False
+
+    Returns
+    -------
+    list of matplotlib.axes
+        list of axes into which data was plotted
+
+    Raises
+    ------
+    ValueError
+        _description_
+    """    """"""
     if subject is None:
         if not isinstance(dartboard_data, Vertex):
             raise ValueError("Must provide either `subject` argument or a Vertex object as `dartboard_data`")
@@ -1177,19 +1255,26 @@ def draw_mask_bins(
 
 def draw_anchor_lines(
     overlay, center_idxs, anchor_idxs, axis=None, as_overlay=True, **plot_kwargs):
-    """Draw lines over the cortex stretching from the center of one ROI to the centers of other
-        'anchor' ROIs.
+    """
+    Draw lines over the cortex stretching from the center of one ROI to the centers of other 'anchor' ROIs.
 
-    Args:
-        overlay (str): Subject identifier string, e.g. 'S1fs'
-        center_roi (str): ROI from which to draw lines.
-        anchor_rois (list, tuple): ROIs to which to draw lines from center_roi.
-        axis (matplotlib.axes._subplots.AxesSubplot, optional): Matplotlb axis on which to plot.
-        as_overlay (bool, optional): Whether to create new axis on top of existing axis, to avoid
-            interfering with previously-plotted data. Defaults to False.
+    Parameters
+    ----------
+    overlay : str
+        Subject identifier string, e.g. 'S1fs'.
+    center_roi : str
+        ROI from which to draw lines.
+    anchor_rois : list or tuple
+        ROIs to which to draw lines from center_roi.
+    axis : matplotlib.axes._subplots.AxesSubplot, optional
+        Matplotlib axis on which to plot.
+    as_overlay : bool, optional
+        Whether to create a new axis on top of the existing axis to avoid interfering with previously-plotted data. Defaults to False.
 
-    Returns:
-        matplotlib.axes._subplots.AxesSubplot: Matplotlib axis in which data is plotted.
+    Returns
+    -------
+    matplotlib.axes._subplots.AxesSubplot
+        Matplotlib axis in which data is plotted.
     """
     default_kwargs = {
         'color': 'lightgray',
@@ -1274,24 +1359,31 @@ def generate_dartboard_vertex_object(dartboard_mask,
 
 def overlay_dartboards(
     data, data_2=None, axis=None, fig=None, position_x=.5, position_y=.75, scale=.25, **dartboard_kwargs):
-    """Show dartboard data in a position overlaid on an existing axis.  Primarily intended for
+    """
+    Show dartboard data in a position overlaid on an existing axis.  Primarily intended for
     overlaying dartboards on corresponding flatmaps.
 
-    Args:
-        data (np.ndarray): np.ndarray: Average vertex values per bin.
-            Should be of shape (# eccentricities, # angles) for single-/cross-hemi data, and 
-            (#hemis, # eccentricities, # angles) for two-hemi data.
-        data_2 (np.ndarray, optional): np.ndarray: Average vertex values per bin.
-            Should be of shape (# eccentricities, # angles) for single-/cross-hemi data, and 
-            (#hemis, # eccentricities, # angles) for two-hemi data.  Defaults to None.
-        axis (matplotlib.axes._subplots.AxesSubplot, optional): Matplotlb axis on which to plot.
-        fig (matplotlib.figure.Figure, optional): Matplotlib figure in which data is plotted.
-        x (float, optional): X position in range of (0,1) for center of dartboards. Defaults to .5.
-        y (float, optional): Y position in range of (0,1) for center of dartboards. Defaults to .5.
-        scale (float, optional): Scale of dartboards relative to axis size. Defaults to .25.
+    Parameters
+    ----------
+    data : np.ndarray
+        Average vertex values per bin. Should be of shape (# eccentricities, # angles) for single-/cross-hemi data, and (#hemis, # eccentricities, # angles) for two-hemi data.
+    data_2 : np.ndarray, optional
+        Average vertex values per bin. Should be of shape (# eccentricities, # angles) for single-/cross-hemi data, and (#hemis, # eccentricities, # angles) for two-hemi data. Defaults to None.
+    axis : matplotlib.axes._subplots.AxesSubplot, optional
+        Matplotlib axis on which to plot.
+    fig : matplotlib.figure.Figure, optional
+        Matplotlib figure in which data is plotted.
+    x : float, optional
+        X position in the range of (0,1) for the center of dartboards. Defaults to 0.5.
+    y : float, optional
+        Y position in the range of (0,1) for the center of dartboards. Defaults to 0.5.
+    scale : float, optional
+        Scale of dartboards relative to the axis size. Defaults to 0.25.
 
-    Returns:
-        matplotlib.axes._subplots.AxesSubplot: Matplotlib axis in which data is plotted.
+    Returns
+    -------
+    matplotlib.axes._subplots.AxesSubplot
+        Matplotlib axis in which data is plotted.
     """
     overlaid_axis = axis.figure.add_axes(
         mtrans.Bbox([
@@ -1396,8 +1488,25 @@ def get_dartboard_data(vertex_obj,
         _description_
     center_roi : _type_
         _description_
-    anchors : _type_
-        _description_
+    anchors : list
+        list of strings or tuples specifying anchor points. If strings are provided,
+        code assumes strings to be names for regions of interest defined for this 
+        pycortex subject (e.g. 'FFA'). Anchor points are computed as centroids of 
+        the named ROIs. If tuples are provided, the first element of the tuple is the
+        name of the ROI, and the second element must be 'centroid' or 'nearest', 
+        indicating whether the anchor point shoudl be the centroi of the named ROI, or
+        the nearest point in or on the named region to the center_roi. Sulci or other
+        labeled anatomical markers in other layers of overlays.svg for the subject may
+        be used, e.g. ('STS', 'nearest') for the nearest point to the center_roi that
+        falls on STS. 
+
+        Important: anchors must be specified counter clockwise from the RIGHT with
+        respect to the RIGHT hemisphere:
+               2
+              /\
+        3 <- center -> 1
+              \/
+               4
     mean_func : function, optional
         The function used to average all vertices in a given bin, by default np.nanmean
         Consider what is being averaged to make an appropriate choice here (e.g.
@@ -1468,3 +1577,233 @@ def get_dartboard_data(vertex_obj,
     return masks, output
 
 
+def dartboard_on_flatmap(vertex_data,
+                         fn=np.nanmean,
+                         vmin=None,
+                         vmax=None,
+                         cmap=None,
+                         # Dartboard args
+                         center_roi=None,
+                         anchor_rois=None,
+                         display_rois=None,
+                         n_angles=16,
+                         n_eccentricities=8,
+                         max_radii=(50, 50),
+                         surf_type='inflated',
+                         # Plotting args
+                         figsize=(12, 6),
+                         dartboard_axes_dist_from_midline=0.15,
+                         dartboard_axes_bottom=0.25,
+                         dartboard_axes_width=0.1,
+                         dartboard_axes_height=0.2,
+                         dartboard_display_alpha=0.2,
+                         quickflat_kw=None,
+                         flatmap_line_linewidth=1.5,
+                         flatmap_line_color='y',
+                         flatmap_line_style=None,
+                         show_anchor_lines=None,
+                         show_dartboard_grid=True,
+                         show_dartboard_edge=True,
+                         #show_roi_outlines=True,
+                         # ROI outline parameters
+                         n_roi_border_points=64,
+                         roi_outline_smooth_factor=5,  # every 5th point kept, smoothed with cubic spline
+                         roi_border_kw=None,
+                         cache_dir=None,
+                         verbose=False,
+                         outline_kw=None,
+                         **kwargs):
+    """Make a flatmap with overlaid dartboard plots
+
+    Parameters
+    ----------
+    vertex_data : cortex.Vertex (or cortex.Vertex2D, or cortex.VertexRGB*) instance
+        data to be plotted (VertexRGB still WIP). Note that vmin, vmax of dartboard
+        use vmin, vmax of this data.
+    masks : array-like, optional
+        masks for , by default None
+    fn : function, optional
+        function to use to collapse over vertices within each mask, by default np.nanmean
+    center_roi : str
+        center ROI
+    n_eccentricities : int, optional
+        number of radial bins, by default 5; should be consistent with number of radial
+        bins in `masks`, if `masks` is provided
+    n_angles : int, optional
+        number of polar angle bins, by default 8; should be consistent with number of
+        angular bins in `masks`, if `masks` is provided
+    dartboard_axes_dist_from_midline : float, optional
+        fraction of the figure by which dartboard axes are displaced from the figure midline,
+        by default 0.15
+    dartboard_axes_bottom : float, optional
+        fraction of the figure by which dartboard axes are displaced from the figure bottom,
+        by default 0.25
+    dartboard_axes_width : float, optional
+        width of dartboard axes as a fraction of the figure, by default 0.1
+    dartboard_axes_height : float, optional
+        height of dartboard axes as a fraction of the figure, by default 0.2
+    verbose : bool
+        whether or not to display verbose output 
+    """
+    if verbose:
+        print("Getting masks...")
+    masks = generate_dartboard_masks(
+        vertex_data.subject,
+        center_roi,
+        anchor_rois,
+        n_angles=n_angles,
+        n_eccentricities=n_eccentricities,
+        max_radii=max_radii,
+        cache_dir=cache_dir,)
+    # Manage inputs
+    if isinstance(vertex_data, cx.Vertex):
+        if vmin is None:
+            vmin = vertex_data.vmin
+        if vmax is None:
+            vmax = vertex_data.vmax
+    elif isinstance(vertex_data, cx.Vertex2D):
+        if vmin is None:
+            vmin = (vertex_data.vmin, vertex_data.vmin2)
+        if vmax is None:
+            vmax = (vertex_data.vmax, vertex_data.vmax2)
+    else:
+        raise NotImplementedError("No VertexRGB yet!")
+    if cmap is None:
+        cmap = vertex_data.cmap
+    #print(vmin, vmax)
+    if flatmap_line_style is None:
+        flatmap_line_style = '-'
+    if quickflat_kw is None:
+        quickflat_kw = {}
+    if roi_border_kw is None:
+        roi_border_kw = {}
+    if anchor_rois is None:
+        anchor_rois = []
+    if outline_kw is None:
+        outline_kw = {}
+    # Get masked data
+    data_lh, data_rh = get_dartboard_data(vertex_data, masks,
+                                          n_angles=n_angles, n_eccentricities=n_eccentricities,
+                                          fn=fn)
+    # Vertex flatmap plot
+    fig, ax = plt.subplots(figsize=figsize)
+    _ = cx.quickflat.make_figure(
+        vertex_data, with_curvature=True, fig=ax, **quickflat_kw)
+
+    # Augment plot
+    if show_dartboard_grid:
+        # Grid fill for dartboard area
+        vx_grid = generate_dartboard_vertex_object(
+            masks, vertex_data.subject, type='grid', bg_value=np.nan)
+        img_grid, extent = cx.quickflat.composite.make_flatmap_image(vx_grid)
+        ax.imshow(img_grid, extent=extent,
+                  alpha=dartboard_display_alpha, cmap='gray')
+    if show_dartboard_edge:
+        # Solid fill for dartboard area
+        vx_fill = generate_dartboard_vertex_object(
+            masks, vertex_data.subject, type='solid', bg_value=0)
+        img_fill, extent = cx.quickflat.composite.make_flatmap_image(vx_fill)
+        xt = np.linspace(extent[0], extent[1], img_fill.shape[1])
+        yt = np.linspace(extent[3], extent[2], img_fill.shape[0])
+        xg, yg = np.meshgrid(xt, yt)
+        ax.contour(xg, yg, img_fill, [1],
+                   linewidths=[flatmap_line_linewidth],
+                   colors=[flatmap_line_color],
+                   zorder=10,  # (in front)
+                   )
+    if show_anchor_lines:
+        # Draw lines from center of dartboard to each anchor ROI center
+        if not isinstance(flatmap_line_style, (list, tuple)):
+            flatmap_line_style = [flatmap_line_style] * len(anchor_rois)
+        pts, _ = cx.db.get_surf(vertex_data.subject,
+                                'flat', merge=True, nudge=True)
+        roi_centers = {}
+        for roi in [center_roi] + anchor_rois:
+            vertex_indices = get_roi_centroids(vertex_data.subject, roi,
+                                               surf_type=surf_type,
+                                               cache_dir=cache_dir,
+                                               verbose=verbose)
+            roi_centers[roi] = np.array([pts[vertex_indices[0]][:2],
+                                         pts[vertex_indices[1]][:2]])
+            if roi == center_roi:
+                center_roi_vertex = vertex_indices
+        for lr in [0, 1]:  # left, right
+            for pt, ls in zip(anchor_rois, flatmap_line_style):
+                x = [roi_centers[center_roi][lr, 0],
+                     roi_centers[pt][lr, 0]]
+                y = [roi_centers[center_roi][lr, 1],
+                     roi_centers[pt][lr, 1]]
+                ax.plot(x, y, lw=flatmap_line_linewidth,
+                        ls=ls, color=flatmap_line_color)
+
+    # These are in unitless percentages of the figure size. (0,0 is bottom left)
+    left, bottom, width, height = [0.5 - dartboard_axes_dist_from_midline - dartboard_axes_width,
+                                   dartboard_axes_bottom,
+                                   dartboard_axes_width,
+                                   dartboard_axes_height]
+    ax_lhem = fig.add_axes([left, bottom, width, height])
+    # lh_h = dartboard(data_lh,
+    #                  cmap=vertex_data.cmap,
+    #                  ax=ax_lhem,
+    #                  theta_direction='counter_clockwise',#1,
+    #                  vmin=vmin,
+    #                  vmax=vmax,
+    #                  max_radius=max_radii[0],
+    #                  **kwargs)
+    left, bottom, width, height = [0.5 + dartboard_axes_dist_from_midline,
+                                   dartboard_axes_bottom,
+                                   dartboard_axes_width,
+                                   dartboard_axes_height]
+    ax_rhem = fig.add_axes([left, bottom, width, height])
+    # rh_h = dartboard(data_rh,
+    #                  cmap=vertex_data.cmap,
+    #                  ax=ax_rhem,
+    #                  theta_direction='clockwise', #-1,
+    #                  vmin=vmin,
+    #                  vmax=vmax,
+    #                  max_radius=max_radii[1],
+    #                  **kwargs,
+    #                  )
+    print(cmap)
+    dartboard_pair((data_lh, data_rh),
+                   vertex_data.subject,
+                   center_roi,
+                   anchor_rois,
+                   display_rois=display_rois,
+                   n_angles=n_angles,
+                   n_eccentricities=n_eccentricities,
+                   max_radii=max_radii,
+                   fn=fn,
+                   surf_type=surf_type,
+                   axs=np.array([ax_lhem, ax_rhem]),
+                   vmin=vmin,
+                   vmax=vmax,
+                   cmap=cmap,
+                   outline_kw=outline_kw,
+                   cache_dir=cache_dir,
+                   verbose=verbose,
+                   **kwargs,
+                   ###
+                   )
+    if show_anchor_lines:
+        # TEMP: Will need changing if anchors are not meant to specify
+        # 90 degree ticks around dartboard. For that, should be something
+        # like defining regularly spaced angles:
+        # angles = np.linspace(0, 2 * np.pi, n_anchor_points)
+        # ... then computing max_radii[blah] * sin and cos of each angle for X and Y
+        # ... while following same line order as above.
+        ax_rhem.plot([-max_radii[1], max_radii[1]], [0, 0], '--', color=flatmap_line_color,
+                     lw=flatmap_line_linewidth)
+        ax_rhem.plot([0, 0], [-max_radii[1], max_radii[1]], '-', color=flatmap_line_color,
+                     lw=flatmap_line_linewidth)
+        ax_rhem.axis([-max_radii[1], max_radii[1], -
+                     max_radii[1], max_radii[1]])
+
+        ax_lhem.plot([-max_radii[0], max_radii[0]], [0, 0], '--', color=flatmap_line_color,
+                     lw=flatmap_line_linewidth)
+        ax_lhem.plot([0, 0], [-max_radii[0], max_radii[0]], '-', color=flatmap_line_color,
+                     lw=flatmap_line_linewidth)
+        ax_lhem.axis([-max_radii[0], max_radii[0], -
+                     max_radii[0], max_radii[0]])
+
+    return fig
