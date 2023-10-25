@@ -605,7 +605,7 @@ def show_dartboard(data,
         show_grid=True,
         grid_linewidth=0.5,
         grid_linecolor='lightgray'):
-    """Given values masked by angle and eccentricity, shows them as a 'dartboard'-style visualization.
+    """Given values masked by angle and eccentricity, shows them as a radial grid ('dartboard'-style visualization).
 
     Parameters
     ----------
@@ -1002,6 +1002,15 @@ def show_dartboard_pair(dartboard_data,
     ):
     """Make two dartboard plots (one for each hemisphere) of dartboard data
 
+    Includes many options for plotting, including for plotting of
+    ROI outlines over dartboard plot. There are several choices to
+    make here, since the ROI outlines must be warped appropriately.
+
+    For lower-level functions, see:
+    `show_dartboard` # 
+    `_get_interpolated_outlines` # get roi outlines
+    `show_outlines_on_dartboard` # plot roi outlines
+
     Parameters
     ----------
     dartboard_data : array or pycortex Vertex object
@@ -1073,10 +1082,12 @@ def show_dartboard_pair(dartboard_data,
         _description_
     """    """"""
     if subject is None:
-        if not isinstance(dartboard_data, Vertex):
-            raise ValueError("Must provide either `subject` argument or a Vertex object as `dartboard_data`")
-        subject = dartboard_data.subject
-    # WORKING HERE. need to re-figure-out what data_to_plot is.
+        if isinstance(dartboard_data, Vertex):
+            subject = dartboard_data.subject
+        else:
+            if rois is not None:
+                raise ValueError("Must provide either `subject` argument or a Vertex object as `dartboard_data` if you wish to display rois")
+
     if isinstance(dartboard_data, Vertex):
         _, data0 = get_dartboard_data(dartboard_data, **dartboard_spec)
     else:
@@ -1088,9 +1099,7 @@ def show_dartboard_pair(dartboard_data,
         _, data1 = get_dartboard_data(dartboard_data2, **dartboard_spec)
     else:
         data1 = dartboard_data2.copy()
-    
-    data_to_plot = (dartboard_data, dartboard_data2)
-    
+        
     if axes is None:
         fig, axes = plt.subplots(1, 2, figsize=figsize)
     # Loop over hemispheres
@@ -1099,10 +1108,6 @@ def show_dartboard_pair(dartboard_data,
     for hemi_index, data in enumerate(zip(data0, data1)):
         axis = axes[hemi_index]
         d0, d1 = data
-        # if not isinstance(d0, np.ndarray):
-        #     d0 = get_dartboard_data(d0, **dartboard_spec)
-        #     if d1 is not None:
-        #         d1 = get_dartboard_data(d1, **dartboard_spec)
         _ = show_dartboard(d0, data2=d1,
             axis=axis,
             theta_direction=directions[hemi_index],
