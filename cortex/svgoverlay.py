@@ -894,7 +894,7 @@ def gen_path(path):
     verts, codes = [], []
     mode, pen = None, np.array([0.,0.])
 
-    it = iter(path.get('d').split(' '))
+    it = iter(path.get('d').strip().split(' '))
     run = True
     while run:
         try:
