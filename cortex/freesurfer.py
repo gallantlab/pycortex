@@ -573,6 +573,15 @@ def _mri_surf2surf_command(src_subj, trg_subj, input_file, output_file, hemi):
     return cmd
 
 
+def _check_datatype(data):
+    dtype = data.dtype
+    if dtype == np.int64:
+        return np.int32
+    elif dtype == np.float64:
+        return np.float32
+    else:
+        return dtype
+
 
 def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
     """Uses freesurfer mri_surf2surf to transfer vertex data between
@@ -596,7 +605,8 @@ def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
     =====
     Requires path to mri_surf2surf or freesurfer environment to be active.
     """
-    data_arrays = [gifti.GiftiDataArray(d) for d in data]
+    datatype = _check_datatype(data)
+    data_arrays = [gifti.GiftiDataArray(d, datatype=datatype) for d in data]
     gifti_image = gifti.GiftiImage(darrays=data_arrays)
 
     tf_in = NamedTemporaryFile(suffix=".gii")
