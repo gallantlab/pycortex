@@ -1,6 +1,4 @@
-# Dartboard overlay on flatmap
-
-# Basic dartboard pair
+# This demo shows the steps of computation of dartboard plots (radial bin averaging and breakdown of plots with low-level functions)
 import cortex
 
 subject = 'S1'
@@ -30,5 +28,4 @@ dartboard_spec = dict(
     max_radii=(50, 50),
 )
 
-# Show dartboard plot overlaid on flatmap from which it was derived
-axs = cortex.dartboards.dartboard_on_flatmap(vx, **dartboard_spec)
+masks, data = cortex.dartboards.get_dartboard_data(vx, **dartboard_spec)

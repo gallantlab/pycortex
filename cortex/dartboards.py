@@ -1,7 +1,6 @@
 from matplotlib import pyplot as plt
 from matplotlib import transforms as mtrans
 from matplotlib.colors import Normalize
-from sklearn.metrics import pairwise_distances
 import matplotlib
 import numpy as np
 import time
@@ -14,7 +13,7 @@ from . import quickflat
 
 from .dataset.views import Vertex, Vertex2D
 from scipy import interpolate
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull, distance
 from .utils import get_cmap
 
 try:
@@ -23,6 +22,12 @@ except:
     CACHE_DIR = options.config.get('basic','filestore')
 
 ## Utils
+
+def _pairwise_distances(array, metric='euclidean'):
+    """Simple wrapper for scipy distance function"""
+    d = distance.pdist(array, metric=metric)
+    return distance.squareform(d)
+
 def flatten_list_of_lists(list_of_lists):
     flat_list = [item for sublist in list_of_lists for item in sublist]
     return flat_list
@@ -444,7 +449,7 @@ def get_closest_vertices(overlay, coords, hemi='both', distance_metric='euclidea
             overlay_coords = overlay_coords[n_vertices_left:]
         else:
             raise ValueError("hemi must be 0, 1, 'left', 'right' or 'both'.")
-    min_idxs = np.nanargmin(pairwise_distances(coords,overlay_coords,metric=distance_metric), axis=1)
+    min_idxs = np.nanargmin(_pairwise_distances(coords,overlay_coords,metric=distance_metric), axis=1)
     if hemi in [1,'r','right']:
         min_idxs += n_vertices_left
     return min_idxs
@@ -459,7 +464,7 @@ def _get_closest_vertex_to_roi(overlay, roi, comparison_roi, roi_full=False, com
     for hemi in range(2):
         hemi_roi_coords = all_coords[roi_verts[hemi]]
         hemi_comparison_roi_coords = all_coords[comparison_roi_verts[hemi]]
-        distances = pairwise_distances(
+        distances = _pairwise_distances(
             hemi_roi_coords, hemi_comparison_roi_coords, metric=distance_metric)
         nearest_vertex = np.nanargmin(np.nanmin(distances, axis=1))
         if return_indices:
@@ -1505,10 +1510,10 @@ def get_dartboard_data(vertex_obj,
 
     Parameters
     ----------
-    vertex_obj : _type_
-        _description_
-    center_roi : _type_
-        _description_
+    vertex_obj : cortex.Vertex
+        vertex object containing data to be averaged over the defined radial bins
+    center_roi : str or tuple
+        name of roi (defined in overlays.svg for this subject) 
     anchors : list
         list of strings or tuples specifying anchor points. If strings are provided,
         code assumes strings to be names for regions of interest defined for this 
@@ -1528,6 +1533,9 @@ def get_dartboard_data(vertex_obj,
         3 <- center -> 1
               \/
                4
+    max_radii : int or tuple
+        maximum radius to extend from center ROI (in mm in fiducial space). Separate
+        values for each hemisphere can be provided as a tuple (Lhem, Rhem).
     mean_func : function, optional
         The function used to average all vertices in a given bin, by default np.nanmean
         Consider what is being averaged to make an appropriate choice here (e.g.
@@ -1625,12 +1633,11 @@ def dartboard_on_flatmap(vertex_data,
                          dartboard_display_alpha=0.2,
                          quickflat_kw=None,
                          flatmap_line_linewidth=1.5,
-                         flatmap_line_color='y',
+                         flatmap_line_color='c',
                          flatmap_line_style=('--','-','--','-'),
                          show_anchor_lines=None,
                          show_dartboard_grid=True,
                          show_dartboard_edge=True,
-                         #show_roi_outlines=True,
                          # ROI outline parameters
                          n_roi_border_points=64,
                          roi_outline_smooth_factor=5,  # every 5th point kept, smoothed with cubic spline
@@ -1651,12 +1658,31 @@ def dartboard_on_flatmap(vertex_data,
         function to use to collapse over vertices within each mask, by default np.nanmean
     center_roi : str
         center ROI
+    anchors : list
+        list of strings or tuples specifying anchor points. If strings are provided,
+        code assumes strings to be names for regions of interest defined for this 
+        pycortex subject (e.g. 'FFA'). Anchor points are computed as centroids of 
+        the named ROIs. If tuples are provided, the first element of the tuple is the
+        name of the ROI, and the second element must be 'centroid' or 'nearest', 
+        indicating whether the anchor point shoudl be the centroi of the named ROI, or
+        the nearest point in or on the named region to the center_roi. Sulci or other
+        labeled anatomical markers in other layers of overlays.svg for the subject may
+        be used, e.g. ('STS', 'nearest') for the nearest point to the center_roi that
+        falls on STS. 
+
+        Important: anchors must be specified counter clockwise from the RIGHT with
+        respect to the RIGHT hemisphere:
+               2
+              /\
+        3 <- center -> 1
+              \/
+               4        
     n_eccentricities : int, optional
         number of radial bins, by default 5; should be consistent with number of radial
         bins in `masks`, if `masks` is provided
     n_angles : int, optional
-        number of polar angle bins, by default 8; should be consistent with number of
-        angular bins in `masks`, if `masks` is provided
+        number of polar angle bins, by default 16; will currently break with anything but
+        16 and 4 anchors...
     dartboard_axes_dist_from_midline : float, optional
         fraction of the figure by which dartboard axes are displaced from the figure midline,
         by default 0.15
@@ -1682,14 +1708,7 @@ def dartboard_on_flatmap(vertex_data,
                           n_eccentricities=n_eccentricities,
                           eccentricities=eccentricities,
                           max_radii=max_radii,)
-    # masks = generate_dartboard_masks(
-    #     vertex_data.subject,
-    #     center_roi,
-    #     anchor_rois,
-    #     n_angles=n_angles,
-    #     n_eccentricities=n_eccentricities,
-    #     max_radii=max_radii,
-    #     cache_dir=cache_dir,)
+
     # Manage inputs
     if isinstance(vertex_data, Vertex):
         if vmin is None:
@@ -1713,10 +1732,7 @@ def dartboard_on_flatmap(vertex_data,
         roi_border_kw = {}
     if outline_kw is None:
         outline_kw = {}
-    # # Get masked data
-    # data_lh, data_rh = get_dartboard_data(vertex_data, masks,
-    #                                       n_angles=n_angles, n_eccentricities=n_eccentricities,
-    #                                       fn=fn)
+    # Load dartboard masks & masked data
     masks, to_plot = get_dartboard_data(vertex_data, **dartboard_spec, mean_func=fn)
     # Vertex flatmap plot
     fig, ax = plt.subplots(figsize=figsize)
