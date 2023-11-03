@@ -352,7 +352,8 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
         extra_idx = set()
         for idx in roi_idx:
             extra_idx.update(ii for ii in neighbors_dict[idx] if ii not in goodpts)
-        roi_idx = np.unique(np.concatenate((roi_idx, list(extra_idx)))).astype(int)
+        if extra_idx:
+            roi_idx = np.unique(np.concatenate((roi_idx, list(extra_idx)))).astype(int)
 
         if mask:
             roidict[name] = np.zeros(pts.shape[:1], dtype=bool)
@@ -673,18 +674,20 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         for roi in roi_list:
             roi_voxels[roi][all_mask > 1] = False
     # Split left / right hemispheres if desired
-    # There ought to be a more succinct way to do this - get_hemi_masks only does the cortical
-    # ribbon, and is not guaranteed to have all voxels in the cortex_mask specified in this fn
     if split_lr:
-        left_verts, right_verts = db.get_surf(subject, "flat", merge=False, nudge=True)
+        # Use the fiducial surface because we need to have all vertices
+        left_verts, _ = db.get_surf(subject, "fiducial", merge=False, nudge=True)  
         left_mask = vox_idx < len(np.unique(left_verts[1]))
         right_mask = np.logical_not(left_mask)
         roi_voxels_lr = {}
         for roi in roi_list:
-            roi_voxels_lr[roi+'_L'] = copy.copy(roi_voxels[roi]) # & left_mask
-            roi_voxels_lr[roi+'_L'][right_mask] = False # ?
-            roi_voxels_lr[roi+'_R'] = copy.copy(roi_voxels[roi]) # & right_mask
-            roi_voxels_lr[roi+'_R'][left_mask] = False # ?
+            # roi_voxels may contain float values if using a mapper, therefore we need
+            # to manually set the voxels in the other hemisphere to False. Then we let
+            # numpy do the conversion False -> 0. 
+            roi_voxels_lr[roi + '_L'] = copy.copy(roi_voxels[roi])
+            roi_voxels_lr[roi + '_L'][right_mask] = False
+            roi_voxels_lr[roi + '_R'] = copy.copy(roi_voxels[roi])
+            roi_voxels_lr[roi + '_R'][left_mask] = False
         output = roi_voxels_lr
     else:
         output = roi_voxels
