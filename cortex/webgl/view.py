@@ -102,6 +102,10 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     title : str, optional
         The title that is displayed on the viewer website when it is loaded in
         a browser.
+    layout : None or list of (int, int)
+        The layout of the viewer subwindows for showing multiple subjects, passed to
+        the template generator. 
+        Default to None, corresponding to no subwindows.
 
     Notes
     -----
@@ -133,8 +137,6 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     package.reorder(ctms)
 
     db.auxfile = None
-    if layout is None:
-        layout = [None, (1, 1), (2, 1), (3, 1), (2, 2), (3, 2), (3, 2), (3, 3), (3, 3), (3, 3)][len(subjects)]
 
     ## Rename files to anonymize
     submap = dict()
@@ -305,9 +307,10 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     title : str, optional
         The title that is displayed on the viewer website when it is loaded in
         a browser.
-    layout : (int, int), optional
-        The layout of the viewer subwindows for showing multiple subjects.
-        Default None, which selects the layout based on the number of subjects.
+    layout : None or list of (int, int), optional
+        The layout of the viewer subwindows for showing multiple subjects, passed to
+        the template generator.
+        Default None, corresponding to no subwindows.
     """
 
     # populate default webshow args
@@ -344,8 +347,6 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     subjectjs = json.dumps(dict((subj, "ctm/%s/"%subj) for subj in subjects))
     db.auxfile = None
 
-    if layout is None:
-        layout = [None, (1, 1), (2, 1), (3, 1), (2, 2), (3, 2), (3, 2), (3, 3), (3, 3), (3, 3)][len(subjects)]
 
     linear = lambda x, y, m: (1.-m)*x + m*y
     mixes = dict(
