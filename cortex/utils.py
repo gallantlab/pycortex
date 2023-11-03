@@ -1,27 +1,27 @@
 """Contain utility functions
 """
+import binascii
+import copy
 import io
 import os
-import h5py
-import copy
 import shutil
-import binascii
-import warnings
-import numpy as np
 import tarfile
-import wget
 import tempfile
-
+import warnings
 from distutils.version import LooseVersion
-
 from importlib import import_module
-from .database import db
-from .volume import anat2epispace
-from .options import config
-from .freesurfer import fs_aseg_dict
-from .polyutils import Surface
+
+import h5py
+import numpy as np
+import wget
+
 from . import formats
+from .database import db
+from .freesurfer import fs_aseg_dict
+from .options import config
+from .polyutils import Surface
 from .testing_utils import INKSCAPE_VERSION
+from .volume import anat2epispace
 
 
 class DocLoader(object):
@@ -118,6 +118,7 @@ def get_ctmmap(subject, **kwargs):
     rnew :
     """
     from scipy.spatial import cKDTree
+
     from . import brainctm
     jsfile = get_ctmpack(subject, **kwargs)
     ctmfile = os.path.splitext(jsfile)[0]+".ctm"
@@ -265,8 +266,8 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
         Passed to cortex.quickflat.make_png
     """
     import subprocess as sp
-    from . import quickflat
-    from . import dataset
+
+    from . import dataset, quickflat
 
     dv = dataset.normalize(data)
     if isinstance(dv, dataset.Dataset):
@@ -286,6 +287,17 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
         else:
             cmd = [inkscape_cmd, svg.svgfile]
         return sp.call(cmd)
+
+
+def _get_neighbors_dict(polys):
+    """Return a dictionary of {vertex : set(neighbor vertices)} for the given polys"""
+    neighbors_dict = {}
+    for poly in polys:
+        for i, j in ((0, 1), (1, 2), (2, 0)):
+            neighbors_dict.setdefault(poly[i], set()).add(poly[j])
+            neighbors_dict.setdefault(poly[j], set()).add(poly[i])
+    return neighbors_dict
+
 
 def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
     """Return vertices for the given ROIs, or all ROIs if none are given.
@@ -319,6 +331,11 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
     pts, polys = db.get_surf(subject, "flat", merge=True)
     goodpts = np.unique(polys)
 
+    # Load also the pts and polys of the full surface without cuts, to recover
+    # vertices that were removed from the flat surface
+    _, polys_full = db.get_surf(subject, "fiducial", merge=True)
+    neighbors_dict = _get_neighbors_dict(polys_full)
+
     if roi is None:
         roi = svg.rois.shapes.keys()
 
@@ -328,8 +345,17 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
 
     for name in roi:
         roi_idx = np.intersect1d(svg.rois.get_mask(name), goodpts)
+        # Now we want to include also the vertices that were removed from the flat 
+        # surface that is, for every vertex in roi_idx we want to add the pts that are 
+        # not in goodpts but that are in pts_full
+        # to do that, we need to find the neighboring indices from polys_full
+        extra_idx = set()
+        for idx in roi_idx:
+            extra_idx.update(ii for ii in neighbors_dict[idx] if ii not in goodpts)
+        roi_idx = np.unique(np.concatenate((roi_idx, list(extra_idx))))
+
         if mask:
-            roidict[name] = np.zeros(pts.shape[:1]) > 1
+            roidict[name] = np.zeros(pts.shape[:1], dtype=bool)
             if np.any(roi_idx):
                 roidict[name][roi_idx] = True
             else:
@@ -826,8 +852,8 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
     farthest_pair[1])
     '''
 
-    from scipy.sparse import find as sparse_find
     import networkx as nx
+    from scipy.sparse import find as sparse_find
     Lmask, Rmask = get_mapper(subject, xfmname).masks  # Get masks for left and right hemisphere
     if hemi == 'both':
         hemispheres = ['lh', 'rh']
