@@ -352,7 +352,7 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
         extra_idx = set()
         for idx in roi_idx:
             extra_idx.update(ii for ii in neighbors_dict[idx] if ii not in goodpts)
-        roi_idx = np.unique(np.concatenate((roi_idx, list(extra_idx))))
+        roi_idx = np.unique(np.concatenate((roi_idx, list(extra_idx)))).astype(int)
 
         if mask:
             roidict[name] = np.zeros(pts.shape[:1], dtype=bool)
