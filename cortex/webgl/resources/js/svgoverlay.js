@@ -242,9 +242,12 @@ var svgoverlay = (function(module) {
 	}
 
         var shapes = layer.parentNode.getElementById(this.name+"_shapes");
-        for (var i = 0 ; i < shapes.children.length; i++) {
-            var name = shapes.children[i].getAttribute("inkscape:label");
-            this.shapes[name] = shapes.children[i];
+        // check if shapes is not null
+        if (shapes != null) {
+            for (var i = 0 ; i < shapes.children.length; i++) {
+                var name = shapes.children[i].getAttribute("inkscape:label");
+                this.shapes[name] = shapes.children[i];
+            }
         }
 
         var labels = layer.parentNode.getElementById(this.name+"_labels");
