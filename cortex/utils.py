@@ -144,16 +144,24 @@ def get_cortical_mask(subject, xfmname, type='nearest'):
     xfmname : str
         Transform name
     type : str
-        Mask type, one of {'cortical','thin','thick', 'nearest'}. 'cortical' is exactly the
-        cortical ribbon, between the freesurfer-estimated white matter and pial
-        surfaces; 'thin' is < 2mm away from fiducial surface; 'thick' is < 8mm
-        away from fiducial surface.
-        'nearest' is nearest voxel only (??)
+        Mask type, one of {"cortical", "thin", "thick", "nearest", "line_nearest"}.
+          - 'cortical' includes voxels contained within the cortical ribbon, 
+          between the freesurfer-estimated white matter and pial surfaces. 
+          - 'thin' includes voxels that are < 2mm away from the fiducial surface. 
+          - 'thick' includes voxels that are < 8mm away from the fiducial surface.
+          - 'nearest' includes only the voxels overlapping the fiducial surface.
+          - 'line_nearest' includes all voxels that have any part within the cortical 
+            ribbon.
 
     Returns
     -------
     mask : array
         boolean mask array for cortical voxels in functional space
+
+    Notes
+    -----
+    "nearest" is a conservative "cortical" mask, while "line_nearest" is a liberal 
+    "cortical" mask.
     """
     if type == 'cortical':
         ppts, polys = db.get_surf(subject, "pia", merge=True, nudge=False)
@@ -186,20 +194,19 @@ def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
         Name of the subject
     xfmname : str
         Name of the transform
-    shape : tuple
-        Output shape for the mask
     max_dist : nonnegative float, optional
         Limit computation to only voxels within `max_dist` mm of the surface.
-        Makes computation orders of magnitude faster for high-resolution
-        volumes.
+        Makes computation orders of magnitude faster for high-resolution volumes.
 
     Returns
     -------
-    dist : ndarray
-        Distance (in mm) to the closest point on the surface
+    dist : ndarray (z, y, x)
+        Array with the same shape as the reference image of `xfmname` containing
+        the distance (in mm) of each voxel to the closest point on the surface.
 
-    argdist : ndarray
-        Point index for the closest point
+    argdist : ndarray (z, y, x)
+        Array with the same shape as the reference image of `xfmname` containing
+        for each voxel the index of the closest point on the surface.
     """
     from scipy.spatial import cKDTree
 
@@ -211,9 +218,10 @@ def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
 
     tree = cKDTree(fiducial)
     dist, argdist = tree.query(mm, distance_upper_bound=max_dist)
-    dist.shape = (x,y,z)
-    argdist.shape = (x,y,z)
+    dist.shape = (x, y, z)
+    argdist.shape = (x, y, z)
     return dist.T, argdist.T
+
 
 def get_hemi_masks(subject, xfmname, type='nearest'):
     '''Returns a binary mask of the left and right hemisphere
