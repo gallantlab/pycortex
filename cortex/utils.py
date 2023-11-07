@@ -1,27 +1,27 @@
 """Contain utility functions
 """
+import binascii
+import copy
 import io
 import os
-import h5py
-import copy
 import shutil
-import binascii
-import warnings
-import numpy as np
 import tarfile
-import wget
 import tempfile
-
+import warnings
 from distutils.version import LooseVersion
-
 from importlib import import_module
-from .database import db
-from .volume import anat2epispace
-from .options import config
-from .freesurfer import fs_aseg_dict
-from .polyutils import Surface
+
+import h5py
+import numpy as np
+import wget
+
 from . import formats
+from .database import db
+from .freesurfer import fs_aseg_dict
+from .options import config
+from .polyutils import Surface
 from .testing_utils import INKSCAPE_VERSION
+from .volume import anat2epispace
 
 
 class DocLoader(object):
@@ -118,6 +118,7 @@ def get_ctmmap(subject, **kwargs):
     rnew :
     """
     from scipy.spatial import cKDTree
+
     from . import brainctm
     jsfile = get_ctmpack(subject, **kwargs)
     ctmfile = os.path.splitext(jsfile)[0]+".ctm"
@@ -143,16 +144,24 @@ def get_cortical_mask(subject, xfmname, type='nearest'):
     xfmname : str
         Transform name
     type : str
-        Mask type, one of {'cortical','thin','thick', 'nearest'}. 'cortical' is exactly the
-        cortical ribbon, between the freesurfer-estimated white matter and pial
-        surfaces; 'thin' is < 2mm away from fiducial surface; 'thick' is < 8mm
-        away from fiducial surface.
-        'nearest' is nearest voxel only (??)
+        Mask type, one of {"cortical", "thin", "thick", "nearest", "line_nearest"}.
+          - 'cortical' includes voxels contained within the cortical ribbon, 
+          between the freesurfer-estimated white matter and pial surfaces. 
+          - 'thin' includes voxels that are < 2mm away from the fiducial surface. 
+          - 'thick' includes voxels that are < 8mm away from the fiducial surface.
+          - 'nearest' includes only the voxels overlapping the fiducial surface.
+          - 'line_nearest' includes all voxels that have any part within the cortical 
+            ribbon.
 
     Returns
     -------
     mask : array
         boolean mask array for cortical voxels in functional space
+
+    Notes
+    -----
+    "nearest" is a conservative "cortical" mask, while "line_nearest" is a liberal 
+    "cortical" mask.
     """
     if type == 'cortical':
         ppts, polys = db.get_surf(subject, "pia", merge=True, nudge=False)
@@ -185,20 +194,19 @@ def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
         Name of the subject
     xfmname : str
         Name of the transform
-    shape : tuple
-        Output shape for the mask
     max_dist : nonnegative float, optional
         Limit computation to only voxels within `max_dist` mm of the surface.
-        Makes computation orders of magnitude faster for high-resolution
-        volumes.
+        Makes computation orders of magnitude faster for high-resolution volumes.
 
     Returns
     -------
-    dist : ndarray
-        Distance (in mm) to the closest point on the surface
+    dist : ndarray (z, y, x)
+        Array with the same shape as the reference image of `xfmname` containing
+        the distance (in mm) of each voxel to the closest point on the surface.
 
-    argdist : ndarray
-        Point index for the closest point
+    argdist : ndarray (z, y, x)
+        Array with the same shape as the reference image of `xfmname` containing
+        for each voxel the index of the closest point on the surface.
     """
     from scipy.spatial import cKDTree
 
@@ -210,9 +218,10 @@ def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
 
     tree = cKDTree(fiducial)
     dist, argdist = tree.query(mm, distance_upper_bound=max_dist)
-    dist.shape = (x,y,z)
-    argdist.shape = (x,y,z)
+    dist.shape = (x, y, z)
+    argdist.shape = (x, y, z)
     return dist.T, argdist.T
+
 
 def get_hemi_masks(subject, xfmname, type='nearest'):
     '''Returns a binary mask of the left and right hemisphere
@@ -265,8 +274,8 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
         Passed to cortex.quickflat.make_png
     """
     import subprocess as sp
-    from . import quickflat
-    from . import dataset
+
+    from . import dataset, quickflat
 
     dv = dataset.normalize(data)
     if isinstance(dv, dataset.Dataset):
@@ -286,6 +295,17 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
         else:
             cmd = [inkscape_cmd, svg.svgfile]
         return sp.call(cmd)
+
+
+def _get_neighbors_dict(polys):
+    """Return a dictionary of {vertex : set(neighbor vertices)} for the given polys"""
+    neighbors_dict = {}
+    for poly in polys:
+        for i, j in ((0, 1), (1, 2), (2, 0)):
+            neighbors_dict.setdefault(poly[i], set()).add(poly[j])
+            neighbors_dict.setdefault(poly[j], set()).add(poly[i])
+    return neighbors_dict
+
 
 def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
     """Return vertices for the given ROIs, or all ROIs if none are given.
@@ -319,6 +339,11 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
     pts, polys = db.get_surf(subject, "flat", merge=True)
     goodpts = np.unique(polys)
 
+    # Load also the pts and polys of the full surface without cuts, to recover
+    # vertices that were removed from the flat surface
+    _, polys_full = db.get_surf(subject, "fiducial", merge=True)
+    neighbors_dict = _get_neighbors_dict(polys_full)
+
     if roi is None:
         roi = svg.rois.shapes.keys()
 
@@ -328,8 +353,18 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
 
     for name in roi:
         roi_idx = np.intersect1d(svg.rois.get_mask(name), goodpts)
+        # Now we want to include also the vertices that were removed from the flat 
+        # surface that is, for every vertex in roi_idx we want to add the pts that are 
+        # not in goodpts but that are in pts_full
+        # to do that, we need to find the neighboring indices from polys_full
+        extra_idx = set()
+        for idx in roi_idx:
+            extra_idx.update(ii for ii in neighbors_dict[idx] if ii not in goodpts)
+        if extra_idx:
+            roi_idx = np.unique(np.concatenate((roi_idx, list(extra_idx)))).astype(int)
+
         if mask:
-            roidict[name] = np.zeros(pts.shape[:1]) > 1
+            roidict[name] = np.zeros(pts.shape[:1], dtype=bool)
             if np.any(roi_idx):
                 roidict[name][roi_idx] = True
             else:
@@ -647,18 +682,20 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         for roi in roi_list:
             roi_voxels[roi][all_mask > 1] = False
     # Split left / right hemispheres if desired
-    # There ought to be a more succinct way to do this - get_hemi_masks only does the cortical
-    # ribbon, and is not guaranteed to have all voxels in the cortex_mask specified in this fn
     if split_lr:
-        left_verts, right_verts = db.get_surf(subject, "flat", merge=False, nudge=True)
+        # Use the fiducial surface because we need to have all vertices
+        left_verts, _ = db.get_surf(subject, "fiducial", merge=False, nudge=True)  
         left_mask = vox_idx < len(np.unique(left_verts[1]))
         right_mask = np.logical_not(left_mask)
         roi_voxels_lr = {}
         for roi in roi_list:
-            roi_voxels_lr[roi+'_L'] = copy.copy(roi_voxels[roi]) # & left_mask
-            roi_voxels_lr[roi+'_L'][right_mask] = False # ?
-            roi_voxels_lr[roi+'_R'] = copy.copy(roi_voxels[roi]) # & right_mask
-            roi_voxels_lr[roi+'_R'][left_mask] = False # ?
+            # roi_voxels may contain float values if using a mapper, therefore we need
+            # to manually set the voxels in the other hemisphere to False. Then we let
+            # numpy do the conversion False -> 0. 
+            roi_voxels_lr[roi + '_L'] = copy.copy(roi_voxels[roi])
+            roi_voxels_lr[roi + '_L'][right_mask] = False
+            roi_voxels_lr[roi + '_R'] = copy.copy(roi_voxels[roi])
+            roi_voxels_lr[roi + '_R'][left_mask] = False
         output = roi_voxels_lr
     else:
         output = roi_voxels
@@ -826,8 +863,8 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
     farthest_pair[1])
     '''
 
-    from scipy.sparse import find as sparse_find
     import networkx as nx
+    from scipy.sparse import find as sparse_find
     Lmask, Rmask = get_mapper(subject, xfmname).masks  # Get masks for left and right hemisphere
     if hemi == 'both':
         hemispheres = ['lh', 'rh']
