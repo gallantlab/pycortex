@@ -1,5 +1,6 @@
 # This demo shows the steps of computation of dartboard plots (radial bin averaging and breakdown of plots with low-level functions)
 import cortex
+import numpy as np
 
 subject = 'S1'
 # Get curvature information for this subject
@@ -28,4 +29,12 @@ dartboard_spec = dict(
     max_radii=(50, 50),
 )
 
+# define vertex-averaging function
+def mean_nonan(x, axis=None, threshold=0.8):
+    if np.mean(np.isnan(x), axis=axis) > threshold:
+        return np.nan
+    else:
+        return np.nanmean(x)
+
+# Get vertex-wise masks for each dartboard bin (`masks`) and masked data
 masks, data = cortex.dartboards.get_dartboard_data(vx, **dartboard_spec)
