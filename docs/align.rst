@@ -105,7 +105,7 @@ You can also use the ``contrast`` and ``brightness`` sliders to adjust the color
 	:width: 600 px
 
 The ``Outline color`` and ``Outline rep`` can be used to change the surface color, and the surface from a mesh (the default), to points only, to a solid surface.
-Also, the sliders can be used to chane line and point weights.
+Also, the sliders can be used to change line and point weights.
 Here, we changed it to a green points only representation, with smaller points.
 
 .. image:: ./aligner/surface.png

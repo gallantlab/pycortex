@@ -15,7 +15,7 @@ class SubsurfaceMixin(object):
     Use Cases
     ---------
     - performing many operations on a subset of cortex
-    - finding patches/patchs in cortical surface (see Performance Characteristics)
+    - finding patches/paths in cortical surface (see Performance Characteristics)
 
 
     Performance Characteristics

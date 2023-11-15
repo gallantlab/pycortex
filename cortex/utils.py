@@ -853,7 +853,7 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
     merge : bool, optional
         Join the hemispheres, if requesting both
     use_astar: bool, optional
-        Toggle to decide whether to use A* seach or geodesic paths for the
+        Toggle to decide whether to use A* search or geodesic paths for the
         shortest paths
 
     Returns

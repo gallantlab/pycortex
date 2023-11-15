@@ -420,7 +420,7 @@ def fix_wm(subject):
 
 def fix_pia(subject):
     """Initializes an interface to make pial surface edits.
-    This function will open two windows -- a tkmedit window that makse the actual edits,
+    This function will open two windows -- a tkmedit window that makes the actual edits,
     as well as a mayavi window to display the surface. Clicking on the mayavi window
     will drop markers which can be loaded using the "Goto Save Point" button in tkmedit.
 
