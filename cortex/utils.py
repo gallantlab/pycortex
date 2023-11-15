@@ -550,7 +550,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         voxel (reflecting the fraction of that voxel inside the ROI) unless a threshold
         is provided.
     threshold : float [0-1]
-        value used to convert probablistic ROI values to a boolean mask for the ROI.
+        value used to convert probabilistic ROI values to a boolean mask for the ROI.
     split_lr : bool
         Whether to separate ROIs in to left and right hemispheres (e.g., 'V1' becomes
         'V1_L' and 'V1_R')
@@ -648,7 +648,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
             continue
         if use_mapper:
             roi_voxels[roi] = mapper.backwards(roi_verts[roi].astype(float))
-            # Optionally threshold probablistic values returned by mapper
+            # Optionally threshold probabilistic values returned by mapper
             if threshold is not None:
                 roi_voxels[roi] = roi_voxels[roi] > threshold
             # Check for partial / empty rois:
@@ -700,7 +700,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
     else:
         output = roi_voxels
 
-    # Check percent coverage / optionally cull emtpy ROIs
+    # Check percent coverage / optionally cull empty ROIs
     for roi in set(roi_list)-set(['Cortex']):
         if pct_coverage[roi] < 100:
             # if not np.any(mask) : reject ROI
@@ -850,10 +850,10 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
         Name of the transform
     hemi : str, optional
         Which hemisphere to return. For now, only 'lh' or 'rh'
-    merge : bool, optinal
+    merge : bool, optional
         Join the hemispheres, if requesting both
     use_astar: bool, optional
-        Toggle to decide whether to use A* seach or geodesic paths for the
+        Toggle to decide whether to use A* search or geodesic paths for the
         shortest paths
 
     Returns

@@ -9,7 +9,7 @@ subject in the pycortex filestore.
 
 The cortex.Vertex2D object is instantiated with two numpy arrays of the same
 size as the total number of vertices in that subject's flatmap. Each pixel is
-colored according to both vlaues given for the nearest vertex in the flatmap.
+colored according to both values given for the nearest vertex in the flatmap.
 
 Instead of random test data, you can replace these with any arrays that are
 the length of the all the vertices in the subject.

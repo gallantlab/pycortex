@@ -50,7 +50,7 @@ def trilinear(coords, shape, **kwargs):
     return i, np.ravel_multi_index(j, shape, mode='clip'), data
 
 def distance_func(func, coords, shape, renorm=True, mp=True):
-    """Generates masks for seperable distance functions"""
+    """Generates masks for separable distance functions"""
     nZ, nY, nX = shape
     dx = coords[:,0] - np.atleast_2d(np.arange(nX)).T
     dy = coords[:,1] - np.atleast_2d(np.arange(nY)).T

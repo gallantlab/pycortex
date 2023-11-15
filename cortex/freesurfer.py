@@ -25,7 +25,7 @@ from . import anat
 
 
 def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
-    """Retrive paths for all surfaces for a subject processed by freesurfer
+    """Retrieve paths for all surfaces for a subject processed by freesurfer
 
     Parameters
     ----------
@@ -231,7 +231,7 @@ def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
     cx_subject : str
         Pycortex subject name
     freesurfer_subject_dir : str
-        directory for freesurfer subjects. None defaults to evironment variable
+        directory for freesurfer subjects. None defaults to environment variable
         $SUBJECTS_DIR
     clean : bool
         If True, the flat surface is cleaned to remove the disconnected polys.
