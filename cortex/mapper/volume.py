@@ -55,7 +55,7 @@ class PolyLinMapper(VolumeMapper):
     patchsize = 1
 
 class Polyhedral(VolumeMapper):
-    '''Uses an actual (likely concave) polyhedra betwen the pial and white surfaces
+    '''Uses an actual (likely concave) polyhedra between the pial and white surfaces
     to estimate the thickness'''
     @staticmethod
     def _getmask(pia, wm, polys, shape):

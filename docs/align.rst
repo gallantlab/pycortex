@@ -75,7 +75,7 @@ There's weird gray blobs - click anywhere to get rid of them.
 .. image:: ./aligner/snapshot2.png
 	:width: 600 px
 
-Here you see 4 different views, showing the saggital, coronal, and transverse slices, and also the three slices in 3D.
+Here you see 4 different views, showing the sagittal, coronal, and transverse slices, and also the three slices in 3D.
 The background image is the reference image, and the mesh that you see is the surface that you will be aligning.
 You'll be moving the mesh until it's aligned as much as possible with the reference.
 

@@ -6,7 +6,7 @@ pycortex includes a tool based on mayavi_ to do manual **affine** alignments. Pl
 
     * **Subject** : name of the subject, must match the surfaces used to create the transform
     * **Name** : A unique identifier for this transform
-    * **type** : The type of transform -- from fiducial to functional **magnet** space, or fiducial to **coord** inate space
+    * **type** : The type of transform -- from fiducial to functional **magnet** space, or fiducial to **coord** innate space
     * **epifile** : the filename of the functional data that the fiducial is aligned to
 
 Transforms always store the epifile in order to allow visual validation of alignment using the :module:`align` module.

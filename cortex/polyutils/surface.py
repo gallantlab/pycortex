@@ -247,7 +247,7 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
             A scalar-valued function across the cortex.
         at_verts : bool, optional
             If True (default), values will be returned for each vertex. Otherwise,
-            values will be retruned for each face.
+            values will be returned for each face.
 
         Returns
         -------

@@ -43,7 +43,7 @@ In order to plot cortical data for a subject, at least the fiducial and flat geo
 
 Accessing surfaces
 ~~~~~~~~~~~~~~~~~~
-Two methods exist for accessing the surface data once they are committed to the database: direct command access, or via a convienient tab completion interface.
+Two methods exist for accessing the surface data once they are committed to the database: direct command access, or via a convenient tab completion interface.
 
 Command access
 ~~~~~~~~~~~~~~

@@ -15,7 +15,7 @@ class SubsurfaceMixin(object):
     Use Cases
     ---------
     - performing many operations on a subset of cortex
-    - finding patches/patchs in cortical suface (see Performance Characteristics)
+    - finding patches/patchs in cortical surface (see Performance Characteristics)
 
 
     Performance Characteristics
@@ -279,7 +279,7 @@ class SubsurfaceMixin(object):
         if seeds is None:
             raise Exception('must specify seeds or n_random_seeds')
 
-        # intialize output
+        # initialize output
         output_dims = (len(seeds), self.pts.shape[0])
         if output == 'dense':
             patches = np.zeros(output_dims, dtype=bool)

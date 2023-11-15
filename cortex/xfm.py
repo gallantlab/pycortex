@@ -146,7 +146,7 @@ class Transform(object):
 
         Uses the stored "reference" file provided when the transform was created (usually
         a functional data or statistical volume) and the supplied anatomical file to
-        create an FSL transform. By default, returns the transform FROM the refernce volume
+        create an FSL transform. By default, returns the transform FROM the reference volume
         (usually the functional data volume) to the anatomical volume (`anat_nii` input).
 
         Parameters
@@ -263,7 +263,7 @@ class Transform(object):
             L = decode(subprocess.check_output(cmd)).splitlines()
             anat_vox2ras = np.array([[np.float_(s) for s in ll.split() if s] for ll in L])
         except OSError:
-            print ("Error occured while executing:\n{}".format(' '.join(cmd)))
+            print ("Error occurred while executing:\n{}".format(' '.join(cmd)))
             raise
 
         # Read tkrvox2ras transform for the anatomical volume
@@ -381,6 +381,6 @@ def _vox2ras_tkr(image):
         tkrvox2ras = np.array(
             [[np.float_(s) for s in ll.split() if s] for ll in L])
     except OSError as e:
-        print("Error occured while executing:\n{}".format(' '.join(cmd)))
+        print("Error occurred while executing:\n{}".format(' '.join(cmd)))
         raise e
     return tkrvox2ras

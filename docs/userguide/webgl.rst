@@ -20,7 +20,7 @@ It is simple to post pycortex visualizations to a web page for public viewing. T
 Using the WebGL Viewer
 ----------------------
 
-There are two ways to create a WebGL viewer. A **dynamic viewer** is temporary viewer that is hosted by the pyhton process that generated it. A **static viewer** is a viewer that is saved permanently to disk and will persist beyond the lifetime of the python process. Using a static viewer requires hosting the created directory with a webserver such as nginx.
+There are two ways to create a WebGL viewer. A **dynamic viewer** is temporary viewer that is hosted by the python process that generated it. A **static viewer** is a viewer that is saved permanently to disk and will persist beyond the lifetime of the python process. Using a static viewer requires hosting the created directory with a webserver such as nginx.
 
 
 Keyboard Shortcuts

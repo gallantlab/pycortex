@@ -11,7 +11,7 @@ The function needs to be run on a system with a display, since it will launch
 a webgl viewer. The best way to get the expected results is to keep the webgl
 viewer visible during the process.
 
-The selection of views and the aggregation is controled by a list of "panels".
+The selection of views and the aggregation is controlled by a list of "panels".
 Examples of panels can be imported with:
 
     from cortex.export import params_flatmap_lateral_medial

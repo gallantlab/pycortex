@@ -79,7 +79,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     linecolor : tuple of float, optional
         (R, G, B, A) specification of line color
     roifill : tuple of float, optional
-        (R, G, B, A) sepcification for the fill of each ROI region
+        (R, G, B, A) specification for the fill of each ROI region
     shadow : int, optional
         Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
     labelsize : str, optional
@@ -293,7 +293,7 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     linecolor : tuple of float, optional
         (R, G, B, A) specification of line color
     roifill : tuple of float, optional
-        (R, G, B, A) sepcification for the fill of each ROI region
+        (R, G, B, A) specification for the fill of each ROI region
     shadow : int, optional
         Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
     labelsize : str, optional

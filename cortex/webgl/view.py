@@ -46,7 +46,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                 overlay_file=None, copy_ctmfiles=True, title='Brain', **kwargs):
     """
     Creates a static webGL MRI viewer in your filesystem so that it can easily
-    be posted publically for sharing or just saved for later viewing.
+    be posted publicly for sharing or just saved for later viewing.
 
     Parameters
     ----------
@@ -65,7 +65,7 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         Whether to rename CTM and SVG files generically, for public distribution.
         Default False
     overlays_available : tuple, optional
-        Overlays availble in the viewer. If None, then all overlay layers of the
+        Overlays available in the viewer. If None, then all overlay layers of the
         svg file will be potentially available in the viewer (whether initially
         visible or not). This provides the option to include, e.g., only a subset
         of layers for a given static viewer.
@@ -264,7 +264,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     port : int or None, optional
         The port that will be used by the server. If None, a random port will be
         selected from the range 1024-65536. Default None
-    pickerfun : funcion or None, optional
+    pickerfun : function or None, optional
         Should be a function that takes two arguments, a voxel index and a vertex
         index. Is called whenever a location on the surface is clicked in the
         viewer. This can be used to print information about individual voxels or

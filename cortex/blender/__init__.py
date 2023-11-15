@@ -60,7 +60,7 @@ def _check_file_blender_version(fpath):
     import struct
     with open(fpath, mode='rb') as fid:
         fid.seek(7)
-        bitness, endianess, major, minor = struct.unpack("sss2s", fid.read(5))
+        bitness, endianness, major, minor = struct.unpack("sss2s", fid.read(5))
     return (int(major), int(minor))
 
 

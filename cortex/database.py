@@ -225,7 +225,7 @@ class Database(object):
         return volume.anat2epispace(anatnib.get_fdata().T.astype(float), subject, xfmname, order=order)
 
     def get_surfinfo(self, subject, type="curvature", recache=False, **kwargs):
-        """Return auxillary surface information from the filestore. Surface info is defined as 
+        """Return auxiliary surface information from the filestore. Surface info is defined as 
         anatomical information specific to a subject in surface space. A Vertex class will be returned
         as necessary. Info not found in the filestore will be automatically generated.
 
@@ -319,7 +319,7 @@ class Database(object):
         if fs_subj is None:
             fs_subj = subject
         fpath = self.get_paths(subject)['surf2surf'].format(source=fs_subj, target=target_subj)
-        # Backward compatiblity
+        # Backward compatibility
         fdir, _ = os.path.split(fpath)
         if not os.path.exists(fdir):
             print("Creating surf2surf directory for subject %s"%(subject))
@@ -344,7 +344,7 @@ class Database(object):
         pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
 
         paths = self.get_paths(subject)
-        # NOTE: This try loop is broken, in that it does nothing for the inteded 
+        # NOTE: This try loop is broken, in that it does nothing for the intended 
         # use case (loading an overlay from a packed subject) - needs fixing. 
         # This hasn't come up yet due to very rare use of packed subjects.
         if self.auxfile is not None:

@@ -10,7 +10,7 @@ from os.path import lexists, dirname, join as opj, curdir
 
 # Hard coded version, to be done by release process,
 # it is also "parsed" (not imported) by setup.py, that is why assigned as
-# __hardcoded_version__ later and not vise versa
+# __hardcoded_version__ later and not vice versa
 #
 # NOTE this should have the format of
 # NEW_RELEASE.dev0

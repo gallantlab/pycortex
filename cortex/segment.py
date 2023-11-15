@@ -151,7 +151,7 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
         None defaults to `cx_subject`
     freesurfer_subject_dir : str
         Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR
-        environment varible
+        environment variable
     flatten_with : str
         'freesurfer' or 'SLIM' - 'freesurfer' (default) uses freesurfer's 
         `mris_flatten` function to flatten the cut surface. 'SLIM' uses
