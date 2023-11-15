@@ -1503,6 +1503,7 @@ def get_dartboard_data(vertex_obj,
     n_eccentricities=8,
     eccentricities=None,
     mean_func=np.nanmean,
+    cutoff = None,
     recache=False,
     verbose=True,
     ):
@@ -1543,6 +1544,11 @@ def get_dartboard_data(vertex_obj,
         require a custom function)
     eccentricities : _type_, optional
         _description_, by default np.linspace(0, max_radii, 8+1)
+    cutoff : int or float, optional
+        Cutoff value for the minimum number of vertices for a bin. If an int, the threshold
+        will be based on the absolute number of vertices. If a float, the threshold will be
+        based on the percentage of vertices included per bin. Bins with fewer vertices than
+        the cutoff will return np.nan. Defaults to None.
     
     Returns
     -------
@@ -1605,7 +1611,7 @@ def get_dartboard_data(vertex_obj,
             print('Time to compute masks:', t3-t2)
             print(f'Saving dartboard masks to {fpath}')
         np.save(fpath, masks)
-    output = apply_masks(vertex_obj.data, masks, mean_func)
+    output = apply_masks(vertex_obj.data, masks, mean_func, cutoff)
 
     return masks, output
 
