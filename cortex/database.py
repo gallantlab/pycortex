@@ -1,18 +1,19 @@
 """
 Contains a singleton object `db` of type `Database` which allows easy access to surface files, anatomical images, and transforms that are stored in the pycortex filestore.
 """
-import os
-import re
 import copy
+import functools
 import glob
 import json
+import os
+import re
 import shutil
-import warnings
 import tempfile
-import functools
-import numpy as np
-from hashlib import sha1
+import warnings
 from builtins import input
+from hashlib import sha1
+
+import numpy as np
 
 from . import options
 
@@ -318,7 +319,11 @@ class Database(object):
         from .utils import load_sparse_array, save_sparse_array
         if fs_subj is None:
             fs_subj = subject
-        fpath = self.get_paths(subject)['surf2surf'].format(source=fs_subj, target=target_subj)
+        fpath = self.get_paths(subject)['surf2surf'].format(
+            source=fs_subj,
+            target=target_subj,
+            surface_type=surface_type
+        )
         # Backward compatibility
         fdir, _ = os.path.split(fpath)
         if not os.path.exists(fdir):
@@ -686,7 +691,7 @@ class Database(object):
             rois=os.path.join(self.filestore, subject, "rois.svg").format(subj=subject),
             overlays=os.path.join(self.filestore, subject, "overlays.svg").format(subj=subject),
             views=sorted([os.path.splitext(f)[0] for f in views]),
-            surf2surf=os.path.join(self.filestore, subject, "surf2surf", "{source}_to_{target}", "matrices.hdf"),
+            surf2surf=os.path.join(self.filestore, subject, "surf2surf", "{source}_to_{target}", "matrices_{surface_type}.hdf"),
         )
 
         return filenames
