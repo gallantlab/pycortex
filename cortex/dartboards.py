@@ -21,12 +21,11 @@ try:
 except:
     CACHE_DIR = options.config.get('basic','filestore')
 
-## Utils
-from sklearn.metrics import pairwise_distances as _pairwise_distances
-# def _pairwise_distances(array, metric='euclidean'):
-#     """Simple wrapper for scipy distance function"""
-#     d = distance.pdist(array, metric=metric)
-#     return distance.squareform(d)
+def pairwise_distances(X, Y=None, metric='euclidean', **kwargs):
+    if Y is None:
+        Y = X
+    D = distance.cdist(X, Y, metric=metric, **kwargs)
+    return D
 
 def flatten_list_of_lists(list_of_lists):
     flat_list = [item for sublist in list_of_lists for item in sublist]
