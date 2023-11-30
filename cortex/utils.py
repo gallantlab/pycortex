@@ -1001,7 +1001,10 @@ def get_cmap(name):
     if name in colormaps:
         I = plt.imread(colormaps[name])
         cmap = colors.ListedColormap(np.squeeze(I))
-        plt.cm.register_cmap(name,cmap)
+        try:
+            plt.cm.register_cmap(name,cmap)
+        except:
+            print(f"Color map {name} is already registered.")
     else:
         try:
             cmap = plt.cm.get_cmap(name)
