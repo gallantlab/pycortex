@@ -144,8 +144,9 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
         Which hemisphere to flatten. Should be "lh" or "rh"
     name : str, optional
         String name of the current flatten attempt. Defaults to "flatten"
-    data : Dataview
-        A data view object to display on the surface as a cutting guide.
+    data : Dataview or List(Dataview)
+        A data view object or list of data view objects to display on the 
+        surface as a cutting guide.
     fs_subject : str
         Name of Freesurfer subject (if different from pycortex subject)
         None defaults to `cx_subject`
