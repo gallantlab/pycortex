@@ -21,7 +21,7 @@ try:
 except:
     CACHE_DIR = options.config.get('basic','filestore')
 
-def pairwise_distances(X, Y=None, metric='euclidean', **kwargs):
+def _pairwise_distances(X, Y=None, metric='euclidean', **kwargs):
     if Y is None:
         Y = X
     D = distance.cdist(X, Y, metric=metric, **kwargs)
