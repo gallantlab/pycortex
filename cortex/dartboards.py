@@ -1520,7 +1520,7 @@ def get_dartboard_data(vertex_obj,
         pycortex subject (e.g. 'FFA'). Anchor points are computed as centroids of 
         the named ROIs. If tuples are provided, the first element of the tuple is the
         name of the ROI, and the second element must be 'centroid' or 'nearest', 
-        indicating whether the anchor point shoudl be the centroi of the named ROI, or
+        indicating whether the anchor point should be the centroi of the named ROI, or
         the nearest point in or on the named region to the center_roi. Sulci or other
         labeled anatomical markers in other layers of overlays.svg for the subject may
         be used, e.g. ('STS', 'nearest') for the nearest point to the center_roi that
@@ -1669,7 +1669,7 @@ def dartboard_on_flatmap(vertex_data,
         pycortex subject (e.g. 'FFA'). Anchor points are computed as centroids of 
         the named ROIs. If tuples are provided, the first element of the tuple is the
         name of the ROI, and the second element must be 'centroid' or 'nearest', 
-        indicating whether the anchor point shoudl be the centroi of the named ROI, or
+        indicating whether the anchor point should be the centroi of the named ROI, or
         the nearest point in or on the named region to the center_roi. Sulci or other
         labeled anatomical markers in other layers of overlays.svg for the subject may
         be used, e.g. ('STS', 'nearest') for the nearest point to the center_roi that
