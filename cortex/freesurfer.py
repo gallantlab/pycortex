@@ -1,27 +1,26 @@
 """Contains functions for interfacing with freesurfer
 """
 from __future__ import print_function
-import os
+
 import copy
+import os
+import shlex
 import shutil
 import struct
+import subprocess as sp
 import tempfile
 import warnings
-import shlex
-import subprocess as sp
 from builtins import input
-
-import numpy as np
-import nibabel
-from nibabel import gifti
 from tempfile import NamedTemporaryFile
-from scipy.spatial import KDTree
+
+import nibabel
+import numpy as np
+from nibabel import gifti
 from scipy.linalg import lstsq
 from scipy.sparse import coo_matrix
+from scipy.spatial import KDTree
 
-
-from . import database
-from . import anat
+from . import anat, database
 
 
 def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
@@ -895,7 +894,7 @@ def read_dot(fname, pts):
 def write_decimated(path, pts, polys):
     """
     """
-    from .polyutils import decimate, boundary_edges
+    from .polyutils import boundary_edges, decimate
     dpts, dpolys = decimate(pts, polys)
     write_surf(path+'.smoothwm', dpts, dpolys)
     edges = boundary_edges(dpolys)
@@ -1011,6 +1010,86 @@ def stretch_mwall(pts, polys, mwall):
     pts[mwall, 1] = radius * np.cos(angles) + center[1]
     pts[mwall, 2] = radius * np.sin(angles) + center[2]
     return SpringLayout(pts, polys, inflated, pins=mwall)
+
+
+def upsample_to_fsaverage(
+        data, data_space="fsaverage6", freesurfer_subjects_dir=None
+):
+    """Project data from fsaverage6 (or other fsaverage surface) to fsaverage to
+    visualize it in pycortex.
+
+    Parameters
+    ----------
+    data : array (n_samples, n_vertices)
+        Data in space `space`. The first n_vertices/2 vertices correspond to the left
+        hemisphere, and the last n_vertices/2 vertices correspond to the right
+        hemisphere.
+    data_space : str
+        One of fsaverage[1-6], corresponding to the source template space of `data`.
+    freesurfer_subjects_dir : str or None
+        Path to Freesurfer subjects directory. If None, defaults to the value of the
+        environment variable $SUBJECTS_DIR.
+
+    Returns
+    -------
+    projected_data : array (n_samples, 327684)
+        Data projected to fsaverage(7).
+
+    Notes
+    -----
+    Data in the lower resolution fsaverage template is upsampled to the full resolution
+    fsaverage template by nearest-neighbor interpolation. To project the data from a 
+    lower resolution version of fsaverage, this code exploits the structure of fsaverage 
+    surfaces. (That is, each hemisphere in fsaverage6 corresponds to the first 
+    40,962 vertices of fsaverage; fsaverage5 corresponds to the first 10,242 vertices of 
+    fsaverage, etc.)
+    """
+
+
+    def get_n_vertices_ico(icoorder):
+        return 4 ** icoorder * 10 + 2
+
+    ico_order = int(data_space[-1])
+    n_ico_vertices = get_n_vertices_ico(ico_order)
+    ndim = data.ndim
+    data = np.atleast_2d(data)
+    _, n_vertices = data.shape
+    if n_vertices != 2 * n_ico_vertices:
+        raise ValueError(
+            f"data has {n_vertices} vertices, but {2 * n_ico_vertices} "
+            f"are expected for both hemispheres in {data_space}"
+        )
+
+    if freesurfer_subjects_dir is None:
+        freesurfer_subjects_dir = os.environ.get("SUBJECTS_DIR", None)
+    if freesurfer_subjects_dir is None:
+        raise ValueError(
+            "freesurfer_subjects_dir must be specified or $SUBJECTS_DIR must be set"
+        )
+    
+    data_hemi = np.split(data, 2, axis=-1)
+    hemis = ["lh", "rh"]
+    projected_data = []
+    for i, (hemi, dt) in enumerate(zip(hemis, data_hemi)):
+        # Load fsaverage sphere for this hemisphere
+        pts, faces = nibabel.freesurfer.read_geometry(
+            os.path.join(
+                freesurfer_subjects_dir, "fsaverage", "surf", f"{hemi}.sphere.reg"
+            )
+        )
+        # build kdtree using only vertices in reduced fsaverage surface
+        kdtree = KDTree(pts[:n_ico_vertices])
+        # figure out neighbors in reduced version for all other vertices in fsaverage
+        _, neighbors = kdtree.query(pts[n_ico_vertices:], k=1)
+        # now simply fill remaining vertices with original values
+        projected_data.append(
+            np.concatenate([dt, dt[:, neighbors]], axis=-1)
+        )
+    projected_data = np.hstack(projected_data)
+    if ndim == 1:
+        projected_data = projected_data[0]
+    return projected_data
+
 
 # aseg partition labels (up to 256 only)
 fs_aseg_dict = {'Unknown': 0,
