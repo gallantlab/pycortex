@@ -63,6 +63,28 @@ def pol2cart(phi, rho):
     return x, y
 
 
+def circ_dist(a, b, degrees=True):
+    """Compute angle between two angles w/ circular statistics
+
+    Parameters
+    ----------
+    a : scalar or array
+        angle(s) TO WHICH to compute angular (aka rotational) distance
+    b : scalar or array
+        angle(s) FROM WHICH to compute angular (aka rotational) distance
+    degrees : bool
+        Whether a and b are in degrees (defaults to True; False means they are in radians)
+    """
+    if degrees:
+        a = np.radians(a)
+        b = np.radians(b)
+    phase = np.e**(1j*a) / np.e**(1j*b)
+    dist = np.arctan2(phase.imag, phase.real)
+    if degrees:
+        dist = np.degrees(dist)
+    return dist
+
+
 def nonzero_coords(coords):
     return coords[np.any(coords != 0, axis=1)]
 
@@ -737,25 +759,38 @@ def resample_roi_outline(
         distances,
         resolution=100,
         every_n=5,
+        start_angle=np.pi/2,
+        fixed_sampling_between=(0, 90, 180, 270), # TO DO
         even_sampling_over='polar angle',
 ):
     """resample roi outline to smooth outline
+
+    Also useful for creating average ROI outlines for different participants
+    that can be averaged in dartboard space to create an average ROI.
     
-    Relies on angles being monotonically increasing
+    Relies on angles being monotonically increasing.
 
     Parameters
     ----------
     angles : _type_
-        _description_
-    even_sampling_over : str, optional
-        _description_, by default 'polar angle'
+        angle to each ROI outline point. This is theta of (rho, theta)
+        [i.e. (radius, polar angle)] in polar coordinates.
+    even_sampling_over : str, or None, optional
+        method by which to sample along roi border, either 'path length', 
+        'polar angle', or None; by default 'path length'. Sampling over
+        polar angle from the center of the ROI is a sensible option if the
+        ROI is approximately circular, without drastic elongation or non-convex 
+        regions along the border. For ROIs with non-convex regions,
+        sampling over path length (at even distances along the ROI border)
+        will give more sensible results. Given that the failure case for 
+        sampling 
     resolution : int, optional
         number of points to sample along the ROI border, by default 100
 
     Returns
     -------
-    _type_
-        _description_
+    angles, distances
+        returns angles and distances in polar coordinates. 
     """
     delta = 1e-5
     # Periodic linear resample (upsample) to assure values from 0 to 2pi
@@ -777,10 +812,12 @@ def resample_roi_outline(
         angles_out = np.linspace(0, 2 * np.pi - delta, resolution)
         dist_out = smooth(angles_out)
         return angles_out, dist_out
-
-    if even_sampling_over == 'path length':
+    elif even_sampling_over == 'path length':
         ## Resample
         xy = np.array(pol2cart(angles, distances)).T
+        vertex_order = sort_roi_border(xy, angles, start_angle=start_angle, max_deg_from_zero=5, verbose=False)
+        xy = xy[vertex_order]
+        angles = angles[vertex_order]
         path_dist = np.cumsum(
             np.hstack([0, np.linalg.norm(np.diff(xy, axis=0), axis=1)]))
         max_dist = np.max(path_dist)
@@ -810,9 +847,69 @@ def resample_roi_outline(
         # Convert back to angles
         angles_out, dist_out = cart2pol(*xy_out.T)
         return angles_out, dist_out
+    elif even_sampling_over is None:
+        return angles, distances
+
+def sort_roi_border(xy, angles, start_angle=0, start_index=None, max_deg_from_zero=5, verbose=False):
+    """start_index overrides start_angle"""
+    dsts = distance.squareform(distance.pdist(xy))
+    if start_index is None:
+        # Choose max distance vertex that is approximately straight up
+        # from whatever center the angles were computed from.
+        # Best would be maybe to compute max distance from actual center
+        # that is the center from which angles were computed.
+        deg_from_zero = 2
+        while deg_from_zero <= max_deg_from_zero:
+            max_radians_from_up = np.radians(max_deg_from_zero)
+            close_to_straight_up, = np.nonzero(np.abs(circ_dist(angles, start_angle, degrees=False)) <= max_radians_from_up)
+            if len(close_to_straight_up) > 0:
+                # pick farthest away from approx. center that is straight up
+                dist_from_median = np.linalg.norm(xy - np.median(xy, axis=0), axis=1)
+                jj = np.argmax(dist_from_median[close_to_straight_up])
+                start_index = close_to_straight_up[jj]
+                break
+            else:
+                deg_from_zero += 1
+        if start_index is None:
+            start_index = np.argmin(
+                np.abs(circ_dist(angles, start_angle, degrees=False)))
+    vertex_order = [start_index]
+    ct = 0
+    for i_vert in range(len(xy)):
+        # Special case for first one: go clockwise
+        if i_vert == 0:
+            new_verts = np.argsort(dsts[start_index])[:5]
+            new_verts = np.array([x for x in new_verts if x not in vertex_order])
+            angles_from_origin = circ_dist(angles[new_verts], angles[start_index], degrees=False)
+            is_clockwise = angles_from_origin > 0
+            #if ~any(is_clockwise):
+            #    plt.plot(*xy.T)
+            #    plt.plot()
+            min_clockwise_angle = np.min(angles_from_origin[is_clockwise])
+            j = new_verts[angles_from_origin == min_clockwise_angle][0]
+            vertex_order.append(j)
+        else:
+            success = False
+            n = 3
+            while (not success) and (n<15):
+                new_verts = np.argsort(dsts[vertex_order[-1]])[:n]
+                new_verts = np.array([x for x in new_verts if x not in vertex_order])
+                success = len(new_verts==1)
+                n += 1
+                #if n > 4:
+                #    print(n)
+            if len(new_verts) > 0:
+                vertex_order.append(new_verts[-1])
+            else:
+                ct += 1
+                if verbose:
+                    print(f"Skipped a vertex ({ct} skipped)")
+                #1/0
+    vertex_order.append(vertex_order[0])
+    return np.array(vertex_order)
 
 
-def _get_interpolated_outlines(overlay, 
+def get_interpolated_outlines(overlay, 
     outline_roi, 
     geodesic_distances=True,
     resolution=100,
@@ -898,9 +995,6 @@ def _get_interpolated_outlines(overlay,
         # Convert to polar relative to these centroids
         relative_phi, relative_rho = cart2pol(x,y)
         # Even angular interpolation
-        ## CHANGED HERE: May require re-ordering of angles, may rest on assumption
-        ## about what angle is first
-        #relative_phi_interp, relative_rho_interp = interpolate_outlines(relative_phi, relative_rho, resolution=resolution)
         relative_phi_interp, relative_rho_interp = resample_roi_outline(
             relative_phi, 
             relative_rho,
@@ -913,6 +1007,7 @@ def _get_interpolated_outlines(overlay,
         # Add back own centroid
         x_interp += centroid_x
         y_interp += centroid_y
+        # Convert back to polar coordinates
         interpolated_outlines.append(np.stack(cart2pol(x_interp,y_interp), axis=1))
     # cache result
     if verbose:
@@ -926,13 +1021,18 @@ def show_outlines_on_dartboard(
     **plot_kwargs):
     """Plot outlines of regions of interest on dartboard plots.
 
+    Plots all ROIs for one hemisphere to one axis.
+
     Parameters
     ----------
-    outlines : _type_
-        _description_
+    outlines : array
+        array of size (n_rois, n_points_along_boundary, coordinates), containing polar 
+        coordinates for outline of each ROI. Polar coordinates are expected to be 
+        (rho, theta), i.e. (radius, polar angle)
+
     axis : matplotlib.axes._subplots.AxesSubplot, optional
         Matplotlib axis on which to plot.
-    colors : _type_, optional
+    colors : matplotlib colorspec, optional
         List of colors to iterate through when plotting outlines. If None, will iterate through
         the default pyplot color cycle. Defaults to None.
     polar : bool, optional
@@ -1014,7 +1114,7 @@ def show_dartboard_pair(dartboard_data,
 
     For lower-level functions, see:
     `show_dartboard` # 
-    `_get_interpolated_outlines` # get roi outlines
+    `get_interpolated_outlines` # get roi outlines
     `show_outlines_on_dartboard` # plot roi outlines
 
     Parameters
@@ -1139,7 +1239,7 @@ def show_dartboard_pair(dartboard_data,
         if not isinstance(roi_color, (list, tuple)):
             roi_color = [roi_color] * len(rois)
         for roi in rois:
-            outlines[roi] = _get_interpolated_outlines(overlay,
+            outlines[roi] = get_interpolated_outlines(overlay,
                                                         roi,
                                                         geodesic_distances=geodesic_distances,
                                                         resolution=path_resolution,
@@ -1150,6 +1250,10 @@ def show_dartboard_pair(dartboard_data,
                                                         **dartboard_spec)
         for hemi_index in range(2):
             hemi_axis = axes[hemi_index]
+            # This may be somewhat confusing. Seems sensible to make the function plot
+            # either one ROI at a time or to take a dict as input to obviate the need
+            # for mapping to an array (and a totally different format than any other
+            # function provides) here.
             outlines_to_plot = np.array([v for v in outlines.values()])[:, hemi_index]
             if isinstance(dartboard_spec['max_radii'], tuple):
                 rmax = dartboard_spec['max_radii'][hemi_index]
@@ -1171,21 +1275,27 @@ def draw_mask_outlines(
     outer_line=True, as_overlay=True, **plot_kwargs):
     """Given eccentricity-angle masks, fits and draws outlines of bins on the cortex.
 
-    Args:
-        masks np.ndarray: Vertex masks for each bin and hemisphere, such as the output of
-            get_eccentricity_angle_masks. Shape should be (2, eccentricities, angles, vertices).
-        axis (matplotlib.axes._subplots.AxesSubplot, optional): Matplotlb axis on which to plot.
-        eccentricities (bool, optional): Whether to draw outlines for separate eccentricities.
-            Defaults to True.
-        angles (bool, optional): Whether to draw outlines for separate angles.
-            Defaults to True.
-        outer_line (bool, optional): Whether to draw outline of outermost eccentricity.
-            Defaults to True.
-        as_overlay (bool, optional): Whether to create new axis on top of existing axis, to avoid
-            interfering with previously-plotted data. Defaults to False.
+    Parameters
+    ----------
+    masks : np.ndarray
+        Vertex masks for each bin and hemisphere, such as the output of get_eccentricity_angle_masks.
+        Shape should be (2, eccentricities, angles, vertices).
+    axis : matplotlib.axes._subplots.AxesSubplot, optional
+        Matplotlib axis on which to plot.
+    eccentricities : bool, optional
+        Whether to draw outlines for separate eccentricities. Defaults to True.
+    angles : bool, optional
+        Whether to draw outlines for separate angles. Defaults to True.
+    outer_line : bool, optional
+        Whether to draw the outline of the outermost eccentricity. Defaults to True.
+    as_overlay : bool, optional
+        Whether to create a new axis on top of the existing axis to avoid interfering with
+        previously-plotted data. Defaults to False.
 
-    Returns:
-        matplotlib.axes._subplots.AxesSubplot: Matplotlib axis in which data is plotted.
+    Returns
+    -------
+    matplotlib.axes._subplots.AxesSubplot
+        Matplotlib axis in which data is plotted.
     """
     if axis is None:
         _, axis = plt.subplots()
@@ -1526,8 +1636,9 @@ def get_dartboard_data(vertex_obj,
         be used, e.g. ('STS', 'nearest') for the nearest point to the center_roi that
         falls on STS. 
 
-        Important: anchors must be specified counter clockwise from the RIGHT with
-        respect to the RIGHT hemisphere:
+        Important: anchors must be specified counter clockwise from the RIGHT (per mathematical
+        convention that rightward is zero degrees) with respect to the LEFT (alphabetically 
+        first) hemisphere:
                2
               /\
         3 <- center -> 1
@@ -1675,8 +1786,9 @@ def dartboard_on_flatmap(vertex_data,
         be used, e.g. ('STS', 'nearest') for the nearest point to the center_roi that
         falls on STS. 
 
-        Important: anchors must be specified counter clockwise from the RIGHT with
-        respect to the RIGHT hemisphere:
+        Important: anchors must be specified counter clockwise from the RIGHT (per mathematical
+        convention that rightward is zero degrees) with respect to the LEFT (alphabetically 
+        first) hemisphere:
                2
               /\
         3 <- center -> 1
@@ -1842,3 +1954,17 @@ def dartboard_on_flatmap(vertex_data,
                      max_radii[0], max_radii[0]])
 
     return fig
+
+
+def average_outlines(outlines):
+    outlines = np.array(outlines)
+    for roi_i in range(outlines.shape[1]):
+        for hemi in range(2):
+            outlines[:, roi_i, hemi] = np.array(
+                pol2cart(*outlines[:, roi_i, hemi].T)).T
+    averaged_outlines = np.nanmean(outlines, axis=0)
+    for roi_i in range(averaged_outlines.shape[0]):
+        for hemi in range(2):
+            averaged_outlines[roi_i, hemi] = np.array(
+                cart2pol(*averaged_outlines[roi_i, hemi].T)).T
+    return averaged_outlines
