@@ -38,3 +38,12 @@ def mean_nonan(x, axis=None, threshold=0.8):
 
 # Get vertex-wise masks for each dartboard bin (`masks`) and masked data
 masks, data = cortex.dartboards.get_dartboard_data(vx, **dartboard_spec)
+
+# Get region of interest outlines. These will take some time to compute 
+# the first time, and will load from a cache thereafter (and thus be quick)
+rois_to_plot = ['FEF','M1F', 'S1H', 'M1M','M1H']
+roi_outlines = {}
+for roi in rois_to_plot:
+    roi_outlines[roi] = 0
+
+# Plot masked data in dartboard plot
