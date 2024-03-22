@@ -79,7 +79,7 @@ ctm = Extension('cortex.openctm', [
             'OpenCTM-1.0.3/lib/liblzma/LzmaDec.c',
             'OpenCTM-1.0.3/lib/liblzma/LzmaEnc.c',
             'OpenCTM-1.0.3/lib/liblzma/LzmaLib.c',], 
-            libraries=['m'], include_dirs=[
+            libraries=[], include_dirs=[
             'OpenCTM-1.0.3/lib/', 
             'OpenCTM-1.0.3/lib/liblzma/'] + get_numpy_include_dirs(),
             define_macros=[
