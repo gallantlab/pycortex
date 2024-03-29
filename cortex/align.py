@@ -236,7 +236,7 @@ def manual(subject, xfmname, output_name="register.lta", wm_color="yellow",
 
 
 def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed",
-              pre_flirt_args='', use_fs_bbr=True, epi_mask=False, intermediate=None):
+              pre_flirt_args='', use_fs_bbr=True, epi_mask=False, intermediate=None, reference_contrast="t2"):
     """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.
 
     If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting
@@ -274,6 +274,11 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed",
     intermediate : str
         Path to a nibabel-readable image that will be used as intermediate for the alignment.
         Usually, this is a single (3D) functional data volume.
+    reference_contrast : str
+        Contrast of the reference image. This is used to determine the appropriate
+        contrast for the reference image in the bbregister command. This is only
+        used if `use_fs_bbr` is True. Default is "t2" (for BOLD). The alternative option 
+        is "t1".
 
     Returns
     -------
@@ -301,7 +306,8 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed",
 
         if use_fs_bbr:
             print('Running freesurfer BBR')
-            cmd = 'bbregister --s {sub} --mov {absref} --init-coreg --reg {cache}/register.dat --t2'
+            cmd = 'bbregister --s {sub} --mov {absref} --init-coreg --reg {cache}/register.dat'
+            cmd += " --{reference_contrast}"
             if epi_mask:
                 cmd += ' --epi-mask'
             if intermediate is not None:
