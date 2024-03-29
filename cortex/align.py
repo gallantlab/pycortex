@@ -307,7 +307,7 @@ def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed",
         if use_fs_bbr:
             print('Running freesurfer BBR')
             cmd = 'bbregister --s {sub} --mov {absref} --init-coreg --reg {cache}/register.dat'
-            cmd += " --{reference_contrast}"
+            cmd += f" --{reference_contrast}"
             if epi_mask:
                 cmd += ' --epi-mask'
             if intermediate is not None:
