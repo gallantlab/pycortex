@@ -387,7 +387,7 @@ def automatic(
         or "header" to assume that the reference and the anatomical are already close
         enough (this option can be used when the reference and the anatomical are
         acquired in the same session). Finally, you can also specify a path to a
-        transform file (in ITK or LTA format) that will be used as initialization.
+        transform file (in DAT or LTA format) that will be used as initialization.
     epi_mask : bool, optional
         If True, then the flag --epi-mask is passed to bbregister to mask out areas
         with spatial distortions. This setting recommended whenever the reference was
