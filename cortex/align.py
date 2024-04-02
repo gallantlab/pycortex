@@ -399,8 +399,8 @@ def automatic(
     reference_contrast : str
         Contrast of the reference image. This is used to determine the appropriate
         contrast for the reference image in the bbregister command. Default is "t2"
-        (for BOLD): gray matter is brigher than white matter.
-        The alternative option is "t1": white matter is brigher than gray matter.
+        (for BOLD): gray matter is brighter than white matter.
+        The alternative option is "t1": white matter is brighter than gray matter.
     noclean : bool, optional
         If True, intermediate files will not be removed from /tmp (this is useful
         for debugging things), and the returned value will be the name of the
