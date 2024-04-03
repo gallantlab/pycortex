@@ -105,7 +105,8 @@ class XfmDB(object):
         raise AttributeError
     
     def __repr__(self):
-        return "Transforms: [{xfms}]".format(xfms=",".join(self.xfms))
+        xfms = "\n".join(sorted(self.xfms))
+        return f"Available transforms for {self.subject}:\n{xfms}"
 
 class XfmSet(object):
     def __init__(self, subj, name, filestore=default_filestore):
@@ -178,6 +179,7 @@ class Database(object):
             return self._subjects
         subjs = os.listdir(os.path.join(self.filestore))
         subjs = [s for s in subjs if os.path.isdir(os.path.join(self.filestore, s))]
+        subjs = sorted(subjs)
         self._subjects = dict([(sname, SubjectDB(sname, filestore=self.filestore)) for sname in subjs])
         return self._subjects
 
