@@ -1,9 +1,18 @@
 """Contains functions for making alignments between functional data and the surface, or, finding where the brain is.
 """
 import os
-import numpy as np
-from builtins import input
+import shutil
+import subprocess as sp
+import tempfile
 import warnings
+from builtins import input
+
+import numpy as np
+
+from .database import db
+from .options import config
+from .xfm import Transform
+
 
 def mayavi_manual(subject, xfmname, reference=None, **kwargs):
     """Open GUI for manually aligning a functional volume to the cortical surface for `subject`. This
@@ -155,11 +164,12 @@ def manual(subject, xfmname, output_name="register.lta", wm_color="yellow",
     Nothing unless noclean is true.
     """
 
+    import shutil
     import subprocess as sp
     import tempfile
-    import shutil
-    from .xfm import Transform
+
     from .database import db
+    from .xfm import Transform
 
     retval = None
 
@@ -235,119 +245,226 @@ def manual(subject, xfmname, output_name="register.lta", wm_color="yellow",
     return retval
 
 
-def automatic(subject, xfmname, reference, noclean=False, bbrtype="signed",
-              pre_flirt_args='', use_fs_bbr=True, epi_mask=False, intermediate=None):
-    """Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.
+def automatic_fsl(
+    subject, xfmname, reference, noclean=False, bbrtype="signed", pre_flirt_args=""
+):
+    """Perform automatic alignment using the FLIRT boundary-based alignment (BBR) from 
+    FSL. The `reference` image and resulting transform called `xfmname` will be 
+    automatically stored in the database.
 
-    If `noclean`, intermediate files will not be removed from /tmp. The `reference` image and resulting
-    transform called `xfmname` will be automatically stored in the database.
+    If `noclean` is set to True, intermediate files will not be removed from /tmp. 
 
-    It's good practice to open up this transform afterward in the manual aligner and check how it worked.
-    Do that using the following (with the same `subject` and `xfmname` used here, no need for `reference`):
-    > align.manual(subject, xfmname)
+    It's good practice to open up this transform afterward in the manual aligner and 
+    check how it worked. Do that using the following code (passing the same `subject` 
+    and `xfmname` used here, no need for `reference`):
 
-    If automatic alignment gives you a very bad answer, you can try giving the pre-BBR FLIRT
-    some hints by passing '-usesqform' in as `pre_flirt_args`.
+    > cortex.align.manual(subject, xfmname)
+
+    If automatic alignment with FSL fails, you can try giving the pre-BBR FLIRT
+    some hints by passing '-usesqform' in as `pre_flirt_args`. Alternatively, you can 
+    use `cortex.align.automatic` to use Freesurfer's bbregister, which tends to work
+    better than FSL.
 
     Parameters
     ----------
     subject : str
         Subject identifier.
     xfmname : str
-        String identifying the transform to be created.
+        Name of the transform to be created and stored in the database.
     reference : str
-        Path to a nibabel-readable image that will be used as the reference for this transform.
-        Usually, this is a single (3D) functional data volume.
+        Path to a nibabel-readable image that will be used as the reference for
+        this transform. Usually, this is a single (3D) functional data volume.
     noclean : bool, optional
-        If True intermediate files will not be removed from /tmp (this is useful for debugging things),
-        and the returned value will be the name of the temp directory. Default False.
+        If True, intermediate files will not be removed from /tmp (this is useful
+        for debugging things), and the returned value will be the name of the
+        temp directory. Default False.
     bbrtype : str, optional
         The 'bbrtype' argument that is passed to FLIRT.
     pre_flirt_args : str, optional
         Additional arguments that are passed to the FLIRT pre-alignment step (not BBR).
-    use_fs_bbr : bool, optional
-        If True will use freesurfer bbregister instead of FSL BBR. (default, True)
-    epi_mask : bool, optional
-        If True, and use_fs_bbr is True, then the flag --epi-mask is passed to bbregister
-        to mask out areas with spatial distortions. This setting is to be used whenever
-        the reference was not distortion corrected.
-    intermediate : str
-        Path to a nibabel-readable image that will be used as intermediate for the alignment.
-        Usually, this is a single (3D) functional data volume.
 
     Returns
     -------
-    Nothing unless `noclean` is True.
+    None or path to temp directory if `noclean` is True.
     """
-    warnings.warn("Defaults changed in pycortex 1.3. Now automatic alignment "
-                  "uses Freesurfer's bbregister and mri_coreg for "
-                  "initialization.")
-    import shlex
-    import shutil
-    import tempfile
-    import subprocess as sp
-
-    from .database import db
-    from .xfm import Transform
-    from .options import config
-
-    fsl_prefix = config.get("basic", "fsl_prefix")
-    schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
-
     retval = None
     try:
         cache = tempfile.mkdtemp()
         absreference = os.path.abspath(reference)
+        fsl_prefix = config.get("basic", "fsl_prefix")
+        schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
+        raw = db.get_anat(subject, type="raw").get_filename()
+        bet = db.get_anat(subject, type="brainmask").get_filename()
+        wmseg = db.get_anat(subject, type="whitematter").get_filename()
+        # Compute anatomical-to-epi transform
+        print("FLIRT pre-alignment")
+        cmd = (
+            "{fslpre}flirt -in {epi} -ref {bet} -dof 6 {pre_flirt_args} "
+            "-omat {cache}/init.mat"
+        )
+        cmd = cmd.format(
+            fslpre=fsl_prefix,
+            cache=cache,
+            epi=absreference,
+            bet=bet,
+            pre_flirt_args=pre_flirt_args,
+        )
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError("Error calling initial FLIRT")
 
-        if use_fs_bbr:
-            print('Running freesurfer BBR')
-            cmd = 'bbregister --s {sub} --mov {absref} --init-coreg --reg {cache}/register.dat --t2'
-            if epi_mask:
-                cmd += ' --epi-mask'
-            if intermediate is not None:
-                cmd += f' --int {intermediate}'
-            cmd = cmd.format(sub=subject, absref=absreference, cache=cache)
+        print("Running BBR")
+        # Run epi-to-anat transform (this is more stable than anat-to-epi in FSL!)
+        cmd = (
+            "{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} "
+            "-init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile} "
+            "-bbrtype {bbrtype}"
+        )
+        cmd = cmd.format(
+            fslpre=fsl_prefix,
+            cache=cache,
+            raw=bet,
+            wmseg=wmseg,
+            epi=absreference,
+            schfile=schfile,
+            bbrtype=bbrtype,
+        )
+        if sp.call(cmd, shell=True) != 0:
+            raise IOError("Error calling BBR flirt")
 
-            if sp.call(cmd, shell=True) != 0:
-                raise IOError('Error calling freesurfer BBR!')
-
-            xfm = Transform.from_freesurfer(os.path.join(cache, "register.dat"), absreference, subject)
-        else:
-            raw = db.get_anat(subject, type='raw').get_filename()
-            bet = db.get_anat(subject, type='brainmask').get_filename()
-            wmseg = db.get_anat(subject, type='whitematter').get_filename()
-            #Compute anatomical-to-epi transform
-            print('FLIRT pre-alignment')
-            cmd = '{fslpre}flirt  -in {epi} -ref {bet} -dof 6 {pre_flirt_args} -omat {cache}/init.mat'.format(
-               fslpre=fsl_prefix, cache=cache, epi=absreference, bet=bet, pre_flirt_args=pre_flirt_args)
-            if sp.call(cmd, shell=True) != 0:
-               raise IOError('Error calling initial FLIRT')
-
-
-            print('Running BBR')
-            # Run epi-to-anat transform (this is more stable than anat-to-epi in FSL!)
-            cmd = '{fslpre}flirt -in {epi} -ref {raw} -dof 6 -cost bbr -wmseg {wmseg} -init {cache}/init.mat -omat {cache}/out.mat -schedule {schfile} -bbrtype {bbrtype}'
-            cmd = cmd.format(fslpre=fsl_prefix, cache=cache, raw=bet, wmseg=wmseg, epi=absreference, schfile=schfile, bbrtype=bbrtype)
-            if sp.call(cmd, shell=True) != 0:
-                raise IOError('Error calling BBR flirt')
-
-            x = np.loadtxt(os.path.join(cache, "out.mat"))
-            # Pass transform as FROM epi TO anat; transform will be inverted
-            # back to anat-to-epi, standard direction for pycortex internal
-            # storage by from_fsl
-            xfm = Transform.from_fsl(x,absreference,raw)
-
-        # Save as pycortex 'coord' transform
-        xfm.save(subject,xfmname,'coord')
-        print('Success')
+        x = np.loadtxt(os.path.join(cache, "out.mat"))
+        # Pass transform as FROM epi TO anat; transform will be inverted
+        # back to anat-to-epi, standard direction for pycortex internal
+        # storage by from_fsl
+        xfm = Transform.from_fsl(x, absreference, raw)
+        xfm.save(subject, xfmname, "coord")
+        print("Success")
 
     finally:
         if not noclean:
             shutil.rmtree(cache)
         else:
             retval = cache
-
     return retval
+
+
+def automatic(
+    subject,
+    xfmname,
+    reference,
+    init="coreg",
+    epi_mask=False,
+    intermediate=None,
+    reference_contrast="t2",
+    noclean=False,
+):
+    """Perform automatic alignment using Freesurfer's boundary-based registration.
+    The `reference` image and resulting transform called `xfmname` will be automatically
+    stored in the database.
+
+    If `noclean` is set to True, intermediate files will not be removed from /tmp.
+
+    It's good practice to open up this transform afterward in the manual aligner and
+    check how it worked. Do that using the following code (passing the same `subject`
+    and `xfmname` used here, no need for `reference`):
+
+    > cortex.align.manual(subject, xfmname)
+
+    Parameters
+    ----------
+    subject : str
+        Subject identifier.
+    xfmname : str
+        Name of the transform to be created and stored in the database.
+    reference : str
+        Path to a nibabel-readable image that will be used as the reference for
+        this transform. Usually, this is a single (3D) functional data volume.
+    init : str, optional
+        One of "coreg", "fsl", "header", or a path to a transform from the reference
+        volume to the anatomical volume.
+        Specifies the initialization method to obtain a first alignment that will be
+        refined with bbregister. Default is "coreg", which uses Freesurfer's `mri_coreg`
+        and it generally performs best. Other options include "fsl" to use FSL's FLIRT
+        or "header" to assume that the reference and the anatomical are already close
+        enough (this option can be used when the reference and the anatomical are
+        acquired in the same session). Finally, you can also specify a path to a
+        transform file (in DAT or LTA format) that will be used as initialization.
+    epi_mask : bool, optional
+        If True, then the flag --epi-mask is passed to bbregister to mask out areas
+        with spatial distortions. This setting recommended whenever the reference was
+        not distortion corrected.
+    intermediate : str
+        Path to a nibabel-readable image that will be used as intermediate volume
+        for alignment. This is useful if the reference image has a small field-of-view
+        and a whole-brain image was acquired in the same session.
+    reference_contrast : str
+        Contrast of the reference image. This is used to determine the appropriate
+        contrast for the reference image in the bbregister command. Default is "t2"
+        (for BOLD): gray matter is brighter than white matter.
+        The alternative option is "t1": white matter is brighter than gray matter.
+    noclean : bool, optional
+        If True, intermediate files will not be removed from /tmp (this is useful
+        for debugging things), and the returned value will be the name of the
+        temp directory. Default False.
+
+    Returns
+    -------
+    None or path to temp directory if `noclean` is True.
+    """
+    warnings.warn(
+        "Defaults changed in pycortex 1.2.8. Now automatic alignment uses Freesurfer's "
+        "bbregister and mri_coreg for initialization. If you want to use FSL's BBR, "
+        "use the function `cortex.align.automatic_fsl` instead."
+    )
+
+    retval = None
+    try:
+        cache = tempfile.mkdtemp()
+        reference = os.path.abspath(reference)
+        print("Running freesurfer BBR")
+        # Start building the command
+        cmd = f"bbregister --s {subject} --mov {reference} --reg {cache}/register.dat "
+        cmd += f"--{reference_contrast}"
+        if init in ["coreg", "fsl", "header"]:
+            cmd += f" --init-{init}"
+        else:
+            init = os.path.abspath(init)
+            cmd += f" --init-reg {init}"
+        if epi_mask:
+            cmd += " --epi-mask"
+        if intermediate is not None:
+            intermediate = os.path.abspath(intermediate)
+            cmd += f" --int {intermediate}"
+        cmd = cmd.format(sub=subject, absref=reference, cache=cache)
+
+        if sp.call(cmd.split()) != 0:
+            raise IOError("Error calling freesurfer BBR!")
+
+        xfm = Transform.from_freesurfer(
+            os.path.join(cache, "register.dat"), reference, subject
+        )
+        # Save as pycortex 'coord' transform
+        xfm.save(subject, xfmname, "coord")
+        # Load mincost to provide some information
+        # The four values stored in .mincost are
+        # 1. quality of the registration (0 to 1, with 0 is perfect)
+        # 2. mean of WM just below the surface
+        # 3. mean of GM just above the surface
+        # 4. percent contrast
+        # https://surfer.nmr.mgh.harvard.edu/fswiki/MultiModalTutorialV6.0/MultiModalRegistration
+        # Let's return only the quality of the registration
+        mincost = np.loadtxt(os.path.join(cache, "register.dat.mincost"))
+        print(
+            f"bbregister finished with a mincost of {mincost[0]:.2f}\n"
+            "Values between 0 and 0.5 indicate a good registration.\n"
+            "But you should manually inspect the alignment anyway."
+        )
+    finally:
+        if not noclean:
+            shutil.rmtree(cache)
+        else:
+            retval = cache
+    return retval
+
 
 def autotweak(subject, xfmname):
     """Tweak an alignment using the FLIRT boundary-based alignment (BBR) from FSL.
@@ -363,12 +480,12 @@ def autotweak(subject, xfmname):
     """
     import shlex
     import shutil
-    import tempfile
     import subprocess as sp
+    import tempfile
 
     from .database import db
-    from .xfm import Transform
     from .options import config
+    from .xfm import Transform
 
     fsl_prefix = config.get("basic", "fsl_prefix")
     schfile = os.path.join(os.path.split(os.path.abspath(__file__))[0], "bbr.sch")
