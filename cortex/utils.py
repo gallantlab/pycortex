@@ -1032,13 +1032,14 @@ def add_cmap(cmap, name, cmapdir=None):
         or `cortex.webgl.show()`.
     """
     import matplotlib.pyplot as plt
+
     x = np.linspace(0, 1, 256)
-    cmap_im = cmap(x).reshape((1,256,4))
+    cmap_im = cmap(x).reshape((1, 256, 4))
     if cmapdir is None:
         # Probably won't work due to permissions...
-        cmapdir = config.get('webgl', 'colormaps')
+        cmapdir = config.get("webgl", "colormaps")
     # Make sure name ends with png
-    name = name if name.endswith('.png') else f"{name}.png"
+    name = name if name.endswith(".png") else f"{name}.png"
     plt.imsave(os.path.join(cmapdir, name), cmap_im, format="png")
 
 
