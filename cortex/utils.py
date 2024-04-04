@@ -1013,29 +1013,34 @@ def get_cmap(name):
     return cmap
 
 def add_cmap(cmap, name, cmapdir=None):
-    """Add a colormap to pycortex
+    """Add a colormap to pycortex.
 
     This stores a matplotlib colormap in the pycortex filestore, such that it can
-    be used in the webgl viewer in pycortex. See [] for more information about how
-    to generate colormaps in matplotlib
+    be used in the webgl viewer in pycortex. See 
+    https://matplotlib.org/stable/users/explain/colors/colormap-manipulation.html 
+    for more information about how to generate colormaps in matplotlib.
 
     Parameters
     ----------
     cmap : matplotlib colormap
         Color map to be saved
-    name :
-        Name for colormap, e.g. 'jet', 'blue_to_yellow', etc. This will be a file name,
-        so no weird characters. This name will also be used to specify this colormap in
-        future calls to cortex.quickflat.make_figure() or cortex.webgl.show()
+    name : str
+        Name for colormap, e.g. 'jet', 'blue_to_yellow', etc. The name will be used
+        to generate a filename for the colormap stored in the pycortex store, 
+        so avoid illegal characters for a filename. This name will also be used to 
+        specify this colormap in future calls to `cortex.quickflat.make_figure()`
+        or `cortex.webgl.show()`.
     """
     import matplotlib.pyplot as plt
-    from matplotlib import colors
+
     x = np.linspace(0, 1, 256)
-    cmap_im = cmap(x).reshape((1,256,4))
+    cmap_im = cmap(x).reshape((1, 256, 4))
     if cmapdir is None:
         # Probably won't work due to permissions...
-        cmapdir = config.get('webgl', 'colormaps')
-    plt.imsave(os.path.join(cmapdir, name), cmap_im)
+        cmapdir = config.get("webgl", "colormaps")
+    # Make sure name ends with png
+    name = name if name.endswith(".png") else f"{name}.png"
+    plt.imsave(os.path.join(cmapdir, name), cmap_im, format="png")
 
 
 def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
