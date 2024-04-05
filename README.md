@@ -13,7 +13,7 @@ Installation
 ------------
 
 > [!NOTE]
-> We do not support Windows installs. None of the developers work on Windows, and it is currently outside our capacity to manage this type of cross-platform problem.
+> Pycortex cannot be currently installed in Windows, only Linux and macOS are supported.
 
 To install the stable release version of pycortex, do the following:
 
