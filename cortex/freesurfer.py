@@ -142,7 +142,12 @@ def flatten(fs_subject, hemi, patch, freesurfer_subject_dir=None, save_every=Non
         return False
 
 
-def import_subj(fs_subject, cx_subject=None, freesurfer_subject_dir=None, whitematter_surf='smoothwm'):
+def import_subj(
+    freesurfer_subject,
+    pycortex_subject=None,
+    freesurfer_subject_dir=None,
+    whitematter_surf="smoothwm",
+):
     """Imports a subject from freesurfer
 
     This will overwrite (after giving a warning and an option to continue) the 
@@ -153,60 +158,104 @@ def import_subj(fs_subject, cx_subject=None, freesurfer_subject_dir=None, whitem
 
     Parameters
     ----------
-    fs_subject : string
+    freesurfer_subject : str
         Freesurfer subject name
-    cx_subject : string, optional
-        Pycortex subject name (These variable names should be changed). By default uses
-        the same name as the freesurfer subject. Best to stick to that convention, if 
-        possible (your life will go more smoothly.) This optional kwarg is for edge cases. 
-    freesurfer_subject_dir : string, optional
+    pycortex_subject : str, optional
+        Pycortex subject name. By default it uses the freesurfer subject name. 
+        It is advised to stick to that convention, if possible 
+        (your life will go more smoothly.)
+    freesurfer_subject_dir : str, optional
         Freesurfer subject directory to pull data from. By default uses the directory
         given by the environment variable $SUBJECTS_DIR.
-    whitematter_surf : string, optional
-        Which whitematter surface to import as 'wm'. By default uses 'smoothwm', but that
-        surface is smoothed and may not be appropriate. A good alternative is 'white'.
+    whitematter_surf : str, optional
+        Which whitematter surface to import as 'wm'. By default uses 'smoothwm', but 
+        that surface is smoothed and may not be appropriate. 
+        A good alternative is 'white'.
+    
+    Notes
+    -----
+    This function uses command line functions from freesurfer, so you should make sure
+    to have freesurfer sourced before running this function.
+
+    This function will also generate the fiducial surfaces for the subject, which are
+    halfway between the white matter and pial surfaces. The surfaces will be stored
+    in the freesurfer subject's directory. These fiducial surfaces are used for 
+    cutting and flattening.
     """
-    if cx_subject is None:
-        cx_subject = fs_subject
-    # Create and/or replace extant subject. Throws a warning that this will happen.
-    database.db.make_subj(cx_subject)
-
-    import nibabel
-    surfs = os.path.join(database.default_filestore, cx_subject, "surfaces", "{name}_{hemi}.gii")
-    anats = os.path.join(database.default_filestore, cx_subject, "anatomicals", "{name}.nii.gz")
-    surfinfo = os.path.join(database.default_filestore, cx_subject, "surface-info", "{name}.npz")
+    # Check if freesurfer is sourced or if subjects dir is passed
     if freesurfer_subject_dir is None:
-        freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
-    fspath = os.path.join(freesurfer_subject_dir, fs_subject, 'mri')
-    curvs = os.path.join(freesurfer_subject_dir, fs_subject, 'surf', '{hemi}.{name}')
+        if "SUBJECTS_DIR" in os.environ:
+            freesurfer_subject_dir = os.environ["SUBJECTS_DIR"]
+        else:
+            raise ValueError(
+                "Please source freesurfer before running this function, "
+                "or pass a path to the freesurfer subjects directory in "
+                "`freesurfer_subject_dir`"
+            )
+    fs_mri_path = os.path.join(freesurfer_subject_dir, freesurfer_subject, "mri")
+    fs_surf_path = os.path.join(freesurfer_subject_dir, freesurfer_subject, "surf")
+    fs_anat_template = os.path.join(fs_mri_path, "{name}.mgz")
+    fs_surf_template = os.path.join(fs_surf_path, "{hemi}.{name}")
 
-    #import anatomicals
-    for fsname, name in dict(T1="raw", aseg="aseg", wm="raw_wm").items():
-        path = os.path.join(fspath, "{fsname}.mgz").format(fsname=fsname)
-        out = anats.format(subj=cx_subject, name=name)
-        cmd = "mri_convert {path} {out}".format(path=path, out=out)
+    # Now deal with pycortex
+    if pycortex_subject is None:
+        pycortex_subject = freesurfer_subject
+    # Create and/or replace extant subject. Throws a warning that this will happen.
+    database.db.make_subj(pycortex_subject)
+
+    filestore = os.path.join(database.default_filestore, pycortex_subject)
+    anat_template = os.path.join(filestore, "anatomicals", "{name}.nii.gz")
+    surf_template = os.path.join(filestore, "surfaces", "{name}_{hemi}.gii")
+    surfinfo_template = os.path.join(filestore, "surface-info", "{name}.npz")
+
+    # Dictionary mapping for volumes to be imported over from freesurfer
+    volumes_fs2pycortex = {"T1": "raw", "aseg": "aseg", "wm": "raw_wm"}
+    # Import volumes
+    for fsname, name in volumes_fs2pycortex.items():
+        in_volume = fs_anat_template.format(name=fsname)
+        out_volume = anat_template.format(name=name)
+        cmd = "mri_convert {path} {out}".format(path=in_volume, out=out_volume)
         sp.check_output(shlex.split(cmd))
 
     # (Re-)Make the fiducial files
     # NOTE: these are IN THE FREESURFER $SUBJECTS_DIR !! which can cause confusion.
-    make_fiducial(fs_subject, freesurfer_subject_dir=freesurfer_subject_dir)
+    make_fiducial(freesurfer_subject, freesurfer_subject_dir=freesurfer_subject_dir)
 
-    # Freesurfer uses FOV/2 for center, let's set the surfaces to use the
-    # magnet isocenter
-    trans = nibabel.load(out).affine[:3, -1]
-    surfmove = trans - np.sign(trans) * [128, 128, 128]
-
-    from . import formats
-    for fsname, name in [(whitematter_surf, "wm"), ('pial', "pia"), ('inflated', "inflated")]:
+    # Dictionary mapping for surfaces to be imported over from freesurfer
+    surfaces_fs2pycortex = {
+        whitematter_surf: "wm",
+        "pial": "pia",
+        "inflated": "inflated",
+    }
+    # Import surfaces
+    for fsname, name in surfaces_fs2pycortex.items():
         for hemi in ("lh", "rh"):
-            pts, polys, _ = get_surf(fs_subject, hemi, fsname, freesurfer_subject_dir=freesurfer_subject_dir)
-            fname = str(surfs.format(subj=cx_subject, name=name, hemi=hemi))
-            formats.write_gii(fname, pts=pts + surfmove, polys=polys)
+            in_surface = fs_surf_template.format(hemi=hemi, name=fsname)
+            out_surface = surf_template.format(name=name, hemi=hemi)
+            # Use the --to-scanner flag to store the surfaces with the same coordinate
+            # system as the volume data, rather than the TKR coordinate system, which
+            # has the center set to FOV/2.
+            cmd = f"mris_convert --to-scanner {in_surface} {out_surface}"
+            sp.check_output(shlex.split(cmd))
 
-    for curv, info in dict(sulc="sulcaldepth", thickness="thickness", curv="curvature").items():
-        lh, rh = [parse_curv(curvs.format(hemi=hemi, name=curv)) for hemi in ['lh', 'rh']]
-        np.savez(surfinfo.format(subj=cx_subject, name=info), left=-lh, right=-rh)
-
+    # Dictionary mapping for curvature and extra info to be imported 
+    info_fs2pycortex = {
+        "sulc": "sulcaldepth",
+        "thickness": "thickness",
+        "curv": "curvature",
+    }
+    # Import curvature and extra information
+    for fsname, name in info_fs2pycortex.items():
+        in_info_lhrh = [
+            fs_surf_template.format(hemi=hemi, name=fsname) for hemi in ["lh", "rh"]
+        ]
+        lh, rh = [parse_curv(in_info) for in_info in in_info_lhrh]
+        np.savez(
+            surfinfo_template.format(name=name), 
+            left=-lh, 
+            right=-rh
+        )
+    # Finally update the database by re-initializing it
     database.db = database.Database()
 
 
