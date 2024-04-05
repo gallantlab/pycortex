@@ -72,8 +72,3 @@ Citation
 If you use pycortex in published work, please cite the [pycortex paper](http://dx.doi.org/10.3389/fninf.2015.00023):
 
 _Gao JS, Huth AG, Lescroart MD and Gallant JL (2015) Pycortex: an interactive surface visualizer for fMRI. Front. Neuroinform. 9:23. doi: 10.3389/fninf.2015.00023_
-
-Getting help
-------------
-Please post on [NeuroStars](https://neurostars.org/) with the tag `pycortex` to
-ask questions about how to use Pycortex.
