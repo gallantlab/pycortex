@@ -235,6 +235,11 @@ def import_subj(
             # Use the --to-scanner flag to store the surfaces with the same coordinate
             # system as the volume data, rather than the TKR coordinate system, which
             # has the center set to FOV/2.
+            # NOTE: the resulting gifti surfaces will look misaligned with respect to
+            # the anatomical volumes when visualized in freeview, because freeview 
+            # expects the surfaces to be in TKR coordinates (with center set to FOV/2).
+            # But the surfaces stored in the pycortex database are only to be used by
+            # pycortex, so that's fine.
             cmd = f"mris_convert --to-scanner {in_surface} {out_surface}"
             sp.check_output(shlex.split(cmd))
 
