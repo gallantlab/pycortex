@@ -1,9 +1,11 @@
 import hashlib
 from copy import deepcopy
-import numpy as np
+
 import h5py
+import numpy as np
 
 from ..database import db
+
 
 class BrainData(object):
     """
@@ -592,9 +594,10 @@ class VertexData(BrainData):
 
 
 def _find_mask(nvox, subject, xfmname):
+    import glob
     import os
     import re
-    import glob
+
     import nibabel
     files = db.get_paths(subject)['masks'].format(xfmname=xfmname, type="*")
     for fname in glob.glob(files):
@@ -602,7 +605,7 @@ def _find_mask(nvox, subject, xfmname):
         mask = nib.get_fdata().T != 0
         if nvox == np.sum(mask):
             fname = os.path.split(fname)[1]
-            name = re.compile(r'mask_([\w]+).nii.gz').search(fname)
+            name = re.compile(r'mask_(.+).nii.gz').search(fname)
             return name.group(1), mask
 
     raise ValueError('Cannot find a valid mask')
